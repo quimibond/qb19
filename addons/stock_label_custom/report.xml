@@ -13,22 +13,26 @@
     <field name="dpi">300</field>
   </record> 
  
+   <!-- Reporte PDF en formato Dymo -->
   <report
     id="action_stock_label_custom_pdf"
     model="stock.move.line"
-    string="Etiqueta PDF"
+    string="Etiqueta PDF Dymo"
     report_type="qweb-pdf"
     name="stock_label_custom.report_stock_label_custom_pdf"
     file="stock_label_custom.report_stock_label_custom_pdf"
     paperformat="dymo_paperformat"
+    print_report_name="'Etiqueta Dymo - %s' % (object.product_id.default_code)"
   />
 
+  <!-- Reporte ZPL directo a impresora -->
   <report
     id="action_stock_label_custom_zpl"
     model="stock.move.line"
-    string="Etiqueta ZPL"
+    string="Etiqueta ZPL Zebra"
     report_type="qweb-text"
     name="stock_label_custom.report_stock_label_custom_zpl"
     file="stock_label_custom.report_stock_label_custom_zpl"
+    print_report_name="'Etiqueta ZPL - %s' % (object.product_id.default_code)"
   />
 </odoo>
