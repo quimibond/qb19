@@ -8,7 +8,6 @@
         'report/stock_label_custom_pdf.xml',
         'report/stock_label_custom_zpl.xml',
         'report.xml',
-        'report/report_label_layout.xml',
         # Vista con botones de impresión directa
         'views/stock_picking_form.xml',
     ],
