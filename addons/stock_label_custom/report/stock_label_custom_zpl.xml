@@ -1,0 +1,12 @@
+<odoo>
+  <template id="report_stock_label_custom_zpl" inherit_id="stock.label_lot_template_view">
+    <xpath expr="//t[@t-foreach='docs']" position="replace">
+      <t t-foreach="docs" t-as="o">
+        ^XA
+        ^FO50,50^A0N,20,20^FDDEBUG:^FS
+        ^FO50,80^A0N,20,20^FD<t t-esc="o"/>^FS
+        ^XZ
+      </t>
+    </xpath>
+  </template>
+</odoo>
