@@ -1,1 +1,3 @@
-# Este archivo puede quedar vacío
+# -*- coding: utf-8 -*-
+from . import report
+
