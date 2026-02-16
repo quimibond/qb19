@@ -1,33 +1,31 @@
 <odoo>
   <template id="report_stock_label_custom_pdf" inherit_id="stock.report_lot_label">
-    <!-- Reemplazamos el bucle completo -->
     <xpath expr="//div[@class='o_label_sheet']/table" position="replace">
       <div class="custom_label_sheet">
         <t t-foreach="docs" t-as="o">
-          <div style="width:70mm; height:45mm; border:1px solid black; margin:5mm auto; padding:3mm;
-                      font-size:8pt; line-height:8pt; page-break-inside:avoid;">
+          <div style="width:54mm; height:25mm; border:1px solid black; margin:2mm auto; padding:2mm;
+                      font-size:7pt; line-height:7pt; page-break-inside:avoid;">
             
-            <!-- Primera línea -->
-            <div style="text-align:center; font-weight:bold; font-size:8pt; line-height:8pt; margin:0; padding:0;">
+            <!-- Código del producto -->
+            <div style="text-align:center; font-weight:bold;">
               <t t-esc="o.product_id.default_code"/>
             </div>
             
-            <!-- Segunda línea -->
-            <div style="text-align:center; line-height:8pt; margin:0; padding:0;">
+            <!-- Nombre del producto -->
+            <div style="text-align:center;">
               <t t-esc="o.product_id.name"/>
             </div>
             
-            <!-- Tercera línea -->
-            <div style="display:flex; justify-content:space-between; line-height:8pt; margin:0; padding:0;">
+            <!-- Lote y cantidad -->
+            <div style="display:flex; justify-content:space-between;">
               <span>Lote: <t t-esc="o.name"/></span>
               <span>Cant: <t t-esc="o.product_qty"/></span>
-              <span>Caja: <t t-esc="o.name[-4:]"/></span>
             </div>
             
             <!-- Código de barras -->
-            <div style="margin-top:3mm; text-align:center;">
+            <div style="margin-top:2mm; text-align:center;">
               <span t-esc="o.name"
-                    t-options="{'widget': 'barcode', 'symbology': 'Code128', 'img_style': 'width:90%; height:12mm'}"/>
+                    t-options="{'widget': 'barcode', 'symbology': 'Code128', 'img_style': 'width:90%; height:10mm'}"/>
             </div>
           
           </div>
