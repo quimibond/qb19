@@ -1,0 +1,19 @@
+<odoo>
+  <report
+    id="action_stock_label_custom_pdf"
+    model="stock.move.line"
+    string="Etiqueta PDF"
+    report_type="qweb-pdf"
+    name="stock_label_custom.report_stock_label_custom_pdf"
+    file="stock_label_custom.report_stock_label_custom_pdf"
+  />
+
+  <report
+    id="action_stock_label_custom_zpl"
+    model="stock.move.line"
+    string="Etiqueta ZPL"
+    report_type="qweb-text"
+    name="stock_label_custom.report_stock_label_custom_zpl"
+    file="stock_label_custom.report_stock_label_custom_zpl"
+  />
+</odoo>

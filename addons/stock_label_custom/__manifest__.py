@@ -7,6 +7,7 @@
     'data': [
         'report/stock_label_custom_pdf.xml',
         'report/stock_label_custom_zpl.xml',
+        'report.xml',
     ],
     'installable': True,
     'application': False,
