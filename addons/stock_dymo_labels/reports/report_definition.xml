@@ -20,8 +20,8 @@
         <field name="name">Etiquetas Dymo Recepción</field>
         <field name="model">stock.move.line</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">stock_dymo_labels.report_dymo_label_template</field>
-        <field name="report_file">stock_dymo_labels.report_dymo_label_template</field>
+        <field name="report_name">stock_dymo_labels.report_label_dymo_custom</field>
+        <field name="report_file">stock_dymo_labels.report_label_dymo_custom</field>
         <field name="paperformat_id" ref="paperformat_dymo_57x32"/>
         <field name="binding_model_id" eval="False"/>
     </record>
