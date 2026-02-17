@@ -5,48 +5,61 @@
             <t t-foreach="docs" t-as="line">
                 <t t-call="web.basic_layout">
                     <style>
-                        .page {
-                            width: 100mm;
-                            height: 76mm;
-                            padding: 1mm;
-                            font-family: 'Helvetica';
-                            font-size: 12px;
-                            overflow: hidden;
-                        }
-                        .label-title {
-                            font-weight: bold;
-                            white-space: nowrap;
-                            overflow: hidden;
+                        .label-container {
+                            width: 100%;
+                            height: 70mm; /* Ajustado al papel */
+                            font-family: 'Helvetica', Arial, sans-serif;
+                            color: black;
+                            padding: 5mm;
                         }
                         .label-ref {
-                            font-size: 12px;
+                            font-size: 22px;
                             font-weight: bold;
+                            margin-bottom: 5px;
                         }
-                        .barcode-container {
+                        .label-name {
+                            font-size: 18px;
+                            line-height: 1.2;
+                            margin-bottom: 8px;
+                            display: block;
+                        }
+                        .label-data {
+                            font-size: 16px;
+                            margin-bottom: 10px;
+                        }
+                        .barcode-box {
                             text-align: center;
-                            margin-top: 2px;
+                            margin-top: 15px;
+                            width: 100%;
                         }
                     </style>
 
-                    <div class="page">
-                        <div class="label-ref">Ref: <t t-esc="line.product_id.default_code or 'N/A'"/></div>
+                    <div class="label-container">
+                        <div class="label-ref">
+                            Ref: <t t-esc="line.product_id.default_code or 'N/A'"/>
+                        </div>
                         
-                        <div class="label-title"><t t-esc="line.product_id.name"/></div>
+                        <div class="label-name">
+                            <t t-esc="line.product_id.name"/>
+                        </div>
                         
-                        <div style="margin-top: 1px;">
+                        <div class="label-data">
                             <strong>Lote:</strong> <t t-esc="line.lot_id.name"/>
                         </div>
                         
-                        <div>
+                        <div class="label-data">
                             <strong>Cant:</strong> <t t-esc="line.quantity"/> 
-                            <strong>Caja:</strong> <t t-esc="line.lot_id.name[-4:] if line.lot_id.name else ''"/>
+                            <span style="margin-left: 20px;">
+                                <strong>Caja:</strong> <t t-esc="line.lot_id.name[-4:] if line.lot_id.name else '0000'"/>
+                            </span>
                         </div>
 
-                        <div class="barcode-container">
-                            <div t-if="line.lot_id.name" 
-                                 t-field="line.lot_id.name" 
-                                 t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 400, 'height': 50, 'img_style': 'width:100%;height:8mm;'}"/>
-                            <div style="font-size: 6px;"><t t-esc="line.lot_id.name"/></div>
+                        <div class="barcode-box">
+                            <t t-if="line.lot_id.name">
+                                <span t-field="line.lot_id.name" 
+                                      t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 600, 'height': 120, 'img_style': 'width:90%;height:25mm;'}"/>
+                                <div style="font-size: 12px; margin-top: 5px;"><t t-esc="line.lot_id.name"/></div>
+                            </t>
                         </div>
                     </div>
                 </t>

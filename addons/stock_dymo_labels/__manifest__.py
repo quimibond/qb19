@@ -2,6 +2,7 @@
     'name': 'Etiquetas Dymo Recepción MP',
     'version': '1.0',
     'category': 'Inventory',
+    'author': 'CONSOLTI',
     'summary': 'Genera etiquetas Dymo desde la recepción de mercancía',
     'depends': ['stock'],
     'data': [
