@@ -78,7 +78,7 @@
                         <div class="barcode-box">
                             <t t-if="line.lot_id.name">
                                 <span t-field="line.lot_id.name" 
-                                      t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 800, 'height': 250, 'img_style': 'width:95%;height:42mm;'}"/>
+                                      t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 800, 'height': 250, 'img_style': 'width:100%;height:20mm;'}"/>
                                 <div class="lot-text">
                                     <t t-esc="line.lot_id.name"/>
                                 </div>
