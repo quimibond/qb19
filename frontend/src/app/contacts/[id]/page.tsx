@@ -58,6 +58,13 @@ const riskVariant: Record<string, "destructive" | "warning" | "success"> = {
   low: "success",
 };
 
+const severityVariant: Record<string, "destructive" | "warning" | "info"> = {
+  critical: "destructive",
+  high: "destructive",
+  medium: "warning",
+  low: "info",
+};
+
 export default function ContactDetailPage() {
   const params = useParams();
   const [contact, setContact] = useState<Contact | null>(null);
@@ -65,23 +72,33 @@ export default function ContactDetailPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetch() {
-      const [contactRes, profileRes, alertsRes, actionsRes] = await Promise.all([
-        supabase.from("contacts").select("*").eq("id", params.id).single(),
-        supabase.from("person_profiles").select("*").eq("contact_id", params.id).single(),
-        supabase.from("alerts").select("*").eq("contact_id", params.id).order("created_at", { ascending: false }).limit(10),
-        supabase.from("action_items").select("*").eq("contact_id", params.id).order("created_at", { ascending: false }).limit(10),
-      ]);
+    async function fetchContact() {
+      try {
+        const [contactRes, profileRes, alertsRes, actionsRes] = await Promise.all([
+          supabase.from("contacts").select("*").eq("id", params.id).single(),
+          supabase.from("person_profiles").select("*").eq("contact_id", params.id).single(),
+          supabase.from("alerts").select("*").eq("contact_id", params.id).order("created_at", { ascending: false }).limit(10),
+          supabase.from("action_items").select("*").eq("contact_id", params.id).order("created_at", { ascending: false }).limit(10),
+        ]);
 
-      setContact(contactRes.data);
-      setProfile(profileRes.data);
-      setAlerts(alertsRes.data || []);
-      setActions(actionsRes.data || []);
-      setLoading(false);
+        if (contactRes.error) {
+          setError(contactRes.error.message);
+        } else {
+          setContact(contactRes.data);
+        }
+        setProfile(profileRes.data);
+        setAlerts(alertsRes.data || []);
+        setActions(actionsRes.data || []);
+      } catch {
+        setError("Error de conexion con Supabase");
+      } finally {
+        setLoading(false);
+      }
     }
-    fetch();
+    fetchContact();
   }, [params.id]);
 
   if (loading) {
@@ -92,10 +109,10 @@ export default function ContactDetailPage() {
     );
   }
 
-  if (!contact) {
+  if (error || !contact) {
     return (
       <div className="text-center py-12">
-        <p className="text-[var(--muted-foreground)]">Contacto no encontrado.</p>
+        <p className="text-[var(--muted-foreground)]">{error || "Contacto no encontrado."}</p>
         <Link href="/contacts">
           <Button variant="ghost" className="mt-4">Volver a contactos</Button>
         </Link>
@@ -167,7 +184,7 @@ export default function ContactDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-[var(--muted-foreground)]">Email</dt>
               <dd>{contact.email || "—"}</dd>
@@ -242,7 +259,7 @@ export default function ContactDetailPage() {
                 {alerts.map((a) => (
                   <div key={a.id} className="flex items-center justify-between rounded border border-[var(--border)] p-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant={a.severity === "high" || a.severity === "critical" ? "destructive" : "warning"} className="text-[10px]">
+                      <Badge variant={severityVariant[a.severity] || "info"} className="text-[10px]">
                         {a.severity}
                       </Badge>
                       <span className="text-sm truncate max-w-[200px]">{a.title}</span>

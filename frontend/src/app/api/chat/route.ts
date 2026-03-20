@@ -58,12 +58,22 @@ async function getRelevantContext(): Promise<string> {
   return parts.join("\n\n");
 }
 
+const MAX_QUESTION_LENGTH = 2000;
+
 export async function POST(req: NextRequest) {
   try {
-    const { question, history } = await req.json();
+    const body = await req.json();
+    const { question, history } = body;
 
-    if (!question) {
+    if (!question || typeof question !== "string") {
       return NextResponse.json({ error: "Pregunta requerida" }, { status: 400 });
+    }
+
+    if (question.length > MAX_QUESTION_LENGTH) {
+      return NextResponse.json(
+        { error: `La pregunta no puede exceder ${MAX_QUESTION_LENGTH} caracteres` },
+        { status: 400 }
+      );
     }
 
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -73,11 +83,16 @@ export async function POST(req: NextRequest) {
 
     const context = await getRelevantContext();
 
+    const validRoles = new Set(["user", "assistant"]);
+    const sanitizedHistory = Array.isArray(history)
+      ? history
+          .filter((m: { role: string; content: string }) => validRoles.has(m.role) && typeof m.content === "string")
+          .slice(-10)
+          .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }))
+      : [];
+
     const messages = [
-      ...(history || []).map((m: { role: string; content: string }) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      ...sanitizedHistory,
       { role: "user", content: question },
     ];
 
@@ -89,7 +104,7 @@ export async function POST(req: NextRequest) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-4-5-20250514",
         max_tokens: 2048,
         system: `Eres el cerebro de inteligencia comercial de Quimibond, una empresa textil mexicana.
 Tu rol es responder preguntas sobre clientes, ventas, operaciones y estrategia usando los datos disponibles.

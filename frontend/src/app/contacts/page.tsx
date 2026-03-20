@@ -30,18 +30,27 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetch() {
-      const { data } = await supabase
-        .from("contacts")
-        .select("*")
-        .order("last_interaction", { ascending: false })
-        .limit(100);
-      setContacts(data || []);
-      setLoading(false);
+    async function fetchContacts() {
+      try {
+        const { data, error: queryError } = await supabase
+          .from("contacts")
+          .select("*")
+          .order("last_interaction", { ascending: false })
+          .limit(100);
+        if (queryError) {
+          setError(queryError.message);
+        }
+        setContacts(data || []);
+      } catch {
+        setError("Error de conexion con Supabase");
+      } finally {
+        setLoading(false);
+      }
     }
-    fetch();
+    fetchContacts();
   }, []);
 
   const filtered = search
@@ -76,6 +85,12 @@ export default function ContactsPage() {
         />
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-pulse text-[var(--muted-foreground)]">Cargando contactos...</div>
@@ -91,69 +106,71 @@ export default function ContactsPage() {
         </Card>
       ) : (
         <div className="overflow-hidden rounded-lg border border-[var(--border)]">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--card)] text-left text-xs text-[var(--muted-foreground)]">
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3">Empresa</th>
-                <th className="px-4 py-3">Riesgo</th>
-                <th className="px-4 py-3">Sentimiento</th>
-                <th className="px-4 py-3">Emails</th>
-                <th className="px-4 py-3">Ultima interaccion</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((contact) => (
-                <tr key={contact.id} className="border-b border-[var(--border)]/50 hover:bg-[var(--accent)]/50">
-                  <td className="px-4 py-3">
-                    <div>
-                      <p className="font-medium">{contact.name || "—"}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">{contact.email}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--muted-foreground)]">{contact.company || "—"}</td>
-                  <td className="px-4 py-3">
-                    {contact.risk_level && (
-                      <Badge variant={riskVariant[contact.risk_level] || "info"}>
-                        {contact.risk_level}
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {contact.sentiment_score != null ? (
-                      <span
-                        className={
-                          contact.sentiment_score >= 0.5
-                            ? "text-emerald-400"
-                            : contact.sentiment_score <= -0.2
-                              ? "text-red-400"
-                              : "text-[var(--muted-foreground)]"
-                        }
-                      >
-                        {contact.sentiment_score.toFixed(2)}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--muted-foreground)]">{contact.total_emails ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                    {contact.last_interaction
-                      ? new Date(contact.last_interaction).toLocaleDateString("es-MX", { day: "numeric", month: "short" })
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/contacts/${contact.id}`}>
-                      <Button variant="ghost" size="icon">
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--card)] text-left text-xs text-[var(--muted-foreground)]">
+                  <th className="px-4 py-3">Nombre</th>
+                  <th className="px-4 py-3 hidden sm:table-cell">Empresa</th>
+                  <th className="px-4 py-3">Riesgo</th>
+                  <th className="px-4 py-3 hidden md:table-cell">Sentimiento</th>
+                  <th className="px-4 py-3 hidden md:table-cell">Emails</th>
+                  <th className="px-4 py-3 hidden lg:table-cell">Ultima interaccion</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((contact) => (
+                  <tr key={contact.id} className="border-b border-[var(--border)]/50 hover:bg-[var(--accent)]/50">
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-medium">{contact.name || "—"}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{contact.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)] hidden sm:table-cell">{contact.company || "—"}</td>
+                    <td className="px-4 py-3">
+                      {contact.risk_level && (
+                        <Badge variant={riskVariant[contact.risk_level] || "info"}>
+                          {contact.risk_level}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {contact.sentiment_score != null ? (
+                        <span
+                          className={
+                            contact.sentiment_score >= 0.5
+                              ? "text-emerald-400"
+                              : contact.sentiment_score <= -0.2
+                                ? "text-red-400"
+                                : "text-[var(--muted-foreground)]"
+                          }
+                        >
+                          {contact.sentiment_score.toFixed(2)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)] hidden md:table-cell">{contact.total_emails ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--muted-foreground)] hidden lg:table-cell">
+                      {contact.last_interaction
+                        ? new Date(contact.last_interaction).toLocaleDateString("es-MX", { day: "numeric", month: "short" })
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link href={`/contacts/${contact.id}`}>
+                        <Button variant="ghost" size="icon">
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

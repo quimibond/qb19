@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { timeAgo } from "@/lib/utils";
@@ -70,31 +71,44 @@ export default function DashboardPage() {
   const [recentAlerts, setRecentAlerts] = useState<Alert[]>([]);
   const [pendingActions, setPendingActions] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
-      const [emailsRes, alertsRes, actionsRes, contactsRes, briefingRes, recentAlertsRes, actionsListRes] =
-        await Promise.all([
-          supabase.from("emails").select("id", { count: "exact", head: true }),
-          supabase.from("alerts").select("id", { count: "exact", head: true }).eq("state", "new"),
-          supabase.from("action_items").select("id", { count: "exact", head: true }).eq("state", "pending"),
-          supabase.from("contacts").select("id", { count: "exact", head: true }).eq("risk_level", "high"),
-          supabase.from("briefings").select("*").order("created_at", { ascending: false }).limit(1),
-          supabase.from("alerts").select("*").order("created_at", { ascending: false }).limit(5),
-          supabase.from("action_items").select("*").eq("state", "pending").order("due_date", { ascending: true }).limit(5),
-        ]);
+      try {
+        const [emailsRes, alertsRes, actionsRes, contactsRes, briefingRes, recentAlertsRes, actionsListRes] =
+          await Promise.all([
+            supabase.from("emails").select("id", { count: "exact", head: true }),
+            supabase.from("alerts").select("id", { count: "exact", head: true }).eq("state", "new"),
+            supabase.from("action_items").select("id", { count: "exact", head: true }).eq("state", "pending"),
+            supabase.from("contacts").select("id", { count: "exact", head: true }).eq("risk_level", "high"),
+            supabase.from("briefings").select("*").order("created_at", { ascending: false }).limit(1),
+            supabase.from("alerts").select("*").order("created_at", { ascending: false }).limit(5),
+            supabase.from("action_items").select("*").eq("state", "pending").order("due_date", { ascending: true }).limit(5),
+          ]);
 
-      setStats({
-        totalEmails: emailsRes.count ?? 0,
-        openAlerts: alertsRes.count ?? 0,
-        pendingActions: actionsRes.count ?? 0,
-        atRiskContacts: contactsRes.count ?? 0,
-      });
+        const queryError = [emailsRes, alertsRes, actionsRes, contactsRes, briefingRes, recentAlertsRes, actionsListRes]
+          .find((r) => r.error);
+        if (queryError?.error) {
+          setError(`Error cargando datos: ${queryError.error.message}`);
+        }
 
-      if (briefingRes.data?.[0]) setLatestBriefing(briefingRes.data[0]);
-      if (recentAlertsRes.data) setRecentAlerts(recentAlertsRes.data);
-      if (actionsListRes.data) setPendingActions(actionsListRes.data);
-      setLoading(false);
+        setStats({
+          totalEmails: emailsRes.count ?? 0,
+          openAlerts: alertsRes.count ?? 0,
+          pendingActions: actionsRes.count ?? 0,
+          atRiskContacts: contactsRes.count ?? 0,
+        });
+
+        if (briefingRes.data?.[0]) setLatestBriefing(briefingRes.data[0]);
+        if (recentAlertsRes.data) setRecentAlerts(recentAlertsRes.data);
+        if (actionsListRes.data) setPendingActions(actionsListRes.data);
+      } catch (err) {
+        setError("Error de conexion con Supabase. Verifica la configuracion.");
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchData();
   }, []);
@@ -121,8 +135,14 @@ export default function DashboardPage() {
         <p className="text-sm text-[var(--muted-foreground)]">Vista general de inteligencia comercial</p>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
+          {error}
+        </div>
+      )}
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((stat) => (
           <Card key={stat.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -158,7 +178,7 @@ export default function DashboardPage() {
                 </div>
                 <div
                   className="prose prose-invert prose-sm max-h-48 overflow-hidden text-sm"
-                  dangerouslySetInnerHTML={{ __html: latestBriefing.html_content?.slice(0, 500) || "" }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(latestBriefing.html_content?.slice(0, 500) || "") }}
                 />
                 <Link
                   href={`/briefings/${latestBriefing.id}`}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,18 +25,28 @@ export default function BriefingDetailPage() {
   const params = useParams();
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetch() {
-      const { data } = await supabase
-        .from("briefings")
-        .select("*")
-        .eq("id", params.id)
-        .single();
-      setBriefing(data);
-      setLoading(false);
+    async function fetchBriefing() {
+      try {
+        const { data, error: queryError } = await supabase
+          .from("briefings")
+          .select("*")
+          .eq("id", params.id)
+          .single();
+        if (queryError) {
+          setError(queryError.message);
+        } else {
+          setBriefing(data);
+        }
+      } catch {
+        setError("Error de conexion");
+      } finally {
+        setLoading(false);
+      }
     }
-    fetch();
+    fetchBriefing();
   }, [params.id]);
 
   if (loading) {
@@ -46,10 +57,10 @@ export default function BriefingDetailPage() {
     );
   }
 
-  if (!briefing) {
+  if (error || !briefing) {
     return (
       <div className="text-center py-12">
-        <p className="text-[var(--muted-foreground)]">Briefing no encontrado.</p>
+        <p className="text-[var(--muted-foreground)]">{error || "Briefing no encontrado."}</p>
         <Link href="/briefings">
           <Button variant="ghost" className="mt-4">Volver a briefings</Button>
         </Link>
@@ -98,7 +109,7 @@ export default function BriefingDetailPage() {
         <CardContent className="pt-6">
           <div
             className="prose prose-invert prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: briefing.html_content || "<p>Sin contenido.</p>" }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(briefing.html_content) || "<p>Sin contenido.</p>" }}
           />
         </CardContent>
       </Card>

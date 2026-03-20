@@ -30,36 +30,57 @@ export default function ActionsPage() {
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState<string>("pending");
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetch() {
-      let query = supabase
-        .from("action_items")
-        .select("*")
-        .order("due_date", { ascending: true })
-        .limit(50);
+    async function fetchActions() {
+      setError(null);
+      try {
+        let query = supabase
+          .from("action_items")
+          .select("*")
+          .order("due_date", { ascending: true })
+          .limit(50);
 
-      if (stateFilter !== "all") {
-        query = query.eq("state", stateFilter);
+        if (stateFilter !== "all") {
+          query = query.eq("state", stateFilter);
+        }
+
+        const { data, error: queryError } = await query;
+        if (queryError) {
+          setError(queryError.message);
+        }
+        setActions(data || []);
+      } catch {
+        setError("Error de conexion con Supabase");
+      } finally {
+        setLoading(false);
       }
-
-      const { data } = await query;
-      setActions(data || []);
-      setLoading(false);
     }
-    fetch();
+    fetchActions();
   }, [stateFilter]);
 
+  function showFeedback(msg: string) {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(null), 2000);
+  }
+
   async function completeAction(id: string) {
-    await supabase
+    const { error } = await supabase
       .from("action_items")
       .update({ state: "completed", completed_at: new Date().toISOString() })
       .eq("id", id);
+    if (error) {
+      showFeedback("Error al completar accion");
+      return;
+    }
     setActions((prev) =>
       prev.map((a) =>
         a.id === id ? { ...a, state: "completed", completed_at: new Date().toISOString() } : a
       )
     );
+    showFeedback("Accion completada");
   }
 
   function isOverdue(dueDate: string) {
@@ -68,7 +89,7 @@ export default function ActionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Acciones</h1>
           <p className="text-sm text-[var(--muted-foreground)]">Acciones sugeridas por el sistema de inteligencia</p>
@@ -89,6 +110,18 @@ export default function ActionsPage() {
           ))}
         </div>
       </div>
+
+      {feedback && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+          {feedback}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">

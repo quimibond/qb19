@@ -15,13 +15,19 @@ const printZplUsbAction = async (env, action) => {
 
         // 3. Enviar el string ZPL
         await qz.print(config, [zpl_data]);
-        
-        console.log("Impresión enviada a: " + printer_name);
+
+        env.services.notification.add(
+            "Impresion enviada a: " + printer_name,
+            { type: "success" }
+        );
     } catch (e) {
-        alert("Error de impresión: Asegúrate de que QZ Tray esté ejecutándose y la impresora se llame " + printer_name);
-        console.error(e);
+        env.services.notification.add(
+            "Error de impresion: Asegurate de que QZ Tray este ejecutandose y la impresora se llame " + printer_name,
+            { type: "danger", sticky: true }
+        );
+        console.error("ZPL print error:", e);
     }
 };
 
-// Registramos la acción para que coincida con el 'tag' de Python
+// Registramos la accion para que coincida con el 'tag' de Python
 registry.category("actions").add("print_zpl_usb", printZplUsbAction);

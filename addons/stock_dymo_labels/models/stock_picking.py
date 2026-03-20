@@ -1,5 +1,8 @@
 from odoo import models, fields, api, _, exceptions
 
+DEFAULT_ZEBRA_PRINTER = 'ZD230'
+
+
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
@@ -50,6 +53,8 @@ class StockPicking(models.Model):
             'tag': 'print_zpl_usb',
             'params': {
                 'zpl_data': zpl_body,
-                'printer_name': 'ZD230',
+                'printer_name': self.env['ir.config_parameter'].sudo().get_param(
+                    'stock_dymo_labels.zebra_printer_name', DEFAULT_ZEBRA_PRINTER
+                ),
             }
         }

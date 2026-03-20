@@ -1,6 +1,6 @@
 {
     'name': 'Etiquetas Dymo y Zebra Recepción MP',
-    'version': '1.1',
+    'version': '19.0.1.1.0',
     'category': 'Inventory',
     'author': 'CONSOLTI',
     'summary': 'Genera etiquetas Dymo (PDF) y Zebra (ZPL USB) desde la recepción',

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { timeAgo } from "@/lib/utils";
 import { FileText } from "lucide-react";
@@ -30,29 +30,39 @@ export default function BriefingsPage() {
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetch() {
-      let query = supabase
-        .from("briefings")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
+    async function fetchBriefings() {
+      setError(null);
+      try {
+        let query = supabase
+          .from("briefings")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(50);
 
-      if (filter !== "all") {
-        query = query.eq("briefing_type", filter);
+        if (filter !== "all") {
+          query = query.eq("briefing_type", filter);
+        }
+
+        const { data, error: queryError } = await query;
+        if (queryError) {
+          setError(queryError.message);
+        }
+        setBriefings(data || []);
+      } catch {
+        setError("Error de conexion con Supabase");
+      } finally {
+        setLoading(false);
       }
-
-      const { data } = await query;
-      setBriefings(data || []);
-      setLoading(false);
     }
-    fetch();
+    fetchBriefings();
   }, [filter]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Briefings</h1>
           <p className="text-sm text-[var(--muted-foreground)]">Resumenes de inteligencia generados automaticamente</p>
@@ -73,6 +83,12 @@ export default function BriefingsPage() {
           ))}
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">

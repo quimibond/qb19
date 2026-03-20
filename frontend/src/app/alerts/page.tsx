@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/utils";
@@ -40,41 +40,67 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState<string>("new");
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetch() {
-      let query = supabase
-        .from("alerts")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
+    async function fetchAlerts() {
+      setError(null);
+      try {
+        let query = supabase
+          .from("alerts")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(50);
 
-      if (stateFilter !== "all") {
-        query = query.eq("state", stateFilter);
+        if (stateFilter !== "all") {
+          query = query.eq("state", stateFilter);
+        }
+
+        const { data, error: queryError } = await query;
+        if (queryError) {
+          setError(queryError.message);
+        }
+        setAlerts(data || []);
+      } catch {
+        setError("Error de conexion con Supabase");
+      } finally {
+        setLoading(false);
       }
-
-      const { data } = await query;
-      setAlerts(data || []);
-      setLoading(false);
     }
-    fetch();
+    fetchAlerts();
   }, [stateFilter]);
 
+  function showFeedback(msg: string) {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(null), 2000);
+  }
+
   async function markRead(id: string) {
-    await supabase.from("alerts").update({ is_read: true, state: "acknowledged" }).eq("id", id);
+    const { error } = await supabase.from("alerts").update({ is_read: true, state: "acknowledged" }).eq("id", id);
+    if (error) {
+      showFeedback("Error al marcar como vista");
+      return;
+    }
     setAlerts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, is_read: true, state: "acknowledged" } : a))
     );
+    showFeedback("Alerta marcada como vista");
   }
 
   async function resolve(id: string) {
-    await supabase.from("alerts").update({ state: "resolved" }).eq("id", id);
+    const { error } = await supabase.from("alerts").update({ state: "resolved" }).eq("id", id);
+    if (error) {
+      showFeedback("Error al resolver alerta");
+      return;
+    }
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, state: "resolved" } : a)));
+    showFeedback("Alerta resuelta");
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Alertas</h1>
           <p className="text-sm text-[var(--muted-foreground)]">Alertas de inteligencia sobre clientes y operaciones</p>
@@ -95,6 +121,18 @@ export default function AlertsPage() {
           ))}
         </div>
       </div>
+
+      {feedback && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+          {feedback}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">
