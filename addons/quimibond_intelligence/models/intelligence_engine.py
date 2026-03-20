@@ -28,14 +28,15 @@ except ImportError:
     TZ_CDMX = pytz.timezone('America/Mexico_City')
 
 
-class IntelligenceEngine(models.AbstractModel):
+class IntelligenceEngine(models.Model):
     """Motor que ejecuta el pipeline de inteligencia.
 
     Se invoca vía ir.cron o manualmente desde la vista de configuración.
-    Es un AbstractModel porque no persiste datos propios — solo orquesta.
+    Usa Model (no AbstractModel) para que ir.cron pueda referenciar model_id.
     """
     _name = 'intelligence.engine'
     _description = 'Intelligence Engine (orquestador)'
+    _log_access = False
 
     # ══════════════════════════════════════════════════════════════════════════
     #   PUNTO DE ENTRADA: CRON DIARIO
@@ -203,6 +204,8 @@ class IntelligenceEngine(models.AbstractModel):
             self._save_to_odoo(
                 today, briefing_html, emails, alerts,
                 client_scores, contacts, time.time() - start,
+                topics=topics,
+                accounts_failed=result['failed_count'],
             )
         except Exception as exc:
             _logger.error('Error guardando en Odoo: %s', exc)
@@ -970,7 +973,6 @@ class IntelligenceEngine(models.AbstractModel):
     # ── HTML wrapper ──────────────────────────────────────────────────────────
 
     def _feed_knowledge_graph(self, emails, claude, supa, today):
-        from collections import defaultdict
         if not emails:
             return
 
@@ -1091,7 +1093,6 @@ class IntelligenceEngine(models.AbstractModel):
                     except Exception:
                         pass
 
-            import time as _time
             batch_ids = [
                 e['gmail_message_id'] for e in acct_emails
                 if e.get('gmail_message_id')
@@ -1100,12 +1101,13 @@ class IntelligenceEngine(models.AbstractModel):
                 supa.mark_emails_kg_processed(batch_ids)
             except Exception as exc:
                 _logger.warning('KG mark_processed %s: %s', account, exc)
-            _time.sleep(3)
+            time.sleep(3)
 
         _logger.info('Knowledge graph alimentado')
 
     def _save_to_odoo(self, today, briefing_html, emails, alerts,
-                      client_scores, contacts, execution_secs):
+                      client_scores, contacts, execution_secs,
+                      topics=None, accounts_failed=0):
         Briefing = self.env["intelligence.briefing"].sudo()
         Alert = self.env["intelligence.alert"].sudo()
         Score = self.env["intelligence.client.score"].sudo()
@@ -1117,6 +1119,9 @@ class IntelligenceEngine(models.AbstractModel):
             'html_content': briefing_html,
             'total_emails': len(emails),
             'accounts_ok': len(set(e['account'] for e in emails)),
+            'accounts_failed': accounts_failed,
+            'topics_count': len(topics) if topics else 0,
+            'topics_json': json.dumps(topics, default=str, ensure_ascii=False) if topics else False,
             'execution_seconds': execution_secs,
         })
         _logger.info('Briefing guardado en Odoo: %s', briefing.id)
