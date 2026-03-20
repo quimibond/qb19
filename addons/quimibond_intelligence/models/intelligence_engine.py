@@ -259,7 +259,7 @@ class IntelligenceEngine(models.AbstractModel):
     #   HELPERS INTERNOS
     # ══════════════════════════════════════════════════════════════════════════
 
-    def _load_config(self) -> dict | None:
+    def _load_config(self):
         """Carga toda la configuración desde ir.config_parameter."""
         get = lambda k, d='': (
             self.env['ir.config_parameter'].sudo()
