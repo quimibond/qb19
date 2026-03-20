@@ -345,7 +345,7 @@ class SupabaseService:
             params,
         )
 
-    def get_pending_actions(self, email='jose.mizrahi@quimibond.com'):
+    def get_pending_actions(self, email):
         """Obtiene action items pendientes."""
         return self._request(
             '/rest/v1/rpc/get_my_pending_actions',

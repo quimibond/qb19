@@ -30,7 +30,17 @@
 
         <record id="param_recipient_email" model="ir.config_parameter">
             <field name="key">quimibond_intelligence.recipient_email</field>
-            <field name="value">jose.mizrahi@quimibond.com</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="param_sender_email" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.sender_email</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="param_email_accounts_json" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.email_accounts_json</field>
+            <field name="value"></field>
         </record>
 
         <!-- ═══ Umbrales (valores por defecto) ═══ -->

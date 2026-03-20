@@ -9,33 +9,8 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
-# ── Las 22 cuentas estratégicas ──────────────────────────────────────────────
-EMAIL_ACCOUNTS = [
-    'direcciondeoperaciones@quimibond.com',
-    'aurelio@quimibond.com',
-    'gilberto@quimibond.com',
-    'ventas@quimibond.com',
-    'ventasindustrial@quimibond.com',
-    'admon.ventas@quimibond.com',
-    'info@quimibond.com',
-    'manufactura@quimibond.com',
-    'planeacion@quimibond.com',
-    'logistica@quimibond.com',
-    'ingenieriacc@quimibond.com',
-    'comprasplanta@quimibond.com',
-    'jefe.calidad@quimibond.com',
-    'innovacion@quimibond.com',
-    'producto.innovacion@quimibond.com',
-    'cxp@quimibond.com',
-    'cxcobrar@quimibond.com',
-    'irma.luna@quimibond.com',
-    'berenice.vazquez@quimibond.com',
-    'recursoshumanos@quimibond.com',
-    'rhmexico@quimibond.com',
-    'jose.mizrahi@quimibond.com',
-]
-
-ACCOUNT_DEPARTMENTS = {
+# ── Valores por defecto (se usan solo si ir.config_parameter no tiene datos) ─
+DEFAULT_EMAIL_ACCOUNTS = {
     'direcciondeoperaciones@quimibond.com': 'Dirección de Operaciones',
     'aurelio@quimibond.com': 'Dirección',
     'gilberto@quimibond.com': 'Dirección',
@@ -63,6 +38,30 @@ ACCOUNT_DEPARTMENTS = {
 INTERNAL_DOMAIN = 'quimibond.com'
 
 
+def _load_email_accounts(env):
+    """Carga cuentas y departamentos desde ir.config_parameter (JSON)."""
+    raw = (
+        env['ir.config_parameter'].sudo()
+        .get_param('quimibond_intelligence.email_accounts_json', '')
+    )
+    if raw:
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            _logger.warning('email_accounts_json inválido, usando defaults')
+    return dict(DEFAULT_EMAIL_ACCOUNTS)
+
+
+def get_email_accounts(env):
+    """Retorna la lista de cuentas de email."""
+    return list(_load_email_accounts(env).keys())
+
+
+def get_account_departments(env):
+    """Retorna el dict email→departamento."""
+    return _load_email_accounts(env)
+
+
 class IntelligenceConfig(models.TransientModel):
     """Settings UI para configurar el Intelligence System desde Odoo."""
     _name = 'intelligence.config'
@@ -77,9 +76,14 @@ class IntelligenceConfig(models.TransientModel):
     supabase_url = fields.Char(string='Supabase URL')
     supabase_key = fields.Char(string='Supabase Anon Key')
     voyage_api_key = fields.Char(string='Voyage AI API Key')
-    recipient_email = fields.Char(
-        string='Email del briefing',
-        default='jose.mizrahi@quimibond.com',
+    recipient_email = fields.Char(string='Email destinatario del briefing')
+    sender_email = fields.Char(
+        string='Email remitente del briefing',
+        help='Cuenta de Gmail desde la que se envían los briefings',
+    )
+    email_accounts_json = fields.Text(
+        string='Cuentas de email (JSON)',
+        help='JSON con formato {"email@dominio.com": "Departamento", ...}',
     )
 
     # ── Umbrales ─────────────────────────────────────────────────────────────
@@ -114,7 +118,12 @@ class IntelligenceConfig(models.TransientModel):
             'supabase_url': self._get_param('supabase_url'),
             'supabase_key': self._get_param('supabase_key'),
             'voyage_api_key': self._get_param('voyage_api_key'),
-            'recipient_email': self._get_param('recipient_email', 'jose.mizrahi@quimibond.com'),
+            'recipient_email': self._get_param('recipient_email'),
+            'sender_email': self._get_param('sender_email'),
+            'email_accounts_json': self._get_param(
+                'email_accounts_json',
+                json.dumps(DEFAULT_EMAIL_ACCOUNTS, ensure_ascii=False, indent=2),
+            ),
             'target_response_hours': int(self._get_param('target_response_hours', '4')),
             'slow_response_hours': int(self._get_param('slow_response_hours', '8')),
             'no_response_hours': int(self._get_param('no_response_hours', '24')),
@@ -128,10 +137,20 @@ class IntelligenceConfig(models.TransientModel):
     def action_save(self):
         """Guarda todos los parámetros en ir.config_parameter."""
         self.ensure_one()
+        # Validar JSON de cuentas antes de guardar
+        if self.email_accounts_json:
+            try:
+                json.loads(self.email_accounts_json)
+            except (json.JSONDecodeError, TypeError):
+                return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                        'params': {'title': 'Error',
+                                   'message': 'El JSON de cuentas de email no es válido.',
+                                   'type': 'danger'}}
         for fname in [
             'service_account_json', 'anthropic_api_key',
             'supabase_url', 'supabase_key', 'voyage_api_key',
-            'recipient_email', 'target_response_hours',
+            'recipient_email', 'sender_email', 'email_accounts_json',
+            'target_response_hours',
             'slow_response_hours', 'no_response_hours',
             'stalled_thread_hours', 'high_volume_threshold',
             'client_score_decay_days', 'cold_client_days',

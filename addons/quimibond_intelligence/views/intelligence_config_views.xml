@@ -32,8 +32,16 @@
                     </group>
                     <group>
                         <group string="Briefing" col="2">
-                            <field name="recipient_email"/>
+                            <field name="sender_email"
+                                   placeholder="cuenta@quimibond.com"/>
+                            <field name="recipient_email"
+                                   placeholder="destino@quimibond.com"/>
                         </group>
+                    </group>
+                    <separator string="Cuentas de Email a Monitorear"/>
+                    <group>
+                        <field name="email_accounts_json" nolabel="1"
+                               placeholder='{"email@dominio.com": "Departamento", ...}'/>
                     </group>
                     <separator string="Umbrales"/>
                     <group col="4">

@@ -12,9 +12,9 @@ from datetime import datetime, timedelta, timezone
 from odoo import api, fields, models
 
 from .intelligence_config import (
-    ACCOUNT_DEPARTMENTS,
-    EMAIL_ACCOUNTS,
     INTERNAL_DOMAIN,
+    get_account_departments,
+    get_email_accounts,
 )
 
 _logger = logging.getLogger(__name__)
@@ -54,16 +54,20 @@ class IntelligenceEngine(models.Model):
         if not cfg:
             return
 
+        # ── Cargar cuentas de email desde configuración ───────────────────────
+        email_accounts = get_email_accounts(self.env)
+        account_departments = get_account_departments(self.env)
+
         # ── Instanciar servicios ──────────────────────────────────────────────
         gmail, claude, voyage, supa = self._init_services(cfg)
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 1: Leer emails de las 22 cuentas (incremental por historyId)
+        #  FASE 1: Leer emails de las cuentas configuradas (incremental)
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 1: Lectura de emails ──')
         gmail_history_state = self._load_gmail_history_state()
         result = gmail.read_all_accounts(
-            EMAIL_ACCOUNTS, history_state=gmail_history_state, max_workers=5,
+            email_accounts, history_state=gmail_history_state, max_workers=5,
         )
         self._save_gmail_history_state(result['gmail_history_state'])
         all_emails = result['emails']
@@ -83,7 +87,7 @@ class IntelligenceEngine(models.Model):
 
         # Asignar departamento
         for e in emails:
-            e['department'] = ACCOUNT_DEPARTMENTS.get(e['account'], 'Otro')
+            e['department'] = account_departments.get(e['account'], 'Otro')
 
         # ══════════════════════════════════════════════════════════════════════
         #  FASE 3: Guardar en Supabase
@@ -114,7 +118,9 @@ class IntelligenceEngine(models.Model):
         #  FASE 5: Análisis con Claude (por cuenta)
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 5: Análisis Claude por cuenta ──')
-        account_summaries = self._analyze_accounts(emails, claude, odoo_context)
+        account_summaries = self._analyze_accounts(
+            emails, claude, odoo_context, account_departments,
+        )
 
         try:
             supa.save_account_summaries(account_summaries, today)
@@ -190,14 +196,18 @@ class IntelligenceEngine(models.Model):
         #  FASE 9: Enviar briefing por email
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 9: Envío del briefing ──')
-        recipient = cfg.get('recipient_email', 'jose.mizrahi@quimibond.com')
-        try:
-            subject = f'🧠 Intelligence Briefing — {today}'
-            gmail.send_email('jose.mizrahi@quimibond.com', recipient,
-                             subject, self._wrap_briefing_html(briefing_html, today))
-            _logger.info('✓ Briefing enviado a %s', recipient)
-        except Exception as exc:
-            _logger.error('Error enviando briefing: %s', exc)
+        sender = cfg.get('sender_email')
+        recipient = cfg.get('recipient_email')
+        if sender and recipient:
+            try:
+                subject = f'Intelligence Briefing — {today}'
+                gmail.send_email(sender, recipient,
+                                 subject, self._wrap_briefing_html(briefing_html, today))
+                _logger.info('Briefing enviado a %s', recipient)
+            except Exception as exc:
+                _logger.error('Error enviando briefing: %s', exc)
+        else:
+            _logger.warning('Briefing no enviado: falta sender_email o recipient_email en config')
 
         # -- Guardar en Odoo (Capa 2) --
         try:
@@ -264,17 +274,21 @@ class IntelligenceEngine(models.Model):
         try:
             weekly_html = claude.synthesize_briefing(prompt)
             today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
-            recipient = cfg.get('recipient_email', 'jose.mizrahi@quimibond.com')
+            sender = cfg.get('sender_email')
+            recipient = cfg.get('recipient_email')
 
-            from ..services.gmail_service import GmailService
-            sa_info = json.loads(cfg['service_account_json'])
-            gmail = GmailService(sa_info)
-            gmail.send_email(
-                'jose.mizrahi@quimibond.com', recipient,
-                f'📊 Weekly Intelligence Report — {today}',
-                self._wrap_briefing_html(weekly_html, today, weekly=True),
-            )
-            _logger.info('✓ Reporte semanal enviado')
+            if sender and recipient:
+                from ..services.gmail_service import GmailService
+                sa_info = json.loads(cfg['service_account_json'])
+                gmail = GmailService(sa_info)
+                gmail.send_email(
+                    sender, recipient,
+                    f'Weekly Intelligence Report — {today}',
+                    self._wrap_briefing_html(weekly_html, today, weekly=True),
+                )
+                _logger.info('Reporte semanal enviado a %s', recipient)
+            else:
+                _logger.warning('Reporte semanal no enviado: falta sender/recipient en config')
         except Exception as exc:
             _logger.error('Error en reporte semanal: %s', exc)
 
@@ -324,7 +338,8 @@ class IntelligenceEngine(models.Model):
             'supabase_url': supa_url,
             'supabase_key': supa_key,
             'voyage_api_key': get('voyage_api_key'),
-            'recipient_email': get('recipient_email', 'jose.mizrahi@quimibond.com'),
+            'recipient_email': get('recipient_email'),
+            'sender_email': get('sender_email'),
             'target_response_hours': int(get('target_response_hours', '4')),
             'slow_response_hours': int(get('slow_response_hours', '8')),
             'no_response_hours': int(get('no_response_hours', '24')),
@@ -595,8 +610,10 @@ class IntelligenceEngine(models.Model):
 
     # ── Análisis por cuenta ───────────────────────────────────────────────────
 
-    def _analyze_accounts(self, emails: list, claude, odoo_context: dict) -> list:
+    def _analyze_accounts(self, emails: list, claude, odoo_context: dict,
+                          account_departments: dict = None) -> list:
         """Fase 1 de Claude: análisis por cada cuenta."""
+        account_departments = account_departments or {}
         # Agrupar por cuenta
         by_account = defaultdict(list)
         for e in emails:
@@ -604,7 +621,7 @@ class IntelligenceEngine(models.Model):
 
         summaries = []
         for account, acct_emails in by_account.items():
-            dept = ACCOUNT_DEPARTMENTS.get(account, 'Otro')
+            dept = account_departments.get(account, 'Otro')
             ext_count = sum(1 for e in acct_emails if e['sender_type'] == 'external')
             int_count = len(acct_emails) - ext_count
 

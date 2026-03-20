@@ -1,6 +1,6 @@
 {
     'name': 'Quimibond Intelligence System',
-    'version': '19.0.3.0.0',
+    'version': '19.0.3.1.0',
     'category': 'Productivity',
     'summary': 'Knowledge Graph + Communication Intelligence para Quimibond.',
     'description': 'Cerebro de inteligencia empresarial: emails, Odoo ERP, knowledge graph, Claude AI.',

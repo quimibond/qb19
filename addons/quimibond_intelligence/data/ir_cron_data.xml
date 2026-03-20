@@ -9,8 +9,8 @@
             <field name="code">model.run_daily_intelligence()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="active">True</field>
-            <field name="nextcall" eval="'2026-03-21 00:00:00'"/>
+            <field name="active">False</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 01:00:00')"/>
         </record>
 
         <record id="cron_weekly_analysis" model="ir.cron">
@@ -20,8 +20,8 @@
             <field name="code">model.run_weekly_analysis()</field>
             <field name="interval_number">7</field>
             <field name="interval_type">days</field>
-            <field name="active">True</field>
-            <field name="nextcall" eval="'2026-03-23 13:00:00'"/>
+            <field name="active">False</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 13:00:00')"/>
         </record>
 
     </data>
