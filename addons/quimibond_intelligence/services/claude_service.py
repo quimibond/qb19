@@ -72,6 +72,34 @@ class ClaudeService:
 
         raise last_error
 
+    @staticmethod
+    def _extract_json(text: str) -> dict:
+        """Extrae JSON de la respuesta de Claude, tolerando markdown fences."""
+        import re
+        # Strip markdown code fences
+        cleaned = text.strip()
+        if cleaned.startswith('```'):
+            lines = cleaned.split('\n')
+            cleaned = '\n'.join(lines[1:])
+            if cleaned.endswith('```'):
+                cleaned = cleaned[:-3]
+
+        # Try direct parse first
+        try:
+            return json.loads(cleaned)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        # Find outermost JSON object
+        match = re.search(r'\{[\s\S]*\}', cleaned)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        raise ValueError('Claude no retornó JSON válido')
+
     # ── Fase 1: Resumen por cuenta ───────────────────────────────────────────
 
     def summarize_account(self, department: str, account: str,
@@ -148,13 +176,7 @@ class ClaudeService:
         )
 
         text = self._call(system, prompt, max_tokens=4000)
-
-        # Extraer JSON
-        import re
-        match = re.search(r'\{[\s\S]*\}', text)
-        if not match:
-            raise ValueError('Claude no retornó JSON válido')
-        parsed = json.loads(match.group(0))
+        parsed = self._extract_json(text)
         parsed['external_emails'] = ext_count
         parsed['internal_emails'] = int_count
         return parsed
@@ -232,10 +254,8 @@ class ClaudeService:
                 f'"summary":"desc"}}]}}\n\n{briefing_html}',
                 max_tokens=4000,
             )
-            import re
-            match = re.search(r'\{[\s\S]*\}', text)
-            if match:
-                return json.loads(match.group(0)).get('topics', [])
+            parsed = self._extract_json(text)
+            return parsed.get('topics', [])
         except Exception as exc:
             _logger.warning('Error extrayendo temas: %s', exc)
         return []
@@ -294,13 +314,7 @@ class ClaudeService:
                 'Retorna SOLO JSON valido sin markdown.'
             )
             raw = self._call(system, prompt, max_tokens=4000)
-            raw = raw.strip()
-            if raw.startswith('`' * 3):
-                lines = raw.split('\n')
-                raw = '\n'.join(lines[1:])
-                if raw.endswith('`' * 3):
-                    raw = raw[:-3]
-            return json.loads(raw)
+            return self._extract_json(raw)
         except Exception as exc:
             _logger.warning('KG extract fail: %s', exc)
             return {

@@ -1,10 +1,12 @@
 """
 Quimibond Intelligence — Supabase Service
-Persistencia en Supabase (emails, threads, contactos, alertas, métricas, embeddings).
+Persistencia en Supabase (emails, threads, contactos, alertas, métricas,
+embeddings, knowledge graph, person profiles, learning).
 """
 import json
 import logging
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 
 import httpx
 
@@ -57,9 +59,14 @@ class SupabaseService:
         saved = 0
         for email in emails:
             try:
-                email_date = datetime.fromisoformat(
-                    email['date'].replace('Z', '+00:00')
-                ).isoformat()
+                raw_date = email['date']
+                # Gmail returns RFC 2822 dates; fall back to ISO if needed
+                try:
+                    email_date = parsedate_to_datetime(raw_date).isoformat()
+                except Exception:
+                    email_date = datetime.fromisoformat(
+                        raw_date.replace('Z', '+00:00')
+                    ).isoformat()
             except Exception:
                 email_date = datetime.now().isoformat()
 
@@ -299,9 +306,9 @@ class SupabaseService:
             'attributes': entity.get('attributes', {}),
             'last_seen': entity.get('date', None),
         }
-        # Upsert por tipo + canonical_name
         return self._request(
-            '/rest/v1/entities', 'POST', data, {
+            '/rest/v1/entities?on_conflict=entity_type,canonical_name',
+            'POST', data, {
                 'Prefer': 'resolution=merge-duplicates,return=representation',
             })
 
@@ -320,7 +327,9 @@ class SupabaseService:
     def save_relationship(self, rel):
         """Guarda o actualiza una relacion entre entidades."""
         return self._request(
-            '/rest/v1/entity_relationships', 'POST', rel, {
+            '/rest/v1/entity_relationships'
+            '?on_conflict=entity_a_id,entity_b_id,relationship_type',
+            'POST', rel, {
                 'Prefer': 'resolution=merge-duplicates,return=representation',
             })
 
@@ -514,4 +523,111 @@ class SupabaseService:
             except Exception as exc:
                 _logger.debug('get_person_profiles batch: %s', exc)
         return profiles
+
+    # ── Topics ────────────────────────────────────────────────────────────────
+
+    def save_topics(self, topics: list, today: str):
+        """Guarda temas detectados en Supabase via RPC upsert_topic."""
+        for t in topics:
+            try:
+                self._request('/rest/v1/rpc/upsert_topic', 'POST', {
+                    'p_topic': t.get('topic', ''),
+                    'p_category': t.get('category', ''),
+                    'p_status': t.get('status', 'active'),
+                    'p_priority': t.get('priority', 'medium'),
+                    'p_summary': t.get('summary', ''),
+                    'p_related_accounts': None,
+                    'p_embedding': None,
+                })
+            except Exception as exc:
+                _logger.debug('save_topic: %s', exc)
+
+    # ── Sync State (Gmail history) ────────────────────────────────────────────
+
+    def save_sync_state(self, account: str, history_id: str):
+        """Persiste el historyId de Gmail en Supabase sync_state."""
+        try:
+            self._request(
+                '/rest/v1/sync_state?on_conflict=account',
+                'POST', {
+                    'account': account,
+                    'last_history_id': history_id,
+                    'emails_synced': 0,
+                }, {
+                    'Prefer': 'resolution=merge-duplicates,return=minimal',
+                })
+        except Exception as exc:
+            _logger.debug('save_sync_state: %s', exc)
+
+    def get_sync_state(self) -> dict:
+        """Carga todos los sync states: {account → history_id}."""
+        try:
+            rows = self._request(
+                '/rest/v1/sync_state?select=account,last_history_id',
+            )
+            if isinstance(rows, list):
+                return {
+                    r['account']: r['last_history_id']
+                    for r in rows if r.get('last_history_id')
+                }
+        except Exception as exc:
+            _logger.debug('get_sync_state: %s', exc)
+        return {}
+
+    # ── Contact Odoo Sync ─────────────────────────────────────────────────────
+
+    def sync_contact_odoo_data(self, email: str, odoo_data: dict):
+        """Actualiza un contacto en Supabase con datos de Odoo."""
+        try:
+            import urllib.parse
+            encoded = urllib.parse.quote(email, safe='')
+            self._request(
+                f'/rest/v1/contacts?email=eq.{encoded}',
+                'PATCH', odoo_data,
+            )
+        except Exception as exc:
+            _logger.debug('sync_contact_odoo: %s', exc)
+
+    # ── System Learning ───────────────────────────────────────────────────────
+
+    def save_learning(self, learning_type: str, description: str,
+                      data: dict = None, account: str = None):
+        """Registra un aprendizaje del sistema."""
+        try:
+            self._request('/rest/v1/system_learning', 'POST', {
+                'learning_type': learning_type,
+                'description': description,
+                'data': data or {},
+                'account': account,
+            })
+        except Exception as exc:
+            _logger.debug('save_learning: %s', exc)
+
+    # ── Communication Patterns ────────────────────────────────────────────────
+
+    def save_communication_patterns(self, patterns: list):
+        """Guarda patrones de comunicación semanales."""
+        if not patterns:
+            return
+        self._upsert_batch(
+            '/rest/v1/communication_patterns'
+            '?on_conflict=week_start,account',
+            patterns, 'merge-duplicates',
+        )
+        _logger.info('✓ %d communication patterns guardados', len(patterns))
+
+    # ── Action Items (update status) ──────────────────────────────────────────
+
+    def complete_action_item(self, action_id: int):
+        """Marca un action item como completado en Supabase."""
+        try:
+            self._request(
+                f'/rest/v1/action_items?id=eq.{action_id}',
+                'PATCH', {
+                    'status': 'completed',
+                    'completed_date': datetime.now().strftime('%Y-%m-%d'),
+                },
+            )
+        except Exception as exc:
+            _logger.debug('complete_action: %s', exc)
 

@@ -169,6 +169,13 @@ class IntelligenceEngine(models.Model):
         topics = claude.extract_topics(briefing_html)
         _logger.info('%d temas extraídos', len(topics))
 
+        # Guardar temas en Supabase
+        if topics:
+            try:
+                supa.save_topics(topics, today)
+            except Exception as exc:
+                _logger.error('Error guardando topics: %s', exc)
+
         # Guardar briefing
         try:
             supa.save_daily_summary(
@@ -178,11 +185,10 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando daily summary: %s', exc)
 
-
-        # ======================================================================
-        #  FASE 7.5: Knowledge Graph — Extraccion de entidades y hechos
-        # ======================================================================
-        _logger.info('-- FASE 7.5: Knowledge Graph --')
+        # ══════════════════════════════════════════════════════════════════════
+        #  FASE 7.5: Knowledge Graph — Extracción de entidades y hechos
+        # ══════════════════════════════════════════════════════════════════════
+        _logger.info('── FASE 7.5: Knowledge Graph ──')
         self._feed_knowledge_graph(emails, claude, supa, today)
 
         # ══════════════════════════════════════════════════════════════════════
@@ -191,6 +197,38 @@ class IntelligenceEngine(models.Model):
         if cfg.get('voyage_api_key'):
             _logger.info('── FASE 8: Embeddings ──')
             self._generate_embeddings(emails, voyage, supa)
+
+        # ══════════════════════════════════════════════════════════════════════
+        #  FASE 8.5: Sync Odoo → Supabase contacts + Learning + Patterns
+        # ══════════════════════════════════════════════════════════════════════
+        _logger.info('── FASE 8.5: Sync y aprendizaje continuo ──')
+
+        # Sync Odoo partner data to Supabase contacts
+        self._sync_contacts_to_supabase(odoo_context, supa)
+
+        # Generate accountability alerts from action verification
+        self._generate_accountability_alerts(
+            odoo_context, alerts, supa, today,
+        )
+
+        # Save communication patterns
+        try:
+            patterns = self._compute_communication_patterns(
+                emails, threads, today,
+            )
+            if patterns:
+                supa.save_communication_patterns(patterns)
+        except Exception as exc:
+            _logger.debug('Communication patterns: %s', exc)
+
+        # Detect and save system learnings
+        self._detect_learnings(
+            metrics, alerts, client_scores, odoo_context, supa,
+        )
+
+        # Sync Gmail history state to Supabase sync_state table
+        for acct, hid in result['gmail_history_state'].items():
+            supa.save_sync_state(acct, str(hid))
 
         # ══════════════════════════════════════════════════════════════════════
         #  FASE 9: Enviar briefing por email
@@ -1222,6 +1260,33 @@ class IntelligenceEngine(models.Model):
                 result['department'] = dept
                 result['total_emails'] = len(acct_emails)
                 summaries.append(result)
+
+                # Save person_insights to Supabase (accumulative learning)
+                if supa and result.get('person_insights'):
+                    for pi in result['person_insights']:
+                        try:
+                            supa.upsert_person_profile({
+                                'name': pi.get('name', ''),
+                                'email': pi.get('email'),
+                                'company': pi.get('company'),
+                                'role': pi.get('role_detected'),
+                                'communication_style': pi.get(
+                                    'communication_style', 'formal',
+                                ),
+                                'key_interests': pi.get('key_interests', []),
+                                'decision_power': pi.get(
+                                    'decision_power', 'medium',
+                                ),
+                                'personality_notes': pi.get('notes', ''),
+                                'source_account': account,
+                                'last_seen_date': (
+                                    datetime.now(TZ_CDMX)
+                                    .strftime('%Y-%m-%d')
+                                ),
+                            })
+                        except Exception:
+                            pass
+
                 _logger.info('  ✓ %s (%s): %d emails analizados',
                              dept, account, len(acct_emails))
                 time.sleep(3)  # Rate limit courtesy
@@ -1816,7 +1881,236 @@ class IntelligenceEngine(models.Model):
 
         _logger.info('✓ %d embeddings generados', total)
 
-    # ── HTML wrapper ──────────────────────────────────────────────────────────
+    # ── Sync Odoo → Supabase contacts ──────────────────────────────────────
+
+    @staticmethod
+    def _sync_contacts_to_supabase(odoo_ctx: dict, supa):
+        """Sincroniza datos de Odoo partners a Supabase contacts."""
+        partners = odoo_ctx.get('partners', {})
+        if not partners:
+            return
+        synced = 0
+        for email_addr, p in partners.items():
+            try:
+                supa.sync_contact_odoo_data(email_addr, {
+                    'odoo_partner_id': p.get('id'),
+                    'is_customer': p.get('is_customer', False),
+                    'is_supplier': p.get('is_supplier', False),
+                    'odoo_context': {
+                        'name': p.get('name', ''),
+                        'total_invoiced': p.get('total_invoiced', 0),
+                        'credit_limit': p.get('credit_limit', 0),
+                        'recent_sales_count': len(
+                            p.get('recent_sales', []),
+                        ),
+                        'pending_invoices_count': len(
+                            p.get('pending_invoices', []),
+                        ),
+                        'crm_leads_count': len(p.get('crm_leads', [])),
+                        'pending_deliveries': len(
+                            p.get('pending_deliveries', []),
+                        ),
+                    },
+                })
+                synced += 1
+            except Exception:
+                pass
+        if synced:
+            _logger.info('✓ %d contactos sincronizados Odoo → Supabase', synced)
+
+    # ── Accountability alerts ────────────────────────────────────────────────
+
+    def _generate_accountability_alerts(self, odoo_ctx, alerts, supa, today):
+        """Genera alertas de accountability cuando hay acciones sin cumplir."""
+        followup = odoo_ctx.get('action_followup', {})
+        if not followup.get('items'):
+            return
+
+        ActionItem = self.env['intelligence.action.item'].sudo()
+
+        for item in followup['items']:
+            # Auto-complete actions with strong evidence
+            if item.get('evidence_of_action') and len(
+                item['evidence_of_action']
+            ) >= 2:
+                try:
+                    action = ActionItem.browse(item['id'])
+                    if action.exists() and action.state in (
+                        'open', 'in_progress',
+                    ):
+                        action.write({'state': 'done'})
+                        _logger.info(
+                            'Auto-completada acción #%d: %s (evidencia encontrada)',
+                            item['id'], item['description'][:60],
+                        )
+                except Exception:
+                    pass
+                continue
+
+            # Generate alert for overdue actions WITHOUT evidence
+            if item['is_overdue'] and not item.get('evidence_of_action'):
+                alerts.append({
+                    'alert_type': 'accountability',
+                    'severity': 'high' if item['days_open'] > 5 else 'medium',
+                    'title': (
+                        f"Acción sin cumplir ({item['days_open']}d): "
+                        f"{item['description'][:80]}"
+                    ),
+                    'description': (
+                        f"Asignada a: {item.get('assigned_to', 'Sin asignar')}"
+                        f" | Contacto: {item.get('partner', 'N/A')}"
+                        f" | Tipo: {item.get('type', 'otro')}"
+                        f" | Sin evidencia de acción en Odoo"
+                    ),
+                    'account': '',
+                    'related_contact': item.get('partner', ''),
+                })
+
+        # Save accountability alerts to Supabase
+        acct_alerts = [
+            a for a in alerts if a.get('alert_type') == 'accountability'
+        ]
+        if acct_alerts:
+            try:
+                supa.save_alerts(acct_alerts, today)
+            except Exception:
+                pass
+            _logger.info(
+                '✓ %d alertas de accountability generadas', len(acct_alerts),
+            )
+
+    # ── Communication Patterns ───────────────────────────────────────────────
+
+    @staticmethod
+    def _compute_communication_patterns(
+        emails: list, threads: list, today: str,
+    ) -> list:
+        """Calcula patrones de comunicación por cuenta para la semana."""
+        # Compute week_start (Monday)
+        from datetime import date
+        today_date = date.fromisoformat(today)
+        week_start = (
+            today_date - timedelta(days=today_date.weekday())
+        ).isoformat()
+
+        by_account = defaultdict(lambda: {
+            'total': 0, 'ext_contacts': defaultdict(int),
+            'int_contacts': defaultdict(int), 'hours': defaultdict(int),
+            'subjects': defaultdict(int),
+        })
+
+        for e in emails:
+            acct = e['account']
+            by_account[acct]['total'] += 1
+            sender = e.get('from_email', '')
+            if e['sender_type'] == 'external':
+                by_account[acct]['ext_contacts'][sender] += 1
+            else:
+                by_account[acct]['int_contacts'][sender] += 1
+            # Extract hour from date
+            try:
+                from email.utils import parsedate_to_datetime as _pdt
+                dt = _pdt(e.get('date', ''))
+                by_account[acct]['hours'][dt.hour] += 1
+            except Exception:
+                pass
+            subj = e.get('subject_normalized', '')
+            if subj:
+                by_account[acct]['subjects'][subj] += 1
+
+        acct_threads = defaultdict(list)
+        for t in threads:
+            acct_threads[t['account']].append(t)
+
+        patterns = []
+        for acct, data in by_account.items():
+            acct_t = acct_threads.get(acct, [])
+            replied = sum(1 for t in acct_t if t['has_internal_reply'])
+            total_t = len(acct_t) or 1
+
+            top_ext = sorted(
+                data['ext_contacts'].items(), key=lambda x: -x[1],
+            )[:5]
+            top_int = sorted(
+                data['int_contacts'].items(), key=lambda x: -x[1],
+            )[:5]
+            busiest = max(
+                data['hours'].items(), key=lambda x: x[1],
+            )[0] if data['hours'] else 9
+            common = sorted(
+                data['subjects'].items(), key=lambda x: -x[1],
+            )[:5]
+
+            patterns.append({
+                'week_start': week_start,
+                'account': acct,
+                'total_emails': data['total'],
+                'response_rate': round(replied / total_t * 100, 1),
+                'top_external_contacts': [c[0] for c in top_ext],
+                'top_internal_contacts': [c[0] for c in top_int],
+                'busiest_hour': busiest,
+                'common_subjects': [c[0] for c in common],
+            })
+
+        return patterns
+
+    # ── System Learning Detection ────────────────────────────────────────────
+
+    @staticmethod
+    def _detect_learnings(metrics, alerts, client_scores, odoo_ctx, supa):
+        """Detecta patrones y los registra como aprendizajes del sistema."""
+        # 1. Detect accounts with degraded response times
+        for m in metrics:
+            if m.get('avg_response_hours') and m['avg_response_hours'] > 24:
+                supa.save_learning(
+                    'response_degradation',
+                    f"Cuenta {m['account']}: tiempo promedio de respuesta "
+                    f"{m['avg_response_hours']}h (>24h)",
+                    {'account': m['account'],
+                     'avg_hours': m['avg_response_hours'],
+                     'unanswered': m.get('threads_unanswered', 0)},
+                    account=m['account'],
+                )
+
+        # 2. Detect at-risk clients
+        at_risk = [
+            s for s in client_scores if s.get('risk_level') == 'high'
+        ]
+        if at_risk:
+            supa.save_learning(
+                'trend_identified',
+                f"{len(at_risk)} clientes en riesgo alto detectados",
+                {'clients': [s['email'] for s in at_risk[:10]]},
+            )
+
+        # 3. Detect high alert volume (pattern)
+        if len(alerts) > 15:
+            supa.save_learning(
+                'pattern_detected',
+                f"Alto volumen de alertas: {len(alerts)} alertas en un día",
+                {'alert_count': len(alerts),
+                 'types': list({a.get('alert_type') for a in alerts})},
+            )
+
+        # 4. Action completion rate insight
+        followup = odoo_ctx.get('action_followup', {})
+        rate = followup.get('completion_rate', 0)
+        if rate < 30 and followup.get('items'):
+            supa.save_learning(
+                'trend_identified',
+                f"Tasa de completado de acciones muy baja: {rate}%",
+                {'completion_rate': rate,
+                 'overdue': followup.get('overdue_count', 0),
+                 'total_pending': len(followup.get('items', []))},
+            )
+        elif rate > 80 and followup.get('items'):
+            supa.save_learning(
+                'response_improvement',
+                f"Excelente tasa de completado de acciones: {rate}%",
+                {'completion_rate': rate},
+            )
+
+    # ── Knowledge Graph ──────────────────────────────────────────────────────
 
     def _feed_knowledge_graph(self, emails, claude, supa, today):
         if not emails:
@@ -1965,9 +2259,6 @@ class IntelligenceEngine(models.Model):
                     })
                 except Exception as exc:
                     _logger.debug('Person profile save error: %s', exc)
-
-            # Guardar person_insights del análisis por cuenta (si existe)
-            # Se procesan en _save_person_insights_from_summaries()
 
             batch_ids = [
                 e['gmail_message_id'] for e in acct_emails

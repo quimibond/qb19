@@ -14,6 +14,7 @@ class IntelligenceAlert(models.Model):
         ('high_volume', 'Alto volumen'),
         ('overdue_invoice', 'Factura vencida'),
         ('at_risk_client', 'Cliente en riesgo'),
+        ('accountability', 'Accion sin cumplir'),
         ('anomaly', 'Anomalia detectada'),
     ], string='Tipo', required=True, index=True)
     severity = fields.Selection([
