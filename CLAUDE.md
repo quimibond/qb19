@@ -43,9 +43,16 @@ addons/
 frontend/
 ├── src/app/
 ├── src/components/
-└── src/lib/
+├── src/lib/
+└── src/middleware.ts
+supabase/
+└── migrations/001_initial_schema.sql
 ```
+
+## Supabase
+
+Schema SQL in `supabase/migrations/001_initial_schema.sql` (18 tables, 6 RPC functions, RLS, vector index).
 
 ## Idioma
 
-El código está en inglés. Contenido de negocio en español.
+El codigo esta en ingles. Contenido de negocio en espanol.
