@@ -119,7 +119,7 @@ class IntelligenceEngine(models.Model):
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 5: Análisis Claude por cuenta ──')
         account_summaries = self._analyze_accounts(
-            emails, claude, odoo_context, account_departments,
+            emails, claude, odoo_context, account_departments, supa=supa,
         )
 
         try:
@@ -1169,9 +1169,30 @@ class IntelligenceEngine(models.Model):
     # ── Análisis por cuenta ───────────────────────────────────────────────────
 
     def _analyze_accounts(self, emails: list, claude, odoo_context: dict,
-                          account_departments: dict = None) -> list:
-        """Fase 1 de Claude: análisis por cada cuenta."""
+                          account_departments: dict = None,
+                          supa=None) -> list:
+        """Fase 1 de Claude: análisis por cuenta con perfiles de personas."""
         account_departments = account_departments or {}
+
+        # Cargar perfiles conocidos de personas desde Supabase
+        person_profiles = {}
+        if supa:
+            all_sender_emails = list({
+                e.get('from_email', '').lower()
+                for e in emails if e.get('from_email')
+            })
+            try:
+                person_profiles = supa.get_person_profiles_for_contacts(
+                    all_sender_emails,
+                )
+                if person_profiles:
+                    _logger.info(
+                        '✓ %d perfiles de personas cargados de Supabase',
+                        len(person_profiles),
+                    )
+            except Exception as exc:
+                _logger.debug('Person profiles load: %s', exc)
+
         # Agrupar por cuenta
         by_account = defaultdict(list)
         for e in emails:
@@ -1180,15 +1201,17 @@ class IntelligenceEngine(models.Model):
         summaries = []
         for account, acct_emails in by_account.items():
             dept = account_departments.get(account, 'Otro')
-            ext_count = sum(1 for e in acct_emails if e['sender_type'] == 'external')
+            ext_count = sum(
+                1 for e in acct_emails if e['sender_type'] == 'external'
+            )
             int_count = len(acct_emails) - ext_count
 
             if not acct_emails:
                 continue
 
-            # Construir texto de emails con contexto Odoo
+            # Construir texto con contexto Odoo + perfiles de personas
             email_text = self._format_emails_for_claude(
-                acct_emails, odoo_context,
+                acct_emails, odoo_context, person_profiles,
             )
 
             try:
@@ -1208,8 +1231,10 @@ class IntelligenceEngine(models.Model):
         return summaries
 
     @staticmethod
-    def _format_emails_for_claude(emails: list, odoo_ctx: dict) -> str:
-        """Formatea emails en texto para el prompt de Claude, con contexto Odoo."""
+    def _format_emails_for_claude(emails: list, odoo_ctx: dict,
+                                  person_profiles: dict = None) -> str:
+        """Formatea emails con contexto profundo de Odoo + perfiles conocidos."""
+        person_profiles = person_profiles or {}
         lines = []
         for i, e in enumerate(emails, 1):
             lines.append(f'--- EMAIL {i} ---')
@@ -1223,14 +1248,50 @@ class IntelligenceEngine(models.Model):
             if e['is_reply']:
                 lines.append('(Es respuesta)')
             if e['has_attachments']:
-                att_names = ', '.join(a['filename'] for a in e.get('attachments', []))
+                att_names = ', '.join(
+                    a['filename'] for a in e.get('attachments', [])
+                )
                 lines.append(f'Adjuntos: {att_names}')
 
-            # Contexto de negocio de Odoo
+            # Contexto de negocio de Odoo (resumen consolidado)
             sender_email = e.get('from_email', '')
             biz = odoo_ctx.get('business_summary', {}).get(sender_email)
             if biz:
                 lines.append(f'[ODOO: {biz}]')
+
+            # Perfil conocido de la persona (memoria acumulativa)
+            profile = person_profiles.get(sender_email.lower())
+            if profile:
+                profile_parts = []
+                if profile.get('role'):
+                    profile_parts.append(f"Rol: {profile['role']}")
+                if profile.get('company'):
+                    profile_parts.append(f"Empresa: {profile['company']}")
+                if profile.get('decision_power'):
+                    profile_parts.append(
+                        f"Poder decisión: {profile['decision_power']}"
+                    )
+                if profile.get('communication_style'):
+                    profile_parts.append(
+                        f"Estilo: {profile['communication_style']}"
+                    )
+                if profile.get('key_interests'):
+                    interests = profile['key_interests']
+                    if isinstance(interests, list):
+                        interests = ', '.join(interests[:5])
+                    profile_parts.append(f"Intereses: {interests}")
+                if profile.get('negotiation_style'):
+                    profile_parts.append(
+                        f"Negociación: {profile['negotiation_style']}"
+                    )
+                if profile.get('personality_notes'):
+                    profile_parts.append(
+                        f"Notas: {profile['personality_notes'][:100]}"
+                    )
+                if profile_parts:
+                    lines.append(
+                        f'[PERSONA CONOCIDA: {" | ".join(profile_parts)}]'
+                    )
 
             body = (e.get('body') or e.get('snippet', ''))[:1500]
             lines.append(f'Cuerpo:\n{body}')
@@ -1421,16 +1482,22 @@ class IntelligenceEngine(models.Model):
     def _build_data_package(today: str, summaries: list, metrics: list,
                             alerts: list, threads: list, client_scores: list,
                             odoo_ctx: dict, historical: dict) -> str:
-        """Construye el paquete de datos completo para Claude fase 2."""
+        """Construye el paquete de datos completo para Claude fase 2.
+
+        Incluye: análisis por cuenta, métricas, alertas, contexto profundo
+        de Odoo (10 modelos), verificación de acciones, pipeline CRM,
+        actividades del equipo, y perfiles detallados de contactos.
+        """
         sections = [
             f'FECHA: {today}',
             f'TOTAL CUENTAS ANALIZADAS: {len(summaries)}',
         ]
 
-        # Contexto histórico
+        # ── Contexto histórico ──────────────────────────────────────────────
         if historical.get('previousSummary'):
             sections.append(
-                f"\nRESUMEN DEL DÍA ANTERIOR:\n{historical['previousSummary'][:1000]}"
+                f"\nRESUMEN DEL DÍA ANTERIOR:\n"
+                f"{historical['previousSummary'][:1000]}"
             )
         if historical.get('openAlerts'):
             sections.append(
@@ -1438,13 +1505,14 @@ class IntelligenceEngine(models.Model):
                 + json.dumps(historical['openAlerts'][:10], default=str)
             )
 
-        # Resúmenes por cuenta
+        # ── Resúmenes por cuenta ────────────────────────────────────────────
         sections.append('\n═══ ANÁLISIS POR CUENTA ═══')
         for s in summaries:
             sections.append(
                 f"\n── {s['department']} ({s['account']}) ──\n"
                 f"Emails: {s.get('total_emails', 0)} "
-                f"(ext:{s.get('external_emails', 0)}, int:{s.get('internal_emails', 0)})\n"
+                f"(ext:{s.get('external_emails', 0)}, "
+                f"int:{s.get('internal_emails', 0)})\n"
                 f"Resumen: {s.get('summary_text', '')}\n"
                 f"Sentimiento: {s.get('overall_sentiment', 'N/A')}\n"
                 f"Items clave: {json.dumps(s.get('key_items', []), default=str, ensure_ascii=False)}\n"
@@ -1455,31 +1523,232 @@ class IntelligenceEngine(models.Model):
                 f"Riesgos: {json.dumps(s.get('risks_detected', []), default=str, ensure_ascii=False)}"
             )
 
-        # Métricas
+        # ── Métricas ────────────────────────────────────────────────────────
         sections.append('\n═══ MÉTRICAS DE RESPUESTA ═══')
         for m in metrics:
             sections.append(
-                f"{m['account']}: recv={m['emails_received']} sent={m['emails_sent']} "
-                f"replied={m['threads_replied']} unanswered={m['threads_unanswered']} "
+                f"{m['account']}: recv={m['emails_received']} "
+                f"sent={m['emails_sent']} "
+                f"replied={m['threads_replied']} "
+                f"unanswered={m['threads_unanswered']} "
                 f"avg_hrs={m.get('avg_response_hours', 'N/A')}"
             )
 
-        # Alertas
+        # ── Alertas ─────────────────────────────────────────────────────────
         if alerts:
             sections.append(f'\n═══ ALERTAS ({len(alerts)}) ═══')
             for a in alerts[:20]:
                 sections.append(
-                    f"[{a['severity'].upper()}] {a['alert_type']}: {a['title']}"
+                    f"[{a['severity'].upper()}] {a['alert_type']}: "
+                    f"{a['title']}"
                 )
 
-        # Contexto Odoo
-        biz = odoo_ctx.get('business_summary', {})
-        if biz:
-            sections.append('\n═══ CONTEXTO DE NEGOCIO (Odoo ERP) ═══')
-            for email_addr, summary in biz.items():
-                sections.append(f'{email_addr}: {summary}')
+        # ══════════════════════════════════════════════════════════════════
+        #  CONTEXTO PROFUNDO DE ODOO (10 modelos)
+        # ══════════════════════════════════════════════════════════════════
 
-        # Client scores
+        # ── Perfiles detallados de contactos ────────────────────────────────
+        partners = odoo_ctx.get('partners', {})
+        if partners:
+            sections.append('\n═══ PERFILES DE CONTACTOS (Odoo ERP — datos en vivo) ═══')
+            for email_addr, p in partners.items():
+                summary = p.get('_summary', '')
+                if not summary:
+                    continue
+                parts = [f"\n── {p.get('name', email_addr)} ({email_addr}) ──"]
+                parts.append(f"RESUMEN: {summary}")
+
+                # CRM Pipeline
+                leads = p.get('crm_leads', [])
+                if leads:
+                    for l in leads[:3]:
+                        parts.append(
+                            f"  CRM: {l['name']} | Etapa: {l['stage']} | "
+                            f"Revenue: ${l['expected_revenue']:,.0f} | "
+                            f"Prob: {l['probability']}% | "
+                            f"Responsable: {l['user']} | "
+                            f"{l['days_open']}d abierto"
+                        )
+
+                # Actividades pendientes
+                acts = p.get('pending_activities', [])
+                if acts:
+                    overdue = [a for a in acts if a['is_overdue']]
+                    if overdue:
+                        parts.append(
+                            f"  ⚠ ACTIVIDADES VENCIDAS ({len(overdue)}):"
+                        )
+                        for a in overdue[:3]:
+                            parts.append(
+                                f"    - {a['type']}: {a['summary'][:80]} "
+                                f"(vencida {a['deadline']}, "
+                                f"asignada a {a['assigned_to']})"
+                            )
+                    pending = [a for a in acts if not a['is_overdue']]
+                    if pending:
+                        parts.append(
+                            f"  Actividades programadas ({len(pending)}):"
+                        )
+                        for a in pending[:3]:
+                            parts.append(
+                                f"    - {a['type']}: {a['summary'][:80]} "
+                                f"(para {a['deadline']}, {a['assigned_to']})"
+                            )
+
+                # Entregas pendientes
+                deliveries = p.get('pending_deliveries', [])
+                if deliveries:
+                    late = [d for d in deliveries if d['is_late']]
+                    if late:
+                        parts.append(
+                            f"  ⚠ ENTREGAS RETRASADAS ({len(late)}):"
+                        )
+                        for d in late[:3]:
+                            parts.append(
+                                f"    - {d['name']}: programada {d['scheduled']}"
+                                f" ({d['type']}) origen: {d['origin']}"
+                            )
+                    on_time = [d for d in deliveries if not d['is_late']]
+                    if on_time:
+                        for d in on_time[:3]:
+                            parts.append(
+                                f"  Entrega: {d['name']} programada "
+                                f"{d['scheduled']} ({d['type']})"
+                            )
+
+                # Manufactura
+                mfg = p.get('manufacturing', [])
+                if mfg:
+                    parts.append(f"  Producción en proceso ({len(mfg)}):")
+                    for m in mfg[:3]:
+                        parts.append(
+                            f"    - {m['name']}: {m['product']} "
+                            f"x{m['qty']} ({m['state']}) "
+                            f"origen: {m['origin']}"
+                        )
+
+                # Reuniones próximas
+                meetings = p.get('upcoming_meetings', [])
+                if meetings:
+                    parts.append(f"  Reuniones próximas ({len(meetings)}):")
+                    for ev in meetings[:3]:
+                        parts.append(
+                            f"    - {ev['name']} ({ev['start']}) "
+                            f"con: {', '.join(ev['attendees'][:3])}"
+                        )
+
+                # Pagos recientes
+                payments = p.get('recent_payments', [])
+                if payments:
+                    for pay in payments[:3]:
+                        direction = (
+                            'Cobro recibido' if pay['payment_type'] == 'inbound'
+                            else 'Pago emitido'
+                        )
+                        parts.append(
+                            f"  {direction}: {pay['name']} ${pay['amount']:,.0f}"
+                            f" {pay['currency']} ({pay['date']})"
+                        )
+
+                # Comunicación reciente en Odoo (chatter)
+                chatter = p.get('recent_chatter', [])
+                related = p.get('related_chatter', [])
+                all_msgs = chatter + related
+                if all_msgs:
+                    parts.append(
+                        f"  Comunicación interna Odoo ({len(all_msgs)} msgs "
+                        f"en 7d):"
+                    )
+                    for msg in all_msgs[:5]:
+                        parts.append(
+                            f"    - [{msg.get('date', '')}] "
+                            f"{msg.get('author', '')}: "
+                            f"{msg.get('preview', '')[:100]}"
+                        )
+
+                sections.append('\n'.join(parts))
+
+        # ── Verificación de acciones (accountability) ───────────────────────
+        followup = odoo_ctx.get('action_followup', {})
+        if followup.get('items'):
+            sections.append(
+                f"\n═══ VERIFICACIÓN DE ACCIONES SUGERIDAS ═══\n"
+                f"Tasa de completado (7 días): {followup.get('completion_rate', 0)}%\n"
+                f"Completadas hoy: {followup.get('completed_today', 0)}\n"
+                f"Vencidas sin hacer: {followup.get('overdue_count', 0)}"
+            )
+            for item in followup['items'][:15]:
+                status = '⚠ VENCIDA' if item['is_overdue'] else 'pendiente'
+                line = (
+                    f"\n  [{item['priority'].upper()}] {item['description'][:100]}"
+                    f" ({status})"
+                )
+                if item.get('assigned_to'):
+                    line += f" → {item['assigned_to']}"
+                if item.get('partner'):
+                    line += f" | Contacto: {item['partner']}"
+                if item.get('due_date'):
+                    line += f" | Vence: {item['due_date']}"
+                line += f" | {item['days_open']}d abierto"
+
+                # Evidencia de acción
+                evidence = item.get('evidence_of_action', [])
+                if evidence:
+                    line += '\n    EVIDENCIA ENCONTRADA:'
+                    for ev in evidence[:3]:
+                        if ev['type'] == 'chatter_message':
+                            line += (
+                                f"\n      ✓ Mensaje en Odoo de "
+                                f"{ev['author']} ({ev['date']}): "
+                                f"{ev['preview'][:80]}"
+                            )
+                        elif ev['type'] == 'scheduled_activity':
+                            line += (
+                                f"\n      ✓ Actividad programada: "
+                                f"{ev['activity']} para {ev['deadline']} "
+                                f"({ev['assigned_to']})"
+                            )
+                else:
+                    line += '\n    ✗ SIN EVIDENCIA DE ACCIÓN'
+
+                sections.append(line)
+
+        # ── Pipeline comercial global ───────────────────────────────────────
+        pipeline = odoo_ctx.get('global_pipeline', {})
+        if pipeline:
+            sections.append(
+                f"\n═══ PIPELINE COMERCIAL (CRM) ═══\n"
+                f"Total oportunidades: {pipeline.get('total_opportunities', 0)}\n"
+                f"Revenue esperado total: "
+                f"${pipeline.get('total_expected_revenue', 0):,.0f}"
+            )
+            for stage, data in pipeline.get('by_stage', {}).items():
+                sections.append(
+                    f"  {stage}: {data['count']} opps "
+                    f"(${data['revenue']:,.0f})"
+                )
+
+        # ── Actividades del equipo ──────────────────────────────────────────
+        team = odoo_ctx.get('team_activities', {})
+        if team:
+            sections.append('\n═══ ACTIVIDADES DEL EQUIPO (próximos 3 días) ═══')
+            for user_name, data in team.items():
+                overdue_str = (
+                    f' ⚠ {data["overdue"]} VENCIDAS'
+                    if data['overdue'] else ''
+                )
+                sections.append(
+                    f"\n  {user_name}: {data['pending']} pendientes"
+                    f"{overdue_str}"
+                )
+                for act in data['items'][:3]:
+                    marker = '⚠' if act['overdue'] else '·'
+                    sections.append(
+                        f"    {marker} {act['type']}: {act['summary'][:60]} "
+                        f"(vence {act['deadline']})"
+                    )
+
+        # ── Client scores ───────────────────────────────────────────────────
         if client_scores:
             at_risk = [s for s in client_scores if s['risk_level'] == 'high']
             if at_risk:
@@ -1487,8 +1756,10 @@ class IntelligenceEngine(models.Model):
                 for s in at_risk:
                     sections.append(
                         f"{s['email']}: score={s['total_score']}/100 "
-                        f"(freq={s['frequency_score']}, resp={s['responsiveness_score']}, "
-                        f"recip={s['reciprocity_score']}, sent={s['sentiment_score']})"
+                        f"(freq={s['frequency_score']}, "
+                        f"resp={s['responsiveness_score']}, "
+                        f"recip={s['reciprocity_score']}, "
+                        f"sent={s['sentiment_score']})"
                     )
 
         return '\n'.join(sections)
@@ -1668,6 +1939,36 @@ class IntelligenceEngine(models.Model):
                     except Exception:
                         pass
 
+            # Guardar perfiles de personas (aprendizaje acumulativo)
+            for profile in kg.get('person_profiles', []):
+                try:
+                    supa.upsert_person_profile({
+                        'name': profile.get('name', ''),
+                        'email': profile.get('email'),
+                        'company': profile.get('company'),
+                        'role': profile.get('role'),
+                        'department': profile.get('department'),
+                        'decision_power': profile.get('decision_power', 'medium'),
+                        'communication_style': profile.get(
+                            'communication_style', 'formal',
+                        ),
+                        'language_preference': profile.get(
+                            'language_preference', 'es',
+                        ),
+                        'key_interests': profile.get('key_interests', []),
+                        'personality_notes': profile.get('personality_notes', ''),
+                        'negotiation_style': profile.get('negotiation_style'),
+                        'response_pattern': profile.get('response_pattern'),
+                        'influence_on_deals': profile.get('influence_on_deals'),
+                        'source_account': account,
+                        'last_seen_date': today,
+                    })
+                except Exception as exc:
+                    _logger.debug('Person profile save error: %s', exc)
+
+            # Guardar person_insights del análisis por cuenta (si existe)
+            # Se procesan en _save_person_insights_from_summaries()
+
             batch_ids = [
                 e['gmail_message_id'] for e in acct_emails
                 if e.get('gmail_message_id')
@@ -1678,7 +1979,7 @@ class IntelligenceEngine(models.Model):
                 _logger.warning('KG mark_processed %s: %s', account, exc)
             time.sleep(3)
 
-        _logger.info('Knowledge graph alimentado')
+        _logger.info('Knowledge graph alimentado (con perfiles de personas)')
 
     def _save_to_odoo(self, today, briefing_html, emails, alerts,
                       client_scores, contacts, execution_secs,

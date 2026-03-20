@@ -1,9 +1,15 @@
 {
     'name': 'Quimibond Intelligence System',
-    'version': '19.0.3.1.0',
+    'version': '19.0.4.0.0',
     'category': 'Productivity',
-    'summary': 'Knowledge Graph + Communication Intelligence para Quimibond.',
-    'description': 'Cerebro de inteligencia empresarial: emails, Odoo ERP, knowledge graph, Claude AI.',
+    'summary': 'Deep Intelligence: Gmail + 10 modelos Odoo + Knowledge Graph + Claude AI.',
+    'description': (
+        'Cerebro de inteligencia empresarial con enriquecimiento profundo de Odoo. '
+        'Lee emails de Gmail, cruza con ventas, facturas, pagos, entregas, '
+        'producción, CRM, actividades, calendario y chatter de Odoo. '
+        'Genera briefings ejecutivos, alertas, scoring de clientes y '
+        'perfiles acumulativos de contactos con Claude AI.'
+    ),
     'author': 'Quimibond',
     'website': 'https://quimibond.com',
     'license': 'LGPL-3',
@@ -13,6 +19,9 @@
         'sale',
         'account',
         'purchase',
+        'crm',
+        'stock',
+        'calendar',
     ],
     'external_dependencies': {
         'python': [

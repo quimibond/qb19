@@ -76,45 +76,78 @@ class ClaudeService:
 
     def summarize_account(self, department: str, account: str,
                           email_text: str, ext_count: int, int_count: int) -> dict:
-        """Analiza emails de una cuenta. Retorna JSON estructurado."""
-        system = ('Eres un analista de comunicaciones empresariales para Quimibond '
-                  '(no tejidos y textiles). Retorna SOLO JSON válido sin markdown.')
+        """Analiza emails de una cuenta con contexto profundo de Odoo."""
+        system = (
+            'Eres un analista de inteligencia empresarial para Quimibond '
+            '(manufacturera de no tejidos y textiles en México). '
+            'Retorna SOLO JSON válido sin markdown.\n\n'
+            'IMPORTANTE: Los emails contienen etiquetas [ODOO: ...] con datos '
+            'en vivo del ERP (ventas, facturas, entregas, CRM, pagos, '
+            'actividades pendientes, producción). DEBES cruzar la información '
+            'del email con los datos de Odoo para dar contexto real:\n'
+            '- Si alguien pide cotización y tiene facturas vencidas → señalar\n'
+            '- Si alguien pregunta por entrega y hay un picking retrasado → señalar\n'
+            '- Si hay una oportunidad CRM abierta relacionada → mencionar\n'
+            '- Si hay actividades vencidas del equipo con ese contacto → señalar\n'
+            '- Si hay pagos recientes → contextualizar la relación\n'
+            '- Si hay producción en curso para ese cliente → informar avance'
+        )
 
         prompt = (
             f'Analiza los {ext_count + int_count} emails de {department} ({account}).\n'
             f'{ext_count} son de externos, {int_count} internos.\n\n'
             'Retorna SOLO un JSON válido con esta estructura exacta:\n'
             '{\n'
-            '  "summary_text": "Resumen narrativo de 2-3 oraciones",\n'
+            '  "summary_text": "Resumen narrativo de 2-3 oraciones que CRUCE '
+            'info del email con datos de Odoo",\n'
             '  "overall_sentiment": "positive|neutral|negative|mixed",\n'
             '  "sentiment_detail": "Breve explicación del tono general",\n'
             '  "key_items": [{"item": "desc", "priority": "high|medium|low", '
-            '"from": "remitente", "action_needed": "qué hacer", "importance_score": 1}],\n'
-            '  "waiting_response": [{"contact": "nombre <email>", "subject": "asunto", '
-            '"hours_waiting": 0, "is_external": true, "urgency": "high|medium|low"}],\n'
+            '"from": "remitente", "action_needed": "qué hacer", '
+            '"importance_score": 1, '
+            '"odoo_context": "datos relevantes del ERP si aplica"}],\n'
+            '  "waiting_response": [{"contact": "nombre <email>", '
+            '"subject": "asunto", "hours_waiting": 0, "is_external": true, '
+            '"urgency": "high|medium|low", '
+            '"business_impact": "impacto si no se responde"}],\n'
             '  "urgent_items": [{"item": "desc", "reason": "por qué", '
-            '"suggested_action": "qué debería hacer José"}],\n'
+            '"suggested_action": "qué debería hacer José", '
+            '"financial_impact": "monto en riesgo si aplica"}],\n'
             '  "external_contacts": [{"name": "nombre", "email": "email", '
             '"company": "empresa", "topic": "de qué escriben", '
             '"sentiment": "positive|neutral|negative", '
-            '"relationship_signal": "strengthening|stable|cooling|at_risk"}],\n'
-            '  "topics_detected": [{"topic": "nombre", "status": "new|ongoing|resolved", '
-            '"detail": "desc breve"}],\n'
-            '  "attachment_insights": [{"filename": "nombre", "type": "pdf|excel|text|image", '
+            '"relationship_signal": "strengthening|stable|cooling|at_risk", '
+            '"odoo_profile": "resumen de su situación en el ERP"}],\n'
+            '  "topics_detected": [{"topic": "nombre", '
+            '"status": "new|ongoing|resolved", "detail": "desc breve"}],\n'
+            '  "attachment_insights": [{"filename": "nombre", '
+            '"type": "pdf|excel|text|image", '
             '"summary": "resumen", "business_impact": "relevancia"}],\n'
-            '  "risks_detected": [{"risk": "desc", "severity": "high|medium|low", '
-            '"accounts_involved": ["cuentas"]}]\n'
+            '  "risks_detected": [{"risk": "desc", '
+            '"severity": "high|medium|low", '
+            '"accounts_involved": ["cuentas"], '
+            '"mitigation": "qué se puede hacer"}],\n'
+            '  "person_insights": [{"name": "nombre completo", '
+            '"email": "email", "company": "empresa", '
+            '"role_detected": "rol inferido del email", '
+            '"communication_style": "formal|informal|técnico|ejecutivo", '
+            '"key_interests": ["temas que le importan"], '
+            '"decision_power": "high|medium|low", '
+            '"notes": "observaciones para recordar"}]\n'
             '}\n\n'
             'REGLAS:\n'
             '- Si no hay items urgentes, deja el array vacío\n'
             '- Sé específico con nombres y empresas\n'
             '- importance_score: 1=trivial, 5=normal, 8=importante, 10=crítico\n'
-            '- CONTEXTO ODOO: Los emails con [ODOO: ...] tienen datos del ERP. '
-            'Prioriza por impacto financiero.\n\n'
+            '- CONTEXTO ODOO: Los emails con [ODOO: ...] tienen datos en vivo del '
+            'ERP (ventas, facturas, pagos, entregas, CRM, actividades, producción). '
+            'CRUZA esta información con el contenido del email.\n'
+            '- person_insights: Identifica a CADA persona que escribe. Infiere '
+            'su rol, estilo, nivel de decisión. Esto alimenta la memoria del sistema.\n\n'
             f'EMAILS:\n{email_text}'
         )
 
-        text = self._call(system, prompt, max_tokens=3000)
+        text = self._call(system, prompt, max_tokens=4000)
 
         # Extraer JSON
         import re
@@ -129,7 +162,7 @@ class ClaudeService:
     # ── Fase 2: Síntesis ejecutiva ───────────────────────────────────────────
 
     def synthesize_briefing(self, data_package: str) -> str:
-        """Genera el HTML del briefing ejecutivo."""
+        """Genera el HTML del briefing ejecutivo con contexto profundo."""
         system = (
             'Eres el Chief Intelligence Officer de Quimibond, una productora de '
             'no tejidos y textiles en México. Produces un briefing diario para el '
@@ -139,19 +172,50 @@ class ClaudeService:
             '2. Quién está haciendo bien su trabajo y quién no\n'
             '3. Qué clientes/proveedores esperan respuesta\n'
             '4. Qué temas nuevos aparecieron y cuáles siguen sin resolver\n'
-            '5. Patrones y oportunidades\n\n'
+            '5. Patrones y oportunidades\n'
+            '6. Si las acciones sugeridas ayer se ejecutaron o no\n'
+            '7. Estado de entregas, producción y pipeline comercial\n\n'
+            'TIENES ACCESO A DATOS EN VIVO DE ODOO:\n'
+            '- Pedidos de venta, facturas, pagos reales\n'
+            '- Pipeline CRM (oportunidades, etapas, revenue esperado)\n'
+            '- Entregas pendientes y retrasadas (stock.picking)\n'
+            '- Producción en proceso (mrp.production)\n'
+            '- Actividades del equipo (quién tiene qué pendiente)\n'
+            '- Comunicación interna (chatter de Odoo)\n'
+            '- Reuniones agendadas (calendar)\n'
+            '- Verificación de acciones previas (¿se hicieron o no?)\n\n'
+            'CRUZA la información de los emails con los datos de Odoo. '
+            'Por ejemplo: si un cliente pregunta por su entrega en un email '
+            'y en Odoo ves que el picking está retrasado, DILO CLARAMENTE.\n\n'
             'FORMATO HTML con estas secciones:\n'
             '<h2>🚨 REQUIERE TU ATENCIÓN AHORA</h2>\n'
+            '(Solo lo verdaderamente urgente, cruzado con datos de Odoo)\n\n'
             '<h2>📊 SCORECARD DE HOY</h2>\n'
+            '(Tabla: emails, threads, respuestas, alertas, pipeline CRM)\n\n'
             '<h2>⏱️ TIEMPOS DE RESPUESTA</h2>\n'
+            '(Por cuenta, con contexto del impacto comercial)\n\n'
+            '<h2>✅ SEGUIMIENTO DE ACCIONES</h2>\n'
+            '(¿Se ejecutaron las acciones sugeridas ayer? Evidencia de Odoo. '
+            'Tasa de completado. Quién cumplió y quién no.)\n\n'
             '<h2>🔍 ANÁLISIS POR ÁREA</h2>\n'
-            '<h2>👥 ACCOUNTABILITY</h2>\n'
-            '<h2>🤝 CLIENTES Y EXTERNOS</h2>\n'
+            '(Resumen por departamento con datos de Odoo integrados)\n\n'
+            '<h2>📦 OPERACIONES</h2>\n'
+            '(Entregas pendientes/retrasadas, producción en proceso, '
+            'problemas de supply chain)\n\n'
+            '<h2>💰 COMERCIAL Y PIPELINE</h2>\n'
+            '(Oportunidades CRM, pedidos, facturación, cobranza, pagos)\n\n'
+            '<h2>👥 ACCOUNTABILITY DEL EQUIPO</h2>\n'
+            '(Actividades pendientes por persona, vencidas, cumplimiento)\n\n'
+            '<h2>🤝 CLIENTES Y PROVEEDORES</h2>\n'
+            '(Perfil cruzado: email + Odoo. Relación, riesgo, contexto)\n\n'
             '<h2>⚠️ RIESGOS DETECTADOS</h2>\n'
-            '<h2>💰 IMPACTO COMERCIAL</h2>\n'
-            '<h2>📈 TENDENCIAS</h2>\n'
-            '<h2>✅ ACCIONES SUGERIDAS</h2>\n\n'
-            'Sé brutalmente honesto. Sin filtros. '
+            '(Basados en datos reales: facturas vencidas + emails ignorados = peligro)\n\n'
+            '<h2>📈 TENDENCIAS Y PATRONES</h2>\n'
+            '(Comparativa con días anteriores, patrones recurrentes)\n\n'
+            '<h2>🎯 ACCIONES PARA MAÑANA</h2>\n'
+            '(Específicas: quién debe hacer qué, con quién, por qué)\n\n'
+            'Sé brutalmente honesto. Sin filtros. Si alguien no hizo lo que debía, '
+            'dilo. Si un cliente está en riesgo y nadie actuó, escálalo.\n'
             'Usa <h2>, <h3>, <p>, <ul>, <li>, <strong>, <table>.'
         )
         return self._call(system, data_package, max_tokens=CLAUDE_MAX_TOKENS)
@@ -179,6 +243,7 @@ class ClaudeService:
 
 
     def extract_knowledge(self, emails_text, account):
+        """Extrae knowledge graph con perfil profundo de personas."""
         schema = (
             '{"entities": [{"name": "str", "type": "person|company|product|machine|raw_material",'
             ' "email": "str or null", "attributes": {}}],'
@@ -192,38 +257,56 @@ class ClaudeService:
             ' "priority": "low|medium|high|critical", "due_date": "YYYY-MM-DD or null"}],'
             ' "relationships": [{"entity_a": "str", "entity_b": "str",'
             ' "type": "works_at|buys_from|sells_to|manages|supplies|manufactures|'
-            'negotiates_with|mentioned_with",'
-            ' "context": "str"}]}'
+            'negotiates_with|mentioned_with|reports_to|collaborates_with",'
+            ' "context": "str"}],'
+            ' "person_profiles": [{"name": "str", "email": "str or null",'
+            ' "company": "str or null",'
+            ' "role": "str (cargo o rol inferido)",'
+            ' "department": "str or null",'
+            ' "decision_power": "high|medium|low",'
+            ' "communication_style": "formal|informal|tecnico|ejecutivo",'
+            ' "language_preference": "es|en|mixed",'
+            ' "key_interests": ["temas que le importan"],'
+            ' "personality_notes": "observaciones sobre cómo se comunica",'
+            ' "negotiation_style": "aggressive|collaborative|passive|analytical or null",'
+            ' "response_pattern": "fast|normal|slow or null",'
+            ' "influence_on_deals": "str or null"}]}'
         )
         prompt = (
             'Analiza emails de ' + account
             + ' de Quimibond (textiles no tejidos, Mexico).\n\n'
             + 'EMAILS:\n' + emails_text[:12000]
             + '\n\nExtrae en JSON schema:\n' + schema
-            + '\n\nREGLAS: Solo info EXPLICITA. '
-            + 'Facts = datos verificables. '
-            + 'Confidence 0.8+ claros, 0.3-0.5 implicitos. '
-            + 'Solo JSON valido.'
+            + '\n\nREGLAS:\n'
+            + '- Solo info EXPLICITA para facts. Confidence 0.8+ claros, 0.3-0.5 implicitos.\n'
+            + '- person_profiles: Para CADA persona que aparece en los emails, '
+            + 'construye un perfil. Infiere rol, estilo de comunicacion, nivel de decision, '
+            + 'intereses clave. Esto alimenta la memoria a largo plazo del sistema.\n'
+            + '- Identifica TODAS las relaciones entre personas y empresas.\n'
+            + '- Solo JSON valido.'
         )
         try:
-            system = ('Eres un analista de Quimibond (textiles no tejidos, Mexico). '
-                      'Extrae entidades, hechos, action items y relaciones de emails. '
-                      'Retorna SOLO JSON valido sin markdown.')
-            raw = self._call(system, prompt, max_tokens=3000)
+            system = (
+                'Eres un analista de inteligencia de Quimibond (textiles no tejidos, Mexico). '
+                'Extrae entidades, hechos, action items, relaciones Y perfiles '
+                'detallados de personas. El objetivo es que el sistema APRENDA '
+                'de cada persona con cada email que procesa. '
+                'Retorna SOLO JSON valido sin markdown.'
+            )
+            raw = self._call(system, prompt, max_tokens=4000)
             raw = raw.strip()
             if raw.startswith('`' * 3):
                 lines = raw.split('\n')
                 raw = '\n'.join(lines[1:])
                 if raw.endswith('`' * 3):
                     raw = raw[:-3]
-            import json
             return json.loads(raw)
         except Exception as exc:
-            import logging
-            logging.getLogger(__name__).warning('KG extract fail: %s', exc)
+            _logger.warning('KG extract fail: %s', exc)
             return {
                 'entities': [], 'facts': [],
                 'action_items': [], 'relationships': [],
+                'person_profiles': [],
             }
 
 

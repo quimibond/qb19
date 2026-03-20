@@ -424,3 +424,93 @@ class SupabaseService:
             except Exception as exc:
                 _logger.debug('mark_emails_kg_processed: %s', exc)
 
+    # ── Person Profiles (aprendizaje acumulativo) ─────────────────────────
+
+    def upsert_person_profile(self, profile: dict):
+        """Inserta o actualiza el perfil de una persona.
+
+        Cada vez que el sistema procesa emails, actualiza el perfil con
+        nueva información. Los datos se acumulan — no se sobrescriben
+        a menos que haya info más reciente.
+
+        Tabla: person_profiles (upsert por email o canonical_name)
+        """
+        canonical = (profile.get('email') or
+                     profile.get('name', '')).lower().strip()
+        if not canonical:
+            return
+
+        data = {
+            'canonical_key': canonical,
+            'name': profile.get('name', ''),
+            'email': profile.get('email'),
+            'company': profile.get('company'),
+            'role': profile.get('role'),
+            'department': profile.get('department'),
+            'decision_power': profile.get('decision_power', 'medium'),
+            'communication_style': profile.get('communication_style', 'formal'),
+            'language_preference': profile.get('language_preference', 'es'),
+            'key_interests': profile.get('key_interests', []),
+            'personality_notes': profile.get('personality_notes', ''),
+            'negotiation_style': profile.get('negotiation_style'),
+            'response_pattern': profile.get('response_pattern'),
+            'influence_on_deals': profile.get('influence_on_deals'),
+            'source_account': profile.get('source_account'),
+            'last_seen_date': profile.get('last_seen_date'),
+            'interaction_count': 1,
+        }
+
+        # Intentar upsert — si la tabla no existe, fallar silenciosamente
+        try:
+            return self._request(
+                '/rest/v1/person_profiles', 'POST', data, {
+                    'Prefer': 'resolution=merge-duplicates,return=representation',
+                })
+        except Exception as exc:
+            _logger.debug('person_profile upsert: %s', exc)
+            return None
+
+    def get_person_profile(self, email=None, name=None):
+        """Obtiene el perfil acumulado de una persona."""
+        if email:
+            key = email.lower().strip()
+        elif name:
+            key = name.lower().strip()
+        else:
+            return None
+        try:
+            result = self._request(
+                f'/rest/v1/person_profiles?canonical_key=eq.{key}&limit=1',
+            )
+            return result[0] if result else None
+        except Exception:
+            return None
+
+    def get_person_profiles_for_contacts(self, emails: list) -> dict:
+        """Obtiene perfiles de múltiples personas por email.
+
+        Retorna dict: {email → profile_data}
+        """
+        if not emails:
+            return {}
+        profiles = {}
+        chunk = 50
+        for i in range(0, len(emails), chunk):
+            part = emails[i:i + chunk]
+            enc = _postgrest_in_list(part)
+            if not enc:
+                continue
+            try:
+                rows = self._request(
+                    '/rest/v1/person_profiles?select=*'
+                    f'&canonical_key=in.({enc})',
+                )
+                if isinstance(rows, list):
+                    for r in rows:
+                        key = r.get('email') or r.get('canonical_key', '')
+                        if key:
+                            profiles[key.lower()] = r
+            except Exception as exc:
+                _logger.debug('get_person_profiles batch: %s', exc)
+        return profiles
+
