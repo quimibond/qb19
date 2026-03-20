@@ -463,7 +463,8 @@ class SupabaseService:
         # Intentar upsert — si la tabla no existe, fallar silenciosamente
         try:
             return self._request(
-                '/rest/v1/person_profiles', 'POST', data, {
+                '/rest/v1/person_profiles?on_conflict=canonical_key',
+                'POST', data, {
                     'Prefer': 'resolution=merge-duplicates,return=representation',
                 })
         except Exception as exc:
