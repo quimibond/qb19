@@ -45,14 +45,12 @@ class IntelligenceQuery(models.TransientModel):
                 voyage = VoyageService(voyage_key)
                 query_embedding = voyage.embed_query(self.question)
                 results = supa._request(
-                    '/rest/v1/rpc/match_emails',
-                    method='POST',
-                    json_data={
+                    '/rest/v1/rpc/search_similar_emails',
+                    'POST', {
                         'query_embedding': query_embedding,
                         'match_threshold': 0.3,
                         'match_count': 15,
-                    },
-                )
+                    })
                 if results:
                     rag_parts = []
                     for r in results[:15]:
@@ -117,7 +115,10 @@ class IntelligenceQuery(models.TransientModel):
         ) % (context_str, self.question)
 
         try:
-            response = claude._call(prompt, max_tokens=2000)
+            system = ('Eres el cerebro de inteligencia de Quimibond, empresa '
+                      'manufacturera de textiles no tejidos en Mexico. '
+                      'Responde de forma directa, ejecutiva y accionable en HTML.')
+            response = claude._call(system, prompt, max_tokens=2000)
             self.answer = response
         except Exception as exc:
             self.answer = '<p><b>Error:</b> %s</p>' % str(exc)

@@ -206,7 +206,10 @@ class ClaudeService:
             + 'Solo JSON valido.'
         )
         try:
-            raw = self._call(prompt, max_tokens=3000)
+            system = ('Eres un analista de Quimibond (textiles no tejidos, Mexico). '
+                      'Extrae entidades, hechos, action items y relaciones de emails. '
+                      'Retorna SOLO JSON valido sin markdown.')
+            raw = self._call(system, prompt, max_tokens=3000)
             raw = raw.strip()
             if raw.startswith('`' * 3):
                 lines = raw.split('\n')

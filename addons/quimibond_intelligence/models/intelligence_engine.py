@@ -772,10 +772,10 @@ class IntelligenceEngine(models.AbstractModel):
             thread_count = thread_participation.get(addr, 0)
 
             # Frequency score (0-25): más emails = mejor relación
-            freq_score = min(25, msg_count * 5)
+            freq_score = min(25, 5 + msg_count * 4)
 
             # Responsiveness score (0-25): participación en threads
-            resp_score = min(25, thread_count * 5)
+            resp_score = min(25, 5 + thread_count * 4)
 
             # Reciprocity score (0-25): ¿reciben respuesta?
             related_threads = [
@@ -794,9 +794,9 @@ class IntelligenceEngine(models.AbstractModel):
             total = freq_score + resp_score + recip_score + sent_score
 
             # Risk level
-            if total >= 70:
+            if total >= 60:
                 risk = 'low'
-            elif total >= 40:
+            elif total >= 35:
                 risk = 'medium'
             else:
                 risk = 'high'
@@ -928,7 +928,6 @@ class IntelligenceEngine(models.AbstractModel):
 
     # ── HTML wrapper ──────────────────────────────────────────────────────────
 
-    @staticmethod
     def _feed_knowledge_graph(self, emails, claude, supa, today):
         from collections import defaultdict
         by_account = defaultdict(list)
@@ -1090,6 +1089,7 @@ class IntelligenceEngine(models.AbstractModel):
                 })
         _logger.info('%d client scores en Odoo', len(client_scores))
 
+    @staticmethod
     def _wrap_briefing_html(body_html: str, today: str, weekly: bool = False) -> str:
         """Envuelve el briefing en un template HTML completo para email."""
         title = 'Weekly Intelligence Report' if weekly else 'Daily Intelligence Briefing'

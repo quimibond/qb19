@@ -289,48 +289,31 @@ class SupabaseService:
         }
         # Upsert por tipo + canonical_name
         return self._request(
-            '/rest/v1/entities',
-            method='POST',
-            json_data=data,
-            extra_headers={
+            '/rest/v1/entities', 'POST', data, {
                 'Prefer': 'resolution=merge-duplicates,return=representation',
-            },
-        )
+            })
 
     def save_entity_mention(self, mention):
         """Guarda una mencion de entidad en un email."""
         return self._request(
-            '/rest/v1/entity_mentions',
-            method='POST',
-            json_data=mention,
-        )
+'/rest/v1/entity_mentions', 'POST', mention)
 
     def save_fact(self, fact):
         """Guarda un hecho extraido."""
         return self._request(
-            '/rest/v1/facts',
-            method='POST',
-            json_data=fact,
-        )
+'/rest/v1/facts', 'POST', fact)
 
     def save_action_item(self, item):
         """Guarda un action item."""
         return self._request(
-            '/rest/v1/action_items',
-            method='POST',
-            json_data=item,
-        )
+'/rest/v1/action_items', 'POST', item)
 
     def save_relationship(self, rel):
         """Guarda o actualiza una relacion entre entidades."""
         return self._request(
-            '/rest/v1/entity_relationships',
-            method='POST',
-            json_data=rel,
-            extra_headers={
+            '/rest/v1/entity_relationships', 'POST', rel, {
                 'Prefer': 'resolution=merge-duplicates,return=representation',
-            },
-        )
+            })
 
     def get_entity_by_name(self, name):
         """Busca una entidad por nombre."""
