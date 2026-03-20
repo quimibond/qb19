@@ -37,11 +37,13 @@ export default function ChatPage() {
         body: JSON.stringify({ question, history: messages.slice(-10) }),
       });
 
-      if (!res.ok) throw new Error("Error en la respuesta");
-
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Error en la respuesta");
+      }
       setMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);
-    } catch {
+    } catch (err) {
+      console.error("Chat error:", err);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "Error al procesar tu pregunta. Verifica la configuracion del API." },
