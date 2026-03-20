@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ══ Action Item List ══ -->
+    <!-- == Action Item List == -->
     <record id="view_action_tree" model="ir.ui.view">
         <field name="name">intelligence.action.item.tree</field>
         <field name="model">intelligence.action.item</field>
@@ -29,7 +29,7 @@
         </field>
     </record>
 
-    <!-- ══ Action Item Kanban ══ -->
+    <!-- == Action Item Kanban == -->
     <record id="view_action_kanban" model="ir.ui.view">
         <field name="name">intelligence.action.item.kanban</field>
         <field name="model">intelligence.action.item</field>
@@ -52,7 +52,7 @@
                                 <field name="name"/>
                             </strong>
                             <div class="text-muted small mt-1">
-                                <field name="action_type"/> —
+                                <field name="action_type"/> -
                                 <field name="partner_id"/>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mt-2">
@@ -69,7 +69,7 @@
         </field>
     </record>
 
-    <!-- ══ Action Item Form ══ -->
+    <!-- == Action Item Form == -->
     <record id="view_action_form" model="ir.ui.view">
         <field name="name">intelligence.action.item.form</field>
         <field name="model">intelligence.action.item</field>
@@ -113,7 +113,7 @@
         </field>
     </record>
 
-    <!-- ══ Action Item Search ══ -->
+    <!-- == Action Item Search == -->
     <record id="view_action_search" model="ir.ui.view">
         <field name="name">intelligence.action.item.search</field>
         <field name="model">intelligence.action.item</field>

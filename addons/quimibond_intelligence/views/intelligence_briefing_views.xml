@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ══ Briefing List ══ -->
+    <!-- == Briefing List == -->
     <record id="view_briefing_tree" model="ir.ui.view">
         <field name="name">intelligence.briefing.tree</field>
         <field name="model">intelligence.briefing</field>
@@ -30,7 +30,7 @@
         </field>
     </record>
 
-    <!-- ══ Briefing Form ══ -->
+    <!-- == Briefing Form == -->
     <record id="view_briefing_form" model="ir.ui.view">
         <field name="name">intelligence.briefing.form</field>
         <field name="model">intelligence.briefing</field>
@@ -49,7 +49,7 @@
                         <h1>
                             <span invisible="briefing_type != 'daily'">Briefing Diario</span>
                             <span invisible="briefing_type != 'weekly'">Reporte Semanal</span>
-                            — <field name="date" readonly="1" class="oe_inline"/>
+                            - <field name="date" readonly="1" class="oe_inline"/>
                         </h1>
                     </div>
                     <div class="row mb-4">
@@ -124,7 +124,7 @@
         </field>
     </record>
 
-    <!-- ══ Briefing Search ══ -->
+    <!-- == Briefing Search == -->
     <record id="view_briefing_search" model="ir.ui.view">
         <field name="name">intelligence.briefing.search</field>
         <field name="model">intelligence.briefing</field>

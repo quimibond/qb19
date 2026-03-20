@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ══ Query Form (modal) ══ -->
+    <!-- == Query Form (modal) == -->
     <record id="view_query_form" model="ir.ui.view">
         <field name="name">intelligence.query.form</field>
         <field name="model">intelligence.query</field>

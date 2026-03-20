@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ══ Config Form ══ -->
+    <!-- == Config Form == -->
     <record id="view_intelligence_config_form" model="ir.ui.view">
         <field name="name">intelligence.config.form</field>
         <field name="model">intelligence.config</field>
@@ -98,9 +98,9 @@
         <field name="context">{'form_view_initial_mode': 'edit'}</field>
     </record>
 
-    <!-- ══════════════════════════════════════════════════════════════════════ -->
-    <!--  MENU STRUCTURE                                                      -->
-    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ================================================================== -->
+    <!--  MENU STRUCTURE                                                    -->
+    <!-- ================================================================== -->
 
     <!-- Root menu -->
     <menuitem id="menu_intelligence_root"

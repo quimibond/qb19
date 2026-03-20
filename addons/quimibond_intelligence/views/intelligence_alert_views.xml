@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ══ Alert List ══ -->
+    <!-- == Alert List == -->
     <record id="view_alert_tree" model="ir.ui.view">
         <field name="name">intelligence.alert.tree</field>
         <field name="model">intelligence.alert</field>
@@ -26,7 +26,7 @@
         </field>
     </record>
 
-    <!-- ══ Alert Form ══ -->
+    <!-- == Alert Form == -->
     <record id="view_alert_form" model="ir.ui.view">
         <field name="name">intelligence.alert.form</field>
         <field name="model">intelligence.alert</field>
@@ -73,7 +73,7 @@
         </field>
     </record>
 
-    <!-- ══ Alert Search ══ -->
+    <!-- == Alert Search == -->
     <record id="view_alert_search" model="ir.ui.view">
         <field name="name">intelligence.alert.search</field>
         <field name="model">intelligence.alert</field>
