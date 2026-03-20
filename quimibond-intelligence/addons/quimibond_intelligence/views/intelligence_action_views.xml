@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══ Action Item List ══ -->
+    <record id="view_action_tree" model="ir.ui.view">
+        <field name="name">intelligence.action.item.tree</field>
+        <field name="model">intelligence.action.item</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="is_overdue"
+                  decoration-muted="state in ('done','cancelled')"
+                  default_order="priority_seq, due_date">
+                <field name="priority" widget="priority"/>
+                <field name="name"/>
+                <field name="action_type" optional="show"/>
+                <field name="partner_id"/>
+                <field name="due_date"
+                       decoration-danger="is_overdue"/>
+                <field name="assignee_id" widget="many2one_avatar_user"/>
+                <field name="source_account" optional="hide"/>
+                <field name="source_date" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-info="state == 'in_progress'"
+                       decoration-danger="state == 'open' and is_overdue"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="is_overdue" column_invisible="True"/>
+                <field name="priority_seq" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ══ Action Item Kanban ══ -->
+    <record id="view_action_kanban" model="ir.ui.view">
+        <field name="name">intelligence.action.item.kanban</field>
+        <field name="model">intelligence.action.item</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state"
+                    class="o_kanban_small_column o_kanban_mobile">
+                <field name="name"/>
+                <field name="priority"/>
+                <field name="state"/>
+                <field name="action_type"/>
+                <field name="partner_id"/>
+                <field name="due_date"/>
+                <field name="assignee_id"/>
+                <field name="is_overdue"/>
+                <templates>
+                    <t t-name="card">
+                        <div t-attf-class="#{record.is_overdue.raw_value ? 'border-start border-danger border-3' : ''}">
+                            <field name="priority" widget="priority"/>
+                            <strong class="o_kanban_record_title">
+                                <field name="name"/>
+                            </strong>
+                            <div class="text-muted small mt-1">
+                                <field name="action_type"/> —
+                                <field name="partner_id"/>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <span t-if="record.due_date.raw_value"
+                                      t-attf-class="badge #{record.is_overdue.raw_value ? 'text-bg-danger' : 'text-bg-light'}">
+                                    <field name="due_date"/>
+                                </span>
+                                <field name="assignee_id" widget="many2one_avatar_user"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ══ Action Item Form ══ -->
+    <record id="view_action_form" model="ir.ui.view">
+        <field name="name">intelligence.action.item.form</field>
+        <field name="model">intelligence.action.item</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_start" type="object"
+                            string="Iniciar" class="btn-primary"
+                            invisible="state != 'open'"/>
+                    <button name="action_done" type="object"
+                            string="Completar" class="btn-success"
+                            invisible="state in ('done','cancelled')"/>
+                    <button name="action_cancel" type="object"
+                            string="Cancelar"
+                            invisible="state in ('done','cancelled')"/>
+                    <button name="action_reopen" type="object"
+                            string="Reabrir"
+                            invisible="state not in ('done','cancelled')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="open,in_progress,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group col="4">
+                        <field name="action_type"/>
+                        <field name="priority"/>
+                        <field name="due_date"/>
+                        <field name="is_overdue" invisible="not is_overdue"/>
+                        <field name="assignee_id"/>
+                        <field name="partner_id"/>
+                        <field name="source_account"/>
+                        <field name="source_date"/>
+                    </group>
+                    <separator string="Notas" invisible="not notes"/>
+                    <field name="notes" invisible="not notes"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ══ Action Item Search ══ -->
+    <record id="view_action_search" model="ir.ui.view">
+        <field name="name">intelligence.action.item.search</field>
+        <field name="model">intelligence.action.item</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="assignee_id"/>
+                <separator/>
+                <filter name="open" string="Abiertos"
+                        domain="[('state','in',['open','in_progress'])]"/>
+                <filter name="overdue" string="Vencidos"
+                        domain="[('is_overdue','=',True)]"/>
+                <filter name="my" string="Mis pendientes"
+                        domain="[('assignee_id','=',uid)]"/>
+                <separator/>
+                <filter name="critical" string="Criticos"
+                        domain="[('priority','in',['critical','high'])]"/>
+                <filter name="today_due" string="Vence hoy"
+                        domain="[('due_date','=', context_today().strftime('%%Y-%%m-%%d'))]"/>
+                <separator/>
+                <group>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_priority" string="Prioridad"
+                            context="{'group_by': 'priority'}"/>
+                    <filter name="group_assignee" string="Asignado a"
+                            context="{'group_by': 'assignee_id'}"/>
+                    <filter name="group_partner" string="Contacto"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_type" string="Tipo"
+                            context="{'group_by': 'action_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_action_items" model="ir.actions.act_window">
+        <field name="name">Pendientes</field>
+        <field name="res_model">intelligence.action.item</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+
+</odoo>

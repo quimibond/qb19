@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══ Config Form ══ -->
+    <record id="view_intelligence_config_form" model="ir.ui.view">
+        <field name="name">intelligence.config.form</field>
+        <field name="model">intelligence.config</field>
+        <field name="arch" type="xml">
+            <form string="Intelligence System">
+                <header>
+                    <button name="action_save" type="object"
+                            string="Guardar configuracion"
+                            class="btn-primary"/>
+                    <button name="action_test_run" type="object"
+                            string="Ejecutar pipeline ahora"
+                            class="btn-warning"
+                            confirm="Esto ejecutara el pipeline completo de inteligencia. Puede tomar 5-15 minutos dependiendo del volumen de emails. Continuar?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-4">
+                        <h1>Quimibond Intelligence System</h1>
+                        <p class="text-muted">
+                            Configuracion del cerebro de inteligencia.
+                            Conecta Gmail, Claude AI, Voyage AI y Supabase.
+                        </p>
+                    </div>
+                    <notebook>
+                        <page string="API Keys" name="api_keys">
+                            <group>
+                                <group string="Claude AI (Analisis)">
+                                    <field name="anthropic_api_key" password="True"/>
+                                </group>
+                                <group string="Voyage AI (Embeddings/RAG)">
+                                    <field name="voyage_api_key" password="True"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Supabase (Memoria)">
+                                    <field name="supabase_url"
+                                           placeholder="https://xxxx.supabase.co"/>
+                                    <field name="supabase_key" password="True"/>
+                                </group>
+                                <group string="Google Workspace (Gmail)">
+                                    <label for="service_account_json"/>
+                                    <field name="service_account_json" nolabel="1"
+                                           placeholder="Pega aqui el JSON completo del Service Account"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Email" name="email">
+                            <group>
+                                <group string="Briefing">
+                                    <field name="sender_email"
+                                           placeholder="jose.mizrahi@quimibond.com"/>
+                                    <field name="recipient_email"
+                                           placeholder="jose.mizrahi@quimibond.com"/>
+                                </group>
+                            </group>
+                            <separator string="Cuentas de email a monitorear"/>
+                            <p class="text-muted">
+                                JSON con formato: {"email@quimibond.com": "Departamento", ...}
+                            </p>
+                            <field name="email_accounts_json" nolabel="1"/>
+                        </page>
+                        <page string="Umbrales" name="thresholds">
+                            <group>
+                                <group string="Tiempos de respuesta">
+                                    <field name="target_response_hours"
+                                           string="Meta (horas)"/>
+                                    <field name="slow_response_hours"
+                                           string="Lenta (horas)"/>
+                                    <field name="no_response_hours"
+                                           string="Sin respuesta (horas)"/>
+                                    <field name="stalled_thread_hours"
+                                           string="Thread estancado (horas)"/>
+                                </group>
+                                <group string="Scoring de clientes">
+                                    <field name="high_volume_threshold"
+                                           string="Umbral alto volumen"/>
+                                    <field name="client_score_decay_days"
+                                           string="Ventana scoring (dias)"/>
+                                    <field name="cold_client_days"
+                                           string="Cliente frio (dias)"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_intelligence_config" model="ir.actions.act_window">
+        <field name="name">Configuracion</field>
+        <field name="res_model">intelligence.config</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'form_view_initial_mode': 'edit'}</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!--  MENU STRUCTURE                                                      -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Root menu -->
+    <menuitem id="menu_intelligence_root"
+              name="Intelligence"
+              sequence="5"/>
+
+    <!-- Operativo -->
+    <menuitem id="menu_intelligence_ops"
+              name="Operacion"
+              parent="menu_intelligence_root"
+              sequence="10"/>
+
+    <menuitem id="menu_intelligence_query"
+              name="Preguntar al cerebro"
+              parent="menu_intelligence_ops"
+              action="action_query"
+              sequence="1"/>
+
+    <menuitem id="menu_intelligence_briefings"
+              name="Briefings"
+              parent="menu_intelligence_ops"
+              action="action_briefings"
+              sequence="10"/>
+
+    <menuitem id="menu_intelligence_alerts"
+              name="Alertas"
+              parent="menu_intelligence_ops"
+              action="action_alerts"
+              sequence="20"/>
+
+    <menuitem id="menu_intelligence_actions"
+              name="Acciones pendientes"
+              parent="menu_intelligence_ops"
+              action="action_action_items"
+              sequence="30"/>
+
+    <!-- Configuracion -->
+    <menuitem id="menu_intelligence_settings"
+              name="Configuracion"
+              parent="menu_intelligence_root"
+              sequence="90"/>
+
+    <menuitem id="menu_intelligence_config"
+              name="Ajustes del sistema"
+              parent="menu_intelligence_settings"
+              action="action_intelligence_config"
+              sequence="10"/>
+
+</odoo>
