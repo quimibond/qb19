@@ -13,89 +13,88 @@
                     <button name="action_test_run" type="object"
                             string="Ejecutar Ahora"
                             class="btn-warning"
-                            confirm="Ejecutar el pipeline completo ahora? Puede tomar varios minutos."/>
+                            confirm="Ejecutar el pipeline completo? Puede tomar varios minutos."/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>Quimibond Intelligence System</h1>
                     </div>
-
                     <group>
                         <group string="API Keys" col="2">
-                            <field name="anthropic_api_key" password="True"
-                                   placeholder="sk-ant-..."/>
-                            <field name="voyage_api_key" password="True"
-                                   placeholder="pa-..."/>
-                            <field name="supabase_url"
-                                   placeholder="https://xxx.supabase.co"/>
-                            <field name="supabase_key" password="True"
-                                   placeholder="eyJ..."/>
+                            <field name="anthropic_api_key" password="True"/>
+                            <field name="voyage_api_key" password="True"/>
+                            <field name="supabase_url"/>
+                            <field name="supabase_key" password="True"/>
                         </group>
-
                         <group string="Google Workspace" col="2">
-                            <field name="service_account_json"
-                                   placeholder='{"type": "service_account", ...}'/>
+                            <field name="service_account_json"/>
                         </group>
                     </group>
-
                     <group>
                         <group string="Briefing" col="2">
-                            <field name="recipient_email"
-                                   placeholder="jose.mizrahi@quimibond.com"/>
+                            <field name="recipient_email"/>
                         </group>
                     </group>
-
-                    <separator string="Umbrales de Respuesta"/>
+                    <separator string="Umbrales"/>
                     <group col="4">
                         <group>
-                            <field name="target_response_hours"
-                                   string="Meta (horas)"/>
-                            <field name="slow_response_hours"
-                                   string="Lenta (horas)"/>
+                            <field name="target_response_hours"/>
+                            <field name="slow_response_hours"/>
                         </group>
                         <group>
-                            <field name="no_response_hours"
-                                   string="Sin respuesta (horas)"/>
-                            <field name="stalled_thread_hours"
-                                   string="Estancado (horas)"/>
+                            <field name="no_response_hours"/>
+                            <field name="stalled_thread_hours"/>
                         </group>
                     </group>
-
-                    <separator string="Scoring y Volumen"/>
                     <group col="4">
                         <group>
-                            <field name="high_volume_threshold"
-                                   string="Alto volumen (emails)"/>
-                            <field name="client_score_decay_days"
-                                   string="Ventana scoring (dias)"/>
+                            <field name="high_volume_threshold"/>
+                            <field name="client_score_decay_days"/>
                         </group>
                         <group>
-                            <field name="cold_client_days"
-                                   string="Cliente frio (dias)"/>
+                            <field name="cold_client_days"/>
                         </group>
                     </group>
-
                 </sheet>
             </form>
         </field>
     </record>
 
     <record id="action_intelligence_config" model="ir.actions.act_window">
-        <field name="name">Intelligence System</field>
+        <field name="name">Configuracion</field>
         <field name="res_model">intelligence.config</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="context">{'form_view_initial_mode': 'edit'}</field>
     </record>
 
+    <!-- Menu principal -->
     <menuitem id="menu_intelligence_root"
               name="Intelligence"
-              sequence="100"/>
+              sequence="5"/>
+
+    <menuitem id="menu_intelligence_query"
+              name="Preguntar"
+              parent="menu_intelligence_root"
+              action="action_query"
+              sequence="1"/>
+
+    <menuitem id="menu_intelligence_briefings"
+              name="Briefings"
+              parent="menu_intelligence_root"
+              action="action_briefings"
+              sequence="10"/>
+
+    <menuitem id="menu_intelligence_alerts"
+              name="Alertas"
+              parent="menu_intelligence_root"
+              action="action_alerts"
+              sequence="20"/>
 
     <menuitem id="menu_intelligence_config"
               name="Configuracion"
               parent="menu_intelligence_root"
               action="action_intelligence_config"
-              sequence="10"/>
+              sequence="90"/>
 
 </odoo>

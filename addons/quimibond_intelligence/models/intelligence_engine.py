@@ -187,6 +187,15 @@ class IntelligenceEngine(models.AbstractModel):
         except Exception as exc:
             _logger.error('Error enviando briefing: %s', exc)
 
+        # -- Guardar en Odoo (Capa 2) --
+        try:
+            self._save_to_odoo(
+                today, briefing_html, emails, alerts,
+                client_scores, contacts, time.time() - start,
+            )
+        except Exception as exc:
+            _logger.error('Error guardando en Odoo: %s', exc)
+
         elapsed = time.time() - start
         _logger.info('═══ PIPELINE COMPLETADO en %.1f segundos ═══', elapsed)
 
@@ -913,6 +922,61 @@ class IntelligenceEngine(models.AbstractModel):
     # ── HTML wrapper ──────────────────────────────────────────────────────────
 
     @staticmethod
+    def _save_to_odoo(self, today, briefing_html, emails, alerts,
+                      client_scores, contacts, execution_secs):
+        Briefing = self.env["intelligence.briefing"].sudo()
+        Alert = self.env["intelligence.alert"].sudo()
+        Score = self.env["intelligence.client.score"].sudo()
+        Partner = self.env["res.partner"].sudo()
+
+        briefing = Briefing.create({
+            'date': today,
+            'briefing_type': 'daily',
+            'html_content': briefing_html,
+            'total_emails': len(emails),
+            'accounts_ok': len(set(e['account'] for e in emails)),
+            'execution_seconds': execution_secs,
+        })
+        _logger.info('Briefing guardado en Odoo: %s', briefing.id)
+
+        for a in alerts:
+            partner = False
+            if a.get('account'):
+                partner = Partner.search([
+                    ('email', 'ilike', a.get('account', ''))
+                ], limit=1)
+            Alert.create({
+                'name': a.get('title', 'Alerta')[:200],
+                'alert_type': a.get('alert_type', 'anomaly'),
+                'severity': a.get('severity', 'medium'),
+                'state': 'open',
+                'description': a.get('description', ''),
+                'account': a.get('account', ''),
+                'partner_id': partner.id if partner else False,
+                'briefing_id': briefing.id,
+                'gmail_thread_id': a.get('related_thread_id', ''),
+            })
+        _logger.info('%d alertas guardadas en Odoo', len(alerts))
+
+        for s in client_scores:
+            email_addr = s.get('email', '')
+            partner = Partner.search([
+                ('email', '=ilike', email_addr)
+            ], limit=1)
+            if partner:
+                Score.create({
+                    'partner_id': partner.id,
+                    'date': today,
+                    'email': email_addr,
+                    'total_score': s.get('total_score', 0),
+                    'frequency_score': s.get('frequency_score', 0),
+                    'responsiveness_score': s.get('responsiveness_score', 0),
+                    'reciprocity_score': s.get('reciprocity_score', 0),
+                    'sentiment_score': s.get('sentiment_score', 0),
+                    'risk_level': s.get('risk_level', 'medium'),
+                })
+        _logger.info('%d client scores en Odoo', len(client_scores))
+
     def _wrap_briefing_html(body_html: str, today: str, weekly: bool = False) -> str:
         """Envuelve el briefing en un template HTML completo para email."""
         title = 'Weekly Intelligence Report' if weekly else 'Daily Intelligence Briefing'

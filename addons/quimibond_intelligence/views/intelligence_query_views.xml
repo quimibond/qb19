@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_query_form" model="ir.ui.view">
+        <field name="name">intelligence.query.form</field>
+        <field name="model">intelligence.query</field>
+        <field name="arch" type="xml">
+            <form string="Consulta de Inteligencia">
+                <group>
+                    <field name="question" placeholder="Ej: Que ha pasado con Polimeros del Norte en las ultimas 2 semanas?"/>
+                </group>
+                <footer>
+                    <button name="action_ask" type="object"
+                            string="Preguntar" class="btn-primary"/>
+                    <button string="Cerrar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+                <group invisible="not answer">
+                    <field name="answer" readonly="1"/>
+                </group>
+                <group string="Contexto utilizado" invisible="not context_used">
+                    <field name="context_used" readonly="1"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_query" model="ir.actions.act_window">
+        <field name="name">Preguntar al cerebro</field>
+        <field name="res_model">intelligence.query</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
