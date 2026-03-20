@@ -170,6 +170,9 @@ class SupabaseService:
             return
         for a in alerts:
             a['alert_date'] = today
+            a.setdefault('state', 'new')
+            a.setdefault('is_read', False)
+            a.setdefault('is_resolved', False)
         self._request('/rest/v1/alerts', 'POST', alerts)
         _logger.info('✓ %d alertas guardadas', len(alerts))
 
@@ -623,11 +626,14 @@ class SupabaseService:
     def complete_action_item(self, action_id: int):
         """Marca un action item como completado en Supabase."""
         try:
+            now = datetime.now()
             self._request(
                 f'/rest/v1/action_items?id=eq.{action_id}',
                 'PATCH', {
                     'status': 'completed',
-                    'completed_date': datetime.now().strftime('%Y-%m-%d'),
+                    'state': 'completed',
+                    'completed_date': now.strftime('%Y-%m-%d'),
+                    'completed_at': now.isoformat(),
                 },
             )
         except Exception as exc:
