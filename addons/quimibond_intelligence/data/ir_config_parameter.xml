@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ═══ API Keys (vacíos — se configuran desde UI) ═══ -->
+        <record id="param_service_account_json" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.service_account_json</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="param_anthropic_api_key" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.anthropic_api_key</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="param_supabase_url" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.supabase_url</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="param_supabase_key" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.supabase_key</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="param_voyage_api_key" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.voyage_api_key</field>
+            <field name="value"></field>
+        </record>
+
+        <record id="param_recipient_email" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.recipient_email</field>
+            <field name="value">jose.mizrahi@quimibond.com</field>
+        </record>
+
+        <!-- ═══ Umbrales (valores por defecto) ═══ -->
+        <record id="param_target_response_hours" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.target_response_hours</field>
+            <field name="value">4</field>
+        </record>
+
+        <record id="param_slow_response_hours" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.slow_response_hours</field>
+            <field name="value">8</field>
+        </record>
+
+        <record id="param_no_response_hours" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.no_response_hours</field>
+            <field name="value">24</field>
+        </record>
+
+        <record id="param_stalled_thread_hours" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.stalled_thread_hours</field>
+            <field name="value">48</field>
+        </record>
+
+        <record id="param_high_volume_threshold" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.high_volume_threshold</field>
+            <field name="value">50</field>
+        </record>
+
+        <record id="param_client_score_decay_days" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.client_score_decay_days</field>
+            <field name="value">30</field>
+        </record>
+
+        <record id="param_cold_client_days" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.cold_client_days</field>
+            <field name="value">14</field>
+        </record>
+
+    </data>
+</odoo>

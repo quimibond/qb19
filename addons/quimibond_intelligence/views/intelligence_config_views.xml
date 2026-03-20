@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══ Formulario de Configuración ═══ -->
+    <record id="view_intelligence_config_form" model="ir.ui.view">
+        <field name="name">intelligence.config.form</field>
+        <field name="model">intelligence.config</field>
+        <field name="arch" type="xml">
+            <form string="Intelligence System">
+                <header>
+                    <button name="action_save" type="object"
+                            string="💾 Guardar Configuración"
+                            class="btn-primary"/>
+                    <button name="action_test_run" type="object"
+                            string="🚀 Ejecutar Ahora"
+                            class="btn-warning"
+                            confirm="¿Ejecutar el pipeline completo ahora? Puede tomar varios minutos."/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>🧠 Quimibond Intelligence System</h1>
+                        <p class="text-muted">
+                            Sistema de inteligencia de comunicaciones.
+                            Lee 22 cuentas de Gmail, analiza con Claude AI,
+                            y genera un briefing ejecutivo diario.
+                        </p>
+                    </div>
+
+                    <group>
+                        <group string="🔑 API Keys" col="2">
+                            <field name="anthropic_api_key" password="True"
+                                   placeholder="sk-ant-..."/>
+                            <field name="voyage_api_key" password="True"
+                                   placeholder="pa-..."/>
+                            <field name="supabase_url"
+                                   placeholder="https://xxx.supabase.co"/>
+                            <field name="supabase_key" password="True"
+                                   placeholder="eyJ..."/>
+                        </group>
+
+                        <group string="📧 Google Workspace" col="2">
+                            <field name="service_account_json"
+                                   placeholder='{"type": "service_account", ...}'
+                                   widget="text"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="📬 Briefing" col="2">
+                            <field name="recipient_email"
+                                   placeholder="jose.mizrahi@quimibond.com"/>
+                        </group>
+                    </group>
+
+                    <separator string="⚙️ Umbrales de Respuesta"/>
+                    <group col="4">
+                        <group>
+                            <field name="target_response_hours"
+                                   string="Meta (horas)"/>
+                            <field name="slow_response_hours"
+                                   string="Lenta (horas)"/>
+                        </group>
+                        <group>
+                            <field name="no_response_hours"
+                                   string="Sin respuesta (horas)"/>
+                            <field name="stalled_thread_hours"
+                                   string="Estancado (horas)"/>
+                        </group>
+                    </group>
+
+                    <separator string="📊 Scoring y Volumen"/>
+                    <group col="4">
+                        <group>
+                            <field name="high_volume_threshold"
+                                   string="Alto volumen (emails)"/>
+                            <field name="client_score_decay_days"
+                                   string="Ventana scoring (días)"/>
+                        </group>
+                        <group>
+                            <field name="cold_client_days"
+                                   string="Cliente frío (días)"/>
+                        </group>
+                    </group>
+
+                    <separator string="📋 Cuentas Monitoreadas"/>
+                    <div class="alert alert-info" role="alert">
+                        <strong>22 cuentas activas:</strong>
+                        direcciondeoperaciones, aurelio, gilberto, ventas,
+                        ventasindustrial, admon.ventas, info, manufactura,
+                        planeacion, logistica, ingenieriacc, comprasplanta,
+                        jefe.calidad, innovacion, producto.innovacion,
+                        cxp, cxcobrar, irma.luna, berenice.vazquez,
+                        recursoshumanos, rhmexico, jose.mizrahi
+                        <br/><small>@quimibond.com</small>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══ Acción para abrir el formulario ═══ -->
+    <record id="action_intelligence_config" model="ir.actions.act_window">
+        <field name="name">Intelligence System</field>
+        <field name="res_model">intelligence.config</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'form_view_initial_mode': 'edit'}</field>
+    </record>
+
+    <!-- ═══ Menú principal ═══ -->
+    <menuitem id="menu_intelligence_root"
+              name="🧠 Intelligence"
+              sequence="100"
+              web_icon="quimibond_intelligence,static/description/icon.png"/>
+
+    <menuitem id="menu_intelligence_config"
+              name="Configuración"
+              parent="menu_intelligence_root"
+              action="action_intelligence_config"
+              sequence="10"/>
+
+</odoo>

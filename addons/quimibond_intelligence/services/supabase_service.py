@@ -1,0 +1,275 @@
+"""
+Quimibond Intelligence — Supabase Service
+Persistencia en Supabase (emails, threads, contactos, alertas, métricas, embeddings).
+"""
+import json
+import logging
+from datetime import datetime
+
+import httpx
+
+_logger = logging.getLogger(__name__)
+
+
+class SupabaseService:
+    """Cliente para Supabase REST API (PostgREST)."""
+
+    def __init__(self, url: str, key: str):
+        self._url = url.rstrip('/')
+        self._key = key
+        self._headers = {
+            'apikey': key,
+            'Authorization': f'Bearer {key}',
+            'Content-Type': 'application/json',
+        }
+
+    def _request(self, path: str, method: str = 'GET',
+                 payload=None, extra_headers: dict = None):
+        headers = {**self._headers, **(extra_headers or {})}
+        with httpx.Client(timeout=30) as client:
+            resp = client.request(method, f'{self._url}{path}',
+                                  headers=headers,
+                                  json=payload if payload else None)
+        if 200 <= resp.status_code < 300:
+            text = resp.text
+            try:
+                return json.loads(text) if text else None
+            except json.JSONDecodeError:
+                return text
+        raise RuntimeError(f'Supabase {resp.status_code}: {resp.text[:300]}')
+
+    # ── Emails ───────────────────────────────────────────────────────────────
+
+    def save_emails(self, emails: list):
+        """Guarda emails en lotes de 50."""
+        batch = []
+        saved = 0
+        for email in emails:
+            try:
+                email_date = datetime.fromisoformat(
+                    email['date'].replace('Z', '+00:00')
+                ).isoformat()
+            except Exception:
+                email_date = datetime.now().isoformat()
+
+            batch.append({
+                'account': email['account'],
+                'sender': email['from'],
+                'recipient': email['to'],
+                'subject': email['subject'],
+                'body': email.get('body', ''),
+                'snippet': email.get('snippet', ''),
+                'email_date': email_date,
+                'gmail_message_id': email['gmail_message_id'],
+                'gmail_thread_id': email['gmail_thread_id'],
+                'attachments': email['attachments'] if email['attachments'] else None,
+                'is_reply': email['is_reply'],
+                'sender_type': email['sender_type'],
+                'has_attachments': email['has_attachments'],
+            })
+            if len(batch) >= 50:
+                self._upsert_batch('/rest/v1/emails?on_conflict=gmail_message_id',
+                                   batch, 'ignore-duplicates')
+                saved += len(batch)
+                batch = []
+
+        if batch:
+            self._upsert_batch('/rest/v1/emails?on_conflict=gmail_message_id',
+                               batch, 'ignore-duplicates')
+            saved += len(batch)
+        _logger.info('✓ %d emails guardados', saved)
+
+    # ── Contactos ────────────────────────────────────────────────────────────
+
+    def save_contacts(self, contacts: list):
+        for c in contacts:
+            try:
+                self._request('/rest/v1/rpc/upsert_contact', 'POST', {
+                    'p_email': c['email'],
+                    'p_name': c.get('name', ''),
+                    'p_contact_type': c['contact_type'],
+                    'p_department': c.get('department'),
+                })
+            except Exception:
+                pass
+        _logger.info('✓ %d contactos guardados', len(contacts))
+
+    # ── Threads ──────────────────────────────────────────────────────────────
+
+    def save_threads(self, threads: list):
+        batch = []
+        for t in threads:
+            batch.append({
+                'gmail_thread_id': t.get('gmail_thread_id'),
+                'subject': t['subject'],
+                'subject_normalized': t['subject_normalized'],
+                'started_by': t['started_by'],
+                'started_by_type': t['started_by_type'],
+                'started_at': t['started_at'],
+                'last_activity': t['last_activity'],
+                'status': t['status'],
+                'message_count': t['message_count'],
+                'participant_emails': t['participant_emails'],
+                'has_internal_reply': t['has_internal_reply'],
+                'has_external_reply': t['has_external_reply'],
+                'last_sender': t['last_sender'],
+                'last_sender_type': t['last_sender_type'],
+                'hours_without_response': t.get('hours_without_response', 0),
+                'account': t['account'],
+            })
+        if batch:
+            self._upsert_batch('/rest/v1/threads?on_conflict=gmail_thread_id',
+                               batch, 'merge-duplicates')
+        _logger.info('✓ %d threads guardados', len(batch))
+
+    # ── Métricas ─────────────────────────────────────────────────────────────
+
+    def save_metrics(self, metrics: list, today: str):
+        batch = [{
+            'account': m['account'],
+            'metric_date': today,
+            'emails_received': m['emails_received'],
+            'emails_sent': m['emails_sent'],
+            'internal_received': m['internal_received'],
+            'external_received': m['external_received'],
+            'threads_started': m.get('threads_started', 0),
+            'threads_replied': m['threads_replied'],
+            'threads_unanswered': m['threads_unanswered'],
+            'avg_response_hours': m.get('avg_response_hours'),
+            'fastest_response_hours': m.get('fastest_response_hours'),
+            'slowest_response_hours': m.get('slowest_response_hours'),
+        } for m in metrics]
+        if batch:
+            self._upsert_batch('/rest/v1/response_metrics?on_conflict=metric_date,account',
+                               batch, 'merge-duplicates')
+        _logger.info('✓ %d métricas guardadas', len(batch))
+
+    # ── Alertas ──────────────────────────────────────────────────────────────
+
+    def save_alerts(self, alerts: list, today: str):
+        if not alerts:
+            return
+        for a in alerts:
+            a['alert_date'] = today
+        self._request('/rest/v1/alerts', 'POST', alerts)
+        _logger.info('✓ %d alertas guardadas', len(alerts))
+
+    # ── Account Summaries ────────────────────────────────────────────────────
+
+    def save_account_summaries(self, summaries: list, today: str):
+        batch = [{
+            'summary_date': today,
+            'account': s['account'],
+            'department': s['department'],
+            'total_emails': s.get('total_emails', 0),
+            'external_emails': s.get('external_emails', 0),
+            'internal_emails': s.get('internal_emails', 0),
+            'key_items': s.get('key_items', []),
+            'waiting_response': s.get('waiting_response', []),
+            'urgent_items': s.get('urgent_items', []),
+            'external_contacts': s.get('external_contacts', []),
+            'topics_detected': s.get('topics_detected', []),
+            'summary_text': s.get('summary_text', ''),
+            'overall_sentiment': s.get('overall_sentiment'),
+            'sentiment_detail': s.get('sentiment_detail'),
+            'risks_detected': s.get('risks_detected'),
+        } for s in summaries]
+        self._upsert_batch(
+            '/rest/v1/account_summaries?on_conflict=summary_date,account',
+            batch, 'merge-duplicates',
+        )
+        _logger.info('✓ %d account summaries guardados', len(batch))
+
+    # ── Client Scores ────────────────────────────────────────────────────────
+
+    def save_client_scores(self, scores: list, today: str):
+        for s in scores:
+            try:
+                self._request(
+                    f'/rest/v1/contacts?email=eq.{s["email"]}', 'PATCH', {
+                        'relationship_score': s['total_score'],
+                        'risk_level': s['risk_level'],
+                        'last_score_date': today,
+                        'score_breakdown': {
+                            'frequency': s['frequency_score'],
+                            'responsiveness': s['responsiveness_score'],
+                            'reciprocity': s['reciprocity_score'],
+                            'sentiment': s['sentiment_score'],
+                        },
+                    })
+            except Exception:
+                pass
+        _logger.info('✓ %d client scores guardados', len(scores))
+
+    # ── Daily Summary ────────────────────────────────────────────────────────
+
+    def save_daily_summary(self, today: str, briefing_html: str,
+                           total_emails: int, accounts_read: int,
+                           accounts_failed: int, topics_count: int):
+        import re
+        self._upsert_batch(
+            '/rest/v1/daily_summaries?on_conflict=summary_date',
+            [{
+                'summary_date': today,
+                'summary_html': briefing_html,
+                'summary_text': re.sub(r'<[^>]+>', '', briefing_html),
+                'total_emails': total_emails,
+                'accounts_read': accounts_read,
+                'accounts_failed': accounts_failed,
+                'topics_identified': topics_count,
+            }],
+            'merge-duplicates',
+        )
+
+    # ── Embeddings ───────────────────────────────────────────────────────────
+
+    def update_email_embedding(self, gmail_message_id: str, embedding: list):
+        try:
+            self._request(
+                f'/rest/v1/emails?gmail_message_id=eq.{gmail_message_id}',
+                'PATCH', {'embedding': embedding},
+            )
+        except Exception as exc:
+            _logger.debug('Embedding update fail: %s', exc)
+
+    # ── Historical Context ───────────────────────────────────────────────────
+
+    def get_historical_context(self) -> dict:
+        """Obtiene contexto histórico para el briefing."""
+        ctx = {
+            'previousSummary': None,
+            'openAlerts': [],
+            'scorecard': [],
+            'learnings': [],
+            'volumeTrend': [],
+        }
+        try:
+            summaries = self._request(
+                '/rest/v1/daily_summaries?order=summary_date.desc&limit=1'
+                '&select=summary_text',
+            )
+            if summaries:
+                ctx['previousSummary'] = summaries[0].get('summary_text', '')
+        except Exception:
+            pass
+        try:
+            ctx['openAlerts'] = self._request(
+                '/rest/v1/alerts?is_resolved=eq.false&order=created_at.desc'
+                '&limit=20&select=alert_type,severity,title,account',
+            ) or []
+        except Exception:
+            pass
+        try:
+            ctx['scorecard'] = self._request(
+                '/rest/v1/rpc/get_account_scorecard', 'POST', {'p_days': 7},
+            ) or []
+        except Exception:
+            pass
+        return ctx
+
+    # ── Helpers ──────────────────────────────────────────────────────────────
+
+    def _upsert_batch(self, path: str, batch: list, resolution: str):
+        self._request(path, 'POST', batch, {
+            'Prefer': f'resolution={resolution},return=minimal',
+        })
