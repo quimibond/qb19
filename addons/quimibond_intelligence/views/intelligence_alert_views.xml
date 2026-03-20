@@ -85,11 +85,13 @@
                 <field name="name"/>
                 <field name="account"/>
                 <field name="partner_id"/>
+                <separator/>
                 <filter name="state_open" string="Abiertas"
                         domain="[('state','=','open')]"/>
                 <filter name="severity_high" string="Alta severidad"
                         domain="[('severity','in',['high','critical'])]"/>
-                <group expand="0" string="Agrupar por">
+                <separator/>
+                <group string="Agrupar por">
                     <filter name="group_type" string="Tipo"
                             context="{'group_by': 'alert_type'}"/>
                     <filter name="group_severity" string="Severidad"

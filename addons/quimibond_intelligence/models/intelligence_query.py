@@ -10,8 +10,7 @@ class IntelligenceQuery(models.TransientModel):
     _name = 'intelligence.query'
     _description = 'Consulta al cerebro de inteligencia'
 
-    question = fields.Text(string='Pregunta', required=True,
-        placeholder='Ej: Que ha pasado con Polimeros del Norte?')
+    question = fields.Text(string='Pregunta', required=True)
     answer = fields.Html(string='Respuesta', readonly=True)
     context_used = fields.Text(string='Contexto utilizado', readonly=True)
 

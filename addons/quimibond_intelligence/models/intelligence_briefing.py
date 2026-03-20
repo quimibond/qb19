@@ -22,7 +22,7 @@ class IntelligenceBriefing(models.Model):
     alert_ids = fields.One2many(
         'intelligence.alert', 'briefing_id', string='Alertas')
     alert_count = fields.Integer(
-        string='Alertas', compute='_compute_alert_count')
+        string='Num. alertas', compute='_compute_alert_count')
     state = fields.Selection([
         ('draft', 'Generado'),
         ('reviewed', 'Revisado'),
@@ -33,3 +33,6 @@ class IntelligenceBriefing(models.Model):
     def _compute_alert_count(self):
         for rec in self:
             rec.alert_count = len(rec.alert_ids)
+
+    def action_mark_reviewed(self):
+        self.write({'state': 'reviewed'})

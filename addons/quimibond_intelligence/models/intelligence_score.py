@@ -27,8 +27,3 @@ class IntelligenceClientScore(models.Model):
         ('stable', 'Estable'),
         ('down', 'Bajando'),
     ], string='Tendencia', default='stable')
-
-    _sql_constraints = [
-        ('unique_partner_date', 'unique(partner_id, date)',
-         'Solo un score por contacto por dia'),
-    ]

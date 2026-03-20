@@ -27,9 +27,8 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="write" type="object" string="Marcar revisado"
+                    <button name="action_mark_reviewed" type="object" string="Marcar revisado"
                             class="btn-primary"
-                            context="{'default_state': 'reviewed'}"
                             invisible="state != 'draft'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,reviewed,archived"/>
