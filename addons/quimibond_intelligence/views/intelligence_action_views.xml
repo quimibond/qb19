@@ -76,7 +76,7 @@
                         domain="[('is_overdue','=',True)]"/>
                 <filter name="my" string="Mis pendientes"
                         domain="[('assignee_id','=',uid)]"/>
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter name="group_priority" string="Prioridad"
                             context="{'group_by': 'priority'}"/>
                     <filter name="group_partner" string="Contacto"
