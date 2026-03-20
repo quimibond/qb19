@@ -91,7 +91,7 @@
                 <filter name="severity_high" string="Alta severidad"
                         domain="[('severity','in',['high','critical'])]"/>
                 <separator/>
-                <group string="Agrupar por">
+                <group>
                     <filter name="group_type" string="Tipo"
                             context="{'group_by': 'alert_type'}"/>
                     <filter name="group_severity" string="Severidad"
