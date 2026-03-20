@@ -45,10 +45,29 @@ class IntelligenceEngine(models.Model):
     @api.model
     def run_daily_intelligence(self):
         """Método invocado por ir.cron cada día a las 19:00 CDMX."""
+        # Concurrency guard — prevent duplicate runs
+        lock_param = 'quimibond_intelligence.pipeline_running'
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(lock_param, 'false') == 'true':
+            _logger.warning('Pipeline ya está corriendo — abortando')
+            return
+        ICP.set_param(lock_param, 'true')
+
         start = time.time()
         today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
         _logger.info('═══ QUIMIBOND INTELLIGENCE — %s ═══', today)
 
+        try:
+            self._run_pipeline(today, start)
+        except Exception as exc:
+            _logger.error('═══ PIPELINE FALLÓ: %s ═══', exc, exc_info=True)
+        finally:
+            ICP.set_param(lock_param, 'false')
+            elapsed = time.time() - start
+            _logger.info('═══ PIPELINE FINALIZADO en %.1f segundos ═══', elapsed)
+
+    def _run_pipeline(self, today: str, start: float):
+        """Ejecuta el pipeline completo. Separado para manejo de errores."""
         # ── Cargar configuración ──────────────────────────────────────────────
         cfg = self._load_config()
         if not cfg:
@@ -258,8 +277,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando en Odoo: %s', exc)
 
-        elapsed = time.time() - start
-        _logger.info('═══ PIPELINE COMPLETADO en %.1f segundos ═══', elapsed)
+        _logger.info('Pipeline completado exitosamente')
 
     # ══════════════════════════════════════════════════════════════════════════
     #   PUNTO DE ENTRADA: REPORTE SEMANAL (lunes 8am)
@@ -1303,8 +1321,8 @@ class IntelligenceEngine(models.Model):
         lines = []
         for i, e in enumerate(emails, 1):
             lines.append(f'--- EMAIL {i} ---')
-            lines.append(f'De: {e["from"]}')
-            lines.append(f'Para: {e["to"]}')
+            lines.append(f'De: {e.get("from", "")}')
+            lines.append(f'Para: {e.get("to", "")}')
             if e.get('cc'):
                 lines.append(f'CC: {e["cc"]}')
             lines.append(f'Asunto: {e["subject"]}')
@@ -2360,7 +2378,7 @@ class IntelligenceEngine(models.Model):
 </head>
 <body>
 <div class="header">
-  <h1>{'📊' if weekly else '🧠'} Quimibond {title}</h1>
+  <h1>Quimibond {title}</h1>
   <p style="margin:5px 0 0;opacity:0.9">{today} — Generado por Intelligence System v19</p>
 </div>
 {body_html}

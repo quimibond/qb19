@@ -48,7 +48,11 @@ class ClaudeService:
                     resp = client.post(CLAUDE_ENDPOINT, headers=headers,
                                        json=payload)
                 if resp.status_code == 200:
-                    return resp.json()['content'][0]['text']
+                    data = resp.json()
+                    content = data.get('content', [])
+                    if not content or 'text' not in content[0]:
+                        raise RuntimeError('Claude response missing content text')
+                    return content[0]['text']
 
                 # Rate limit
                 if resp.status_code == 429:
