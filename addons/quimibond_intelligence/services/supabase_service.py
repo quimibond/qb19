@@ -273,3 +273,91 @@ class SupabaseService:
         self._request(path, 'POST', batch, {
             'Prefer': f'resolution={resolution},return=minimal',
         })
+
+    # ── Knowledge Graph ──────────────────────────────────────────────────────
+
+    def upsert_entity(self, entity):
+        """Inserta o actualiza una entidad en el knowledge graph."""
+        canonical = entity.get('name', '').lower().strip()
+        data = {
+            'entity_type': entity.get('type', 'person'),
+            'name': entity.get('name', ''),
+            'canonical_name': canonical,
+            'email': entity.get('email'),
+            'attributes': entity.get('attributes', {}),
+            'last_seen': entity.get('date', None),
+        }
+        # Upsert por tipo + canonical_name
+        return self._request(
+            '/rest/v1/entities',
+            method='POST',
+            json_data=data,
+            extra_headers={
+                'Prefer': 'resolution=merge-duplicates,return=representation',
+            },
+        )
+
+    def save_entity_mention(self, mention):
+        """Guarda una mencion de entidad en un email."""
+        return self._request(
+            '/rest/v1/entity_mentions',
+            method='POST',
+            json_data=mention,
+        )
+
+    def save_fact(self, fact):
+        """Guarda un hecho extraido."""
+        return self._request(
+            '/rest/v1/facts',
+            method='POST',
+            json_data=fact,
+        )
+
+    def save_action_item(self, item):
+        """Guarda un action item."""
+        return self._request(
+            '/rest/v1/action_items',
+            method='POST',
+            json_data=item,
+        )
+
+    def save_relationship(self, rel):
+        """Guarda o actualiza una relacion entre entidades."""
+        return self._request(
+            '/rest/v1/entity_relationships',
+            method='POST',
+            json_data=rel,
+            extra_headers={
+                'Prefer': 'resolution=merge-duplicates,return=representation',
+            },
+        )
+
+    def get_entity_by_name(self, name):
+        """Busca una entidad por nombre."""
+        canonical = name.lower().strip()
+        result = self._request(
+            '/rest/v1/entities?canonical_name=eq.' + canonical + '&limit=1',
+        )
+        return result[0] if result else None
+
+    def get_entity_intelligence(self, name=None, email=None):
+        """Llama al RPC get_entity_intelligence."""
+        params = {}
+        if email:
+            params['p_email'] = email
+        elif name:
+            params['p_name'] = name
+        return self._request(
+            '/rest/v1/rpc/get_entity_intelligence',
+            method='POST',
+            json_data=params,
+        )
+
+    def get_pending_actions(self, email='jose.mizrahi@quimibond.com'):
+        """Obtiene action items pendientes."""
+        return self._request(
+            '/rest/v1/rpc/get_my_pending_actions',
+            method='POST',
+            json_data={'p_assignee_email': email},
+        )
+

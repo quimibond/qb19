@@ -4,3 +4,4 @@ access_intelligence_briefing_admin,intelligence.briefing admin,model_intelligenc
 access_intelligence_alert_admin,intelligence.alert admin,model_intelligence_alert,base.group_system,1,1,1,1
 access_intelligence_score_admin,intelligence.client.score admin,model_intelligence_client_score,base.group_system,1,1,1,1
 access_intelligence_query_admin,intelligence.query admin,model_intelligence_query,base.group_system,1,1,1,1
+access_intelligence_action_admin,intelligence.action.item admin,model_intelligence_action_item,base.group_system,1,1,1,1

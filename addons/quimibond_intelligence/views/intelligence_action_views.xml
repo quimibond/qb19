@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_action_tree" model="ir.ui.view">
+        <field name="name">intelligence.action.item.tree</field>
+        <field name="model">intelligence.action.item</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="is_overdue"
+                  decoration-muted="state in ('done','cancelled')">
+                <field name="priority" widget="priority"/>
+                <field name="name"/>
+                <field name="action_type"/>
+                <field name="partner_id"/>
+                <field name="due_date"/>
+                <field name="assignee_id" widget="many2one_avatar_user"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-info="state == 'in_progress'"
+                       decoration-danger="state == 'open' and is_overdue"/>
+                <field name="is_overdue" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_action_form" model="ir.ui.view">
+        <field name="name">intelligence.action.item.form</field>
+        <field name="model">intelligence.action.item</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_start" type="object"
+                            string="Iniciar" class="btn-primary"
+                            invisible="state != 'open'"/>
+                    <button name="action_done" type="object"
+                            string="Completar" class="btn-success"
+                            invisible="state in ('done','cancelled')"/>
+                    <button name="action_cancel" type="object"
+                            string="Cancelar"
+                            invisible="state in ('done','cancelled')"/>
+                    <button name="action_reopen" type="object"
+                            string="Reabrir"
+                            invisible="state not in ('done','cancelled')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="open,in_progress,done"/>
+                </header>
+                <sheet>
+                    <group col="4">
+                        <field name="name" colspan="4"/>
+                        <field name="action_type"/>
+                        <field name="priority"/>
+                        <field name="due_date"/>
+                        <field name="assignee_id"/>
+                        <field name="partner_id"/>
+                        <field name="source_account"/>
+                        <field name="source_date"/>
+                    </group>
+                    <group>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_action_search" model="ir.ui.view">
+        <field name="name">intelligence.action.item.search</field>
+        <field name="model">intelligence.action.item</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <filter name="open" string="Abiertos"
+                        domain="[('state','in',['open','in_progress'])]"/>
+                <filter name="overdue" string="Vencidos"
+                        domain="[('is_overdue','=',True)]"/>
+                <filter name="my" string="Mis pendientes"
+                        domain="[('assignee_id','=',uid)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_priority" string="Prioridad"
+                            context="{'group_by': 'priority'}"/>
+                    <filter name="group_partner" string="Contacto"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_type" string="Tipo"
+                            context="{'group_by': 'action_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_action_items" model="ir.actions.act_window">
+        <field name="name">Pendientes</field>
+        <field name="res_model">intelligence.action.item</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+
+</odoo>

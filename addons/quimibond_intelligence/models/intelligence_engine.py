@@ -167,6 +167,13 @@ class IntelligenceEngine(models.AbstractModel):
         except Exception as exc:
             _logger.error('Error guardando daily summary: %s', exc)
 
+
+        # ======================================================================
+        #  FASE 7.5: Knowledge Graph — Extraccion de entidades y hechos
+        # ======================================================================
+        _logger.info('-- FASE 7.5: Knowledge Graph --')
+        self._feed_knowledge_graph(emails, claude, supa, today)
+
         # ══════════════════════════════════════════════════════════════════════
         #  FASE 8: Embeddings (Voyage AI)
         # ══════════════════════════════════════════════════════════════════════
@@ -922,6 +929,112 @@ class IntelligenceEngine(models.AbstractModel):
     # ── HTML wrapper ──────────────────────────────────────────────────────────
 
     @staticmethod
+    def _feed_knowledge_graph(self, emails, claude, supa, today):
+        from collections import defaultdict
+        by_account = defaultdict(list)
+        for e in emails:
+            by_account[e['account']].append(e)
+
+        ActionItem = self.env['intelligence.action.item'].sudo()
+        Partner = self.env['res.partner'].sudo()
+
+        for account, acct_emails in by_account.items():
+            if not acct_emails:
+                continue
+            email_text = self._format_emails_for_claude(acct_emails, {})
+            try:
+                kg = claude.extract_knowledge(email_text, account)
+            except Exception as exc:
+                _logger.warning('KG extraction failed for %s: %s', account, exc)
+                continue
+
+            # Guardar entidades
+            entity_map = {}
+            for ent in kg.get('entities', []):
+                try:
+                    result = supa.upsert_entity(ent)
+                    if result and isinstance(result, list) and result:
+                        entity_map[ent['name']] = result[0].get('id')
+                except Exception:
+                    pass
+
+            # Guardar hechos
+            for fact in kg.get('facts', []):
+                ent_name = fact.get('entity_name', '')
+                ent_id = entity_map.get(ent_name)
+                if not ent_id:
+                    existing = supa.get_entity_by_name(ent_name)
+                    ent_id = existing.get('id') if existing else None
+                if ent_id:
+                    try:
+                        supa.save_fact({
+                            'entity_id': ent_id,
+                            'fact_type': fact.get('type', 'information'),
+                            'fact_text': fact.get('text', ''),
+                            'fact_date': fact.get('date'),
+                            'is_future': fact.get('is_future', False),
+                            'confidence': fact.get('confidence', 0.5),
+                            'source_account': account,
+                        })
+                    except Exception:
+                        pass
+
+            # Guardar action items en Supabase + Odoo
+            for item in kg.get('action_items', []):
+                try:
+                    # Supabase
+                    assignee_ent = supa.get_entity_by_name(item.get('assignee', ''))
+                    related_ent = supa.get_entity_by_name(item.get('related_to', ''))
+                    supa.save_action_item({
+                        'assignee_entity_id': assignee_ent.get('id') if assignee_ent else None,
+                        'assignee_name': item.get('assignee', ''),
+                        'related_entity_id': related_ent.get('id') if related_ent else None,
+                        'description': item.get('description', ''),
+                        'action_type': item.get('type', 'other'),
+                        'priority': item.get('priority', 'medium'),
+                        'due_date': item.get('due_date'),
+                        'source_briefing_date': today,
+                    })
+                    # Odoo
+                    partner = False
+                    related = item.get('related_to', '')
+                    if related:
+                        partner = Partner.search([
+                            '|', ('name', 'ilike', related),
+                            ('email', 'ilike', related),
+                        ], limit=1)
+                    ActionItem.create({
+                        'name': item.get('description', '')[:200],
+                        'action_type': item.get('type', 'other'),
+                        'priority': item.get('priority', 'medium'),
+                        'due_date': item.get('due_date') or False,
+                        'partner_id': partner.id if partner else False,
+                        'source_date': today,
+                        'source_account': account,
+                    })
+                except Exception as exc:
+                    _logger.debug('Action item save error: %s', exc)
+
+            # Guardar relaciones
+            for rel in kg.get('relationships', []):
+                a_id = entity_map.get(rel.get('entity_a'))
+                b_id = entity_map.get(rel.get('entity_b'))
+                if a_id and b_id:
+                    try:
+                        supa.save_relationship({
+                            'entity_a_id': a_id,
+                            'entity_b_id': b_id,
+                            'relationship_type': rel.get('type', 'mentioned_with'),
+                            'context': rel.get('context', ''),
+                        })
+                    except Exception:
+                        pass
+
+            import time as _time
+            _time.sleep(3)
+
+        _logger.info('Knowledge graph alimentado')
+
     def _save_to_odoo(self, today, briefing_html, emails, alerts,
                       client_scores, contacts, execution_secs):
         Briefing = self.env["intelligence.briefing"].sudo()

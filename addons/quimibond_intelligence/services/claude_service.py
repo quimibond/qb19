@@ -177,6 +177,53 @@ class ClaudeService:
         return []
 
 
+
+    def extract_knowledge(self, emails_text, account):
+        schema = (
+            '{"entities": [{"name": "str", "type": "person|company|product|machine|raw_material",'
+            ' "email": "str or null", "attributes": {}}],'
+            ' "facts": [{"entity_name": "str",'
+            ' "type": "commitment|statement|price|quantity|delivery_date|payment|complaint|request|'
+            'approval|rejection|information|change",'
+            ' "text": "str", "date": "YYYY-MM-DD or null", "is_future": false, "confidence": 0.8}],'
+            ' "action_items": [{"assignee": "str", "related_to": "str", "description": "str",'
+            ' "type": "call|email|meeting|follow_up|send_quote|send_invoice|review|approve|deliver|'
+            'pay|investigate|other",'
+            ' "priority": "low|medium|high|critical", "due_date": "YYYY-MM-DD or null"}],'
+            ' "relationships": [{"entity_a": "str", "entity_b": "str",'
+            ' "type": "works_at|buys_from|sells_to|manages|supplies|manufactures|'
+            'negotiates_with|mentioned_with",'
+            ' "context": "str"}]}'
+        )
+        prompt = (
+            'Analiza emails de ' + account
+            + ' de Quimibond (textiles no tejidos, Mexico).\n\n'
+            + 'EMAILS:\n' + emails_text[:12000]
+            + '\n\nExtrae en JSON schema:\n' + schema
+            + '\n\nREGLAS: Solo info EXPLICITA. '
+            + 'Facts = datos verificables. '
+            + 'Confidence 0.8+ claros, 0.3-0.5 implicitos. '
+            + 'Solo JSON valido.'
+        )
+        try:
+            raw = self._call(prompt, max_tokens=3000)
+            raw = raw.strip()
+            if raw.startswith('`' * 3):
+                lines = raw.split('\n')
+                raw = '\n'.join(lines[1:])
+                if raw.endswith('`' * 3):
+                    raw = raw[:-3]
+            import json
+            return json.loads(raw)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning('KG extract fail: %s', exc)
+            return {
+                'entities': [], 'facts': [],
+                'action_items': [], 'relationships': [],
+            }
+
+
 class VoyageService:
     """Genera embeddings con Voyage AI para memoria semántica."""
 

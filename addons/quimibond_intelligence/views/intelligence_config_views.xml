@@ -91,6 +91,12 @@
               action="action_alerts"
               sequence="20"/>
 
+    <menuitem id="menu_intelligence_actions"
+              name="Pendientes"
+              parent="menu_intelligence_root"
+              action="action_action_items"
+              sequence="30"/>
+
     <menuitem id="menu_intelligence_config"
               name="Configuracion"
               parent="menu_intelligence_root"
