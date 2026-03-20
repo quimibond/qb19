@@ -8,38 +8,75 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="Inteligencia" name="intelligence">
-                    <group col="4">
-                        <field name="intelligence_score" string="Score"/>
-                        <field name="intelligence_risk" string="Riesgo"/>
-                        <field name="intelligence_alert_count"
-                               string="Alertas abiertas"/>
+                    <group col="6">
+                        <div class="o_stat_info text-center">
+                            <span class="o_stat_value">
+                                <field name="intelligence_score" class="oe_inline"/>
+                                <span class="text-muted">/100</span>
+                            </span>
+                            <span class="o_stat_text">Score</span>
+                        </div>
+                        <div class="o_stat_info text-center">
+                            <span class="o_stat_value">
+                                <field name="intelligence_risk" class="oe_inline"
+                                       widget="badge"
+                                       decoration-danger="intelligence_risk == 'high'"
+                                       decoration-warning="intelligence_risk == 'medium'"
+                                       decoration-success="intelligence_risk == 'low'"/>
+                            </span>
+                            <span class="o_stat_text">Riesgo</span>
+                        </div>
+                        <div class="o_stat_info text-center">
+                            <span class="o_stat_value">
+                                <field name="intelligence_alert_count" class="oe_inline"/>
+                            </span>
+                            <span class="o_stat_text">Alertas abiertas</span>
+                        </div>
                     </group>
-                    <separator string="Historial de scores"/>
-                    <field name="intelligence_score_ids">
-                        <list>
-                            <field name="date"/>
-                            <field name="total_score"/>
-                            <field name="frequency_score"/>
-                            <field name="responsiveness_score"/>
-                            <field name="reciprocity_score"/>
-                            <field name="sentiment_score"/>
-                            <field name="risk_level" widget="badge"
-                                   decoration-danger="risk_level == 'high'"
-                                   decoration-warning="risk_level == 'medium'"
-                                   decoration-success="risk_level == 'low'"/>
-                            <field name="score_trend"/>
-                        </list>
-                    </field>
-                    <separator string="Alertas"/>
-                    <field name="intelligence_alert_ids">
-                        <list>
-                            <field name="create_date" string="Fecha"/>
-                            <field name="severity" widget="badge"/>
-                            <field name="alert_type"/>
-                            <field name="name"/>
-                            <field name="state" widget="badge"/>
-                        </list>
-                    </field>
+                    <notebook>
+                        <page string="Historial de Scores" name="scores">
+                            <field name="intelligence_score_ids" readonly="1">
+                                <list>
+                                    <field name="date"/>
+                                    <field name="total_score" string="Score"
+                                           decoration-danger="total_score &lt; 35"
+                                           decoration-warning="total_score &lt; 60"
+                                           decoration-success="total_score >= 60"/>
+                                    <field name="frequency_score" string="Frecuencia" optional="show"/>
+                                    <field name="responsiveness_score" string="Respuesta" optional="show"/>
+                                    <field name="reciprocity_score" string="Reciprocidad" optional="show"/>
+                                    <field name="sentiment_score" string="Sentimiento" optional="show"/>
+                                    <field name="risk_level" widget="badge"
+                                           decoration-danger="risk_level == 'high'"
+                                           decoration-warning="risk_level == 'medium'"
+                                           decoration-success="risk_level == 'low'"/>
+                                    <field name="score_trend" widget="badge"
+                                           decoration-success="score_trend == 'up'"
+                                           decoration-danger="score_trend == 'down'"
+                                           decoration-muted="score_trend == 'stable'"
+                                           optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Alertas" name="alerts"
+                              badge="intelligence_alert_count">
+                            <field name="intelligence_alert_ids" readonly="1">
+                                <list decoration-danger="state == 'open' and severity in ('high','critical')"
+                                      decoration-muted="state in ('resolved','dismissed')">
+                                    <field name="create_date" string="Fecha" widget="date"/>
+                                    <field name="severity" widget="badge"
+                                           decoration-danger="severity in ('critical','high')"
+                                           decoration-warning="severity == 'medium'"
+                                           decoration-info="severity == 'low'"/>
+                                    <field name="alert_type"/>
+                                    <field name="name"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'resolved'"
+                                           decoration-danger="state == 'open'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </page>
             </xpath>
         </field>
