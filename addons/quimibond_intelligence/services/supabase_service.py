@@ -202,10 +202,12 @@ class SupabaseService:
     # ── Client Scores ────────────────────────────────────────────────────────
 
     def save_client_scores(self, scores: list, today: str):
+        import urllib.parse
         for s in scores:
             try:
+                encoded_email = urllib.parse.quote(s["email"], safe='')
                 self._request(
-                    f'/rest/v1/contacts?email=eq.{s["email"]}', 'PATCH', {
+                    f'/rest/v1/contacts?email=eq.{encoded_email}', 'PATCH', {
                         'relationship_score': s['total_score'],
                         'risk_level': s['risk_level'],
                         'last_score_date': today,

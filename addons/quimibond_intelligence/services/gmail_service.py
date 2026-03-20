@@ -14,6 +14,8 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from ..models.intelligence_config import INTERNAL_DOMAIN
+
 _logger = logging.getLogger(__name__)
 
 # Etiquetas que excluimos al materializar mensajes desde history (equiv. a la query bootstrap)
@@ -217,7 +219,7 @@ class GmailService:
         sender_email = self._extract_email(from_header)
         sender_name = self._extract_name(from_header)
         subject = headers.get('subject', '(Sin asunto)')
-        is_internal = sender_email.endswith('@quimibond.com') if sender_email else False
+        is_internal = sender_email.endswith(f'@{INTERNAL_DOMAIN}') if sender_email else False
 
         in_reply_to = headers.get('in-reply-to', '')
         references = headers.get('references', '')

@@ -929,7 +929,7 @@ class IntelligenceEngine(models.Model):
         if models.get('calendar_event'):
             events = models['calendar_event'].search([
                 ('partner_ids', 'in', pid),
-                ('start', '>=', datetime.now().strftime('%Y-%m-%d')),
+                ('start', '>=', fields.Datetime.now()),
             ], order='start asc', limit=5)
 
             ctx['upcoming_meetings'] = [{

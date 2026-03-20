@@ -150,9 +150,9 @@ class IntelligenceQuery(models.TransientModel):
                         info += ' Facturas pendientes: $%s' % '{:,.0f}'.format(total)
                 if p.supplier_rank > 0:
                     info += ' [PROVEEDOR]'
-                if p.intelligence_score:
+                if getattr(p, 'intelligence_score', 0):
                     info += ' Score: %d/100 Riesgo: %s' % (
-                        p.intelligence_score, p.intelligence_risk or 'N/A')
+                        p.intelligence_score, getattr(p, 'intelligence_risk', None) or 'N/A')
                 parts.append(info)
 
         # Buscar ventas si la pregunta menciona ventas/pedidos
