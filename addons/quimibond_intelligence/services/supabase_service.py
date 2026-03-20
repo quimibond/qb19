@@ -11,6 +11,17 @@ import httpx
 _logger = logging.getLogger(__name__)
 
 
+def _postgrest_in_list(values: list) -> str:
+    """Construye la lista `in.(...)` para filtros PostgREST."""
+    parts = []
+    for s in values:
+        if not s:
+            continue
+        esc = str(s).replace('\\', '\\\\').replace('"', '\\"')
+        parts.append(f'"{esc}"')
+    return ','.join(parts)
+
+
 class SupabaseService:
     """Cliente para Supabase REST API (PostgREST)."""
 
@@ -66,6 +77,7 @@ class SupabaseService:
                 'is_reply': email['is_reply'],
                 'sender_type': email['sender_type'],
                 'has_attachments': email['has_attachments'],
+                'kg_processed': email.get('kg_processed', False),
             })
             if len(batch) >= 50:
                 self._upsert_batch('/rest/v1/emails?on_conflict=gmail_message_id',
@@ -295,18 +307,15 @@ class SupabaseService:
 
     def save_entity_mention(self, mention):
         """Guarda una mencion de entidad en un email."""
-        return self._request(
-'/rest/v1/entity_mentions', 'POST', mention)
+        return self._request('/rest/v1/entity_mentions', 'POST', mention)
 
     def save_fact(self, fact):
         """Guarda un hecho extraido."""
-        return self._request(
-'/rest/v1/facts', 'POST', fact)
+        return self._request('/rest/v1/facts', 'POST', fact)
 
     def save_action_item(self, item):
         """Guarda un action item."""
-        return self._request(
-'/rest/v1/action_items', 'POST', item)
+        return self._request('/rest/v1/action_items', 'POST', item)
 
     def save_relationship(self, rel):
         """Guarda o actualiza una relacion entre entidades."""
@@ -332,15 +341,86 @@ class SupabaseService:
             params['p_name'] = name
         return self._request(
             '/rest/v1/rpc/get_entity_intelligence',
-            method='POST',
-            json_data=params,
+            'POST',
+            params,
         )
 
     def get_pending_actions(self, email='jose.mizrahi@quimibond.com'):
         """Obtiene action items pendientes."""
         return self._request(
             '/rest/v1/rpc/get_my_pending_actions',
-            method='POST',
-            json_data={'p_assignee_email': email},
+            'POST',
+            {'p_assignee_email': email},
         )
+
+    def get_gmail_message_ids_with_embedding(self, gmail_message_ids: list) -> set:
+        """IDs que ya tienen embedding en Supabase (consulta por lotes)."""
+        if not gmail_message_ids:
+            return set()
+        found = set()
+        chunk = 80
+        for i in range(0, len(gmail_message_ids), chunk):
+            part = gmail_message_ids[i:i + chunk]
+            enc = _postgrest_in_list(part)
+            if not enc:
+                continue
+            try:
+                rows = self._request(
+                    '/rest/v1/emails?select=gmail_message_id'
+                    f'&gmail_message_id=in.({enc})'
+                    '&embedding=not.is.null',
+                )
+                if isinstance(rows, list):
+                    for r in rows:
+                        gid = r.get('gmail_message_id')
+                        if gid:
+                            found.add(gid)
+            except Exception as exc:
+                _logger.debug('get_gmail_message_ids_with_embedding: %s', exc)
+        return found
+
+    def get_gmail_message_ids_kg_processed(self, gmail_message_ids: list) -> set:
+        """IDs ya marcados como kg_processed=true."""
+        if not gmail_message_ids:
+            return set()
+        found = set()
+        chunk = 80
+        for i in range(0, len(gmail_message_ids), chunk):
+            part = gmail_message_ids[i:i + chunk]
+            enc = _postgrest_in_list(part)
+            if not enc:
+                continue
+            try:
+                rows = self._request(
+                    '/rest/v1/emails?select=gmail_message_id'
+                    f'&gmail_message_id=in.({enc})'
+                    '&kg_processed=eq.true',
+                )
+                if isinstance(rows, list):
+                    for r in rows:
+                        gid = r.get('gmail_message_id')
+                        if gid:
+                            found.add(gid)
+            except Exception as exc:
+                _logger.debug('get_gmail_message_ids_kg_processed: %s', exc)
+        return found
+
+    def mark_emails_kg_processed(self, gmail_message_ids: list):
+        """Marca emails como procesados por el knowledge graph."""
+        if not gmail_message_ids:
+            return
+        chunk = 80
+        for i in range(0, len(gmail_message_ids), chunk):
+            part = [x for x in gmail_message_ids[i:i + chunk] if x]
+            if not part:
+                continue
+            enc = _postgrest_in_list(part)
+            try:
+                self._request(
+                    f'/rest/v1/emails?gmail_message_id=in.({enc})',
+                    'PATCH',
+                    {'kg_processed': True},
+                )
+            except Exception as exc:
+                _logger.debug('mark_emails_kg_processed: %s', exc)
 

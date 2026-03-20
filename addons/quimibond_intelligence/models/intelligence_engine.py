@@ -57,10 +57,14 @@ class IntelligenceEngine(models.AbstractModel):
         gmail, claude, voyage, supa = self._init_services(cfg)
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 1: Leer emails de las 22 cuentas
+        #  FASE 1: Leer emails de las 22 cuentas (incremental por historyId)
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 1: Lectura de emails ──')
-        result = gmail.read_all_accounts(EMAIL_ACCOUNTS, max_workers=5)
+        gmail_history_state = self._load_gmail_history_state()
+        result = gmail.read_all_accounts(
+            EMAIL_ACCOUNTS, history_state=gmail_history_state, max_workers=5,
+        )
+        self._save_gmail_history_state(result['gmail_history_state'])
         all_emails = result['emails']
         _logger.info('Total bruto: %d emails (%d cuentas OK, %d fallidas)',
                       len(all_emails), result['success_count'], result['failed_count'])
@@ -274,6 +278,26 @@ class IntelligenceEngine(models.AbstractModel):
     # ══════════════════════════════════════════════════════════════════════════
     #   HELPERS INTERNOS
     # ══════════════════════════════════════════════════════════════════════════
+
+    def _load_gmail_history_state(self) -> dict:
+        """Cuenta Gmail → último historyId sincronizado (JSON en ir.config_parameter)."""
+        raw = (
+            self.env['ir.config_parameter'].sudo()
+            .get_param('quimibond_intelligence.gmail_history_state', '{}')
+        )
+        try:
+            data = json.loads(raw) if raw else {}
+            return data if isinstance(data, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+
+    def _save_gmail_history_state(self, state: dict):
+        if not state:
+            return
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_intelligence.gmail_history_state',
+            json.dumps(state),
+        )
 
     def _load_config(self):
         """Carga toda la configuración desde ir.config_parameter."""
@@ -902,8 +926,25 @@ class IntelligenceEngine(models.AbstractModel):
         to_embed = [
             e for e in emails
             if len(e.get('body', '') or e.get('snippet', '')) > 50
+            and e.get('gmail_message_id')
         ]
         if not to_embed:
+            return
+
+        gids = [e['gmail_message_id'] for e in to_embed]
+        try:
+            already = supa.get_gmail_message_ids_with_embedding(gids)
+        except Exception as exc:
+            _logger.warning('Consulta embeddings existentes falló (%s); se generan todos',
+                            exc)
+            already = set()
+        if already:
+            to_embed = [e for e in to_embed
+                        if e['gmail_message_id'] not in already]
+            _logger.info('Embeddings: omitiendo %d ya presentes en Supabase',
+                         len(already))
+        if not to_embed:
+            _logger.info('Embeddings: nada pendiente')
             return
 
         # Procesar en lotes de 64
@@ -930,8 +971,29 @@ class IntelligenceEngine(models.AbstractModel):
 
     def _feed_knowledge_graph(self, emails, claude, supa, today):
         from collections import defaultdict
+        if not emails:
+            return
+
+        gids = [e['gmail_message_id'] for e in emails if e.get('gmail_message_id')]
+        try:
+            kg_done = supa.get_gmail_message_ids_kg_processed(gids)
+        except Exception as exc:
+            _logger.warning(
+                'KG: no se pudo leer kg_processed (%s); se procesan todos los emails',
+                exc,
+            )
+            kg_done = set()
+
+        pending = [
+            e for e in emails
+            if e.get('gmail_message_id') and e['gmail_message_id'] not in kg_done
+        ]
+        if not pending:
+            _logger.info('Knowledge graph: todos los emails ya estaban procesados')
+            return
+
         by_account = defaultdict(list)
-        for e in emails:
+        for e in pending:
             by_account[e['account']].append(e)
 
         ActionItem = self.env['intelligence.action.item'].sudo()
@@ -1030,6 +1092,14 @@ class IntelligenceEngine(models.AbstractModel):
                         pass
 
             import time as _time
+            batch_ids = [
+                e['gmail_message_id'] for e in acct_emails
+                if e.get('gmail_message_id')
+            ]
+            try:
+                supa.mark_emails_kg_processed(batch_ids)
+            except Exception as exc:
+                _logger.warning('KG mark_processed %s: %s', account, exc)
             _time.sleep(3)
 
         _logger.info('Knowledge graph alimentado')

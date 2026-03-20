@@ -5,16 +5,21 @@ Usa google-auth + google-api-python-client en vez de OAuth2 de Apps Script.
 Soporta lectura paralela con ThreadPoolExecutor.
 """
 import base64
-import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
+from typing import Dict, Optional, Tuple
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 _logger = logging.getLogger(__name__)
+
+# Etiquetas que excluimos al materializar mensajes desde history (equiv. a la query bootstrap)
+_SKIP_LABEL_IDS = frozenset({
+    'SPAM', 'CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL',
+})
 
 SCOPES_READ = ['https://www.googleapis.com/auth/gmail.readonly']
 SCOPES_SEND = ['https://www.googleapis.com/auth/gmail.send']
@@ -38,21 +43,65 @@ class GmailService:
 
     # ── Lectura de emails ────────────────────────────────────────────────────
 
-    def fetch_emails(self, account: str, max_results: int = 50) -> list:
-        """Lee emails de las últimas 24h de una cuenta."""
+    def fetch_emails(
+        self, account: str, max_results: int = 50,
+        start_history_id: Optional[str] = None,
+    ) -> Tuple[list, Optional[str]]:
+        """Lee correos nuevos desde ``start_history_id`` (history.list) o bootstrap 24h.
+
+        Retorna ``(emails, profile_history_id)`` para persistir en la siguiente corrida.
+        """
         try:
             service = self._get_service(account, SCOPES_READ)
-            query = 'newer_than:1d -in:spam -category:promotions -category:social'
-            result = service.users().messages().list(
-                userId='me', q=query, maxResults=max_results,
-            ).execute()
-            messages = result.get('messages', [])
         except Exception as exc:
             _logger.error('Gmail error [%s]: %s', account, exc)
             raise
 
+        use_bootstrap = not start_history_id
+        new_ids = set()
+
+        if start_history_id:
+            try:
+                new_ids = self._collect_message_ids_from_history(
+                    service, start_history_id,
+                )
+            except HttpError as exc:
+                status = getattr(getattr(exc, 'resp', None), 'status', None)
+                if status == 404:
+                    _logger.warning(
+                        'Gmail historyId obsoleto [%s] — resync 24h', account,
+                    )
+                    use_bootstrap = True
+                else:
+                    raise
+
         emails = []
-        for msg_stub in messages:
+        if not use_bootstrap:
+            _logger.info('%s: %d mensajes nuevos (history)', account, len(new_ids))
+            for mid in new_ids:
+                try:
+                    detail = service.users().messages().get(
+                        userId='me', id=mid, format='full',
+                    ).execute()
+                    if self._should_skip_message(detail):
+                        continue
+                    emails.append(self._parse_message(detail, account))
+                except Exception as exc:
+                    _logger.warning('  Skip msg %s: %s', mid, exc)
+            return emails, self._profile_history_id(service)
+
+        query = 'newer_than:1d -in:spam -category:promotions -category:social'
+        try:
+            result = service.users().messages().list(
+                userId='me', q=query, maxResults=max_results,
+            ).execute()
+            stubs = result.get('messages', [])
+        except Exception as exc:
+            _logger.error('Gmail list [%s]: %s', account, exc)
+            raise
+
+        _logger.info('%s: bootstrap list → %d hilos', account, len(stubs))
+        for msg_stub in stubs:
             try:
                 detail = service.users().messages().get(
                     userId='me', id=msg_stub['id'], format='full',
@@ -60,25 +109,71 @@ class GmailService:
                 emails.append(self._parse_message(detail, account))
             except Exception as exc:
                 _logger.warning('  Skip msg %s: %s', msg_stub['id'], exc)
-        return emails
 
-    def read_all_accounts(self, accounts: list, max_workers: int = 5) -> dict:
-        """Lee TODAS las cuentas en paralelo. Retorna dict con resultados."""
+        return emails, self._profile_history_id(service)
+
+    @staticmethod
+    def _profile_history_id(service) -> Optional[str]:
+        try:
+            profile = service.users().getProfile(userId='me').execute()
+            return profile.get('historyId')
+        except Exception:
+            return None
+
+    @staticmethod
+    def _should_skip_message(detail: dict) -> bool:
+        labels = set(detail.get('labelIds') or [])
+        return bool(labels & _SKIP_LABEL_IDS)
+
+    @staticmethod
+    def _collect_message_ids_from_history(service, start_history_id: str) -> set:
+        """IDs añadidos al buzón desde ``start_history_id`` (paginado)."""
+        found = set()
+        page_token = None
+        while True:
+            kwargs = {
+                'userId': 'me',
+                'startHistoryId': str(start_history_id),
+                'historyTypes': ['messageAdded'],
+            }
+            if page_token:
+                kwargs['pageToken'] = page_token
+            result = service.users().history().list(**kwargs).execute()
+            for record in result.get('history', []):
+                for added in record.get('messagesAdded', []):
+                    mid = (added.get('message') or {}).get('id')
+                    if mid:
+                        found.add(mid)
+            page_token = result.get('nextPageToken')
+            if not page_token:
+                break
+        return found
+
+    def read_all_accounts(
+        self, accounts: list, history_state: Optional[Dict[str, str]] = None,
+        max_workers: int = 5,
+    ) -> dict:
+        """Lee todas las cuentas en paralelo; ``history_state`` es account → historyId."""
+        history_state = dict(history_state or {})
         all_emails = []
         success_count = 0
         failed_accounts = []
+        new_history_state = dict(history_state)
 
         def _read_one(acct):
-            return acct, self.fetch_emails(acct)
+            start_hid = history_state.get(acct)
+            return acct, self.fetch_emails(acct, start_history_id=start_hid)
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = {pool.submit(_read_one, acct): acct for acct in accounts}
             for future in as_completed(futures):
                 acct = futures[future]
                 try:
-                    _, emails = future.result()
+                    _, (emails, new_hid) = future.result()
                     all_emails.extend(emails)
                     success_count += 1
+                    if new_hid:
+                        new_history_state[acct] = new_hid
                     _logger.info('[%d/%d] %s → %d emails',
                                  success_count + len(failed_accounts),
                                  len(accounts), acct, len(emails))
@@ -91,6 +186,7 @@ class GmailService:
             'success_count': success_count,
             'failed_count': len(failed_accounts),
             'failed_accounts': failed_accounts,
+            'gmail_history_state': new_history_state,
         }
 
     # ── Envío de emails ──────────────────────────────────────────────────────
