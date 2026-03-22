@@ -170,8 +170,24 @@ class IntelligenceEngine(models.Model):
             contacts, emails, threads, cfg,
             account_summaries=account_summaries,
         )
+        # Build sentiment map from Claude analysis for contacts.sentiment_score
+        contact_sentiments = {}
+        for s in account_summaries:
+            for ec in s.get('external_contacts', []):
+                email_addr = (ec.get('email') or '').lower()
+                if email_addr and ec.get('sentiment_score') is not None:
+                    try:
+                        contact_sentiments[email_addr] = float(
+                            ec['sentiment_score'],
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
         try:
-            supa.save_client_scores(client_scores, today)
+            supa.save_client_scores(
+                client_scores, today,
+                contact_sentiments=contact_sentiments,
+            )
         except Exception as exc:
             _logger.error('Error guardando client scores: %s', exc)
 
@@ -214,11 +230,15 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.error('Error guardando topics: %s', exc)
 
+        # Build key_events for daily_summaries (frontend urgency panel)
+        key_events = self._build_key_events(alerts, account_summaries)
+
         # Guardar briefing
         try:
             supa.save_daily_summary(
                 today, briefing_html, len(emails),
                 result['success_count'], result['failed_count'], len(topics),
+                key_events=key_events,
             )
         except Exception as exc:
             _logger.error('Error guardando daily summary: %s', exc)
@@ -1569,6 +1589,7 @@ class IntelligenceEngine(models.Model):
                         f"{t['hours_without_response']:.0f}h sin respuesta de "
                         f"{t['last_sender']} en {t['account']}"
                     ),
+                    'contact_name': t.get('last_sender'),
                     'account': t['account'],
                     'related_thread_id': t['gmail_thread_id'],
                 })
@@ -1580,6 +1601,7 @@ class IntelligenceEngine(models.Model):
                     'description': (
                         f"{t['hours_without_response']:.0f}h esperando en {t['account']}"
                     ),
+                    'contact_name': t.get('last_sender'),
                     'account': t['account'],
                     'related_thread_id': t['gmail_thread_id'],
                 })
@@ -1613,6 +1635,7 @@ class IntelligenceEngine(models.Model):
                         f"mencionado por {comp.get('mentioned_by', '?')}"
                     )[:120],
                     'description': comp.get('detail', comp.get('context', '')),
+                    'contact_name': comp.get('mentioned_by'),
                     'account': account,
                 })
 
@@ -1650,6 +1673,7 @@ class IntelligenceEngine(models.Model):
                             f"Sentimiento: {c_score}. "
                             f"Tema: {contact.get('topic', '?')}"
                         ),
+                        'contact_name': contact.get('name'),
                         'account': account,
                     })
 
@@ -1686,6 +1710,7 @@ class IntelligenceEngine(models.Model):
                         f"(máx {max_days}d) Y tiene emails sin responder. "
                         f"Riesgo de cobranza. Requiere acción inmediata."
                     ),
+                    'contact_name': p.get('name', email_addr),
                     'account': '',
                 })
 
@@ -1782,6 +1807,76 @@ class IntelligenceEngine(models.Model):
             })
 
         return scores
+
+    # ── Key Events para daily_summaries ──────────────────────────────────────
+
+    @staticmethod
+    def _build_key_events(alerts: list, account_summaries: list) -> list:
+        """Construye key_events JSON para daily_summaries.
+
+        El frontend usa esto para el panel de urgencias del dashboard.
+        Formato: [{"type": str, "description": str, "urgency": str}]
+        """
+        events = []
+
+        # Critical and high alerts → key events
+        severity_urgency = {
+            'critical': 'critical', 'high': 'high',
+            'medium': 'medium', 'low': 'low',
+        }
+        for a in (alerts or []):
+            sev = a.get('severity', 'low')
+            if sev in ('critical', 'high'):
+                events.append({
+                    'type': a.get('alert_type', 'alert'),
+                    'description': a.get('title', ''),
+                    'urgency': severity_urgency.get(sev, 'medium'),
+                })
+
+        # Urgent items from account summaries
+        for s in (account_summaries or []):
+            for item in s.get('urgent_items', []):
+                events.append({
+                    'type': 'urgent_item',
+                    'description': item.get('item', ''),
+                    'urgency': 'high',
+                })
+
+            # Competitors mentioned → key events
+            for comp in s.get('competitors_mentioned', []):
+                threat = comp.get('threat_level', 'medium')
+                events.append({
+                    'type': 'competitor',
+                    'description': (
+                        f"Competidor {comp.get('name', '?')} mencionado "
+                        f"por {comp.get('mentioned_by', '?')}"
+                    ),
+                    'urgency': 'high' if threat == 'high' else 'medium',
+                })
+
+            # At-risk contacts → key events
+            for contact in s.get('external_contacts', []):
+                signal = contact.get('relationship_signal', '')
+                if signal == 'at_risk':
+                    events.append({
+                        'type': 'churn_risk',
+                        'description': (
+                            f"Relación en riesgo: "
+                            f"{contact.get('name', '?')} "
+                            f"({contact.get('company', '?')})"
+                        ),
+                        'urgency': 'high',
+                    })
+
+        # Dedupe and limit
+        seen = set()
+        unique = []
+        for e in events:
+            key = e['description'][:80]
+            if key not in seen:
+                seen.add(key)
+                unique.append(e)
+        return unique[:20]
 
     # ── Data Package para síntesis ────────────────────────────────────────────
 
@@ -2229,72 +2324,119 @@ class IntelligenceEngine(models.Model):
     def _compute_communication_patterns(
         emails: list, threads: list, today: str,
     ) -> list:
-        """Calcula patrones de comunicación por cuenta para la semana."""
-        # Compute week_start (Monday)
-        from datetime import date
-        today_date = date.fromisoformat(today)
-        week_start = (
-            today_date - timedelta(days=today_date.weekday())
-        ).isoformat()
+        """Calcula patrones de comunicación POR CONTACTO externo.
 
-        by_account = defaultdict(lambda: {
-            'total': 0, 'ext_contacts': defaultdict(int),
-            'int_contacts': defaultdict(int), 'hours': defaultdict(int),
-            'subjects': defaultdict(int),
+        Genera registros compatibles con el schema del frontend:
+        communication_patterns(contact_id, pattern_type, description,
+                               frequency, confidence)
+        """
+        from email.utils import parsedate_to_datetime as _pdt
+
+        # Aggregate data per external contact email
+        by_contact = defaultdict(lambda: {
+            'total': 0, 'hours': defaultdict(int),
+            'subjects': defaultdict(int), 'dates': [],
+            'replied_threads': 0, 'total_threads': 0,
+            'response_times_hrs': [],
         })
 
         for e in emails:
-            acct = e['account']
-            by_account[acct]['total'] += 1
             sender = e.get('from_email', '')
-            if e['sender_type'] == 'external':
-                by_account[acct]['ext_contacts'][sender] += 1
-            else:
-                by_account[acct]['int_contacts'][sender] += 1
-            # Extract hour from date
+            if not sender or e.get('sender_type') != 'external':
+                continue
+            data = by_contact[sender]
+            data['total'] += 1
             try:
-                from email.utils import parsedate_to_datetime as _pdt
                 dt = _pdt(e.get('date', ''))
-                by_account[acct]['hours'][dt.hour] += 1
+                data['hours'][dt.hour] += 1
+                data['dates'].append(dt)
             except Exception:
                 pass
-            subj = e.get('subject_normalized', '')
+            subj = e.get('subject_normalized', e.get('subject', ''))
             if subj:
-                by_account[acct]['subjects'][subj] += 1
+                data['subjects'][subj] += 1
 
-        acct_threads = defaultdict(list)
+        # Thread participation per contact
         for t in threads:
-            acct_threads[t['account']].append(t)
+            for p in t.get('participant_emails', []):
+                if p in by_contact:
+                    by_contact[p]['total_threads'] += 1
+                    if t.get('has_internal_reply'):
+                        by_contact[p]['replied_threads'] += 1
 
         patterns = []
-        for acct, data in by_account.items():
-            acct_t = acct_threads.get(acct, [])
-            replied = sum(1 for t in acct_t if t['has_internal_reply'])
-            total_t = len(acct_t) or 1
+        for email_addr, data in by_contact.items():
+            if data['total'] < 1:
+                continue
 
-            top_ext = sorted(
-                data['ext_contacts'].items(), key=lambda x: -x[1],
-            )[:5]
-            top_int = sorted(
-                data['int_contacts'].items(), key=lambda x: -x[1],
-            )[:5]
-            busiest = max(
-                data['hours'].items(), key=lambda x: x[1],
-            )[0] if data['hours'] else 9
-            common = sorted(
-                data['subjects'].items(), key=lambda x: -x[1],
-            )[:5]
-
+            # Pattern: communication frequency
+            total = data['total']
+            if total >= 5:
+                freq = 'daily'
+                desc = f'Contacto muy activo: {total} emails en el periodo'
+            elif total >= 3:
+                freq = 'weekly'
+                desc = f'Contacto frecuente: {total} emails en el periodo'
+            else:
+                freq = 'monthly'
+                desc = f'Contacto ocasional: {total} emails en el periodo'
             patterns.append({
-                'week_start': week_start,
-                'account': acct,
-                'total_emails': data['total'],
-                'response_rate': round(replied / total_t * 100, 1),
-                'top_external_contacts': [c[0] for c in top_ext],
-                'top_internal_contacts': [c[0] for c in top_int],
-                'busiest_hour': busiest,
-                'common_subjects': [c[0] for c in common],
+                'contact_email': email_addr,
+                'pattern_type': 'communication_frequency',
+                'description': desc,
+                'frequency': freq,
+                'confidence': min(1.0, 0.5 + total * 0.1),
             })
+
+            # Pattern: preferred time
+            if data['hours']:
+                busiest_hour = max(
+                    data['hours'].items(), key=lambda x: x[1],
+                )[0]
+                patterns.append({
+                    'contact_email': email_addr,
+                    'pattern_type': 'preferred_time',
+                    'description': (
+                        f'Suele escribir alrededor de las {busiest_hour}:00 hrs'
+                    ),
+                    'frequency': 'event_triggered',
+                    'confidence': min(
+                        1.0, data['hours'][busiest_hour] / max(total, 1),
+                    ),
+                })
+
+            # Pattern: response rate (how often we reply)
+            if data['total_threads'] >= 2:
+                rate = data['replied_threads'] / data['total_threads']
+                if rate < 0.5:
+                    desc = (
+                        f'Solo respondemos {rate:.0%} de sus hilos '
+                        f'({data["replied_threads"]}/{data["total_threads"]})'
+                    )
+                    patterns.append({
+                        'contact_email': email_addr,
+                        'pattern_type': 'response_time',
+                        'description': desc,
+                        'frequency': 'event_triggered',
+                        'confidence': 0.8,
+                    })
+
+            # Pattern: recurring topics
+            if data['subjects']:
+                top_subj = sorted(
+                    data['subjects'].items(), key=lambda x: -x[1],
+                )[:3]
+                repeated = [s for s, c in top_subj if c >= 2]
+                if repeated:
+                    patterns.append({
+                        'contact_email': email_addr,
+                        'pattern_type': 'topic_preference',
+                        'description': (
+                            f'Temas recurrentes: {", ".join(repeated[:3])}'
+                        ),
+                        'frequency': 'weekly',
+                        'confidence': 0.7,
+                    })
 
         return patterns
 

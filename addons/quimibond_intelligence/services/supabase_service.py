@@ -167,15 +167,53 @@ class SupabaseService:
     # ── Alertas ──────────────────────────────────────────────────────────────
 
     def save_alerts(self, alerts: list, today: str):
+        """Guarda alertas resolviendo contact_id desde contact_name.
+
+        El frontend filtra alertas por contact_id en la ficha de contacto,
+        así que es importante que este campo esté presente.
+        """
         if not alerts:
             return
+
+        # Build contact_name → contact_id map for alerts that have a name
+        contact_names = list({
+            a.get('contact_name', '') for a in alerts
+            if a.get('contact_name') and not a.get('contact_id')
+        })
+        name_to_id = {}
+        for name in contact_names:
+            try:
+                encoded = url_quote(name, safe='')
+                resp = self._request(
+                    f'/rest/v1/contacts?name=eq.{encoded}&select=id'
+                )
+                if resp and isinstance(resp, list) and resp:
+                    name_to_id[name] = resp[0]['id']
+            except Exception:
+                pass
+
+        records = []
         for a in alerts:
-            a['alert_date'] = today
-            a.setdefault('state', 'new')
-            a.setdefault('is_read', False)
-            a.setdefault('is_resolved', False)
-        self._request('/rest/v1/alerts', 'POST', alerts)
-        _logger.info('✓ %d alertas guardadas', len(alerts))
+            record = {
+                'alert_type': a.get('alert_type', 'general'),
+                'severity': a.get('severity', 'medium'),
+                'title': a.get('title', ''),
+                'description': a.get('description', ''),
+                'contact_name': a.get('contact_name'),
+                'account': a.get('account'),
+                'state': 'new',
+                'is_read': False,
+            }
+            # Resolve contact_id
+            cid = a.get('contact_id')
+            if not cid and a.get('contact_name'):
+                cid = name_to_id.get(a['contact_name'])
+            if cid:
+                record['contact_id'] = cid
+            records.append(record)
+
+        self._request('/rest/v1/alerts', 'POST', records)
+        _logger.info('✓ %d alertas guardadas', len(records))
 
     # ── Account Summaries ────────────────────────────────────────────────────
 
@@ -205,23 +243,36 @@ class SupabaseService:
 
     # ── Client Scores ────────────────────────────────────────────────────────
 
-    def save_client_scores(self, scores: list, today: str):
-        import urllib.parse
+    def save_client_scores(self, scores: list, today: str,
+                           contact_sentiments: dict = None):
+        """Actualiza contacts con relationship_score, risk_level Y sentiment_score.
+
+        contact_sentiments: dict mapping email → sentiment_score (-1 to 1)
+        from Claude analysis. This fills contacts.sentiment_score which the
+        frontend uses for health bars.
+        """
+        contact_sentiments = contact_sentiments or {}
         for s in scores:
             try:
-                encoded_email = urllib.parse.quote(s["email"], safe='')
+                encoded_email = url_quote(s["email"], safe='')
+                patch = {
+                    'relationship_score': s['total_score'],
+                    'risk_level': s['risk_level'],
+                    'updated_at': datetime.now().isoformat(),
+                }
+                # Include Claude's sentiment_score (-1 to 1) if available
+                raw_sentiment = contact_sentiments.get(s['email'].lower())
+                if raw_sentiment is not None:
+                    try:
+                        patch['sentiment_score'] = round(
+                            float(raw_sentiment), 2,
+                        )
+                    except (ValueError, TypeError):
+                        pass
                 self._request(
-                    f'/rest/v1/contacts?email=eq.{encoded_email}', 'PATCH', {
-                        'relationship_score': s['total_score'],
-                        'risk_level': s['risk_level'],
-                        'last_score_date': today,
-                        'score_breakdown': {
-                            'frequency': s['frequency_score'],
-                            'responsiveness': s['responsiveness_score'],
-                            'reciprocity': s['reciprocity_score'],
-                            'sentiment': s['sentiment_score'],
-                        },
-                    })
+                    f'/rest/v1/contacts?email=eq.{encoded_email}',
+                    'PATCH', patch,
+                )
             except Exception:
                 pass
         _logger.info('✓ %d client scores guardados', len(scores))
@@ -230,18 +281,25 @@ class SupabaseService:
 
     def save_daily_summary(self, today: str, briefing_html: str,
                            total_emails: int, accounts_read: int,
-                           accounts_failed: int, topics_count: int):
+                           accounts_failed: int, topics_count: int,
+                           key_events: list = None):
+        """Guarda resumen diario con key_events estructurados.
+
+        Frontend schema: daily_summaries(summary_date, email_count, summary,
+                                         key_events jsonb)
+        """
         import re
+        summary_text = re.sub(r'<[^>]+>', '', briefing_html)
+        # Truncate summary_text to a reasonable size for the summary field
+        summary_short = summary_text[:2000] if len(summary_text) > 2000 else summary_text
+
         self._upsert_batch(
             '/rest/v1/daily_summaries?on_conflict=summary_date',
             [{
                 'summary_date': today,
-                'summary_html': briefing_html,
-                'summary_text': re.sub(r'<[^>]+>', '', briefing_html),
-                'total_emails': total_emails,
-                'accounts_read': accounts_read,
-                'accounts_failed': accounts_failed,
-                'topics_identified': topics_count,
+                'email_count': total_emails,
+                'summary': summary_short,
+                'key_events': json.dumps(key_events or []),
             }],
             'merge-duplicates',
         )
@@ -612,15 +670,46 @@ class SupabaseService:
     # ── Communication Patterns ────────────────────────────────────────────────
 
     def save_communication_patterns(self, patterns: list):
-        """Guarda patrones de comunicación semanales."""
+        """Guarda patrones de comunicación por contacto.
+
+        Each pattern has contact_email; we resolve contact_id before saving.
+        Schema: communication_patterns(contact_id, pattern_type, description,
+                                       frequency, confidence)
+        """
         if not patterns:
             return
-        self._upsert_batch(
-            '/rest/v1/communication_patterns'
-            '?on_conflict=week_start,account',
-            patterns, 'merge-duplicates',
-        )
-        _logger.info('✓ %d communication patterns guardados', len(patterns))
+
+        # Collect unique emails and resolve contact_ids
+        emails = list({p['contact_email'] for p in patterns if p.get('contact_email')})
+        contact_map = {}
+        for email in emails:
+            try:
+                encoded = url_quote(email, safe='')
+                resp = self._request(
+                    f'/rest/v1/contacts?email=eq.{encoded}&select=id',
+                )
+                if resp and isinstance(resp, list) and resp:
+                    contact_map[email] = resp[0]['id']
+            except Exception:
+                pass
+
+        # Build records matching the frontend schema
+        records = []
+        for p in patterns:
+            contact_id = contact_map.get(p.get('contact_email'))
+            if not contact_id:
+                continue
+            records.append({
+                'contact_id': contact_id,
+                'pattern_type': p['pattern_type'],
+                'description': p['description'],
+                'frequency': p.get('frequency'),
+                'confidence': p.get('confidence', 0.7),
+            })
+
+        if records:
+            self._request('/rest/v1/communication_patterns', 'POST', records)
+        _logger.info('✓ %d communication patterns guardados', len(records))
 
     # ── Action Items (update status) ──────────────────────────────────────────
 
