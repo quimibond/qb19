@@ -5,6 +5,7 @@ embeddings, knowledge graph, person profiles, learning).
 """
 import json
 import logging
+import uuid
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote as url_quote
@@ -171,6 +172,8 @@ class SupabaseService:
 
         El frontend filtra alertas por contact_id en la ficha de contacto,
         así que es importante que este campo esté presente.
+
+        También genera prediction_id para cada alerta y registra las predicciones.
         """
         if not alerts:
             return
@@ -193,7 +196,12 @@ class SupabaseService:
                 pass
 
         records = []
+        predictions = []
         for a in alerts:
+            prediction_id = str(uuid.uuid4())
+            # Try to derive confidence from alert — if available in the alert dict
+            prediction_confidence = a.get('confidence', 0.5)
+
             record = {
                 'alert_type': a.get('alert_type', 'general'),
                 'severity': a.get('severity', 'medium'),
@@ -203,17 +211,9 @@ class SupabaseService:
                 'account': a.get('account'),
                 'state': 'new',
                 'is_read': False,
+                'prediction_id': prediction_id,
+                'prediction_confidence': prediction_confidence,
             }
-            # Traceability: source email/thread
-            if a.get('related_thread_id'):
-                record['source_thread_id'] = a['related_thread_id']
-            if a.get('source_email_id'):
-                record['source_email_id'] = a['source_email_id']
-            # Business context
-            if a.get('business_impact'):
-                record['business_impact'] = a['business_impact']
-            if a.get('suggested_action'):
-                record['suggested_action'] = a['suggested_action']
             # Resolve contact_id
             cid = a.get('contact_id')
             if not cid and a.get('contact_name'):
@@ -222,8 +222,20 @@ class SupabaseService:
                 record['contact_id'] = cid
             records.append(record)
 
+            # Prepare prediction outcome record
+            predictions.append({
+                'alert': record,
+                'prediction_id': prediction_id,
+                'prediction_confidence': prediction_confidence,
+                'today': today,
+            })
+
         self._request('/rest/v1/alerts', 'POST', records)
         _logger.info('✓ %d alertas guardadas', len(records))
+
+        # Save prediction outcomes
+        if predictions:
+            self.save_prediction_outcomes(predictions)
 
     # ── Account Summaries ────────────────────────────────────────────────────
 
@@ -395,49 +407,35 @@ class SupabaseService:
         return self._request('/rest/v1/facts', 'POST', fact)
 
     def save_action_item(self, item):
-        """Guarda un action item con campos alineados al schema.
+        """Guarda un action item.
 
-        Schema: action_items(action_type, description, contact_name,
-                contact_id, priority, due_date, state, assignee_email,
-                assignee_name, source_alert_id, source_thread_id,
-                reason, contact_company)
+        Genera prediction_id para registrar la predicción de acción.
         """
-        record = {
-            'description': item.get('description', ''),
-            'action_type': item.get('action_type', item.get('type', 'other')),
-            'priority': item.get('priority', 'medium'),
-            'state': 'pending',
+        prediction_id = str(uuid.uuid4())
+        prediction_confidence = item.get('confidence', 0.5)
+
+        # Add prediction fields to the item
+        item_with_prediction = {
+            **item,
+            'prediction_id': prediction_id,
+            'prediction_confidence': prediction_confidence,
         }
-        if item.get('due_date'):
-            record['due_date'] = item['due_date']
-        if item.get('assignee_name'):
-            record['assignee_name'] = item['assignee_name']
-        if item.get('assignee_email'):
-            record['assignee_email'] = item['assignee_email']
-        if item.get('reason'):
-            record['reason'] = item['reason']
-        if item.get('source_thread_id'):
-            record['source_thread_id'] = item['source_thread_id']
-        if item.get('contact_company'):
-            record['contact_company'] = item['contact_company']
 
-        # Resolve contact_id from contact_name
-        contact_name = item.get('contact_name', item.get('related_to', ''))
-        if contact_name:
-            record['contact_name'] = contact_name
-            try:
-                encoded = url_quote(contact_name, safe='')
-                resp = self._request(
-                    f'/rest/v1/contacts?name=eq.{encoded}&select=id,company',
-                )
-                if resp and isinstance(resp, list) and resp:
-                    record['contact_id'] = resp[0]['id']
-                    if not record.get('contact_company') and resp[0].get('company'):
-                        record['contact_company'] = resp[0]['company']
-            except Exception:
-                pass
+        result = self._request('/rest/v1/action_items', 'POST', [item_with_prediction])
 
-        return self._request('/rest/v1/action_items', 'POST', record)
+        # Prepare and save prediction outcome
+        try:
+            today = datetime.now().strftime('%Y-%m-%d')
+            self.save_prediction_outcomes([{
+                'action': item_with_prediction,
+                'prediction_id': prediction_id,
+                'prediction_confidence': prediction_confidence,
+                'today': today,
+            }])
+        except Exception as exc:
+            _logger.debug('Action item prediction outcome save: %s', exc)
+
+        return result
 
     def save_relationship(self, rel):
         """Guarda o actualiza una relacion entre entidades."""
@@ -779,4 +777,83 @@ class SupabaseService:
             )
         except Exception as exc:
             _logger.debug('complete_action: %s', exc)
+
+    def save_prediction_outcomes(self, predictions: list):
+        """Registra outcomes de predicciones (alertas y acciones).
+
+        Cada predicción incluye:
+        - alert/action: el registro completo de alerta o acción
+        - prediction_id: UUID generado para esta predicción
+        - prediction_confidence: confianza de la predicción (0-1)
+        - today: fecha de la predicción
+
+        Se inserta un registro en prediction_outcomes con:
+        - prediction_id: UUID de la predicción
+        - prediction_type: 'alert' o 'action'
+        - prediction_date: fecha de predicción (hoy)
+        - prediction_summary: título de alerta o descripción de acción
+        - predicted_severity: severidad de alerta o prioridad de acción
+        - confidence: confianza (0-1)
+        - account: cuenta/departamento si aplica
+        - contact_email: email del contacto si aplica
+        - outcome_type: NULL hasta que el usuario proporcione feedback
+        """
+        if not predictions:
+            return
+
+        records = []
+        for pred in predictions:
+            alert = pred.get('alert')
+            action = pred.get('action')
+            prediction_id = pred.get('prediction_id')
+            prediction_confidence = pred.get('prediction_confidence', 0.5)
+            today = pred.get('today', datetime.now().strftime('%Y-%m-%d'))
+
+            if alert:
+                # Predicción de alerta
+                record = {
+                    'prediction_id': prediction_id,
+                    'prediction_type': 'alert',
+                    'prediction_date': today,
+                    'prediction_summary': alert.get('title', ''),
+                    'predicted_severity': alert.get('severity', 'medium'),
+                    'confidence': prediction_confidence,
+                    'account': alert.get('account'),
+                    'contact_email': alert.get('contact_email'),
+                    'outcome_type': None,
+                }
+                # Intentar resolver contact_email desde contact_name
+                if not record.get('contact_email') and alert.get('contact_name'):
+                    try:
+                        encoded = url_quote(alert['contact_name'], safe='')
+                        resp = self._request(
+                            f'/rest/v1/contacts?name=eq.{encoded}&select=email'
+                        )
+                        if resp and isinstance(resp, list) and resp:
+                            record['contact_email'] = resp[0].get('email')
+                    except Exception:
+                        pass
+                records.append(record)
+
+            elif action:
+                # Predicción de acción
+                record = {
+                    'prediction_id': prediction_id,
+                    'prediction_type': 'action',
+                    'prediction_date': today,
+                    'prediction_summary': action.get('description', ''),
+                    'predicted_severity': action.get('priority', 'medium'),
+                    'confidence': prediction_confidence,
+                    'account': action.get('source_account'),
+                    'contact_email': None,
+                    'outcome_type': None,
+                }
+                records.append(record)
+
+        if records:
+            try:
+                self._request('/rest/v1/prediction_outcomes', 'POST', records)
+                _logger.info('✓ %d prediction outcomes guardados', len(records))
+            except Exception as exc:
+                _logger.debug('save_prediction_outcomes: %s', exc)
 
