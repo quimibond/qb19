@@ -154,32 +154,14 @@ class SupabaseService(SupabaseBaseClient):
         if not alerts:
             return
 
-        # Build contact_name → contact_id map for alerts that have a name
-        contact_names = list({
-            a.get('contact_name', '') for a in alerts
-            if a.get('contact_name') and not a.get('contact_id')
-        })
-        name_to_id = {}
-        for name in contact_names:
-            try:
-                encoded = url_quote(name, safe='')
-                resp = self._request(
-                    f'/rest/v1/contacts?name=eq.{encoded}&select=id'
-                )
-                if resp and isinstance(resp, list) and resp:
-                    name_to_id[name] = resp[0]['id']
-            except Exception:
-                pass
-
         records = []
         predictions = []
         for a in alerts:
             prediction_id = str(uuid.uuid4())
-            # Try to derive confidence from alert — if available in the alert dict
             prediction_confidence = a.get('confidence', 0.5)
 
             record = {
-                'alert_type': a.get('alert_type', 'general'),
+                'alert_type': a.get('alert_type', 'risk'),
                 'severity': a.get('severity', 'medium'),
                 'title': a.get('title', ''),
                 'description': a.get('description', ''),
@@ -190,12 +172,6 @@ class SupabaseService(SupabaseBaseClient):
                 'prediction_id': prediction_id,
                 'prediction_confidence': prediction_confidence,
             }
-            # Resolve contact_id
-            cid = a.get('contact_id')
-            if not cid and a.get('contact_name'):
-                cid = name_to_id.get(a['contact_name'])
-            if cid:
-                record['contact_id'] = cid
             records.append(record)
 
             # Prepare prediction outcome record
@@ -206,7 +182,14 @@ class SupabaseService(SupabaseBaseClient):
                 'today': today,
             })
 
-        self._request('/rest/v1/alerts', 'POST', records)
+        result = self._request(
+            '/rest/v1/alerts', 'POST', records,
+            extra_headers={'Prefer': 'return=representation'},
+        )
+        # Merge Supabase IDs back into original alert dicts
+        if result and isinstance(result, list):
+            for alert_dict, created in zip(alerts, result):
+                alert_dict['supabase_id'] = created.get('id')
         _logger.info('✓ %d alertas guardadas', len(records))
 
         # Save prediction outcomes
@@ -295,8 +278,12 @@ class SupabaseService(SupabaseBaseClient):
             '/rest/v1/daily_summaries?on_conflict=summary_date',
             [{
                 'summary_date': today,
-                'email_count': total_emails,
-                'summary': summary_short,
+                'total_emails': total_emails,
+                'summary_text': summary_short,
+                'summary_html': briefing_html[:50000] if briefing_html else '',
+                'accounts_read': accounts_read,
+                'accounts_failed': accounts_failed,
+                'topics_identified': topics_count,
                 'key_events': key_events or [],
             }],
             'merge-duplicates',
@@ -327,10 +314,10 @@ class SupabaseService(SupabaseBaseClient):
         try:
             summaries = self._request(
                 '/rest/v1/daily_summaries?order=summary_date.desc&limit=1'
-                '&select=summary',
+                '&select=summary_text',
             )
             if summaries:
-                ctx['previousSummary'] = summaries[0].get('summary', '')
+                ctx['previousSummary'] = summaries[0].get('summary_text', '')
         except Exception:
             pass
         try:
@@ -390,7 +377,10 @@ class SupabaseService(SupabaseBaseClient):
             'prediction_confidence': prediction_confidence,
         }
 
-        result = self._request('/rest/v1/action_items', 'POST', [item_with_prediction])
+        result = self._request(
+            '/rest/v1/action_items', 'POST', [item_with_prediction],
+            extra_headers={'Prefer': 'return=representation'},
+        )
 
         # Prepare and save prediction outcome
         try:
@@ -424,16 +414,15 @@ class SupabaseService(SupabaseBaseClient):
         return result[0] if result else None
 
     def get_entity_intelligence(self, name=None, email=None):
-        """Llama al RPC get_entity_intelligence."""
-        params = {}
-        if email:
-            params['p_email'] = email
-        elif name:
-            params['p_name'] = name
+        """Llama al RPC get_entity_intelligence (2-param version)."""
         return self._request(
             '/rest/v1/rpc/get_entity_intelligence',
             'POST',
-            params,
+            {'p_email': email, 'p_name': name},
+            extra_headers={
+                'Accept': 'application/json',
+                'Content-Profile': 'public',
+            },
         )
 
     def get_pending_actions(self, email):
@@ -625,15 +614,19 @@ class SupabaseService(SupabaseBaseClient):
         """Guarda temas detectados en Supabase via RPC upsert_topic."""
         for t in topics:
             try:
-                self._request('/rest/v1/rpc/upsert_topic', 'POST', {
+                params = {
                     'p_topic': t.get('topic', ''),
                     'p_category': t.get('category', ''),
                     'p_status': t.get('status', 'active'),
                     'p_priority': t.get('priority', 'medium'),
                     'p_summary': t.get('summary', ''),
-                    'p_related_accounts': None,
-                    'p_embedding': None,
-                })
+                }
+                # Only include array/vector params if they have values;
+                # NULL doesn't cast cleanly to text[] / vector in PostgREST
+                accounts = t.get('related_accounts')
+                if accounts:
+                    params['p_related_accounts'] = accounts
+                self._request('/rest/v1/rpc/upsert_topic', 'POST', params)
             except Exception as exc:
                 _logger.debug('save_topic: %s', exc)
 
@@ -701,47 +694,38 @@ class SupabaseService(SupabaseBaseClient):
     # ── Communication Patterns ────────────────────────────────────────────────
 
     def save_communication_patterns(self, patterns: list):
-        """Guarda patrones de comunicación por contacto.
+        """Guarda patrones de comunicación por cuenta/semana.
 
-        Each pattern has contact_email; we resolve contact_id before saving.
-        Schema: communication_patterns(contact_id, pattern_type, description,
-                                       frequency, confidence)
+        Schema: communication_patterns(week_start, account, total_emails,
+            response_rate, avg_response_hours, top_external_contacts,
+            top_internal_contacts, busiest_hour, common_subjects,
+            sentiment_score)
+        Unique on (week_start, account).
         """
         if not patterns:
             return
 
-        # Collect unique emails and resolve contact_ids
-        emails = list({p['contact_email'] for p in patterns if p.get('contact_email')})
-        contact_map = {}
-        for email in emails:
-            try:
-                encoded = url_quote(email, safe='')
-                resp = self._request(
-                    f'/rest/v1/contacts?email=eq.{encoded}&select=id',
-                )
-                if resp and isinstance(resp, list) and resp:
-                    contact_map[email] = resp[0]['id']
-            except Exception:
-                pass
-
-        # Build records matching the frontend schema
         records = []
         for p in patterns:
-            contact_id = contact_map.get(p.get('contact_email'))
-            if not contact_id:
+            if not p.get('account') or not p.get('week_start'):
                 continue
             records.append({
-                'contact_id': contact_id,
-                'pattern_type': p['pattern_type'],
-                'description': p['description'],
-                'frequency': p.get('frequency'),
-                'confidence': p.get('confidence', 0.7),
+                'week_start': p['week_start'],
+                'account': p['account'],
+                'total_emails': p.get('total_emails', 0),
+                'response_rate': p.get('response_rate'),
+                'avg_response_hours': p.get('avg_response_hours'),
+                'top_external_contacts': p.get('top_external_contacts', []),
+                'top_internal_contacts': p.get('top_internal_contacts', []),
+                'busiest_hour': p.get('busiest_hour'),
+                'common_subjects': p.get('common_subjects', []),
+                'sentiment_score': p.get('sentiment_score'),
             })
 
         if records:
             self._upsert_batch(
                 '/rest/v1/communication_patterns'
-                '?on_conflict=contact_id,pattern_type',
+                '?on_conflict=week_start,account',
                 records, 'merge-duplicates',
             )
         _logger.info('✓ %d communication patterns guardados', len(records))
@@ -763,6 +747,25 @@ class SupabaseService(SupabaseBaseClient):
             )
         except Exception as exc:
             _logger.debug('complete_action: %s', exc)
+
+    def update_alert_state_by_id(self, alert_id: int, state: str,
+                                resolution_notes: str = None):
+        """Actualiza estado de una alerta en Supabase por ID."""
+        try:
+            patch = {
+                'state': state,
+                'is_resolved': state in ('resolved', 'dismissed'),
+            }
+            if state == 'resolved':
+                patch['resolved_at'] = datetime.now().isoformat()
+            if resolution_notes:
+                patch['resolution_notes'] = resolution_notes
+            self._request(
+                f'/rest/v1/alerts?id=eq.{alert_id}',
+                'PATCH', patch,
+            )
+        except Exception as exc:
+            _logger.debug('update_alert_state_by_id: %s', exc)
 
     def update_alert_state(self, alert_title: str, state: str,
                            resolution_notes: str = None):

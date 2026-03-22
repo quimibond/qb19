@@ -37,6 +37,9 @@ class GmailService:
 
     def _get_service(self, user_email: str, scopes: list):
         """Crea un servicio Gmail autenticado para un usuario específico."""
+        if not user_email or not isinstance(user_email, str):
+            raise ValueError(
+                f'user_email requerido para delegación, recibido: {user_email!r}')
         creds = service_account.Credentials.from_service_account_info(
             self._sa_info, scopes=scopes,
         )

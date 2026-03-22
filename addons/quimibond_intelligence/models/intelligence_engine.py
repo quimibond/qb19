@@ -301,9 +301,9 @@ class IntelligenceEngine(models.Model):
         #  FASE 9: Enviar briefing por email
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 9: Envío del briefing ──')
-        sender = cfg.get('sender_email')
-        recipient = cfg.get('recipient_email')
-        if sender and recipient:
+        sender = (cfg.get('sender_email') or '').strip()
+        recipient = (cfg.get('recipient_email') or '').strip()
+        if sender and '@' in sender and recipient and '@' in recipient:
             try:
                 subject = f'Intelligence Briefing — {today}'
                 gmail.send_email(sender, recipient,
@@ -425,7 +425,7 @@ class IntelligenceEngine(models.Model):
         try:
             weekly_summaries = supa._request(
                 '/rest/v1/daily_summaries?order=summary_date.desc&limit=7'
-                '&select=summary_date,summary,email_count'
+                '&select=summary_date,summary_text,total_emails'
                 '&summary_date=gte.' + week_start,
             ) or []
         except Exception:
@@ -2545,119 +2545,92 @@ class IntelligenceEngine(models.Model):
     def _compute_communication_patterns(
         emails: list, threads: list, today: str,
     ) -> list:
-        """Calcula patrones de comunicación POR CONTACTO externo.
+        """Calcula patrones de comunicación POR CUENTA por semana.
 
-        Genera registros compatibles con el schema del frontend:
-        communication_patterns(contact_id, pattern_type, description,
-                               frequency, confidence)
+        Schema: communication_patterns(week_start, account, total_emails,
+            response_rate, avg_response_hours, top_external_contacts,
+            top_internal_contacts, busiest_hour, common_subjects,
+            sentiment_score)
         """
         from email.utils import parsedate_to_datetime as _pdt
 
-        # Aggregate data per external contact email
-        by_contact = defaultdict(lambda: {
+        # Compute week_start (Monday of current week)
+        from datetime import datetime as _dt, timedelta
+        try:
+            d = _dt.strptime(today, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            d = _dt.now()
+        week_start = (d - timedelta(days=d.weekday())).strftime('%Y-%m-%d')
+
+        # Aggregate data per account
+        by_account = defaultdict(lambda: {
             'total': 0, 'hours': defaultdict(int),
-            'subjects': defaultdict(int), 'dates': [],
+            'subjects': defaultdict(int),
+            'external_contacts': defaultdict(int),
+            'internal_contacts': defaultdict(int),
             'replied_threads': 0, 'total_threads': 0,
-            'response_times_hrs': [],
         })
 
         for e in emails:
-            sender = e.get('from_email', '')
-            if not sender or e.get('sender_type') != 'external':
+            account = e.get('account', '')
+            if not account:
                 continue
-            data = by_contact[sender]
+            data = by_account[account]
             data['total'] += 1
             try:
                 dt = _pdt(e.get('date', ''))
                 data['hours'][dt.hour] += 1
-                data['dates'].append(dt)
             except Exception:
                 pass
             subj = e.get('subject_normalized', e.get('subject', ''))
             if subj:
                 data['subjects'][subj] += 1
+            sender = e.get('from_email', '')
+            if sender and e.get('sender_type') == 'external':
+                data['external_contacts'][sender] += 1
+            elif sender:
+                data['internal_contacts'][sender] += 1
 
-        # Thread participation per contact
+        # Thread stats per account
         for t in threads:
-            for p in t.get('participant_emails', []):
-                if p in by_contact:
-                    by_contact[p]['total_threads'] += 1
-                    if t.get('has_internal_reply'):
-                        by_contact[p]['replied_threads'] += 1
+            account = t.get('account', '')
+            if account and account in by_account:
+                by_account[account]['total_threads'] += 1
+                if t.get('has_internal_reply'):
+                    by_account[account]['replied_threads'] += 1
 
         patterns = []
-        for email_addr, data in by_contact.items():
+        for account, data in by_account.items():
             if data['total'] < 1:
                 continue
-
-            # Pattern: communication frequency
-            total = data['total']
-            if total >= 5:
-                freq = 'daily'
-                desc = f'Contacto muy activo: {total} emails en el periodo'
-            elif total >= 3:
-                freq = 'weekly'
-                desc = f'Contacto frecuente: {total} emails en el periodo'
-            else:
-                freq = 'monthly'
-                desc = f'Contacto ocasional: {total} emails en el periodo'
-            patterns.append({
-                'contact_email': email_addr,
-                'pattern_type': 'communication_frequency',
-                'description': desc,
-                'frequency': freq,
-                'confidence': min(1.0, 0.5 + total * 0.1),
-            })
-
-            # Pattern: preferred time
+            # Response rate
+            resp_rate = None
+            if data['total_threads'] > 0:
+                resp_rate = round(
+                    data['replied_threads'] / data['total_threads'], 2)
+            # Busiest hour
+            busiest = None
             if data['hours']:
-                busiest_hour = max(
-                    data['hours'].items(), key=lambda x: x[1],
-                )[0]
-                patterns.append({
-                    'contact_email': email_addr,
-                    'pattern_type': 'preferred_time',
-                    'description': (
-                        f'Suele escribir alrededor de las {busiest_hour}:00 hrs'
-                    ),
-                    'frequency': 'event_triggered',
-                    'confidence': min(
-                        1.0, data['hours'][busiest_hour] / max(total, 1),
-                    ),
-                })
+                busiest = max(data['hours'].items(), key=lambda x: x[1])[0]
+            # Top contacts (sorted by frequency, top 5)
+            top_ext = sorted(
+                data['external_contacts'].items(), key=lambda x: -x[1])[:5]
+            top_int = sorted(
+                data['internal_contacts'].items(), key=lambda x: -x[1])[:5]
+            # Common subjects
+            top_subj = sorted(
+                data['subjects'].items(), key=lambda x: -x[1])[:5]
 
-            # Pattern: response rate (how often we reply)
-            if data['total_threads'] >= 2:
-                rate = data['replied_threads'] / data['total_threads']
-                if rate < 0.5:
-                    desc = (
-                        f'Solo respondemos {rate:.0%} de sus hilos '
-                        f'({data["replied_threads"]}/{data["total_threads"]})'
-                    )
-                    patterns.append({
-                        'contact_email': email_addr,
-                        'pattern_type': 'response_time',
-                        'description': desc,
-                        'frequency': 'event_triggered',
-                        'confidence': 0.8,
-                    })
-
-            # Pattern: recurring topics
-            if data['subjects']:
-                top_subj = sorted(
-                    data['subjects'].items(), key=lambda x: -x[1],
-                )[:3]
-                repeated = [s for s, c in top_subj if c >= 2]
-                if repeated:
-                    patterns.append({
-                        'contact_email': email_addr,
-                        'pattern_type': 'topic_preference',
-                        'description': (
-                            f'Temas recurrentes: {", ".join(repeated[:3])}'
-                        ),
-                        'frequency': 'weekly',
-                        'confidence': 0.7,
-                    })
+            patterns.append({
+                'week_start': week_start,
+                'account': account,
+                'total_emails': data['total'],
+                'response_rate': resp_rate,
+                'busiest_hour': busiest,
+                'top_external_contacts': [c for c, _ in top_ext],
+                'top_internal_contacts': [c for c, _ in top_int],
+                'common_subjects': [s for s, _ in top_subj],
+            })
 
         return patterns
 
@@ -2795,7 +2768,7 @@ class IntelligenceEngine(models.Model):
                     # Supabase
                     assignee_ent = supa.get_entity_by_name(item.get('assignee', ''))
                     related_ent = supa.get_entity_by_name(item.get('related_to', ''))
-                    supa.save_action_item({
+                    result = supa.save_action_item({
                         'assignee_entity_id': assignee_ent.get('id') if assignee_ent else None,
                         'assignee_name': item.get('assignee', ''),
                         'related_entity_id': related_ent.get('id') if related_ent else None,
@@ -2804,8 +2777,13 @@ class IntelligenceEngine(models.Model):
                         'priority': item.get('priority', 'medium'),
                         'due_date': item.get('due_date'),
                         'source_briefing_date': today,
-                        'source_account': account,
+                        'contact_name': item.get('related_to', ''),
                     })
+                    supa_id = (
+                        result[0].get('id')
+                        if result and isinstance(result, list)
+                        else False
+                    )
                     # Odoo
                     partner = False
                     related = item.get('related_to', '')
@@ -2822,6 +2800,7 @@ class IntelligenceEngine(models.Model):
                         'partner_id': partner.id if partner else False,
                         'source_date': today,
                         'source_account': account,
+                        'supabase_id': supa_id,
                     })
                 except Exception as exc:
                     _logger.debug('Action item save error: %s', exc)
@@ -2919,6 +2898,7 @@ class IntelligenceEngine(models.Model):
                 'partner_id': partner.id if partner else False,
                 'briefing_id': briefing.id,
                 'gmail_thread_id': a.get('related_thread_id', ''),
+                'supabase_id': a.get('supabase_id', False),
             })
         _logger.info('%d alertas guardadas en Odoo', len(alerts))
 

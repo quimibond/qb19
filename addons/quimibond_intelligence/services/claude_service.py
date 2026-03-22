@@ -73,7 +73,12 @@ class ClaudeService:
         )
 
         if message.stop_reason == 'max_tokens':
-            _logger.warning('Claude response truncada (max_tokens=%d)', max_tokens)
+            _logger.warning(
+                'Claude response truncada (max_tokens=%d, usage=%d/%d)',
+                max_tokens,
+                message.usage.input_tokens,
+                message.usage.output_tokens,
+            )
 
         content = message.content
         if not content or not hasattr(content[0], 'text'):
@@ -204,7 +209,7 @@ class ClaudeService:
             f'EMAILS:\n{email_text}'
         )
 
-        text = self._call(system, prompt, max_tokens=4000)
+        text = self._call(system, prompt, max_tokens=8000)
         parsed = self._extract_json(text)
         parsed['external_emails'] = ext_count
         parsed['internal_emails'] = int_count
@@ -363,7 +368,7 @@ class ClaudeService:
                 'de cada persona con cada email que procesa. '
                 'Retorna SOLO JSON valido sin markdown.'
             )
-            raw = self._call(system, prompt, max_tokens=4000)
+            raw = self._call(system, prompt, max_tokens=8000)
             return self._extract_json(raw)
         except Exception as exc:
             _logger.warning('KG extract fail: %s', exc)
