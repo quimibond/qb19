@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="cron_daily_intelligence" model="ir.cron">
+            <field name="name">Intelligence System - Briefing Diario</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_daily_intelligence()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 01:00:00')"/>
+        </record>
+
+        <record id="cron_weekly_analysis" model="ir.cron">
+            <field name="name">Intelligence System - Reporte Semanal</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_weekly_analysis()</field>
+            <field name="interval_number">7</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 13:00:00')"/>
+        </record>
+
+    </data>
+</odoo>

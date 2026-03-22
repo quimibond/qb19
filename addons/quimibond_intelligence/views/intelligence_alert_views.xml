@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- == Alert List == -->
+    <record id="view_alert_tree" model="ir.ui.view">
+        <field name="name">intelligence.alert.tree</field>
+        <field name="model">intelligence.alert</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="severity in ('high','critical') and state == 'open'"
+                  decoration-warning="severity == 'medium' and state == 'open'"
+                  decoration-muted="state in ('resolved','dismissed')">
+                <field name="create_date" string="Fecha" widget="date"/>
+                <field name="severity" widget="badge"
+                       decoration-danger="severity in ('critical','high')"
+                       decoration-warning="severity == 'medium'"
+                       decoration-info="severity == 'low'"/>
+                <field name="alert_type"/>
+                <field name="name"/>
+                <field name="account"/>
+                <field name="partner_id"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'resolved'"
+                       decoration-info="state == 'acknowledged'"
+                       decoration-danger="state == 'open'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- == Alert Form == -->
+    <record id="view_alert_form" model="ir.ui.view">
+        <field name="name">intelligence.alert.form</field>
+        <field name="model">intelligence.alert</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_acknowledge" type="object"
+                            string="Reconocer" class="btn-primary"
+                            invisible="state != 'open'"/>
+                    <button name="action_resolve" type="object"
+                            string="Resolver" class="btn-success"
+                            invisible="state in ('resolved','dismissed')"/>
+                    <button name="action_dismiss" type="object"
+                            string="Descartar"
+                            invisible="state in ('resolved','dismissed')"/>
+                    <button name="action_reopen" type="object"
+                            string="Reabrir"
+                            invisible="state not in ('resolved','dismissed')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="open,acknowledged,resolved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group col="4">
+                        <field name="alert_type"/>
+                        <field name="severity"/>
+                        <field name="account"/>
+                        <field name="partner_id"/>
+                        <field name="briefing_id"/>
+                        <field name="gmail_thread_id" invisible="not gmail_thread_id"/>
+                    </group>
+                    <separator string="Detalle"/>
+                    <field name="description" readonly="1"/>
+                    <group string="Resolucion"
+                           invisible="state not in ('resolved','dismissed')">
+                        <field name="resolution_notes"/>
+                        <field name="resolved_date"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- == Alert Search == -->
+    <record id="view_alert_search" model="ir.ui.view">
+        <field name="name">intelligence.alert.search</field>
+        <field name="model">intelligence.alert</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="account"/>
+                <field name="partner_id"/>
+                <separator/>
+                <filter name="state_open" string="Abiertas"
+                        domain="[('state','=','open')]"/>
+                <filter name="state_acknowledged" string="Reconocidas"
+                        domain="[('state','=','acknowledged')]"/>
+                <separator/>
+                <filter name="severity_critical" string="Criticas"
+                        domain="[('severity','=','critical')]"/>
+                <filter name="severity_high" string="Alta severidad"
+                        domain="[('severity','in',['high','critical'])]"/>
+                <separator/>
+                <filter name="accountability" string="Accountability"
+                        domain="[('alert_type','=','accountability')]"/>
+                <filter name="no_response" string="Sin respuesta"
+                        domain="[('alert_type','in',['no_response','stalled_thread'])]"/>
+                <separator/>
+                <filter name="today" string="Hoy"
+                        domain="[('create_date','>=', context_today().strftime('%%Y-%%m-%%d'))]"/>
+                <filter name="this_week" string="Esta semana"
+                        domain="[('create_date','>=', (context_today() - datetime.timedelta(days=7)).strftime('%%Y-%%m-%%d'))]"/>
+                <group>
+                    <filter name="group_type" string="Tipo"
+                            context="{'group_by': 'alert_type'}"/>
+                    <filter name="group_severity" string="Severidad"
+                            context="{'group_by': 'severity'}"/>
+                    <filter name="group_account" string="Cuenta"
+                            context="{'group_by': 'account'}"/>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_partner" string="Contacto"
+                            context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_alerts" model="ir.actions.act_window">
+        <field name="name">Alertas</field>
+        <field name="res_model">intelligence.alert</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_state_open': 1}</field>
+    </record>
+
+</odoo>
