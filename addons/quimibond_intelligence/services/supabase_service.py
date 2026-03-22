@@ -837,6 +837,7 @@ class SupabaseService(SupabaseBaseClient):
         except Exception as exc:
             _logger.warning('save_company_profile %s: %s', company_id, exc)
 
+
     # ── System Learning ───────────────────────────────────────────────────────
 
     def save_learning(self, learning_type: str, description: str,
