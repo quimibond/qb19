@@ -813,7 +813,8 @@ class SupabaseService(SupabaseBaseClient):
                 'is_customer,is_supplier,odoo_context'
                 f'&order=updated_at.desc&limit={limit}',
             ) or []
-        except Exception:
+        except Exception as exc:
+            _logger.warning('get_companies_needing_enrichment: %s', exc)
             return []
 
     def save_company_profile(self, company_id: int, profile: dict):
