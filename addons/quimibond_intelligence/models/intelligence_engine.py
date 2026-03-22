@@ -924,15 +924,58 @@ class IntelligenceEngine(models.Model):
         date_7d = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
         today = datetime.now().date()
 
+        # ── Pre-cargar partners por dominio para fallback ─────────────────
+        # Agrupa emails por dominio para búsqueda eficiente
+        domain_map = {}  # domain → [email_addr, ...]
+        for ea in external_emails:
+            domain = ea.rsplit('@', 1)[-1].lower() if '@' in ea else ''
+            if domain and not self._is_generic_domain(domain):
+                domain_map.setdefault(domain, []).append(ea)
+
+        # Cache de partners por dominio: domain → [partner, ...]
+        domain_partners_cache = {}
+        for domain in domain_map:
+            try:
+                domain_partners_cache[domain] = Partner.search(
+                    [('email', '=ilike', f'%@{domain}')], limit=50,
+                )
+            except Exception:
+                domain_partners_cache[domain] = Partner
+
         # ── Enriquecer por contacto externo ─────────────────────────────────
+        matched = 0
+        skipped = 0
         for email_addr in external_emails:
             try:
+                # Búsqueda 1: email exacto
                 partner = Partner.search(
                     [('email', '=ilike', email_addr)], limit=1,
                 )
+
+                # Búsqueda 2: si no hay match exacto, buscar por dominio
                 if not partner:
+                    domain = (email_addr.rsplit('@', 1)[-1].lower()
+                              if '@' in email_addr else '')
+                    domain_partners = domain_partners_cache.get(domain)
+                    if domain_partners:
+                        # Usar el partner principal del dominio (company o
+                        # el de mayor rank)
+                        best = None
+                        for dp in domain_partners:
+                            if not best:
+                                best = dp
+                            elif dp.is_company and not best.is_company:
+                                best = dp
+                            elif (dp.customer_rank + dp.supplier_rank
+                                  > best.customer_rank + best.supplier_rank):
+                                best = dp
+                        partner = best
+
+                if not partner:
+                    skipped += 1
                     continue
 
+                matched += 1
                 ctx = self._enrich_partner(
                     partner, models, date_90d, date_30d, date_7d, today,
                 )
@@ -943,6 +986,11 @@ class IntelligenceEngine(models.Model):
 
             except Exception as exc:
                 _logger.warning('Odoo enrichment skip %s: %s', email_addr, exc)
+
+        _logger.info(
+            'Odoo match: %d/%d matched, %d skipped (no partner found)',
+            matched, len(external_emails), skipped,
+        )
 
         # ── Verificación de acciones sugeridas previamente ──────────────────
         odoo_ctx['action_followup'] = self._verify_pending_actions(today)
@@ -967,6 +1015,19 @@ class IntelligenceEngine(models.Model):
         return odoo_ctx
 
     # ── Helpers de enriquecimiento profundo ─────────────────────────────────
+
+    _GENERIC_DOMAINS = frozenset({
+        'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com',
+        'yahoo.com', 'yahoo.com.mx', 'live.com', 'live.com.mx',
+        'icloud.com', 'aol.com', 'protonmail.com', 'proton.me',
+        'msn.com', 'mail.com', 'zoho.com', 'yandex.com',
+        'google.com', 'vercel.com', 'github.com',
+    })
+
+    @classmethod
+    def _is_generic_domain(cls, domain: str) -> bool:
+        """Retorna True si el dominio es genérico (Gmail, Outlook, etc.)."""
+        return domain.lower() in cls._GENERIC_DOMAINS
 
     def _load_odoo_models(self) -> dict:
         """Carga los modelos ORM disponibles. Graceful si alguno no existe."""
