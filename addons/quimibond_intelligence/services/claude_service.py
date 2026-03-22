@@ -73,7 +73,12 @@ class ClaudeService:
         )
 
         if message.stop_reason == 'max_tokens':
-            _logger.warning('Claude response truncada (max_tokens=%d)', max_tokens)
+            _logger.warning(
+                'Claude response truncada (max_tokens=%d, usage=%d/%d)',
+                max_tokens,
+                message.usage.input_tokens,
+                message.usage.output_tokens,
+            )
 
         content = message.content
         if not content or not hasattr(content[0], 'text'):

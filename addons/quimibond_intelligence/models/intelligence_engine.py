@@ -301,9 +301,9 @@ class IntelligenceEngine(models.Model):
         #  FASE 9: Enviar briefing por email
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 9: Envío del briefing ──')
-        sender = cfg.get('sender_email')
-        recipient = cfg.get('recipient_email')
-        if sender and recipient:
+        sender = (cfg.get('sender_email') or '').strip()
+        recipient = (cfg.get('recipient_email') or '').strip()
+        if sender and '@' in sender and recipient and '@' in recipient:
             try:
                 subject = f'Intelligence Briefing — {today}'
                 gmail.send_email(sender, recipient,
@@ -425,7 +425,7 @@ class IntelligenceEngine(models.Model):
         try:
             weekly_summaries = supa._request(
                 '/rest/v1/daily_summaries?order=summary_date.desc&limit=7'
-                '&select=summary_date,summary,email_count'
+                '&select=summary_date,summary_text,total_emails'
                 '&summary_date=gte.' + week_start,
             ) or []
         except Exception:
