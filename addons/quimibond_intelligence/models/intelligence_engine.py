@@ -362,7 +362,7 @@ class IntelligenceEngine(models.Model):
         try:
             self._enrich_companies(supa, claude, today)
         except Exception as exc:
-            _logger.debug('Company enrichment (non-critical): %s', exc)
+            _logger.warning('Company enrichment error: %s', exc, exc_info=True)
 
         # Refresh contact_360 materialized view
         try:
@@ -3099,7 +3099,7 @@ class IntelligenceEngine(models.Model):
 
                 # Odoo context
                 odoo_ctx = co.get('odoo_context') or {}
-                if odoo_ctx:
+                if odoo_ctx and any(odoo_ctx.values()):
                     ctx_items = []
                     if odoo_ctx.get('total_invoiced'):
                         ctx_items.append(
@@ -3187,9 +3187,13 @@ class IntelligenceEngine(models.Model):
                     supa.save_company_profile(company_id, profile)
                     enriched += 1
                     _logger.info('  ✓ Empresa enriquecida: %s', company_name)
+                else:
+                    _logger.warning('  ✗ Claude no generó perfil para: %s',
+                                    company_name)
 
             except Exception as exc:
-                _logger.debug('Enrich company %s: %s', company_name, exc)
+                _logger.warning('Enrich company %s: %s', company_name, exc,
+                                exc_info=True)
 
         if enriched:
             _logger.info('✓ %d empresas enriquecidas con Claude', enriched)
