@@ -276,6 +276,9 @@ class IntelligenceEngine(models.Model):
         # Sync Odoo partner data to Supabase contacts (+ revenue metrics)
         self._sync_contacts_to_supabase(odoo_context, supa, today)
 
+        # Link internal contacts + entities to Odoo IDs
+        self._link_odoo_ids(supa)
+
         # Generate accountability alerts from action verification
         self._generate_accountability_alerts(
             odoo_context, alerts, supa, today,
@@ -448,6 +451,9 @@ class IntelligenceEngine(models.Model):
             )
             _logger.info('✓ %d partners synced to Supabase',
                          len(odoo_ctx['partners']))
+
+        # 3.5 Link internal contacts + entities to Odoo IDs
+        self._link_odoo_ids(supa)
 
         # 4. Recompute health scores
         try:
@@ -2980,6 +2986,128 @@ class IntelligenceEngine(models.Model):
                 _logger.warning('Contact sync error %s: %s', email_addr, exc)
         if synced:
             _logger.info('✓ %d contactos sincronizados Odoo → Supabase', synced)
+
+    # ── Link Odoo IDs to contacts + entities ────────────────────────────────
+
+    def _link_odoo_ids(self, supa):
+        """Vincula contactos internos y entities del Knowledge Graph con IDs de Odoo.
+
+        1. Contactos internos → busca res.partner + res.users por email
+        2. Entities (person/company) → busca res.partner por email o nombre
+        """
+        Partner = self.env['res.partner'].sudo()
+        try:
+            Users = self.env['res.users'].sudo()
+        except KeyError:
+            Users = None
+
+        # ── 1. Internal contacts: link odoo_partner_id ────────────────────
+        try:
+            internals = supa._request(
+                '/rest/v1/contacts?contact_type=eq.internal'
+                '&odoo_partner_id=is.null'
+                '&select=email,name',
+            ) or []
+        except Exception as exc:
+            _logger.warning('Load internal contacts: %s', exc)
+            internals = []
+
+        linked_contacts = 0
+        for c in internals:
+            email = c.get('email', '')
+            if not email:
+                continue
+            try:
+                partner = Partner.search(
+                    [('email', '=ilike', email)], limit=1,
+                )
+                if not partner:
+                    continue
+                update = {'odoo_partner_id': partner.id}
+                # Also check if this partner has a user (for internal users)
+                if Users:
+                    user = Users.search(
+                        [('partner_id', '=', partner.id)], limit=1,
+                    )
+                    if user:
+                        update['odoo_context'] = {
+                            'odoo_user_id': user.id,
+                            'name': partner.name,
+                            'login': user.login,
+                        }
+                supa.sync_contact_odoo_data(email, update)
+                linked_contacts += 1
+            except Exception as exc:
+                _logger.debug('Link internal %s: %s', email, exc)
+
+        if linked_contacts:
+            _logger.info('✓ %d contactos internos vinculados a Odoo',
+                         linked_contacts)
+
+        # ── 2. Entities: link odoo_model + odoo_id ────────────────────────
+        try:
+            entities = supa._request(
+                '/rest/v1/entities?odoo_id=is.null'
+                '&entity_type=in.(person,company)'
+                '&select=id,name,entity_type,email',
+            ) or []
+        except Exception as exc:
+            _logger.warning('Load entities: %s', exc)
+            entities = []
+
+        linked_entities = 0
+        for ent in entities:
+            try:
+                partner = None
+                ent_email = ent.get('email', '')
+                ent_name = ent.get('name', '')
+                ent_type = ent.get('entity_type', '')
+
+                # Search by email first (most reliable)
+                if ent_email:
+                    partner = Partner.search(
+                        [('email', '=ilike', ent_email)], limit=1,
+                    )
+
+                # Fallback: search by name for companies
+                if not partner and ent_type == 'company' and ent_name:
+                    partner = Partner.search(
+                        [('name', '=ilike', ent_name),
+                         ('is_company', '=', True)],
+                        limit=1,
+                    )
+                    # Try partial match (e.g. "Continental" → "Continental AG")
+                    if not partner:
+                        partner = Partner.search(
+                            [('name', '=ilike', f'%{ent_name}%'),
+                             ('is_company', '=', True)],
+                            limit=1,
+                        )
+
+                # For persons without email, search by name
+                if not partner and ent_type == 'person' and ent_name:
+                    partner = Partner.search(
+                        [('name', '=ilike', ent_name),
+                         ('is_company', '=', False)],
+                        limit=1,
+                    )
+
+                if partner:
+                    supa._request(
+                        f'/rest/v1/entities?id=eq.{ent["id"]}',
+                        'PATCH',
+                        {
+                            'odoo_model': 'res.partner',
+                            'odoo_id': partner.id,
+                        },
+                        extra_headers={'Prefer': 'return=minimal'},
+                    )
+                    linked_entities += 1
+            except Exception as exc:
+                _logger.debug('Link entity %s: %s', ent.get('name'), exc)
+
+        if linked_entities:
+            _logger.info('✓ %d entities vinculadas a Odoo', linked_entities)
 
     # ── Accountability alerts ────────────────────────────────────────────────
 
