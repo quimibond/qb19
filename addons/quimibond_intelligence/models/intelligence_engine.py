@@ -2888,15 +2888,82 @@ class IntelligenceEngine(models.Model):
 
     @staticmethod
     def _sync_contacts_to_supabase(odoo_ctx: dict, supa, today: str = None):
-        """Sincroniza datos de Odoo partners a Supabase contacts + revenue metrics."""
+        """Sincroniza datos de Odoo partners a Supabase contacts + companies + revenue."""
         partners = odoo_ctx.get('partners', {})
         if not partners:
             return
+
+        # ── Phase 1: Aggregate company-level data ──
+        # Group partners by company_name to compute company-level aggregates
+        company_data = {}  # company_name → aggregated data
+        for email_addr, p in partners.items():
+            company_name = p.get('company_name', '')
+            if not company_name:
+                continue
+            if company_name not in company_data:
+                company_data[company_name] = {
+                    'lifetime_value': 0,
+                    'total_credit_notes': 0,
+                    'is_customer': False,
+                    'is_supplier': False,
+                    'odoo_partner_id': None,
+                    'credit_limit': 0,
+                    'total_pending': 0,
+                    'monthly_avg': 0,
+                    'trend_pct': None,
+                    'delivery_otd_rate': None,
+                }
+            cd = company_data[company_name]
+            lifetime = p.get('lifetime', {})
+            deliv = p.get('delivery_performance', {})
+            cd['lifetime_value'] += lifetime.get(
+                'total_invoiced', p.get('total_invoiced', 0))
+            cd['total_credit_notes'] += sum(
+                cn.get('amount', 0) for cn in p.get('credit_notes', []))
+            cd['is_customer'] = cd['is_customer'] or p.get('is_customer', False)
+            cd['is_supplier'] = cd['is_supplier'] or p.get('is_supplier', False)
+            cd['total_pending'] += sum(
+                inv.get('amount_residual', 0)
+                for inv in p.get('pending_invoices', []))
+            cd['monthly_avg'] += lifetime.get('monthly_avg', 0)
+            # Use company partner's odoo_id if it's the company itself
+            if p.get('is_company'):
+                cd['odoo_partner_id'] = p.get('id')
+                cd['credit_limit'] = p.get('credit_limit', 0)
+            if lifetime.get('trend_pct') is not None:
+                cd['trend_pct'] = lifetime['trend_pct']
+            if deliv.get('on_time_rate') is not None:
+                cd['delivery_otd_rate'] = deliv['on_time_rate']
+
+        # Sync company-level data to Supabase
+        for company_name, cd in company_data.items():
+            try:
+                company_id = supa._resolve_or_create_company(
+                    company_name, cd,
+                )
+                if company_id:
+                    supa.sync_company_odoo_data(company_id, {
+                        'lifetime_value': cd['lifetime_value'],
+                        'total_credit_notes': cd['total_credit_notes'],
+                        'is_customer': cd['is_customer'],
+                        'is_supplier': cd['is_supplier'],
+                        'credit_limit': cd['credit_limit'],
+                        'total_pending': cd['total_pending'],
+                        'monthly_avg': cd['monthly_avg'],
+                        'trend_pct': cd['trend_pct'],
+                        'delivery_otd_rate': cd['delivery_otd_rate'],
+                    })
+                    if cd.get('odoo_partner_id'):
+                        supa.sync_company_odoo_data(company_id, {
+                            'odoo_partner_id': cd['odoo_partner_id'],
+                        })
+            except Exception as exc:
+                _logger.debug('Company sync %s: %s', company_name, exc)
+
+        # ── Phase 2: Sync individual contacts ──
         synced = 0
         for email_addr, p in partners.items():
             try:
-                # ── Sync contact data (including company!) ──
-                # Derive enrichment columns
                 lifetime = p.get('lifetime', {})
                 aging = p.get('aging', {})
                 deliv = p.get('delivery_performance', {})
@@ -2909,7 +2976,7 @@ class IntelligenceEngine(models.Model):
                     'is_customer': p.get('is_customer', False),
                     'is_supplier': p.get('is_supplier', False),
                     'company': p.get('company_name', ''),
-                    # New intelligence columns
+                    # company_id will be resolved by sync_contact_odoo_data
                     'lifetime_value': lifetime.get(
                         'total_invoiced', p.get('total_invoiced', 0)),
                     'total_credit_notes': cn_total,
@@ -2955,7 +3022,7 @@ class IntelligenceEngine(models.Model):
                         ]
                         supa.save_revenue_metrics({
                             'contact_email': email_addr,
-                            'period_start': today[:8] + '01',  # first of month
+                            'period_start': today[:8] + '01',
                             'period_end': today,
                             'period_type': 'monthly',
                             'total_invoiced': p.get('total_invoiced', 0),
