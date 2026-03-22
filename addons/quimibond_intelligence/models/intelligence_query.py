@@ -33,7 +33,8 @@ class IntelligenceQuery(models.TransientModel):
         from ..services.supabase_service import SupabaseService
 
         supa = SupabaseService(supa_url, supa_key)
-        claude = ClaudeService(anthropic_key)
+        claude_model = get('claude_model')
+        claude = ClaudeService(anthropic_key, model=claude_model)
 
         # Paso 1: Buscar contexto en Odoo
         odoo_context = self._search_odoo(self.question)

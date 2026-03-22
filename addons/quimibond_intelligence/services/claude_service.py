@@ -1,119 +1,88 @@
 """
 Quimibond Intelligence — Claude & Voyage AI Service
 Llamadas a Claude API para análisis y síntesis, y a Voyage AI para embeddings.
+Usa el SDK oficial de Anthropic (retries, rate limits, errores tipados built-in).
 """
 import json
 import logging
-import time
+import re
 
+import anthropic
 import httpx
 
 _logger = logging.getLogger(__name__)
 
-CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages'
-CLAUDE_DEFAULT_MODEL = 'claude-sonnet-4-6-latest'
-CLAUDE_FALLBACK_MODELS = [
-    'claude-sonnet-4-5-latest',
-    'claude-sonnet-4-20250514',
-]
-CLAUDE_API_VERSION = '2023-06-01'
+CLAUDE_DEFAULT_MODEL = 'claude-sonnet-4-6'
 CLAUDE_MAX_TOKENS = 8000
 
 VOYAGE_ENDPOINT = 'https://api.voyageai.com/v1/embeddings'
 VOYAGE_MODEL = 'voyage-3'
 
 
+def _resolve_model(client: anthropic.Anthropic, preferred: str) -> str:
+    """Valida el modelo preferido contra la API. Retorna uno válido o lanza error."""
+    try:
+        client.models.retrieve(model_id=preferred)
+        return preferred
+    except anthropic.NotFoundError:
+        _logger.warning('Modelo %s no existe, buscando alternativa...', preferred)
+
+    # Buscar el sonnet más reciente disponible
+    try:
+        available = client.models.list(limit=100)
+        sonnet_models = [
+            m for m in available.data
+            if 'sonnet' in m.id and 'claude' in m.id
+        ]
+        if sonnet_models:
+            # Ordenar por fecha de creación (más reciente primero)
+            sonnet_models.sort(key=lambda m: m.created_at, reverse=True)
+            fallback = sonnet_models[0].id
+            _logger.warning('Usando modelo alternativo: %s', fallback)
+            return fallback
+    except Exception as exc:
+        _logger.warning('No se pudo listar modelos: %s', exc)
+
+    raise RuntimeError(
+        f'Modelo {preferred} no disponible y no se encontró alternativa. '
+        f'Configura un modelo válido en Ajustes > Intelligence System.'
+    )
+
+
 class ClaudeService:
     """Interacción con Claude API para análisis de comunicaciones."""
 
     def __init__(self, api_key: str, model: str = '', delay_between_calls: float = 3.0):
-        self._api_key = api_key
-        self._model = model or CLAUDE_DEFAULT_MODEL
+        self._client = anthropic.Anthropic(
+            api_key=api_key,
+            max_retries=3,
+            timeout=120.0,
+        )
+        preferred = model or CLAUDE_DEFAULT_MODEL
+        self._model = _resolve_model(self._client, preferred)
         self._delay = delay_between_calls
 
     def _call(self, system: str, user_content: str,
-              max_tokens: int = 3000, retries: int = 3) -> str:
-        """Llamada genérica a Claude con retry y auto-fallback de modelo."""
-        headers = {
-            'x-api-key': self._api_key,
-            'anthropic-version': CLAUDE_API_VERSION,
-            'content-type': 'application/json',
-        }
-
-        # Modelos a intentar: el configurado + fallbacks
-        models_to_try = [self._model] + [
-            m for m in CLAUDE_FALLBACK_MODELS if m != self._model
-        ]
-
-        for model in models_to_try:
-            payload = {
-                'model': model,
-                'max_tokens': max_tokens,
-                'system': system,
-                'messages': [{'role': 'user', 'content': user_content}],
-            }
-            result = self._try_model(headers, payload, model, retries)
-            if result is not None:
-                # Si funcionó un fallback, adoptarlo para el resto de la sesión
-                if model != self._model:
-                    _logger.warning(
-                        'Modelo %s no disponible, usando fallback %s '
-                        'para el resto de esta ejecución', self._model, model)
-                    self._model = model
-                return result
-
-        raise RuntimeError(
-            f'Claude API: ningún modelo disponible. '
-            f'Intentados: {", ".join(models_to_try)}'
+              max_tokens: int = 3000) -> str:
+        """Llamada genérica a Claude. Retries y rate limits manejados por el SDK."""
+        message = self._client.messages.create(
+            model=self._model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{'role': 'user', 'content': user_content}],
         )
 
-    def _try_model(self, headers: dict, payload: dict,
-                   model: str, retries: int):
-        """Intenta un modelo específico con retries. Retorna None si 404."""
-        last_error = None
-        for attempt in range(retries + 1):
-            try:
-                with httpx.Client(timeout=120) as client:
-                    resp = client.post(CLAUDE_ENDPOINT, headers=headers,
-                                       json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    content = data.get('content', [])
-                    if not content or 'text' not in content[0]:
-                        raise RuntimeError('Claude response missing content text')
-                    return content[0]['text']
+        if message.stop_reason == 'max_tokens':
+            _logger.warning('Claude response truncada (max_tokens=%d)', max_tokens)
 
-                # Modelo no existe → no reintentar, probar siguiente
-                if resp.status_code == 404 and 'model' in resp.text.lower():
-                    _logger.warning('Modelo %s no encontrado (404), probando siguiente...', model)
-                    return None
-
-                # Rate limit
-                if resp.status_code == 429:
-                    import re as _re
-                    match = _re.search(r'try again in (\d+\.?\d*)', resp.text, _re.I)
-                    wait = float(match.group(1)) + 2 if match else (attempt + 1) * 30
-                    _logger.warning('Rate limit 429 — waiting %.0fs (retry %d/%d)',
-                                    wait, attempt + 1, retries)
-                    time.sleep(wait)
-                    continue
-
-                raise RuntimeError(f'Claude {resp.status_code}: {resp.text[:300]}')
-
-            except Exception as exc:
-                last_error = exc
-                if attempt < retries:
-                    wait = 2 ** attempt * 2
-                    _logger.warning('Retry %d/%d [%s]: %s (wait %ds)',
-                                    attempt + 1, retries, model, exc, wait)
-                    time.sleep(wait)
-
-        raise last_error
+        content = message.content
+        if not content or not hasattr(content[0], 'text'):
+            raise RuntimeError('Claude response missing content text')
+        return content[0].text
 
     @staticmethod
     def _extract_json(text: str) -> dict:
         """Extrae JSON de la respuesta de Claude, tolerando markdown fences."""
-        import re
         # Strip markdown code fences
         cleaned = text.strip()
         if cleaned.startswith('```'):

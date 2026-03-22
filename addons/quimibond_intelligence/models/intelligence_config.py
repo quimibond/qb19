@@ -75,7 +75,7 @@ class IntelligenceConfig(models.TransientModel):
     anthropic_api_key = fields.Char(string='Anthropic API Key')
     claude_model = fields.Char(
         string='Claude Model',
-        help='Model ID para Claude API (ej: claude-sonnet-4-6-latest). Dejar vacío para usar el default.',
+        help='Model ID para Claude API (ej: claude-sonnet-4-6). Dejar vacío para usar el default.',
     )
     supabase_url = fields.Char(string='Supabase URL')
     supabase_key = fields.Char(string='Supabase Anon Key')
