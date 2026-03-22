@@ -10,7 +10,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote as url_quote
 
-import httpx
+from .supabase_base import SupabaseBaseClient
 
 _logger = logging.getLogger(__name__)
 
@@ -26,32 +26,8 @@ def _postgrest_in_list(values: list) -> str:
     return ','.join(parts)
 
 
-class SupabaseService:
+class SupabaseService(SupabaseBaseClient):
     """Cliente para Supabase REST API (PostgREST)."""
-
-    def __init__(self, url: str, key: str):
-        self._url = url.rstrip('/')
-        self._key = key
-        self._headers = {
-            'apikey': key,
-            'Authorization': f'Bearer {key}',
-            'Content-Type': 'application/json',
-        }
-
-    def _request(self, path: str, method: str = 'GET',
-                 payload=None, extra_headers: dict = None):
-        headers = {**self._headers, **(extra_headers or {})}
-        with httpx.Client(timeout=30) as client:
-            resp = client.request(method, f'{self._url}{path}',
-                                  headers=headers,
-                                  json=payload if payload else None)
-        if 200 <= resp.status_code < 300:
-            text = resp.text
-            try:
-                return json.loads(text) if text else None
-            except json.JSONDecodeError:
-                return text
-        raise RuntimeError(f'Supabase {resp.status_code}: {resp.text[:300]}')
 
     # ── Emails ───────────────────────────────────────────────────────────────
 
@@ -111,8 +87,8 @@ class SupabaseService:
                     'p_contact_type': c['contact_type'],
                     'p_department': c.get('department'),
                 })
-            except Exception:
-                pass
+            except Exception as exc:
+                _logger.warning('save_contact %s: %s', c.get('email'), exc)
         _logger.info('✓ %d contactos guardados', len(contacts))
 
     # ── Threads ──────────────────────────────────────────────────────────────
@@ -295,8 +271,8 @@ class SupabaseService:
                     f'/rest/v1/contacts?email=eq.{encoded_email}',
                     'PATCH', patch,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                _logger.warning('save_client_score %s: %s', s.get('email'), exc)
         _logger.info('✓ %d client scores guardados', len(scores))
 
     # ── Daily Summary ────────────────────────────────────────────────────────
@@ -321,7 +297,7 @@ class SupabaseService:
                 'summary_date': today,
                 'email_count': total_emails,
                 'summary': summary_short,
-                'key_events': json.dumps(key_events or []),
+                'key_events': key_events or [],
             }],
             'merge-duplicates',
         )
@@ -351,10 +327,10 @@ class SupabaseService:
         try:
             summaries = self._request(
                 '/rest/v1/daily_summaries?order=summary_date.desc&limit=1'
-                '&select=summary_text',
+                '&select=summary',
             )
             if summaries:
-                ctx['previousSummary'] = summaries[0].get('summary_text', '')
+                ctx['previousSummary'] = summaries[0].get('summary', '')
         except Exception:
             pass
         try:
@@ -371,13 +347,6 @@ class SupabaseService:
         except Exception:
             pass
         return ctx
-
-    # ── Helpers ──────────────────────────────────────────────────────────────
-
-    def _upsert_batch(self, path: str, batch: list, resolution: str):
-        self._request(path, 'POST', batch, {
-            'Prefer': f'resolution={resolution},return=minimal',
-        })
 
     # ── Knowledge Graph ──────────────────────────────────────────────────────
 
@@ -579,16 +548,29 @@ class SupabaseService:
             'influence_on_deals': profile.get('influence_on_deals'),
             'source_account': profile.get('source_account'),
             'last_seen_date': profile.get('last_seen_date'),
-            'interaction_count': 1,
         }
 
         # Intentar upsert — si la tabla no existe, fallar silenciosamente
         try:
-            return self._request(
+            result = self._request(
                 '/rest/v1/person_profiles?on_conflict=canonical_key',
                 'POST', data, {
                     'Prefer': 'resolution=merge-duplicates,return=representation',
                 })
+            # Increment interaction_count based on current value
+            if result and isinstance(result, list) and result:
+                profile_id = result[0].get('id')
+                current_count = result[0].get('interaction_count', 0) or 0
+                if profile_id:
+                    try:
+                        self._request(
+                            f'/rest/v1/person_profiles?id=eq.{profile_id}',
+                            'PATCH',
+                            {'interaction_count': current_count + 1},
+                        )
+                    except Exception:
+                        pass
+            return result
         except Exception as exc:
             _logger.debug('person_profile upsert: %s', exc)
             return None
@@ -757,7 +739,11 @@ class SupabaseService:
             })
 
         if records:
-            self._request('/rest/v1/communication_patterns', 'POST', records)
+            self._upsert_batch(
+                '/rest/v1/communication_patterns'
+                '?on_conflict=contact_id,pattern_type',
+                records, 'merge-duplicates',
+            )
         _logger.info('✓ %d communication patterns guardados', len(records))
 
     # ── Action Items (update status) ──────────────────────────────────────────
@@ -868,12 +854,12 @@ class SupabaseService:
             self._request(
                 '/rest/v1/revenue_metrics',
                 'POST', metrics,
-                headers={
+                extra_headers={
                     'Prefer': 'resolution=merge-duplicates',
                 },
             )
         except Exception as exc:
-            _logger.debug('save_revenue_metrics: %s', exc)
+            _logger.warning('save_revenue_metrics: %s', exc)
 
     # ── Customer Health Scores ───────────────────────────────────────────────
 
@@ -886,12 +872,12 @@ class SupabaseService:
             self._request(
                 '/rest/v1/customer_health_scores',
                 'POST', score,
-                headers={
+                extra_headers={
                     'Prefer': 'resolution=merge-duplicates',
                 },
             )
         except Exception as exc:
-            _logger.debug('save_customer_health_score: %s', exc)
+            _logger.warning('save_customer_health_score: %s', exc)
 
     def compute_and_save_health_scores(self, contacts: list,
                                         account_summaries: list,
@@ -904,9 +890,21 @@ class SupabaseService:
         - sentiment: from Claude analysis of emails
         - responsiveness: avg_response_time_hours
         - engagement: KG facts, topics, entity mentions
+
+        Batches reads and writes to minimize Supabase calls.
         """
         if not contacts:
             return
+
+        # Filter external contacts with email
+        external = [
+            c for c in contacts
+            if c.get('contact_type') == 'external' and c.get('email')
+        ]
+        if not external:
+            return
+
+        ext_emails = [c['email'].lower() for c in external]
 
         # Build sentiment map from account summaries
         sentiment_map = {}
@@ -921,13 +919,46 @@ class SupabaseService:
                     except (ValueError, TypeError):
                         pass
 
-        saved = 0
-        for c in contacts:
-            if c.get('contact_type') != 'external':
-                continue
-            email_addr = c.get('email', '').lower()
-            if not email_addr:
-                continue
+        # ── Batch-fetch revenue_metrics (1 call instead of N) ──
+        revenue_map = {}  # email → latest revenue record
+        try:
+            enc = _postgrest_in_list(ext_emails)
+            if enc:
+                rev_rows = self._request(
+                    f'/rest/v1/revenue_metrics?contact_email=in.({enc})'
+                    '&order=period_start.desc'
+                    '&select=contact_email,total_invoiced,overdue_amount',
+                ) or []
+                for rm in rev_rows:
+                    em = (rm.get('contact_email') or '').lower()
+                    if em and em not in revenue_map:
+                        revenue_map[em] = rm
+        except Exception as exc:
+            _logger.debug('batch revenue_metrics: %s', exc)
+
+        # ── Batch-fetch previous health scores (1 call instead of N) ──
+        prev_scores_map = {}  # email → previous overall_score
+        try:
+            enc = _postgrest_in_list(ext_emails)
+            if enc:
+                prev_rows = self._request(
+                    f'/rest/v1/customer_health_scores?contact_email=in.({enc})'
+                    '&order=score_date.desc'
+                    '&select=contact_email,overall_score',
+                ) or []
+                for ps in prev_rows:
+                    em = (ps.get('contact_email') or '').lower()
+                    if em and em not in prev_scores_map:
+                        prev_scores_map[em] = float(
+                            ps.get('overall_score', 0),
+                        )
+        except Exception as exc:
+            _logger.debug('batch prev health_scores: %s', exc)
+
+        # ── Compute scores per contact ──
+        scores_to_save = []
+        for c in external:
+            email_addr = c['email'].lower()
 
             try:
                 # ── Communication score ──
@@ -936,53 +967,43 @@ class SupabaseService:
                 )
                 comm_score = min(100, total_msgs * 5)  # 20+ msgs = 100
 
-                # ── Financial score ──
-                # Fetch latest revenue_metrics
+                # ── Financial score (from batch) ──
                 fin_score = 50  # default neutral
-                try:
-                    encoded = url_quote(email_addr, safe='')
-                    rev = self._request(
-                        f'/rest/v1/revenue_metrics?contact_email=eq.{encoded}'
-                        '&order=period_start.desc&limit=1',
-                    )
-                    if rev and isinstance(rev, list) and rev:
-                        rm = rev[0]
-                        invoiced = float(rm.get('total_invoiced', 0) or 0)
-                        overdue = float(rm.get('overdue_amount', 0) or 0)
-                        if invoiced > 0:
-                            fin_score = min(100, 50 + invoiced / 10000)
-                        if overdue > 0:
-                            fin_score = max(
-                                0,
-                                fin_score - min(50, overdue / 5000),
-                            )
-                except Exception:
-                    pass
+                rm = revenue_map.get(email_addr)
+                if rm:
+                    invoiced = float(rm.get('total_invoiced', 0) or 0)
+                    overdue = float(rm.get('overdue_amount', 0) or 0)
+                    if invoiced > 0:
+                        fin_score = min(100, 50 + invoiced / 10000)
+                    if overdue > 0:
+                        fin_score = max(
+                            0,
+                            fin_score - min(50, overdue / 5000),
+                        )
 
                 # ── Sentiment score ──
                 raw_sentiment = sentiment_map.get(email_addr, 0)
-                # Normalize -1..1 to 0..100
                 sent_score = max(0, min(100, (raw_sentiment + 1) * 50))
 
                 # ── Responsiveness score ──
                 resp_time = c.get('avg_response_time_hours')
                 if resp_time and float(resp_time) > 0:
-                    # <1h = 100, 4h = 75, 24h = 50, 72h = 25, >168h = 0
                     hours = float(resp_time)
                     resp_score = max(0, min(100, 100 - (hours * 0.6)))
                 else:
-                    resp_score = 50  # unknown
+                    resp_score = 50
 
-                # ── Engagement score ──
-                # Based on KG data (facts, relationships)
-                engagement_score = 50  # default
+                # ── Engagement score (individual RPC call) ──
+                engagement_score = 50
                 try:
                     entity_data = self.get_entity_intelligence(
                         email=email_addr,
                     )
                     if entity_data:
                         facts_count = len(entity_data.get('facts', []))
-                        rels_count = len(entity_data.get('relationships', []))
+                        rels_count = len(
+                            entity_data.get('relationships', []),
+                        )
                         engagement_score = min(
                             100, 30 + facts_count * 10 + rels_count * 15,
                         )
@@ -990,41 +1011,25 @@ class SupabaseService:
                     pass
 
                 # ── Weighted overall score ──
-                weights = {
-                    'communication': 0.25,
-                    'financial': 0.30,
-                    'sentiment': 0.15,
-                    'responsiveness': 0.15,
-                    'engagement': 0.15,
-                }
                 overall = (
-                    comm_score * weights['communication']
-                    + fin_score * weights['financial']
-                    + sent_score * weights['sentiment']
-                    + resp_score * weights['responsiveness']
-                    + engagement_score * weights['engagement']
+                    comm_score * 0.25
+                    + fin_score * 0.30
+                    + sent_score * 0.15
+                    + resp_score * 0.15
+                    + engagement_score * 0.15
                 )
 
-                # ── Determine trend ──
+                # ── Determine trend (from batch) ──
                 trend = 'stable'
-                try:
-                    encoded = url_quote(email_addr, safe='')
-                    prev = self._request(
-                        f'/rest/v1/customer_health_scores'
-                        f'?contact_email=eq.{encoded}'
-                        '&order=score_date.desc&limit=1',
-                    )
-                    if prev and isinstance(prev, list) and prev:
-                        prev_score = float(prev[0].get('overall_score', 0))
-                        delta = overall - prev_score
-                        if delta < -15:
-                            trend = 'critical'
-                        elif delta < -5:
-                            trend = 'declining'
-                        elif delta > 5:
-                            trend = 'improving'
-                except Exception:
-                    pass
+                prev_score = prev_scores_map.get(email_addr)
+                if prev_score is not None:
+                    delta = overall - prev_score
+                    if delta < -15:
+                        trend = 'critical'
+                    elif delta < -5:
+                        trend = 'declining'
+                    elif delta > 5:
+                        trend = 'improving'
 
                 # ── Risk and opportunity signals ──
                 risk_signals = []
@@ -1042,7 +1047,7 @@ class SupabaseService:
                 if fin_score > 80:
                     opportunity_signals.append('strong_revenue')
 
-                self.save_customer_health_score({
+                scores_to_save.append({
                     'contact_email': email_addr,
                     'score_date': today,
                     'overall_score': round(overall, 1),
@@ -1052,14 +1057,25 @@ class SupabaseService:
                     'sentiment_score': round(sent_score, 1),
                     'responsiveness_score': round(resp_score, 1),
                     'engagement_score': round(engagement_score, 1),
-                    'risk_signals': json.dumps(risk_signals),
-                    'opportunity_signals': json.dumps(opportunity_signals),
+                    'risk_signals': risk_signals,
+                    'opportunity_signals': opportunity_signals,
                 })
-                saved += 1
 
             except Exception as exc:
                 _logger.debug('health_score skip %s: %s', email_addr, exc)
 
-        if saved:
-            _logger.info('✓ %d health scores calculados y guardados', saved)
+        # ── Batch-save all health scores (1 call instead of N) ──
+        if scores_to_save:
+            try:
+                self._upsert_batch(
+                    '/rest/v1/customer_health_scores'
+                    '?on_conflict=contact_email,score_date',
+                    scores_to_save, 'merge-duplicates',
+                )
+                _logger.info(
+                    '✓ %d health scores calculados y guardados',
+                    len(scores_to_save),
+                )
+            except Exception as exc:
+                _logger.warning('batch save health_scores: %s', exc)
 

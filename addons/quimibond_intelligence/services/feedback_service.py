@@ -2,42 +2,16 @@
 Quimibond Intelligence — Feedback Service (Phase 2)
 Procesa señales de retroalimentación del usuario, calibra alertas y apoya mejora continua.
 """
-import json
 import logging
 from datetime import datetime, timedelta
 
-import httpx
+from .supabase_base import SupabaseBaseClient
 
 _logger = logging.getLogger(__name__)
 
 
-class FeedbackService:
+class FeedbackService(SupabaseBaseClient):
     """Cliente para procesar feedback, calibrar alertas y optimizar acciones."""
-
-    def __init__(self, url: str, key: str):
-        self._url = url.rstrip('/')
-        self._key = key
-        self._headers = {
-            'apikey': key,
-            'Authorization': f'Bearer {key}',
-            'Content-Type': 'application/json',
-        }
-
-    def _request(self, path: str, method: str = 'GET',
-                 payload=None, extra_headers: dict = None):
-        """Realiza solicitud HTTP a Supabase REST API."""
-        headers = {**self._headers, **(extra_headers or {})}
-        with httpx.Client(timeout=30) as client:
-            resp = client.request(method, f'{self._url}{path}',
-                                  headers=headers,
-                                  json=payload if payload else None)
-        if 200 <= resp.status_code < 300:
-            text = resp.text
-            try:
-                return json.loads(text) if text else None
-            except json.JSONDecodeError:
-                return text
-        raise RuntimeError(f'Supabase {resp.status_code}: {resp.text[:300]}')
 
     def process_feedback_rewards(self) -> tuple:
         """Procesa señales de retroalimentación no procesadas y calcula reward scores.
