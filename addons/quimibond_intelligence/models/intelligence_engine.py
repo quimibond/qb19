@@ -182,10 +182,22 @@ class IntelligenceEngine(models.Model):
             today, account_summaries, metrics, alerts, threads,
             client_scores, odoo_context, historical,
         )
-        briefing_html = claude.synthesize_briefing(data_package)
+        try:
+            briefing_html = claude.synthesize_briefing(data_package)
+        except Exception as exc:
+            _logger.error('Error generando briefing con Claude: %s', exc)
+            briefing_html = (
+                '<h2>Briefing no disponible</h2>'
+                '<p>Error al generar el briefing: %s</p>'
+                '<p>Emails procesados: %d | Cuentas OK: %d | Fallidas: %d</p>'
+            ) % (exc, len(emails), result['success_count'], result['failed_count'])
 
         # Extraer temas
-        topics = claude.extract_topics(briefing_html)
+        topics = []
+        try:
+            topics = claude.extract_topics(briefing_html)
+        except Exception as exc:
+            _logger.error('Error extrayendo temas: %s', exc)
         _logger.info('%d temas extraídos', len(topics))
 
         # Guardar temas en Supabase
@@ -383,9 +395,19 @@ class IntelligenceEngine(models.Model):
         supa_url = get('supabase_url')
         supa_key = get('supabase_key')
 
-        if not all([sa_json, anthropic_key, supa_url, supa_key]):
-            _logger.error('Faltan API keys en ir.config_parameter. '
-                          'Configura desde Ajustes > Intelligence System.')
+        missing = []
+        if not sa_json:
+            missing.append('service_account_json')
+        if not anthropic_key:
+            missing.append('anthropic_api_key')
+        if not supa_url:
+            missing.append('supabase_url')
+        if not supa_key:
+            missing.append('supabase_key')
+        if missing:
+            _logger.error('Faltan API keys en ir.config_parameter: %s. '
+                          'Configura desde Ajustes > Intelligence System.',
+                          ', '.join(missing))
             return None
 
         return {
@@ -588,7 +610,7 @@ class IntelligenceEngine(models.Model):
                 )
 
             except Exception as exc:
-                _logger.debug('Odoo enrichment skip %s: %s', email_addr, exc)
+                _logger.warning('Odoo enrichment skip %s: %s', email_addr, exc)
 
         # ── Verificación de acciones sugeridas previamente ──────────────────
         odoo_ctx['action_followup'] = self._verify_pending_actions(today)

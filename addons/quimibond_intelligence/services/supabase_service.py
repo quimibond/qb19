@@ -7,6 +7,7 @@ import json
 import logging
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+from urllib.parse import quote as url_quote
 
 import httpx
 
@@ -342,7 +343,7 @@ class SupabaseService:
         """Busca una entidad por nombre."""
         canonical = name.lower().strip()
         result = self._request(
-            '/rest/v1/entities?canonical_name=eq.' + canonical + '&limit=1',
+            '/rest/v1/entities?canonical_name=eq.' + url_quote(canonical, safe='') + '&limit=1',
         )
         return result[0] if result else None
 
@@ -495,7 +496,7 @@ class SupabaseService:
             return None
         try:
             result = self._request(
-                f'/rest/v1/person_profiles?canonical_key=eq.{key}&limit=1',
+                f'/rest/v1/person_profiles?canonical_key=eq.{url_quote(key, safe="")}&limit=1',
             )
             return result[0] if result else None
         except Exception:
