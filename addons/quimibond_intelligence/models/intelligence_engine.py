@@ -396,6 +396,92 @@ class IntelligenceEngine(models.Model):
         _logger.info('═══ WEEKLY CALIBRATION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
+    #   DATA RETENTION — Limpieza de datos antiguos
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @api.model
+    def run_data_retention(self):
+        """Limpia datos antiguos de Odoo y Supabase."""
+        _logger.info('═══ DATA RETENTION ═══')
+        today = fields.Date.today()
+
+        # ── Odoo cleanup ──────────────────────────────────────────────────
+        # Archive briefings older than 90 days
+        old_briefings = self.env['intelligence.briefing'].sudo().search([
+            ('date', '<', today - timedelta(days=90)),
+            ('state', '!=', 'archived'),
+        ])
+        if old_briefings:
+            old_briefings.write({'state': 'archived'})
+            _logger.info('Archived %d old briefings', len(old_briefings))
+
+        # Delete client scores older than 180 days
+        old_scores = self.env['intelligence.client.score'].sudo().search([
+            ('date', '<', today - timedelta(days=180)),
+        ])
+        if old_scores:
+            count = len(old_scores)
+            old_scores.unlink()
+            _logger.info('Deleted %d old client scores', count)
+
+        # Auto-cancel overdue actions older than 30 days
+        stale_actions = self.env['intelligence.action.item'].sudo().search([
+            ('state', 'in', ['open', 'in_progress']),
+            ('due_date', '<', today - timedelta(days=30)),
+        ])
+        if stale_actions:
+            stale_actions.write({'state': 'cancelled'})
+            _logger.info('Auto-cancelled %d stale actions', len(stale_actions))
+
+        # ── Supabase cleanup ─────────────────────────────────────────────
+        cfg = self._load_config()
+        if not cfg:
+            _logger.info('═══ DATA RETENTION DONE (Odoo only) ═══')
+            return
+        try:
+            from ..services.supabase_service import SupabaseService
+            supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
+
+            cutoff_90d = (
+                datetime.now() - timedelta(days=90)
+            ).strftime('%Y-%m-%d')
+            cutoff_180d = (
+                datetime.now() - timedelta(days=180)
+            ).strftime('%Y-%m-%d')
+
+            # Delete old resolved alerts (>90 days)
+            supa._request(
+                '/rest/v1/alerts?is_resolved=eq.true'
+                f'&created_at=lt.{cutoff_90d}T00:00:00Z',
+                'DELETE',
+            )
+
+            # Delete old system_learning (>180 days)
+            supa._request(
+                f'/rest/v1/system_learning?learning_date=lt.{cutoff_180d}',
+                'DELETE',
+            )
+
+            # Delete old prediction_outcomes (>180 days)
+            supa._request(
+                f'/rest/v1/prediction_outcomes?prediction_date=lt.{cutoff_180d}',
+                'DELETE',
+            )
+
+            # Expire old unverified facts (>180 days)
+            supa._request(
+                '/rest/v1/facts?verified=eq.false'
+                f'&fact_date=lt.{cutoff_180d}',
+                'PATCH', {'expired': True},
+            )
+
+            _logger.info('✓ Supabase data retention completed')
+        except Exception as exc:
+            _logger.warning('Supabase retention: %s', exc)
+
+        _logger.info('═══ DATA RETENTION DONE ═══')
+
+    # ══════════════════════════════════════════════════════════════════════════
     #   PUNTO DE ENTRADA: REPORTE SEMANAL (lunes 8am)
     # ══════════════════════════════════════════════════════════════════════════
 
@@ -1203,39 +1289,49 @@ class IntelligenceEngine(models.Model):
         # ── 12. Lifetime Value y tendencia histórica ────────────────────────
         if models.get('account_move') and ctx['is_customer']:
             try:
-                all_invoices = models['account_move'].search([
+                AM = models['account_move']
+                inv_domain = [
                     ('partner_id', '=', pid),
                     ('move_type', '=', 'out_invoice'),
                     ('state', '=', 'posted'),
-                ], order='invoice_date desc')
-                if all_invoices:
-                    lifetime_total = sum(inv.amount_total for inv in all_invoices)
-                    first_date = min(
-                        inv.invoice_date for inv in all_invoices
-                        if inv.invoice_date
+                ]
+                # Use read_group for aggregates instead of loading all records
+                totals = AM.read_group(
+                    inv_domain, ['amount_total'], [],
+                )
+                lifetime_total = totals[0]['amount_total'] if totals else 0
+
+                if lifetime_total:
+                    # Get first invoice date efficiently
+                    first_inv = AM.search(
+                        inv_domain + [('invoice_date', '!=', False)],
+                        order='invoice_date asc', limit=1,
                     )
-                    months_active = max(
-                        1, (today - first_date).days // 30)
+                    first_date = first_inv.invoice_date if first_inv else today
+                    months_active = max(1, (today - first_date).days // 30)
                     monthly_avg = lifetime_total / months_active
 
-                    # Tendencia: últimos 3 meses vs 3 meses anteriores
+                    # Trend: last 3 months vs prior 3 months (2 queries)
                     date_3m = (
                         datetime.now() - timedelta(days=90)
                     ).strftime('%Y-%m-%d')
                     date_6m = (
                         datetime.now() - timedelta(days=180)
                     ).strftime('%Y-%m-%d')
-                    recent_3m = sum(
-                        inv.amount_total for inv in all_invoices
-                        if inv.invoice_date
-                        and inv.invoice_date.strftime('%Y-%m-%d') >= date_3m
+                    r3 = AM.read_group(
+                        inv_domain + [('invoice_date', '>=', date_3m)],
+                        ['amount_total'], [],
                     )
-                    prev_3m = sum(
-                        inv.amount_total for inv in all_invoices
-                        if inv.invoice_date
-                        and date_6m <= inv.invoice_date.strftime('%Y-%m-%d')
-                        < date_3m
+                    p3 = AM.read_group(
+                        inv_domain + [
+                            ('invoice_date', '>=', date_6m),
+                            ('invoice_date', '<', date_3m),
+                        ],
+                        ['amount_total'], [],
                     )
+                    recent_3m = r3[0]['amount_total'] if r3 else 0
+                    prev_3m = p3[0]['amount_total'] if p3 else 0
+
                     if prev_3m > 0:
                         trend_pct = round(
                             (recent_3m - prev_3m) / prev_3m * 100)
@@ -1249,8 +1345,8 @@ class IntelligenceEngine(models.Model):
                         'first_invoice': first_date.strftime('%Y-%m-%d'),
                         'months_active': months_active,
                         'monthly_avg': round(monthly_avg, 2),
-                        'recent_3m': recent_3m,
-                        'prev_3m': prev_3m,
+                        'recent_3m': recent_3m or 0,
+                        'prev_3m': prev_3m or 0,
                         'trend_pct': trend_pct,
                     }
                     summary_parts.append(
@@ -1725,12 +1821,11 @@ class IntelligenceEngine(models.Model):
                                     .strftime('%Y-%m-%d')
                                 ),
                             })
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            _logger.debug('person_insight upsert: %s', exc)
 
                 _logger.info('  ✓ %s (%s): %d emails analizados',
                              dept, account, len(acct_emails))
-                time.sleep(3)  # Rate limit courtesy
             except Exception as exc:
                 _logger.error('  ✗ %s: %s', account, exc)
 
@@ -3126,7 +3221,6 @@ class IntelligenceEngine(models.Model):
                 supa.mark_emails_kg_processed(batch_ids)
             except Exception as exc:
                 _logger.warning('KG mark_processed %s: %s', account, exc)
-            time.sleep(3)
 
         _logger.info('Knowledge graph alimentado (con perfiles de personas)')
 

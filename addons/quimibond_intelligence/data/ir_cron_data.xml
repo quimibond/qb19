@@ -35,5 +35,16 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 14:00:00')"/>
         </record>
 
+        <record id="cron_data_retention" model="ir.cron">
+            <field name="name">Intelligence System - Data Retention (Cleanup)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_data_retention()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 03:00:00')"/>
+        </record>
+
     </data>
 </odoo>
