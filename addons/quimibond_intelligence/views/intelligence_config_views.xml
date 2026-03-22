@@ -39,6 +39,7 @@
                                     <field name="supabase_url"
                                            placeholder="https://xxxx.supabase.co"/>
                                     <field name="supabase_key" password="True"/>
+                                    <field name="supabase_service_role_key" password="True"/>
                                 </group>
                                 <group string="Google Workspace (Gmail)">
                                     <label for="service_account_json"/>

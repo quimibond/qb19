@@ -23,6 +23,11 @@
             <field name="value"></field>
         </record>
 
+        <record id="param_supabase_service_role_key" model="ir.config_parameter">
+            <field name="key">quimibond_intelligence.supabase_service_role_key</field>
+            <field name="value"></field>
+        </record>
+
         <record id="param_voyage_api_key" model="ir.config_parameter">
             <field name="key">quimibond_intelligence.voyage_api_key</field>
             <field name="value"></field>

@@ -75,6 +75,10 @@ class IntelligenceConfig(models.TransientModel):
     anthropic_api_key = fields.Char(string='Anthropic API Key')
     supabase_url = fields.Char(string='Supabase URL')
     supabase_key = fields.Char(string='Supabase Anon Key')
+    supabase_service_role_key = fields.Char(
+        string='Supabase Service Role Key',
+        help='Requerido para escritura (bypasses RLS). Si está vacío se usa Anon Key.',
+    )
     voyage_api_key = fields.Char(string='Voyage AI API Key')
     recipient_email = fields.Char(string='Email destinatario del briefing')
     sender_email = fields.Char(
@@ -117,6 +121,7 @@ class IntelligenceConfig(models.TransientModel):
             'anthropic_api_key': self._get_param('anthropic_api_key'),
             'supabase_url': self._get_param('supabase_url'),
             'supabase_key': self._get_param('supabase_key'),
+            'supabase_service_role_key': self._get_param('supabase_service_role_key'),
             'voyage_api_key': self._get_param('voyage_api_key'),
             'recipient_email': self._get_param('recipient_email'),
             'sender_email': self._get_param('sender_email'),
@@ -148,7 +153,8 @@ class IntelligenceConfig(models.TransientModel):
                                    'type': 'danger'}}
         for fname in [
             'service_account_json', 'anthropic_api_key',
-            'supabase_url', 'supabase_key', 'voyage_api_key',
+            'supabase_url', 'supabase_key', 'supabase_service_role_key',
+            'voyage_api_key',
             'recipient_email', 'sender_email', 'email_accounts_json',
             'target_response_hours',
             'slow_response_hours', 'no_response_hours',
