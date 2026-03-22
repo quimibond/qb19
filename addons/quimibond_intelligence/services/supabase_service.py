@@ -1171,6 +1171,55 @@ class SupabaseService(SupabaseBaseClient):
         except Exception as exc:
             _logger.debug('batch prev health_scores: %s', exc)
 
+        # ── Batch-fetch engagement data (facts + relationships) ──
+        # Instead of N RPC calls to get_entity_intelligence, do 2 batch queries
+        engagement_map = {}  # email → {'facts': int, 'rels': int}
+        try:
+            enc = _postgrest_in_list(ext_emails)
+            if enc:
+                # Get entities by email
+                ent_rows = self._request(
+                    f'/rest/v1/entities?email=in.({enc})'
+                    '&select=id,email',
+                ) or []
+                if ent_rows:
+                    ent_id_map = {}  # entity_id → email
+                    for er in ent_rows:
+                        if er.get('email') and er.get('id'):
+                            ent_id_map[er['id']] = er['email'].lower()
+                            engagement_map[er['email'].lower()] = {
+                                'facts': 0, 'rels': 0,
+                            }
+                    # Count facts per entity (batch)
+                    ent_ids = ','.join(str(eid) for eid in ent_id_map)
+                    if ent_ids:
+                        fact_rows = self._request(
+                            f'/rest/v1/facts?entity_id=in.({ent_ids})'
+                            '&expired=eq.false'
+                            '&select=entity_id',
+                        ) or []
+                        for fr in fact_rows:
+                            eid = fr.get('entity_id')
+                            em = ent_id_map.get(eid)
+                            if em and em in engagement_map:
+                                engagement_map[em]['facts'] += 1
+                        # Count relationships per entity (batch)
+                        rel_rows = self._request(
+                            f'/rest/v1/entity_relationships'
+                            f'?or=(entity_a_id.in.({ent_ids}),'
+                            f'entity_b_id.in.({ent_ids}))'
+                            '&select=entity_a_id,entity_b_id',
+                        ) or []
+                        for rr in rel_rows:
+                            for side in ('entity_a_id', 'entity_b_id'):
+                                eid = rr.get(side)
+                                em = ent_id_map.get(eid)
+                                if em and em in engagement_map:
+                                    engagement_map[em]['rels'] += 1
+                                    break  # count once per relationship
+        except Exception as exc:
+            _logger.debug('batch engagement data: %s', exc)
+
         # ── Compute scores per contact ──
         scores_to_save = []
         for c in external:
@@ -1209,22 +1258,14 @@ class SupabaseService(SupabaseBaseClient):
                 else:
                     resp_score = 50
 
-                # ── Engagement score (individual RPC call) ──
-                engagement_score = 50
-                try:
-                    entity_data = self.get_entity_intelligence(
-                        email=email_addr,
+                # ── Engagement score (from batch data) ──
+                eng = engagement_map.get(email_addr)
+                if eng:
+                    engagement_score = min(
+                        100, 30 + eng['facts'] * 10 + eng['rels'] * 15,
                     )
-                    if entity_data:
-                        facts_count = len(entity_data.get('facts', []))
-                        rels_count = len(
-                            entity_data.get('relationships', []),
-                        )
-                        engagement_score = min(
-                            100, 30 + facts_count * 10 + rels_count * 15,
-                        )
-                except Exception:
-                    pass
+                else:
+                    engagement_score = 50
 
                 # ── Weighted overall score ──
                 overall = (
