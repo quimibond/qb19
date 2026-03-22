@@ -857,3 +857,209 @@ class SupabaseService:
             except Exception as exc:
                 _logger.debug('save_prediction_outcomes: %s', exc)
 
+    # ── Revenue Metrics ──────────────────────────────────────────────────────
+
+    def save_revenue_metrics(self, metrics: dict):
+        """Guarda métricas de revenue para un contacto.
+
+        Upsert por (contact_email, period_start, period_type).
+        """
+        try:
+            self._request(
+                '/rest/v1/revenue_metrics',
+                'POST', metrics,
+                headers={
+                    'Prefer': 'resolution=merge-duplicates',
+                },
+            )
+        except Exception as exc:
+            _logger.debug('save_revenue_metrics: %s', exc)
+
+    # ── Customer Health Scores ───────────────────────────────────────────────
+
+    def save_customer_health_score(self, score: dict):
+        """Guarda un health score para un contacto.
+
+        Upsert por (contact_email, score_date).
+        """
+        try:
+            self._request(
+                '/rest/v1/customer_health_scores',
+                'POST', score,
+                headers={
+                    'Prefer': 'resolution=merge-duplicates',
+                },
+            )
+        except Exception as exc:
+            _logger.debug('save_customer_health_score: %s', exc)
+
+    def compute_and_save_health_scores(self, contacts: list,
+                                        account_summaries: list,
+                                        today: str):
+        """Calcula y guarda health scores para todos los contactos externos.
+
+        Score components (each 0-100):
+        - communication: based on total_sent, total_received, recency
+        - financial: from revenue_metrics (invoiced, overdue, trend)
+        - sentiment: from Claude analysis of emails
+        - responsiveness: avg_response_time_hours
+        - engagement: KG facts, topics, entity mentions
+        """
+        if not contacts:
+            return
+
+        # Build sentiment map from account summaries
+        sentiment_map = {}
+        for s in (account_summaries or []):
+            for ec in s.get('external_contacts', []):
+                email_addr = (ec.get('email') or '').lower()
+                if email_addr:
+                    try:
+                        sentiment_map[email_addr] = float(
+                            ec.get('sentiment_score', 0),
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+        saved = 0
+        for c in contacts:
+            if c.get('contact_type') != 'external':
+                continue
+            email_addr = c.get('email', '').lower()
+            if not email_addr:
+                continue
+
+            try:
+                # ── Communication score ──
+                total_msgs = (c.get('total_sent', 0) or 0) + (
+                    c.get('total_received', 0) or 0
+                )
+                comm_score = min(100, total_msgs * 5)  # 20+ msgs = 100
+
+                # ── Financial score ──
+                # Fetch latest revenue_metrics
+                fin_score = 50  # default neutral
+                try:
+                    encoded = url_quote(email_addr, safe='')
+                    rev = self._request(
+                        f'/rest/v1/revenue_metrics?contact_email=eq.{encoded}'
+                        '&order=period_start.desc&limit=1',
+                    )
+                    if rev and isinstance(rev, list) and rev:
+                        rm = rev[0]
+                        invoiced = float(rm.get('total_invoiced', 0) or 0)
+                        overdue = float(rm.get('overdue_amount', 0) or 0)
+                        if invoiced > 0:
+                            fin_score = min(100, 50 + invoiced / 10000)
+                        if overdue > 0:
+                            fin_score = max(
+                                0,
+                                fin_score - min(50, overdue / 5000),
+                            )
+                except Exception:
+                    pass
+
+                # ── Sentiment score ──
+                raw_sentiment = sentiment_map.get(email_addr, 0)
+                # Normalize -1..1 to 0..100
+                sent_score = max(0, min(100, (raw_sentiment + 1) * 50))
+
+                # ── Responsiveness score ──
+                resp_time = c.get('avg_response_time_hours')
+                if resp_time and float(resp_time) > 0:
+                    # <1h = 100, 4h = 75, 24h = 50, 72h = 25, >168h = 0
+                    hours = float(resp_time)
+                    resp_score = max(0, min(100, 100 - (hours * 0.6)))
+                else:
+                    resp_score = 50  # unknown
+
+                # ── Engagement score ──
+                # Based on KG data (facts, relationships)
+                engagement_score = 50  # default
+                try:
+                    entity_data = self.get_entity_intelligence(
+                        email=email_addr,
+                    )
+                    if entity_data:
+                        facts_count = len(entity_data.get('facts', []))
+                        rels_count = len(entity_data.get('relationships', []))
+                        engagement_score = min(
+                            100, 30 + facts_count * 10 + rels_count * 15,
+                        )
+                except Exception:
+                    pass
+
+                # ── Weighted overall score ──
+                weights = {
+                    'communication': 0.25,
+                    'financial': 0.30,
+                    'sentiment': 0.15,
+                    'responsiveness': 0.15,
+                    'engagement': 0.15,
+                }
+                overall = (
+                    comm_score * weights['communication']
+                    + fin_score * weights['financial']
+                    + sent_score * weights['sentiment']
+                    + resp_score * weights['responsiveness']
+                    + engagement_score * weights['engagement']
+                )
+
+                # ── Determine trend ──
+                trend = 'stable'
+                try:
+                    encoded = url_quote(email_addr, safe='')
+                    prev = self._request(
+                        f'/rest/v1/customer_health_scores'
+                        f'?contact_email=eq.{encoded}'
+                        '&order=score_date.desc&limit=1',
+                    )
+                    if prev and isinstance(prev, list) and prev:
+                        prev_score = float(prev[0].get('overall_score', 0))
+                        delta = overall - prev_score
+                        if delta < -15:
+                            trend = 'critical'
+                        elif delta < -5:
+                            trend = 'declining'
+                        elif delta > 5:
+                            trend = 'improving'
+                except Exception:
+                    pass
+
+                # ── Risk and opportunity signals ──
+                risk_signals = []
+                opportunity_signals = []
+                if comm_score < 20:
+                    risk_signals.append('low_communication')
+                if fin_score < 30:
+                    risk_signals.append('financial_risk')
+                if sent_score < 30:
+                    risk_signals.append('negative_sentiment')
+                if resp_score < 25:
+                    risk_signals.append('slow_responder')
+                if comm_score > 80 and sent_score > 70:
+                    opportunity_signals.append('highly_engaged')
+                if fin_score > 80:
+                    opportunity_signals.append('strong_revenue')
+
+                self.save_customer_health_score({
+                    'contact_email': email_addr,
+                    'score_date': today,
+                    'overall_score': round(overall, 1),
+                    'trend': trend,
+                    'communication_score': round(comm_score, 1),
+                    'financial_score': round(fin_score, 1),
+                    'sentiment_score': round(sent_score, 1),
+                    'responsiveness_score': round(resp_score, 1),
+                    'engagement_score': round(engagement_score, 1),
+                    'risk_signals': json.dumps(risk_signals),
+                    'opportunity_signals': json.dumps(opportunity_signals),
+                })
+                saved += 1
+
+            except Exception as exc:
+                _logger.debug('health_score skip %s: %s', email_addr, exc)
+
+        if saved:
+            _logger.info('✓ %d health scores calculados y guardados', saved)
+

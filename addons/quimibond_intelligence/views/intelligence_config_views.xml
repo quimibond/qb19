@@ -29,6 +29,7 @@
                             <group>
                                 <group string="Claude AI (Analisis)">
                                     <field name="anthropic_api_key" password="True"/>
+                                    <field name="claude_model" placeholder="claude-sonnet-4-6"/>
                                 </group>
                                 <group string="Voyage AI (Embeddings/RAG)">
                                     <field name="voyage_api_key" password="True"/>

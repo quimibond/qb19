@@ -262,13 +262,21 @@ class IntelligenceEngine(models.Model):
         # ══════════════════════════════════════════════════════════════════════
         _logger.info('── FASE 8.5: Sync y aprendizaje continuo ──')
 
-        # Sync Odoo partner data to Supabase contacts
-        self._sync_contacts_to_supabase(odoo_context, supa)
+        # Sync Odoo partner data to Supabase contacts (+ revenue metrics)
+        self._sync_contacts_to_supabase(odoo_context, supa, today)
 
         # Generate accountability alerts from action verification
         self._generate_accountability_alerts(
             odoo_context, alerts, supa, today,
         )
+
+        # Compute and save customer health scores
+        try:
+            supa.compute_and_save_health_scores(
+                contacts, account_summaries, today,
+            )
+        except Exception as exc:
+            _logger.debug('Health scores: %s', exc)
 
         # Save communication patterns
         try:
@@ -1779,6 +1787,112 @@ class IntelligenceEngine(models.Model):
                     'account': '',
                 })
 
+        # ── Alerta: riesgo de entrega (stock.picking retrasado) ──────────────
+
+        for email_addr, p in partners.items():
+            for delivery in p.get('pending_deliveries', []):
+                scheduled = delivery.get('scheduled_date', '')
+                if scheduled:
+                    try:
+                        sched_dt = datetime.strptime(
+                            scheduled[:10], '%Y-%m-%d',
+                        ).date()
+                        from datetime import date as _date
+                        if sched_dt < _date.today():
+                            days_late = (_date.today() - sched_dt).days
+                            severity = 'critical' if days_late > 3 else 'high'
+                            alerts.append({
+                                'alert_type': 'delivery_risk',
+                                'severity': severity,
+                                'title': (
+                                    f"Entrega retrasada ({days_late}d): "
+                                    f"{delivery.get('name', '?')} → "
+                                    f"{p.get('name', email_addr)}"
+                                )[:120],
+                                'description': (
+                                    f"Programada: {scheduled[:10]}. "
+                                    f"Días de retraso: {days_late}. "
+                                    f"Estado: {delivery.get('state', '?')}"
+                                ),
+                                'contact_name': p.get('name', email_addr),
+                                'account': '',
+                            })
+                    except Exception:
+                        pass
+
+        # ── Alerta: pago vencido ─────────────────────────────────────────────
+
+        for email_addr, p in partners.items():
+            for inv in p.get('pending_invoices', []):
+                days_overdue = inv.get('days_overdue', 0)
+                if days_overdue > 15:
+                    severity = (
+                        'critical' if days_overdue > 45
+                        else 'high' if days_overdue > 30
+                        else 'medium'
+                    )
+                    alerts.append({
+                        'alert_type': 'payment_delay',
+                        'severity': severity,
+                        'title': (
+                            f"Pago vencido ({days_overdue}d): "
+                            f"{inv.get('name', '?')} — "
+                            f"{p.get('name', email_addr)}"
+                        )[:120],
+                        'description': (
+                            f"Factura: {inv.get('name', '?')}. "
+                            f"Monto: ${inv.get('amount_residual', 0):,.0f}. "
+                            f"Vencida hace {days_overdue} días."
+                        ),
+                        'contact_name': p.get('name', email_addr),
+                        'account': '',
+                    })
+
+        # ── Alerta: oportunidad detectada (CRM leads) ───────────────────────
+
+        for email_addr, p in partners.items():
+            for lead in p.get('crm_leads', []):
+                if lead.get('type') == 'opportunity' and lead.get(
+                    'probability', 0
+                ) >= 50:
+                    alerts.append({
+                        'alert_type': 'opportunity',
+                        'severity': 'low',
+                        'title': (
+                            f"Oportunidad: {lead.get('name', '?')} "
+                            f"({lead.get('probability', 0):.0f}%)"
+                        )[:120],
+                        'description': (
+                            f"Cliente: {p.get('name', email_addr)}. "
+                            f"Valor: ${lead.get('expected_revenue', 0):,.0f}. "
+                            f"Etapa: {lead.get('stage', '?')}"
+                        ),
+                        'contact_name': p.get('name', email_addr),
+                        'account': '',
+                    })
+
+        # ── Alerta: calidad (detectada por Claude en risks_detected) ─────────
+
+        for s in account_summaries:
+            account = s.get('account', '')
+            for risk in s.get('risks_detected', []):
+                risk_text = risk.get('risk', '').lower()
+                if any(w in risk_text for w in (
+                    'calidad', 'quality', 'reclamo', 'defecto', 'rechazo',
+                    'queja', 'devolución', 'devolucion',
+                )):
+                    alerts.append({
+                        'alert_type': 'quality_issue',
+                        'severity': risk.get('severity', 'high'),
+                        'title': f"Calidad: {risk.get('risk', '?')}"[:120],
+                        'description': (
+                            f"Mitigación sugerida: "
+                            f"{risk.get('mitigation', 'N/A')}. "
+                            f"Cuentas: {', '.join(risk.get('accounts_involved', [account]))}"
+                        ),
+                        'account': account,
+                    })
+
         return alerts
 
     # ── Client Scoring ────────────────────────────────────────────────────────
@@ -2288,18 +2402,20 @@ class IntelligenceEngine(models.Model):
     # ── Sync Odoo → Supabase contacts ──────────────────────────────────────
 
     @staticmethod
-    def _sync_contacts_to_supabase(odoo_ctx: dict, supa):
-        """Sincroniza datos de Odoo partners a Supabase contacts."""
+    def _sync_contacts_to_supabase(odoo_ctx: dict, supa, today: str = None):
+        """Sincroniza datos de Odoo partners a Supabase contacts + revenue metrics."""
         partners = odoo_ctx.get('partners', {})
         if not partners:
             return
         synced = 0
         for email_addr, p in partners.items():
             try:
+                # ── Sync contact data (including company!) ──
                 supa.sync_contact_odoo_data(email_addr, {
                     'odoo_partner_id': p.get('id'),
                     'is_customer': p.get('is_customer', False),
                     'is_supplier': p.get('is_supplier', False),
+                    'company': p.get('company_name', ''),
                     'odoo_context': {
                         'name': p.get('name', ''),
                         'total_invoiced': p.get('total_invoiced', 0),
@@ -2317,6 +2433,45 @@ class IntelligenceEngine(models.Model):
                     },
                 })
                 synced += 1
+
+                # ── Save revenue metrics for customers ──
+                if p.get('is_customer') and today:
+                    try:
+                        recent_sales = p.get('recent_sales', [])
+                        pending_invoices = p.get('pending_invoices', [])
+                        overdue = [
+                            inv for inv in pending_invoices
+                            if inv.get('days_overdue', 0) > 0
+                        ]
+                        supa.save_revenue_metrics({
+                            'contact_email': email_addr,
+                            'period_start': today[:8] + '01',  # first of month
+                            'period_end': today,
+                            'period_type': 'monthly',
+                            'total_invoiced': p.get('total_invoiced', 0),
+                            'pending_amount': sum(
+                                inv.get('amount_residual', 0)
+                                for inv in pending_invoices
+                            ),
+                            'overdue_amount': sum(
+                                inv.get('amount_residual', 0)
+                                for inv in overdue
+                            ),
+                            'overdue_days_max': max(
+                                (inv.get('days_overdue', 0) for inv in overdue),
+                                default=0,
+                            ),
+                            'num_orders': len(recent_sales),
+                            'avg_order_value': (
+                                sum(s.get('amount', 0) for s in recent_sales)
+                                / len(recent_sales)
+                                if recent_sales else 0
+                            ),
+                            'odoo_partner_id': p.get('id'),
+                        })
+                    except Exception as exc:
+                        _logger.debug('revenue_metrics skip %s: %s',
+                                      email_addr, exc)
             except Exception:
                 pass
         if synced:
