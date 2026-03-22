@@ -849,6 +849,39 @@ class SupabaseService(SupabaseBaseClient):
             _logger.debug('get_company_360: %s', exc)
             return {}
 
+    def get_companies_needing_enrichment(self, limit: int = 20) -> list:
+        """Empresas sin perfil o con perfil desactualizado (>30 días)."""
+        try:
+            return self._request(
+                '/rest/v1/companies?enriched_at=is.null'
+                '&select=id,name,canonical_name,domain,entity_id,'
+                'is_customer,is_supplier,odoo_context'
+                f'&order=updated_at.desc&limit={limit}',
+            ) or []
+        except Exception:
+            return []
+
+    def save_company_profile(self, company_id: int, profile: dict):
+        """Guarda perfil enriquecido por Claude en la empresa."""
+        from datetime import datetime
+        patch = {'enriched_at': datetime.now().isoformat(),
+                 'enrichment_source': 'claude'}
+        for field in ('description', 'business_type', 'relationship_type',
+                      'relationship_summary', 'industry', 'country', 'city',
+                      'key_products', 'risk_signals', 'opportunity_signals',
+                      'strategic_notes'):
+            val = profile.get(field)
+            if val is not None:
+                patch[field] = val
+        try:
+            self._request(
+                f'/rest/v1/companies?id=eq.{company_id}',
+                'PATCH', patch,
+                extra_headers={'Prefer': 'return=minimal'},
+            )
+        except Exception as exc:
+            _logger.warning('save_company_profile %s: %s', company_id, exc)
+
     # ── System Learning ───────────────────────────────────────────────────────
 
     def save_learning(self, learning_type: str, description: str,
