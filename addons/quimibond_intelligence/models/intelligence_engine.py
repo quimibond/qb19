@@ -244,12 +244,6 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando daily summary: %s', exc)
 
-        # Guardar en briefings (HTML completo para dashboard)
-        try:
-            supa.save_briefing(today, briefing_html, len(emails))
-        except Exception as exc:
-            _logger.debug('Error guardando briefing: %s', exc)
-
         # Cross-department signal detection
         try:
             signals = supa._request(
@@ -357,6 +351,15 @@ class IntelligenceEngine(models.Model):
                 _logger.info('Action priorities: %s', action_priorities)
         except Exception as exc:
             _logger.warning('Feedback processing (non-critical): %s', exc)
+
+        # Refresh contact_360 materialized view
+        try:
+            supa._request(
+                '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+            )
+            _logger.info('✓ contact_360 view refreshed')
+        except Exception as exc:
+            _logger.debug('refresh_contact_360: %s', exc)
 
         _logger.info('Pipeline completado exitosamente')
 
@@ -2654,25 +2657,50 @@ class IntelligenceEngine(models.Model):
         for email_addr, p in partners.items():
             try:
                 # ── Sync contact data (including company!) ──
+                # Derive enrichment columns
+                lifetime = p.get('lifetime', {})
+                aging = p.get('aging', {})
+                deliv = p.get('delivery_performance', {})
+                cn_total = sum(
+                    cn.get('amount', 0)
+                    for cn in p.get('credit_notes', [])
+                )
                 supa.sync_contact_odoo_data(email_addr, {
                     'odoo_partner_id': p.get('id'),
                     'is_customer': p.get('is_customer', False),
                     'is_supplier': p.get('is_supplier', False),
                     'company': p.get('company_name', ''),
+                    # New intelligence columns
+                    'lifetime_value': lifetime.get(
+                        'total_invoiced', p.get('total_invoiced', 0)),
+                    'total_credit_notes': cn_total,
+                    'delivery_otd_rate': deliv.get('on_time_rate'),
                     'odoo_context': {
                         'name': p.get('name', ''),
                         'total_invoiced': p.get('total_invoiced', 0),
                         'credit_limit': p.get('credit_limit', 0),
+                        'monthly_avg': lifetime.get('monthly_avg', 0),
+                        'trend_pct': lifetime.get('trend_pct', 0),
                         'recent_sales_count': len(
                             p.get('recent_sales', []),
                         ),
                         'pending_invoices_count': len(
                             p.get('pending_invoices', []),
                         ),
+                        'aging': aging,
                         'crm_leads_count': len(p.get('crm_leads', [])),
                         'pending_deliveries': len(
                             p.get('pending_deliveries', []),
                         ),
+                        'related_contacts': len(
+                            p.get('related_contacts', []),
+                        ),
+                        'credit_notes_count': len(
+                            p.get('credit_notes', []),
+                        ),
+                        'otd_rate': deliv.get('on_time_rate'),
+                        'avg_lead_time': deliv.get(
+                            'avg_lead_time_days'),
                     },
                 })
                 synced += 1

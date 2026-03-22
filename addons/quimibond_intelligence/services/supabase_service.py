@@ -286,23 +286,6 @@ class SupabaseService(SupabaseBaseClient):
 
     # ── Daily Summary ────────────────────────────────────────────────────────
 
-    def save_briefing(self, today: str, briefing_html: str,
-                      total_emails: int, briefing_type: str = 'daily'):
-        """Guarda briefing HTML en tabla briefings (para frontend dashboard)."""
-        try:
-            import re
-            summary = re.sub(r'<[^>]+>', '', briefing_html)[:2000]
-            self._request('/rest/v1/briefings', 'POST', {
-                'briefing_type': briefing_type,
-                'period_start': today + 'T00:00:00Z',
-                'period_end': today + 'T23:59:59Z',
-                'summary': summary,
-                'html_content': briefing_html[:100000],
-            })
-            _logger.info('✓ Briefing guardado en Supabase')
-        except Exception as exc:
-            _logger.debug('save_briefing: %s', exc)
-
     def save_daily_summary(self, today: str, briefing_html: str,
                            total_emails: int, accounts_read: int,
                            accounts_failed: int, topics_count: int,
@@ -396,10 +379,6 @@ class SupabaseService(SupabaseBaseClient):
             'POST', data, {
                 'Prefer': 'resolution=merge-duplicates,return=representation',
             })
-
-    def save_entity_mention(self, mention):
-        """Guarda una mencion de entidad en un email."""
-        return self._request('/rest/v1/entity_mentions', 'POST', mention)
 
     def save_fact(self, fact):
         """Guarda un hecho extraido."""
