@@ -58,8 +58,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Alertas" name="alerts"
-                              badge="intelligence_alert_count">
+                        <page string="Alertas" name="alerts">
                             <field name="intelligence_alert_ids" readonly="1">
                                 <list decoration-danger="state == 'open' and severity in ('high','critical')"
                                       decoration-muted="state in ('resolved','dismissed')">

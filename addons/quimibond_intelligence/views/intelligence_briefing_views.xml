@@ -91,8 +91,7 @@
                         <page string="Briefing" name="briefing">
                             <field name="html_content" readonly="1"/>
                         </page>
-                        <page string="Alertas" name="alerts"
-                              badge="alert_count">
+                        <page string="Alertas" name="alerts">
                             <field name="alert_ids">
                                 <list>
                                     <field name="severity" widget="badge"
