@@ -12,6 +12,10 @@ _logger = logging.getLogger(__name__)
 
 CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages'
 CLAUDE_DEFAULT_MODEL = 'claude-sonnet-4-6-latest'
+CLAUDE_FALLBACK_MODELS = [
+    'claude-sonnet-4-5-latest',
+    'claude-sonnet-4-20250514',
+]
 CLAUDE_API_VERSION = '2023-06-01'
 CLAUDE_MAX_TOKENS = 8000
 
@@ -29,19 +33,43 @@ class ClaudeService:
 
     def _call(self, system: str, user_content: str,
               max_tokens: int = 3000, retries: int = 3) -> str:
-        """Llamada genérica a Claude con retry inteligente para rate limits."""
+        """Llamada genérica a Claude con retry y auto-fallback de modelo."""
         headers = {
             'x-api-key': self._api_key,
             'anthropic-version': CLAUDE_API_VERSION,
             'content-type': 'application/json',
         }
-        payload = {
-            'model': self._model,
-            'max_tokens': max_tokens,
-            'system': system,
-            'messages': [{'role': 'user', 'content': user_content}],
-        }
 
+        # Modelos a intentar: el configurado + fallbacks
+        models_to_try = [self._model] + [
+            m for m in CLAUDE_FALLBACK_MODELS if m != self._model
+        ]
+
+        for model in models_to_try:
+            payload = {
+                'model': model,
+                'max_tokens': max_tokens,
+                'system': system,
+                'messages': [{'role': 'user', 'content': user_content}],
+            }
+            result = self._try_model(headers, payload, model, retries)
+            if result is not None:
+                # Si funcionó un fallback, adoptarlo para el resto de la sesión
+                if model != self._model:
+                    _logger.warning(
+                        'Modelo %s no disponible, usando fallback %s '
+                        'para el resto de esta ejecución', self._model, model)
+                    self._model = model
+                return result
+
+        raise RuntimeError(
+            f'Claude API: ningún modelo disponible. '
+            f'Intentados: {", ".join(models_to_try)}'
+        )
+
+    def _try_model(self, headers: dict, payload: dict,
+                   model: str, retries: int):
+        """Intenta un modelo específico con retries. Retorna None si 404."""
         last_error = None
         for attempt in range(retries + 1):
             try:
@@ -54,6 +82,11 @@ class ClaudeService:
                     if not content or 'text' not in content[0]:
                         raise RuntimeError('Claude response missing content text')
                     return content[0]['text']
+
+                # Modelo no existe → no reintentar, probar siguiente
+                if resp.status_code == 404 and 'model' in resp.text.lower():
+                    _logger.warning('Modelo %s no encontrado (404), probando siguiente...', model)
+                    return None
 
                 # Rate limit
                 if resp.status_code == 429:
@@ -71,8 +104,8 @@ class ClaudeService:
                 last_error = exc
                 if attempt < retries:
                     wait = 2 ** attempt * 2
-                    _logger.warning('Retry %d/%d: %s (wait %ds)',
-                                    attempt + 1, retries, exc, wait)
+                    _logger.warning('Retry %d/%d [%s]: %s (wait %ds)',
+                                    attempt + 1, retries, model, exc, wait)
                     time.sleep(wait)
 
         raise last_error
