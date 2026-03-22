@@ -63,7 +63,7 @@ class IntelligenceActionItem(models.Model):
         today = fields.Date.today()
         for rec in self:
             rec.is_overdue = (
-                rec.state == 'open'
+                rec.state in ('open', 'in_progress')
                 and rec.due_date
                 and rec.due_date < today
             )

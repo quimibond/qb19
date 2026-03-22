@@ -415,8 +415,8 @@ class IntelligenceEngine(models.Model):
         # Client scores de la semana
         try:
             weekly_scores = supa._request(
-                '/rest/v1/client_scores?order=score_date.desc&limit=100'
-                '&select=*&score_date=gte.' + week_start,
+                '/rest/v1/customer_health_scores?order=score_date.desc'
+                '&limit=100&select=*&score_date=gte.' + week_start,
             ) or []
         except Exception:
             weekly_scores = []
@@ -2472,8 +2472,8 @@ class IntelligenceEngine(models.Model):
                     except Exception as exc:
                         _logger.debug('revenue_metrics skip %s: %s',
                                       email_addr, exc)
-            except Exception:
-                pass
+            except Exception as exc:
+                _logger.warning('Contact sync error %s: %s', email_addr, exc)
         if synced:
             _logger.info('✓ %d contactos sincronizados Odoo → Supabase', synced)
 
@@ -2502,8 +2502,9 @@ class IntelligenceEngine(models.Model):
                             'Auto-completada acción #%d: %s (evidencia encontrada)',
                             item['id'], item['description'][:60],
                         )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _logger.debug('Auto-complete action #%d: %s',
+                                  item['id'], exc)
                 continue
 
             # Generate alert for overdue actions WITHOUT evidence
@@ -2532,8 +2533,8 @@ class IntelligenceEngine(models.Model):
         if acct_alerts:
             try:
                 supa.save_alerts(acct_alerts, today)
-            except Exception:
-                pass
+            except Exception as exc:
+                _logger.debug('Accountability alerts save: %s', exc)
             _logger.info(
                 '✓ %d alertas de accountability generadas', len(acct_alerts),
             )
@@ -2902,9 +2903,11 @@ class IntelligenceEngine(models.Model):
 
         for a in alerts:
             partner = False
-            if a.get('account'):
+            contact_name = a.get('contact_name', '')
+            if contact_name:
                 partner = Partner.search([
-                    ('email', 'ilike', a.get('account', ''))
+                    '|', ('name', 'ilike', contact_name),
+                    ('email', 'ilike', contact_name),
                 ], limit=1)
             Alert.create({
                 'name': a.get('title', 'Alerta')[:200],
