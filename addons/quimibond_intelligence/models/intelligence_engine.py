@@ -3129,8 +3129,9 @@ class IntelligenceEngine(models.Model):
                     try:
                         entity_data = supa.get_entity_intelligence(
                             name=company_name,
+                            entity_type='company',
                         )
-                        if entity_data:
+                        if entity_data and entity_data.get('found'):
                             attrs = entity_data.get('entity', {}).get(
                                 'attributes', {})
                             if attrs:
@@ -3139,11 +3140,12 @@ class IntelligenceEngine(models.Model):
                             facts = entity_data.get('facts', [])
                             if facts:
                                 fact_texts = [
-                                    f.get('fact_text', '') for f in facts[:10]
+                                    f.get('text') or f.get('fact_text', '')
+                                    for f in facts[:10]
                                 ]
                                 context_parts.append(
                                     'HECHOS CONOCIDOS:\n'
-                                    + '\n'.join(f'- {ft}' for ft in fact_texts))
+                                    + '\n'.join(f'- {ft}' for ft in fact_texts if ft))
                     except Exception:
                         pass
 
