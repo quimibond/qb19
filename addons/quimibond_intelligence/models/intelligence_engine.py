@@ -234,7 +234,7 @@ class IntelligenceEngine(models.Model):
         # Build key_events for daily_summaries (frontend urgency panel)
         key_events = self._build_key_events(alerts, account_summaries)
 
-        # Guardar briefing
+        # Guardar en daily_summaries (resumen de texto)
         try:
             supa.save_daily_summary(
                 today, briefing_html, len(emails),
@@ -243,6 +243,23 @@ class IntelligenceEngine(models.Model):
             )
         except Exception as exc:
             _logger.error('Error guardando daily summary: %s', exc)
+
+        # Guardar en briefings (HTML completo para dashboard)
+        try:
+            supa.save_briefing(today, briefing_html, len(emails))
+        except Exception as exc:
+            _logger.debug('Error guardando briefing: %s', exc)
+
+        # Cross-department signal detection
+        try:
+            signals = supa._request(
+                '/rest/v1/rpc/detect_cross_department_topics', 'POST', {},
+            )
+            if signals and isinstance(signals, list) and signals:
+                _logger.info('✓ %d cross-department signals detected',
+                             len(signals))
+        except Exception as exc:
+            _logger.debug('cross_department_signals: %s', exc)
 
         # ══════════════════════════════════════════════════════════════════════
         #  FASE 7.5: Knowledge Graph — Extracción de entidades y hechos

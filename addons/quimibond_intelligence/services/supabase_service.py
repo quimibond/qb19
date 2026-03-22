@@ -154,6 +154,23 @@ class SupabaseService(SupabaseBaseClient):
         if not alerts:
             return
 
+        # Resolve contact_name → contact_id for frontend filtering
+        contact_names = list({
+            a.get('contact_name', '') for a in alerts
+            if a.get('contact_name')
+        })
+        name_to_id = {}
+        for name in contact_names:
+            try:
+                encoded = url_quote(name, safe='')
+                resp = self._request(
+                    f'/rest/v1/contacts?name=eq.{encoded}&select=id',
+                )
+                if resp and isinstance(resp, list) and resp:
+                    name_to_id[name] = resp[0]['id']
+            except Exception:
+                pass
+
         records = []
         predictions = []
         for a in alerts:
@@ -172,9 +189,12 @@ class SupabaseService(SupabaseBaseClient):
                 'prediction_id': prediction_id,
                 'prediction_confidence': prediction_confidence,
             }
+            # Resolve contact_id from contact_name
+            cid = name_to_id.get(a.get('contact_name'))
+            if cid:
+                record['contact_id'] = cid
             records.append(record)
 
-            # Prepare prediction outcome record
             predictions.append({
                 'alert': record,
                 'prediction_id': prediction_id,
@@ -182,19 +202,25 @@ class SupabaseService(SupabaseBaseClient):
                 'today': today,
             })
 
-        result = self._request(
-            '/rest/v1/alerts', 'POST', records,
-            extra_headers={'Prefer': 'return=representation'},
-        )
-        # Merge Supabase IDs back into original alert dicts
-        if result and isinstance(result, list):
-            for alert_dict, created in zip(alerts, result):
-                alert_dict['supabase_id'] = created.get('id')
-        _logger.info('✓ %d alertas guardadas', len(records))
+        try:
+            result = self._request(
+                '/rest/v1/alerts', 'POST', records,
+                extra_headers={'Prefer': 'return=representation'},
+            )
+            # Merge Supabase IDs back into original alert dicts
+            if result and isinstance(result, list):
+                for alert_dict, created in zip(alerts, result):
+                    alert_dict['supabase_id'] = created.get('id')
+            _logger.info('✓ %d alertas guardadas', len(records))
+        except Exception as exc:
+            _logger.error('save_alerts POST: %s', exc)
 
-        # Save prediction outcomes
+        # Save predictions independently (don't lose them if alerts failed)
         if predictions:
-            self.save_prediction_outcomes(predictions)
+            try:
+                self.save_prediction_outcomes(predictions)
+            except Exception as exc:
+                _logger.debug('save_alerts predictions: %s', exc)
 
     # ── Account Summaries ────────────────────────────────────────────────────
 
@@ -259,6 +285,23 @@ class SupabaseService(SupabaseBaseClient):
         _logger.info('✓ %d client scores guardados', len(scores))
 
     # ── Daily Summary ────────────────────────────────────────────────────────
+
+    def save_briefing(self, today: str, briefing_html: str,
+                      total_emails: int, briefing_type: str = 'daily'):
+        """Guarda briefing HTML en tabla briefings (para frontend dashboard)."""
+        try:
+            import re
+            summary = re.sub(r'<[^>]+>', '', briefing_html)[:2000]
+            self._request('/rest/v1/briefings', 'POST', {
+                'briefing_type': briefing_type,
+                'period_start': today + 'T00:00:00Z',
+                'period_end': today + 'T23:59:59Z',
+                'summary': summary,
+                'html_content': briefing_html[:100000],
+            })
+            _logger.info('✓ Briefing guardado en Supabase')
+        except Exception as exc:
+            _logger.debug('save_briefing: %s', exc)
 
     def save_daily_summary(self, today: str, briefing_html: str,
                            total_emails: int, accounts_read: int,
@@ -366,23 +409,27 @@ class SupabaseService(SupabaseBaseClient):
         """Guarda un action item.
 
         Genera prediction_id para registrar la predicción de acción.
+        Returns created record list (for supabase_id capture).
         """
         prediction_id = str(uuid.uuid4())
         prediction_confidence = item.get('confidence', 0.5)
 
-        # Add prediction fields to the item
         item_with_prediction = {
             **item,
             'prediction_id': prediction_id,
             'prediction_confidence': prediction_confidence,
         }
 
-        result = self._request(
-            '/rest/v1/action_items', 'POST', [item_with_prediction],
-            extra_headers={'Prefer': 'return=representation'},
-        )
+        result = None
+        try:
+            result = self._request(
+                '/rest/v1/action_items', 'POST', [item_with_prediction],
+                extra_headers={'Prefer': 'return=representation'},
+            )
+        except Exception as exc:
+            _logger.warning('save_action_item POST: %s', exc)
 
-        # Prepare and save prediction outcome
+        # Save prediction independently (don't lose it if POST failed)
         try:
             today = datetime.now().strftime('%Y-%m-%d')
             self.save_prediction_outcomes([{
@@ -392,7 +439,7 @@ class SupabaseService(SupabaseBaseClient):
                 'today': today,
             }])
         except Exception as exc:
-            _logger.debug('Action item prediction outcome save: %s', exc)
+            _logger.debug('Action item prediction outcome: %s', exc)
 
         return result
 
@@ -876,8 +923,21 @@ class SupabaseService(SupabaseBaseClient):
         """Guarda métricas de revenue para un contacto.
 
         Upsert por (contact_email, period_start, period_type).
+        Resuelve contact_id desde contact_email para FK integrity.
         """
         try:
+            # Resolve contact_id from contact_email (FK to contacts)
+            email = metrics.get('contact_email', '')
+            if email and 'contact_id' not in metrics:
+                try:
+                    encoded = url_quote(email, safe='')
+                    resp = self._request(
+                        f'/rest/v1/contacts?email=eq.{encoded}&select=id',
+                    )
+                    if resp and isinstance(resp, list) and resp:
+                        metrics['contact_id'] = resp[0]['id']
+                except Exception:
+                    pass  # FK is optional, proceed without it
             self._request(
                 '/rest/v1/revenue_metrics',
                 'POST', metrics,
