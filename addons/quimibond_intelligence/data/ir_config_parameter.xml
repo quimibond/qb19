@@ -15,7 +15,7 @@
 
         <record id="param_claude_model" model="ir.config_parameter">
             <field name="key">quimibond_intelligence.claude_model</field>
-            <field name="value">claude-sonnet-4-5-latest</field>
+            <field name="value">claude-sonnet-4-6-latest</field>
         </record>
 
         <record id="param_supabase_url" model="ir.config_parameter">
