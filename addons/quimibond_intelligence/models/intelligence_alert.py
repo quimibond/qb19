@@ -1,4 +1,8 @@
+import logging
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class IntelligenceAlert(models.Model):
@@ -16,6 +20,14 @@ class IntelligenceAlert(models.Model):
         ('at_risk_client', 'Cliente en riesgo'),
         ('accountability', 'Accion sin cumplir'),
         ('anomaly', 'Anomalia detectada'),
+        ('competitor', 'Competidor mencionado'),
+        ('negative_sentiment', 'Sentimiento negativo'),
+        ('churn_risk', 'Riesgo de perdida'),
+        ('invoice_silence', 'Factura vencida + silencio'),
+        ('delivery_risk', 'Entrega retrasada'),
+        ('payment_delay', 'Pago vencido'),
+        ('opportunity', 'Oportunidad detectada'),
+        ('quality_issue', 'Problema de calidad'),
     ], string='Tipo', required=True, index=True)
     severity = fields.Selection([
         ('low', 'Baja'),
@@ -41,18 +53,43 @@ class IntelligenceAlert(models.Model):
 
     def action_acknowledge(self):
         self.write({'state': 'acknowledged'})
+        self._sync_to_supabase('acknowledged')
 
     def action_resolve(self):
         self.write({
             'state': 'resolved',
             'resolved_date': fields.Datetime.now(),
         })
+        self._sync_to_supabase('resolved')
 
     def action_dismiss(self):
         self.write({'state': 'dismissed'})
+        self._sync_to_supabase('dismissed')
 
     def action_reopen(self):
         self.write({
             'state': 'open',
             'resolved_date': False,
         })
+        self._sync_to_supabase('open')
+
+    def _sync_to_supabase(self, state):
+        """Sync alert state changes to Supabase."""
+        get = lambda k, d='': (
+            self.env['ir.config_parameter'].sudo()
+            .get_param('quimibond_intelligence.%s' % k, d)
+        )
+        url = get('supabase_url')
+        key = get('supabase_service_role_key') or get('supabase_key')
+        if not url or not key:
+            return
+        try:
+            from ..services.supabase_service import SupabaseService
+            supa = SupabaseService(url, key)
+            for rec in self:
+                supa.update_alert_state(
+                    rec.name, state,
+                    resolution_notes=rec.resolution_notes,
+                )
+        except Exception as exc:
+            _logger.debug('Alert sync to Supabase: %s', exc)

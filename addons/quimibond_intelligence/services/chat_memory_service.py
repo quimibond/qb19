@@ -2,42 +2,16 @@
 Quimibond Intelligence — Chat Memory Service (Phase 2)
 Gestiona un repositorio de preguntas y respuestas exitosas para mejora continua del RAG.
 """
-import json
 import logging
 from datetime import datetime
 
-import httpx
+from .supabase_base import SupabaseBaseClient
 
 _logger = logging.getLogger(__name__)
 
 
-class ChatMemoryService:
+class ChatMemoryService(SupabaseBaseClient):
     """Servicio para guardar, recuperar y usar memoria de chat para few-shot learning."""
-
-    def __init__(self, url: str, key: str):
-        self._url = url.rstrip('/')
-        self._key = key
-        self._headers = {
-            'apikey': key,
-            'Authorization': f'Bearer {key}',
-            'Content-Type': 'application/json',
-        }
-
-    def _request(self, path: str, method: str = 'GET',
-                 payload=None, extra_headers: dict = None):
-        """Realiza solicitud HTTP a Supabase REST API."""
-        headers = {**self._headers, **(extra_headers or {})}
-        with httpx.Client(timeout=30) as client:
-            resp = client.request(method, f'{self._url}{path}',
-                                  headers=headers,
-                                  json=payload if payload else None)
-        if 200 <= resp.status_code < 300:
-            text = resp.text
-            try:
-                return json.loads(text) if text else None
-            except json.JSONDecodeError:
-                return text
-        raise RuntimeError(f'Supabase {resp.status_code}: {resp.text[:300]}')
 
     def save_successful_qa(self, question: str, answer: str, context_used: str,
                            rating: str = 'positive'):

@@ -377,29 +377,57 @@ class ClaudeService:
 class VoyageService:
     """Genera embeddings con Voyage AI para memoria semántica."""
 
+    _RETRY_STATUSES = {429, 502, 503}
+    _MAX_RETRIES = 3
+
     def __init__(self, api_key: str, model: str = VOYAGE_MODEL):
         self._api_key = api_key
         self._model = model
-
-    def embed(self, texts: list[str], input_type: str = 'document') -> list:
-        """Genera embeddings para una lista de textos."""
-        if not texts:
-            return []
-        headers = {
-            'Authorization': f'Bearer {self._api_key}',
+        self._client = httpx.Client(timeout=60)
+        self._headers = {
+            'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
         }
+
+    def embed(self, texts: list[str], input_type: str = 'document') -> list:
+        """Genera embeddings para una lista de textos con retry."""
+        if not texts:
+            return []
+        import time
         payload = {
             'model': self._model,
             'input': texts[:128],  # Voyage límite
             'input_type': input_type,
         }
-        with httpx.Client(timeout=60) as client:
-            resp = client.post(VOYAGE_ENDPOINT, headers=headers, json=payload)
-        if resp.status_code != 200:
-            raise RuntimeError(f'Voyage {resp.status_code}: {resp.text[:200]}')
-        data = resp.json().get('data', [])
-        return [item['embedding'] for item in data]
+        last_exc = None
+        for attempt in range(self._MAX_RETRIES):
+            try:
+                resp = self._client.post(
+                    VOYAGE_ENDPOINT, headers=self._headers, json=payload,
+                )
+                if resp.status_code in self._RETRY_STATUSES and attempt < self._MAX_RETRIES - 1:
+                    wait = 2 ** attempt
+                    _logger.warning(
+                        'Voyage %d, retry in %ds', resp.status_code, wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                if resp.status_code != 200:
+                    raise RuntimeError(
+                        f'Voyage {resp.status_code}: {resp.text[:200]}'
+                    )
+                data = resp.json().get('data', [])
+                return [item['embedding'] for item in data]
+            except httpx.TransportError as exc:
+                last_exc = exc
+                if attempt < self._MAX_RETRIES - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise RuntimeError(
+                    f'Voyage transport error after {self._MAX_RETRIES} '
+                    f'attempts: {exc}'
+                ) from exc
+        raise RuntimeError(f'Voyage request failed: {last_exc}')
 
     def embed_query(self, text: str) -> list:
         """Genera embedding para una query de búsqueda."""
