@@ -382,7 +382,7 @@ class IntelligenceEngine(models.Model):
         from ..services.claude_service import ClaudeService
         from ..services.supabase_service import SupabaseService
 
-        claude = ClaudeService(cfg['anthropic_api_key'])
+        claude = ClaudeService(cfg['anthropic_api_key'], model=cfg.get('claude_model', ''))
         supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
 
         week_start = (datetime.now(TZ_CDMX) - timedelta(days=7)).strftime('%Y-%m-%d')
@@ -551,6 +551,7 @@ class IntelligenceEngine(models.Model):
             'high_volume_threshold': int(get('high_volume_threshold', '50')),
             'client_score_decay_days': int(get('client_score_decay_days', '30')),
             'cold_client_days': int(get('cold_client_days', '14')),
+            'claude_model': get('claude_model', ''),
         }
 
     def _init_services(self, cfg: dict):
@@ -561,7 +562,7 @@ class IntelligenceEngine(models.Model):
 
         sa_info = json.loads(cfg['service_account_json'])
         gmail = GmailService(sa_info)
-        claude = ClaudeService(cfg['anthropic_api_key'])
+        claude = ClaudeService(cfg['anthropic_api_key'], model=cfg.get('claude_model', ''))
         voyage = (VoyageService(cfg['voyage_api_key'])
                   if cfg.get('voyage_api_key') else None)
         supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])

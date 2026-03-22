@@ -11,7 +11,7 @@ import httpx
 _logger = logging.getLogger(__name__)
 
 CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages'
-CLAUDE_MODEL = 'claude-sonnet-4-5-latest'
+CLAUDE_DEFAULT_MODEL = 'claude-sonnet-4-5-latest'
 CLAUDE_API_VERSION = '2023-06-01'
 CLAUDE_MAX_TOKENS = 8000
 
@@ -22,8 +22,9 @@ VOYAGE_MODEL = 'voyage-3'
 class ClaudeService:
     """Interacción con Claude API para análisis de comunicaciones."""
 
-    def __init__(self, api_key: str, delay_between_calls: float = 3.0):
+    def __init__(self, api_key: str, model: str = '', delay_between_calls: float = 3.0):
         self._api_key = api_key
+        self._model = model or CLAUDE_DEFAULT_MODEL
         self._delay = delay_between_calls
 
     def _call(self, system: str, user_content: str,
@@ -35,7 +36,7 @@ class ClaudeService:
             'content-type': 'application/json',
         }
         payload = {
-            'model': CLAUDE_MODEL,
+            'model': self._model,
             'max_tokens': max_tokens,
             'system': system,
             'messages': [{'role': 'user', 'content': user_content}],

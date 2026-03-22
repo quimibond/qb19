@@ -73,6 +73,10 @@ class IntelligenceConfig(models.TransientModel):
         help='JSON completo del service account con Domain-Wide Delegation',
     )
     anthropic_api_key = fields.Char(string='Anthropic API Key')
+    claude_model = fields.Char(
+        string='Claude Model',
+        help='Model ID para Claude API (ej: claude-sonnet-4-5-latest). Dejar vacío para usar el default.',
+    )
     supabase_url = fields.Char(string='Supabase URL')
     supabase_key = fields.Char(string='Supabase Anon Key')
     supabase_service_role_key = fields.Char(
@@ -119,6 +123,7 @@ class IntelligenceConfig(models.TransientModel):
         res.update({
             'service_account_json': self._get_param('service_account_json'),
             'anthropic_api_key': self._get_param('anthropic_api_key'),
+            'claude_model': self._get_param('claude_model'),
             'supabase_url': self._get_param('supabase_url'),
             'supabase_key': self._get_param('supabase_key'),
             'supabase_service_role_key': self._get_param('supabase_service_role_key'),
@@ -152,7 +157,7 @@ class IntelligenceConfig(models.TransientModel):
                                    'message': 'El JSON de cuentas de email no es válido.',
                                    'type': 'danger'}}
         for fname in [
-            'service_account_json', 'anthropic_api_key',
+            'service_account_json', 'anthropic_api_key', 'claude_model',
             'supabase_url', 'supabase_key', 'supabase_service_role_key',
             'voyage_api_key',
             'recipient_email', 'sender_email', 'email_accounts_json',
