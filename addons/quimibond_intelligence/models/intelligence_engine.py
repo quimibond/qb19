@@ -156,13 +156,20 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando métricas: %s', exc)
 
-        alerts = self._generate_alerts(threads, metrics, cfg)
+        alerts = self._generate_alerts(
+            threads, metrics, cfg,
+            account_summaries=account_summaries,
+            odoo_ctx=odoo_context,
+        )
         try:
             supa.save_alerts(alerts, today)
         except Exception as exc:
             _logger.error('Error guardando alertas: %s', exc)
 
-        client_scores = self._compute_client_scores(contacts, emails, threads, cfg)
+        client_scores = self._compute_client_scores(
+            contacts, emails, threads, cfg,
+            account_summaries=account_summaries,
+        )
         try:
             supa.save_client_scores(client_scores, today)
         except Exception as exc:
@@ -309,34 +316,83 @@ class IntelligenceEngine(models.Model):
         claude = ClaudeService(cfg['anthropic_api_key'])
         supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
 
+        week_start = (datetime.now(TZ_CDMX) - timedelta(days=7)).strftime('%Y-%m-%d')
+
         # Obtener métricas de últimos 7 días
         try:
             weekly_metrics = supa._request(
-                '/rest/v1/response_metrics?order=metric_date.desc&limit=7'
-                '&select=*',
+                '/rest/v1/response_metrics?order=metric_date.desc&limit=70'
+                '&select=*&metric_date=gte.' + week_start,
             ) or []
         except Exception:
             weekly_metrics = []
 
         try:
             weekly_alerts = supa._request(
-                '/rest/v1/alerts?order=created_at.desc&limit=50'
-                '&select=*&created_at=gte.'
-                + (datetime.now(TZ_CDMX) - timedelta(days=7)).strftime('%Y-%m-%d'),
+                '/rest/v1/alerts?order=created_at.desc&limit=100'
+                '&select=*&created_at=gte.' + week_start,
             ) or []
         except Exception:
             weekly_alerts = []
 
-        if not weekly_metrics:
-            _logger.warning('Sin métricas semanales')
+        # Client scores de la semana
+        try:
+            weekly_scores = supa._request(
+                '/rest/v1/client_scores?order=score_date.desc&limit=100'
+                '&select=*&score_date=gte.' + week_start,
+            ) or []
+        except Exception:
+            weekly_scores = []
+
+        # Daily summaries de la semana
+        try:
+            weekly_summaries = supa._request(
+                '/rest/v1/daily_summaries?order=summary_date.desc&limit=7'
+                '&select=summary_date,summary,email_count'
+                '&summary_date=gte.' + week_start,
+            ) or []
+        except Exception:
+            weekly_summaries = []
+
+        if not weekly_metrics and not weekly_alerts:
+            _logger.warning('Sin datos semanales')
             return
 
+        # Agrupar alertas por tipo para análisis
+        alert_by_type = defaultdict(int)
+        for a in weekly_alerts:
+            alert_by_type[a.get('alert_type', 'unknown')] += 1
+
         prompt = (
-            f'Genera un REPORTE SEMANAL de Quimibond.\n\n'
-            f'MÉTRICAS (últimos 7 días):\n{json.dumps(weekly_metrics, default=str)}\n\n'
-            f'ALERTAS DE LA SEMANA:\n{json.dumps(weekly_alerts, default=str)}\n\n'
-            'Incluye: tendencias, comparativa día a día, cuentas con mejores/peores '
-            'tiempos de respuesta, temas recurrentes, recomendaciones.'
+            f'Genera un REPORTE SEMANAL de Quimibond (semana del {week_start}).\n\n'
+            f'MÉTRICAS DIARIAS (últimos 7 días):\n'
+            f'{json.dumps(weekly_metrics, default=str)}\n\n'
+            f'ALERTAS DE LA SEMANA ({len(weekly_alerts)} total):\n'
+            f'Por tipo: {json.dumps(dict(alert_by_type), default=str)}\n'
+            f'Detalle: {json.dumps(weekly_alerts[:30], default=str)}\n\n'
+            f'CLIENT SCORES:\n{json.dumps(weekly_scores[:30], default=str)}\n\n'
+            f'RESÚMENES DIARIOS:\n{json.dumps(weekly_summaries, default=str)}\n\n'
+            'ESTRUCTURA DEL REPORTE:\n'
+            '<h2>📊 RESUMEN EJECUTIVO SEMANAL</h2>\n'
+            '(3-5 bullets con lo más importante de la semana)\n\n'
+            '<h2>📈 TENDENCIAS</h2>\n'
+            '(Comparativa día a día: volumen, tiempos de respuesta, sentimiento. '
+            '¿Están mejorando o empeorando? Usar datos concretos.)\n\n'
+            '<h2>🏆 TOP 5 CONTACTOS MÁS ACTIVOS</h2>\n'
+            '(Quiénes se comunicaron más y por qué)\n\n'
+            '<h2>⚠️ TOP 3 RIESGOS</h2>\n'
+            '(Los 3 riesgos principales basados en alertas, scores, y patrones)\n\n'
+            '<h2>💡 OPORTUNIDADES DETECTADAS</h2>\n'
+            '(Prospectos nuevos, señales de crecimiento, cross-sell)\n\n'
+            '<h2>✅ ACCIONES: COMPLETADAS vs PENDIENTES</h2>\n'
+            '(Tasa de cumplimiento del equipo, quién cumplió y quién no)\n\n'
+            '<h2>🏭 COMPETENCIA</h2>\n'
+            '(Competidores mencionados durante la semana, contexto, amenaza)\n\n'
+            '<h2>📉 COMPARATIVA vs SEMANA ANTERIOR</h2>\n'
+            '(Si hay datos suficientes, comparar KPIs clave)\n\n'
+            '<h2>🎯 PRIORIDADES PARA LA PRÓXIMA SEMANA</h2>\n'
+            '(Acciones concretas y específicas)\n\n'
+            'Sé directo y honesto. Usa datos concretos, no generalidades.'
         )
 
         try:
@@ -1314,6 +1370,12 @@ class IntelligenceEngine(models.Model):
                                     'communication_style', 'formal',
                                 ),
                                 'key_interests': pi.get('key_interests', []),
+                                'personality_traits': pi.get(
+                                    'personality_traits', [],
+                                ),
+                                'decision_factors': pi.get(
+                                    'decision_factors', [],
+                                ),
                                 'decision_power': pi.get(
                                     'decision_power', 'medium',
                                 ),
@@ -1385,6 +1447,16 @@ class IntelligenceEngine(models.Model):
                     if isinstance(interests, list):
                         interests = ', '.join(interests[:5])
                     profile_parts.append(f"Intereses: {interests}")
+                if profile.get('personality_traits'):
+                    traits = profile['personality_traits']
+                    if isinstance(traits, list):
+                        traits = ', '.join(traits[:5])
+                    profile_parts.append(f"Rasgos: {traits}")
+                if profile.get('decision_factors'):
+                    factors = profile['decision_factors']
+                    if isinstance(factors, list):
+                        factors = ', '.join(factors[:5])
+                    profile_parts.append(f"Decide por: {factors}")
                 if profile.get('negotiation_style'):
                     profile_parts.append(
                         f"Negociación: {profile['negotiation_style']}"
@@ -1465,10 +1537,23 @@ class IntelligenceEngine(models.Model):
 
     # ── Alertas ───────────────────────────────────────────────────────────────
 
-    @staticmethod
-    def _generate_alerts(threads: list, metrics: list, cfg: dict) -> list:
-        """Genera alertas basadas en umbrales configurables."""
+    def _generate_alerts(self, threads: list, metrics: list, cfg: dict,
+                         account_summaries: list = None,
+                         odoo_ctx: dict = None) -> list:
+        """Genera alertas basadas en umbrales configurables.
+
+        Tipos de alerta:
+        - stalled_thread: Thread sin respuesta > 48h
+        - no_response: Thread sin respuesta > 24h
+        - high_volume: Volumen de emails superior al umbral
+        - competitor: Competidor mencionado en emails
+        - negative_sentiment: Sentimiento negativo fuerte
+        - invoice_silence: Factura vencida + sin respuesta a emails
+        - churn_risk: Cliente que dejó de escribir (>14 días sin contacto)
+        """
         alerts = []
+        account_summaries = account_summaries or []
+        odoo_ctx = odoo_ctx or {}
         no_resp_hours = cfg.get('no_response_hours', 24)
         stalled_hours = cfg.get('stalled_thread_hours', 48)
         high_vol = cfg.get('high_volume_threshold', 50)
@@ -1511,14 +1596,111 @@ class IntelligenceEngine(models.Model):
                     'account': m['account'],
                 })
 
+        # ── Alertas inteligentes desde análisis de Claude ────────────────────
+
+        for s in account_summaries:
+            account = s.get('account', '')
+
+            # Alerta por competidores mencionados
+            for comp in s.get('competitors_mentioned', []):
+                threat = comp.get('threat_level', 'medium')
+                severity = 'high' if threat == 'high' else 'medium'
+                alerts.append({
+                    'alert_type': 'competitor',
+                    'severity': severity,
+                    'title': (
+                        f"Competidor: {comp.get('name', '?')} "
+                        f"mencionado por {comp.get('mentioned_by', '?')}"
+                    )[:120],
+                    'description': comp.get('detail', comp.get('context', '')),
+                    'account': account,
+                })
+
+            # Alerta por sentimiento negativo fuerte
+            score = s.get('sentiment_score')
+            if isinstance(score, (int, float)) and score < -0.3:
+                severity = 'critical' if score < -0.6 else 'high'
+                alerts.append({
+                    'alert_type': 'negative_sentiment',
+                    'severity': severity,
+                    'title': (
+                        f"Sentimiento negativo ({score:.1f}) en {account}"
+                    ),
+                    'description': s.get('sentiment_detail', ''),
+                    'account': account,
+                })
+
+            # Alerta por contactos con señal de riesgo
+            for contact in s.get('external_contacts', []):
+                c_score = contact.get('sentiment_score')
+                signal = contact.get('relationship_signal', '')
+                if signal == 'at_risk' or (
+                    isinstance(c_score, (int, float)) and c_score < -0.4
+                ):
+                    alerts.append({
+                        'alert_type': 'churn_risk',
+                        'severity': 'high',
+                        'title': (
+                            f"Relación en riesgo: "
+                            f"{contact.get('name', '?')} "
+                            f"({contact.get('company', '?')})"
+                        )[:120],
+                        'description': (
+                            f"Señal: {signal}. "
+                            f"Sentimiento: {c_score}. "
+                            f"Tema: {contact.get('topic', '?')}"
+                        ),
+                        'account': account,
+                    })
+
+        # ── Alerta: factura vencida + sin respuesta a emails ─────────────────
+
+        partners = odoo_ctx.get('partners', {})
+        # Build set of emails with stalled/no_response threads
+        stalled_emails = set()
+        for t in threads:
+            if t['status'] in ('stalled', 'needs_response'):
+                stalled_emails.update(t.get('participant_emails', []))
+
+        for email_addr, p in partners.items():
+            overdue_invoices = [
+                inv for inv in p.get('pending_invoices', [])
+                if inv.get('days_overdue', 0) > 0
+            ]
+            if overdue_invoices and email_addr in stalled_emails:
+                total_overdue = sum(
+                    inv.get('amount_residual', 0) for inv in overdue_invoices
+                )
+                max_days = max(
+                    inv.get('days_overdue', 0) for inv in overdue_invoices
+                )
+                alerts.append({
+                    'alert_type': 'invoice_silence',
+                    'severity': 'critical',
+                    'title': (
+                        f"Factura vencida + sin respuesta: "
+                        f"{p.get('name', email_addr)}"
+                    )[:120],
+                    'description': (
+                        f"${total_overdue:,.0f} en facturas vencidas "
+                        f"(máx {max_days}d) Y tiene emails sin responder. "
+                        f"Riesgo de cobranza. Requiere acción inmediata."
+                    ),
+                    'account': '',
+                })
+
         return alerts
 
     # ── Client Scoring ────────────────────────────────────────────────────────
 
     @staticmethod
     def _compute_client_scores(contacts: list, emails: list, threads: list,
-                               cfg: dict) -> list:
-        """Calcula score de relación 0-100 para contactos externos."""
+                               cfg: dict,
+                               account_summaries: list = None) -> list:
+        """Calcula score de relación 0-100 para contactos externos.
+
+        Usa sentiment_score numérico de Claude si está disponible.
+        """
         external = [c for c in contacts if c['contact_type'] == 'external']
         if not external:
             return []
@@ -1532,6 +1714,19 @@ class IntelligenceEngine(models.Model):
         for t in threads:
             for p in t.get('participant_emails', []):
                 thread_participation[p] += 1
+
+        # Build contact sentiment map from Claude analysis
+        contact_sentiments = {}
+        for s in (account_summaries or []):
+            for ec in s.get('external_contacts', []):
+                email_addr = (ec.get('email') or '').lower()
+                if email_addr and ec.get('sentiment_score') is not None:
+                    try:
+                        contact_sentiments[email_addr] = float(
+                            ec['sentiment_score'],
+                        )
+                    except (ValueError, TypeError):
+                        pass
 
         scores = []
         for c in external:
@@ -1556,8 +1751,15 @@ class IntelligenceEngine(models.Model):
                 if related_threads else 12
             )
 
-            # Sentiment score (0-25): base neutral, ajustado por alertas
-            sent_score = 15  # neutral baseline
+            # Sentiment score (0-25): use Claude's numeric score if available
+            # Convert from [-1, 1] range to [0, 25] range
+            claude_sentiment = contact_sentiments.get(addr.lower())
+            if claude_sentiment is not None:
+                # -1.0 → 0, 0.0 → 12.5, 1.0 → 25
+                sent_score = round((claude_sentiment + 1) * 12.5)
+                sent_score = max(0, min(25, sent_score))
+            else:
+                sent_score = 15  # neutral baseline
 
             total = freq_score + resp_score + recip_score + sent_score
 
@@ -1625,7 +1827,9 @@ class IntelligenceEngine(models.Model):
                 f"Urgentes: {json.dumps(s.get('urgent_items', []), default=str, ensure_ascii=False)}\n"
                 f"Contactos: {json.dumps(s.get('external_contacts', []), default=str, ensure_ascii=False)}\n"
                 f"Temas: {json.dumps(s.get('topics_detected', []), default=str, ensure_ascii=False)}\n"
-                f"Riesgos: {json.dumps(s.get('risks_detected', []), default=str, ensure_ascii=False)}"
+                f"Riesgos: {json.dumps(s.get('risks_detected', []), default=str, ensure_ascii=False)}\n"
+                f"Sentimiento numérico: {s.get('sentiment_score', 'N/A')}\n"
+                f"Competidores: {json.dumps(s.get('competitors_mentioned', []), default=str, ensure_ascii=False)}"
             )
 
         # ── Métricas ────────────────────────────────────────────────────────
