@@ -698,9 +698,10 @@ class SupabaseService(SupabaseBaseClient):
             self._request(
                 f'/rest/v1/contacts?email=eq.{encoded}',
                 'PATCH', odoo_data,
+                extra_headers={'Prefer': 'return=minimal'},
             )
         except Exception as exc:
-            _logger.debug('sync_contact_odoo: %s', exc)
+            _logger.warning('sync_contact_odoo %s: %s', email, exc)
 
     # ── System Learning ───────────────────────────────────────────────────────
 
