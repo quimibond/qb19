@@ -316,7 +316,55 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando en Odoo: %s', exc)
 
+        # ══════════════════════════════════════════════════════════════════════
+        #  FASE 10: Feedback Processing (Phase 2 — Auto-mejora)
+        # ══════════════════════════════════════════════════════════════════════
+        _logger.info('── FASE 10: Feedback processing ──')
+        try:
+            from ..services.feedback_service import FeedbackService
+            feedback_svc = FeedbackService(cfg['supabase_url'], cfg['supabase_key'])
+            processed, total_reward = feedback_svc.process_feedback_rewards()
+            _logger.info('Feedback: %d señales procesadas, reward total: %.2f',
+                         processed, total_reward)
+            action_priorities = feedback_svc.get_action_priorities()
+            if action_priorities:
+                _logger.info('Action priorities: %s', action_priorities)
+        except Exception as exc:
+            _logger.warning('Feedback processing (non-critical): %s', exc)
+
         _logger.info('Pipeline completado exitosamente')
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   PUNTO DE ENTRADA: CALIBRACIÓN SEMANAL (Phase 2 — Auto-mejora)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @api.model
+    def run_weekly_calibration(self):
+        """Weekly feedback calibration — adjusts alert thresholds and action priorities."""
+        _logger.info('═══ WEEKLY CALIBRATION ═══')
+        cfg = self._load_config()
+        if not cfg:
+            return
+        from ..services.feedback_service import FeedbackService
+        feedback_svc = FeedbackService(cfg['supabase_url'], cfg['supabase_key'])
+        try:
+            calibrations = feedback_svc.calibrate_alerts()
+            _logger.info('Calibraciones aplicadas: %s', calibrations)
+            priorities = feedback_svc.get_action_priorities()
+            if priorities:
+                for cat, modifier in priorities.items():
+                    if abs(modifier) > 0.2:
+                        feedback_svc.save_learning(
+                            learning_type='action_priority',
+                            description=f'Ajuste de prioridad para {cat}: {modifier:+.2f}',
+                            metric_name='priority_modifier',
+                            metric_before=0.0,
+                            metric_after=modifier,
+                        )
+            _logger.info('Action priorities: %s', priorities)
+        except Exception as exc:
+            _logger.error('Error en calibración semanal: %s', exc, exc_info=True)
+        _logger.info('═══ WEEKLY CALIBRATION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
     #   PUNTO DE ENTRADA: REPORTE SEMANAL (lunes 8am)
