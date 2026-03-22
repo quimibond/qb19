@@ -764,6 +764,30 @@ class SupabaseService(SupabaseBaseClient):
         except Exception as exc:
             _logger.debug('complete_action: %s', exc)
 
+    def update_alert_state(self, alert_title: str, state: str,
+                           resolution_notes: str = None):
+        """Actualiza estado de una alerta en Supabase.
+
+        El frontend filtra alertas por is_resolved y state.
+        """
+        try:
+            from urllib.parse import quote as _quote
+            encoded = _quote(alert_title[:200], safe='')
+            patch = {
+                'state': state,
+                'is_resolved': state in ('resolved', 'dismissed'),
+            }
+            if state == 'resolved':
+                patch['resolved_at'] = datetime.now().isoformat()
+            if resolution_notes:
+                patch['resolution_notes'] = resolution_notes
+            self._request(
+                f'/rest/v1/alerts?title=eq.{encoded}',
+                'PATCH', patch,
+            )
+        except Exception as exc:
+            _logger.debug('update_alert_state: %s', exc)
+
     def save_prediction_outcomes(self, predictions: list):
         """Registra outcomes de predicciones (alertas y acciones).
 

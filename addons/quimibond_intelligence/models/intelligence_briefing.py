@@ -12,7 +12,9 @@ class IntelligenceBriefing(models.Model):
         ('daily', 'Diario'),
         ('weekly', 'Semanal'),
     ], string='Tipo', default='daily', required=True)
-    html_content = fields.Html(string='Briefing', sanitize=False)
+    html_content = fields.Html(
+        string='Briefing', sanitize=True, sanitize_overridable=True,
+    )
     total_emails = fields.Integer(string='Emails procesados')
     accounts_ok = fields.Integer(string='Cuentas exitosas')
     accounts_failed = fields.Integer(string='Cuentas fallidas')

@@ -1,4 +1,8 @@
+import logging
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class IntelligenceActionItem(models.Model):
@@ -69,9 +73,29 @@ class IntelligenceActionItem(models.Model):
 
     def action_done(self):
         self.write({'state': 'done'})
+        self._sync_to_supabase()
 
     def action_cancel(self):
         self.write({'state': 'cancelled'})
+        self._sync_to_supabase()
 
     def action_reopen(self):
         self.write({'state': 'open'})
+
+    def _sync_to_supabase(self):
+        """Sync action completion/cancellation to Supabase."""
+        get = lambda k, d='': (
+            self.env['ir.config_parameter'].sudo()
+            .get_param('quimibond_intelligence.%s' % k, d)
+        )
+        url = get('supabase_url')
+        key = get('supabase_service_role_key') or get('supabase_key')
+        if not url or not key:
+            return
+        try:
+            from ..services.supabase_service import SupabaseService
+            supa = SupabaseService(url, key)
+            for rec in self:
+                supa.complete_action_item(rec.id)
+        except Exception as exc:
+            _logger.debug('Action sync to Supabase: %s', exc)
