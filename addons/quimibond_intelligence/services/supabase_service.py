@@ -561,10 +561,6 @@ class SupabaseService(SupabaseBaseClient):
         Cada vez que el sistema procesa emails, actualiza el perfil con
         nueva información. Los datos se acumulan — no se sobrescriben
         a menos que haya info más reciente.
-
-        Los campos de perfil ahora viven en la tabla contacts (migrados
-        desde person_profiles). También mantiene person_profiles por
-        compatibilidad temporal.
         """
         email = profile.get('email')
         if not email:
@@ -584,60 +580,19 @@ class SupabaseService(SupabaseBaseClient):
         if profile.get('department'):
             patch['department'] = profile['department']
 
-        # Update contacts table (primary destination)
-        if patch:
-            try:
-                encoded = url_quote(email.lower().strip(), safe='')
-                self._request(
-                    f'/rest/v1/contacts?email=eq.{encoded}',
-                    'PATCH', patch,
-                    extra_headers={'Prefer': 'return=minimal'},
-                )
-            except Exception as exc:
-                _logger.debug('upsert_person_profile contacts: %s', exc)
-
-        # Also write to person_profiles for backward compatibility
-        canonical = email.lower().strip()
-        data = {
-            'canonical_key': canonical,
-            'name': profile.get('name', ''),
-            'email': email,
-            'company': profile.get('company'),
-            'role': profile.get('role'),
-            'department': profile.get('department'),
-            'decision_power': profile.get('decision_power', 'medium'),
-            'communication_style': profile.get('communication_style', 'formal'),
-            'language_preference': profile.get('language_preference', 'es'),
-            'key_interests': profile.get('key_interests', []),
-            'personality_notes': profile.get('personality_notes', ''),
-            'negotiation_style': profile.get('negotiation_style'),
-            'response_pattern': profile.get('response_pattern'),
-            'influence_on_deals': profile.get('influence_on_deals'),
-            'source_account': profile.get('source_account'),
-            'last_seen_date': profile.get('last_seen_date'),
-        }
-        try:
-            result = self._request(
-                '/rest/v1/person_profiles?on_conflict=canonical_key',
-                'POST', data, {
-                    'Prefer': 'resolution=merge-duplicates,return=representation',
-                })
-            if result and isinstance(result, list) and result:
-                profile_id = result[0].get('id')
-                current_count = result[0].get('interaction_count', 0) or 0
-                if profile_id:
-                    try:
-                        self._request(
-                            f'/rest/v1/person_profiles?id=eq.{profile_id}',
-                            'PATCH',
-                            {'interaction_count': current_count + 1},
-                        )
-                    except Exception:
-                        pass
-            return result
-        except Exception as exc:
-            _logger.debug('person_profile upsert: %s', exc)
+        if not patch:
             return None
+
+        try:
+            encoded = url_quote(email.lower().strip(), safe='')
+            self._request(
+                f'/rest/v1/contacts?email=eq.{encoded}',
+                'PATCH', patch,
+                extra_headers={'Prefer': 'return=minimal'},
+            )
+        except Exception as exc:
+            _logger.debug('upsert_person_profile: %s', exc)
+        return None
 
     def get_person_profile(self, email=None, name=None):
         """Obtiene el perfil acumulado de una persona desde contacts."""
