@@ -8,6 +8,7 @@ import re
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 
 from odoo import api, fields, models
 
@@ -518,6 +519,7 @@ class IntelligenceEngine(models.Model):
         anthropic_key = get('anthropic_api_key')
         supa_url = get('supabase_url')
         supa_key = get('supabase_key')
+        supa_service_key = get('supabase_service_role_key')
 
         missing = []
         if not sa_json:
@@ -526,7 +528,7 @@ class IntelligenceEngine(models.Model):
             missing.append('anthropic_api_key')
         if not supa_url:
             missing.append('supabase_url')
-        if not supa_key:
+        if not supa_key and not supa_service_key:
             missing.append('supabase_key')
         if missing:
             _logger.error('Faltan API keys en ir.config_parameter: %s. '
@@ -538,7 +540,7 @@ class IntelligenceEngine(models.Model):
             'service_account_json': sa_json,
             'anthropic_api_key': anthropic_key,
             'supabase_url': supa_url,
-            'supabase_key': supa_key,
+            'supabase_key': supa_service_key or supa_key,
             'voyage_api_key': get('voyage_api_key'),
             'recipient_email': get('recipient_email'),
             'sender_email': get('sender_email'),
@@ -610,13 +612,28 @@ class IntelligenceEngine(models.Model):
             has_internal = any(m['sender_type'] == 'internal' for m in msgs)
             has_external = any(m['sender_type'] == 'external' for m in msgs)
 
+            # Parse RFC 2822 dates to ISO 8601 for Supabase
+            def _parse_date(raw: str) -> str:
+                if not raw:
+                    return datetime.now(timezone.utc).isoformat()
+                try:
+                    return parsedate_to_datetime(raw).isoformat()
+                except Exception:
+                    try:
+                        return datetime.fromisoformat(
+                            raw.replace('Z', '+00:00')
+                        ).isoformat()
+                    except Exception:
+                        return datetime.now(timezone.utc).isoformat()
+
+            started_at_iso = _parse_date(first.get('date', ''))
+            last_activity_iso = _parse_date(last.get('date', ''))
+
             # Calcular horas sin respuesta
             hours_no_response = 0
             if last['sender_type'] == 'external':
                 try:
-                    last_date = datetime.fromisoformat(
-                        last['date'].replace('Z', '+00:00')
-                    )
+                    last_date = datetime.fromisoformat(last_activity_iso)
                     hours_no_response = (now - last_date).total_seconds() / 3600
                 except Exception:
                     pass
@@ -639,8 +656,8 @@ class IntelligenceEngine(models.Model):
                 'subject_normalized': first.get('subject_normalized', ''),
                 'started_by': first.get('from_email', ''),
                 'started_by_type': first.get('sender_type', ''),
-                'started_at': first.get('date', ''),
-                'last_activity': last.get('date', ''),
+                'started_at': started_at_iso,
+                'last_activity': last_activity_iso,
                 'status': status,
                 'message_count': len(msgs),
                 'participant_emails': participant_emails,

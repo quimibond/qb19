@@ -23,7 +23,7 @@ class IntelligenceQuery(models.TransientModel):
         anthropic_key = get('anthropic_api_key')
         voyage_key = get('voyage_api_key')
         supa_url = get('supabase_url')
-        supa_key = get('supabase_key')
+        supa_key = get('supabase_service_role_key') or get('supabase_key')
 
         if not all([anthropic_key, supa_url, supa_key]):
             self.answer = '<p><b>Error:</b> Faltan API keys en la configuracion.</p>'
