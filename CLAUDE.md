@@ -42,6 +42,11 @@ requirements.txt
 ## Repos relacionados
 
 - `quimibond-intelligence` — Frontend (Next.js 15) + Supabase migrations del sistema de inteligencia
+  - Dashboard, Emails, Chat (Claude RAG), Briefings, Alertas, Acciones, Contactos
+  - Knowledge Graph (entidades, hechos, relaciones)
+  - Sistema (sync status, DB stats)
+  - Supabase schema: 18 tablas, 6 RPC functions, RLS, pgvector
+  - Auth: password + cookie middleware
 
 ## Odoo.sh
 
