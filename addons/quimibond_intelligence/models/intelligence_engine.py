@@ -2795,7 +2795,7 @@ class IntelligenceEngine(models.Model):
                     # Supabase
                     assignee_ent = supa.get_entity_by_name(item.get('assignee', ''))
                     related_ent = supa.get_entity_by_name(item.get('related_to', ''))
-                    supa.save_action_item({
+                    result = supa.save_action_item({
                         'assignee_entity_id': assignee_ent.get('id') if assignee_ent else None,
                         'assignee_name': item.get('assignee', ''),
                         'related_entity_id': related_ent.get('id') if related_ent else None,
@@ -2806,6 +2806,11 @@ class IntelligenceEngine(models.Model):
                         'source_briefing_date': today,
                         'source_account': account,
                     })
+                    supa_id = (
+                        result[0].get('id')
+                        if result and isinstance(result, list)
+                        else False
+                    )
                     # Odoo
                     partner = False
                     related = item.get('related_to', '')
@@ -2822,6 +2827,7 @@ class IntelligenceEngine(models.Model):
                         'partner_id': partner.id if partner else False,
                         'source_date': today,
                         'source_account': account,
+                        'supabase_id': supa_id,
                     })
                 except Exception as exc:
                     _logger.debug('Action item save error: %s', exc)
@@ -2919,6 +2925,7 @@ class IntelligenceEngine(models.Model):
                 'partner_id': partner.id if partner else False,
                 'briefing_id': briefing.id,
                 'gmail_thread_id': a.get('related_thread_id', ''),
+                'supabase_id': a.get('supabase_id', False),
             })
         _logger.info('%d alertas guardadas en Odoo', len(alerts))
 

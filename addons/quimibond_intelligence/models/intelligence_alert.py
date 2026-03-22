@@ -50,6 +50,8 @@ class IntelligenceAlert(models.Model):
     gmail_thread_id = fields.Char(string='Thread ID')
     resolution_notes = fields.Text(string='Notas de resolucion')
     resolved_date = fields.Datetime(string='Fecha resolucion')
+    supabase_id = fields.Integer(
+        string='Supabase ID', index=True, copy=False)
 
     def action_acknowledge(self):
         self.write({'state': 'acknowledged'})
@@ -87,9 +89,15 @@ class IntelligenceAlert(models.Model):
             from ..services.supabase_service import SupabaseService
             supa = SupabaseService(url, key)
             for rec in self:
-                supa.update_alert_state(
-                    rec.name, state,
-                    resolution_notes=rec.resolution_notes,
-                )
+                if rec.supabase_id:
+                    supa.update_alert_state_by_id(
+                        rec.supabase_id, state,
+                        resolution_notes=rec.resolution_notes,
+                    )
+                else:
+                    supa.update_alert_state(
+                        rec.name, state,
+                        resolution_notes=rec.resolution_notes,
+                    )
         except Exception as exc:
             _logger.debug('Alert sync to Supabase: %s', exc)

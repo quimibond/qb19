@@ -50,6 +50,8 @@ class IntelligenceActionItem(models.Model):
         default=lambda self: self.env.user)
     source_date = fields.Date(string='Detectado en')
     source_account = fields.Char(string='Cuenta origen')
+    supabase_id = fields.Integer(
+        string='Supabase ID', index=True, copy=False)
     notes = fields.Text(string='Notas')
 
     @api.depends('priority')
@@ -96,6 +98,7 @@ class IntelligenceActionItem(models.Model):
             from ..services.supabase_service import SupabaseService
             supa = SupabaseService(url, key)
             for rec in self:
-                supa.complete_action_item(rec.id)
+                if rec.supabase_id:
+                    supa.complete_action_item(rec.supabase_id)
         except Exception as exc:
             _logger.debug('Action sync to Supabase: %s', exc)

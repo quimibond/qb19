@@ -206,7 +206,14 @@ class SupabaseService(SupabaseBaseClient):
                 'today': today,
             })
 
-        self._request('/rest/v1/alerts', 'POST', records)
+        result = self._request(
+            '/rest/v1/alerts', 'POST', records,
+            extra_headers={'Prefer': 'return=representation'},
+        )
+        # Merge Supabase IDs back into original alert dicts
+        if result and isinstance(result, list):
+            for alert_dict, created in zip(alerts, result):
+                alert_dict['supabase_id'] = created.get('id')
         _logger.info('✓ %d alertas guardadas', len(records))
 
         # Save prediction outcomes
@@ -390,7 +397,10 @@ class SupabaseService(SupabaseBaseClient):
             'prediction_confidence': prediction_confidence,
         }
 
-        result = self._request('/rest/v1/action_items', 'POST', [item_with_prediction])
+        result = self._request(
+            '/rest/v1/action_items', 'POST', [item_with_prediction],
+            extra_headers={'Prefer': 'return=representation'},
+        )
 
         # Prepare and save prediction outcome
         try:
@@ -763,6 +773,25 @@ class SupabaseService(SupabaseBaseClient):
             )
         except Exception as exc:
             _logger.debug('complete_action: %s', exc)
+
+    def update_alert_state_by_id(self, alert_id: int, state: str,
+                                resolution_notes: str = None):
+        """Actualiza estado de una alerta en Supabase por ID."""
+        try:
+            patch = {
+                'state': state,
+                'is_resolved': state in ('resolved', 'dismissed'),
+            }
+            if state == 'resolved':
+                patch['resolved_at'] = datetime.now().isoformat()
+            if resolution_notes:
+                patch['resolution_notes'] = resolution_notes
+            self._request(
+                f'/rest/v1/alerts?id=eq.{alert_id}',
+                'PATCH', patch,
+            )
+        except Exception as exc:
+            _logger.debug('update_alert_state_by_id: %s', exc)
 
     def update_alert_state(self, alert_title: str, state: str,
                            resolution_notes: str = None):
