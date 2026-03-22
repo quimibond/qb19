@@ -11,7 +11,7 @@ import httpx
 _logger = logging.getLogger(__name__)
 
 CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages'
-CLAUDE_MODEL = 'claude-sonnet-4-6-20250620'
+CLAUDE_MODEL = 'claude-sonnet-4-20250514'
 CLAUDE_API_VERSION = '2023-06-01'
 CLAUDE_MAX_TOKENS = 8000
 
