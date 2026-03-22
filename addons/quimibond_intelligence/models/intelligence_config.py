@@ -191,3 +191,13 @@ class IntelligenceConfig(models.TransientModel):
                 'params': {'title': 'Intelligence System',
                            'message': 'Pipeline ejecutado. Revisa los logs.',
                            'type': 'info'}}
+
+    def action_enrich_only(self):
+        """Enriquece contactos con datos de Odoo sin ejecutar pipeline."""
+        self.action_save()
+        engine = self.env['intelligence.engine']
+        engine.run_enrich_only()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Enrichment',
+                           'message': 'Contactos enriquecidos con datos de Odoo. Revisa los logs.',
+                           'type': 'info'}}

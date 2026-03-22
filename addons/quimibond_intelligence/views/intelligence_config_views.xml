@@ -11,8 +11,12 @@
                     <button name="action_save" type="object"
                             string="Guardar configuracion"
                             class="btn-primary"/>
+                    <button name="action_enrich_only" type="object"
+                            string="Solo enriquecer datos"
+                            class="btn-info"
+                            confirm="Esto actualiza los datos de Odoo (ventas, facturas, entregas, CRM) en Supabase sin leer emails ni llamar a Claude. Toma ~1 minuto. Continuar?"/>
                     <button name="action_test_run" type="object"
-                            string="Ejecutar pipeline ahora"
+                            string="Ejecutar pipeline completo"
                             class="btn-warning"
                             confirm="Esto ejecutara el pipeline completo de inteligencia. Puede tomar 5-15 minutos dependiendo del volumen de emails. Continuar?"/>
                 </header>

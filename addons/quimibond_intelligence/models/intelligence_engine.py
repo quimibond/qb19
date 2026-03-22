@@ -396,6 +396,83 @@ class IntelligenceEngine(models.Model):
         _logger.info('═══ WEEKLY CALIBRATION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
+    #   ENRICH ONLY — Actualiza datos de Odoo→Supabase sin pipeline completo
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @api.model
+    def run_enrich_only(self):
+        """Enriquece contactos de Supabase con datos frescos de Odoo.
+
+        No lee emails, no llama a Claude, no genera briefing.
+        Solo: Odoo enrichment → sync a Supabase → health scores → refresh view.
+        """
+        _logger.info('═══ ENRICH ONLY — %s ═══',
+                      datetime.now(TZ_CDMX).strftime('%Y-%m-%d %H:%M'))
+        cfg = self._load_config()
+        if not cfg:
+            return
+
+        from ..services.supabase_service import SupabaseService
+        supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
+        today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+
+        # 1. Load all external contacts from Supabase
+        try:
+            sb_contacts = supa._request(
+                '/rest/v1/contacts?contact_type=eq.external'
+                '&select=email,name'
+                '&email=not.like.*@quimibond.com',
+            ) or []
+        except Exception as exc:
+            _logger.error('Error cargando contactos: %s', exc)
+            return
+
+        if not sb_contacts:
+            _logger.warning('No hay contactos externos en Supabase')
+            return
+
+        contacts = [
+            {'email': c['email'], 'name': c.get('name', ''),
+             'contact_type': 'external'}
+            for c in sb_contacts if c.get('email')
+        ]
+        _logger.info('Enriqueciendo %d contactos externos', len(contacts))
+
+        # 2. Odoo enrichment (all 17 dimensions)
+        odoo_ctx = self._enrich_with_odoo(contacts, [])
+
+        # 3. Sync enriched data to Supabase
+        if odoo_ctx.get('partners'):
+            self._sync_contacts_to_supabase(
+                odoo_ctx, supa, today,
+            )
+            _logger.info('✓ %d partners synced to Supabase',
+                         len(odoo_ctx['partners']))
+
+        # 4. Recompute health scores
+        try:
+            account_summaries = supa._request(
+                '/rest/v1/account_summaries?order=summary_date.desc'
+                '&limit=50',
+            ) or []
+            supa.compute_and_save_health_scores(
+                contacts, account_summaries, today,
+            )
+        except Exception as exc:
+            _logger.debug('Health scores: %s', exc)
+
+        # 5. Refresh contact_360 materialized view
+        try:
+            supa._request(
+                '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+            )
+            _logger.info('✓ contact_360 refreshed')
+        except Exception as exc:
+            _logger.debug('refresh_contact_360: %s', exc)
+
+        _logger.info('═══ ENRICH ONLY DONE ═══')
+
+    # ══════════════════════════════════════════════════════════════════════════
     #   DATA RETENTION — Limpieza de datos antiguos
     # ══════════════════════════════════════════════════════════════════════════
 
