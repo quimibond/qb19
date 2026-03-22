@@ -34,6 +34,9 @@
                         </div>
                     </group>
                     <notebook>
+                        <page string="Panorama 360" name="panorama">
+                            <field name="intelligence_panorama" readonly="1" nolabel="1"/>
+                        </page>
                         <page string="Historial de Scores" name="scores">
                             <field name="intelligence_score_ids" readonly="1">
                                 <list>
@@ -72,6 +75,24 @@
                                     <field name="state" widget="badge"
                                            decoration-success="state == 'resolved'"
                                            decoration-danger="state == 'open'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Acciones" name="actions">
+                            <field name="intelligence_action_ids" readonly="1">
+                                <list decoration-danger="is_overdue"
+                                      decoration-muted="state in ('done','cancelled')">
+                                    <field name="create_date" string="Creada" widget="date"/>
+                                    <field name="priority" widget="badge"
+                                           decoration-danger="priority in ('critical','high')"
+                                           decoration-warning="priority == 'medium'"/>
+                                    <field name="name"/>
+                                    <field name="action_type"/>
+                                    <field name="due_date"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'done'"
+                                           decoration-danger="state == 'open'"/>
+                                    <field name="is_overdue" column_invisible="1"/>
                                 </list>
                             </field>
                         </page>
