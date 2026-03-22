@@ -462,12 +462,22 @@ class SupabaseService(SupabaseBaseClient):
         )
         return result[0] if result else None
 
-    def get_entity_intelligence(self, name=None, email=None):
-        """Llama al RPC get_entity_intelligence (2-param version)."""
+    def get_entity_intelligence(self, name=None, email=None,
+                                entity_type=None, odoo_id=None):
+        """Llama al RPC get_entity_intelligence (4-param version).
+
+        Uses the 4-param overload to avoid PostgREST HTTP 300
+        'Multiple Choices' when both 2-param and 4-param versions exist.
+        """
         return self._request(
             '/rest/v1/rpc/get_entity_intelligence',
             'POST',
-            {'p_email': email, 'p_name': name},
+            {
+                'p_entity_type': entity_type,
+                'p_name': name,
+                'p_email': email,
+                'p_odoo_id': odoo_id,
+            },
             extra_headers={
                 'Accept': 'application/json',
                 'Content-Profile': 'public',
