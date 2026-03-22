@@ -20,8 +20,7 @@
                 <field name="alert_count" string="Alertas"
                        decoration-danger="alert_count > 5"
                        decoration-warning="alert_count > 0"/>
-                <field name="execution_seconds" string="Duracion (s)"
-                       widget="float" digits="[5,1]"/>
+                <field name="execution_seconds" string="Duracion (s)"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'reviewed'"
                        decoration-info="state == 'draft'"
