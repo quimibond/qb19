@@ -22,7 +22,7 @@ class IntelligenceBriefing(models.Model):
     alert_ids = fields.One2many(
         'intelligence.alert', 'briefing_id', string='Alertas')
     alert_count = fields.Integer(
-        string='Num. alertas', compute='_compute_alert_count')
+        string='Num. alertas', compute='_compute_alert_count', store=True)
     state = fields.Selection([
         ('draft', 'Generado'),
         ('reviewed', 'Revisado'),
