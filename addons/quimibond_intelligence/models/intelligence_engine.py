@@ -234,7 +234,7 @@ class IntelligenceEngine(models.Model):
         # Build key_events for daily_summaries (frontend urgency panel)
         key_events = self._build_key_events(alerts, account_summaries)
 
-        # Guardar briefing
+        # Guardar en daily_summaries (resumen de texto)
         try:
             supa.save_daily_summary(
                 today, briefing_html, len(emails),
@@ -243,6 +243,17 @@ class IntelligenceEngine(models.Model):
             )
         except Exception as exc:
             _logger.error('Error guardando daily summary: %s', exc)
+
+        # Cross-department signal detection
+        try:
+            signals = supa._request(
+                '/rest/v1/rpc/detect_cross_department_topics', 'POST', {},
+            )
+            if signals and isinstance(signals, list) and signals:
+                _logger.info('✓ %d cross-department signals detected',
+                             len(signals))
+        except Exception as exc:
+            _logger.debug('cross_department_signals: %s', exc)
 
         # ══════════════════════════════════════════════════════════════════════
         #  FASE 7.5: Knowledge Graph — Extracción de entidades y hechos
@@ -341,6 +352,15 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.warning('Feedback processing (non-critical): %s', exc)
 
+        # Refresh contact_360 materialized view
+        try:
+            supa._request(
+                '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+            )
+            _logger.info('✓ contact_360 view refreshed')
+        except Exception as exc:
+            _logger.debug('refresh_contact_360: %s', exc)
+
         _logger.info('Pipeline completado exitosamente')
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -374,6 +394,169 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error en calibración semanal: %s', exc, exc_info=True)
         _logger.info('═══ WEEKLY CALIBRATION DONE ═══')
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   ENRICH ONLY — Actualiza datos de Odoo→Supabase sin pipeline completo
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @api.model
+    def run_enrich_only(self):
+        """Enriquece contactos de Supabase con datos frescos de Odoo.
+
+        No lee emails, no llama a Claude, no genera briefing.
+        Solo: Odoo enrichment → sync a Supabase → health scores → refresh view.
+        """
+        _logger.info('═══ ENRICH ONLY — %s ═══',
+                      datetime.now(TZ_CDMX).strftime('%Y-%m-%d %H:%M'))
+        cfg = self._load_config()
+        if not cfg:
+            return
+
+        from ..services.supabase_service import SupabaseService
+        supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
+        today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+
+        # 1. Load all external contacts from Supabase
+        try:
+            sb_contacts = supa._request(
+                '/rest/v1/contacts?contact_type=eq.external'
+                '&select=email,name'
+                '&email=not.like.*@quimibond.com',
+            ) or []
+        except Exception as exc:
+            _logger.error('Error cargando contactos: %s', exc)
+            return
+
+        if not sb_contacts:
+            _logger.warning('No hay contactos externos en Supabase')
+            return
+
+        contacts = [
+            {'email': c['email'], 'name': c.get('name', ''),
+             'contact_type': 'external'}
+            for c in sb_contacts if c.get('email')
+        ]
+        _logger.info('Enriqueciendo %d contactos externos', len(contacts))
+
+        # 2. Odoo enrichment (all 17 dimensions)
+        odoo_ctx = self._enrich_with_odoo(contacts, [])
+
+        # 3. Sync enriched data to Supabase
+        if odoo_ctx.get('partners'):
+            self._sync_contacts_to_supabase(
+                odoo_ctx, supa, today,
+            )
+            _logger.info('✓ %d partners synced to Supabase',
+                         len(odoo_ctx['partners']))
+
+        # 4. Recompute health scores
+        try:
+            account_summaries = supa._request(
+                '/rest/v1/account_summaries?order=summary_date.desc'
+                '&limit=50',
+            ) or []
+            supa.compute_and_save_health_scores(
+                contacts, account_summaries, today,
+            )
+        except Exception as exc:
+            _logger.debug('Health scores: %s', exc)
+
+        # 5. Refresh contact_360 materialized view
+        try:
+            supa._request(
+                '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+            )
+            _logger.info('✓ contact_360 refreshed')
+        except Exception as exc:
+            _logger.debug('refresh_contact_360: %s', exc)
+
+        _logger.info('═══ ENRICH ONLY DONE ═══')
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   DATA RETENTION — Limpieza de datos antiguos
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @api.model
+    def run_data_retention(self):
+        """Limpia datos antiguos de Odoo y Supabase."""
+        _logger.info('═══ DATA RETENTION ═══')
+        today = fields.Date.today()
+
+        # ── Odoo cleanup ──────────────────────────────────────────────────
+        # Archive briefings older than 90 days
+        old_briefings = self.env['intelligence.briefing'].sudo().search([
+            ('date', '<', today - timedelta(days=90)),
+            ('state', '!=', 'archived'),
+        ])
+        if old_briefings:
+            old_briefings.write({'state': 'archived'})
+            _logger.info('Archived %d old briefings', len(old_briefings))
+
+        # Delete client scores older than 180 days
+        old_scores = self.env['intelligence.client.score'].sudo().search([
+            ('date', '<', today - timedelta(days=180)),
+        ])
+        if old_scores:
+            count = len(old_scores)
+            old_scores.unlink()
+            _logger.info('Deleted %d old client scores', count)
+
+        # Auto-cancel overdue actions older than 30 days
+        stale_actions = self.env['intelligence.action.item'].sudo().search([
+            ('state', 'in', ['open', 'in_progress']),
+            ('due_date', '<', today - timedelta(days=30)),
+        ])
+        if stale_actions:
+            stale_actions.write({'state': 'cancelled'})
+            _logger.info('Auto-cancelled %d stale actions', len(stale_actions))
+
+        # ── Supabase cleanup ─────────────────────────────────────────────
+        cfg = self._load_config()
+        if not cfg:
+            _logger.info('═══ DATA RETENTION DONE (Odoo only) ═══')
+            return
+        try:
+            from ..services.supabase_service import SupabaseService
+            supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
+
+            cutoff_90d = (
+                datetime.now() - timedelta(days=90)
+            ).strftime('%Y-%m-%d')
+            cutoff_180d = (
+                datetime.now() - timedelta(days=180)
+            ).strftime('%Y-%m-%d')
+
+            # Delete old resolved alerts (>90 days)
+            supa._request(
+                '/rest/v1/alerts?is_resolved=eq.true'
+                f'&created_at=lt.{cutoff_90d}T00:00:00Z',
+                'DELETE',
+            )
+
+            # Delete old system_learning (>180 days)
+            supa._request(
+                f'/rest/v1/system_learning?learning_date=lt.{cutoff_180d}',
+                'DELETE',
+            )
+
+            # Delete old prediction_outcomes (>180 days)
+            supa._request(
+                f'/rest/v1/prediction_outcomes?prediction_date=lt.{cutoff_180d}',
+                'DELETE',
+            )
+
+            # Expire old unverified facts (>180 days)
+            supa._request(
+                '/rest/v1/facts?verified=eq.false'
+                f'&fact_date=lt.{cutoff_180d}',
+                'PATCH', {'expired': True},
+            )
+
+            _logger.info('✓ Supabase data retention completed')
+        except Exception as exc:
+            _logger.warning('Supabase retention: %s', exc)
+
+        _logger.info('═══ DATA RETENTION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
     #   PUNTO DE ENTRADA: REPORTE SEMANAL (lunes 8am)
@@ -1180,6 +1363,242 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.debug('MRP enrichment skip: %s', exc)
 
+        # ── 12. Lifetime Value y tendencia histórica ────────────────────────
+        if models.get('account_move') and ctx['is_customer']:
+            try:
+                AM = models['account_move']
+                inv_domain = [
+                    ('partner_id', '=', pid),
+                    ('move_type', '=', 'out_invoice'),
+                    ('state', '=', 'posted'),
+                ]
+                # Use read_group for aggregates instead of loading all records
+                totals = AM.read_group(
+                    inv_domain, ['amount_total'], [],
+                )
+                lifetime_total = totals[0]['amount_total'] if totals else 0
+
+                if lifetime_total:
+                    # Get first invoice date efficiently
+                    first_inv = AM.search(
+                        inv_domain + [('invoice_date', '!=', False)],
+                        order='invoice_date asc', limit=1,
+                    )
+                    first_date = first_inv.invoice_date if first_inv else today
+                    months_active = max(1, (today - first_date).days // 30)
+                    monthly_avg = lifetime_total / months_active
+
+                    # Trend: last 3 months vs prior 3 months (2 queries)
+                    date_3m = (
+                        datetime.now() - timedelta(days=90)
+                    ).strftime('%Y-%m-%d')
+                    date_6m = (
+                        datetime.now() - timedelta(days=180)
+                    ).strftime('%Y-%m-%d')
+                    r3 = AM.read_group(
+                        inv_domain + [('invoice_date', '>=', date_3m)],
+                        ['amount_total'], [],
+                    )
+                    p3 = AM.read_group(
+                        inv_domain + [
+                            ('invoice_date', '>=', date_6m),
+                            ('invoice_date', '<', date_3m),
+                        ],
+                        ['amount_total'], [],
+                    )
+                    recent_3m = r3[0]['amount_total'] if r3 else 0
+                    prev_3m = p3[0]['amount_total'] if p3 else 0
+
+                    if prev_3m > 0:
+                        trend_pct = round(
+                            (recent_3m - prev_3m) / prev_3m * 100)
+                        trend_dir = '📈' if trend_pct > 0 else '📉'
+                    else:
+                        trend_pct = 0
+                        trend_dir = '→'
+
+                    ctx['lifetime'] = {
+                        'total_invoiced': lifetime_total,
+                        'first_invoice': first_date.strftime('%Y-%m-%d'),
+                        'months_active': months_active,
+                        'monthly_avg': round(monthly_avg, 2),
+                        'recent_3m': recent_3m or 0,
+                        'prev_3m': prev_3m or 0,
+                        'trend_pct': trend_pct,
+                    }
+                    summary_parts.append(
+                        f"LTV: ${lifetime_total:,.0f} en {months_active} meses "
+                        f"(prom ${monthly_avg:,.0f}/mes) "
+                        f"{trend_dir} {trend_pct:+d}% vs trimestre anterior"
+                    )
+            except Exception as exc:
+                _logger.debug('Lifetime enrichment: %s', exc)
+
+        # ── 13. Stock disponible y precios recientes ─────────────────────
+        if models.get('sale_order') and models.get('product_product'):
+            try:
+                recent_so = models['sale_order'].search([
+                    ('partner_id', '=', pid),
+                    ('state', 'in', ['sale', 'done']),
+                ], order='date_order desc', limit=5)
+                product_info = {}
+                for so in recent_so:
+                    for line in so.order_line:
+                        prod = line.product_id
+                        if not prod or prod.id in product_info:
+                            continue
+                        product_info[prod.id] = {
+                            'name': prod.name,
+                            'last_price': line.price_unit,
+                            'last_qty': line.product_uom_qty,
+                            'last_date': (so.date_order.strftime('%Y-%m-%d')
+                                          if so.date_order else ''),
+                            'stock_qty': prod.qty_available,
+                            'uom': (line.product_uom.name
+                                    if line.product_uom else ''),
+                        }
+                if product_info:
+                    ctx['products'] = list(product_info.values())[:10]
+                    in_stock = sum(
+                        1 for p in ctx['products'] if p['stock_qty'] > 0)
+                    summary_parts.append(
+                        f"PRODUCTOS: {len(ctx['products'])} "
+                        f"comprados ({in_stock} con stock)"
+                    )
+            except Exception as exc:
+                _logger.debug('Product enrichment: %s', exc)
+
+        # ── 14. Cartera por antigüedad (aging) ───────────────────────────
+        if models.get('account_move') and ctx.get('pending_invoices'):
+            aging = {'current': 0, '1_30': 0, '31_60': 0,
+                     '61_90': 0, '90_plus': 0}
+            for inv in ctx['pending_invoices']:
+                d = inv.get('days_overdue', 0)
+                amt = inv.get('amount_residual', 0)
+                if d <= 0:
+                    aging['current'] += amt
+                elif d <= 30:
+                    aging['1_30'] += amt
+                elif d <= 60:
+                    aging['31_60'] += amt
+                elif d <= 90:
+                    aging['61_90'] += amt
+                else:
+                    aging['90_plus'] += amt
+            ctx['aging'] = aging
+            aging_parts = []
+            if aging['1_30']:
+                aging_parts.append(f"1-30d: ${aging['1_30']:,.0f}")
+            if aging['31_60']:
+                aging_parts.append(f"31-60d: ${aging['31_60']:,.0f}")
+            if aging['61_90']:
+                aging_parts.append(f"61-90d: ${aging['61_90']:,.0f}")
+            if aging['90_plus']:
+                aging_parts.append(f"90+d: ${aging['90_plus']:,.0f}")
+            if aging_parts:
+                summary_parts.append(
+                    f"CARTERA VENCIDA: {' | '.join(aging_parts)}"
+                )
+
+        # ── 15. Contactos relacionados (misma empresa) ───────────────────
+        company_id = partner.parent_id.id if partner.parent_id else (
+            pid if partner.is_company else None
+        )
+        if company_id and models.get('partner'):
+            try:
+                siblings = models['partner'].search([
+                    '|',
+                    ('parent_id', '=', company_id),
+                    ('id', '=', company_id),
+                    ('id', '!=', pid),
+                    ('email', '!=', False),
+                ], limit=10)
+                if siblings:
+                    related = []
+                    for sib in siblings:
+                        info = {'name': sib.name, 'email': sib.email or ''}
+                        if models.get('crm_lead'):
+                            sib_leads = models['crm_lead'].search_count([
+                                ('partner_id', '=', sib.id),
+                                ('active', '=', True),
+                            ])
+                            if sib_leads:
+                                info['active_opportunities'] = sib_leads
+                        related.append(info)
+                    ctx['related_contacts'] = related
+                    summary_parts.append(
+                        f"RED: {len(related)} contactos en misma empresa"
+                    )
+            except Exception as exc:
+                _logger.debug('Related contacts: %s', exc)
+
+        # ── 16. Devoluciones y notas de crédito ──────────────────────────
+        if models.get('account_move'):
+            try:
+                credit_notes = models['account_move'].search([
+                    ('partner_id', '=', pid),
+                    ('move_type', '=', 'out_refund'),
+                    ('state', '=', 'posted'),
+                    ('invoice_date', '>=', date_90d),
+                ], order='invoice_date desc', limit=5)
+                if credit_notes:
+                    cn_total = sum(cn.amount_total for cn in credit_notes)
+                    ctx['credit_notes'] = [{
+                        'name': cn.name,
+                        'date': (cn.invoice_date.strftime('%Y-%m-%d')
+                                 if cn.invoice_date else ''),
+                        'amount': cn.amount_total,
+                        'ref': cn.ref or '',
+                    } for cn in credit_notes]
+                    summary_parts.append(
+                        f"DEVOLUCIONES: {len(credit_notes)} NC "
+                        f"(${cn_total:,.0f}) en 90d ⚠️"
+                    )
+            except Exception as exc:
+                _logger.debug('Credit notes: %s', exc)
+
+        # ── 17. Performance de entrega (on-time rate) ────────────────────
+        if models.get('stock_picking'):
+            try:
+                done_picks = models['stock_picking'].search([
+                    ('partner_id', '=', pid),
+                    ('state', '=', 'done'),
+                    ('picking_type_code', '=', 'outgoing'),
+                    ('date_done', '>=', date_90d),
+                ], limit=50)
+                if done_picks:
+                    on_time = sum(
+                        1 for p in done_picks
+                        if p.scheduled_date and p.date_done
+                        and p.date_done <= p.scheduled_date
+                    )
+                    total_done = len(done_picks)
+                    otd_rate = round(on_time / total_done * 100)
+                    avg_days = 0
+                    lead_times = []
+                    for p in done_picks:
+                        if p.create_date and p.date_done:
+                            lt = (p.date_done - p.create_date).days
+                            if lt >= 0:
+                                lead_times.append(lt)
+                    if lead_times:
+                        avg_days = round(
+                            sum(lead_times) / len(lead_times), 1)
+
+                    ctx['delivery_performance'] = {
+                        'total_delivered': total_done,
+                        'on_time_rate': otd_rate,
+                        'avg_lead_time_days': avg_days,
+                    }
+                    otd_emoji = '✅' if otd_rate >= 90 else (
+                        '⚠️' if otd_rate >= 70 else '🔴')
+                    summary_parts.append(
+                        f"ENTREGA OTD: {otd_rate}% {otd_emoji} "
+                        f"({total_done} envíos, lead time {avg_days}d)"
+                    )
+            except Exception as exc:
+                _logger.debug('Delivery performance: %s', exc)
+
         # ── Resumen consolidado ─────────────────────────────────────────────
         ctx['_summary'] = ' | '.join(summary_parts) if summary_parts else ''
         return ctx
@@ -1479,12 +1898,11 @@ class IntelligenceEngine(models.Model):
                                     .strftime('%Y-%m-%d')
                                 ),
                             })
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            _logger.debug('person_insight upsert: %s', exc)
 
                 _logger.info('  ✓ %s (%s): %d emails analizados',
                              dept, account, len(acct_emails))
-                time.sleep(3)  # Rate limit courtesy
             except Exception as exc:
                 _logger.error('  ✗ %s: %s', account, exc)
 
@@ -2411,25 +2829,50 @@ class IntelligenceEngine(models.Model):
         for email_addr, p in partners.items():
             try:
                 # ── Sync contact data (including company!) ──
+                # Derive enrichment columns
+                lifetime = p.get('lifetime', {})
+                aging = p.get('aging', {})
+                deliv = p.get('delivery_performance', {})
+                cn_total = sum(
+                    cn.get('amount', 0)
+                    for cn in p.get('credit_notes', [])
+                )
                 supa.sync_contact_odoo_data(email_addr, {
                     'odoo_partner_id': p.get('id'),
                     'is_customer': p.get('is_customer', False),
                     'is_supplier': p.get('is_supplier', False),
                     'company': p.get('company_name', ''),
+                    # New intelligence columns
+                    'lifetime_value': lifetime.get(
+                        'total_invoiced', p.get('total_invoiced', 0)),
+                    'total_credit_notes': cn_total,
+                    'delivery_otd_rate': deliv.get('on_time_rate'),
                     'odoo_context': {
                         'name': p.get('name', ''),
                         'total_invoiced': p.get('total_invoiced', 0),
                         'credit_limit': p.get('credit_limit', 0),
+                        'monthly_avg': lifetime.get('monthly_avg', 0),
+                        'trend_pct': lifetime.get('trend_pct', 0),
                         'recent_sales_count': len(
                             p.get('recent_sales', []),
                         ),
                         'pending_invoices_count': len(
                             p.get('pending_invoices', []),
                         ),
+                        'aging': aging,
                         'crm_leads_count': len(p.get('crm_leads', [])),
                         'pending_deliveries': len(
                             p.get('pending_deliveries', []),
                         ),
+                        'related_contacts': len(
+                            p.get('related_contacts', []),
+                        ),
+                        'credit_notes_count': len(
+                            p.get('credit_notes', []),
+                        ),
+                        'otd_rate': deliv.get('on_time_rate'),
+                        'avg_lead_time': deliv.get(
+                            'avg_lead_time_days'),
                     },
                 })
                 synced += 1
@@ -2855,7 +3298,6 @@ class IntelligenceEngine(models.Model):
                 supa.mark_emails_kg_processed(batch_ids)
             except Exception as exc:
                 _logger.warning('KG mark_processed %s: %s', account, exc)
-            time.sleep(3)
 
         _logger.info('Knowledge graph alimentado (con perfiles de personas)')
 

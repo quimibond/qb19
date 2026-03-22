@@ -72,18 +72,28 @@ class IntelligenceConfig(models.TransientModel):
         string='Google Service Account JSON',
         help='JSON completo del service account con Domain-Wide Delegation',
     )
-    anthropic_api_key = fields.Char(string='Anthropic API Key')
+    anthropic_api_key = fields.Char(
+        string='Anthropic API Key',
+        groups='base.group_system',
+    )
     claude_model = fields.Char(
         string='Claude Model',
         help='Model ID para Claude API (ej: claude-sonnet-4-6). Dejar vacío para usar el default.',
     )
     supabase_url = fields.Char(string='Supabase URL')
-    supabase_key = fields.Char(string='Supabase Anon Key')
+    supabase_key = fields.Char(
+        string='Supabase Anon Key',
+        groups='base.group_system',
+    )
     supabase_service_role_key = fields.Char(
         string='Supabase Service Role Key',
         help='Requerido para escritura (bypasses RLS). Si está vacío se usa Anon Key.',
+        groups='base.group_system',
     )
-    voyage_api_key = fields.Char(string='Voyage AI API Key')
+    voyage_api_key = fields.Char(
+        string='Voyage AI API Key',
+        groups='base.group_system',
+    )
     recipient_email = fields.Char(string='Email destinatario del briefing')
     sender_email = fields.Char(
         string='Email remitente del briefing',
@@ -180,4 +190,14 @@ class IntelligenceConfig(models.TransientModel):
         return {'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {'title': 'Intelligence System',
                            'message': 'Pipeline ejecutado. Revisa los logs.',
+                           'type': 'info'}}
+
+    def action_enrich_only(self):
+        """Enriquece contactos con datos de Odoo sin ejecutar pipeline."""
+        self.action_save()
+        engine = self.env['intelligence.engine']
+        engine.run_enrich_only()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Enrichment',
+                           'message': 'Contactos enriquecidos con datos de Odoo. Revisa los logs.',
                            'type': 'info'}}
