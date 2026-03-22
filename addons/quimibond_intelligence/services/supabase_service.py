@@ -204,6 +204,16 @@ class SupabaseService:
                 'state': 'new',
                 'is_read': False,
             }
+            # Traceability: source email/thread
+            if a.get('related_thread_id'):
+                record['source_thread_id'] = a['related_thread_id']
+            if a.get('source_email_id'):
+                record['source_email_id'] = a['source_email_id']
+            # Business context
+            if a.get('business_impact'):
+                record['business_impact'] = a['business_impact']
+            if a.get('suggested_action'):
+                record['suggested_action'] = a['suggested_action']
             # Resolve contact_id
             cid = a.get('contact_id')
             if not cid and a.get('contact_name'):
@@ -385,8 +395,49 @@ class SupabaseService:
         return self._request('/rest/v1/facts', 'POST', fact)
 
     def save_action_item(self, item):
-        """Guarda un action item."""
-        return self._request('/rest/v1/action_items', 'POST', item)
+        """Guarda un action item con campos alineados al schema.
+
+        Schema: action_items(action_type, description, contact_name,
+                contact_id, priority, due_date, state, assignee_email,
+                assignee_name, source_alert_id, source_thread_id,
+                reason, contact_company)
+        """
+        record = {
+            'description': item.get('description', ''),
+            'action_type': item.get('action_type', item.get('type', 'other')),
+            'priority': item.get('priority', 'medium'),
+            'state': 'pending',
+        }
+        if item.get('due_date'):
+            record['due_date'] = item['due_date']
+        if item.get('assignee_name'):
+            record['assignee_name'] = item['assignee_name']
+        if item.get('assignee_email'):
+            record['assignee_email'] = item['assignee_email']
+        if item.get('reason'):
+            record['reason'] = item['reason']
+        if item.get('source_thread_id'):
+            record['source_thread_id'] = item['source_thread_id']
+        if item.get('contact_company'):
+            record['contact_company'] = item['contact_company']
+
+        # Resolve contact_id from contact_name
+        contact_name = item.get('contact_name', item.get('related_to', ''))
+        if contact_name:
+            record['contact_name'] = contact_name
+            try:
+                encoded = url_quote(contact_name, safe='')
+                resp = self._request(
+                    f'/rest/v1/contacts?name=eq.{encoded}&select=id,company',
+                )
+                if resp and isinstance(resp, list) and resp:
+                    record['contact_id'] = resp[0]['id']
+                    if not record.get('contact_company') and resp[0].get('company'):
+                        record['contact_company'] = resp[0]['company']
+            except Exception:
+                pass
+
+        return self._request('/rest/v1/action_items', 'POST', record)
 
     def save_relationship(self, rel):
         """Guarda o actualiza una relacion entre entidades."""

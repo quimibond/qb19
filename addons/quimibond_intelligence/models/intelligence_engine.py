@@ -1592,6 +1592,8 @@ class IntelligenceEngine(models.Model):
                     'contact_name': t.get('last_sender'),
                     'account': t['account'],
                     'related_thread_id': t['gmail_thread_id'],
+                    'business_impact': 'Posible deterioro de relacion con cliente',
+                    'suggested_action': f"Responder al hilo sobre: {t['subject'][:60]}",
                 })
             elif t['hours_without_response'] > no_resp_hours and t['started_by_type'] == 'external':
                 alerts.append({
@@ -1604,6 +1606,8 @@ class IntelligenceEngine(models.Model):
                     'contact_name': t.get('last_sender'),
                     'account': t['account'],
                     'related_thread_id': t['gmail_thread_id'],
+                    'business_impact': 'Cliente esperando respuesta',
+                    'suggested_action': f"Revisar y responder el email sobre: {t['subject'][:60]}",
                 })
 
         # Alerta por volumen alto
@@ -1637,6 +1641,8 @@ class IntelligenceEngine(models.Model):
                     'description': comp.get('detail', comp.get('context', '')),
                     'contact_name': comp.get('mentioned_by'),
                     'account': account,
+                    'business_impact': f"Cliente evaluando alternativa: {comp.get('name', '?')}",
+                    'suggested_action': 'Preparar contraoferta con diferenciadores vs competencia',
                 })
 
             # Alerta por sentimiento negativo fuerte
@@ -1651,6 +1657,8 @@ class IntelligenceEngine(models.Model):
                     ),
                     'description': s.get('sentiment_detail', ''),
                     'account': account,
+                    'business_impact': 'Deterioro en tono de comunicacion detectado',
+                    'suggested_action': 'Revisar emails recientes y contactar para resolver insatisfaccion',
                 })
 
             # Alerta por contactos con señal de riesgo
@@ -1675,6 +1683,8 @@ class IntelligenceEngine(models.Model):
                         ),
                         'contact_name': contact.get('name'),
                         'account': account,
+                        'business_impact': f"Riesgo de perder cuenta de {contact.get('company', '?')}",
+                        'suggested_action': f"Llamar a {contact.get('name', '?')} para entender situacion y ofrecer solucion",
                     })
 
         # ── Alerta: factura vencida + sin respuesta a emails ─────────────────
@@ -1712,6 +1722,8 @@ class IntelligenceEngine(models.Model):
                     ),
                     'contact_name': p.get('name', email_addr),
                     'account': '',
+                    'business_impact': f"${total_overdue:,.0f} MXN en riesgo de cobranza",
+                    'suggested_action': f"Llamar a {p.get('name', email_addr)} para gestionar pago de facturas vencidas",
                 })
 
         return alerts
@@ -2575,14 +2587,13 @@ class IntelligenceEngine(models.Model):
                     assignee_ent = supa.get_entity_by_name(item.get('assignee', ''))
                     related_ent = supa.get_entity_by_name(item.get('related_to', ''))
                     supa.save_action_item({
-                        'assignee_entity_id': assignee_ent.get('id') if assignee_ent else None,
                         'assignee_name': item.get('assignee', ''),
-                        'related_entity_id': related_ent.get('id') if related_ent else None,
+                        'contact_name': item.get('related_to', ''),
                         'description': item.get('description', ''),
                         'action_type': item.get('type', 'other'),
                         'priority': item.get('priority', 'medium'),
                         'due_date': item.get('due_date'),
-                        'source_briefing_date': today,
+                        'reason': item.get('reason', ''),
                     })
                     # Odoo
                     partner = False
