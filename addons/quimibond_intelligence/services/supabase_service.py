@@ -81,12 +81,16 @@ class SupabaseService(SupabaseBaseClient):
     def save_contacts(self, contacts: list):
         for c in contacts:
             try:
-                self._request('/rest/v1/rpc/upsert_contact', 'POST', {
+                params = {
                     'p_email': c['email'],
                     'p_name': c.get('name', ''),
                     'p_contact_type': c['contact_type'],
                     'p_department': c.get('department'),
-                })
+                }
+                company = c.get('company')
+                if company:
+                    params['p_company_name'] = company
+                self._request('/rest/v1/rpc/upsert_contact', 'POST', params)
             except Exception as exc:
                 _logger.warning('save_contact %s: %s', c.get('email'), exc)
         _logger.info('✓ %d contactos guardados', len(contacts))
@@ -154,20 +158,20 @@ class SupabaseService(SupabaseBaseClient):
         if not alerts:
             return
 
-        # Resolve contact_name → contact_id for frontend filtering
+        # Resolve contact_name → contact_id + company_id for filtering
         contact_names = list({
             a.get('contact_name', '') for a in alerts
             if a.get('contact_name')
         })
-        name_to_id = {}
+        name_to_contact = {}  # name → {id, company_id}
         for name in contact_names:
             try:
                 encoded = url_quote(name, safe='')
                 resp = self._request(
-                    f'/rest/v1/contacts?name=eq.{encoded}&select=id',
+                    f'/rest/v1/contacts?name=eq.{encoded}&select=id,company_id',
                 )
                 if resp and isinstance(resp, list) and resp:
-                    name_to_id[name] = resp[0]['id']
+                    name_to_contact[name] = resp[0]
             except Exception:
                 pass
 
@@ -189,10 +193,12 @@ class SupabaseService(SupabaseBaseClient):
                 'prediction_id': prediction_id,
                 'prediction_confidence': prediction_confidence,
             }
-            # Resolve contact_id from contact_name
-            cid = name_to_id.get(a.get('contact_name'))
-            if cid:
-                record['contact_id'] = cid
+            # Resolve contact_id + company_id from contact_name
+            contact_info = name_to_contact.get(a.get('contact_name'))
+            if contact_info:
+                record['contact_id'] = contact_info.get('id')
+                if contact_info.get('company_id'):
+                    record['company_id'] = contact_info['company_id']
             records.append(record)
 
             predictions.append({
@@ -388,8 +394,25 @@ class SupabaseService(SupabaseBaseClient):
         """Guarda un action item.
 
         Genera prediction_id para registrar la predicción de acción.
+        Resuelve company_id desde contact_name si disponible.
         Returns created record list (for supabase_id capture).
         """
+        # Resolve company_id from contact_name
+        contact_name = item.get('contact_name')
+        if contact_name and 'company_id' not in item:
+            try:
+                encoded = url_quote(contact_name, safe='')
+                resp = self._request(
+                    f'/rest/v1/contacts?name=eq.{encoded}'
+                    '&select=company_id',
+                )
+                if resp and isinstance(resp, list) and resp:
+                    cid = resp[0].get('company_id')
+                    if cid:
+                        item['company_id'] = cid
+            except Exception:
+                pass
+
         prediction_id = str(uuid.uuid4())
         prediction_confidence = item.get('confidence', 0.5)
 
@@ -533,81 +556,68 @@ class SupabaseService(SupabaseBaseClient):
     # ── Person Profiles (aprendizaje acumulativo) ─────────────────────────
 
     def upsert_person_profile(self, profile: dict):
-        """Inserta o actualiza el perfil de una persona.
+        """Actualiza campos de perfil/personalidad directamente en contacts.
 
         Cada vez que el sistema procesa emails, actualiza el perfil con
         nueva información. Los datos se acumulan — no se sobrescriben
         a menos que haya info más reciente.
-
-        Tabla: person_profiles (upsert por email o canonical_name)
         """
-        canonical = (profile.get('email') or
-                     profile.get('name', '')).lower().strip()
-        if not canonical:
-            return
-
-        data = {
-            'canonical_key': canonical,
-            'name': profile.get('name', ''),
-            'email': profile.get('email'),
-            'company': profile.get('company'),
-            'role': profile.get('role'),
-            'department': profile.get('department'),
-            'decision_power': profile.get('decision_power', 'medium'),
-            'communication_style': profile.get('communication_style', 'formal'),
-            'language_preference': profile.get('language_preference', 'es'),
-            'key_interests': profile.get('key_interests', []),
-            'personality_notes': profile.get('personality_notes', ''),
-            'negotiation_style': profile.get('negotiation_style'),
-            'response_pattern': profile.get('response_pattern'),
-            'influence_on_deals': profile.get('influence_on_deals'),
-            'source_account': profile.get('source_account'),
-            'last_seen_date': profile.get('last_seen_date'),
-        }
-
-        # Intentar upsert — si la tabla no existe, fallar silenciosamente
-        try:
-            result = self._request(
-                '/rest/v1/person_profiles?on_conflict=canonical_key',
-                'POST', data, {
-                    'Prefer': 'resolution=merge-duplicates,return=representation',
-                })
-            # Increment interaction_count based on current value
-            if result and isinstance(result, list) and result:
-                profile_id = result[0].get('id')
-                current_count = result[0].get('interaction_count', 0) or 0
-                if profile_id:
-                    try:
-                        self._request(
-                            f'/rest/v1/person_profiles?id=eq.{profile_id}',
-                            'PATCH',
-                            {'interaction_count': current_count + 1},
-                        )
-                    except Exception:
-                        pass
-            return result
-        except Exception as exc:
-            _logger.debug('person_profile upsert: %s', exc)
+        email = profile.get('email')
+        if not email:
             return None
 
+        # Build patch with only non-None profile fields
+        profile_fields = (
+            'role', 'decision_power', 'communication_style',
+            'language_preference', 'key_interests', 'personality_notes',
+            'negotiation_style', 'response_pattern', 'influence_on_deals',
+        )
+        patch = {}
+        for field in profile_fields:
+            val = profile.get(field)
+            if val is not None:
+                patch[field] = val
+        if profile.get('department'):
+            patch['department'] = profile['department']
+
+        if not patch:
+            return None
+
+        try:
+            encoded = url_quote(email.lower().strip(), safe='')
+            self._request(
+                f'/rest/v1/contacts?email=eq.{encoded}',
+                'PATCH', patch,
+                extra_headers={'Prefer': 'return=minimal'},
+            )
+        except Exception as exc:
+            _logger.debug('upsert_person_profile: %s', exc)
+        return None
+
     def get_person_profile(self, email=None, name=None):
-        """Obtiene el perfil acumulado de una persona."""
+        """Obtiene el perfil acumulado de una persona desde contacts."""
         if email:
-            key = email.lower().strip()
+            key = url_quote(email.lower().strip(), safe='')
+            filter_param = f'email=eq.{key}'
         elif name:
-            key = name.lower().strip()
+            key = url_quote(name.lower().strip(), safe='')
+            filter_param = f'name=eq.{key}'
         else:
             return None
         try:
             result = self._request(
-                f'/rest/v1/person_profiles?canonical_key=eq.{url_quote(key, safe="")}&limit=1',
+                f'/rest/v1/contacts?{filter_param}&limit=1'
+                '&select=id,email,name,company,company_id,role,department,'
+                'decision_power,communication_style,language_preference,'
+                'key_interests,personality_notes,negotiation_style,'
+                'response_pattern,influence_on_deals,interaction_count',
             )
             return result[0] if result else None
         except Exception:
             return None
 
     def get_person_profiles_for_contacts(self, emails: list) -> dict:
-        """Obtiene perfiles de múltiples personas por email.
+        """Obtiene perfiles de múltiples personas por email desde contacts.
 
         Retorna dict: {email → profile_data}
         """
@@ -617,19 +627,23 @@ class SupabaseService(SupabaseBaseClient):
         chunk = 50
         for i in range(0, len(emails), chunk):
             part = emails[i:i + chunk]
-            enc = _postgrest_in_list(part)
+            enc = _postgrest_in_list([e.lower() for e in part if e])
             if not enc:
                 continue
             try:
                 rows = self._request(
-                    '/rest/v1/person_profiles?select=*'
-                    f'&canonical_key=in.({enc})',
+                    '/rest/v1/contacts?'
+                    'select=id,email,name,company,company_id,role,department,'
+                    'decision_power,communication_style,language_preference,'
+                    'key_interests,personality_notes,negotiation_style,'
+                    'response_pattern,influence_on_deals,interaction_count'
+                    f'&email=in.({enc})',
                 )
                 if isinstance(rows, list):
                     for r in rows:
-                        key = r.get('email') or r.get('canonical_key', '')
+                        key = (r.get('email') or '').lower()
                         if key:
-                            profiles[key.lower()] = r
+                            profiles[key] = r
             except Exception as exc:
                 _logger.debug('get_person_profiles batch: %s', exc)
         return profiles
@@ -691,10 +705,22 @@ class SupabaseService(SupabaseBaseClient):
     # ── Contact Odoo Sync ─────────────────────────────────────────────────────
 
     def sync_contact_odoo_data(self, email: str, odoo_data: dict):
-        """Actualiza un contacto en Supabase con datos de Odoo."""
+        """Actualiza un contacto en Supabase con datos de Odoo.
+
+        Si company_name está en odoo_data, resuelve o crea la empresa
+        en la tabla companies y asigna company_id al contacto.
+        """
         try:
-            import urllib.parse
-            encoded = urllib.parse.quote(email, safe='')
+            # Resolve company_name → company_id
+            company_name = odoo_data.get('company')
+            if company_name and 'company_id' not in odoo_data:
+                company_id = self._resolve_or_create_company(
+                    company_name, odoo_data,
+                )
+                if company_id:
+                    odoo_data['company_id'] = company_id
+
+            encoded = url_quote(email, safe='')
             self._request(
                 f'/rest/v1/contacts?email=eq.{encoded}',
                 'PATCH', odoo_data,
@@ -702,6 +728,115 @@ class SupabaseService(SupabaseBaseClient):
             )
         except Exception as exc:
             _logger.warning('sync_contact_odoo %s: %s', email, exc)
+
+    # ── Companies ─────────────────────────────────────────────────────────
+
+    def _resolve_or_create_company(self, name: str,
+                                    odoo_data: dict = None) -> int:
+        """Busca o crea una empresa por nombre. Retorna company_id."""
+        if not name or not name.strip():
+            return None
+        canonical = name.lower().strip()
+        try:
+            encoded = url_quote(canonical, safe='')
+            resp = self._request(
+                f'/rest/v1/companies?canonical_name=eq.{encoded}&select=id',
+            )
+            if resp and isinstance(resp, list) and resp:
+                return resp[0]['id']
+        except Exception:
+            pass
+
+        # Create new company
+        company_data = {
+            'name': name.strip(),
+            'canonical_name': canonical,
+        }
+        if odoo_data:
+            if odoo_data.get('odoo_partner_id'):
+                company_data['odoo_partner_id'] = odoo_data['odoo_partner_id']
+            if odoo_data.get('is_customer') is not None:
+                company_data['is_customer'] = odoo_data['is_customer']
+            if odoo_data.get('is_supplier') is not None:
+                company_data['is_supplier'] = odoo_data['is_supplier']
+        try:
+            result = self._request(
+                '/rest/v1/companies', 'POST', company_data,
+                extra_headers={'Prefer': 'return=representation'},
+            )
+            if result and isinstance(result, list) and result:
+                return result[0]['id']
+        except Exception as exc:
+            _logger.debug('create_company %s: %s', name, exc)
+        return None
+
+    def sync_company_odoo_data(self, company_id: int, data: dict):
+        """Actualiza datos agregados de una empresa desde Odoo."""
+        try:
+            self._request(
+                f'/rest/v1/companies?id=eq.{company_id}',
+                'PATCH', data,
+                extra_headers={'Prefer': 'return=minimal'},
+            )
+        except Exception as exc:
+            _logger.warning('sync_company_odoo %s: %s', company_id, exc)
+
+    def get_company_contacts(self, company_id: int) -> list:
+        """Obtiene todos los contactos de una empresa."""
+        try:
+            return self._request(
+                f'/rest/v1/contacts?company_id=eq.{company_id}'
+                '&select=id,email,name,role,decision_power,'
+                'relationship_score,risk_level'
+                '&order=name',
+            ) or []
+        except Exception:
+            return []
+
+    def get_company_360(self, company_id: int) -> dict:
+        """Vista 360 de una empresa (contactos, alertas, revenue, facts)."""
+        try:
+            return self._request(
+                '/rest/v1/rpc/get_company_360', 'POST',
+                {'p_company_id': company_id},
+            ) or {}
+        except Exception as exc:
+            _logger.debug('get_company_360: %s', exc)
+            return {}
+
+    def get_companies_needing_enrichment(self, limit: int = 20) -> list:
+        """Empresas sin perfil o con perfil desactualizado (>30 días)."""
+        try:
+            return self._request(
+                '/rest/v1/companies?enriched_at=is.null'
+                '&select=id,name,canonical_name,domain,entity_id,'
+                'is_customer,is_supplier,odoo_context'
+                f'&order=updated_at.desc&limit={limit}',
+            ) or []
+        except Exception:
+            return []
+
+    def save_company_profile(self, company_id: int, profile: dict):
+        """Guarda perfil enriquecido por Claude en la empresa."""
+        from datetime import datetime
+        patch = {'enriched_at': datetime.now().isoformat(),
+                 'enrichment_source': 'claude'}
+        for field in ('description', 'business_type', 'relationship_type',
+                      'relationship_summary', 'industry', 'country', 'city',
+                      'key_products', 'risk_signals', 'opportunity_signals',
+                      'strategic_notes'):
+            val = profile.get(field)
+            if val is not None:
+                patch[field] = val
+        try:
+            self._request(
+                f'/rest/v1/companies?id=eq.{company_id}',
+                'PATCH', patch,
+                extra_headers={'Prefer': 'return=minimal'},
+            )
+        except Exception as exc:
+            _logger.warning('save_company_profile %s: %s', company_id, exc)
+
 
     # ── System Learning ───────────────────────────────────────────────────────
 
@@ -903,19 +1038,22 @@ class SupabaseService(SupabaseBaseClient):
         """Guarda métricas de revenue para un contacto.
 
         Upsert por (contact_email, period_start, period_type).
-        Resuelve contact_id desde contact_email para FK integrity.
+        Resuelve contact_id y company_id desde contact_email para FK integrity.
         """
         try:
-            # Resolve contact_id from contact_email (FK to contacts)
+            # Resolve contact_id + company_id from contact_email
             email = metrics.get('contact_email', '')
             if email and 'contact_id' not in metrics:
                 try:
                     encoded = url_quote(email, safe='')
                     resp = self._request(
-                        f'/rest/v1/contacts?email=eq.{encoded}&select=id',
+                        f'/rest/v1/contacts?email=eq.{encoded}'
+                        '&select=id,company_id',
                     )
                     if resp and isinstance(resp, list) and resp:
                         metrics['contact_id'] = resp[0]['id']
+                        if resp[0].get('company_id'):
+                            metrics['company_id'] = resp[0]['company_id']
                 except Exception:
                     pass  # FK is optional, proceed without it
             self._request(

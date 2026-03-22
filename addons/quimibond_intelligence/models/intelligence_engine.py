@@ -355,6 +355,15 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.warning('Feedback processing (non-critical): %s', exc)
 
+        # ══════════════════════════════════════════════════════════════════════
+        #  FASE 10.5: Enriquecer empresas con Claude
+        # ══════════════════════════════════════════════════════════════════════
+        _logger.info('── FASE 10.5: Company enrichment ──')
+        try:
+            self._enrich_companies(supa, claude, today)
+        except Exception as exc:
+            _logger.debug('Company enrichment (non-critical): %s', exc)
+
         # Refresh contact_360 materialized view
         try:
             supa._request(
@@ -2888,15 +2897,82 @@ class IntelligenceEngine(models.Model):
 
     @staticmethod
     def _sync_contacts_to_supabase(odoo_ctx: dict, supa, today: str = None):
-        """Sincroniza datos de Odoo partners a Supabase contacts + revenue metrics."""
+        """Sincroniza datos de Odoo partners a Supabase contacts + companies + revenue."""
         partners = odoo_ctx.get('partners', {})
         if not partners:
             return
+
+        # ── Phase 1: Aggregate company-level data ──
+        # Group partners by company_name to compute company-level aggregates
+        company_data = {}  # company_name → aggregated data
+        for email_addr, p in partners.items():
+            company_name = p.get('company_name', '')
+            if not company_name:
+                continue
+            if company_name not in company_data:
+                company_data[company_name] = {
+                    'lifetime_value': 0,
+                    'total_credit_notes': 0,
+                    'is_customer': False,
+                    'is_supplier': False,
+                    'odoo_partner_id': None,
+                    'credit_limit': 0,
+                    'total_pending': 0,
+                    'monthly_avg': 0,
+                    'trend_pct': None,
+                    'delivery_otd_rate': None,
+                }
+            cd = company_data[company_name]
+            lifetime = p.get('lifetime', {})
+            deliv = p.get('delivery_performance', {})
+            cd['lifetime_value'] += lifetime.get(
+                'total_invoiced', p.get('total_invoiced', 0))
+            cd['total_credit_notes'] += sum(
+                cn.get('amount', 0) for cn in p.get('credit_notes', []))
+            cd['is_customer'] = cd['is_customer'] or p.get('is_customer', False)
+            cd['is_supplier'] = cd['is_supplier'] or p.get('is_supplier', False)
+            cd['total_pending'] += sum(
+                inv.get('amount_residual', 0)
+                for inv in p.get('pending_invoices', []))
+            cd['monthly_avg'] += lifetime.get('monthly_avg', 0)
+            # Use company partner's odoo_id if it's the company itself
+            if p.get('is_company'):
+                cd['odoo_partner_id'] = p.get('id')
+                cd['credit_limit'] = p.get('credit_limit', 0)
+            if lifetime.get('trend_pct') is not None:
+                cd['trend_pct'] = lifetime['trend_pct']
+            if deliv.get('on_time_rate') is not None:
+                cd['delivery_otd_rate'] = deliv['on_time_rate']
+
+        # Sync company-level data to Supabase
+        for company_name, cd in company_data.items():
+            try:
+                company_id = supa._resolve_or_create_company(
+                    company_name, cd,
+                )
+                if company_id:
+                    supa.sync_company_odoo_data(company_id, {
+                        'lifetime_value': cd['lifetime_value'],
+                        'total_credit_notes': cd['total_credit_notes'],
+                        'is_customer': cd['is_customer'],
+                        'is_supplier': cd['is_supplier'],
+                        'credit_limit': cd['credit_limit'],
+                        'total_pending': cd['total_pending'],
+                        'monthly_avg': cd['monthly_avg'],
+                        'trend_pct': cd['trend_pct'],
+                        'delivery_otd_rate': cd['delivery_otd_rate'],
+                    })
+                    if cd.get('odoo_partner_id'):
+                        supa.sync_company_odoo_data(company_id, {
+                            'odoo_partner_id': cd['odoo_partner_id'],
+                        })
+            except Exception as exc:
+                _logger.debug('Company sync %s: %s', company_name, exc)
+
+        # ── Phase 2: Sync individual contacts ──
         synced = 0
         for email_addr, p in partners.items():
             try:
-                # ── Sync contact data (including company!) ──
-                # Derive enrichment columns
                 lifetime = p.get('lifetime', {})
                 aging = p.get('aging', {})
                 deliv = p.get('delivery_performance', {})
@@ -2909,7 +2985,7 @@ class IntelligenceEngine(models.Model):
                     'is_customer': p.get('is_customer', False),
                     'is_supplier': p.get('is_supplier', False),
                     'company': p.get('company_name', ''),
-                    # New intelligence columns
+                    # company_id will be resolved by sync_contact_odoo_data
                     'lifetime_value': lifetime.get(
                         'total_invoiced', p.get('total_invoiced', 0)),
                     'total_credit_notes': cn_total,
@@ -2955,7 +3031,7 @@ class IntelligenceEngine(models.Model):
                         ]
                         supa.save_revenue_metrics({
                             'contact_email': email_addr,
-                            'period_start': today[:8] + '01',  # first of month
+                            'period_start': today[:8] + '01',
                             'period_end': today,
                             'period_type': 'monthly',
                             'total_invoiced': p.get('total_invoiced', 0),
@@ -2986,6 +3062,137 @@ class IntelligenceEngine(models.Model):
                 _logger.warning('Contact sync error %s: %s', email_addr, exc)
         if synced:
             _logger.info('✓ %d contactos sincronizados Odoo → Supabase', synced)
+
+    # ── Company Enrichment with Claude ──────────────────────────────────────
+
+    @staticmethod
+    def _enrich_companies(supa, claude, today: str):
+        """Enriquece empresas sin perfil usando Claude.
+
+        Para cada empresa sin enriched_at, recopila contexto de:
+        - Emails de sus contactos (subjects/snippets)
+        - Facts del Knowledge Graph
+        - Datos de Odoo (odoo_context)
+        - Attributes de la entity
+        Luego le pide a Claude que genere un perfil.
+        """
+        companies = supa.get_companies_needing_enrichment(limit=10)
+        if not companies:
+            _logger.info('No hay empresas pendientes de enriquecimiento')
+            return
+
+        enriched = 0
+        for co in companies:
+            company_id = co['id']
+            company_name = co['name']
+
+            try:
+                # Gather context from multiple sources
+                context_parts = [f'EMPRESA: {company_name}']
+
+                if co.get('domain'):
+                    context_parts.append(f'DOMINIO: {co["domain"]}')
+                if co.get('is_customer'):
+                    context_parts.append('ES CLIENTE de Quimibond')
+                if co.get('is_supplier'):
+                    context_parts.append('ES PROVEEDOR de Quimibond')
+
+                # Odoo context
+                odoo_ctx = co.get('odoo_context') or {}
+                if odoo_ctx:
+                    ctx_items = []
+                    if odoo_ctx.get('total_invoiced'):
+                        ctx_items.append(
+                            f'Facturado total: ${odoo_ctx["total_invoiced"]:,.0f}')
+                    if odoo_ctx.get('monthly_avg'):
+                        ctx_items.append(
+                            f'Promedio mensual: ${odoo_ctx["monthly_avg"]:,.0f}')
+                    if ctx_items:
+                        context_parts.append(
+                            'DATOS ODOO:\n' + '\n'.join(ctx_items))
+
+                # KG entity attributes
+                if co.get('entity_id'):
+                    try:
+                        entity_data = supa.get_entity_intelligence(
+                            name=company_name,
+                        )
+                        if entity_data:
+                            attrs = entity_data.get('entity', {}).get(
+                                'attributes', {})
+                            if attrs:
+                                context_parts.append(
+                                    f'KNOWLEDGE GRAPH:\n{json.dumps(attrs, ensure_ascii=False)}')
+                            facts = entity_data.get('facts', [])
+                            if facts:
+                                fact_texts = [
+                                    f.get('fact_text', '') for f in facts[:10]
+                                ]
+                                context_parts.append(
+                                    'HECHOS CONOCIDOS:\n'
+                                    + '\n'.join(f'- {ft}' for ft in fact_texts))
+                    except Exception:
+                        pass
+
+                # Recent email subjects from company contacts
+                try:
+                    contacts = supa.get_company_contacts(company_id)
+                    if contacts:
+                        contact_info = []
+                        for ct in contacts[:10]:
+                            role = ct.get('role') or ''
+                            dp = ct.get('decision_power') or ''
+                            contact_info.append(
+                                f'  - {ct.get("name", "")} ({role}, {dp}): '
+                                f'{ct.get("email", "")}')
+                        context_parts.append(
+                            f'CONTACTOS ({len(contacts)}):\n'
+                            + '\n'.join(contact_info))
+
+                        # Get sample emails
+                        contact_emails = [
+                            ct['email'] for ct in contacts
+                            if ct.get('email')
+                        ]
+                        if contact_emails:
+                            from urllib.parse import quote as _q
+                            enc = ','.join(
+                                f'"{_q(e, safe="")}"' for e in contact_emails[:5]
+                            )
+                            try:
+                                sample_emails = supa._request(
+                                    f'/rest/v1/emails?sender=in.({enc})'
+                                    '&order=email_date.desc&limit=10'
+                                    '&select=subject,snippet',
+                                ) or []
+                                if sample_emails:
+                                    email_lines = [
+                                        f'  - {e.get("subject", "")}: '
+                                        f'{(e.get("snippet") or "")[:80]}'
+                                        for e in sample_emails
+                                    ]
+                                    context_parts.append(
+                                        'EMAILS RECIENTES:\n'
+                                        + '\n'.join(email_lines))
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+                context = '\n\n'.join(context_parts)
+
+                # Ask Claude to profile the company
+                profile = claude.profile_company(company_name, context)
+                if profile:
+                    supa.save_company_profile(company_id, profile)
+                    enriched += 1
+                    _logger.info('  ✓ Empresa enriquecida: %s', company_name)
+
+            except Exception as exc:
+                _logger.debug('Enrich company %s: %s', company_name, exc)
+
+        if enriched:
+            _logger.info('✓ %d empresas enriquecidas con Claude', enriched)
 
     # ── Link Odoo IDs to contacts + entities ────────────────────────────────
 

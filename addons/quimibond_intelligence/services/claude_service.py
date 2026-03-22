@@ -220,6 +220,51 @@ class ClaudeService:
         parsed['internal_emails'] = int_count
         return parsed
 
+    # ── Company Profiling ───────────────────────────────────────────────────
+
+    def profile_company(self, company_name: str, context: str) -> dict:
+        """Genera perfil de empresa basado en emails, KG facts y datos de Odoo."""
+        system = (
+            'Eres un analista de inteligencia empresarial para Quimibond '
+            '(manufacturera de no tejidos y textiles en México). '
+            'Analiza los datos disponibles sobre una empresa y genera un perfil. '
+            'Retorna SOLO JSON válido sin markdown.'
+        )
+
+        prompt = (
+            f'Genera un perfil de la empresa "{company_name}" basado en estos datos.\n\n'
+            f'{context}\n\n'
+            'Retorna SOLO un JSON con esta estructura:\n'
+            '{\n'
+            '  "description": "Descripción de 1-2 oraciones de qué hace la empresa '
+            'y su relación con Quimibond",\n'
+            '  "business_type": "cliente|proveedor|logistica|financiero|servicios|'
+            'gobierno|tecnologia|otro",\n'
+            '  "relationship_type": "buyer|supplier|logistics|financial|services|'
+            'government|technology|other",\n'
+            '  "key_products": ["productos o servicios que compra/vende/provee"],\n'
+            '  "relationship_summary": "Resumen de la relación comercial con '
+            'Quimibond: qué compra/vende, frecuencia, importancia",\n'
+            '  "industry": "Sector o industria de la empresa",\n'
+            '  "country": "País (si se puede inferir)",\n'
+            '  "city": "Ciudad (si se puede inferir)",\n'
+            '  "risk_signals": ["señales de riesgo detectadas"],\n'
+            '  "opportunity_signals": ["oportunidades detectadas"],\n'
+            '  "strategic_notes": "Notas estratégicas: qué debe saber el '
+            'Director General sobre esta empresa"\n'
+            '}\n\n'
+            'REGLAS:\n'
+            '- Sé específico y conciso\n'
+            '- Si no hay datos suficientes para un campo, usa null\n'
+            '- key_products: lista de productos/servicios concretos, no genéricos\n'
+            '- risk_signals: solo si hay evidencia real (facturas vencidas, quejas, etc.)\n'
+            '- opportunity_signals: solo si hay evidencia real (crecimiento, nuevos pedidos, etc.)\n'
+            '- strategic_notes: el insight más importante para el Director General'
+        )
+
+        text = self._call(system, prompt, max_tokens=2000)
+        return self._extract_json(text)
+
     # ── Fase 2: Síntesis ejecutiva ───────────────────────────────────────────
 
     def synthesize_briefing(self, data_package: str) -> str:

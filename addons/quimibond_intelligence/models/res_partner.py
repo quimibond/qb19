@@ -192,6 +192,44 @@ class ResPartner(models.Model):
                 f'<h4>📧 Emails Recientes ({len(emails)})</h4>'
                 f'<ul style="margin-left:12px">{items}</ul>')
 
+        # ── Empresa y contactos relacionados ────────────────────────────
+        company_info = supa_data.get('company')
+        siblings = supa_data.get('sibling_contacts') or []
+        if company_info:
+            co_parts = []
+            co_name = company_info.get('name', '')
+            if co_name:
+                co_parts.append(
+                    f'<strong>{co_name}</strong>')
+            if company_info.get('industry'):
+                co_parts.append(
+                    f'Industria: {company_info["industry"]}')
+            if company_info.get('lifetime_value'):
+                co_parts.append(
+                    f'Facturado empresa: '
+                    f'<strong>${company_info["lifetime_value"]:,.0f}</strong>')
+            if company_info.get('credit_limit'):
+                co_parts.append(
+                    f'Limite credito: ${company_info["credit_limit"]:,.0f}')
+            if company_info.get('delivery_otd_rate') is not None:
+                co_parts.append(
+                    f'OTD empresa: {company_info["delivery_otd_rate"]}%')
+
+            if siblings:
+                sib_items = ', '.join(
+                    f'{s.get("name", "")} ({s.get("role") or s.get("decision_power", "")})'
+                    for s in siblings[:8]
+                )
+                co_parts.append(
+                    f'<strong>Otros contactos ({len(siblings)}):</strong> '
+                    f'{sib_items}')
+
+            if co_parts:
+                sections.append(
+                    '<h4>🏢 Empresa</h4>'
+                    '<div style="margin-left:12px">'
+                    + '<br/>'.join(co_parts) + '</div>')
+
         # ── Odoo context (financial) ─────────────────────────────────────
         contact = supa_data.get('contact', {})
         odoo_ctx = contact.get('odoo_context') or {}
@@ -234,7 +272,14 @@ class ResPartner(models.Model):
         return '<div>' + ''.join(sections) + '</div>'
 
     def _get_supabase_intel(self, email):
-        """Obtiene inteligencia de Supabase para un contacto."""
+        """Obtiene inteligencia de Supabase para un contacto.
+
+        Usa get_contact_360 RPC que ahora incluye:
+        - contact (con profile fields integrados)
+        - company (datos de la empresa)
+        - sibling_contacts (otros contactos de la misma empresa)
+        - recent_alerts, recent_actions, entity_facts, health_history
+        """
         get = lambda k, d='': (
             self.env['ir.config_parameter'].sudo()
             .get_param(f'quimibond_intelligence.{k}', d)
@@ -248,7 +293,7 @@ class ResPartner(models.Model):
             from ..services.supabase_service import SupabaseService
             supa = SupabaseService(url, key)
 
-            # Try contact_360 RPC first
+            # get_contact_360 now returns contact + company + siblings
             result = supa._request(
                 '/rest/v1/rpc/get_contact_360', 'POST',
                 {'p_email': email},
@@ -257,6 +302,25 @@ class ResPartner(models.Model):
                 data = result
             else:
                 data = {}
+
+            # Profile is now embedded in the contact record
+            contact = data.get('contact', {})
+            if contact:
+                data['profile'] = {
+                    'role': contact.get('role'),
+                    'company': contact.get('company_name')
+                    or contact.get('company'),
+                    'decision_power': contact.get('decision_power'),
+                    'communication_style': contact.get('communication_style'),
+                    'key_interests': contact.get('key_interests'),
+                    'personality_notes': contact.get('personality_notes'),
+                    'negotiation_style': contact.get('negotiation_style'),
+                }
+
+            # Alerts and actions come from get_contact_360
+            data['open_alerts'] = data.get('recent_alerts') or []
+            data['pending_actions'] = data.get('recent_actions') or []
+            data['facts'] = data.get('entity_facts') or []
 
             # Also get recent emails for this person
             from urllib.parse import quote as _q
@@ -275,7 +339,6 @@ class ResPartner(models.Model):
                 ]
 
             # Get recent topics/key_items from account_summaries
-            # Search for account summaries where this email appears
             summaries = supa._request(
                 '/rest/v1/account_summaries'
                 '?order=summary_date.desc&limit=3'
@@ -283,11 +346,8 @@ class ResPartner(models.Model):
             )
             if summaries and isinstance(summaries, list):
                 topics = []
-                name_lower = (
-                    data.get('contact', {}).get('name') or ''
-                ).lower()
+                name_lower = contact.get('name', '').lower()
                 for s in summaries:
-                    # Check if this contact appears in external_contacts
                     ext = s.get('external_contacts') or []
                     if isinstance(ext, list):
                         for c in ext:
@@ -296,49 +356,11 @@ class ResPartner(models.Model):
                             if c_email == email.lower() or (
                                 name_lower and c_name == name_lower
                             ):
-                                # This summary mentions our contact
                                 for ki in (s.get('key_items') or []):
                                     topics.append(ki)
                                 break
                 if topics:
                     data['recent_topics'] = topics[:10]
-
-            # Get person profile
-            pp = supa._request(
-                f'/rest/v1/person_profiles?email=eq.{enc}'
-                '&limit=1&select=*',
-            )
-            if pp and isinstance(pp, list) and pp:
-                data['profile'] = pp[0]
-
-            # Open alerts
-            contact = data.get('contact', {})
-            name = contact.get('name') or ''
-            if name:
-                from urllib.parse import quote as _q2
-                enc_name = _q2(name, safe='')
-                alerts = supa._request(
-                    f'/rest/v1/alerts?contact_name=eq.{enc_name}'
-                    '&is_resolved=eq.false&order=created_at.desc'
-                    '&limit=5&select=title,alert_type,severity,created_at',
-                )
-                if alerts and isinstance(alerts, list):
-                    data['open_alerts'] = alerts
-
-            # Pending actions
-            if name:
-                actions = supa._request(
-                    f'/rest/v1/action_items?contact_name=eq.{enc_name}'
-                    '&status=in.(open,pending)&order=due_date.asc'
-                    '&limit=5&select=description,priority,due_date',
-                )
-                if actions and isinstance(actions, list):
-                    data['pending_actions'] = actions
-
-            # Facts from KG
-            facts_data = data.get('entity_facts') or []
-            if isinstance(facts_data, list):
-                data['facts'] = facts_data
 
             return data
         except Exception as exc:
