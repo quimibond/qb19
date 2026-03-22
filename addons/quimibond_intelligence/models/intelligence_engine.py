@@ -476,7 +476,20 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.debug('Health scores: %s', exc)
 
-        # 5. Refresh contact_360 materialized view
+        # 5. Enrich companies with Claude
+        _logger.info('── Company enrichment with Claude ──')
+        try:
+            from ..services.claude_service import ClaudeService
+            claude_key = cfg.get('anthropic_api_key')
+            if claude_key:
+                claude = ClaudeService(claude_key)
+                self._enrich_companies(supa, claude, today)
+            else:
+                _logger.warning('Claude API key not configured, skipping enrichment')
+        except Exception as exc:
+            _logger.warning('Company enrichment error: %s', exc, exc_info=True)
+
+        # 6. Refresh contact_360 materialized view
         try:
             supa._request(
                 '/rest/v1/rpc/refresh_contact_360', 'POST', {},
