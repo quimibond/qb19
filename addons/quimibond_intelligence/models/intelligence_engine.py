@@ -67,6 +67,295 @@ class IntelligenceEngine(models.Model):
             elapsed = time.time() - start
             _logger.info('═══ PIPELINE FINALIZADO en %.1f segundos ═══', elapsed)
 
+    # ══════════════════════════════════════════════════════════════════════════
+    #   MICRO-PIPELINES (frecuencia independiente)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @api.model
+    def run_sync_emails(self):
+        """Sync incremental de emails desde Gmail → Supabase.
+
+        Corre cada 30 min. Solo lee emails, deduplica, guarda en Supabase,
+        y construye threads/contactos. No llama a Claude.
+        """
+        lock = 'quimibond_intelligence.sync_emails_running'
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(lock, 'false') == 'true':
+            return
+        ICP.set_param(lock, 'true')
+        start = time.time()
+
+        try:
+            cfg = self._load_config()
+            if not cfg:
+                return
+
+            email_accounts = get_email_accounts(self.env)
+            account_departments = get_account_departments(self.env)
+
+            from ..services.gmail_service import GmailService
+            from ..services.supabase_service import SupabaseService
+
+            sa_info = json.loads(cfg['service_account_json'])
+            gmail = GmailService(sa_info)
+
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                # Read emails (incremental)
+                gmail_history = self._load_gmail_history_state()
+                result = gmail.read_all_accounts(
+                    email_accounts, history_state=gmail_history, max_workers=5,
+                )
+                self._save_gmail_history_state(result['gmail_history_state'])
+                all_emails = result['emails']
+
+                if not all_emails:
+                    _logger.info('Sync: sin emails nuevos')
+                    return
+
+                # Dedup + assign department
+                emails = self._deduplicate(all_emails)
+                for e in emails:
+                    e['department'] = account_departments.get(
+                        e['account'], 'Otro')
+
+                # Save to Supabase
+                supa.save_emails(emails)
+                threads = self._build_threads(emails, cfg)
+                contacts = self._extract_contacts(emails)
+                supa.save_threads(threads)
+                supa.save_contacts(contacts)
+
+                # Sync Gmail history to Supabase
+                for acct, hid in result['gmail_history_state'].items():
+                    supa.save_sync_state(acct, str(hid))
+
+                # Log event
+                supa._request('/rest/v1/events', 'POST', {
+                    'event_type': 'emails_synced',
+                    'source': 'cron_sync_emails',
+                    'payload': {
+                        'total': len(emails),
+                        'accounts_ok': result['success_count'],
+                        'accounts_failed': result['failed_count'],
+                        'threads': len(threads),
+                        'contacts': len(contacts),
+                    },
+                })
+
+                _logger.info(
+                    '✓ Sync: %d emails, %d threads, %d contacts (%.1fs)',
+                    len(emails), len(threads), len(contacts),
+                    time.time() - start,
+                )
+        except Exception as exc:
+            _logger.error('run_sync_emails: %s', exc, exc_info=True)
+        finally:
+            ICP.set_param(lock, 'false')
+
+    @api.model
+    def run_analyze_emails(self):
+        """Analiza emails no procesados con Claude.
+
+        Corre cada 1-2h. Toma account_summaries de emails ya sincronizados,
+        genera alertas, métricas, KG, y scores.
+        """
+        lock = 'quimibond_intelligence.analyze_running'
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(lock, 'false') == 'true':
+            return
+        ICP.set_param(lock, 'true')
+        start = time.time()
+
+        try:
+            cfg = self._load_config()
+            if not cfg:
+                return
+
+            account_departments = get_account_departments(self.env)
+
+            from ..services.claude_service import ClaudeService, VoyageService
+            from ..services.supabase_service import SupabaseService
+
+            claude = ClaudeService(cfg['anthropic_api_key'])
+            voyage = (VoyageService(cfg['voyage_api_key'])
+                      if cfg.get('voyage_api_key') else None)
+            today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                # Load recent unanalyzed emails from Supabase
+                try:
+                    recent_emails = supa._request(
+                        '/rest/v1/emails?order=email_date.desc'
+                        '&limit=500'
+                        '&select=*'
+                        f'&email_date=gte.{today}T00:00:00Z',
+                    ) or []
+                except Exception:
+                    recent_emails = []
+
+                if not recent_emails:
+                    _logger.info('Analyze: sin emails recientes')
+                    return
+
+                # Convert Supabase format back to pipeline format
+                emails = []
+                for e in recent_emails:
+                    emails.append({
+                        'account': e.get('account', ''),
+                        'from': e.get('sender', ''),
+                        'from_email': e.get('sender', ''),
+                        'to': e.get('recipient', ''),
+                        'subject': e.get('subject', ''),
+                        'subject_normalized': (e.get('subject') or '').lower(),
+                        'body': e.get('body', ''),
+                        'snippet': e.get('snippet', ''),
+                        'date': e.get('email_date', ''),
+                        'gmail_message_id': e.get('gmail_message_id', ''),
+                        'gmail_thread_id': e.get('gmail_thread_id', ''),
+                        'attachments': e.get('attachments'),
+                        'is_reply': e.get('is_reply', False),
+                        'sender_type': e.get('sender_type', 'external'),
+                        'has_attachments': e.get('has_attachments', False),
+                        'department': account_departments.get(
+                            e.get('account', ''), 'Otro'),
+                    })
+
+                # Odoo enrichment
+                contacts = self._extract_contacts(emails)
+                odoo_context = self._enrich_with_odoo(contacts, emails)
+
+                # Claude analysis
+                account_summaries = self._analyze_accounts(
+                    emails, claude, odoo_context, account_departments,
+                    supa=supa,
+                )
+                supa.save_account_summaries(account_summaries, today)
+
+                # Metrics + alerts + scores
+                threads = self._build_threads(emails, cfg)
+                metrics = self._compute_metrics(emails, threads, cfg)
+                supa.save_metrics(metrics, today)
+
+                alerts = self._generate_alerts(
+                    threads, metrics, cfg,
+                    account_summaries=account_summaries,
+                    odoo_ctx=odoo_context,
+                )
+                supa.save_alerts(alerts, today)
+
+                # KG extraction
+                self._feed_knowledge_graph(emails, claude, supa, today)
+
+                # Embeddings
+                if voyage:
+                    self._generate_embeddings(emails, voyage, supa)
+
+                # Log event
+                supa._request('/rest/v1/events', 'POST', {
+                    'event_type': 'emails_analyzed',
+                    'source': 'cron_analyze_emails',
+                    'payload': {
+                        'emails': len(emails),
+                        'summaries': len(account_summaries),
+                        'alerts': len(alerts),
+                        'elapsed_s': round(time.time() - start, 1),
+                    },
+                })
+
+                _logger.info(
+                    '✓ Analyze: %d emails, %d alerts (%.1fs)',
+                    len(emails), len(alerts), time.time() - start,
+                )
+        except Exception as exc:
+            _logger.error('run_analyze_emails: %s', exc, exc_info=True)
+        finally:
+            ICP.set_param(lock, 'false')
+
+    @api.model
+    def run_update_scores(self):
+        """Recalcula health scores, client scores, y sync Odoo→Supabase.
+
+        Corre cada 2h. No requiere Claude ni Gmail.
+        """
+        lock = 'quimibond_intelligence.scores_running'
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(lock, 'false') == 'true':
+            return
+        ICP.set_param(lock, 'true')
+        start = time.time()
+
+        try:
+            cfg = self._load_config()
+            if not cfg:
+                return
+
+            from ..services.supabase_service import SupabaseService
+            today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                # Load contacts
+                sb_contacts = supa._request(
+                    '/rest/v1/contacts?contact_type=eq.external'
+                    '&select=email,name'
+                    '&email=not.like.*@quimibond.com',
+                ) or []
+                contacts = [
+                    {'email': c['email'], 'name': c.get('name', ''),
+                     'contact_type': 'external'}
+                    for c in sb_contacts if c.get('email')
+                ]
+
+                if not contacts:
+                    return
+
+                # Odoo enrichment
+                odoo_ctx = self._enrich_with_odoo(contacts, [])
+
+                # Sync to Supabase
+                if odoo_ctx.get('partners'):
+                    self._sync_contacts_to_supabase(odoo_ctx, supa, today)
+
+                # Link IDs
+                self._link_odoo_ids(supa)
+
+                # Health scores
+                account_summaries = supa._request(
+                    '/rest/v1/account_summaries?order=summary_date.desc'
+                    '&limit=50',
+                ) or []
+                supa.compute_and_save_health_scores(
+                    contacts, account_summaries, today,
+                )
+
+                # Refresh view
+                supa._request(
+                    '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+                )
+
+                # Log event
+                supa._request('/rest/v1/events', 'POST', {
+                    'event_type': 'scores_updated',
+                    'source': 'cron_update_scores',
+                    'payload': {
+                        'contacts': len(contacts),
+                        'partners_synced': len(odoo_ctx.get('partners', {})),
+                        'elapsed_s': round(time.time() - start, 1),
+                    },
+                })
+
+                _logger.info(
+                    '✓ Scores: %d contacts updated (%.1fs)',
+                    len(contacts), time.time() - start,
+                )
+        except Exception as exc:
+            _logger.error('run_update_scores: %s', exc, exc_info=True)
+        finally:
+            ICP.set_param(lock, 'false')
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   PIPELINE COMPLETO (diario)
+    # ══════════════════════════════════════════════════════════════════════════
+
     def _run_pipeline(self, today: str, start: float):
         """Ejecuta el pipeline completo. Separado para manejo de errores."""
         # ── Cargar configuración ──────────────────────────────────────────────
@@ -80,6 +369,24 @@ class IntelligenceEngine(models.Model):
 
         # ── Instanciar servicios ──────────────────────────────────────────────
         gmail, claude, voyage, supa = self._init_services(cfg)
+
+        try:
+            self._run_pipeline_with_services(
+                cfg, gmail, claude, voyage, supa,
+                email_accounts, account_departments, today, start,
+            )
+        finally:
+            supa.close()
+            stats = supa.sync_stats
+            _logger.info(
+                'Supabase sync stats: %d success, %d failed, %d skipped',
+                stats['success'], stats['failed'], stats['skipped'],
+            )
+
+    def _run_pipeline_with_services(self, cfg, gmail, claude, voyage, supa,
+                                     email_accounts, account_departments,
+                                     today, start):
+        """Pipeline body — separated so supa.close() always runs."""
 
         # ══════════════════════════════════════════════════════════════════════
         #  FASE 1: Leer emails de las cuentas configuradas (incremental)
@@ -345,13 +652,13 @@ class IntelligenceEngine(models.Model):
         _logger.info('── FASE 10: Feedback processing ──')
         try:
             from ..services.feedback_service import FeedbackService
-            feedback_svc = FeedbackService(cfg['supabase_url'], cfg['supabase_key'])
-            processed, total_reward = feedback_svc.process_feedback_rewards()
-            _logger.info('Feedback: %d señales procesadas, reward total: %.2f',
-                         processed, total_reward)
-            action_priorities = feedback_svc.get_action_priorities()
-            if action_priorities:
-                _logger.info('Action priorities: %s', action_priorities)
+            with FeedbackService(cfg['supabase_url'], cfg['supabase_key']) as feedback_svc:
+                processed, total_reward = feedback_svc.process_feedback_rewards()
+                _logger.info('Feedback: %d señales procesadas, reward total: %.2f',
+                             processed, total_reward)
+                action_priorities = feedback_svc.get_action_priorities()
+                if action_priorities:
+                    _logger.info('Action priorities: %s', action_priorities)
         except Exception as exc:
             _logger.warning('Feedback processing (non-critical): %s', exc)
 
@@ -387,24 +694,24 @@ class IntelligenceEngine(models.Model):
         if not cfg:
             return
         from ..services.feedback_service import FeedbackService
-        feedback_svc = FeedbackService(cfg['supabase_url'], cfg['supabase_key'])
-        try:
-            calibrations = feedback_svc.calibrate_alerts()
-            _logger.info('Calibraciones aplicadas: %s', calibrations)
-            priorities = feedback_svc.get_action_priorities()
-            if priorities:
-                for cat, modifier in priorities.items():
-                    if abs(modifier) > 0.2:
-                        feedback_svc.save_learning(
-                            learning_type='action_priority',
-                            description=f'Ajuste de prioridad para {cat}: {modifier:+.2f}',
-                            metric_name='priority_modifier',
-                            metric_before=0.0,
-                            metric_after=modifier,
-                        )
-            _logger.info('Action priorities: %s', priorities)
-        except Exception as exc:
-            _logger.error('Error en calibración semanal: %s', exc, exc_info=True)
+        with FeedbackService(cfg['supabase_url'], cfg['supabase_key']) as feedback_svc:
+            try:
+                calibrations = feedback_svc.calibrate_alerts()
+                _logger.info('Calibraciones aplicadas: %s', calibrations)
+                priorities = feedback_svc.get_action_priorities()
+                if priorities:
+                    for cat, modifier in priorities.items():
+                        if abs(modifier) > 0.2:
+                            feedback_svc.save_learning(
+                                learning_type='action_priority',
+                                description=f'Ajuste de prioridad para {cat}: {modifier:+.2f}',
+                                metric_name='priority_modifier',
+                                metric_before=0.0,
+                                metric_after=modifier,
+                            )
+                _logger.info('Action priorities: %s', priorities)
+            except Exception as exc:
+                _logger.error('Error en calibración semanal: %s', exc, exc_info=True)
         _logger.info('═══ WEEKLY CALIBRATION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -425,38 +732,93 @@ class IntelligenceEngine(models.Model):
             return
 
         from ..services.supabase_service import SupabaseService
-        supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
         today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
 
-        # 1. Load all external contacts from Supabase
-        try:
-            sb_contacts = supa._request(
-                '/rest/v1/contacts?contact_type=eq.external'
-                '&select=email,name'
-                '&email=not.like.*@quimibond.com',
-            ) or []
-        except Exception as exc:
-            _logger.error('Error cargando contactos: %s', exc)
-            return
+        with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+            # 1. Load all external contacts from Supabase
+            try:
+                sb_contacts = supa._request(
+                    '/rest/v1/contacts?contact_type=eq.external'
+                    '&select=email,name'
+                    '&email=not.like.*@quimibond.com',
+                ) or []
+            except Exception as exc:
+                _logger.error('Error cargando contactos: %s', exc)
+                return
 
-        if not sb_contacts:
-            _logger.warning('No hay contactos externos en Supabase')
-            return
+            if not sb_contacts:
+                _logger.warning('No hay contactos externos en Supabase')
+                return
 
-        contacts = [
-            {'email': c['email'], 'name': c.get('name', ''),
-             'contact_type': 'external'}
-            for c in sb_contacts if c.get('email')
-        ]
-        _logger.info('Enriqueciendo %d contactos externos', len(contacts))
+            contacts = [
+                {'email': c['email'], 'name': c.get('name', ''),
+                 'contact_type': 'external'}
+                for c in sb_contacts if c.get('email')
+            ]
+            _logger.info('Enriqueciendo %d contactos externos', len(contacts))
 
-        # 2. Odoo enrichment (all 17 dimensions)
-        odoo_ctx = self._enrich_with_odoo(contacts, [])
+            # 2. Odoo enrichment (all 17 dimensions)
+            odoo_ctx = self._enrich_with_odoo(contacts, [])
 
-        # 3. Sync enriched data to Supabase
-        if odoo_ctx.get('partners'):
-            self._sync_contacts_to_supabase(
-                odoo_ctx, supa, today,
+            # 3. Sync enriched data to Supabase
+            if odoo_ctx.get('partners'):
+                self._sync_contacts_to_supabase(
+                    odoo_ctx, supa, today,
+                )
+                _logger.info('✓ %d partners synced to Supabase',
+                             len(odoo_ctx['partners']))
+
+            # 3.5 Link internal contacts + entities to Odoo IDs
+            self._link_odoo_ids(supa)
+
+            # 4. Recompute health scores
+            try:
+                account_summaries = supa._request(
+                    '/rest/v1/account_summaries?order=summary_date.desc'
+                    '&limit=50',
+                ) or []
+                supa.compute_and_save_health_scores(
+                    contacts, account_summaries, today,
+                )
+            except Exception as exc:
+                _logger.debug('Health scores: %s', exc)
+
+            # 5. Enrich companies with Claude
+            _logger.info('── Company enrichment with Claude ──')
+            try:
+                from ..services.claude_service import ClaudeService
+                claude_key = cfg.get('anthropic_api_key')
+                if claude_key:
+                    claude = ClaudeService(claude_key)
+                    self._enrich_companies(supa, claude, today)
+                else:
+                    _logger.warning('Claude API key not configured, skipping enrichment')
+            except Exception as exc:
+                _logger.warning('Company enrichment error: %s', exc, exc_info=True)
+
+            # 6. Resolve all identities (contact ↔ entity ↔ company ↔ odoo)
+            try:
+                id_result = supa._request(
+                    '/rest/v1/rpc/resolve_all_identities', 'POST', {},
+                )
+                if id_result:
+                    _logger.info('✓ Identity resolution: %s', id_result)
+            except Exception as exc:
+                _logger.warning('resolve_all_identities: %s', exc)
+
+            # 7. Refresh contact_360 materialized view
+            try:
+                supa._request(
+                    '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+                )
+                _logger.info('✓ contact_360 refreshed')
+            except Exception as exc:
+                _logger.debug('refresh_contact_360: %s', exc)
+
+            stats = supa.sync_stats
+            _logger.info(
+                'Sync stats: %d success, %d failed, %d skipped',
+                stats['success'], stats['failed'], stats['skipped'],
             )
             _logger.info('✓ %d partners synced to Supabase',
                          len(odoo_ctx['partners']))
@@ -489,7 +851,17 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.warning('Company enrichment error: %s', exc, exc_info=True)
 
-        # 6. Refresh contact_360 materialized view
+        # 6. Resolve all identities (contact ↔ entity ↔ company ↔ odoo)
+        try:
+            id_result = supa._request(
+                '/rest/v1/rpc/resolve_all_identities', 'POST', {},
+            )
+            if id_result:
+                _logger.info('✓ Identity resolution: %s', id_result)
+        except Exception as exc:
+            _logger.warning('resolve_all_identities: %s', exc)
+
+        # 7. Refresh contact_360 materialized view
         try:
             supa._request(
                 '/rest/v1/rpc/refresh_contact_360', 'POST', {},
@@ -545,42 +917,58 @@ class IntelligenceEngine(models.Model):
             return
         try:
             from ..services.supabase_service import SupabaseService
-            supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                cutoff_90d = (
+                    datetime.now() - timedelta(days=90)
+                ).strftime('%Y-%m-%d')
+                cutoff_180d = (
+                    datetime.now() - timedelta(days=180)
+                ).strftime('%Y-%m-%d')
 
-            cutoff_90d = (
-                datetime.now() - timedelta(days=90)
-            ).strftime('%Y-%m-%d')
-            cutoff_180d = (
-                datetime.now() - timedelta(days=180)
-            ).strftime('%Y-%m-%d')
+                # Delete old resolved alerts (>90 days)
+                supa._request(
+                    '/rest/v1/alerts?is_resolved=eq.true'
+                    f'&created_at=lt.{cutoff_90d}T00:00:00Z',
+                    'DELETE',
+                )
 
-            # Delete old resolved alerts (>90 days)
-            supa._request(
-                '/rest/v1/alerts?is_resolved=eq.true'
-                f'&created_at=lt.{cutoff_90d}T00:00:00Z',
-                'DELETE',
-            )
+                # Delete old system_learning (>180 days)
+                supa._request(
+                    f'/rest/v1/system_learning?learning_date=lt.{cutoff_180d}',
+                    'DELETE',
+                )
 
-            # Delete old system_learning (>180 days)
-            supa._request(
-                f'/rest/v1/system_learning?learning_date=lt.{cutoff_180d}',
-                'DELETE',
-            )
+                # Delete old prediction_outcomes (>180 days)
+                supa._request(
+                    f'/rest/v1/prediction_outcomes?prediction_date=lt.{cutoff_180d}',
+                    'DELETE',
+                )
 
-            # Delete old prediction_outcomes (>180 days)
-            supa._request(
-                f'/rest/v1/prediction_outcomes?prediction_date=lt.{cutoff_180d}',
-                'DELETE',
-            )
+                # Expire old unverified facts (>180 days)
+                supa._request(
+                    '/rest/v1/facts?verified=eq.false'
+                    f'&fact_date=lt.{cutoff_180d}',
+                    'PATCH', {'expired': True},
+                )
 
-            # Expire old unverified facts (>180 days)
-            supa._request(
-                '/rest/v1/facts?verified=eq.false'
-                f'&fact_date=lt.{cutoff_180d}',
-                'PATCH', {'expired': True},
-            )
+                # Decay fact confidence (temporal)
+                decay_result = supa.decay_fact_confidence()
+                _logger.info(
+                    'Fact decay: %s decayed, %s expired',
+                    decay_result.get('decayed', 0),
+                    decay_result.get('expired', 0),
+                )
 
-            _logger.info('✓ Supabase data retention completed')
+                # Auto-deduplicate entities (same_email only)
+                dedup_result = supa.auto_deduplicate_entities()
+                if dedup_result.get('merged', 0):
+                    _logger.info(
+                        'Entity dedup: %d merged of %d candidates',
+                        dedup_result['merged'],
+                        dedup_result['candidates'],
+                    )
+
+                _logger.info('✓ Supabase data retention completed')
         except Exception as exc:
             _logger.warning('Supabase retention: %s', exc)
 
@@ -602,45 +990,45 @@ class IntelligenceEngine(models.Model):
         from ..services.supabase_service import SupabaseService
 
         claude = ClaudeService(cfg['anthropic_api_key'])
-        supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
 
-        week_start = (datetime.now(TZ_CDMX) - timedelta(days=7)).strftime('%Y-%m-%d')
+        with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+            week_start = (datetime.now(TZ_CDMX) - timedelta(days=7)).strftime('%Y-%m-%d')
 
-        # Obtener métricas de últimos 7 días
-        try:
-            weekly_metrics = supa._request(
-                '/rest/v1/response_metrics?order=metric_date.desc&limit=70'
-                '&select=*&metric_date=gte.' + week_start,
-            ) or []
-        except Exception:
-            weekly_metrics = []
+            # Obtener métricas de últimos 7 días
+            try:
+                weekly_metrics = supa._request(
+                    '/rest/v1/response_metrics?order=metric_date.desc&limit=70'
+                    '&select=*&metric_date=gte.' + week_start,
+                ) or []
+            except Exception:
+                weekly_metrics = []
 
-        try:
-            weekly_alerts = supa._request(
-                '/rest/v1/alerts?order=created_at.desc&limit=100'
-                '&select=*&created_at=gte.' + week_start,
-            ) or []
-        except Exception:
-            weekly_alerts = []
+            try:
+                weekly_alerts = supa._request(
+                    '/rest/v1/alerts?order=created_at.desc&limit=100'
+                    '&select=*&created_at=gte.' + week_start,
+                ) or []
+            except Exception:
+                weekly_alerts = []
 
-        # Client scores de la semana
-        try:
-            weekly_scores = supa._request(
-                '/rest/v1/customer_health_scores?order=score_date.desc'
-                '&limit=100&select=*&score_date=gte.' + week_start,
-            ) or []
-        except Exception:
-            weekly_scores = []
+            # Client scores de la semana
+            try:
+                weekly_scores = supa._request(
+                    '/rest/v1/customer_health_scores?order=score_date.desc'
+                    '&limit=100&select=*&score_date=gte.' + week_start,
+                ) or []
+            except Exception:
+                weekly_scores = []
 
-        # Daily summaries de la semana
-        try:
-            weekly_summaries = supa._request(
-                '/rest/v1/daily_summaries?order=summary_date.desc&limit=7'
-                '&select=summary_date,summary_text,total_emails'
-                '&summary_date=gte.' + week_start,
-            ) or []
-        except Exception:
-            weekly_summaries = []
+            # Daily summaries de la semana
+            try:
+                weekly_summaries = supa._request(
+                    '/rest/v1/daily_summaries?order=summary_date.desc&limit=7'
+                    '&select=summary_date,summary_text,total_emails'
+                    '&summary_date=gte.' + week_start,
+                ) or []
+            except Exception:
+                weekly_summaries = []
 
         if not weekly_metrics and not weekly_alerts:
             _logger.warning('Sin datos semanales')
@@ -2915,6 +3303,13 @@ class IntelligenceEngine(models.Model):
         if not partners:
             return
 
+        # ── Pre-resolve all company names in 1 batch query ──
+        all_company_names = list({
+            p.get('company_name', '') for p in partners.values()
+            if p.get('company_name')
+        })
+        company_cache = supa.batch_resolve_companies(all_company_names)
+
         # ── Phase 1: Aggregate company-level data ──
         # Group partners by company_name to compute company-level aggregates
         company_data = {}  # company_name → aggregated data
@@ -2961,7 +3356,7 @@ class IntelligenceEngine(models.Model):
         for company_name, cd in company_data.items():
             try:
                 company_id = supa._resolve_or_create_company(
-                    company_name, cd,
+                    company_name, cd, _cache=company_cache,
                 )
                 if company_id:
                     supa.sync_company_odoo_data(company_id, {
@@ -2984,6 +3379,7 @@ class IntelligenceEngine(models.Model):
 
         # ── Phase 2: Sync individual contacts ──
         synced = 0
+        revenue_batch = []  # Collect revenue metrics for batch save
         for email_addr, p in partners.items():
             try:
                 lifetime = p.get('lifetime', {})
@@ -3030,10 +3426,10 @@ class IntelligenceEngine(models.Model):
                         'avg_lead_time': deliv.get(
                             'avg_lead_time_days'),
                     },
-                })
+                }, _company_cache=company_cache)
                 synced += 1
 
-                # ── Save revenue metrics for customers ──
+                # ── Collect revenue metrics for batch save ──
                 if p.get('is_customer') and today:
                     try:
                         recent_sales = p.get('recent_sales', [])
@@ -3042,7 +3438,7 @@ class IntelligenceEngine(models.Model):
                             inv for inv in pending_invoices
                             if inv.get('days_overdue', 0) > 0
                         ]
-                        supa.save_revenue_metrics({
+                        revenue_batch.append({
                             'contact_email': email_addr,
                             'period_start': today[:8] + '01',
                             'period_end': today,
@@ -3076,6 +3472,13 @@ class IntelligenceEngine(models.Model):
         if synced:
             _logger.info('✓ %d contactos sincronizados Odoo → Supabase', synced)
 
+        # ── Batch-save all revenue metrics (1 call instead of N) ──
+        if revenue_batch:
+            try:
+                supa.save_revenue_metrics_batch(revenue_batch)
+            except Exception as exc:
+                _logger.warning('Batch revenue metrics: %s', exc)
+
     # ── Company Enrichment with Claude ──────────────────────────────────────
 
     @staticmethod
@@ -3088,11 +3491,57 @@ class IntelligenceEngine(models.Model):
         - Datos de Odoo (odoo_context)
         - Attributes de la entity
         Luego le pide a Claude que genere un perfil.
+
+        Batch pre-fetches contacts for all companies to reduce N+1 queries.
         """
         companies = supa.get_companies_needing_enrichment(limit=10)
         if not companies:
             _logger.info('No hay empresas pendientes de enriquecimiento')
             return
+
+        # ── Batch pre-fetch contacts for all companies (1 query) ──
+        company_ids = [co['id'] for co in companies]
+        all_contacts_map = {}  # company_id → [contacts]
+        try:
+            cid_list = ','.join(str(cid) for cid in company_ids)
+            all_contacts = supa._request(
+                f'/rest/v1/contacts?company_id=in.({cid_list})'
+                '&select=id,email,name,role,decision_power,'
+                'relationship_score,risk_level,company_id'
+                '&order=name',
+            ) or []
+            for ct in all_contacts:
+                cid = ct.get('company_id')
+                if cid:
+                    all_contacts_map.setdefault(cid, []).append(ct)
+        except Exception as exc:
+            _logger.debug('batch contacts for enrichment: %s', exc)
+
+        # ── Batch pre-fetch recent emails from all contact emails (1 query) ──
+        all_contact_emails = []
+        for cts in all_contacts_map.values():
+            for ct in cts[:5]:
+                if ct.get('email'):
+                    all_contact_emails.append(ct['email'])
+        emails_by_sender = {}  # sender_email → [email records]
+        if all_contact_emails:
+            try:
+                from urllib.parse import quote as _q
+                enc = ','.join(
+                    f'"{_q(e, safe="")}"' for e in all_contact_emails[:50]
+                )
+                if enc:
+                    sample_emails = supa._request(
+                        f'/rest/v1/emails?sender=in.({enc})'
+                        '&order=email_date.desc&limit=100'
+                        '&select=subject,snippet,sender',
+                    ) or []
+                    for e in sample_emails:
+                        sender = (e.get('sender') or '').lower()
+                        if sender:
+                            emails_by_sender.setdefault(sender, []).append(e)
+            except Exception as exc:
+                _logger.debug('batch emails for enrichment: %s', exc)
 
         enriched = 0
         for co in companies:
@@ -3124,7 +3573,7 @@ class IntelligenceEngine(models.Model):
                         context_parts.append(
                             'DATOS ODOO:\n' + '\n'.join(ctx_items))
 
-                # KG entity attributes
+                # KG entity attributes (still per-company RPC — can't batch)
                 if co.get('entity_id'):
                     try:
                         entity_data = supa.get_entity_intelligence(
@@ -3149,50 +3598,32 @@ class IntelligenceEngine(models.Model):
                     except Exception:
                         pass
 
-                # Recent email subjects from company contacts
-                try:
-                    contacts = supa.get_company_contacts(company_id)
-                    if contacts:
-                        contact_info = []
-                        for ct in contacts[:10]:
-                            role = ct.get('role') or ''
-                            dp = ct.get('decision_power') or ''
-                            contact_info.append(
-                                f'  - {ct.get("name", "")} ({role}, {dp}): '
-                                f'{ct.get("email", "")}')
-                        context_parts.append(
-                            f'CONTACTOS ({len(contacts)}):\n'
-                            + '\n'.join(contact_info))
+                # Contacts from pre-fetched batch
+                contacts = all_contacts_map.get(company_id, [])
+                if contacts:
+                    contact_info = []
+                    for ct in contacts[:10]:
+                        role = ct.get('role') or ''
+                        dp = ct.get('decision_power') or ''
+                        contact_info.append(
+                            f'  - {ct.get("name", "")} ({role}, {dp}): '
+                            f'{ct.get("email", "")}')
+                    context_parts.append(
+                        f'CONTACTOS ({len(contacts)}):\n'
+                        + '\n'.join(contact_info))
 
-                        # Get sample emails
-                        contact_emails = [
-                            ct['email'] for ct in contacts
-                            if ct.get('email')
-                        ]
-                        if contact_emails:
-                            from urllib.parse import quote as _q
-                            enc = ','.join(
-                                f'"{_q(e, safe="")}"' for e in contact_emails[:5]
-                            )
-                            try:
-                                sample_emails = supa._request(
-                                    f'/rest/v1/emails?sender=in.({enc})'
-                                    '&order=email_date.desc&limit=10'
-                                    '&select=subject,snippet',
-                                ) or []
-                                if sample_emails:
-                                    email_lines = [
-                                        f'  - {e.get("subject", "")}: '
-                                        f'{(e.get("snippet") or "")[:80]}'
-                                        for e in sample_emails
-                                    ]
-                                    context_parts.append(
-                                        'EMAILS RECIENTES:\n'
-                                        + '\n'.join(email_lines))
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
+                    # Get sample emails from pre-fetched batch
+                    email_lines = []
+                    for ct in contacts[:5]:
+                        ct_email = (ct.get('email') or '').lower()
+                        for e in emails_by_sender.get(ct_email, [])[:3]:
+                            email_lines.append(
+                                f'  - {e.get("subject", "")}: '
+                                f'{(e.get("snippet") or "")[:80]}')
+                    if email_lines:
+                        context_parts.append(
+                            'EMAILS RECIENTES:\n'
+                            + '\n'.join(email_lines[:10]))
 
                 context = '\n\n'.join(context_parts)
 
@@ -3216,10 +3647,12 @@ class IntelligenceEngine(models.Model):
     # ── Link Odoo IDs to contacts + entities ────────────────────────────────
 
     def _link_odoo_ids(self, supa):
-        """Vincula contactos internos y entities del Knowledge Graph con IDs de Odoo.
+        """Vincula contactos y entities del Knowledge Graph con IDs de Odoo.
 
         1. Contactos internos → busca res.partner + res.users por email
-        2. Entities (person/company) → busca res.partner por email o nombre
+        2. Contactos externos sin odoo_partner_id → busca res.partner por email
+        3. Entities (person/company) → busca res.partner por email o nombre
+        4. Ejecuta resolve_all_identities() para propagar links bidireccionales
         """
         Partner = self.env['res.partner'].sudo()
         try:
@@ -3270,7 +3703,46 @@ class IntelligenceEngine(models.Model):
             _logger.info('✓ %d contactos internos vinculados a Odoo',
                          linked_contacts)
 
-        # ── 2. Entities: link odoo_model + odoo_id ────────────────────────
+        # ── 2. External contacts: link odoo_partner_id ────────────────────
+        try:
+            externals = supa._request(
+                '/rest/v1/contacts?contact_type=eq.external'
+                '&odoo_partner_id=is.null'
+                '&select=email,name',
+            ) or []
+        except Exception as exc:
+            _logger.warning('Load external contacts: %s', exc)
+            externals = []
+
+        linked_external = 0
+        for c in externals:
+            email = c.get('email', '')
+            if not email:
+                continue
+            try:
+                partner = Partner.search(
+                    [('email', '=ilike', email)], limit=1,
+                )
+                if not partner and c.get('name'):
+                    # Fuzzy: try by name + not company
+                    partner = Partner.search(
+                        [('name', '=ilike', c['name']),
+                         ('is_company', '=', False)],
+                        limit=1,
+                    )
+                if partner:
+                    supa.sync_contact_odoo_data(email, {
+                        'odoo_partner_id': partner.id,
+                    })
+                    linked_external += 1
+            except Exception as exc:
+                _logger.debug('Link external %s: %s', email, exc)
+
+        if linked_external:
+            _logger.info('✓ %d contactos externos vinculados a Odoo',
+                         linked_external)
+
+        # ── 3. Entities: link odoo_model + odoo_id ────────────────────────
         try:
             entities = supa._request(
                 '/rest/v1/entities?odoo_id=is.null'
@@ -3302,7 +3774,7 @@ class IntelligenceEngine(models.Model):
                          ('is_company', '=', True)],
                         limit=1,
                     )
-                    # Try partial match (e.g. "Continental" → "Continental AG")
+                    # Try partial match
                     if not partner:
                         partner = Partner.search(
                             [('name', '=ilike', f'%{ent_name}%'),
@@ -3334,6 +3806,16 @@ class IntelligenceEngine(models.Model):
 
         if linked_entities:
             _logger.info('✓ %d entities vinculadas a Odoo', linked_entities)
+
+        # ── 4. Resolve all identities (propagate links bidirectionally) ───
+        try:
+            result = supa._request(
+                '/rest/v1/rpc/resolve_all_identities', 'POST', {},
+            )
+            if result:
+                _logger.info('✓ Identity resolution: %s', result)
+        except Exception as exc:
+            _logger.warning('resolve_all_identities: %s', exc)
 
     # ── Accountability alerts ────────────────────────────────────────────────
 
