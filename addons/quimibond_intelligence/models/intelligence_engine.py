@@ -4073,15 +4073,22 @@ class IntelligenceEngine(models.Model):
 
             # Guardar entidades
             entity_map = {}
+            ent_ok, ent_fail = 0, 0
             for ent in kg.get('entities', []):
                 try:
                     result = supa.upsert_entity(ent)
                     if result and isinstance(result, list) and result:
                         entity_map[ent['name']] = result[0].get('id')
-                except Exception:
-                    pass
+                        ent_ok += 1
+                    else:
+                        ent_fail += 1
+                except Exception as exc:
+                    ent_fail += 1
+                    _logger.warning('KG entity save failed (%s): %s', ent.get('name', '?'), exc)
+            _logger.info('  KG entities: %d ok, %d failed', ent_ok, ent_fail)
 
             # Guardar hechos
+            fact_ok, fact_fail, fact_skip = 0, 0, 0
             for fact in kg.get('facts', []):
                 ent_name = fact.get('entity_name', '')
                 ent_id = entity_map.get(ent_name)
@@ -4099,8 +4106,13 @@ class IntelligenceEngine(models.Model):
                             'confidence': fact.get('confidence', 0.5),
                             'source_account': account,
                         })
-                    except Exception:
-                        pass
+                        fact_ok += 1
+                    except Exception as exc:
+                        fact_fail += 1
+                        _logger.debug('KG fact save failed: %s', exc)
+                else:
+                    fact_skip += 1
+            _logger.info('  KG facts: %d ok, %d failed, %d skipped (no entity)', fact_ok, fact_fail, fact_skip)
 
             # Guardar action items en Supabase + Odoo
             for item in kg.get('action_items', []):
@@ -4146,6 +4158,7 @@ class IntelligenceEngine(models.Model):
                     _logger.debug('Action item save error: %s', exc)
 
             # Guardar relaciones
+            rel_ok, rel_fail = 0, 0
             for rel in kg.get('relationships', []):
                 a_id = entity_map.get(rel.get('entity_a'))
                 b_id = entity_map.get(rel.get('entity_b'))
@@ -4157,8 +4170,11 @@ class IntelligenceEngine(models.Model):
                             'relationship_type': rel.get('type', 'mentioned_with'),
                             'context': rel.get('context', ''),
                         })
-                    except Exception:
-                        pass
+                        rel_ok += 1
+                    except Exception as exc:
+                        rel_fail += 1
+                        _logger.debug('KG relationship save failed: %s', exc)
+            _logger.info('  KG relationships: %d ok, %d failed', rel_ok, rel_fail)
 
             # Guardar perfiles de personas (aprendizaje acumulativo)
             for profile in kg.get('person_profiles', []):
