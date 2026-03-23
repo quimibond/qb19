@@ -1,6 +1,6 @@
 """
 Quimibond Intelligence — Motor Principal
-Orquesta el pipeline completo: Gmail → Dedup → Análisis → Odoo → Claude → Scoring → Supabase → Briefing.
+Orquesta el pipeline: Odoo (fuente de verdad) → Supabase → Gmail (contexto) → Claude → Scoring → Briefing.
 """
 import json
 import logging
@@ -76,7 +76,8 @@ class IntelligenceEngine(models.Model):
         """Sync incremental de emails desde Gmail → Supabase.
 
         Corre cada 30 min. Solo lee emails, deduplica, guarda en Supabase,
-        y construye threads/contactos. No llama a Claude.
+        y construye threads. Los contactos ya existen desde Odoo (fuente de
+        verdad) — aquí solo se guardan emails y threads como contexto.
         """
         lock = 'quimibond_intelligence.sync_emails_running'
         ICP = self.env['ir.config_parameter'].sudo()
@@ -118,12 +119,10 @@ class IntelligenceEngine(models.Model):
                     e['department'] = account_departments.get(
                         e['account'], 'Otro')
 
-                # Save to Supabase
+                # Save emails + threads (contexto sobre contactos Odoo)
                 supa.save_emails(emails)
                 threads = self._build_threads(emails, cfg)
-                contacts = self._extract_contacts(emails)
                 supa.save_threads(threads)
-                supa.save_contacts(contacts)
 
                 # Sync Gmail history to Supabase
                 for acct, hid in result['gmail_history_state'].items():
@@ -138,13 +137,12 @@ class IntelligenceEngine(models.Model):
                         'accounts_ok': result['success_count'],
                         'accounts_failed': result['failed_count'],
                         'threads': len(threads),
-                        'contacts': len(contacts),
                     },
                 })
 
                 _logger.info(
-                    '✓ Sync: %d emails, %d threads, %d contacts (%.1fs)',
-                    len(emails), len(threads), len(contacts),
+                    '✓ Sync: %d emails, %d threads (%.1fs)',
+                    len(emails), len(threads),
                     time.time() - start,
                 )
         except Exception as exc:
@@ -156,8 +154,8 @@ class IntelligenceEngine(models.Model):
     def run_analyze_emails(self):
         """Analiza emails no procesados con Claude.
 
-        Corre cada 1-2h. Toma account_summaries de emails ya sincronizados,
-        genera alertas, métricas, KG, y scores.
+        Corre cada 1-2h. Usa Odoo como base de enriquecimiento (partners ya
+        sincronizados). Los emails son contexto que se analiza sobre esa base.
         """
         lock = 'quimibond_intelligence.analyze_running'
         ICP = self.env['ir.config_parameter'].sudo()
@@ -181,8 +179,12 @@ class IntelligenceEngine(models.Model):
                       if cfg.get('voyage_api_key') else None)
             today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
 
+            # Odoo enrichment primero (fuente de verdad)
+            contacts = self._extract_odoo_contacts()
+            odoo_context = self._enrich_with_odoo(contacts, [])
+
             with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-                # Load recent unanalyzed emails from Supabase
+                # Load recent emails from Supabase (contexto)
                 try:
                     recent_emails = supa._request(
                         '/rest/v1/emails?order=email_date.desc'
@@ -220,11 +222,7 @@ class IntelligenceEngine(models.Model):
                             e.get('account', ''), 'Otro'),
                     })
 
-                # Odoo enrichment
-                contacts = self._extract_contacts(emails)
-                odoo_context = self._enrich_with_odoo(contacts, emails)
-
-                # Claude analysis
+                # Claude analysis (con contexto Odoo)
                 account_summaries = self._analyze_accounts(
                     emails, claude, odoo_context, account_departments,
                     supa=supa,
@@ -258,6 +256,7 @@ class IntelligenceEngine(models.Model):
                         'emails': len(emails),
                         'summaries': len(account_summaries),
                         'alerts': len(alerts),
+                        'odoo_partners': len(odoo_context.get('partners', {})),
                         'elapsed_s': round(time.time() - start, 1),
                     },
                 })
@@ -273,9 +272,10 @@ class IntelligenceEngine(models.Model):
 
     @api.model
     def run_update_scores(self):
-        """Recalcula health scores, client scores, y sync Odoo→Supabase.
+        """Recalcula health scores y sync Odoo→Supabase.
 
-        Corre cada 2h. No requiere Claude ni Gmail.
+        Corre cada 2h. Odoo-first: carga partners de Odoo, enriquece,
+        sincroniza a Supabase, recalcula scores. No requiere Claude ni Gmail.
         """
         lock = 'quimibond_intelligence.scores_running'
         ICP = self.env['ir.config_parameter'].sudo()
@@ -292,25 +292,14 @@ class IntelligenceEngine(models.Model):
             from ..services.supabase_service import SupabaseService
             today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
 
+            # Odoo-first: cargar partners directamente de Odoo
+            contacts = self._extract_odoo_contacts()
+            if not contacts:
+                return
+
+            odoo_ctx = self._enrich_with_odoo(contacts, [])
+
             with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-                # Load contacts
-                sb_contacts = supa._request(
-                    '/rest/v1/contacts?contact_type=eq.external'
-                    '&select=email,name'
-                    '&email=not.like.*@quimibond.com',
-                ) or []
-                contacts = [
-                    {'email': c['email'], 'name': c.get('name', ''),
-                     'contact_type': 'external'}
-                    for c in sb_contacts if c.get('email')
-                ]
-
-                if not contacts:
-                    return
-
-                # Odoo enrichment
-                odoo_ctx = self._enrich_with_odoo(contacts, [])
-
                 # Sync to Supabase
                 if odoo_ctx.get('partners'):
                     self._sync_contacts_to_supabase(odoo_ctx, supa, today)
@@ -319,12 +308,16 @@ class IntelligenceEngine(models.Model):
                 self._link_odoo_ids(supa)
 
                 # Health scores
+                sb_contacts = [
+                    {'email': e, 'contact_type': 'external'}
+                    for e in odoo_ctx.get('partners', {})
+                ]
                 account_summaries = supa._request(
                     '/rest/v1/account_summaries?order=summary_date.desc'
                     '&limit=50',
                 ) or []
                 supa.compute_and_save_health_scores(
-                    contacts, account_summaries, today,
+                    sb_contacts, account_summaries, today,
                 )
 
                 # Refresh view
@@ -386,12 +379,31 @@ class IntelligenceEngine(models.Model):
     def _run_pipeline_with_services(self, cfg, gmail, claude, voyage, supa,
                                      email_accounts, account_departments,
                                      today, start):
-        """Pipeline body — separated so supa.close() always runs."""
+        """Pipeline body — separated so supa.close() always runs.
+
+        Odoo-first: primero carga partners de Odoo y sincroniza a Supabase,
+        luego los emails se procesan como capa de contexto sobre esa base.
+        """
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 1: Leer emails de las cuentas configuradas (incremental)
+        #  FASE 1: Odoo → Supabase (fuente de verdad)
         # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 1: Lectura de emails ──')
+        _logger.info('── FASE 1: Odoo → Supabase (fuente de verdad) ──')
+        contacts = self._extract_odoo_contacts()
+        odoo_context = self._enrich_with_odoo(contacts, [])
+
+        if odoo_context.get('partners'):
+            self._sync_contacts_to_supabase(odoo_context, supa, today)
+            self._link_odoo_ids(supa)
+            _logger.info('✓ %d partners Odoo sincronizados',
+                         len(odoo_context['partners']))
+        else:
+            _logger.warning('Sin partners Odoo — continuando con emails')
+
+        # ══════════════════════════════════════════════════════════════════════
+        #  FASE 2: Leer emails (capa de contexto)
+        # ══════════════════════════════════════════════════════════════════════
+        _logger.info('── FASE 2: Lectura de emails ──')
         gmail_history_state = self._load_gmail_history_state()
         result = gmail.read_all_accounts(
             email_accounts, history_state=gmail_history_state, max_workers=5,
@@ -402,13 +414,13 @@ class IntelligenceEngine(models.Model):
                       len(all_emails), result['success_count'], result['failed_count'])
 
         if not all_emails:
-            _logger.warning('Sin emails — abortando pipeline')
+            _logger.warning('Sin emails — solo se sincronizó Odoo')
             return
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 2: Deduplicación
+        #  FASE 3: Dedup + persistencia de emails/threads
         # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 2: Deduplicación ──')
+        _logger.info('── FASE 3: Dedup + persistencia ──')
         emails = self._deduplicate(all_emails)
         _logger.info('Después de dedup: %d emails únicos', len(emails))
 
@@ -416,35 +428,22 @@ class IntelligenceEngine(models.Model):
         for e in emails:
             e['department'] = account_departments.get(e['account'], 'Otro')
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 3: Guardar en Supabase
-        # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 3: Persistencia en Supabase ──')
         try:
             supa.save_emails(emails)
         except Exception as exc:
             _logger.error('Error guardando emails: %s', exc)
 
-        # ── Construir threads y contactos ─────────────────────────────────────
+        # Threads (contexto sobre contactos Odoo ya existentes)
         threads = self._build_threads(emails, cfg)
-        contacts = self._extract_contacts(emails)
-
         try:
             supa.save_threads(threads)
-            supa.save_contacts(contacts)
         except Exception as exc:
-            _logger.error('Error guardando threads/contactos: %s', exc)
+            _logger.error('Error guardando threads: %s', exc)
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 4: Enriquecimiento con Odoo ORM
+        #  FASE 4: Análisis con Claude (por cuenta, con contexto Odoo)
         # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 4: Enriquecimiento Odoo ORM ──')
-        odoo_context = self._enrich_with_odoo(contacts, emails)
-
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 5: Análisis con Claude (por cuenta)
-        # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 5: Análisis Claude por cuenta ──')
+        _logger.info('── FASE 4: Análisis Claude por cuenta ──')
         account_summaries = self._analyze_accounts(
             emails, claude, odoo_context, account_departments, supa=supa,
         )
@@ -455,9 +454,9 @@ class IntelligenceEngine(models.Model):
             _logger.error('Error guardando summaries: %s', exc)
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 6: Métricas y scoring
+        #  FASE 5: Métricas y scoring
         # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 6: Métricas y scoring ──')
+        _logger.info('── FASE 5: Métricas y scoring ──')
         metrics = self._compute_metrics(emails, threads, cfg)
         try:
             supa.save_metrics(metrics, today)
@@ -500,9 +499,9 @@ class IntelligenceEngine(models.Model):
             _logger.error('Error guardando client scores: %s', exc)
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 7: Contexto histórico + Síntesis ejecutiva
+        #  FASE 6: Contexto histórico + Síntesis ejecutiva
         # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 7: Síntesis ejecutiva ──')
+        _logger.info('── FASE 6: Síntesis ejecutiva ──')
         historical = {}
         try:
             historical = supa.get_historical_context()
@@ -563,9 +562,9 @@ class IntelligenceEngine(models.Model):
             _logger.debug('cross_department_signals: %s', exc)
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 7.5: Knowledge Graph — Extracción de entidades y hechos
+        #  FASE 7: Knowledge Graph — Extracción de entidades y hechos
         # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 7.5: Knowledge Graph ──')
+        _logger.info('── FASE 7: Knowledge Graph ──')
         self._feed_knowledge_graph(emails, claude, supa, today)
 
         # ══════════════════════════════════════════════════════════════════════
@@ -576,15 +575,9 @@ class IntelligenceEngine(models.Model):
             self._generate_embeddings(emails, voyage, supa)
 
         # ══════════════════════════════════════════════════════════════════════
-        #  FASE 8.5: Sync Odoo → Supabase contacts + Learning + Patterns
+        #  FASE 8.5: Scoring, patrones y aprendizaje
         # ══════════════════════════════════════════════════════════════════════
-        _logger.info('── FASE 8.5: Sync y aprendizaje continuo ──')
-
-        # Sync Odoo partner data to Supabase contacts (+ revenue metrics)
-        self._sync_contacts_to_supabase(odoo_context, supa, today)
-
-        # Link internal contacts + entities to Odoo IDs
-        self._link_odoo_ids(supa)
+        _logger.info('── FASE 8.5: Scoring y aprendizaje ──')
 
         # Generate accountability alerts from action verification
         self._generate_accountability_alerts(
@@ -593,8 +586,12 @@ class IntelligenceEngine(models.Model):
 
         # Compute and save customer health scores
         try:
+            sb_contacts = [
+                {'email': e, 'contact_type': 'external'}
+                for e in odoo_context.get('partners', {})
+            ]
             supa.compute_and_save_health_scores(
-                contacts, account_summaries, today,
+                sb_contacts, account_summaries, today,
             )
         except Exception as exc:
             _logger.debug('Health scores: %s', exc)
@@ -1314,9 +1311,46 @@ class IntelligenceEngine(models.Model):
 
     # ── Extracción de contactos ───────────────────────────────────────────────
 
+    def _extract_odoo_contacts(self) -> list:
+        """Extrae contactos de Odoo (fuente de verdad).
+
+        Retorna lista de dicts con email, name, contact_type para uso
+        en _enrich_with_odoo y otros métodos del pipeline.
+        """
+        models = self._load_odoo_models()
+        if 'partner' not in models:
+            _logger.warning('_extract_odoo_contacts: res.partner no disponible')
+            return []
+
+        Partner = models['partner']
+        partners = Partner.search([
+            ('email', '!=', False),
+            ('email', '!=', ''),
+            ('active', '=', True),
+            '|',
+            ('customer_rank', '>', 0),
+            ('supplier_rank', '>', 0),
+        ], order='customer_rank desc, supplier_rank desc')
+
+        contacts = []
+        seen = set()
+        for p in partners:
+            email = (p.email or '').strip().lower()
+            if not email or '@' not in email or email in seen:
+                continue
+            seen.add(email)
+            contacts.append({
+                'email': email,
+                'name': p.name or '',
+                'contact_type': 'external',
+            })
+
+        _logger.info('Odoo: %d partners activos con email', len(contacts))
+        return contacts
+
     @staticmethod
     def _extract_contacts(emails: list) -> list:
-        """Extrae contactos únicos de los emails."""
+        """Extrae contactos únicos de los emails (legacy, para KG/alertas)."""
         contact_map = {}
         for e in emails:
             email_addr = e.get('from_email', '').lower()
