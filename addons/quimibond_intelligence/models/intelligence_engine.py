@@ -507,7 +507,17 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.warning('Company enrichment error: %s', exc, exc_info=True)
 
-            # 6. Refresh contact_360 materialized view
+            # 6. Resolve all identities (contact ↔ entity ↔ company ↔ odoo)
+            try:
+                id_result = supa._request(
+                    '/rest/v1/rpc/resolve_all_identities', 'POST', {},
+                )
+                if id_result:
+                    _logger.info('✓ Identity resolution: %s', id_result)
+            except Exception as exc:
+                _logger.warning('resolve_all_identities: %s', exc)
+
+            # 7. Refresh contact_360 materialized view
             try:
                 supa._request(
                     '/rest/v1/rpc/refresh_contact_360', 'POST', {},
@@ -3281,10 +3291,12 @@ class IntelligenceEngine(models.Model):
     # ── Link Odoo IDs to contacts + entities ────────────────────────────────
 
     def _link_odoo_ids(self, supa):
-        """Vincula contactos internos y entities del Knowledge Graph con IDs de Odoo.
+        """Vincula contactos y entities del Knowledge Graph con IDs de Odoo.
 
         1. Contactos internos → busca res.partner + res.users por email
-        2. Entities (person/company) → busca res.partner por email o nombre
+        2. Contactos externos sin odoo_partner_id → busca res.partner por email
+        3. Entities (person/company) → busca res.partner por email o nombre
+        4. Ejecuta resolve_all_identities() para propagar links bidireccionales
         """
         Partner = self.env['res.partner'].sudo()
         try:
@@ -3335,7 +3347,46 @@ class IntelligenceEngine(models.Model):
             _logger.info('✓ %d contactos internos vinculados a Odoo',
                          linked_contacts)
 
-        # ── 2. Entities: link odoo_model + odoo_id ────────────────────────
+        # ── 2. External contacts: link odoo_partner_id ────────────────────
+        try:
+            externals = supa._request(
+                '/rest/v1/contacts?contact_type=eq.external'
+                '&odoo_partner_id=is.null'
+                '&select=email,name',
+            ) or []
+        except Exception as exc:
+            _logger.warning('Load external contacts: %s', exc)
+            externals = []
+
+        linked_external = 0
+        for c in externals:
+            email = c.get('email', '')
+            if not email:
+                continue
+            try:
+                partner = Partner.search(
+                    [('email', '=ilike', email)], limit=1,
+                )
+                if not partner and c.get('name'):
+                    # Fuzzy: try by name + not company
+                    partner = Partner.search(
+                        [('name', '=ilike', c['name']),
+                         ('is_company', '=', False)],
+                        limit=1,
+                    )
+                if partner:
+                    supa.sync_contact_odoo_data(email, {
+                        'odoo_partner_id': partner.id,
+                    })
+                    linked_external += 1
+            except Exception as exc:
+                _logger.debug('Link external %s: %s', email, exc)
+
+        if linked_external:
+            _logger.info('✓ %d contactos externos vinculados a Odoo',
+                         linked_external)
+
+        # ── 3. Entities: link odoo_model + odoo_id ────────────────────────
         try:
             entities = supa._request(
                 '/rest/v1/entities?odoo_id=is.null'
@@ -3367,7 +3418,7 @@ class IntelligenceEngine(models.Model):
                          ('is_company', '=', True)],
                         limit=1,
                     )
-                    # Try partial match (e.g. "Continental" → "Continental AG")
+                    # Try partial match
                     if not partner:
                         partner = Partner.search(
                             [('name', '=ilike', f'%{ent_name}%'),
@@ -3399,6 +3450,16 @@ class IntelligenceEngine(models.Model):
 
         if linked_entities:
             _logger.info('✓ %d entities vinculadas a Odoo', linked_entities)
+
+        # ── 4. Resolve all identities (propagate links bidirectionally) ───
+        try:
+            result = supa._request(
+                '/rest/v1/rpc/resolve_all_identities', 'POST', {},
+            )
+            if result:
+                _logger.info('✓ Identity resolution: %s', result)
+        except Exception as exc:
+            _logger.warning('resolve_all_identities: %s', exc)
 
     # ── Accountability alerts ────────────────────────────────────────────────
 
