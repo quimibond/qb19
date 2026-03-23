@@ -67,6 +67,295 @@ class IntelligenceEngine(models.Model):
             elapsed = time.time() - start
             _logger.info('═══ PIPELINE FINALIZADO en %.1f segundos ═══', elapsed)
 
+    # ══════════════════════════════════════════════════════════════════════════
+    #   MICRO-PIPELINES (frecuencia independiente)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @api.model
+    def run_sync_emails(self):
+        """Sync incremental de emails desde Gmail → Supabase.
+
+        Corre cada 30 min. Solo lee emails, deduplica, guarda en Supabase,
+        y construye threads/contactos. No llama a Claude.
+        """
+        lock = 'quimibond_intelligence.sync_emails_running'
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(lock, 'false') == 'true':
+            return
+        ICP.set_param(lock, 'true')
+        start = time.time()
+
+        try:
+            cfg = self._load_config()
+            if not cfg:
+                return
+
+            email_accounts = get_email_accounts(self.env)
+            account_departments = get_account_departments(self.env)
+
+            from ..services.gmail_service import GmailService
+            from ..services.supabase_service import SupabaseService
+
+            sa_info = json.loads(cfg['service_account_json'])
+            gmail = GmailService(sa_info)
+
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                # Read emails (incremental)
+                gmail_history = self._load_gmail_history_state()
+                result = gmail.read_all_accounts(
+                    email_accounts, history_state=gmail_history, max_workers=5,
+                )
+                self._save_gmail_history_state(result['gmail_history_state'])
+                all_emails = result['emails']
+
+                if not all_emails:
+                    _logger.info('Sync: sin emails nuevos')
+                    return
+
+                # Dedup + assign department
+                emails = self._deduplicate(all_emails)
+                for e in emails:
+                    e['department'] = account_departments.get(
+                        e['account'], 'Otro')
+
+                # Save to Supabase
+                supa.save_emails(emails)
+                threads = self._build_threads(emails, cfg)
+                contacts = self._extract_contacts(emails)
+                supa.save_threads(threads)
+                supa.save_contacts(contacts)
+
+                # Sync Gmail history to Supabase
+                for acct, hid in result['gmail_history_state'].items():
+                    supa.save_sync_state(acct, str(hid))
+
+                # Log event
+                supa._request('/rest/v1/events', 'POST', {
+                    'event_type': 'emails_synced',
+                    'source': 'cron_sync_emails',
+                    'payload': {
+                        'total': len(emails),
+                        'accounts_ok': result['success_count'],
+                        'accounts_failed': result['failed_count'],
+                        'threads': len(threads),
+                        'contacts': len(contacts),
+                    },
+                })
+
+                _logger.info(
+                    '✓ Sync: %d emails, %d threads, %d contacts (%.1fs)',
+                    len(emails), len(threads), len(contacts),
+                    time.time() - start,
+                )
+        except Exception as exc:
+            _logger.error('run_sync_emails: %s', exc, exc_info=True)
+        finally:
+            ICP.set_param(lock, 'false')
+
+    @api.model
+    def run_analyze_emails(self):
+        """Analiza emails no procesados con Claude.
+
+        Corre cada 1-2h. Toma account_summaries de emails ya sincronizados,
+        genera alertas, métricas, KG, y scores.
+        """
+        lock = 'quimibond_intelligence.analyze_running'
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(lock, 'false') == 'true':
+            return
+        ICP.set_param(lock, 'true')
+        start = time.time()
+
+        try:
+            cfg = self._load_config()
+            if not cfg:
+                return
+
+            account_departments = get_account_departments(self.env)
+
+            from ..services.claude_service import ClaudeService, VoyageService
+            from ..services.supabase_service import SupabaseService
+
+            claude = ClaudeService(cfg['anthropic_api_key'])
+            voyage = (VoyageService(cfg['voyage_api_key'])
+                      if cfg.get('voyage_api_key') else None)
+            today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                # Load recent unanalyzed emails from Supabase
+                try:
+                    recent_emails = supa._request(
+                        '/rest/v1/emails?order=email_date.desc'
+                        '&limit=500'
+                        '&select=*'
+                        f'&email_date=gte.{today}T00:00:00Z',
+                    ) or []
+                except Exception:
+                    recent_emails = []
+
+                if not recent_emails:
+                    _logger.info('Analyze: sin emails recientes')
+                    return
+
+                # Convert Supabase format back to pipeline format
+                emails = []
+                for e in recent_emails:
+                    emails.append({
+                        'account': e.get('account', ''),
+                        'from': e.get('sender', ''),
+                        'from_email': e.get('sender', ''),
+                        'to': e.get('recipient', ''),
+                        'subject': e.get('subject', ''),
+                        'subject_normalized': (e.get('subject') or '').lower(),
+                        'body': e.get('body', ''),
+                        'snippet': e.get('snippet', ''),
+                        'date': e.get('email_date', ''),
+                        'gmail_message_id': e.get('gmail_message_id', ''),
+                        'gmail_thread_id': e.get('gmail_thread_id', ''),
+                        'attachments': e.get('attachments'),
+                        'is_reply': e.get('is_reply', False),
+                        'sender_type': e.get('sender_type', 'external'),
+                        'has_attachments': e.get('has_attachments', False),
+                        'department': account_departments.get(
+                            e.get('account', ''), 'Otro'),
+                    })
+
+                # Odoo enrichment
+                contacts = self._extract_contacts(emails)
+                odoo_context = self._enrich_with_odoo(contacts, emails)
+
+                # Claude analysis
+                account_summaries = self._analyze_accounts(
+                    emails, claude, odoo_context, account_departments,
+                    supa=supa,
+                )
+                supa.save_account_summaries(account_summaries, today)
+
+                # Metrics + alerts + scores
+                threads = self._build_threads(emails, cfg)
+                metrics = self._compute_metrics(emails, threads, cfg)
+                supa.save_metrics(metrics, today)
+
+                alerts = self._generate_alerts(
+                    threads, metrics, cfg,
+                    account_summaries=account_summaries,
+                    odoo_ctx=odoo_context,
+                )
+                supa.save_alerts(alerts, today)
+
+                # KG extraction
+                self._feed_knowledge_graph(emails, claude, supa, today)
+
+                # Embeddings
+                if voyage:
+                    self._generate_embeddings(emails, voyage, supa)
+
+                # Log event
+                supa._request('/rest/v1/events', 'POST', {
+                    'event_type': 'emails_analyzed',
+                    'source': 'cron_analyze_emails',
+                    'payload': {
+                        'emails': len(emails),
+                        'summaries': len(account_summaries),
+                        'alerts': len(alerts),
+                        'elapsed_s': round(time.time() - start, 1),
+                    },
+                })
+
+                _logger.info(
+                    '✓ Analyze: %d emails, %d alerts (%.1fs)',
+                    len(emails), len(alerts), time.time() - start,
+                )
+        except Exception as exc:
+            _logger.error('run_analyze_emails: %s', exc, exc_info=True)
+        finally:
+            ICP.set_param(lock, 'false')
+
+    @api.model
+    def run_update_scores(self):
+        """Recalcula health scores, client scores, y sync Odoo→Supabase.
+
+        Corre cada 2h. No requiere Claude ni Gmail.
+        """
+        lock = 'quimibond_intelligence.scores_running'
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(lock, 'false') == 'true':
+            return
+        ICP.set_param(lock, 'true')
+        start = time.time()
+
+        try:
+            cfg = self._load_config()
+            if not cfg:
+                return
+
+            from ..services.supabase_service import SupabaseService
+            today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                # Load contacts
+                sb_contacts = supa._request(
+                    '/rest/v1/contacts?contact_type=eq.external'
+                    '&select=email,name'
+                    '&email=not.like.*@quimibond.com',
+                ) or []
+                contacts = [
+                    {'email': c['email'], 'name': c.get('name', ''),
+                     'contact_type': 'external'}
+                    for c in sb_contacts if c.get('email')
+                ]
+
+                if not contacts:
+                    return
+
+                # Odoo enrichment
+                odoo_ctx = self._enrich_with_odoo(contacts, [])
+
+                # Sync to Supabase
+                if odoo_ctx.get('partners'):
+                    self._sync_contacts_to_supabase(odoo_ctx, supa, today)
+
+                # Link IDs
+                self._link_odoo_ids(supa)
+
+                # Health scores
+                account_summaries = supa._request(
+                    '/rest/v1/account_summaries?order=summary_date.desc'
+                    '&limit=50',
+                ) or []
+                supa.compute_and_save_health_scores(
+                    contacts, account_summaries, today,
+                )
+
+                # Refresh view
+                supa._request(
+                    '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+                )
+
+                # Log event
+                supa._request('/rest/v1/events', 'POST', {
+                    'event_type': 'scores_updated',
+                    'source': 'cron_update_scores',
+                    'payload': {
+                        'contacts': len(contacts),
+                        'partners_synced': len(odoo_ctx.get('partners', {})),
+                        'elapsed_s': round(time.time() - start, 1),
+                    },
+                })
+
+                _logger.info(
+                    '✓ Scores: %d contacts updated (%.1fs)',
+                    len(contacts), time.time() - start,
+                )
+        except Exception as exc:
+            _logger.error('run_update_scores: %s', exc, exc_info=True)
+        finally:
+            ICP.set_param(lock, 'false')
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   PIPELINE COMPLETO (diario)
+    # ══════════════════════════════════════════════════════════════════════════
+
     def _run_pipeline(self, today: str, start: float):
         """Ejecuta el pipeline completo. Separado para manejo de errores."""
         # ── Cargar configuración ──────────────────────────────────────────────

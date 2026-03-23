@@ -29,6 +29,24 @@ def _postgrest_in_list(values: list) -> str:
 class SupabaseService(SupabaseBaseClient):
     """Cliente para Supabase REST API (PostgREST)."""
 
+    # ── Events (event sourcing) ───────────────────────────────────────────
+
+    def log_event(self, event_type: str, source: str = 'pipeline',
+                  entity_type: str = None, entity_id: int = None,
+                  entity_ref: str = None, payload: dict = None):
+        """Log an event to the events table for timeline tracking."""
+        try:
+            self._request('/rest/v1/events', 'POST', {
+                'event_type': event_type,
+                'source': source,
+                'entity_type': entity_type,
+                'entity_id': entity_id,
+                'entity_ref': entity_ref,
+                'payload': payload or {},
+            })
+        except Exception as exc:
+            _logger.debug('log_event: %s', exc)
+
     # ── Emails ───────────────────────────────────────────────────────────────
 
     def save_emails(self, emails: list):

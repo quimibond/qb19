@@ -35,6 +35,46 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 14:00:00')"/>
         </record>
 
+        <!-- ══ Micro-pipelines (alta frecuencia) ══ -->
+
+        <record id="cron_sync_emails" model="ir.cron">
+            <field name="name">Intelligence - Sync Emails (cada 30 min)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_sync_emails()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">5</field>
+        </record>
+
+        <record id="cron_analyze_emails" model="ir.cron">
+            <field name="name">Intelligence - Analizar Emails (cada 2h)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_analyze_emails()</field>
+            <field name="interval_number">2</field>
+            <field name="interval_type">hours</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">10</field>
+        </record>
+
+        <record id="cron_update_scores" model="ir.cron">
+            <field name="name">Intelligence - Actualizar Scores (cada 4h)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_update_scores()</field>
+            <field name="interval_number">4</field>
+            <field name="interval_type">hours</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=4)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">15</field>
+        </record>
+
+        <!-- ══ Tareas de mantenimiento ══ -->
+
         <record id="cron_data_retention" model="ir.cron">
             <field name="name">Intelligence System - Data Retention (Cleanup)</field>
             <field name="model_id" ref="model_intelligence_engine"/>
