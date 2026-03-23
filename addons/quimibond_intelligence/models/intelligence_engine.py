@@ -823,53 +823,6 @@ class IntelligenceEngine(models.Model):
             _logger.info('✓ %d partners synced to Supabase',
                          len(odoo_ctx['partners']))
 
-        # 3.5 Link internal contacts + entities to Odoo IDs
-        self._link_odoo_ids(supa)
-
-        # 4. Recompute health scores
-        try:
-            account_summaries = supa._request(
-                '/rest/v1/account_summaries?order=summary_date.desc'
-                '&limit=50',
-            ) or []
-            supa.compute_and_save_health_scores(
-                contacts, account_summaries, today,
-            )
-        except Exception as exc:
-            _logger.debug('Health scores: %s', exc)
-
-        # 5. Enrich companies with Claude
-        _logger.info('── Company enrichment with Claude ──')
-        try:
-            from ..services.claude_service import ClaudeService
-            claude_key = cfg.get('anthropic_api_key')
-            if claude_key:
-                claude = ClaudeService(claude_key)
-                self._enrich_companies(supa, claude, today)
-            else:
-                _logger.warning('Claude API key not configured, skipping enrichment')
-        except Exception as exc:
-            _logger.warning('Company enrichment error: %s', exc, exc_info=True)
-
-        # 6. Resolve all identities (contact ↔ entity ↔ company ↔ odoo)
-        try:
-            id_result = supa._request(
-                '/rest/v1/rpc/resolve_all_identities', 'POST', {},
-            )
-            if id_result:
-                _logger.info('✓ Identity resolution: %s', id_result)
-        except Exception as exc:
-            _logger.warning('resolve_all_identities: %s', exc)
-
-        # 7. Refresh contact_360 materialized view
-        try:
-            supa._request(
-                '/rest/v1/rpc/refresh_contact_360', 'POST', {},
-            )
-            _logger.info('✓ contact_360 refreshed')
-        except Exception as exc:
-            _logger.debug('refresh_contact_360: %s', exc)
-
         _logger.info('═══ ENRICH ONLY DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
