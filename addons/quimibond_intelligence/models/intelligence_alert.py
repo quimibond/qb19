@@ -87,17 +87,17 @@ class IntelligenceAlert(models.Model):
             return
         try:
             from ..services.supabase_service import SupabaseService
-            supa = SupabaseService(url, key)
-            for rec in self:
-                if rec.supabase_id:
-                    supa.update_alert_state_by_id(
-                        rec.supabase_id, state,
-                        resolution_notes=rec.resolution_notes,
-                    )
-                else:
-                    supa.update_alert_state(
-                        rec.name, state,
-                        resolution_notes=rec.resolution_notes,
-                    )
+            with SupabaseService(url, key) as supa:
+                for rec in self:
+                    if rec.supabase_id:
+                        supa.update_alert_state_by_id(
+                            rec.supabase_id, state,
+                            resolution_notes=rec.resolution_notes,
+                        )
+                    else:
+                        supa.update_alert_state(
+                            rec.name, state,
+                            resolution_notes=rec.resolution_notes,
+                        )
         except Exception as exc:
             _logger.debug('Alert sync to Supabase: %s', exc)

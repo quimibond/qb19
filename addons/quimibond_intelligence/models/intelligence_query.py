@@ -34,7 +34,7 @@ class IntelligenceQuery(models.TransientModel):
         from ..services.supabase_service import SupabaseService
 
         supa = SupabaseService(supa_url, supa_key)
-        memory = ChatMemoryService(supa_url, supa_key)
+        memory = ChatMemoryService(supa_url, supa_key)  # also extends SupabaseBaseClient
         claude_model = get('claude_model')
         claude = ClaudeService(anthropic_key, model=claude_model)
 
@@ -145,6 +145,9 @@ class IntelligenceQuery(models.TransientModel):
                 _logger.debug('Chat memory save: %s', exc)
         except Exception as exc:
             self.answer = '<p><b>Error:</b> %s</p>' % str(exc)
+        finally:
+            supa.close()
+            memory.close()
 
         return self._return_form()
 

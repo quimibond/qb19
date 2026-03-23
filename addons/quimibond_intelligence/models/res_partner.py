@@ -291,78 +291,77 @@ class ResPartner(models.Model):
 
         try:
             from ..services.supabase_service import SupabaseService
-            supa = SupabaseService(url, key)
+            with SupabaseService(url, key) as supa:
+                # get_contact_360 now returns contact + company + siblings
+                result = supa._request(
+                    '/rest/v1/rpc/get_contact_360', 'POST',
+                    {'p_email': email},
+                )
+                if result and isinstance(result, dict) and result.get('contact'):
+                    data = result
+                else:
+                    data = {}
 
-            # get_contact_360 now returns contact + company + siblings
-            result = supa._request(
-                '/rest/v1/rpc/get_contact_360', 'POST',
-                {'p_email': email},
-            )
-            if result and isinstance(result, dict) and result.get('contact'):
-                data = result
-            else:
-                data = {}
+                # Profile is now embedded in the contact record
+                contact = data.get('contact', {})
+                if contact:
+                    data['profile'] = {
+                        'role': contact.get('role'),
+                        'company': contact.get('company_name')
+                        or contact.get('company'),
+                        'decision_power': contact.get('decision_power'),
+                        'communication_style': contact.get('communication_style'),
+                        'key_interests': contact.get('key_interests'),
+                        'personality_notes': contact.get('personality_notes'),
+                        'negotiation_style': contact.get('negotiation_style'),
+                    }
 
-            # Profile is now embedded in the contact record
-            contact = data.get('contact', {})
-            if contact:
-                data['profile'] = {
-                    'role': contact.get('role'),
-                    'company': contact.get('company_name')
-                    or contact.get('company'),
-                    'decision_power': contact.get('decision_power'),
-                    'communication_style': contact.get('communication_style'),
-                    'key_interests': contact.get('key_interests'),
-                    'personality_notes': contact.get('personality_notes'),
-                    'negotiation_style': contact.get('negotiation_style'),
-                }
+                # Alerts and actions come from get_contact_360
+                data['open_alerts'] = data.get('recent_alerts') or []
+                data['pending_actions'] = data.get('recent_actions') or []
+                data['facts'] = data.get('entity_facts') or []
 
-            # Alerts and actions come from get_contact_360
-            data['open_alerts'] = data.get('recent_alerts') or []
-            data['pending_actions'] = data.get('recent_actions') or []
-            data['facts'] = data.get('entity_facts') or []
+                # Also get recent emails for this person
+                from urllib.parse import quote as _q
+                enc = _q(email, safe='')
+                recent = supa._request(
+                    f'/rest/v1/emails?sender=eq.{enc}'
+                    '&order=email_date.desc&limit=5'
+                    '&select=subject,snippet,email_date',
+                )
+                if recent and isinstance(recent, list):
+                    data['recent_emails'] = [
+                        {'subject': e.get('subject', ''),
+                         'snippet': e.get('snippet', ''),
+                         'date': e.get('email_date', '')}
+                        for e in recent
+                    ]
 
-            # Also get recent emails for this person
-            from urllib.parse import quote as _q
-            enc = _q(email, safe='')
-            recent = supa._request(
-                f'/rest/v1/emails?sender=eq.{enc}'
-                '&order=email_date.desc&limit=5'
-                '&select=subject,snippet,email_date',
-            )
-            if recent and isinstance(recent, list):
-                data['recent_emails'] = [
-                    {'subject': e.get('subject', ''),
-                     'snippet': e.get('snippet', ''),
-                     'date': e.get('email_date', '')}
-                    for e in recent
-                ]
+                # Get recent topics/key_items from account_summaries
+                summaries = supa._request(
+                    '/rest/v1/account_summaries'
+                    '?order=summary_date.desc&limit=3'
+                    '&select=key_items,external_contacts',
+                )
+                if summaries and isinstance(summaries, list):
+                    topics = []
+                    name_lower = contact.get('name', '').lower()
+                    for s in summaries:
+                        ext = s.get('external_contacts') or []
+                        if isinstance(ext, list):
+                            for c in ext:
+                                c_email = (c.get('email') or '').lower()
+                                c_name = (c.get('name') or '').lower()
+                                if c_email == email.lower() or (
+                                    name_lower and c_name == name_lower
+                                ):
+                                    for ki in (s.get('key_items') or []):
+                                        topics.append(ki)
+                                    break
+                    if topics:
+                        data['recent_topics'] = topics[:10]
 
-            # Get recent topics/key_items from account_summaries
-            summaries = supa._request(
-                '/rest/v1/account_summaries'
-                '?order=summary_date.desc&limit=3'
-                '&select=key_items,external_contacts',
-            )
-            if summaries and isinstance(summaries, list):
-                topics = []
-                name_lower = contact.get('name', '').lower()
-                for s in summaries:
-                    ext = s.get('external_contacts') or []
-                    if isinstance(ext, list):
-                        for c in ext:
-                            c_email = (c.get('email') or '').lower()
-                            c_name = (c.get('name') or '').lower()
-                            if c_email == email.lower() or (
-                                name_lower and c_name == name_lower
-                            ):
-                                for ki in (s.get('key_items') or []):
-                                    topics.append(ki)
-                                break
-                if topics:
-                    data['recent_topics'] = topics[:10]
-
-            return data
+                return data
         except Exception as exc:
             _logger.debug('Supabase intel for %s: %s', email, exc)
             return {}

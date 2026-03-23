@@ -18,7 +18,7 @@ _MAX_RETRIES = 3
 class SupabaseBaseClient:
     """Base client for Supabase PostgREST API with connection reuse and retry."""
 
-    def __init__(self, url: str, key: str):
+    def __init__(self, url: str, key: str, timeout: int = 30):
         self._url = url.rstrip('/')
         self._key = key
         self._headers = {
@@ -26,7 +26,26 @@ class SupabaseBaseClient:
             'Authorization': f'Bearer {key}',
             'Content-Type': 'application/json',
         }
-        self._client = httpx.Client(timeout=30)
+        self._client = httpx.Client(timeout=timeout)
+        self._sync_stats = {'success': 0, 'failed': 0, 'skipped': 0}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    @property
+    def sync_stats(self) -> dict:
+        """Returns sync statistics for the current session."""
+        return dict(self._sync_stats)
+
+    def _track(self, success: int = 0, failed: int = 0, skipped: int = 0):
+        """Increment sync stats counters."""
+        self._sync_stats['success'] += success
+        self._sync_stats['failed'] += failed
+        self._sync_stats['skipped'] += skipped
 
     def _request(self, path: str, method: str = 'GET',
                  payload=None, extra_headers: dict = None):

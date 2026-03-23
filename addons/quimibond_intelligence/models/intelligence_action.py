@@ -96,9 +96,9 @@ class IntelligenceActionItem(models.Model):
             return
         try:
             from ..services.supabase_service import SupabaseService
-            supa = SupabaseService(url, key)
-            for rec in self:
-                if rec.supabase_id:
-                    supa.complete_action_item(rec.supabase_id)
+            with SupabaseService(url, key) as supa:
+                for rec in self:
+                    if rec.supabase_id:
+                        supa.complete_action_item(rec.supabase_id)
         except Exception as exc:
             _logger.debug('Action sync to Supabase: %s', exc)

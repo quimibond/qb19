@@ -74,26 +74,39 @@ class SupabaseService(SupabaseBaseClient):
             self._upsert_batch('/rest/v1/emails?on_conflict=gmail_message_id',
                                batch, 'ignore-duplicates')
             saved += len(batch)
+        self._track(success=saved)
         _logger.info('✓ %d emails guardados', saved)
 
     # ── Contactos ────────────────────────────────────────────────────────────
 
     def save_contacts(self, contacts: list):
-        for c in contacts:
-            try:
-                params = {
-                    'p_email': c['email'],
-                    'p_name': c.get('name', ''),
-                    'p_contact_type': c['contact_type'],
-                    'p_department': c.get('department'),
-                }
-                company = c.get('company')
-                if company:
-                    params['p_company_name'] = company
-                self._request('/rest/v1/rpc/upsert_contact', 'POST', params)
-            except Exception as exc:
-                _logger.warning('save_contact %s: %s', c.get('email'), exc)
-        _logger.info('✓ %d contactos guardados', len(contacts))
+        """Guarda contactos en lotes via RPC, con fallback individual."""
+        if not contacts:
+            return
+        # Batch RPC calls in chunks to reduce overhead
+        chunk = 50
+        saved = 0
+        failed = 0
+        for i in range(0, len(contacts), chunk):
+            batch = contacts[i:i + chunk]
+            for c in batch:
+                try:
+                    params = {
+                        'p_email': c['email'],
+                        'p_name': c.get('name', ''),
+                        'p_contact_type': c['contact_type'],
+                        'p_department': c.get('department'),
+                    }
+                    company = c.get('company')
+                    if company:
+                        params['p_company_name'] = company
+                    self._request('/rest/v1/rpc/upsert_contact', 'POST', params)
+                    saved += 1
+                except Exception as exc:
+                    failed += 1
+                    _logger.warning('save_contact %s: %s', c.get('email'), exc)
+        self._track(success=saved, failed=failed)
+        _logger.info('✓ %d contactos guardados (%d fallidos)', saved, failed)
 
     # ── Threads ──────────────────────────────────────────────────────────────
 
@@ -121,6 +134,7 @@ class SupabaseService(SupabaseBaseClient):
         if batch:
             self._upsert_batch('/rest/v1/threads?on_conflict=gmail_thread_id',
                                batch, 'merge-duplicates')
+            self._track(success=len(batch))
         _logger.info('✓ %d threads guardados', len(batch))
 
     # ── Métricas ─────────────────────────────────────────────────────────────
@@ -143,6 +157,7 @@ class SupabaseService(SupabaseBaseClient):
         if batch:
             self._upsert_batch('/rest/v1/response_metrics?on_conflict=metric_date,account',
                                batch, 'merge-duplicates')
+            self._track(success=len(batch))
         _logger.info('✓ %d métricas guardadas', len(batch))
 
     # ── Alertas ──────────────────────────────────────────────────────────────
@@ -158,22 +173,26 @@ class SupabaseService(SupabaseBaseClient):
         if not alerts:
             return
 
-        # Resolve contact_name → contact_id + company_id for filtering
+        # Resolve contact_name → contact_id + company_id in batch (1 call)
         contact_names = list({
             a.get('contact_name', '') for a in alerts
             if a.get('contact_name')
         })
         name_to_contact = {}  # name → {id, company_id}
-        for name in contact_names:
+        if contact_names:
             try:
-                encoded = url_quote(name, safe='')
-                resp = self._request(
-                    f'/rest/v1/contacts?name=eq.{encoded}&select=id,company_id',
-                )
-                if resp and isinstance(resp, list) and resp:
-                    name_to_contact[name] = resp[0]
-            except Exception:
-                pass
+                enc = _postgrest_in_list(contact_names)
+                if enc:
+                    rows = self._request(
+                        f'/rest/v1/contacts?name=in.({enc})'
+                        '&select=id,name,company_id',
+                    ) or []
+                    for r in rows:
+                        n = r.get('name')
+                        if n:
+                            name_to_contact[n] = r
+            except Exception as exc:
+                _logger.warning('batch resolve contact names: %s', exc)
 
         records = []
         predictions = []
@@ -217,8 +236,10 @@ class SupabaseService(SupabaseBaseClient):
             if result and isinstance(result, list):
                 for alert_dict, created in zip(alerts, result):
                     alert_dict['supabase_id'] = created.get('id')
+            self._track(success=len(records))
             _logger.info('✓ %d alertas guardadas', len(records))
         except Exception as exc:
+            self._track(failed=len(records))
             _logger.error('save_alerts POST: %s', exc)
 
         # Save predictions independently (don't lose them if alerts failed)
@@ -226,7 +247,8 @@ class SupabaseService(SupabaseBaseClient):
             try:
                 self.save_prediction_outcomes(predictions)
             except Exception as exc:
-                _logger.debug('save_alerts predictions: %s', exc)
+                _logger.warning('save_alerts predictions lost (%d): %s',
+                                len(predictions), exc)
 
     # ── Account Summaries ────────────────────────────────────────────────────
 
@@ -263,15 +285,21 @@ class SupabaseService(SupabaseBaseClient):
         contact_sentiments: dict mapping email → sentiment_score (-1 to 1)
         from Claude analysis. This fills contacts.sentiment_score which the
         frontend uses for health bars.
+
+        Uses per-email PATCH (PostgREST doesn't support bulk PATCH with
+        different values per row), but tracks success/failure counts.
         """
         contact_sentiments = contact_sentiments or {}
+        now_iso = datetime.now().isoformat()
+        saved = 0
+        failed = 0
         for s in scores:
             try:
                 encoded_email = url_quote(s["email"], safe='')
                 patch = {
                     'relationship_score': s['total_score'],
                     'risk_level': s['risk_level'],
-                    'updated_at': datetime.now().isoformat(),
+                    'updated_at': now_iso,
                 }
                 # Include Claude's sentiment_score (-1 to 1) if available
                 raw_sentiment = contact_sentiments.get(s['email'].lower())
@@ -286,9 +314,12 @@ class SupabaseService(SupabaseBaseClient):
                     f'/rest/v1/contacts?email=eq.{encoded_email}',
                     'PATCH', patch,
                 )
+                saved += 1
             except Exception as exc:
+                failed += 1
                 _logger.warning('save_client_score %s: %s', s.get('email'), exc)
-        _logger.info('✓ %d client scores guardados', len(scores))
+        self._track(success=saved, failed=failed)
+        _logger.info('✓ %d client scores guardados (%d fallidos)', saved, failed)
 
     # ── Daily Summary ────────────────────────────────────────────────────────
 
@@ -441,7 +472,7 @@ class SupabaseService(SupabaseBaseClient):
                 'today': today,
             }])
         except Exception as exc:
-            _logger.debug('Action item prediction outcome: %s', exc)
+            _logger.warning('Action item prediction outcome lost: %s', exc)
 
         return result
 
@@ -714,18 +745,20 @@ class SupabaseService(SupabaseBaseClient):
 
     # ── Contact Odoo Sync ─────────────────────────────────────────────────────
 
-    def sync_contact_odoo_data(self, email: str, odoo_data: dict):
+    def sync_contact_odoo_data(self, email: str, odoo_data: dict,
+                               _company_cache: dict = None):
         """Actualiza un contacto en Supabase con datos de Odoo.
 
         Si company_name está en odoo_data, resuelve o crea la empresa
         en la tabla companies y asigna company_id al contacto.
+        Pass _company_cache to avoid repeated company lookups.
         """
         try:
             # Resolve company_name → company_id
             company_name = odoo_data.get('company')
             if company_name and 'company_id' not in odoo_data:
                 company_id = self._resolve_or_create_company(
-                    company_name, odoo_data,
+                    company_name, odoo_data, _cache=_company_cache,
                 )
                 if company_id:
                     odoo_data['company_id'] = company_id
@@ -741,19 +774,57 @@ class SupabaseService(SupabaseBaseClient):
 
     # ── Companies ─────────────────────────────────────────────────────────
 
+    def batch_resolve_companies(self, names: list) -> dict:
+        """Batch-resolve company names to IDs (1 query instead of N).
+
+        Returns dict: {canonical_name → company_id}
+        """
+        if not names:
+            return {}
+        canonicals = [n.lower().strip() for n in names if n and n.strip()]
+        if not canonicals:
+            return {}
+        result = {}
+        try:
+            enc = _postgrest_in_list(canonicals)
+            if enc:
+                rows = self._request(
+                    f'/rest/v1/companies?canonical_name=in.({enc})'
+                    '&select=id,canonical_name',
+                ) or []
+                for r in rows:
+                    cn = r.get('canonical_name', '')
+                    if cn:
+                        result[cn] = r['id']
+        except Exception as exc:
+            _logger.warning('batch_resolve_companies: %s', exc)
+        return result
+
     def _resolve_or_create_company(self, name: str,
-                                    odoo_data: dict = None) -> int:
-        """Busca o crea una empresa por nombre. Retorna company_id."""
+                                    odoo_data: dict = None,
+                                    _cache: dict = None) -> int:
+        """Busca o crea una empresa por nombre. Retorna company_id.
+
+        Pass _cache (from batch_resolve_companies) to skip the lookup query.
+        """
         if not name or not name.strip():
             return None
         canonical = name.lower().strip()
+
+        # Check cache first (from batch_resolve_companies)
+        if _cache and canonical in _cache:
+            return _cache[canonical]
+
         try:
             encoded = url_quote(canonical, safe='')
             resp = self._request(
                 f'/rest/v1/companies?canonical_name=eq.{encoded}&select=id',
             )
             if resp and isinstance(resp, list) and resp:
-                return resp[0]['id']
+                cid = resp[0]['id']
+                if _cache is not None:
+                    _cache[canonical] = cid
+                return cid
         except Exception:
             pass
 
@@ -775,7 +846,10 @@ class SupabaseService(SupabaseBaseClient):
                 extra_headers={'Prefer': 'return=representation'},
             )
             if result and isinstance(result, list) and result:
-                return result[0]['id']
+                cid = result[0]['id']
+                if _cache is not None:
+                    _cache[canonical] = cid
+                return cid
         except Exception as exc:
             _logger.debug('create_company %s: %s', name, exc)
         return None
@@ -901,6 +975,7 @@ class SupabaseService(SupabaseBaseClient):
                 '?on_conflict=week_start,account',
                 records, 'merge-duplicates',
             )
+            self._track(success=len(records))
         _logger.info('✓ %d communication patterns guardados', len(records))
 
     # ── Action Items (update status) ──────────────────────────────────────────
@@ -1039,9 +1114,12 @@ class SupabaseService(SupabaseBaseClient):
         if records:
             try:
                 self._request('/rest/v1/prediction_outcomes', 'POST', records)
+                self._track(success=len(records))
                 _logger.info('✓ %d prediction outcomes guardados', len(records))
             except Exception as exc:
-                _logger.debug('save_prediction_outcomes: %s', exc)
+                self._track(failed=len(records))
+                _logger.warning('save_prediction_outcomes lost %d records: %s',
+                                len(records), exc)
 
     # ── Revenue Metrics ──────────────────────────────────────────────────────
 
@@ -1076,6 +1154,59 @@ class SupabaseService(SupabaseBaseClient):
             )
         except Exception as exc:
             _logger.warning('save_revenue_metrics: %s', exc)
+
+    def save_revenue_metrics_batch(self, metrics_list: list,
+                                    _contact_cache: dict = None):
+        """Batch-save revenue metrics (1 upsert instead of N).
+
+        Pre-resolves contact_id/company_id from a shared cache or batch query.
+        """
+        if not metrics_list:
+            return
+
+        # Batch-resolve contact_id + company_id
+        emails_needing_resolve = [
+            m['contact_email'] for m in metrics_list
+            if m.get('contact_email') and 'contact_id' not in m
+        ]
+        contact_map = _contact_cache or {}
+        if emails_needing_resolve and not contact_map:
+            try:
+                enc = _postgrest_in_list(
+                    list(set(e.lower() for e in emails_needing_resolve)))
+                if enc:
+                    rows = self._request(
+                        f'/rest/v1/contacts?email=in.({enc})'
+                        '&select=id,email,company_id',
+                    ) or []
+                    for r in rows:
+                        em = (r.get('email') or '').lower()
+                        if em:
+                            contact_map[em] = r
+            except Exception:
+                pass
+
+        # Enrich metrics with resolved FKs
+        for m in metrics_list:
+            email = (m.get('contact_email') or '').lower()
+            info = contact_map.get(email)
+            if info and 'contact_id' not in m:
+                m['contact_id'] = info['id']
+                if info.get('company_id'):
+                    m['company_id'] = info['company_id']
+
+        try:
+            self._upsert_batch(
+                '/rest/v1/revenue_metrics'
+                '?on_conflict=contact_email,period_start,period_type',
+                metrics_list, 'merge-duplicates',
+            )
+            self._track(success=len(metrics_list))
+            _logger.info('✓ %d revenue metrics guardados (batch)',
+                         len(metrics_list))
+        except Exception as exc:
+            self._track(failed=len(metrics_list))
+            _logger.warning('save_revenue_metrics_batch: %s', exc)
 
     # ── Customer Health Scores ───────────────────────────────────────────────
 
@@ -1329,10 +1460,12 @@ class SupabaseService(SupabaseBaseClient):
                     '?on_conflict=contact_email,score_date',
                     scores_to_save, 'merge-duplicates',
                 )
+                self._track(success=len(scores_to_save))
                 _logger.info(
                     '✓ %d health scores calculados y guardados',
                     len(scores_to_save),
                 )
             except Exception as exc:
+                self._track(failed=len(scores_to_save))
                 _logger.warning('batch save health_scores: %s', exc)
 
