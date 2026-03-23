@@ -257,9 +257,26 @@ class SupabaseService(SupabaseBaseClient):
         así que es importante que este campo esté presente.
 
         También genera prediction_id para cada alerta y registra las predicciones.
+        Deduplicación: agrupa por (contact_name, alert_type, title) y mantiene
+        la de mayor severidad.
         """
         if not alerts:
             return
+
+        # ── Dedup: keep highest severity per (contact, type, title) ──
+        severity_rank = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1}
+        seen = {}  # (contact_name, alert_type, title) → alert
+        for a in alerts:
+            key = (a.get('contact_name', ''), a.get('alert_type', ''), a.get('title', ''))
+            existing = seen.get(key)
+            if not existing:
+                seen[key] = a
+            else:
+                # Keep higher severity
+                if severity_rank.get(a.get('severity', ''), 0) > severity_rank.get(existing.get('severity', ''), 0):
+                    seen[key] = a
+        alerts = list(seen.values())
+        _logger.debug('save_alerts: %d alertas after dedup (from %d)', len(alerts), len(seen))
 
         # Resolve contact_name → contact_id + company_id in batch (1 call)
         contact_names = list({
@@ -506,8 +523,13 @@ class SupabaseService(SupabaseBaseClient):
             })
 
     def save_fact(self, fact):
-        """Guarda un hecho extraido."""
-        return self._request('/rest/v1/facts', 'POST', fact)
+        """Guarda un hecho extraido (con dedup por entity_id + fact_type + hash)."""
+        return self._request(
+            '/rest/v1/facts', 'POST', fact,
+            extra_headers={
+                'Prefer': 'resolution=ignore-duplicates,return=representation',
+            },
+        )
 
     def save_action_item(self, item):
         """Guarda un action item.

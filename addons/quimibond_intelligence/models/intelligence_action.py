@@ -98,7 +98,12 @@ class IntelligenceActionItem(models.Model):
             from ..services.supabase_service import SupabaseService
             with SupabaseService(url, key) as supa:
                 for rec in self:
-                    if rec.supabase_id:
+                    if rec.supabase_id and rec.supabase_id > 0:
                         supa.complete_action_item(rec.supabase_id)
+                    else:
+                        _logger.warning(
+                            'Action %s (%s) has no supabase_id, cannot sync',
+                            rec.id, rec.name[:50] if rec.name else '?',
+                        )
         except Exception as exc:
-            _logger.debug('Action sync to Supabase: %s', exc)
+            _logger.warning('Action sync to Supabase failed: %s', exc)

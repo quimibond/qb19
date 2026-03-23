@@ -89,15 +89,24 @@ class IntelligenceAlert(models.Model):
             from ..services.supabase_service import SupabaseService
             with SupabaseService(url, key) as supa:
                 for rec in self:
-                    if rec.supabase_id:
+                    if rec.supabase_id and rec.supabase_id > 0:
                         supa.update_alert_state_by_id(
                             rec.supabase_id, state,
                             resolution_notes=rec.resolution_notes,
                         )
-                    else:
+                    elif rec.name:
+                        _logger.info(
+                            'Alert %s has no supabase_id, using title fallback',
+                            rec.id,
+                        )
                         supa.update_alert_state(
                             rec.name, state,
                             resolution_notes=rec.resolution_notes,
                         )
+                    else:
+                        _logger.warning(
+                            'Alert %s has no supabase_id or title, cannot sync',
+                            rec.id,
+                        )
         except Exception as exc:
-            _logger.debug('Alert sync to Supabase: %s', exc)
+            _logger.warning('Alert sync to Supabase failed: %s', exc)
