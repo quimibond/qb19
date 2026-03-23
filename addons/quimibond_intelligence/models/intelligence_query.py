@@ -98,6 +98,9 @@ class IntelligenceQuery(models.TransientModel):
         except Exception as exc:
             _logger.debug('Chat memory retrieval: %s', exc)
 
+        # Paso 6: Knowledge Graph context
+        kg_context = self._search_knowledge_graph(supa, self.question)
+
         # Construir prompt
         full_context = []
         if few_shot:
@@ -105,6 +108,10 @@ class IntelligenceQuery(models.TransientModel):
                 'EJEMPLOS DE PREGUNTAS ANTERIORES EXITOSAS:\n%s' % few_shot)
         if odoo_context:
             full_context.append('DATOS DE ODOO ERP:\n%s' % odoo_context)
+        if kg_context:
+            full_context.append(
+                'KNOWLEDGE GRAPH (entidades, hechos, relaciones):\n%s'
+                % kg_context)
         if briefing_context:
             full_context.append(
                 'BRIEFINGS RECIENTES:\n%s' % briefing_context)
@@ -123,6 +130,8 @@ class IntelligenceQuery(models.TransientModel):
             'CONTEXTO DISPONIBLE:\n%s\n\n'
             'PREGUNTA DE JOSE (Director General):\n%s\n\n'
             'Responde de forma directa, ejecutiva y accionable. '
+            'Si el Knowledge Graph tiene hechos verificados (✓), prioriza esos datos. '
+            'Usa perfiles de personas para adaptar recomendaciones de comunicacion. '
             'Si no tienes suficiente informacion, dilo claramente. '
             'Usa HTML para formatear la respuesta.'
         ) % (context_str, self.question)
@@ -202,6 +211,105 @@ class IntelligenceQuery(models.TransientModel):
                     i.name, i.partner_id.name,
                     '{:,.0f}'.format(i.amount_residual),
                     i.invoice_date or ''))
+
+        return '\n'.join(parts) if parts else ''
+
+    def _search_knowledge_graph(self, supa, question):
+        """Extract KG context: entities, facts, relationships, person profiles."""
+        parts = []
+        q_lower = question.lower()
+        words = [w for w in q_lower.split() if len(w) > 3]
+        seen_entity_ids = set()
+
+        for word in words:
+            # Search entities by name
+            try:
+                entities = supa._request(
+                    '/rest/v1/entities?canonical_name=ilike.*%s*'
+                    '&select=id,name,entity_type,email,attributes,'
+                    'mention_count,first_seen,last_seen'
+                    '&limit=5' % word,
+                ) or []
+            except Exception:
+                entities = []
+
+            for ent in entities:
+                eid = ent['id']
+                if eid in seen_entity_ids:
+                    continue
+                seen_entity_ids.add(eid)
+
+                # Entity header
+                line = '%s (%s)' % (ent['name'], ent['entity_type'])
+                if ent.get('email'):
+                    line += ' <%s>' % ent['email']
+                if ent.get('mention_count'):
+                    line += ' [%d menciones]' % ent['mention_count']
+                parts.append(line)
+
+                # Facts for this entity (recent, non-expired, ordered by confidence)
+                try:
+                    facts = supa._request(
+                        '/rest/v1/facts?entity_id=eq.%d'
+                        '&expired=eq.false'
+                        '&order=confidence.desc,fact_date.desc'
+                        '&limit=8'
+                        '&select=fact_type,fact_text,fact_date,confidence,verified'
+                        % eid,
+                    ) or []
+                except Exception:
+                    facts = []
+
+                for f in facts:
+                    verified = ' ✓' if f.get('verified') else ''
+                    parts.append(
+                        '  HECHO [%s] (%.0f%%%s): %s (%s)' % (
+                            f.get('fact_type', ''),
+                            (f.get('confidence', 0) or 0) * 100,
+                            verified,
+                            f.get('fact_text', ''),
+                            f.get('fact_date', '') or 'sin fecha',
+                        ))
+
+                # Relationships (2-level network)
+                try:
+                    network = supa.get_entity_network(eid, depth=1)
+                    if network and network.get('edges'):
+                        for edge in network['edges'][:6]:
+                            # Find the other node name
+                            other_id = (edge['target'] if edge['source'] == eid
+                                        else edge['source'])
+                            other_name = next(
+                                (n['name'] for n in network.get('nodes', [])
+                                 if n['id'] == other_id),
+                                '?')
+                            parts.append(
+                                '  REL: %s —[%s]→ %s' % (
+                                    ent['name'], edge['type'], other_name))
+                except Exception:
+                    pass
+
+                # Person profile (if person entity)
+                if ent['entity_type'] == 'person' and ent.get('email'):
+                    try:
+                        profile = supa.get_person_profile(
+                            ent['email'], ent['name'])
+                        if profile:
+                            profile_parts = []
+                            for key in ('role', 'decision_power',
+                                        'communication_style',
+                                        'negotiation_style',
+                                        'key_interests',
+                                        'personality_notes'):
+                                val = profile.get(key)
+                                if val:
+                                    profile_parts.append(
+                                        '%s: %s' % (key, val))
+                            if profile_parts:
+                                parts.append(
+                                    '  PERFIL: %s' % ' | '.join(profile_parts))
+                    except Exception:
+                        pass
 
         return '\n'.join(parts) if parts else ''
 
