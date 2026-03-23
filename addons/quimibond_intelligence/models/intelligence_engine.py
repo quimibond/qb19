@@ -901,6 +901,23 @@ class IntelligenceEngine(models.Model):
                     'PATCH', {'expired': True},
                 )
 
+                # Decay fact confidence (temporal)
+                decay_result = supa.decay_fact_confidence()
+                _logger.info(
+                    'Fact decay: %s decayed, %s expired',
+                    decay_result.get('decayed', 0),
+                    decay_result.get('expired', 0),
+                )
+
+                # Auto-deduplicate entities (same_email only)
+                dedup_result = supa.auto_deduplicate_entities()
+                if dedup_result.get('merged', 0):
+                    _logger.info(
+                        'Entity dedup: %d merged of %d candidates',
+                        dedup_result['merged'],
+                        dedup_result['candidates'],
+                    )
+
                 _logger.info('✓ Supabase data retention completed')
         except Exception as exc:
             _logger.warning('Supabase retention: %s', exc)
