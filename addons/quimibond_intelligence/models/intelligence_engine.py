@@ -743,10 +743,10 @@ class IntelligenceEngine(models.Model):
 
         # ── FASE 1: Cargar partners de Odoo (fuente de verdad) ──────────
         models = self._load_odoo_models()
-        Partner = models.get('partner')
-        if not Partner:
+        if 'partner' not in models:
             _logger.error('res.partner no disponible')
             return
+        Partner = models['partner']
 
         # Clientes y proveedores activos con email
         odoo_partners = Partner.search([
@@ -1366,7 +1366,7 @@ class IntelligenceEngine(models.Model):
 
         # ── Cargar modelos disponibles (graceful si no están instalados) ────
         models = self._load_odoo_models()
-        if not models.get('partner'):
+        if 'partner' not in models:
             return odoo_ctx
 
         Partner = models['partner']
