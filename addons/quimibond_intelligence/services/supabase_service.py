@@ -1003,7 +1003,7 @@ class SupabaseService(SupabaseBaseClient):
         try:
             return self._request(
                 '/rest/v1/companies?enriched_at=is.null'
-                '&select=id,name,canonical_name,domain,entity_id,'
+                '&select=id,name,canonical_name,entity_id,'
                 'is_customer,is_supplier,odoo_context'
                 f'&order=updated_at.desc&limit={limit}',
             ) or []
