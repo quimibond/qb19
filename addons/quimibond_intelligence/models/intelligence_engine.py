@@ -720,12 +720,19 @@ class IntelligenceEngine(models.Model):
 
     @api.model
     def run_enrich_only(self):
-        """Enriquece contactos de Supabase con datos frescos de Odoo.
+        """Sincroniza datos de Odoo → Supabase. Odoo es la fuente de verdad.
 
-        No lee emails, no llama a Claude, no genera briefing.
-        Solo: Odoo enrichment → sync a Supabase → health scores → refresh view.
+        Flujo Odoo-first:
+        1. Carga TODOS los partners activos de Odoo (clientes + proveedores)
+        2. Agrupa por empresa (parent_id o is_company)
+        3. Enriquece cada partner con las 17 dimensiones
+        4. Crea/actualiza contactos y empresas en Supabase
+        5. Guarda snapshots diarios para tendencias
+        6. Recomputa health scores y refresca vistas
+
+        No lee emails, no llama a Claude para briefing.
         """
-        _logger.info('═══ ENRICH ONLY — %s ═══',
+        _logger.info('═══ ODOO → SUPABASE SYNC — %s ═══',
                       datetime.now(TZ_CDMX).strftime('%Y-%m-%d %H:%M'))
         cfg = self._load_config()
         if not cfg:
@@ -734,79 +741,138 @@ class IntelligenceEngine(models.Model):
         from ..services.supabase_service import SupabaseService
         today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
 
-        with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-            # 1. Load all external contacts from Supabase
+        # ── FASE 1: Cargar partners de Odoo (fuente de verdad) ──────────
+        models = self._load_odoo_models()
+        Partner = models.get('partner')
+        if not Partner:
+            _logger.error('res.partner no disponible')
+            return
+
+        # Clientes y proveedores activos con email
+        odoo_partners = Partner.search([
+            ('email', '!=', False),
+            ('email', '!=', ''),
+            ('active', '=', True),
+            '|',
+            ('customer_rank', '>', 0),
+            ('supplier_rank', '>', 0),
+        ], order='customer_rank desc, supplier_rank desc')
+
+        if not odoo_partners:
+            _logger.warning('No se encontraron partners activos en Odoo')
+            return
+
+        _logger.info('FASE 1: %d partners activos en Odoo', len(odoo_partners))
+
+        # ── FASE 2: Enriquecer cada partner (17 dimensiones) ────────────
+        _logger.info('FASE 2: Enriquecimiento profundo')
+        date_90d = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        date_30d = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        date_7d = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        today_date = datetime.now().date()
+
+        odoo_ctx = {
+            'partners': {},
+            'business_summary': {},
+            'action_followup': {},
+            'global_pipeline': {},
+            'team_activities': {},
+        }
+
+        enriched = 0
+        for partner in odoo_partners:
             try:
-                sb_contacts = supa._request(
-                    '/rest/v1/contacts?contact_type=eq.external'
-                    '&select=email,name'
-                    '&email=not.like.*@quimibond.com',
-                ) or []
-            except Exception as exc:
-                _logger.error('Error cargando contactos: %s', exc)
-                return
-
-            if not sb_contacts:
-                _logger.warning('No hay contactos externos en Supabase')
-                return
-
-            contacts = [
-                {'email': c['email'], 'name': c.get('name', ''),
-                 'contact_type': 'external'}
-                for c in sb_contacts if c.get('email')
-            ]
-            _logger.info('Enriqueciendo %d contactos externos', len(contacts))
-
-            # 2. Odoo enrichment (all 17 dimensions)
-            odoo_ctx = self._enrich_with_odoo(contacts, [])
-
-            # 3. Sync enriched data to Supabase
-            if odoo_ctx.get('partners'):
-                self._sync_contacts_to_supabase(
-                    odoo_ctx, supa, today,
+                email_addr = partner.email.strip().lower()
+                if not email_addr or '@' not in email_addr:
+                    continue
+                ctx = self._enrich_partner(
+                    partner, models, date_90d, date_30d,
+                    date_7d, today_date,
                 )
-                _logger.info('✓ %d partners synced to Supabase',
-                             len(odoo_ctx['partners']))
+                odoo_ctx['partners'][email_addr] = ctx
+                odoo_ctx['business_summary'][email_addr] = (
+                    ctx.get('_summary', '')
+                )
+                enriched += 1
+            except Exception as exc:
+                _logger.debug('Enrich skip %s: %s',
+                              partner.email, exc)
 
-            # 3.5 Link internal contacts + entities to Odoo IDs
+        _logger.info('✓ %d/%d partners enriquecidos',
+                     enriched, len(odoo_partners))
+
+        # Contexto global
+        odoo_ctx['action_followup'] = self._verify_pending_actions(
+            today_date)
+        if models.get('crm_lead'):
+            odoo_ctx['global_pipeline'] = self._get_global_pipeline(
+                models['crm_lead'])
+        if models.get('mail_activity'):
+            odoo_ctx['team_activities'] = self._get_team_activities(
+                models['mail_activity'], today_date)
+
+        # ── FASE 3: Sync a Supabase ────────────────────────────────────
+        _logger.info('FASE 3: Sync a Supabase (%d partners)',
+                     len(odoo_ctx['partners']))
+
+        with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+            # 3a. Asegurar que todos los partners existan como contactos
+            contacts_to_save = []
+            for email_addr, p in odoo_ctx['partners'].items():
+                company_name = p.get('company_name', '')
+                contacts_to_save.append({
+                    'email': email_addr,
+                    'name': p.get('name', ''),
+                    'contact_type': 'external',
+                    'company': company_name,
+                })
+            if contacts_to_save:
+                supa.save_contacts(contacts_to_save)
+
+            # 3b. Sync completo (contactos + empresas + revenue + snapshots)
+            self._sync_contacts_to_supabase(odoo_ctx, supa, today)
+
+            # 3c. Link internal contacts + entities to Odoo IDs
             self._link_odoo_ids(supa)
 
-            # 4. Recompute health scores
+            # ── FASE 4: Health scores ──────────────────────────────────
+            _logger.info('FASE 4: Health scores')
             try:
+                sb_contacts = [
+                    {'email': e, 'contact_type': 'external'}
+                    for e in odoo_ctx['partners']
+                ]
                 account_summaries = supa._request(
                     '/rest/v1/account_summaries?order=summary_date.desc'
                     '&limit=50',
                 ) or []
                 supa.compute_and_save_health_scores(
-                    contacts, account_summaries, today,
+                    sb_contacts, account_summaries, today,
                 )
             except Exception as exc:
                 _logger.debug('Health scores: %s', exc)
 
-            # 5. Enrich companies with Claude
-            _logger.info('── Company enrichment with Claude ──')
+            # ── FASE 5: Company enrichment con Claude ──────────────────
+            _logger.info('FASE 5: Company enrichment')
             try:
                 from ..services.claude_service import ClaudeService
                 claude_key = cfg.get('anthropic_api_key')
                 if claude_key:
                     claude = ClaudeService(claude_key)
                     self._enrich_companies(supa, claude, today)
-                else:
-                    _logger.warning('Claude API key not configured, skipping enrichment')
             except Exception as exc:
-                _logger.warning('Company enrichment error: %s', exc, exc_info=True)
+                _logger.warning('Company enrichment: %s', exc,
+                                exc_info=True)
 
-            # 6. Resolve all identities (contact ↔ entity ↔ company ↔ odoo)
+            # ── FASE 6: Identity resolution + refresh ──────────────────
+            _logger.info('FASE 6: Identity resolution')
             try:
-                id_result = supa._request(
+                supa._request(
                     '/rest/v1/rpc/resolve_all_identities', 'POST', {},
                 )
-                if id_result:
-                    _logger.info('✓ Identity resolution: %s', id_result)
             except Exception as exc:
-                _logger.warning('resolve_all_identities: %s', exc)
+                _logger.debug('resolve_all_identities: %s', exc)
 
-            # 7. Refresh contact_360 materialized view
             try:
                 supa._request(
                     '/rest/v1/rpc/refresh_contact_360', 'POST', {},
@@ -820,10 +886,9 @@ class IntelligenceEngine(models.Model):
                 'Sync stats: %d success, %d failed, %d skipped',
                 stats['success'], stats['failed'], stats['skipped'],
             )
-            _logger.info('✓ %d partners synced to Supabase',
-                         len(odoo_ctx['partners']))
 
-        _logger.info('═══ ENRICH ONLY DONE ═══')
+        _logger.info('═══ ODOO → SUPABASE SYNC DONE (%d partners) ═══',
+                     enriched)
 
     # ══════════════════════════════════════════════════════════════════════════
     #   DATA RETENTION — Limpieza de datos antiguos

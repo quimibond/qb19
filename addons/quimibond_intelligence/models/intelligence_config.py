@@ -193,11 +193,11 @@ class IntelligenceConfig(models.TransientModel):
                            'type': 'info'}}
 
     def action_enrich_only(self):
-        """Enriquece contactos con datos de Odoo sin ejecutar pipeline."""
+        """Sincroniza partners de Odoo a Supabase (Odoo = fuente de verdad)."""
         self.action_save()
         engine = self.env['intelligence.engine']
         engine.run_enrich_only()
         return {'type': 'ir.actions.client', 'tag': 'display_notification',
-                'params': {'title': 'Enrichment',
-                           'message': 'Contactos enriquecidos con datos de Odoo. Revisa los logs.',
+                'params': {'title': 'Sync Odoo → Supabase',
+                           'message': 'Partners sincronizados con detalle completo. Revisa los logs.',
                            'type': 'info'}}
