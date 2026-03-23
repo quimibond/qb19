@@ -965,7 +965,11 @@ class SupabaseService(SupabaseBaseClient):
         return None
 
     def sync_company_odoo_data(self, company_id: int, data: dict):
-        """Actualiza datos agregados de una empresa desde Odoo."""
+        """Actualiza datos agregados de una empresa desde Odoo.
+
+        Acepta tanto métricas escalares (lifetime_value, etc.) como
+        odoo_context JSONB con detalle operacional completo.
+        """
         try:
             self._request(
                 f'/rest/v1/companies?id=eq.{company_id}',
@@ -974,6 +978,26 @@ class SupabaseService(SupabaseBaseClient):
             )
         except Exception as exc:
             _logger.warning('sync_company_odoo %s: %s', company_id, exc)
+
+    def save_company_snapshots(self, snapshots: list):
+        """Guarda snapshots diarios de métricas operacionales por empresa.
+
+        Upsert por (company_id, snapshot_date) — si ya existe el snapshot
+        del día, lo actualiza con datos frescos.
+        """
+        if not snapshots:
+            return
+        try:
+            self._upsert_batch(
+                '/rest/v1/company_odoo_snapshots'
+                '?on_conflict=company_id,snapshot_date',
+                snapshots, 'merge-duplicates',
+            )
+            self._track(success=len(snapshots))
+            _logger.info('✓ %d company snapshots guardados', len(snapshots))
+        except Exception as exc:
+            self._track(failed=len(snapshots))
+            _logger.warning('save_company_snapshots: %s', exc)
 
     def get_company_contacts(self, company_id: int) -> list:
         """Obtiene todos los contactos de una empresa."""

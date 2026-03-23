@@ -12,9 +12,9 @@
                             string="Guardar configuracion"
                             class="btn-primary"/>
                     <button name="action_enrich_only" type="object"
-                            string="Solo enriquecer datos"
+                            string="Sync Odoo → Supabase"
                             class="btn-info"
-                            confirm="Esto actualiza los datos de Odoo (ventas, facturas, entregas, CRM) en Supabase sin leer emails ni llamar a Claude. Toma ~1 minuto. Continuar?"/>
+                            confirm="Sincroniza TODOS los partners activos de Odoo (clientes y proveedores) a Supabase con detalle completo: ventas, facturas, productos, entregas, CRM, manufactura, pagos y actividades. Toma 1-3 minutos. Continuar?"/>
                     <button name="action_test_run" type="object"
                             string="Ejecutar pipeline completo"
                             class="btn-warning"

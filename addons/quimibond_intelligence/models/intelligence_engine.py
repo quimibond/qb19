@@ -720,12 +720,19 @@ class IntelligenceEngine(models.Model):
 
     @api.model
     def run_enrich_only(self):
-        """Enriquece contactos de Supabase con datos frescos de Odoo.
+        """Sincroniza datos de Odoo → Supabase. Odoo es la fuente de verdad.
 
-        No lee emails, no llama a Claude, no genera briefing.
-        Solo: Odoo enrichment → sync a Supabase → health scores → refresh view.
+        Flujo Odoo-first:
+        1. Carga TODOS los partners activos de Odoo (clientes + proveedores)
+        2. Agrupa por empresa (parent_id o is_company)
+        3. Enriquece cada partner con las 17 dimensiones
+        4. Crea/actualiza contactos y empresas en Supabase
+        5. Guarda snapshots diarios para tendencias
+        6. Recomputa health scores y refresca vistas
+
+        No lee emails, no llama a Claude para briefing.
         """
-        _logger.info('═══ ENRICH ONLY — %s ═══',
+        _logger.info('═══ ODOO → SUPABASE SYNC — %s ═══',
                       datetime.now(TZ_CDMX).strftime('%Y-%m-%d %H:%M'))
         cfg = self._load_config()
         if not cfg:
@@ -734,79 +741,138 @@ class IntelligenceEngine(models.Model):
         from ..services.supabase_service import SupabaseService
         today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
 
-        with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-            # 1. Load all external contacts from Supabase
+        # ── FASE 1: Cargar partners de Odoo (fuente de verdad) ──────────
+        models = self._load_odoo_models()
+        Partner = models.get('partner')
+        if not Partner:
+            _logger.error('res.partner no disponible')
+            return
+
+        # Clientes y proveedores activos con email
+        odoo_partners = Partner.search([
+            ('email', '!=', False),
+            ('email', '!=', ''),
+            ('active', '=', True),
+            '|',
+            ('customer_rank', '>', 0),
+            ('supplier_rank', '>', 0),
+        ], order='customer_rank desc, supplier_rank desc')
+
+        if not odoo_partners:
+            _logger.warning('No se encontraron partners activos en Odoo')
+            return
+
+        _logger.info('FASE 1: %d partners activos en Odoo', len(odoo_partners))
+
+        # ── FASE 2: Enriquecer cada partner (17 dimensiones) ────────────
+        _logger.info('FASE 2: Enriquecimiento profundo')
+        date_90d = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        date_30d = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        date_7d = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        today_date = datetime.now().date()
+
+        odoo_ctx = {
+            'partners': {},
+            'business_summary': {},
+            'action_followup': {},
+            'global_pipeline': {},
+            'team_activities': {},
+        }
+
+        enriched = 0
+        for partner in odoo_partners:
             try:
-                sb_contacts = supa._request(
-                    '/rest/v1/contacts?contact_type=eq.external'
-                    '&select=email,name'
-                    '&email=not.like.*@quimibond.com',
-                ) or []
-            except Exception as exc:
-                _logger.error('Error cargando contactos: %s', exc)
-                return
-
-            if not sb_contacts:
-                _logger.warning('No hay contactos externos en Supabase')
-                return
-
-            contacts = [
-                {'email': c['email'], 'name': c.get('name', ''),
-                 'contact_type': 'external'}
-                for c in sb_contacts if c.get('email')
-            ]
-            _logger.info('Enriqueciendo %d contactos externos', len(contacts))
-
-            # 2. Odoo enrichment (all 17 dimensions)
-            odoo_ctx = self._enrich_with_odoo(contacts, [])
-
-            # 3. Sync enriched data to Supabase
-            if odoo_ctx.get('partners'):
-                self._sync_contacts_to_supabase(
-                    odoo_ctx, supa, today,
+                email_addr = partner.email.strip().lower()
+                if not email_addr or '@' not in email_addr:
+                    continue
+                ctx = self._enrich_partner(
+                    partner, models, date_90d, date_30d,
+                    date_7d, today_date,
                 )
-                _logger.info('✓ %d partners synced to Supabase',
-                             len(odoo_ctx['partners']))
+                odoo_ctx['partners'][email_addr] = ctx
+                odoo_ctx['business_summary'][email_addr] = (
+                    ctx.get('_summary', '')
+                )
+                enriched += 1
+            except Exception as exc:
+                _logger.debug('Enrich skip %s: %s',
+                              partner.email, exc)
 
-            # 3.5 Link internal contacts + entities to Odoo IDs
+        _logger.info('✓ %d/%d partners enriquecidos',
+                     enriched, len(odoo_partners))
+
+        # Contexto global
+        odoo_ctx['action_followup'] = self._verify_pending_actions(
+            today_date)
+        if models.get('crm_lead'):
+            odoo_ctx['global_pipeline'] = self._get_global_pipeline(
+                models['crm_lead'])
+        if models.get('mail_activity'):
+            odoo_ctx['team_activities'] = self._get_team_activities(
+                models['mail_activity'], today_date)
+
+        # ── FASE 3: Sync a Supabase ────────────────────────────────────
+        _logger.info('FASE 3: Sync a Supabase (%d partners)',
+                     len(odoo_ctx['partners']))
+
+        with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+            # 3a. Asegurar que todos los partners existan como contactos
+            contacts_to_save = []
+            for email_addr, p in odoo_ctx['partners'].items():
+                company_name = p.get('company_name', '')
+                contacts_to_save.append({
+                    'email': email_addr,
+                    'name': p.get('name', ''),
+                    'contact_type': 'external',
+                    'company': company_name,
+                })
+            if contacts_to_save:
+                supa.save_contacts(contacts_to_save)
+
+            # 3b. Sync completo (contactos + empresas + revenue + snapshots)
+            self._sync_contacts_to_supabase(odoo_ctx, supa, today)
+
+            # 3c. Link internal contacts + entities to Odoo IDs
             self._link_odoo_ids(supa)
 
-            # 4. Recompute health scores
+            # ── FASE 4: Health scores ──────────────────────────────────
+            _logger.info('FASE 4: Health scores')
             try:
+                sb_contacts = [
+                    {'email': e, 'contact_type': 'external'}
+                    for e in odoo_ctx['partners']
+                ]
                 account_summaries = supa._request(
                     '/rest/v1/account_summaries?order=summary_date.desc'
                     '&limit=50',
                 ) or []
                 supa.compute_and_save_health_scores(
-                    contacts, account_summaries, today,
+                    sb_contacts, account_summaries, today,
                 )
             except Exception as exc:
                 _logger.debug('Health scores: %s', exc)
 
-            # 5. Enrich companies with Claude
-            _logger.info('── Company enrichment with Claude ──')
+            # ── FASE 5: Company enrichment con Claude ──────────────────
+            _logger.info('FASE 5: Company enrichment')
             try:
                 from ..services.claude_service import ClaudeService
                 claude_key = cfg.get('anthropic_api_key')
                 if claude_key:
                     claude = ClaudeService(claude_key)
                     self._enrich_companies(supa, claude, today)
-                else:
-                    _logger.warning('Claude API key not configured, skipping enrichment')
             except Exception as exc:
-                _logger.warning('Company enrichment error: %s', exc, exc_info=True)
+                _logger.warning('Company enrichment: %s', exc,
+                                exc_info=True)
 
-            # 6. Resolve all identities (contact ↔ entity ↔ company ↔ odoo)
+            # ── FASE 6: Identity resolution + refresh ──────────────────
+            _logger.info('FASE 6: Identity resolution')
             try:
-                id_result = supa._request(
+                supa._request(
                     '/rest/v1/rpc/resolve_all_identities', 'POST', {},
                 )
-                if id_result:
-                    _logger.info('✓ Identity resolution: %s', id_result)
             except Exception as exc:
-                _logger.warning('resolve_all_identities: %s', exc)
+                _logger.debug('resolve_all_identities: %s', exc)
 
-            # 7. Refresh contact_360 materialized view
             try:
                 supa._request(
                     '/rest/v1/rpc/refresh_contact_360', 'POST', {},
@@ -820,10 +886,9 @@ class IntelligenceEngine(models.Model):
                 'Sync stats: %d success, %d failed, %d skipped',
                 stats['success'], stats['failed'], stats['skipped'],
             )
-            _logger.info('✓ %d partners synced to Supabase',
-                         len(odoo_ctx['partners']))
 
-        _logger.info('═══ ENRICH ONLY DONE ═══')
+        _logger.info('═══ ODOO → SUPABASE SYNC DONE (%d partners) ═══',
+                     enriched)
 
     # ══════════════════════════════════════════════════════════════════════════
     #   DATA RETENTION — Limpieza de datos antiguos
@@ -919,6 +984,23 @@ class IntelligenceEngine(models.Model):
                         'Entity dedup: %d merged of %d candidates',
                         dedup_result['merged'],
                         dedup_result['candidates'],
+                    )
+
+                # Cleanup old company snapshots (>365 days)
+                try:
+                    supa._request(
+                        '/rest/v1/rpc/cleanup_old_snapshots', 'POST',
+                        {'p_days': 365},
+                    )
+                except Exception:
+                    # Fallback: direct delete if RPC not yet deployed
+                    cutoff_365d = (
+                        datetime.now() - timedelta(days=365)
+                    ).strftime('%Y-%m-%d')
+                    supa._request(
+                        '/rest/v1/company_odoo_snapshots'
+                        f'?snapshot_date=lt.{cutoff_365d}',
+                        'DELETE',
                     )
 
                 _logger.info('✓ Supabase data retention completed')
@@ -3247,6 +3329,156 @@ class IntelligenceEngine(models.Model):
 
         _logger.info('✓ %d embeddings generados', total)
 
+    # ── Build rich odoo_context for Supabase ────────────────────────────────
+
+    @staticmethod
+    def _build_contact_odoo_context(p: dict, lifetime: dict, aging: dict,
+                                     deliv: dict, today: str) -> dict:
+        """Construye odoo_context completo con todo el detalle operacional.
+
+        Incluye datos reales de ventas, facturas, productos, entregas, CRM,
+        manufactura, pagos, actividades y reuniones — no solo conteos.
+        """
+        return {
+            # ── Identificación ──
+            'name': p.get('name', ''),
+            'odoo_partner_id': p.get('id'),
+            'is_company': p.get('is_company', False),
+            'company_name': p.get('company_name', ''),
+            'synced_at': today,
+
+            # ── Métricas financieras ──
+            'total_invoiced': p.get('total_invoiced', 0),
+            'credit_limit': p.get('credit_limit', 0),
+            'lifetime': lifetime or {},
+            'aging': aging or {},
+
+            # ── Ventas (detalle de pedidos recientes) ──
+            'recent_sales': p.get('recent_sales', []),
+
+            # ── Facturas pendientes (con montos y días vencidos) ──
+            'pending_invoices': p.get('pending_invoices', []),
+
+            # ── Compras (OC recientes) ──
+            'recent_purchases': p.get('recent_purchases', []),
+
+            # ── Pagos recibidos/emitidos ──
+            'recent_payments': p.get('recent_payments', []),
+
+            # ── Productos (stock, precios, últimas cantidades) ──
+            'products': p.get('products', []),
+
+            # ── CRM (oportunidades activas) ──
+            'crm_leads': p.get('crm_leads', []),
+
+            # ── Entregas pendientes ──
+            'pending_deliveries': p.get('pending_deliveries', []),
+
+            # ── Actividades/tareas pendientes ──
+            'pending_activities': p.get('pending_activities', []),
+
+            # ── Manufactura (OMs en proceso) ──
+            'manufacturing': p.get('manufacturing', []),
+
+            # ── Reuniones próximas ──
+            'upcoming_meetings': p.get('upcoming_meetings', []),
+
+            # ── Notas de crédito / devoluciones ──
+            'credit_notes': p.get('credit_notes', []),
+
+            # ── Performance de entrega ──
+            'delivery_performance': deliv or {},
+
+            # ── Contactos relacionados (misma empresa) ──
+            'related_contacts': p.get('related_contacts', []),
+
+            # ── Comunicación Odoo (chatter) ──
+            'recent_chatter': p.get('recent_chatter', []),
+            'related_chatter': p.get('related_chatter', []),
+
+            # ── Resumen ejecutivo (texto) ──
+            'summary': p.get('_summary', ''),
+        }
+
+    @staticmethod
+    def _build_company_odoo_context(company_name: str, partners: dict,
+                                     today: str) -> dict:
+        """Agrega datos operacionales a nivel empresa desde todos sus contactos.
+
+        Consolida ventas, facturas, productos, entregas y CRM de todos los
+        contactos de la misma empresa para dar una vista 360.
+        """
+        all_sales = []
+        all_invoices = []
+        all_products = {}  # product_name → data (dedup)
+        all_deliveries = []
+        all_leads = []
+        all_manufacturing = []
+        all_payments = []
+        contact_emails = []
+        total_invoiced = 0
+        total_pending = 0
+
+        for email_addr, p in partners.items():
+            if p.get('company_name', '') != company_name:
+                continue
+            contact_emails.append(email_addr)
+            total_invoiced += p.get('total_invoiced', 0)
+
+            for s in p.get('recent_sales', []):
+                all_sales.append({**s, '_contact': email_addr})
+            for inv in p.get('pending_invoices', []):
+                all_invoices.append({**inv, '_contact': email_addr})
+                total_pending += inv.get('amount_residual', 0)
+            for prod in p.get('products', []):
+                pname = prod.get('name', '')
+                if pname and pname not in all_products:
+                    all_products[pname] = prod
+            for d in p.get('pending_deliveries', []):
+                all_deliveries.append({**d, '_contact': email_addr})
+            for lead in p.get('crm_leads', []):
+                all_leads.append(lead)
+            for mo in p.get('manufacturing', []):
+                all_manufacturing.append(mo)
+            for pay in p.get('recent_payments', []):
+                all_payments.append({**pay, '_contact': email_addr})
+
+        # Sort by date (most recent first)
+        all_sales.sort(key=lambda x: x.get('date', ''), reverse=True)
+        all_invoices.sort(
+            key=lambda x: x.get('days_overdue', 0), reverse=True)
+
+        return {
+            'synced_at': today,
+            'contact_count': len(contact_emails),
+            'contact_emails': contact_emails[:20],
+            'total_invoiced': total_invoiced,
+            'total_pending': total_pending,
+
+            # Detalle operacional consolidado (limitado para no exceder JSONB)
+            'recent_sales': all_sales[:20],
+            'pending_invoices': all_invoices[:20],
+            'products': list(all_products.values())[:15],
+            'pending_deliveries': all_deliveries[:15],
+            'crm_leads': all_leads[:10],
+            'manufacturing': all_manufacturing[:10],
+            'recent_payments': all_payments[:15],
+
+            # Resumen rápido
+            'sales_count_90d': len(all_sales),
+            'pending_invoices_count': len(all_invoices),
+            'pending_deliveries_count': len(all_deliveries),
+            'crm_pipeline_value': sum(
+                l.get('expected_revenue', 0) for l in all_leads),
+            'crm_leads_count': len(all_leads),
+            'manufacturing_count': len(all_manufacturing),
+            'late_deliveries_count': sum(
+                1 for d in all_deliveries if d.get('is_late')),
+            'overdue_invoices_count': sum(
+                1 for inv in all_invoices
+                if inv.get('days_overdue', 0) > 0),
+        }
+
     # ── Sync Odoo → Supabase contacts ──────────────────────────────────────
 
     @staticmethod
@@ -3305,30 +3537,75 @@ class IntelligenceEngine(models.Model):
             if deliv.get('on_time_rate') is not None:
                 cd['delivery_otd_rate'] = deliv['on_time_rate']
 
-        # Sync company-level data to Supabase
+        # Sync company-level data + operational context to Supabase
+        snapshot_batch = []
         for company_name, cd in company_data.items():
             try:
                 company_id = supa._resolve_or_create_company(
                     company_name, cd, _cache=company_cache,
                 )
-                if company_id:
-                    supa.sync_company_odoo_data(company_id, {
-                        'lifetime_value': cd['lifetime_value'],
-                        'total_credit_notes': cd['total_credit_notes'],
-                        'is_customer': cd['is_customer'],
-                        'is_supplier': cd['is_supplier'],
-                        'credit_limit': cd['credit_limit'],
-                        'total_pending': cd['total_pending'],
+                if not company_id:
+                    continue
+
+                # Build rich operational context for this company
+                co_ctx = IntelligenceEngine._build_company_odoo_context(
+                    company_name, partners, today or '',
+                )
+
+                # Sync scalar metrics + full odoo_context in one PATCH
+                patch_data = {
+                    'lifetime_value': cd['lifetime_value'],
+                    'total_credit_notes': cd['total_credit_notes'],
+                    'is_customer': cd['is_customer'],
+                    'is_supplier': cd['is_supplier'],
+                    'credit_limit': cd['credit_limit'],
+                    'total_pending': cd['total_pending'],
+                    'monthly_avg': cd['monthly_avg'],
+                    'trend_pct': cd['trend_pct'],
+                    'delivery_otd_rate': cd['delivery_otd_rate'],
+                    'odoo_context': co_ctx,
+                }
+                if cd.get('odoo_partner_id'):
+                    patch_data['odoo_partner_id'] = cd['odoo_partner_id']
+
+                supa.sync_company_odoo_data(company_id, patch_data)
+
+                # Collect snapshot for daily trend tracking
+                if today:
+                    snapshot_batch.append({
+                        'company_id': company_id,
+                        'snapshot_date': today,
+                        'total_invoiced': cd['lifetime_value'],
+                        'pending_amount': cd['total_pending'],
+                        'overdue_amount': sum(
+                            inv.get('amount_residual', 0)
+                            for inv in co_ctx.get('pending_invoices', [])
+                            if inv.get('days_overdue', 0) > 0
+                        ),
                         'monthly_avg': cd['monthly_avg'],
-                        'trend_pct': cd['trend_pct'],
-                        'delivery_otd_rate': cd['delivery_otd_rate'],
+                        'open_orders_count': co_ctx.get(
+                            'sales_count_90d', 0),
+                        'pending_deliveries_count': co_ctx.get(
+                            'pending_deliveries_count', 0),
+                        'late_deliveries_count': co_ctx.get(
+                            'late_deliveries_count', 0),
+                        'crm_pipeline_value': co_ctx.get(
+                            'crm_pipeline_value', 0),
+                        'crm_leads_count': co_ctx.get(
+                            'crm_leads_count', 0),
+                        'manufacturing_count': co_ctx.get(
+                            'manufacturing_count', 0),
+                        'credit_notes_total': cd['total_credit_notes'],
                     })
-                    if cd.get('odoo_partner_id'):
-                        supa.sync_company_odoo_data(company_id, {
-                            'odoo_partner_id': cd['odoo_partner_id'],
-                        })
             except Exception as exc:
                 _logger.debug('Company sync %s: %s', company_name, exc)
+
+        # Batch-save daily snapshots for trend analysis
+        if snapshot_batch:
+            try:
+                supa.save_company_snapshots(snapshot_batch)
+            except Exception as exc:
+                _logger.warning('Company snapshots: %s', exc)
 
         # ── Phase 2: Sync individual contacts ──
         synced = 0
@@ -3347,38 +3624,13 @@ class IntelligenceEngine(models.Model):
                     'is_customer': p.get('is_customer', False),
                     'is_supplier': p.get('is_supplier', False),
                     'company': p.get('company_name', ''),
-                    # company_id will be resolved by sync_contact_odoo_data
                     'lifetime_value': lifetime.get(
                         'total_invoiced', p.get('total_invoiced', 0)),
                     'total_credit_notes': cn_total,
                     'delivery_otd_rate': deliv.get('on_time_rate'),
-                    'odoo_context': {
-                        'name': p.get('name', ''),
-                        'total_invoiced': p.get('total_invoiced', 0),
-                        'credit_limit': p.get('credit_limit', 0),
-                        'monthly_avg': lifetime.get('monthly_avg', 0),
-                        'trend_pct': lifetime.get('trend_pct', 0),
-                        'recent_sales_count': len(
-                            p.get('recent_sales', []),
-                        ),
-                        'pending_invoices_count': len(
-                            p.get('pending_invoices', []),
-                        ),
-                        'aging': aging,
-                        'crm_leads_count': len(p.get('crm_leads', [])),
-                        'pending_deliveries': len(
-                            p.get('pending_deliveries', []),
-                        ),
-                        'related_contacts': len(
-                            p.get('related_contacts', []),
-                        ),
-                        'credit_notes_count': len(
-                            p.get('credit_notes', []),
-                        ),
-                        'otd_rate': deliv.get('on_time_rate'),
-                        'avg_lead_time': deliv.get(
-                            'avg_lead_time_days'),
-                    },
+                    'odoo_context': self._build_contact_odoo_context(
+                        p, lifetime, aging, deliv, today,
+                    ),
                 }, _company_cache=company_cache)
                 synced += 1
 

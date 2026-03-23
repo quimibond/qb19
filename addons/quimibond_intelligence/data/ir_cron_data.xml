@@ -73,6 +73,18 @@
             <field name="priority">15</field>
         </record>
 
+        <record id="cron_enrich_only" model="ir.cron">
+            <field name="name">Intelligence - Sync Odoo→Supabase (cada 6h)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_enrich_only()</field>
+            <field name="interval_number">6</field>
+            <field name="interval_type">hours</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=6)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">12</field>
+        </record>
+
         <!-- ══ Tareas de mantenimiento ══ -->
 
         <record id="cron_data_retention" model="ir.cron">
