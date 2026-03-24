@@ -1,8 +1,12 @@
 -- ============================================================
 -- Migration 005: Product Purchase, Inventory & Payment Intelligence
+-- + Schema sync fixes (missing columns/tables from migration 002)
 --
 -- Supports qb19 quimibond_intelligence v19.0.22.0.0
 -- Bloques: 1 (Product Purchase), 2 (Inventory), 3 (Payment Behavior)
+--
+-- ALREADY APPLIED to Supabase project tozqezmivpblmcubmnpi
+-- on 2026-03-24.
 --
 -- Copy this file to:
 --   quimibond-intelligence/supabase/migrations/005_product_inventory_payment.sql
