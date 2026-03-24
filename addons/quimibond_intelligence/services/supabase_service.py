@@ -317,6 +317,10 @@ class SupabaseService(SupabaseBaseClient):
                 'prediction_id': prediction_id,
                 'prediction_confidence': prediction_confidence,
             }
+            # Include thread reference if available
+            thread_id = a.get('related_thread_id')
+            if thread_id:
+                record['related_thread_id'] = thread_id
             # Resolve contact_id + company_id from contact_name
             contact_info = name_to_contact.get(a.get('contact_name'))
             if contact_info:
@@ -405,6 +409,19 @@ class SupabaseService(SupabaseBaseClient):
                     'relationship_score': s['total_score'],
                     'risk_level': s['risk_level'],
                     'updated_at': now_iso,
+                }
+                # Payment compliance score (0-20)
+                if 'payment_compliance_score' in s:
+                    patch['payment_compliance_score'] = s[
+                        'payment_compliance_score']
+                # Score breakdown for frontend radar charts
+                patch['score_breakdown'] = {
+                    'frequency': s.get('frequency_score', 0),
+                    'responsiveness': s.get('responsiveness_score', 0),
+                    'reciprocity': s.get('reciprocity_score', 0),
+                    'sentiment': s.get('sentiment_score', 0),
+                    'payment_compliance': s.get(
+                        'payment_compliance_score', 0),
                 }
                 # Include Claude's sentiment_score (-1 to 1) if available
                 raw_sentiment = contact_sentiments.get(s['email'].lower())
