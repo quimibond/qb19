@@ -10,6 +10,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote as url_quote
 
+from .odoo_enrichment import is_automated_sender
 from .supabase_base import SupabaseBaseClient
 
 _logger = logging.getLogger(__name__)
@@ -1394,10 +1395,11 @@ class SupabaseService(SupabaseBaseClient):
         if not contacts:
             return
 
-        # Filter external contacts with email
+        # Filter external contacts with email (skip automated senders)
         external = [
             c for c in contacts
             if c.get('contact_type') == 'external' and c.get('email')
+            and not is_automated_sender(c['email'])
         ]
         if not external:
             return
