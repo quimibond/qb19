@@ -440,6 +440,7 @@ class IntelligenceEngine(models.Model):
         client_scores = analysis.compute_client_scores(
             contacts, emails, threads, cfg,
             account_summaries=account_summaries,
+            odoo_ctx=odoo_context,
         )
         contact_sentiments = {}
         for s in account_summaries:
@@ -1375,6 +1376,9 @@ class IntelligenceEngine(models.Model):
             'recent_purchases': p.get('recent_purchases', []),
             'recent_payments': p.get('recent_payments', []),
             'products': p.get('products', []),
+            'purchase_patterns': p.get('purchase_patterns', {}),
+            'inventory_intelligence': p.get('inventory_intelligence', {}),
+            'payment_behavior': p.get('payment_behavior', {}),
             'crm_leads': p.get('crm_leads', []),
             'pending_deliveries': p.get('pending_deliveries', []),
             'pending_activities': p.get('pending_activities', []),
@@ -1399,9 +1403,14 @@ class IntelligenceEngine(models.Model):
         all_leads = []
         all_manufacturing = []
         all_payments = []
+        all_volume_drops = []
+        all_discount_anomalies = []
+        all_cross_sell = []
+        all_inventory_at_risk = []
         contact_emails = []
         total_invoiced = 0
         total_pending = 0
+        total_revenue_12m = 0
 
         for email_addr, p in partners.items():
             if p.get('company_name', '') != company_name:
@@ -1426,6 +1435,27 @@ class IntelligenceEngine(models.Model):
                 all_manufacturing.append(mo)
             for pay in p.get('recent_payments', []):
                 all_payments.append({**pay, '_contact': email_addr})
+
+            # Aggregate purchase patterns
+            patterns = p.get('purchase_patterns', {})
+            total_revenue_12m += patterns.get('total_revenue_12m', 0)
+            for vd in patterns.get('volume_drops', []):
+                all_volume_drops.append({**vd, '_contact': email_addr})
+            for da in patterns.get('discount_anomalies', []):
+                all_discount_anomalies.append({**da, '_contact': email_addr})
+            for cs in patterns.get('cross_sell', []):
+                if cs.get('product') not in [
+                    x.get('product') for x in all_cross_sell
+                ]:
+                    all_cross_sell.append(cs)
+
+            # Aggregate inventory at-risk items (dedup by product)
+            inv_intel = p.get('inventory_intelligence', {})
+            for ar in inv_intel.get('at_risk', []):
+                if ar.get('product') not in [
+                    x.get('product') for x in all_inventory_at_risk
+                ]:
+                    all_inventory_at_risk.append(ar)
 
         all_sales.sort(key=lambda x: x.get('date', ''), reverse=True)
         all_invoices.sort(
@@ -1456,6 +1486,13 @@ class IntelligenceEngine(models.Model):
             'overdue_invoices_count': sum(
                 1 for inv in all_invoices
                 if inv.get('days_overdue', 0) > 0),
+            'purchase_patterns': {
+                'total_revenue_12m': round(total_revenue_12m, 2),
+                'volume_drops': all_volume_drops[:10],
+                'discount_anomalies': all_discount_anomalies[:10],
+                'cross_sell': all_cross_sell[:5],
+            },
+            'inventory_at_risk': all_inventory_at_risk[:10],
         }
 
     # ── Sync Odoo → Supabase contacts ──────────────────────────────────────
@@ -2267,6 +2304,8 @@ class IntelligenceEngine(models.Model):
                     'responsiveness_score': s.get('responsiveness_score', 0),
                     'reciprocity_score': s.get('reciprocity_score', 0),
                     'sentiment_score': s.get('sentiment_score', 0),
+                    'payment_compliance_score': s.get(
+                        'payment_compliance_score', 0),
                     'risk_level': s.get('risk_level', 'medium'),
                 })
         _logger.info('%d client scores en Odoo', len(client_scores))

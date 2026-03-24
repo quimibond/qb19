@@ -435,6 +435,197 @@ class AnalysisService:
                         'account': account,
                     })
 
+        # ── Product Purchase Intelligence alerts ──────────────────────────────
+        for email_addr, p in partners.items():
+            patterns = p.get('purchase_patterns', {})
+            partner_name = p.get('name', email_addr)
+
+            # Volume drop alerts
+            for vd in patterns.get('volume_drops', []):
+                trend = vd.get('trend_pct', 0)
+                severity = 'high' if trend <= -50 else 'medium'
+                alerts.append({
+                    'alert_type': 'volume_drop',
+                    'severity': severity,
+                    'title': (
+                        f"Caida de volumen: {vd['product']} "
+                        f"({trend:+d}%) — {partner_name}"
+                    )[:120],
+                    'description': (
+                        f"Producto: {vd['product']}. "
+                        f"Ultimos 6m: {vd['recent_qty']:.0f} "
+                        f"vs anteriores 6m: {vd['previous_qty']:.0f} "
+                        f"({trend:+d}%). Investigar causa."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+            # Unusual discount alerts
+            for da in patterns.get('discount_anomalies', []):
+                severity = 'high' if da['delta'] > 10 else 'medium'
+                alerts.append({
+                    'alert_type': 'unusual_discount',
+                    'severity': severity,
+                    'title': (
+                        f"Descuento inusual: {da['product']} "
+                        f"({da['last_discount']:.1f}% vs "
+                        f"prom {da['avg_discount']:.1f}%) — {partner_name}"
+                    )[:120],
+                    'description': (
+                        f"Producto: {da['product']}. "
+                        f"Ultimo descuento: {da['last_discount']:.1f}%. "
+                        f"Promedio historico: {da['avg_discount']:.1f}%. "
+                        f"Diferencia: {da['delta']:+.1f} pts."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+            # Cross-sell opportunity alerts
+            for cs in patterns.get('cross_sell', []):
+                alerts.append({
+                    'alert_type': 'cross_sell',
+                    'severity': 'low',
+                    'title': (
+                        f"Cross-sell: {cs['product']} "
+                        f"para {partner_name}"
+                    )[:120],
+                    'description': (
+                        f"{cs['similar_clients_buying']} de "
+                        f"{cs['total_similar_clients']} clientes similares "
+                        f"compran {cs['product']} pero {partner_name} no. "
+                        f"Oportunidad de venta cruzada."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+        # ── Inventory Intelligence alerts ─────────────────────────────────────
+        for email_addr, p in partners.items():
+            inv_intel = p.get('inventory_intelligence', {})
+            partner_name = p.get('name', email_addr)
+
+            for item in inv_intel.get('at_risk', []):
+                status = item.get('status', '')
+                product = item.get('product', '?')
+                days_inv = item.get('days_of_inventory')
+                current_qty = item.get('current_qty', 0)
+                can_fulfill = item.get('can_fulfill_next_order')
+                next_order = item.get('client_next_order_days')
+
+                if status == 'stockout':
+                    severity = 'critical'
+                    alert_type = 'stockout_risk'
+                    title = (
+                        f"Sin stock: {product} "
+                        f"(cliente {partner_name} lo compra)"
+                    )[:120]
+                    desc = (
+                        f"Producto {product} tiene stock 0. "
+                        f"{partner_name} lo compra regularmente."
+                    )
+                    if next_order is not None and next_order <= 7:
+                        desc += (
+                            f" Proximo pedido estimado en ~{next_order}d."
+                        )
+                elif status == 'critical':
+                    severity = 'high'
+                    alert_type = 'stockout_risk'
+                    title = (
+                        f"Stock critico: {product} "
+                        f"({days_inv}d restantes) — {partner_name}"
+                    )[:120]
+                    desc = (
+                        f"Producto {product}: {current_qty:.0f} unidades, "
+                        f"~{days_inv} dias de inventario."
+                    )
+                    if can_fulfill is False:
+                        desc += (
+                            " NO alcanza para cubrir el proximo pedido "
+                            f"de {partner_name}."
+                        )
+                elif status in ('low', 'below_reorder'):
+                    severity = 'medium'
+                    alert_type = 'reorder_needed'
+                    title = (
+                        f"Reorden sugerido: {product} "
+                        f"({current_qty:.0f} uds) — {partner_name}"
+                    )[:120]
+                    desc_parts = [
+                        f"Producto {product}: {current_qty:.0f} unidades",
+                    ]
+                    if days_inv is not None:
+                        desc_parts.append(
+                            f"~{days_inv} dias de inventario")
+                    if status == 'below_reorder':
+                        desc_parts.append("por debajo del punto de reorden")
+                    desc = '. '.join(desc_parts) + '.'
+                else:
+                    continue
+
+                alerts.append({
+                    'alert_type': alert_type,
+                    'severity': severity,
+                    'title': title,
+                    'description': desc,
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+        # ── Payment Behavior Intelligence alerts ──────────────────────────────
+        for email_addr, p in partners.items():
+            pb = p.get('payment_behavior', {})
+            partner_name = p.get('name', email_addr)
+
+            if pb.get('invoices_analyzed', 0) < 3:
+                continue
+
+            # Alert on worsening payment trend
+            if pb.get('trend') == 'worsening':
+                recent_avg = pb.get('recent_6m_avg', 0)
+                previous_avg = pb.get('previous_6m_avg', 0)
+                compliance = pb.get('compliance_score', 0)
+                severity = 'high' if compliance < 50 else 'medium'
+                alerts.append({
+                    'alert_type': 'payment_compliance',
+                    'severity': severity,
+                    'title': (
+                        f"Deterioro en pagos: {partner_name} "
+                        f"(compliance {compliance}%)"
+                    )[:120],
+                    'description': (
+                        f"Tendencia de pago empeorando. "
+                        f"Ultimos 6m: promedio +{recent_avg:.0f}d "
+                        f"vs anteriores 6m: +{previous_avg:.0f}d. "
+                        f"Terminos: {pb.get('payment_term', 'N/A')}. "
+                        f"Compliance: {compliance}%."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+            # Alert on very low compliance regardless of trend
+            elif pb.get('compliance_score', 100) < 40:
+                avg_late = pb.get('avg_days_late', 0)
+                alerts.append({
+                    'alert_type': 'payment_compliance',
+                    'severity': 'high',
+                    'title': (
+                        f"Baja compliance de pago: {partner_name} "
+                        f"({pb['compliance_score']}%)"
+                    )[:120],
+                    'description': (
+                        f"Solo {pb.get('on_time_count', 0)} de "
+                        f"{pb.get('invoices_analyzed', 0)} facturas "
+                        f"pagadas a tiempo. "
+                        f"Promedio: +{avg_late:.0f}d tarde. "
+                        f"Terminos: {pb.get('payment_term', 'N/A')}."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
         return alerts
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -444,8 +635,18 @@ class AnalysisService:
     @staticmethod
     def compute_client_scores(contacts: list, emails: list, threads: list,
                               cfg: dict,
-                              account_summaries: list = None) -> list:
-        """Calcula score de relación 0-100 para contactos externos."""
+                              account_summaries: list = None,
+                              odoo_ctx: dict = None) -> list:
+        """Calcula score de relación 0-100 para contactos externos.
+
+        5 components × 20 pts each:
+        - frequency (email volume)
+        - responsiveness (thread engagement)
+        - reciprocity (reply rate)
+        - sentiment (emotional tone)
+        - payment_compliance (pays on time vs agreed terms)
+        """
+        odoo_ctx = odoo_ctx or {}
         external = [c for c in contacts if c['contact_type'] == 'external']
         if not external:
             return []
@@ -472,13 +673,14 @@ class AnalysisService:
                         pass
 
         scores = []
+        partners = odoo_ctx.get('partners', {})
         for c in external:
             addr = c['email']
             msg_count = email_counts.get(addr, 0)
             thread_count = thread_participation.get(addr, 0)
 
-            freq_score = min(25, 5 + msg_count * 4)
-            resp_score = min(25, 5 + thread_count * 4)
+            freq_score = min(20, 4 + msg_count * 3)
+            resp_score = min(20, 4 + thread_count * 3)
 
             related_threads = [
                 t for t in threads
@@ -486,18 +688,29 @@ class AnalysisService:
             ]
             replied_count = sum(1 for t in related_threads if t['has_internal_reply'])
             recip_score = (
-                round(replied_count / len(related_threads) * 25)
-                if related_threads else 12
+                round(replied_count / len(related_threads) * 20)
+                if related_threads else 10
             )
 
             claude_sentiment = contact_sentiments.get(addr.lower())
             if claude_sentiment is not None:
-                sent_score = round((claude_sentiment + 1) * 12.5)
-                sent_score = max(0, min(25, sent_score))
+                sent_score = round((claude_sentiment + 1) * 10)
+                sent_score = max(0, min(20, sent_score))
             else:
-                sent_score = 15
+                sent_score = 12
 
-            total = freq_score + resp_score + recip_score + sent_score
+            # Payment compliance score (0-20)
+            partner_data = partners.get(addr, {})
+            pb = partner_data.get('payment_behavior', {})
+            if pb.get('invoices_analyzed', 0) >= 3:
+                compliance_pct = pb.get('compliance_score', 50)
+                pay_score = round(compliance_pct / 100 * 20)
+                pay_score = max(0, min(20, pay_score))
+            else:
+                pay_score = 10  # neutral if not enough data
+
+            total = (freq_score + resp_score + recip_score
+                     + sent_score + pay_score)
 
             if total >= 60:
                 risk = 'low'
@@ -513,6 +726,7 @@ class AnalysisService:
                 'responsiveness_score': resp_score,
                 'reciprocity_score': recip_score,
                 'sentiment_score': sent_score,
+                'payment_compliance_score': pay_score,
                 'risk_level': risk,
             })
 

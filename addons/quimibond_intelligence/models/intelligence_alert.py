@@ -28,6 +28,12 @@ class IntelligenceAlert(models.Model):
         ('payment_delay', 'Pago vencido'),
         ('opportunity', 'Oportunidad detectada'),
         ('quality_issue', 'Problema de calidad'),
+        ('volume_drop', 'Caida de volumen'),
+        ('unusual_discount', 'Descuento inusual'),
+        ('cross_sell', 'Oportunidad cross-sell'),
+        ('stockout_risk', 'Riesgo de desabasto'),
+        ('reorder_needed', 'Reorden necesario'),
+        ('payment_compliance', 'Deterioro en cumplimiento de pago'),
     ], string='Tipo', required=True, index=True)
     severity = fields.Selection([
         ('low', 'Baja'),

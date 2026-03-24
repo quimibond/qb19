@@ -50,6 +50,10 @@ class OdooEnrichmentService:
             'calendar_event': 'calendar.event',
             'mrp_production': 'mrp.production',
             'product_product': 'product.product',
+            'stock_quant': 'stock.quant',
+            'orderpoint': 'stock.warehouse.orderpoint',
+            'sale_order_line': 'sale.order.line',
+            'payment_term': 'account.payment.term',
         }
         for key, model_name in model_map.items():
             try:
@@ -588,36 +592,31 @@ class OdooEnrichmentService:
             except Exception as exc:
                 _logger.debug('Lifetime enrichment: %s', exc)
 
-        # ── 13. Stock disponible y precios recientes ─────────────────────
+        # ── 13. Product Purchase Intelligence ─────────────────────────────
         if models.get('sale_order') and models.get('product_product'):
             try:
-                recent_so = models['sale_order'].search([
-                    ('partner_id', '=', pid),
-                    ('state', 'in', ['sale', 'done']),
-                ], order='date_order desc', limit=5)
-                product_info = {}
-                for so in recent_so:
-                    for line in so.order_line:
-                        prod = line.product_id
-                        if not prod or prod.id in product_info:
-                            continue
-                        product_info[prod.id] = {
-                            'name': prod.name,
-                            'last_price': line.price_unit,
-                            'last_qty': line.product_uom_qty,
-                            'last_date': (so.date_order.strftime('%Y-%m-%d')
-                                          if so.date_order else ''),
-                            'stock_qty': prod.qty_available,
-                            'uom': (line.product_uom.name
-                                    if line.product_uom else ''),
-                        }
-                if product_info:
-                    ctx['products'] = list(product_info.values())[:10]
+                ctx['products'], ctx['purchase_patterns'] = (
+                    self._analyze_purchase_patterns(
+                        pid, models, date_90d, today,
+                    )
+                )
+                patterns = ctx['purchase_patterns']
+                if ctx['products']:
                     in_stock = sum(
                         1 for p in ctx['products'] if p['stock_qty'] > 0)
+                    parts = [
+                        f"{len(ctx['products'])} productos "
+                        f"({in_stock} con stock)",
+                    ]
+                    if patterns.get('volume_drops'):
+                        parts.append(
+                            f"{len(patterns['volume_drops'])} con baja")
+                    if patterns.get('discount_anomalies'):
+                        parts.append(
+                            f"{len(patterns['discount_anomalies'])} "
+                            f"descuento inusual")
                     summary_parts.append(
-                        f"PRODUCTOS: {len(ctx['products'])} "
-                        f"comprados ({in_stock} con stock)"
+                        f"PRODUCTOS: {' | '.join(parts)}"
                     )
             except Exception as exc:
                 _logger.debug('Product enrichment: %s', exc)
@@ -752,6 +751,678 @@ class OdooEnrichmentService:
                     )
             except Exception as exc:
                 _logger.debug('Delivery performance: %s', exc)
+
+        # ── 18. Inventory Intelligence ─────────────────────────────────────
+        # Analyze stock levels for products this client buys,
+        # estimate days of inventory, flag stockout risks.
+        product_details = ctx.get('purchase_patterns', {}).get(
+            'product_details', [])
+        if product_details and models.get('stock_quant'):
+            try:
+                ctx['inventory_intelligence'] = (
+                    self._analyze_inventory_for_partner(
+                        product_details, models, today,
+                    )
+                )
+                inv_intel = ctx['inventory_intelligence']
+                if inv_intel.get('at_risk'):
+                    summary_parts.append(
+                        f"INVENTARIO: {len(inv_intel['at_risk'])} productos "
+                        f"en riesgo de desabasto"
+                    )
+                elif inv_intel.get('products'):
+                    healthy = sum(
+                        1 for p in inv_intel['products']
+                        if p['status'] == 'healthy'
+                    )
+                    summary_parts.append(
+                        f"INVENTARIO: {len(inv_intel['products'])} productos "
+                        f"monitoreados ({healthy} sanos)"
+                    )
+            except Exception as exc:
+                _logger.debug('Inventory intelligence: %s', exc)
+
+        # ── 19. Payment Behavior Intelligence ──────────────────────────────
+        # Compare agreed payment terms vs actual payment dates.
+        if models.get('account_move') and ctx.get('is_customer'):
+            try:
+                ctx['payment_behavior'] = (
+                    self._analyze_payment_behavior(pid, models, today)
+                )
+                pb = ctx['payment_behavior']
+                if pb.get('invoices_analyzed', 0) >= 3:
+                    compliance = pb.get('compliance_score', 0)
+                    avg_delay = pb.get('avg_days_late', 0)
+                    trend = pb.get('trend', 'stable')
+                    trend_icon = (
+                        '↑' if trend == 'improving'
+                        else '↓' if trend == 'worsening'
+                        else '→'
+                    )
+                    parts = [f"compliance {compliance}%"]
+                    if avg_delay > 0:
+                        parts.append(f"prom +{avg_delay:.0f}d tarde")
+                    elif avg_delay < 0:
+                        parts.append(f"prom {avg_delay:.0f}d antes")
+                    parts.append(f"tendencia {trend_icon}")
+                    summary_parts.append(
+                        f"PAGO: {' | '.join(parts)}"
+                    )
+            except Exception as exc:
+                _logger.debug('Payment behavior: %s', exc)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   PAYMENT BEHAVIOR INTELLIGENCE
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _analyze_payment_behavior(self, pid, models, today):
+        """Analyze payment behavior: agreed terms vs actual payment dates.
+
+        Looks at paid invoices (last 12 months) to calculate:
+        - Compliance score (0-100): % of invoices paid on time or early
+        - Average days late/early vs due date
+        - Trend: comparing recent 6m behavior vs previous 6m
+        - Payment term info from the partner
+        - Per-invoice detail for the most recent ones
+
+        Returns dict with compliance_score, avg_days_late, trend, details.
+        """
+        AM = models['account_move']
+        date_12m = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        date_6m = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+
+        # Get paid invoices with both due date and payment date
+        paid_invoices = AM.search([
+            ('partner_id', '=', pid),
+            ('move_type', '=', 'out_invoice'),
+            ('state', '=', 'posted'),
+            ('payment_state', 'in', ['paid', 'in_payment']),
+            ('invoice_date', '>=', date_12m),
+            ('invoice_date_due', '!=', False),
+        ], order='invoice_date desc', limit=50)
+
+        if not paid_invoices:
+            return {'invoices_analyzed': 0}
+
+        # Analyze each invoice: days between due date and actual payment
+        invoice_details = []
+        recent_delays = []   # last 6 months
+        previous_delays = []  # 6-12 months ago
+
+        for inv in paid_invoices:
+            due_date = inv.invoice_date_due
+            # Find actual payment date from reconciled payments
+            payment_date = self._get_invoice_payment_date(inv)
+            if not payment_date or not due_date:
+                continue
+
+            days_diff = (payment_date - due_date).days  # positive = late
+            invoice_date_str = (
+                inv.invoice_date.strftime('%Y-%m-%d')
+                if inv.invoice_date else ''
+            )
+
+            detail = {
+                'invoice': inv.name,
+                'amount': inv.amount_total,
+                'invoice_date': invoice_date_str,
+                'due_date': due_date.strftime('%Y-%m-%d'),
+                'payment_date': payment_date.strftime('%Y-%m-%d'),
+                'days_diff': days_diff,
+                'status': (
+                    'early' if days_diff < 0
+                    else 'on_time' if days_diff <= 3
+                    else 'late'
+                ),
+            }
+            invoice_details.append(detail)
+
+            if invoice_date_str >= date_6m:
+                recent_delays.append(days_diff)
+            else:
+                previous_delays.append(days_diff)
+
+        if not invoice_details:
+            return {'invoices_analyzed': 0}
+
+        # Compliance score: % paid on time (within 3 day grace period)
+        on_time_count = sum(
+            1 for d in invoice_details if d['days_diff'] <= 3
+        )
+        compliance_score = round(on_time_count / len(invoice_details) * 100)
+
+        # Average days late (negative = early)
+        all_delays = [d['days_diff'] for d in invoice_details]
+        avg_days_late = round(sum(all_delays) / len(all_delays), 1)
+
+        # Trend: compare recent vs previous average delay
+        trend = 'stable'
+        recent_avg = None
+        previous_avg = None
+        if recent_delays and previous_delays:
+            recent_avg = round(
+                sum(recent_delays) / len(recent_delays), 1)
+            previous_avg = round(
+                sum(previous_delays) / len(previous_delays), 1)
+            diff = recent_avg - previous_avg
+            if diff <= -3:
+                trend = 'improving'
+            elif diff >= 3:
+                trend = 'worsening'
+
+        # Payment term from the partner
+        Partner = models['partner']
+        partner = Partner.browse(pid)
+        payment_term_name = ''
+        payment_term_days = None
+        if hasattr(partner, 'property_payment_term_id') and \
+                partner.property_payment_term_id:
+            pt = partner.property_payment_term_id
+            payment_term_name = pt.name or ''
+            # Estimate days from the term lines
+            try:
+                if hasattr(pt, 'line_ids') and pt.line_ids:
+                    max_days = max(
+                        line.nb_days for line in pt.line_ids
+                        if hasattr(line, 'nb_days')
+                    )
+                    payment_term_days = max_days
+            except (ValueError, AttributeError):
+                pass
+
+        # Worst offenders (most late invoices)
+        worst = sorted(
+            invoice_details, key=lambda x: x['days_diff'], reverse=True,
+        )[:3]
+
+        return {
+            'invoices_analyzed': len(invoice_details),
+            'compliance_score': compliance_score,
+            'avg_days_late': avg_days_late,
+            'median_days_late': sorted(all_delays)[len(all_delays) // 2],
+            'max_days_late': max(all_delays),
+            'min_days_late': min(all_delays),
+            'on_time_count': on_time_count,
+            'late_count': len(invoice_details) - on_time_count,
+            'trend': trend,
+            'recent_6m_avg': recent_avg,
+            'previous_6m_avg': previous_avg,
+            'payment_term': payment_term_name,
+            'payment_term_days': payment_term_days,
+            'recent_invoices': invoice_details[:10],
+            'worst_offenders': worst,
+        }
+
+    @staticmethod
+    def _get_invoice_payment_date(invoice):
+        """Get the actual payment date for a paid invoice.
+
+        Tries reconciled payment first, falls back to write_date.
+        """
+        try:
+            # Try to find reconciled payments via the invoice's
+            # reconciled move lines
+            for partial in (invoice._get_reconciled_payments() or []):
+                if hasattr(partial, 'date') and partial.date:
+                    return partial.date
+            # Fallback: if payment_state is paid, use the last write_date
+            # as an approximation
+            if invoice.payment_state in ('paid', 'in_payment'):
+                # Use invoice_date_due + a small buffer as conservative
+                # estimate, or write_date
+                if hasattr(invoice, 'write_date') and invoice.write_date:
+                    return invoice.write_date.date()
+        except Exception:
+            pass
+        # Final fallback
+        if hasattr(invoice, 'write_date') and invoice.write_date:
+            return invoice.write_date.date()
+        return None
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   INVENTORY INTELLIGENCE
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _analyze_inventory_for_partner(self, product_details, models, today):
+        """Analyze inventory levels for products a client regularly buys.
+
+        Uses purchase_patterns product_details (from dim 13) to know which
+        products to check, then queries stock.quant for actual stock and
+        estimates days of inventory based on recent consumption.
+
+        Returns dict with:
+        - products: list of per-product inventory status
+        - at_risk: products with < 15 days of estimated inventory
+        - total_stock_value: estimated value of relevant stock
+        """
+        Quant = models['stock_quant']
+        Orderpoint = models.get('orderpoint')
+        SOLine = models.get('sale_order_line')
+
+        result_products = []
+        at_risk = []
+        total_stock_value = 0
+
+        # Only analyze products that the client has ordered at least twice
+        relevant = [
+            p for p in product_details if p.get('total_orders', 0) >= 2
+        ]
+        if not relevant:
+            return {'products': [], 'at_risk': [], 'total_stock_value': 0}
+
+        # Pre-load product records for name lookup
+        Product = models['product_product']
+
+        # Get global daily consumption rate from sale.order.line (last 90d)
+        date_90d = (
+            datetime.now() - timedelta(days=90)
+        ).strftime('%Y-%m-%d')
+
+        for prod_detail in relevant[:15]:
+            prod_name = prod_detail['name']
+            try:
+                # Find the product record
+                prod = Product.search(
+                    [('name', '=', prod_name), ('active', '=', True)],
+                    limit=1,
+                )
+                if not prod:
+                    continue
+
+                # Current stock across all internal locations
+                quants = Quant.search([
+                    ('product_id', '=', prod.id),
+                    ('location_id.usage', '=', 'internal'),
+                ])
+                current_qty = sum(q.quantity - q.reserved_quantity
+                                  for q in quants)
+                stock_value = current_qty * (prod.standard_price or 0)
+                total_stock_value += stock_value
+
+                # Estimate daily consumption (global, all clients, last 90d)
+                daily_consumption = 0
+                if SOLine:
+                    try:
+                        line_data = SOLine.read_group(
+                            [
+                                ('product_id', '=', prod.id),
+                                ('order_id.state', 'in', ['sale', 'done']),
+                                ('order_id.date_order', '>=', date_90d),
+                            ],
+                            ['product_uom_qty'],
+                            [],
+                        )
+                        total_sold_90d = (
+                            line_data[0]['product_uom_qty']
+                            if line_data else 0
+                        )
+                        daily_consumption = round(total_sold_90d / 90, 2)
+                    except Exception:
+                        pass
+
+                # Days of inventory
+                days_of_inventory = None
+                if daily_consumption > 0 and current_qty > 0:
+                    days_of_inventory = round(
+                        current_qty / daily_consumption)
+
+                # Reorder point info
+                reorder_min = None
+                reorder_max = None
+                if Orderpoint:
+                    try:
+                        op = Orderpoint.search([
+                            ('product_id', '=', prod.id),
+                        ], limit=1)
+                        if op:
+                            reorder_min = op.product_min_qty
+                            reorder_max = op.product_max_qty
+                    except Exception:
+                        pass
+
+                # Determine status
+                if current_qty <= 0:
+                    status = 'stockout'
+                elif days_of_inventory is not None and days_of_inventory < 7:
+                    status = 'critical'
+                elif days_of_inventory is not None and days_of_inventory < 15:
+                    status = 'low'
+                elif (reorder_min is not None
+                      and current_qty <= reorder_min):
+                    status = 'below_reorder'
+                else:
+                    status = 'healthy'
+
+                # This client's share of consumption
+                client_freq_days = prod_detail.get('avg_frequency_days')
+                client_avg_qty = (
+                    prod_detail['total_qty'] / prod_detail['total_orders']
+                    if prod_detail['total_orders'] > 0 else 0
+                )
+                next_order_estimate = None
+                if client_freq_days and prod_detail.get('last_date'):
+                    try:
+                        last_dt = datetime.strptime(
+                            prod_detail['last_date'], '%Y-%m-%d'
+                        ).date()
+                        days_since = (today - last_dt).days
+                        next_order_estimate = max(
+                            0, client_freq_days - days_since)
+                    except (ValueError, TypeError):
+                        pass
+
+                info = {
+                    'product': prod_name,
+                    'current_qty': round(current_qty, 2),
+                    'stock_value': round(stock_value, 2),
+                    'daily_consumption': daily_consumption,
+                    'days_of_inventory': days_of_inventory,
+                    'reorder_min': reorder_min,
+                    'reorder_max': reorder_max,
+                    'status': status,
+                    'client_avg_qty_per_order': round(client_avg_qty, 2),
+                    'client_frequency_days': client_freq_days,
+                    'client_next_order_days': next_order_estimate,
+                    'can_fulfill_next_order': (
+                        current_qty >= client_avg_qty
+                        if client_avg_qty > 0 else None
+                    ),
+                }
+                result_products.append(info)
+
+                if status in ('stockout', 'critical', 'low',
+                              'below_reorder'):
+                    at_risk.append({
+                        'product': prod_name,
+                        'status': status,
+                        'current_qty': round(current_qty, 2),
+                        'days_of_inventory': days_of_inventory,
+                        'daily_consumption': daily_consumption,
+                        'can_fulfill_next_order': info[
+                            'can_fulfill_next_order'],
+                        'client_next_order_days': next_order_estimate,
+                    })
+
+            except Exception as exc:
+                _logger.debug('Inventory check %s: %s', prod_name, exc)
+
+        return {
+            'products': result_products,
+            'at_risk': at_risk,
+            'total_stock_value': round(total_stock_value, 2),
+        }
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   PRODUCT PURCHASE INTELLIGENCE
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _analyze_purchase_patterns(self, pid, models, date_90d, today):
+        """Deep analysis of purchase patterns per product for a partner.
+
+        Returns (products_list, patterns_dict) where patterns_dict contains:
+        - product_details: per-product stats (frequency, trend, discount)
+        - volume_drops: products with significant volume decrease
+        - discount_anomalies: products with unusual discount on last order
+        - cross_sell: products bought by similar clients but not this one
+        """
+        SO = models['sale_order']
+        Product = models['product_product']
+
+        # Fetch all confirmed orders in the last 12 months for deeper analysis
+        date_12m = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        date_6m = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+
+        all_orders = SO.search([
+            ('partner_id', '=', pid),
+            ('state', 'in', ['sale', 'done']),
+            ('date_order', '>=', date_12m),
+        ], order='date_order desc')
+
+        if not all_orders:
+            return [], {}
+
+        # ── Collect per-product purchase history ────────────────────────────
+        # product_id → list of {date, qty, price_unit, discount, subtotal}
+        product_history = defaultdict(list)
+        product_meta = {}  # product_id → {name, uom, stock_qty, category}
+
+        for so in all_orders:
+            order_date = so.date_order
+            if not order_date:
+                continue
+            date_str = order_date.strftime('%Y-%m-%d')
+            for line in so.order_line:
+                prod = line.product_id
+                if not prod or not prod.active:
+                    continue
+                # Skip service/section/note lines
+                if line.display_type:
+                    continue
+                product_history[prod.id].append({
+                    'date': date_str,
+                    'qty': line.product_uom_qty,
+                    'price_unit': line.price_unit,
+                    'discount': line.discount or 0.0,
+                    'subtotal': line.price_subtotal,
+                })
+                if prod.id not in product_meta:
+                    categ = prod.categ_id
+                    product_meta[prod.id] = {
+                        'name': prod.name,
+                        'uom': (line.product_uom.name
+                                if line.product_uom else ''),
+                        'stock_qty': prod.qty_available,
+                        'categ_name': categ.name if categ else '',
+                        'categ_id': categ.id if categ else None,
+                    }
+
+        if not product_history:
+            return [], {}
+
+        # ── Analyze each product ────────────────────────────────────────────
+        product_details = []
+        volume_drops = []
+        discount_anomalies = []
+        date_6m_str = date_6m
+
+        for prod_id, history in product_history.items():
+            meta = product_meta[prod_id]
+            history_sorted = sorted(history, key=lambda x: x['date'])
+            total_orders = len(history_sorted)
+            total_qty = sum(h['qty'] for h in history_sorted)
+            total_revenue = sum(h['subtotal'] for h in history_sorted)
+            avg_price = (
+                sum(h['price_unit'] for h in history_sorted) / total_orders
+            )
+            avg_discount = (
+                sum(h['discount'] for h in history_sorted) / total_orders
+            )
+
+            # Last purchase info
+            last = history_sorted[-1]
+            first = history_sorted[0]
+
+            # Purchase frequency (avg days between orders)
+            avg_frequency_days = None
+            if total_orders >= 2:
+                first_dt = datetime.strptime(first['date'], '%Y-%m-%d')
+                last_dt = datetime.strptime(last['date'], '%Y-%m-%d')
+                span_days = (last_dt - first_dt).days
+                if span_days > 0:
+                    avg_frequency_days = round(span_days / (total_orders - 1))
+
+            # Volume trend: compare recent 6m vs previous 6m
+            recent_qty = sum(
+                h['qty'] for h in history_sorted
+                if h['date'] >= date_6m_str
+            )
+            previous_qty = sum(
+                h['qty'] for h in history_sorted
+                if h['date'] < date_6m_str
+            )
+            volume_trend_pct = None
+            if previous_qty > 0:
+                volume_trend_pct = round(
+                    (recent_qty - previous_qty) / previous_qty * 100
+                )
+
+            # Discount anomaly: last discount vs average
+            discount_delta = last['discount'] - avg_discount
+            is_discount_anomaly = (
+                abs(discount_delta) > 5 and total_orders >= 3
+            )
+
+            detail = {
+                'name': meta['name'],
+                'categ': meta['categ_name'],
+                'uom': meta['uom'],
+                'stock_qty': meta['stock_qty'],
+                'total_orders': total_orders,
+                'total_qty': total_qty,
+                'total_revenue': round(total_revenue, 2),
+                'avg_price': round(avg_price, 2),
+                'avg_discount': round(avg_discount, 2),
+                'avg_frequency_days': avg_frequency_days,
+                'last_date': last['date'],
+                'last_qty': last['qty'],
+                'last_price': last['price_unit'],
+                'last_discount': last['discount'],
+                'recent_6m_qty': recent_qty,
+                'previous_6m_qty': previous_qty,
+                'volume_trend_pct': volume_trend_pct,
+            }
+            product_details.append(detail)
+
+            # Flag volume drops (>30% decrease with at least some history)
+            if (volume_trend_pct is not None
+                    and volume_trend_pct <= -30
+                    and previous_qty > 0):
+                volume_drops.append({
+                    'product': meta['name'],
+                    'trend_pct': volume_trend_pct,
+                    'recent_qty': recent_qty,
+                    'previous_qty': previous_qty,
+                })
+
+            # Flag discount anomalies
+            if is_discount_anomaly:
+                discount_anomalies.append({
+                    'product': meta['name'],
+                    'last_discount': last['discount'],
+                    'avg_discount': round(avg_discount, 2),
+                    'delta': round(discount_delta, 2),
+                })
+
+        # Sort by total revenue descending
+        product_details.sort(key=lambda x: x['total_revenue'], reverse=True)
+
+        # ── Build backward-compatible products list ─────────────────────────
+        products_list = [{
+            'name': d['name'],
+            'last_price': d['last_price'],
+            'last_qty': d['last_qty'],
+            'last_date': d['last_date'],
+            'stock_qty': d['stock_qty'],
+            'uom': d['uom'],
+        } for d in product_details[:10]]
+
+        # ── Cross-sell: find products bought by similar clients ─────────────
+        cross_sell = self._detect_cross_sell(
+            pid, product_history.keys(), models, product_meta,
+        )
+
+        patterns = {
+            'product_details': product_details[:15],
+            'volume_drops': volume_drops,
+            'discount_anomalies': discount_anomalies,
+            'cross_sell': cross_sell,
+            'total_products': len(product_details),
+            'total_revenue_12m': round(
+                sum(d['total_revenue'] for d in product_details), 2,
+            ),
+        }
+        return products_list, patterns
+
+    def _detect_cross_sell(self, pid, bought_product_ids, models,
+                           product_meta):
+        """Find products bought by similar clients (same category) that
+        this client hasn't bought.
+
+        'Similar clients' = clients who bought at least 2 of the same products
+        in the last 6 months.
+        """
+        SO = models['sale_order']
+        bought_ids = set(bought_product_ids)
+        if not bought_ids or len(bought_ids) < 2:
+            return []
+
+        try:
+            date_6m = (
+                datetime.now() - timedelta(days=180)
+            ).strftime('%Y-%m-%d')
+
+            # Find other partners who ordered the same products recently
+            similar_orders = SO.search([
+                ('partner_id', '!=', pid),
+                ('state', 'in', ['sale', 'done']),
+                ('date_order', '>=', date_6m),
+                ('order_line.product_id', 'in', list(bought_ids)),
+            ], limit=30)
+
+            # Count overlap per partner and collect their other products
+            partner_overlap = defaultdict(set)  # partner_id → bought_ids
+            partner_other = defaultdict(set)    # partner_id → other products
+            for so in similar_orders:
+                for line in so.order_line:
+                    if line.display_type or not line.product_id:
+                        continue
+                    p_id = line.product_id.id
+                    if p_id in bought_ids:
+                        partner_overlap[so.partner_id.id].add(p_id)
+                    else:
+                        partner_other[so.partner_id.id].add(p_id)
+
+            # Keep only partners with >= 2 common products
+            similar_partners = {
+                p_id for p_id, overlap in partner_overlap.items()
+                if len(overlap) >= 2
+            }
+
+            if not similar_partners:
+                return []
+
+            # Aggregate other products from similar clients
+            candidate_counts = defaultdict(int)  # product_id → count
+            for p_id in similar_partners:
+                for prod_id in partner_other[p_id]:
+                    if prod_id not in bought_ids:
+                        candidate_counts[prod_id] += 1
+
+            # Top 5 most common among similar clients
+            top_candidates = sorted(
+                candidate_counts.items(), key=lambda x: x[1], reverse=True,
+            )[:5]
+
+            cross_sell = []
+            Product = models['product_product']
+            for prod_id, count in top_candidates:
+                if count < 2:
+                    continue
+                try:
+                    prod = Product.browse(prod_id)
+                    if prod.exists() and prod.active:
+                        cross_sell.append({
+                            'product': prod.name,
+                            'similar_clients_buying': count,
+                            'total_similar_clients': len(similar_partners),
+                        })
+                except Exception:
+                    pass
+            return cross_sell
+
+        except Exception as exc:
+            _logger.debug('Cross-sell detection: %s', exc)
+            return []
 
     # ══════════════════════════════════════════════════════════════════════════
     #   ENRICH — orquesta todo el enriquecimiento
