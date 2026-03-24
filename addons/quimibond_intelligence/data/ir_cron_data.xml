@@ -24,17 +24,6 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 13:00:00')"/>
         </record>
 
-        <record id="cron_weekly_calibration" model="ir.cron">
-            <field name="name">Intelligence System - Calibración Semanal (Phase 2)</field>
-            <field name="model_id" ref="model_intelligence_engine"/>
-            <field name="state">code</field>
-            <field name="code">model.run_weekly_calibration()</field>
-            <field name="interval_number">7</field>
-            <field name="interval_type">days</field>
-            <field name="active">True</field>
-            <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 14:00:00')"/>
-        </record>
-
         <!-- ══ Micro-pipelines (alta frecuencia) ══ -->
 
         <record id="cron_sync_emails" model="ir.cron">
