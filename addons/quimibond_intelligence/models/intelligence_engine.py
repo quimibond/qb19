@@ -545,19 +545,6 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.debug('Health scores: %s', exc)
 
-        try:
-            patterns = analysis.compute_communication_patterns(
-                emails, threads, today,
-            )
-            if patterns:
-                supa.save_communication_patterns(patterns)
-        except Exception as exc:
-            _logger.debug('Communication patterns: %s', exc)
-
-        analysis.detect_learnings(
-            metrics, alerts, client_scores, odoo_context, supa,
-        )
-
         for acct, hid in result['gmail_history_state'].items():
             supa.save_sync_state(acct, str(hid))
 
@@ -586,22 +573,8 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando en Odoo: %s', exc)
 
-        # ══ FASE 10: Feedback Processing ══
-        _logger.info('── FASE 10: Feedback processing ──')
-        try:
-            from ..services.feedback_service import FeedbackService
-            with FeedbackService(cfg['supabase_url'], cfg['supabase_key']) as feedback_svc:
-                processed, total_reward = feedback_svc.process_feedback_rewards()
-                _logger.info('Feedback: %d señales procesadas, reward total: %.2f',
-                             processed, total_reward)
-                action_priorities = feedback_svc.get_action_priorities()
-                if action_priorities:
-                    _logger.info('Action priorities: %s', action_priorities)
-        except Exception as exc:
-            _logger.warning('Feedback processing (non-critical): %s', exc)
-
-        # ══ FASE 10.5: Company enrichment ══
-        _logger.info('── FASE 10.5: Company enrichment ──')
+        # ══ FASE 10: Company enrichment ══
+        _logger.info('── FASE 10: Company enrichment ──')
         try:
             self._enrich_companies(supa, claude, today)
         except Exception as exc:
@@ -616,38 +589,6 @@ class IntelligenceEngine(models.Model):
             _logger.debug('refresh_contact_360: %s', exc)
 
         _logger.info('Pipeline completado exitosamente')
-
-    # ══════════════════════════════════════════════════════════════════════════
-    #   CALIBRACIÓN SEMANAL (Phase 2 — Auto-mejora)
-    # ══════════════════════════════════════════════════════════════════════════
-
-    @api.model
-    def run_weekly_calibration(self):
-        """Weekly feedback calibration — adjusts alert thresholds and action priorities."""
-        _logger.info('═══ WEEKLY CALIBRATION ═══')
-        cfg = self._load_config()
-        if not cfg:
-            return
-        from ..services.feedback_service import FeedbackService
-        with FeedbackService(cfg['supabase_url'], cfg['supabase_key']) as feedback_svc:
-            try:
-                calibrations = feedback_svc.calibrate_alerts()
-                _logger.info('Calibraciones aplicadas: %s', calibrations)
-                priorities = feedback_svc.get_action_priorities()
-                if priorities:
-                    for cat, modifier in priorities.items():
-                        if abs(modifier) > 0.2:
-                            feedback_svc.save_learning(
-                                learning_type='action_priority',
-                                description=f'Ajuste de prioridad para {cat}: {modifier:+.2f}',
-                                metric_name='priority_modifier',
-                                metric_before=0.0,
-                                metric_after=modifier,
-                            )
-                    _logger.info('Action priorities: %s', priorities)
-            except Exception as exc:
-                _logger.error('Error en calibración semanal: %s', exc, exc_info=True)
-        _logger.info('═══ WEEKLY CALIBRATION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
     #   ENRICH ONLY — Odoo→Supabase sin pipeline completo
@@ -862,14 +803,6 @@ class IntelligenceEngine(models.Model):
                 supa._request(
                     '/rest/v1/alerts?is_resolved=eq.true'
                     f'&created_at=lt.{cutoff_90d}T00:00:00Z',
-                    'DELETE',
-                )
-                supa._request(
-                    f'/rest/v1/system_learning?learning_date=lt.{cutoff_180d}',
-                    'DELETE',
-                )
-                supa._request(
-                    f'/rest/v1/prediction_outcomes?prediction_date=lt.{cutoff_180d}',
                     'DELETE',
                 )
                 supa._request(
@@ -1221,22 +1154,6 @@ class IntelligenceEngine(models.Model):
         account_departments = account_departments or {}
 
         person_profiles = {}
-        if supa:
-            all_sender_emails = list({
-                e.get('from_email', '').lower()
-                for e in emails if e.get('from_email')
-            })
-            try:
-                person_profiles = supa.get_person_profiles_for_contacts(
-                    all_sender_emails,
-                )
-                if person_profiles:
-                    _logger.info(
-                        '✓ %d perfiles de personas cargados de Supabase',
-                        len(person_profiles),
-                    )
-            except Exception as exc:
-                _logger.debug('Person profiles load: %s', exc)
 
         by_account = defaultdict(list)
         for e in emails:

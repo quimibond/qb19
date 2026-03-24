@@ -29,12 +29,10 @@ class IntelligenceQuery(models.TransientModel):
             self.answer = '<p><b>Error:</b> Faltan API keys en la configuracion.</p>'
             return self._return_form()
 
-        from ..services.chat_memory_service import ChatMemoryService
         from ..services.claude_service import ClaudeService, VoyageService
         from ..services.supabase_service import SupabaseService
 
         supa = SupabaseService(supa_url, supa_key)
-        memory = ChatMemoryService(supa_url, supa_key)  # also extends SupabaseBaseClient
         claude_model = get('claude_model')
         claude = ClaudeService(anthropic_key, model=claude_model)
 
@@ -91,21 +89,11 @@ class IntelligenceQuery(models.TransientModel):
                 for a in alerts
             ])
 
-        # Paso 5: Few-shot examples from chat memory
-        few_shot = ''
-        try:
-            few_shot = memory.get_few_shot_examples(self.question, limit=2)
-        except Exception as exc:
-            _logger.debug('Chat memory retrieval: %s', exc)
-
-        # Paso 6: Knowledge Graph context
+        # Paso 5: Knowledge Graph context
         kg_context = self._search_knowledge_graph(supa, self.question)
 
         # Construir prompt
         full_context = []
-        if few_shot:
-            full_context.append(
-                'EJEMPLOS DE PREGUNTAS ANTERIORES EXITOSAS:\n%s' % few_shot)
         if odoo_context:
             full_context.append('DATOS DE ODOO ERP:\n%s' % odoo_context)
         if kg_context:
@@ -142,21 +130,10 @@ class IntelligenceQuery(models.TransientModel):
                       'Responde de forma directa, ejecutiva y accionable en HTML.')
             response = claude._call(system, prompt, max_tokens=2000)
             self.answer = response
-
-            # Save successful Q&A to chat memory for future few-shot learning
-            try:
-                memory.save_successful_qa(
-                    question=self.question,
-                    answer=response,
-                    context_used=self.context_used or '',
-                )
-            except Exception as exc:
-                _logger.debug('Chat memory save: %s', exc)
         except Exception as exc:
             self.answer = '<p><b>Error:</b> %s</p>' % str(exc)
         finally:
             supa.close()
-            memory.close()
 
         return self._return_form()
 

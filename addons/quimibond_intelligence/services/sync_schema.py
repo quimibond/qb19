@@ -7,6 +7,12 @@ writes to. It serves two purposes:
 1. Documentation: what columns exist and which are auto-managed by Supabase
 2. Validation: detect missing fields before they reach production
 
+Schema hierarchy (general → particular):
+  companies → contacts → emails → threads
+  companies → company_odoo_snapshots
+  contacts  → revenue_metrics, customer_health_scores
+  entities  → facts, entity_relationships
+
 When adding a new column to Supabase, update this file FIRST, then update
 the code that builds the record. Tests will catch any mismatches.
 """
@@ -19,15 +25,27 @@ the code that builds the record. Tests will catch any mismatches.
 #   'upsert_key': on_conflict columns for upsert operations
 
 SUPABASE_SCHEMAS = {
-    'emails': {
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # TIER 1: CORE BUSINESS ENTITIES
+    # ═══════════════════════════════════════════════════════════════════════
+
+    'companies': {
         'writable': {
-            'account', 'sender', 'recipient', 'subject', 'body', 'snippet',
-            'email_date', 'gmail_message_id', 'gmail_thread_id',
-            'attachments', 'is_reply', 'sender_type', 'has_attachments',
-            'kg_processed',
+            'name', 'canonical_name', 'odoo_partner_id', 'entity_id',
+            'is_customer', 'is_supplier', 'industry',
+            # Financial (from Odoo sync)
+            'lifetime_value', 'total_credit_notes', 'delivery_otd_rate',
+            'credit_limit', 'total_pending', 'monthly_avg', 'trend_pct',
+            'odoo_context',
+            # Enrichment (from Claude)
+            'description', 'business_type', 'key_products',
+            'relationship_summary', 'relationship_type',
+            'country', 'city', 'risk_signals', 'opportunity_signals',
+            'strategic_notes', 'enriched_at', 'enrichment_source',
         },
-        'auto': {'id', 'created_at', 'updated_at', 'embedding'},
-        'upsert_key': ('gmail_message_id',),
+        'auto': {'id', 'created_at', 'updated_at'},
+        'upsert_key': ('canonical_name',),
     },
 
     'contacts': {
@@ -37,7 +55,7 @@ SUPABASE_SCHEMAS = {
             'company_id', 'entity_id',
             # Scores & sentiment (written by save_client_scores)
             'relationship_score', 'risk_level', 'sentiment_score',
-            'payment_compliance_score', 'score_breakdown',
+            'payment_compliance_score',
             # Financial (written by sync_contact_odoo_data)
             'lifetime_value', 'total_credit_notes', 'delivery_otd_rate',
             # Profile fields (written by upsert_person_profile)
@@ -56,6 +74,23 @@ SUPABASE_SCHEMAS = {
         'upsert_key': ('email',),
     },
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # TIER 2: COMMUNICATION (Gmail)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    'emails': {
+        'writable': {
+            'account', 'sender', 'recipient', 'subject', 'body', 'snippet',
+            'email_date', 'gmail_message_id', 'gmail_thread_id',
+            'attachments', 'is_reply', 'sender_type', 'has_attachments',
+            'kg_processed',
+            # FK connections (populated by sync)
+            'thread_id', 'sender_contact_id',
+        },
+        'auto': {'id', 'created_at', 'updated_at', 'embedding'},
+        'upsert_key': ('gmail_message_id',),
+    },
+
     'threads': {
         'writable': {
             'gmail_thread_id', 'subject', 'subject_normalized',
@@ -64,22 +99,57 @@ SUPABASE_SCHEMAS = {
             'has_internal_reply', 'has_external_reply',
             'last_sender', 'last_sender_type', 'hours_without_response',
             'account',
+            # FK connections
+            'started_by_contact_id', 'company_id',
         },
         'auto': {'id', 'created_at', 'updated_at'},
         'upsert_key': ('gmail_thread_id',),
     },
 
-    'response_metrics': {
+    # ═══════════════════════════════════════════════════════════════════════
+    # TIER 3: ODOO OPERATIONAL DATA
+    # ═══════════════════════════════════════════════════════════════════════
+
+    'company_odoo_snapshots': {
         'writable': {
-            'account', 'metric_date',
-            'emails_received', 'emails_sent',
-            'internal_received', 'external_received',
-            'threads_started', 'threads_replied', 'threads_unanswered',
-            'avg_response_hours', 'fastest_response_hours',
-            'slowest_response_hours',
+            'company_id', 'snapshot_date',
+            'total_invoiced', 'pending_amount', 'overdue_amount',
+            'monthly_avg', 'open_orders_count',
+            'pending_deliveries_count', 'late_deliveries_count',
+            'crm_pipeline_value', 'crm_leads_count',
+            'manufacturing_count', 'credit_notes_total',
+        },
+        'auto': {'id', 'created_at'},
+        'upsert_key': ('company_id', 'snapshot_date'),
+    },
+
+    'revenue_metrics': {
+        'writable': {
+            'contact_email', 'contact_id', 'company_id',
+            'period_start', 'period_end', 'period_type',
+            'total_invoiced', 'pending_amount', 'overdue_amount',
+            'overdue_days_max', 'num_orders', 'avg_order_value',
+            'odoo_partner_id', 'total_collected',
         },
         'auto': {'id', 'created_at', 'updated_at'},
-        'upsert_key': ('metric_date', 'account'),
+        'upsert_key': ('contact_email', 'period_start', 'period_type'),
+    },
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # TIER 4: INTELLIGENCE & ANALYTICS
+    # ═══════════════════════════════════════════════════════════════════════
+
+    'customer_health_scores': {
+        'writable': {
+            'contact_id', 'contact_email', 'company_id',
+            'score_date', 'overall_score', 'trend',
+            'communication_score', 'financial_score', 'sentiment_score',
+            'responsiveness_score', 'engagement_score',
+            'risk_signals', 'opportunity_signals',
+            'payment_compliance_score', 'previous_score',
+        },
+        'auto': {'id', 'created_at'},
+        'upsert_key': ('contact_email', 'score_date'),
     },
 
     'alerts': {
@@ -88,12 +158,38 @@ SUPABASE_SCHEMAS = {
             'contact_name', 'contact_id', 'company_id',
             'account', 'state', 'is_read', 'is_resolved',
             'prediction_id', 'prediction_confidence',
-            'related_thread_id', 'business_impact', 'suggested_action',
+            'related_thread_id', 'thread_id',
+            'business_impact', 'suggested_action',
             'resolved_at', 'resolution_notes',
             'time_to_resolve_hours',
         },
         'auto': {'id', 'created_at', 'updated_at'},
         'upsert_key': None,  # No upsert, always INSERT
+    },
+
+    'action_items': {
+        'writable': {
+            'assignee_entity_id', 'assignee_name', 'assignee_email',
+            'related_entity_id', 'description', 'action_type',
+            'priority', 'status', 'state', 'due_date',
+            'completed_date', 'completed_at',
+            'contact_name', 'contact_company', 'contact_id', 'company_id',
+            'source_thread_id', 'thread_id',
+            'prediction_id', 'prediction_confidence',
+            'reason', 'action_category',
+        },
+        'auto': {'id', 'created_at', 'updated_at'},
+        'upsert_key': None,
+    },
+
+    'topics': {
+        'writable': {
+            'topic', 'category', 'status', 'priority', 'summary',
+            'related_accounts', 'first_seen', 'last_seen', 'times_seen',
+            'company_id',
+        },
+        'auto': {'id', 'created_at', 'updated_at'},
+        'upsert_key': None,  # Uses RPC upsert_topic
     },
 
     'account_summaries': {
@@ -109,6 +205,19 @@ SUPABASE_SCHEMAS = {
         'upsert_key': ('summary_date', 'account'),
     },
 
+    'response_metrics': {
+        'writable': {
+            'account', 'metric_date',
+            'emails_received', 'emails_sent',
+            'internal_received', 'external_received',
+            'threads_started', 'threads_replied', 'threads_unanswered',
+            'avg_response_hours', 'fastest_response_hours',
+            'slowest_response_hours',
+        },
+        'auto': {'id', 'created_at', 'updated_at'},
+        'upsert_key': ('metric_date', 'account'),
+    },
+
     'daily_summaries': {
         'writable': {
             'summary_date', 'total_emails', 'summary_text', 'summary_html',
@@ -119,60 +228,9 @@ SUPABASE_SCHEMAS = {
         'upsert_key': ('summary_date',),
     },
 
-    'revenue_metrics': {
-        'writable': {
-            'contact_email', 'contact_id', 'company_id',
-            'period_start', 'period_end', 'period_type',
-            'total_invoiced', 'pending_amount', 'overdue_amount',
-            'overdue_days_max', 'num_orders', 'avg_order_value',
-            'odoo_partner_id', 'total_collected',
-        },
-        'auto': {'id', 'created_at', 'updated_at'},
-        'upsert_key': ('contact_email', 'period_start', 'period_type'),
-    },
-
-    'customer_health_scores': {
-        'writable': {
-            'contact_id', 'contact_email', 'company_id',
-            'score_date', 'overall_score', 'trend',
-            'communication_score', 'financial_score', 'sentiment_score',
-            'responsiveness_score', 'engagement_score',
-            'risk_signals', 'opportunity_signals',
-            'payment_compliance_score', 'previous_score',
-        },
-        'auto': {'id', 'created_at'},
-        'upsert_key': ('contact_email', 'score_date'),
-    },
-
-    'companies': {
-        'writable': {
-            'name', 'canonical_name', 'odoo_partner_id', 'entity_id',
-            'is_customer', 'is_supplier', 'industry',
-            'lifetime_value', 'total_credit_notes', 'delivery_otd_rate',
-            'credit_limit', 'total_pending', 'monthly_avg', 'trend_pct',
-            'odoo_context',
-            # Enrichment fields (from Claude)
-            'description', 'business_type', 'key_products',
-            'relationship_summary', 'relationship_type',
-            'country', 'city', 'risk_signals', 'opportunity_signals',
-            'strategic_notes', 'enriched_at', 'enrichment_source',
-        },
-        'auto': {'id', 'created_at', 'updated_at'},
-        'upsert_key': ('canonical_name',),
-    },
-
-    'company_odoo_snapshots': {
-        'writable': {
-            'company_id', 'snapshot_date',
-            'total_invoiced', 'pending_amount', 'overdue_amount',
-            'monthly_avg', 'open_orders_count',
-            'pending_deliveries_count', 'late_deliveries_count',
-            'crm_pipeline_value', 'crm_leads_count',
-            'manufacturing_count', 'credit_notes_total',
-        },
-        'auto': {'id', 'created_at'},
-        'upsert_key': ('company_id', 'snapshot_date'),
-    },
+    # ═══════════════════════════════════════════════════════════════════════
+    # TIER 5: KNOWLEDGE GRAPH
+    # ═══════════════════════════════════════════════════════════════════════
 
     'entities': {
         'writable': {
@@ -205,28 +263,9 @@ SUPABASE_SCHEMAS = {
         'upsert_key': ('entity_a_id', 'entity_b_id', 'relationship_type'),
     },
 
-    'action_items': {
-        'writable': {
-            'assignee_entity_id', 'assignee_name', 'assignee_email',
-            'related_entity_id', 'description', 'action_type',
-            'priority', 'status', 'state', 'due_date',
-            'completed_date', 'completed_at',
-            'contact_name', 'contact_company', 'contact_id', 'company_id',
-            'source_thread_id', 'prediction_id', 'prediction_confidence',
-            'reason', 'action_category',
-        },
-        'auto': {'id', 'created_at', 'updated_at'},
-        'upsert_key': None,
-    },
-
-    'topics': {
-        'writable': {
-            'topic', 'category', 'status', 'priority', 'summary',
-            'related_accounts', 'first_seen', 'last_seen', 'times_seen',
-        },
-        'auto': {'id', 'created_at', 'updated_at'},
-        'upsert_key': None,  # Uses RPC upsert_topic
-    },
+    # ═══════════════════════════════════════════════════════════════════════
+    # TIER 6: SYSTEM
+    # ═══════════════════════════════════════════════════════════════════════
 
     'sync_state': {
         'writable': {
@@ -236,52 +275,10 @@ SUPABASE_SCHEMAS = {
         'upsert_key': ('account',),
     },
 
-    'communication_patterns': {
-        'writable': {
-            'week_start', 'account', 'total_emails', 'response_rate',
-            'avg_response_hours', 'top_external_contacts',
-            'top_internal_contacts', 'busiest_hour', 'common_subjects',
-            'sentiment_score',
-        },
-        'auto': {'id', 'created_at'},
-        'upsert_key': ('week_start', 'account'),
-    },
-
-    'prediction_outcomes': {
-        'writable': {
-            'prediction_id', 'prediction_type', 'prediction_date',
-            'prediction_summary', 'predicted_severity', 'confidence',
-            'account', 'contact_email',
-            'outcome_type', 'outcome_date', 'outcome_summary',
-            'outcome_data', 'accuracy_score', 'verified_at',
-        },
-        'auto': {'id', 'created_at'},
-        'upsert_key': None,
-    },
-
     'events': {
         'writable': {
             'event_type', 'entity_type', 'entity_id', 'entity_ref',
             'payload', 'source',
-        },
-        'auto': {'id', 'created_at'},
-        'upsert_key': None,
-    },
-
-    'system_learning': {
-        'writable': {
-            'learning_date', 'learning_type', 'description', 'data',
-            'account',
-        },
-        'auto': {'id', 'created_at'},
-        'upsert_key': None,
-    },
-
-    'feedback_signals': {
-        'writable': {
-            'signal_source', 'source_id', 'source_type', 'signal_type',
-            'reward_score', 'context', 'account', 'contact_email',
-            'reward_processed',
         },
         'auto': {'id', 'created_at'},
         'upsert_key': None,
@@ -295,55 +292,3 @@ def get_writable_columns(table: str) -> set:
     if not schema:
         raise ValueError(f'Unknown table: {table}')
     return set(schema['writable'])
-
-
-def get_all_columns(table: str) -> set:
-    """Return all columns (writable + auto) for a Supabase table."""
-    schema = SUPABASE_SCHEMAS.get(table)
-    if not schema:
-        raise ValueError(f'Unknown table: {table}')
-    return schema['writable'] | schema['auto']
-
-
-def validate_record(table: str, record: dict,
-                    required: set = None) -> list:
-    """Validate a record against the schema.
-
-    Returns list of warning strings. Empty list = all good.
-    - Warns about keys not in schema (typos, wrong table)
-    - Warns about required fields that are missing
-    """
-    schema = SUPABASE_SCHEMAS.get(table)
-    if not schema:
-        return [f'Unknown table: {table}']
-
-    all_cols = schema['writable'] | schema['auto']
-    warnings = []
-
-    # Check for unknown keys (possible typos or wrong table)
-    unknown = set(record.keys()) - all_cols
-    if unknown:
-        warnings.append(
-            f'{table}: unknown columns {unknown} — typo or schema outdated?')
-
-    # Check required fields
-    if required:
-        missing = required - set(record.keys())
-        if missing:
-            warnings.append(
-                f'{table}: missing required fields {missing}')
-
-    return warnings
-
-
-def check_coverage(table: str, record: dict) -> set:
-    """Return writable columns NOT present in the record.
-
-    Useful for spotting columns that exist in Supabase but the code
-    never populates. Not all columns need to be in every record
-    (some are optional), but this helps audit coverage.
-    """
-    schema = SUPABASE_SCHEMAS.get(table)
-    if not schema:
-        return set()
-    return schema['writable'] - set(record.keys())
