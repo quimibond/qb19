@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 from ..models.intelligence_config import INTERNAL_DOMAIN
+from .odoo_enrichment import is_automated_sender
 
 _logger = logging.getLogger(__name__)
 
@@ -164,11 +165,17 @@ class AnalysisService:
 
     @staticmethod
     def extract_contacts(emails: list) -> list:
-        """Extrae contactos únicos de los emails (legacy, para KG/alertas)."""
+        """Extrae contactos únicos de los emails (legacy, para KG/alertas).
+
+        Skips automated/non-human senders (noreply, notifications, SaaS
+        services) to avoid polluting the contact database and scoring.
+        """
         contact_map = {}
         for e in emails:
             email_addr = e.get('from_email', '').lower()
             if not email_addr:
+                continue
+            if is_automated_sender(email_addr):
                 continue
             if email_addr not in contact_map:
                 contact_map[email_addr] = {
@@ -647,7 +654,11 @@ class AnalysisService:
         - payment_compliance (pays on time vs agreed terms)
         """
         odoo_ctx = odoo_ctx or {}
-        external = [c for c in contacts if c['contact_type'] == 'external']
+        external = [
+            c for c in contacts
+            if c['contact_type'] == 'external'
+            and not is_automated_sender(c.get('email', ''))
+        ]
         if not external:
             return []
 

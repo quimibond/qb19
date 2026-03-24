@@ -4,6 +4,7 @@ Modelo transient para gestionar parámetros del sistema desde la UI de Odoo.
 """
 import json
 import logging
+import time
 
 from odoo import api, fields, models
 
@@ -201,3 +202,300 @@ class IntelligenceConfig(models.TransientModel):
                 'params': {'title': 'Sync Odoo → Supabase',
                            'message': 'Partners sincronizados con detalle completo. Revisa los logs.',
                            'type': 'info'}}
+
+    def action_run_diagnostics(self):
+        """Ejecuta diagnóstico completo de todos los servicios.
+
+        Resultados se imprimen en logs de Odoo.sh con formato fácil de copiar.
+        """
+        self.action_save()
+        L = _logger.info
+        W = _logger.warning
+        E = _logger.error
+
+        L('┌─────────────────────────────────────────────────────────────┐')
+        L('│           QUIMIBOND INTELLIGENCE — DIAGNÓSTICO             │')
+        L('└─────────────────────────────────────────────────────────────┘')
+
+        results = {}
+        start = time.time()
+
+        # ── 1. Configuración ──
+        L('──── TEST 1: Configuración ────')
+        get = lambda k, d='': (
+            self.env['ir.config_parameter'].sudo()
+            .get_param(f'quimibond_intelligence.{k}', d)
+        )
+        sa_json = get('service_account_json')
+        anthropic_key = get('anthropic_api_key')
+        supa_url = get('supabase_url')
+        supa_key = get('supabase_key')
+        supa_srv_key = get('supabase_service_role_key')
+        voyage_key = get('voyage_api_key')
+        claude_model = get('claude_model') or 'claude-sonnet-4-6 (default)'
+
+        checks = {
+            'service_account_json': bool(sa_json),
+            'anthropic_api_key': bool(anthropic_key),
+            'supabase_url': bool(supa_url),
+            'supabase_key': bool(supa_key or supa_srv_key),
+            'voyage_api_key': bool(voyage_key),
+        }
+        for name, ok in checks.items():
+            L('  %s %s', '✓' if ok else '✗', name)
+        L('  claude_model: %s', claude_model)
+        L('  supabase_url: %s', supa_url or '(vacío)')
+        L('  supabase_key_type: %s',
+          'service_role' if supa_srv_key else ('anon' if supa_key else 'NINGUNA'))
+        results['config'] = all(checks.values())
+
+        # ── 2. Odoo Models ──
+        L('──── TEST 2: Modelos Odoo ────')
+        odoo_models = {
+            'res.partner': 0,
+            'sale.order': 0,
+            'account.move': 0,
+            'purchase.order': 0,
+            'crm.lead': 0,
+            'stock.picking': 0,
+            'mrp.production': 0,
+            'mail.activity': 0,
+        }
+        for model_name in list(odoo_models.keys()):
+            try:
+                Model = self.env[model_name].sudo()
+                count = Model.search_count([])
+                odoo_models[model_name] = count
+                L('  ✓ %s: %d registros', model_name, count)
+            except Exception as exc:
+                W('  ✗ %s: %s', model_name, exc)
+                odoo_models[model_name] = -1
+
+        # Partners con email (los que se sincronizan)
+        try:
+            partner_count = self.env['res.partner'].sudo().search_count([
+                ('email', '!=', False), ('email', '!=', ''),
+                ('active', '=', True),
+                '|', ('customer_rank', '>', 0), ('supplier_rank', '>', 0),
+            ])
+            L('  ✓ partners sincronizables (email + cliente/proveedor): %d', partner_count)
+        except Exception as exc:
+            W('  ✗ partners sincronizables: %s', exc)
+            partner_count = 0
+
+        results['odoo'] = partner_count > 0
+
+        # ── 3. Supabase ──
+        L('──── TEST 3: Supabase ────')
+        supa_effective_key = supa_srv_key or supa_key
+        if supa_url and supa_effective_key:
+            try:
+                from ..services.supabase_service import SupabaseService
+                with SupabaseService(supa_url, supa_effective_key) as supa:
+                    tables_to_check = [
+                        ('contacts', 'id'),
+                        ('emails', 'id'),
+                        ('companies', 'id'),
+                        ('entities', 'id'),
+                        ('facts', 'id'),
+                        ('customer_health_scores', 'id'),
+                        ('revenue_metrics', 'id'),
+                        ('daily_summaries', 'id'),
+                        ('alerts', 'id'),
+                        ('account_summaries', 'id'),
+                        ('threads', 'id'),
+                    ]
+                    supa_ok = True
+                    for table, col in tables_to_check:
+                        try:
+                            rows = supa._request(
+                                f'/rest/v1/{table}?select={col}&limit=1',
+                            )
+                            count_rows = supa._request(
+                                f'/rest/v1/{table}?select={col}',
+                                extra_headers={'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0'},
+                            )
+                            # Get count from content-range header via a HEAD-like approach
+                            # Simple approach: just report accessible
+                            L('  ✓ %s: accesible', table)
+                        except Exception as exc:
+                            err_str = str(exc)
+                            if '404' in err_str or 'does not exist' in err_str:
+                                W('  ✗ %s: tabla no existe', table)
+                            else:
+                                W('  ✗ %s: %s', table, err_str[:120])
+                            supa_ok = False
+
+                    # Test RPC functions
+                    rpcs = [
+                        'resolve_all_identities',
+                        'refresh_contact_360',
+                        'detect_cross_department_topics',
+                    ]
+                    for rpc in rpcs:
+                        try:
+                            supa._request(f'/rest/v1/rpc/{rpc}', 'POST', {})
+                            L('  ✓ rpc/%s: OK', rpc)
+                        except Exception as exc:
+                            W('  ✗ rpc/%s: %s', rpc, str(exc)[:120])
+
+                results['supabase'] = supa_ok
+            except Exception as exc:
+                E('  ✗ Supabase conexión fallida: %s', exc)
+                results['supabase'] = False
+        else:
+            W('  ✗ Supabase: faltan credenciales')
+            results['supabase'] = False
+
+        # ── 4. Claude API ──
+        L('──── TEST 4: Claude API ────')
+        if anthropic_key:
+            try:
+                import anthropic as anthropic_sdk
+                client = anthropic_sdk.Anthropic(
+                    api_key=anthropic_key,
+                    max_retries=1,
+                    timeout=30.0,
+                )
+                # Test model access
+                preferred = get('claude_model') or 'claude-sonnet-4-6'
+                try:
+                    model_info = client.models.retrieve(model_id=preferred)
+                    L('  ✓ modelo %s: accesible (created: %s)', preferred, model_info.created_at)
+                except Exception as exc:
+                    W('  ✗ modelo %s: %s', preferred, exc)
+                    # Try listing available models
+                    try:
+                        available = client.models.list(limit=20)
+                        model_ids = [m.id for m in available.data if 'claude' in m.id]
+                        L('  ℹ modelos disponibles: %s', ', '.join(model_ids[:10]))
+                    except Exception as exc2:
+                        W('  ✗ listar modelos: %s', exc2)
+
+                # Test a minimal call
+                try:
+                    t0 = time.time()
+                    resp = client.messages.create(
+                        model=preferred,
+                        max_tokens=50,
+                        messages=[{'role': 'user', 'content': 'Responde solo "OK" sin nada más.'}],
+                    )
+                    latency = time.time() - t0
+                    text = resp.content[0].text if resp.content else '(vacío)'
+                    L('  ✓ test call: "%s" (%.1fs, in=%d out=%d tokens)',
+                      text.strip()[:30], latency,
+                      resp.usage.input_tokens, resp.usage.output_tokens)
+                    L('  ✓ anthropic SDK version: %s', anthropic_sdk.__version__)
+                    results['claude'] = True
+                except Exception as exc:
+                    E('  ✗ test call falló: %s', exc)
+                    results['claude'] = False
+            except Exception as exc:
+                E('  ✗ Claude init: %s', exc)
+                results['claude'] = False
+        else:
+            W('  ✗ Claude: falta anthropic_api_key')
+            results['claude'] = False
+
+        # ── 5. Gmail ──
+        L('──── TEST 5: Gmail ────')
+        if sa_json:
+            try:
+                sa_info = json.loads(sa_json)
+                L('  ✓ service account parsed: %s', sa_info.get('client_email', '?'))
+                from ..services.gmail_service import GmailService
+                gmail = GmailService(sa_info)
+
+                email_accounts = list(_load_email_accounts(self.env).keys())
+                L('  ℹ cuentas configuradas: %d', len(email_accounts))
+
+                # Test first account only
+                if email_accounts:
+                    test_acct = email_accounts[0]
+                    try:
+                        t0 = time.time()
+                        msgs, _hid = gmail.fetch_emails(test_acct, max_results=1)
+                        latency = time.time() - t0
+                        L('  ✓ Gmail %s: %d msgs (%.1fs)', test_acct, len(msgs), latency)
+                        results['gmail'] = True
+                    except Exception as exc:
+                        E('  ✗ Gmail %s: %s', test_acct, exc)
+                        results['gmail'] = False
+                else:
+                    W('  ✗ Gmail: no hay cuentas configuradas')
+                    results['gmail'] = False
+            except json.JSONDecodeError:
+                E('  ✗ service_account_json inválido (no es JSON)')
+                results['gmail'] = False
+            except Exception as exc:
+                E('  ✗ Gmail: %s', exc)
+                results['gmail'] = False
+        else:
+            W('  ✗ Gmail: falta service_account_json')
+            results['gmail'] = False
+
+        # ── 6. Voyage AI ──
+        L('──── TEST 6: Voyage AI ────')
+        if voyage_key:
+            try:
+                import httpx as _httpx
+                t0 = time.time()
+                resp = _httpx.post(
+                    'https://api.voyageai.com/v1/embeddings',
+                    headers={'Authorization': f'Bearer {voyage_key}',
+                             'Content-Type': 'application/json'},
+                    json={'model': 'voyage-3', 'input': ['test'], 'input_type': 'document'},
+                    timeout=15.0,
+                )
+                latency = time.time() - t0
+                if resp.status_code == 200:
+                    data = resp.json()
+                    dim = len(data.get('data', [{}])[0].get('embedding', []))
+                    L('  ✓ Voyage AI: OK (dim=%d, %.1fs)', dim, latency)
+                    results['voyage'] = True
+                else:
+                    W('  ✗ Voyage AI: HTTP %d — %s', resp.status_code, resp.text[:120])
+                    results['voyage'] = False
+            except Exception as exc:
+                E('  ✗ Voyage AI: %s', exc)
+                results['voyage'] = False
+        else:
+            L('  ⊘ Voyage AI: no configurado (opcional)')
+            results['voyage'] = None
+
+        # ── RESUMEN ──
+        elapsed = time.time() - start
+        L('┌─────────────────────────────────────────────────────────────┐')
+        L('│                    RESUMEN DIAGNÓSTICO                     │')
+        L('├─────────────────────────────────────────────────────────────┤')
+        for svc, ok in results.items():
+            if ok is None:
+                status = '⊘ SKIP'
+            elif ok:
+                status = '✓ OK'
+            else:
+                status = '✗ FAIL'
+            L('│  %-15s %s', svc, status)
+        L('├─────────────────────────────────────────────────────────────┤')
+        all_critical = all(v for k, v in results.items()
+                          if k != 'voyage' and v is not None)
+        if all_critical:
+            L('│  RESULTADO: ✓ TODOS LOS SERVICIOS CRÍTICOS OK            │')
+        else:
+            failed = [k for k, v in results.items()
+                      if v is False]
+            L('│  RESULTADO: ✗ SERVICIOS CON ERROR: %-23s│', ', '.join(failed))
+        L('│  Tiempo total: %.1fs                                       │', elapsed)
+        L('└─────────────────────────────────────────────────────────────┘')
+
+        ok_count = sum(1 for v in results.values() if v is True)
+        total = sum(1 for v in results.values() if v is not None)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Diagnóstico completado',
+                'message': f'{ok_count}/{total} servicios OK. Revisa los logs para el detalle.',
+                'type': 'success' if all_critical else 'warning',
+            },
+        }

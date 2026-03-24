@@ -60,6 +60,71 @@ GENERIC_DOMAINS = frozenset({
     'google.com', 'vercel.com', 'github.com',
 })
 
+# Prefixes that indicate automated/non-human senders
+AUTOMATED_PREFIXES = (
+    'noreply', 'no-reply', 'no-responder', 'donotreply',
+    'notifications', 'notification', 'alerts', 'alert',
+    'calendar-notification', 'mailer-daemon', 'postmaster',
+    'bounce', 'system', 'daemon', 'auto', 'robot',
+)
+
+# Domains of SaaS/services that are never real business contacts
+SERVICE_DOMAINS = frozenset({
+    # Dev/infra tools
+    'github.com', 'vercel.com', 'supabase.com', 'n8n.io',
+    'ngrok.com', 'anthropic.com', 'mail.anthropic.com',
+    'paddle.com', 'stripe.com', 'mongodb.com', 'voyage.mongodb.com',
+    'incident.io', 'status.incident.io', 'transactional.n8n.io',
+    'info.n8n.io',
+    # Google services
+    'accounts.google.com', 'docs.google.com',
+    # Job boards
+    'indeed.com', 'indeedemail.com', 'acciontrabajo.com',
+    'mex.acciontrabajo.com',
+    # Social/newsletters
+    'quora.com', 'ccsend.com', 'shared1.ccsend.com',
+    'constantcontact.com', 'smergers.net',
+    # Banking notifications (not business contacts)
+    'bbva.mx', 'mifel.com.mx',
+    # Logistics tracking (automated)
+    'one-line.com', 'customer.cmacgm-group.com',
+    # Consumer services
+    'uber.com', 'amazon.com', 'amazon.com.mx', 'eg.expedia.com',
+    'expedia.com',
+    # Government automated
+    'sat.gob.mx', 'buengobierno.gob.mx',
+    # Odoo notifications
+    'mail.odoo.com',
+    # Read.ai, Spaceti, etc.
+    'e.read.ai', 'spaceti.cloud',
+})
+
+
+def is_automated_sender(email: str) -> bool:
+    """Return True if email is from an automated/non-human sender."""
+    if not email:
+        return False
+    email = email.lower().strip()
+    local = email.split('@')[0] if '@' in email else ''
+    domain = email.split('@')[1] if '@' in email else ''
+
+    # Check prefix
+    for prefix in AUTOMATED_PREFIXES:
+        if local == prefix or local.startswith(prefix + '-') or local.startswith(prefix + '+'):
+            return True
+
+    # Check domain (exact or subdomain)
+    if domain in SERVICE_DOMAINS:
+        return True
+    # Check parent domain (e.g., status.incident.io → incident.io)
+    parts = domain.split('.')
+    for i in range(1, len(parts)):
+        parent = '.'.join(parts[i:])
+        if parent in SERVICE_DOMAINS:
+            return True
+
+    return False
+
 
 def is_generic_domain(domain: str) -> bool:
     """Retorna True si el dominio es genérico (Gmail, Outlook, etc.)."""

@@ -11,6 +11,10 @@
                     <button name="action_save" type="object"
                             string="Guardar configuracion"
                             class="btn-primary"/>
+                    <button name="action_run_diagnostics" type="object"
+                            string="Diagnostico"
+                            class="btn-secondary"
+                            confirm="Ejecuta pruebas de conexion a todos los servicios (Claude, Supabase, Gmail, Voyage). Resultados en los logs. Continuar?"/>
                     <button name="action_enrich_only" type="object"
                             string="Sync Odoo → Supabase"
                             class="btn-info"
