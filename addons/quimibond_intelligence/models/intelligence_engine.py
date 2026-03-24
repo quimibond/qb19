@@ -440,6 +440,7 @@ class IntelligenceEngine(models.Model):
         client_scores = analysis.compute_client_scores(
             contacts, emails, threads, cfg,
             account_summaries=account_summaries,
+            odoo_ctx=odoo_context,
         )
         contact_sentiments = {}
         for s in account_summaries:
@@ -1377,6 +1378,7 @@ class IntelligenceEngine(models.Model):
             'products': p.get('products', []),
             'purchase_patterns': p.get('purchase_patterns', {}),
             'inventory_intelligence': p.get('inventory_intelligence', {}),
+            'payment_behavior': p.get('payment_behavior', {}),
             'crm_leads': p.get('crm_leads', []),
             'pending_deliveries': p.get('pending_deliveries', []),
             'pending_activities': p.get('pending_activities', []),
@@ -2302,6 +2304,8 @@ class IntelligenceEngine(models.Model):
                     'responsiveness_score': s.get('responsiveness_score', 0),
                     'reciprocity_score': s.get('reciprocity_score', 0),
                     'sentiment_score': s.get('sentiment_score', 0),
+                    'payment_compliance_score': s.get(
+                        'payment_compliance_score', 0),
                     'risk_level': s.get('risk_level', 'medium'),
                 })
         _logger.info('%d client scores en Odoo', len(client_scores))

@@ -573,6 +573,59 @@ class AnalysisService:
                     'account': '',
                 })
 
+        # ── Payment Behavior Intelligence alerts ──────────────────────────────
+        for email_addr, p in partners.items():
+            pb = p.get('payment_behavior', {})
+            partner_name = p.get('name', email_addr)
+
+            if pb.get('invoices_analyzed', 0) < 3:
+                continue
+
+            # Alert on worsening payment trend
+            if pb.get('trend') == 'worsening':
+                recent_avg = pb.get('recent_6m_avg', 0)
+                previous_avg = pb.get('previous_6m_avg', 0)
+                compliance = pb.get('compliance_score', 0)
+                severity = 'high' if compliance < 50 else 'medium'
+                alerts.append({
+                    'alert_type': 'payment_compliance',
+                    'severity': severity,
+                    'title': (
+                        f"Deterioro en pagos: {partner_name} "
+                        f"(compliance {compliance}%)"
+                    )[:120],
+                    'description': (
+                        f"Tendencia de pago empeorando. "
+                        f"Ultimos 6m: promedio +{recent_avg:.0f}d "
+                        f"vs anteriores 6m: +{previous_avg:.0f}d. "
+                        f"Terminos: {pb.get('payment_term', 'N/A')}. "
+                        f"Compliance: {compliance}%."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+            # Alert on very low compliance regardless of trend
+            elif pb.get('compliance_score', 100) < 40:
+                avg_late = pb.get('avg_days_late', 0)
+                alerts.append({
+                    'alert_type': 'payment_compliance',
+                    'severity': 'high',
+                    'title': (
+                        f"Baja compliance de pago: {partner_name} "
+                        f"({pb['compliance_score']}%)"
+                    )[:120],
+                    'description': (
+                        f"Solo {pb.get('on_time_count', 0)} de "
+                        f"{pb.get('invoices_analyzed', 0)} facturas "
+                        f"pagadas a tiempo. "
+                        f"Promedio: +{avg_late:.0f}d tarde. "
+                        f"Terminos: {pb.get('payment_term', 'N/A')}."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
         return alerts
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -582,8 +635,18 @@ class AnalysisService:
     @staticmethod
     def compute_client_scores(contacts: list, emails: list, threads: list,
                               cfg: dict,
-                              account_summaries: list = None) -> list:
-        """Calcula score de relación 0-100 para contactos externos."""
+                              account_summaries: list = None,
+                              odoo_ctx: dict = None) -> list:
+        """Calcula score de relación 0-100 para contactos externos.
+
+        5 components × 20 pts each:
+        - frequency (email volume)
+        - responsiveness (thread engagement)
+        - reciprocity (reply rate)
+        - sentiment (emotional tone)
+        - payment_compliance (pays on time vs agreed terms)
+        """
+        odoo_ctx = odoo_ctx or {}
         external = [c for c in contacts if c['contact_type'] == 'external']
         if not external:
             return []
@@ -610,13 +673,14 @@ class AnalysisService:
                         pass
 
         scores = []
+        partners = odoo_ctx.get('partners', {})
         for c in external:
             addr = c['email']
             msg_count = email_counts.get(addr, 0)
             thread_count = thread_participation.get(addr, 0)
 
-            freq_score = min(25, 5 + msg_count * 4)
-            resp_score = min(25, 5 + thread_count * 4)
+            freq_score = min(20, 4 + msg_count * 3)
+            resp_score = min(20, 4 + thread_count * 3)
 
             related_threads = [
                 t for t in threads
@@ -624,18 +688,29 @@ class AnalysisService:
             ]
             replied_count = sum(1 for t in related_threads if t['has_internal_reply'])
             recip_score = (
-                round(replied_count / len(related_threads) * 25)
-                if related_threads else 12
+                round(replied_count / len(related_threads) * 20)
+                if related_threads else 10
             )
 
             claude_sentiment = contact_sentiments.get(addr.lower())
             if claude_sentiment is not None:
-                sent_score = round((claude_sentiment + 1) * 12.5)
-                sent_score = max(0, min(25, sent_score))
+                sent_score = round((claude_sentiment + 1) * 10)
+                sent_score = max(0, min(20, sent_score))
             else:
-                sent_score = 15
+                sent_score = 12
 
-            total = freq_score + resp_score + recip_score + sent_score
+            # Payment compliance score (0-20)
+            partner_data = partners.get(addr, {})
+            pb = partner_data.get('payment_behavior', {})
+            if pb.get('invoices_analyzed', 0) >= 3:
+                compliance_pct = pb.get('compliance_score', 50)
+                pay_score = round(compliance_pct / 100 * 20)
+                pay_score = max(0, min(20, pay_score))
+            else:
+                pay_score = 10  # neutral if not enough data
+
+            total = (freq_score + resp_score + recip_score
+                     + sent_score + pay_score)
 
             if total >= 60:
                 risk = 'low'
@@ -651,6 +726,7 @@ class AnalysisService:
                 'responsiveness_score': resp_score,
                 'reciprocity_score': recip_score,
                 'sentiment_score': sent_score,
+                'payment_compliance_score': pay_score,
                 'risk_level': risk,
             })
 

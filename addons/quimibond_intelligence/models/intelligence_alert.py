@@ -33,6 +33,7 @@ class IntelligenceAlert(models.Model):
         ('cross_sell', 'Oportunidad cross-sell'),
         ('stockout_risk', 'Riesgo de desabasto'),
         ('reorder_needed', 'Reorden necesario'),
+        ('payment_compliance', 'Deterioro en cumplimiento de pago'),
     ], string='Tipo', required=True, index=True)
     severity = fields.Selection([
         ('low', 'Baja'),

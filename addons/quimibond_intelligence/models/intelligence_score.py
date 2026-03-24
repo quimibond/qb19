@@ -17,6 +17,7 @@ class IntelligenceClientScore(models.Model):
     responsiveness_score = fields.Integer(string='Capacidad resp.')
     reciprocity_score = fields.Integer(string='Reciprocidad')
     sentiment_score = fields.Integer(string='Sentimiento')
+    payment_compliance_score = fields.Integer(string='Cumplimiento de pago')
     risk_level = fields.Selection([
         ('low', 'Bajo'),
         ('medium', 'Medio'),
