@@ -267,11 +267,9 @@ class OdooEnrichmentService:
 
         # ── 2. Ventas recientes (sale.order) ────────────────────────────────
         if models.get('sale_order'):
-            # Search by both partner_id and commercial_partner_id
+            # child_of matches the partner AND all its children
             sales = models['sale_order'].search([
-                '|',
-                ('partner_id', '=', pid),
-                ('partner_id', '=', cpid),
+                ('partner_id', 'child_of', cpid),
                 ('date_order', '>=', date_90d),
             ], order='date_order desc', limit=10)
 
@@ -293,9 +291,7 @@ class OdooEnrichmentService:
         # ── 3. Facturas pendientes (account.move) ──────────────────────────
         if models.get('account_move'):
             invoices = models['account_move'].search([
-                '|',
-                ('partner_id', '=', pid),
-                ('partner_id', '=', cpid),
+                ('partner_id', 'child_of', cpid),
                 ('move_type', 'in', ['out_invoice', 'out_refund']),
                 ('payment_state', 'in', ['not_paid', 'partial']),
             ], order='invoice_date desc', limit=10)
@@ -336,9 +332,7 @@ class OdooEnrichmentService:
         # ── 4. Compras (purchase.order) ─────────────────────────────────────
         if models.get('purchase_order') and partner.supplier_rank > 0:
             purchases = models['purchase_order'].search([
-                '|',
-                ('partner_id', '=', pid),
-                ('partner_id', '=', cpid),
+                ('partner_id', 'child_of', cpid),
                 ('date_order', '>=', date_90d),
             ], order='date_order desc', limit=10)
 
@@ -363,9 +357,7 @@ class OdooEnrichmentService:
         # ── 5. Pagos recibidos/emitidos (account.payment) ──────────────────
         if models.get('account_payment'):
             payments = models['account_payment'].search([
-                '|',
-                ('partner_id', '=', pid),
-                ('partner_id', '=', cpid),
+                ('partner_id', 'child_of', cpid),
                 ('state', '=', 'posted'),
                 ('date', '>=', date_30d),
             ], order='date desc', limit=10)
@@ -512,9 +504,7 @@ class OdooEnrichmentService:
         # ── 8. Pipeline CRM (crm.lead) ─────────────────────────────────────
         if models.get('crm_lead'):
             leads = models['crm_lead'].search([
-                '|',
-                ('partner_id', '=', pid),
-                ('partner_id', '=', cpid),
+                ('partner_id', 'child_of', cpid),
                 ('active', '=', True),
             ], order='create_date desc', limit=5)
 
@@ -544,9 +534,7 @@ class OdooEnrichmentService:
         # ── 9. Entregas y recepciones (stock.picking) ──────────────────────
         if models.get('stock_picking'):
             pickings = models['stock_picking'].search([
-                '|',
-                ('partner_id', '=', pid),
-                ('partner_id', '=', cpid),
+                ('partner_id', 'child_of', cpid),
                 ('state', 'not in', ['done', 'cancel']),
             ], order='scheduled_date asc', limit=10)
 
@@ -602,9 +590,7 @@ class OdooEnrichmentService:
             try:
                 sale_orders = (models.get('sale_order') or self.env['sale.order'].sudo())
                 so_ids = sale_orders.search([
-                    '|',
-                    ('partner_id', '=', pid),
-                    ('partner_id', '=', cpid),
+                    ('partner_id', 'child_of', cpid),
                     ('state', 'in', ['sale', 'done']),
                     ('date_order', '>=', date_90d),
                 ]).ids
@@ -656,9 +642,7 @@ class OdooEnrichmentService:
             try:
                 AM = models['account_move']
                 inv_domain = [
-                    '|',
-                    ('partner_id', '=', pid),
-                    ('partner_id', '=', cpid),
+                    ('partner_id', 'child_of', cpid),
                     ('move_type', '=', 'out_invoice'),
                     ('state', '=', 'posted'),
                 ]
@@ -820,9 +804,7 @@ class OdooEnrichmentService:
         if models.get('account_move'):
             try:
                 credit_notes = models['account_move'].search([
-                    '|',
-                    ('partner_id', '=', pid),
-                    ('partner_id', '=', cpid),
+                    ('partner_id', 'child_of', cpid),
                     ('move_type', '=', 'out_refund'),
                     ('state', '=', 'posted'),
                     ('invoice_date', '>=', date_90d),
@@ -847,9 +829,7 @@ class OdooEnrichmentService:
         if models.get('stock_picking'):
             try:
                 done_picks = models['stock_picking'].search([
-                    '|',
-                    ('partner_id', '=', pid),
-                    ('partner_id', '=', cpid),
+                    ('partner_id', 'child_of', cpid),
                     ('state', '=', 'done'),
                     ('picking_type_code', '=', 'outgoing'),
                     ('date_done', '>=', date_90d),
@@ -968,7 +948,7 @@ class OdooEnrichmentService:
 
         # Get paid invoices with both due date and payment date
         paid_invoices = AM.search([
-            ('partner_id', '=', pid),
+            ('partner_id', 'child_of', pid),
             ('move_type', '=', 'out_invoice'),
             ('state', '=', 'posted'),
             ('payment_state', 'in', ['paid', 'in_payment']),
@@ -1304,7 +1284,7 @@ class OdooEnrichmentService:
         date_6m = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
 
         all_orders = SO.search([
-            ('partner_id', '=', pid),
+            ('partner_id', 'child_of', pid),
             ('state', 'in', ['sale', 'done']),
             ('date_order', '>=', date_12m),
         ], order='date_order desc')

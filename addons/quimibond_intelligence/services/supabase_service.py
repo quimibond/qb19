@@ -352,14 +352,6 @@ class SupabaseService(SupabaseBaseClient):
             self._track(failed=len(records))
             _logger.error('save_alerts POST: %s', exc)
 
-        # Save predictions independently (don't lose them if alerts failed)
-        if predictions:
-            try:
-                self.save_prediction_outcomes(predictions)
-            except Exception as exc:
-                _logger.warning('save_alerts predictions lost (%d): %s',
-                                len(predictions), exc)
-
     # ── Account Summaries ────────────────────────────────────────────────────
 
     def save_account_summaries(self, summaries: list, today: str):
@@ -590,18 +582,6 @@ class SupabaseService(SupabaseBaseClient):
         except Exception as exc:
             _logger.warning('save_action_item POST: %s', exc)
 
-        # Save prediction independently (don't lose it if POST failed)
-        try:
-            today = datetime.now().strftime('%Y-%m-%d')
-            self.save_prediction_outcomes([{
-                'action': item_with_prediction,
-                'prediction_id': prediction_id,
-                'prediction_confidence': prediction_confidence,
-                'today': today,
-            }])
-        except Exception as exc:
-            _logger.warning('Action item prediction outcome lost: %s', exc)
-
         return result
 
     def save_relationship(self, rel):
@@ -784,38 +764,6 @@ class SupabaseService(SupabaseBaseClient):
             return result[0] if result else None
         except Exception:
             return None
-
-    def get_person_profiles_for_contacts(self, emails: list) -> dict:
-        """Obtiene perfiles de múltiples personas por email desde contacts.
-
-        Retorna dict: {email → profile_data}
-        """
-        if not emails:
-            return {}
-        profiles = {}
-        chunk = 50
-        for i in range(0, len(emails), chunk):
-            part = emails[i:i + chunk]
-            enc = _postgrest_in_list([e.lower() for e in part if e])
-            if not enc:
-                continue
-            try:
-                rows = self._request(
-                    '/rest/v1/contacts?'
-                    'select=id,email,name,company,company_id,role,department,'
-                    'decision_power,communication_style,language_preference,'
-                    'key_interests,personality_notes,negotiation_style,'
-                    'response_pattern,influence_on_deals,interaction_count'
-                    f'&email=in.({enc})',
-                )
-                if isinstance(rows, list):
-                    for r in rows:
-                        key = (r.get('email') or '').lower()
-                        if key:
-                            profiles[key] = r
-            except Exception as exc:
-                _logger.debug('get_person_profiles batch: %s', exc)
-        return profiles
 
     # ── Topics ────────────────────────────────────────────────────────────────
 
@@ -1079,61 +1027,6 @@ class SupabaseService(SupabaseBaseClient):
             _logger.warning('save_company_profile %s: %s', company_id, exc)
 
 
-    # ── System Learning ───────────────────────────────────────────────────────
-
-    def save_learning(self, learning_type: str, description: str,
-                      data: dict = None, account: str = None):
-        """Registra un aprendizaje del sistema."""
-        try:
-            self._request('/rest/v1/system_learning', 'POST', {
-                'learning_type': learning_type,
-                'description': description,
-                'data': data or {},
-                'account': account,
-            })
-        except Exception as exc:
-            _logger.debug('save_learning: %s', exc)
-
-    # ── Communication Patterns ────────────────────────────────────────────────
-
-    def save_communication_patterns(self, patterns: list):
-        """Guarda patrones de comunicación por cuenta/semana.
-
-        Schema: communication_patterns(week_start, account, total_emails,
-            response_rate, avg_response_hours, top_external_contacts,
-            top_internal_contacts, busiest_hour, common_subjects,
-            sentiment_score)
-        Unique on (week_start, account).
-        """
-        if not patterns:
-            return
-
-        records = []
-        for p in patterns:
-            if not p.get('account') or not p.get('week_start'):
-                continue
-            records.append({
-                'week_start': p['week_start'],
-                'account': p['account'],
-                'total_emails': p.get('total_emails', 0),
-                'response_rate': p.get('response_rate'),
-                'avg_response_hours': p.get('avg_response_hours'),
-                'top_external_contacts': p.get('top_external_contacts', []),
-                'top_internal_contacts': p.get('top_internal_contacts', []),
-                'busiest_hour': p.get('busiest_hour'),
-                'common_subjects': p.get('common_subjects', []),
-                'sentiment_score': p.get('sentiment_score'),
-            })
-
-        if records:
-            self._upsert_batch(
-                '/rest/v1/communication_patterns'
-                '?on_conflict=week_start,account',
-                records, 'merge-duplicates',
-            )
-            self._track(success=len(records))
-        _logger.info('✓ %d communication patterns guardados', len(records))
-
     # ── Action Items (update status) ──────────────────────────────────────────
 
     def complete_action_item(self, action_id: int):
@@ -1194,88 +1087,6 @@ class SupabaseService(SupabaseBaseClient):
             )
         except Exception as exc:
             _logger.debug('update_alert_state: %s', exc)
-
-    def save_prediction_outcomes(self, predictions: list):
-        """Registra outcomes de predicciones (alertas y acciones).
-
-        Cada predicción incluye:
-        - alert/action: el registro completo de alerta o acción
-        - prediction_id: UUID generado para esta predicción
-        - prediction_confidence: confianza de la predicción (0-1)
-        - today: fecha de la predicción
-
-        Se inserta un registro en prediction_outcomes con:
-        - prediction_id: UUID de la predicción
-        - prediction_type: 'alert' o 'action'
-        - prediction_date: fecha de predicción (hoy)
-        - prediction_summary: título de alerta o descripción de acción
-        - predicted_severity: severidad de alerta o prioridad de acción
-        - confidence: confianza (0-1)
-        - account: cuenta/departamento si aplica
-        - contact_email: email del contacto si aplica
-        - outcome_type: NULL hasta que el usuario proporcione feedback
-        """
-        if not predictions:
-            return
-
-        records = []
-        for pred in predictions:
-            alert = pred.get('alert')
-            action = pred.get('action')
-            prediction_id = pred.get('prediction_id')
-            prediction_confidence = pred.get('prediction_confidence', 0.5)
-            today = pred.get('today', datetime.now().strftime('%Y-%m-%d'))
-
-            if alert:
-                # Predicción de alerta
-                record = {
-                    'prediction_id': prediction_id,
-                    'prediction_type': 'alert',
-                    'prediction_date': today,
-                    'prediction_summary': alert.get('title', ''),
-                    'predicted_severity': alert.get('severity', 'medium'),
-                    'confidence': prediction_confidence,
-                    'account': alert.get('account'),
-                    'contact_email': alert.get('contact_email'),
-                    'outcome_type': None,
-                }
-                # Intentar resolver contact_email desde contact_name
-                if not record.get('contact_email') and alert.get('contact_name'):
-                    try:
-                        encoded = url_quote(alert['contact_name'], safe='')
-                        resp = self._request(
-                            f'/rest/v1/contacts?name=eq.{encoded}&select=email'
-                        )
-                        if resp and isinstance(resp, list) and resp:
-                            record['contact_email'] = resp[0].get('email')
-                    except Exception:
-                        pass
-                records.append(record)
-
-            elif action:
-                # Predicción de acción
-                record = {
-                    'prediction_id': prediction_id,
-                    'prediction_type': 'action',
-                    'prediction_date': today,
-                    'prediction_summary': action.get('description', ''),
-                    'predicted_severity': action.get('priority', 'medium'),
-                    'confidence': prediction_confidence,
-                    'account': action.get('source_account'),
-                    'contact_email': None,
-                    'outcome_type': None,
-                }
-                records.append(record)
-
-        if records:
-            try:
-                self._request('/rest/v1/prediction_outcomes', 'POST', records)
-                self._track(success=len(records))
-                _logger.info('✓ %d prediction outcomes guardados', len(records))
-            except Exception as exc:
-                self._track(failed=len(records))
-                _logger.warning('save_prediction_outcomes lost %d records: %s',
-                                len(records), exc)
 
     # ── Revenue Metrics ──────────────────────────────────────────────────────
 
