@@ -1,6 +1,10 @@
 """
-Quimibond Intelligence — Motor Principal
-Orquesta el pipeline: Odoo (fuente de verdad) → Supabase → Gmail (contexto) → Claude → Scoring → Briefing.
+Quimibond Intelligence — Motor Principal (Orquestador)
+Delega a servicios especializados:
+- OdooEnrichmentService: enriquecimiento profundo con Odoo ORM
+- AnalysisService: métricas, alertas, scoring, briefing
+- SyncService: sincronización Odoo→Supabase (pendiente de extraer)
+- KnowledgeGraphService: extracción de entidades y hechos (pendiente de extraer)
 """
 import json
 import logging
@@ -73,12 +77,7 @@ class IntelligenceEngine(models.Model):
 
     @api.model
     def run_sync_emails(self):
-        """Sync incremental de emails desde Gmail → Supabase.
-
-        Corre cada 30 min. Solo lee emails, deduplica, guarda en Supabase,
-        y construye threads. Los contactos ya existen desde Odoo (fuente de
-        verdad) — aquí solo se guardan emails y threads como contexto.
-        """
+        """Sync incremental de emails desde Gmail → Supabase. Corre cada 30 min."""
         lock = 'quimibond_intelligence.sync_emails_running'
         ICP = self.env['ir.config_parameter'].sudo()
         if ICP.get_param(lock, 'false') == 'true':
@@ -101,7 +100,6 @@ class IntelligenceEngine(models.Model):
             gmail = GmailService(sa_info)
 
             with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-                # Read emails (incremental)
                 gmail_history = self._load_gmail_history_state()
                 result = gmail.read_all_accounts(
                     email_accounts, history_state=gmail_history, max_workers=5,
@@ -113,22 +111,18 @@ class IntelligenceEngine(models.Model):
                     _logger.info('Sync: sin emails nuevos')
                     return
 
-                # Dedup + assign department
                 emails = self._deduplicate(all_emails)
                 for e in emails:
                     e['department'] = account_departments.get(
                         e['account'], 'Otro')
 
-                # Save emails + threads (contexto sobre contactos Odoo)
                 supa.save_emails(emails)
                 threads = self._build_threads(emails, cfg)
                 supa.save_threads(threads)
 
-                # Sync Gmail history to Supabase
                 for acct, hid in result['gmail_history_state'].items():
                     supa.save_sync_state(acct, str(hid))
 
-                # Log event
                 supa._request('/rest/v1/events', 'POST', {
                     'event_type': 'emails_synced',
                     'source': 'cron_sync_emails',
@@ -152,11 +146,7 @@ class IntelligenceEngine(models.Model):
 
     @api.model
     def run_analyze_emails(self):
-        """Analiza emails no procesados con Claude.
-
-        Corre cada 1-2h. Usa Odoo como base de enriquecimiento (partners ya
-        sincronizados). Los emails son contexto que se analiza sobre esa base.
-        """
+        """Analiza emails no procesados con Claude. Corre cada 1-2h."""
         lock = 'quimibond_intelligence.analyze_running'
         ICP = self.env['ir.config_parameter'].sudo()
         if ICP.get_param(lock, 'false') == 'true':
@@ -171,20 +161,23 @@ class IntelligenceEngine(models.Model):
 
             account_departments = get_account_departments(self.env)
 
+            from ..services.analysis_service import AnalysisService
             from ..services.claude_service import ClaudeService, VoyageService
+            from ..services.odoo_enrichment import OdooEnrichmentService
             from ..services.supabase_service import SupabaseService
 
             claude = ClaudeService(cfg['anthropic_api_key'])
             voyage = (VoyageService(cfg['voyage_api_key'])
                       if cfg.get('voyage_api_key') else None)
             today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+            analysis = AnalysisService()
 
             # Odoo enrichment primero (fuente de verdad)
-            contacts = self._extract_odoo_contacts()
-            odoo_context = self._enrich_with_odoo(contacts, [])
+            odoo_svc = OdooEnrichmentService(self.env)
+            contacts = odoo_svc.extract_contacts()
+            odoo_context = odoo_svc.enrich(contacts)
 
             with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-                # Load recent emails from Supabase (contexto)
                 try:
                     recent_emails = supa._request(
                         '/rest/v1/emails?order=email_date.desc'
@@ -199,7 +192,6 @@ class IntelligenceEngine(models.Model):
                     _logger.info('Analyze: sin emails recientes')
                     return
 
-                # Convert Supabase format back to pipeline format
                 emails = []
                 for e in recent_emails:
                     emails.append({
@@ -222,33 +214,28 @@ class IntelligenceEngine(models.Model):
                             e.get('account', ''), 'Otro'),
                     })
 
-                # Claude analysis (con contexto Odoo)
                 account_summaries = self._analyze_accounts(
                     emails, claude, odoo_context, account_departments,
                     supa=supa,
                 )
                 supa.save_account_summaries(account_summaries, today)
 
-                # Metrics + alerts + scores
                 threads = self._build_threads(emails, cfg)
-                metrics = self._compute_metrics(emails, threads, cfg)
+                metrics = analysis.compute_metrics(emails, threads, cfg)
                 supa.save_metrics(metrics, today)
 
-                alerts = self._generate_alerts(
+                alerts = analysis.generate_alerts(
                     threads, metrics, cfg,
                     account_summaries=account_summaries,
                     odoo_ctx=odoo_context,
                 )
                 supa.save_alerts(alerts, today)
 
-                # KG extraction
                 self._feed_knowledge_graph(emails, claude, supa, today)
 
-                # Embeddings
                 if voyage:
                     self._generate_embeddings(emails, voyage, supa)
 
-                # Log event
                 supa._request('/rest/v1/events', 'POST', {
                     'event_type': 'emails_analyzed',
                     'source': 'cron_analyze_emails',
@@ -272,11 +259,7 @@ class IntelligenceEngine(models.Model):
 
     @api.model
     def run_update_scores(self):
-        """Recalcula health scores y sync Odoo→Supabase.
-
-        Corre cada 2h. Odoo-first: carga partners de Odoo, enriquece,
-        sincroniza a Supabase, recalcula scores. No requiere Claude ni Gmail.
-        """
+        """Recalcula health scores y sync Odoo→Supabase. Corre cada 2h."""
         lock = 'quimibond_intelligence.scores_running'
         ICP = self.env['ir.config_parameter'].sudo()
         if ICP.get_param(lock, 'false') == 'true':
@@ -289,25 +272,22 @@ class IntelligenceEngine(models.Model):
             if not cfg:
                 return
 
+            from ..services.odoo_enrichment import OdooEnrichmentService
             from ..services.supabase_service import SupabaseService
             today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
 
-            # Odoo-first: cargar partners directamente de Odoo
-            contacts = self._extract_odoo_contacts()
+            odoo_svc = OdooEnrichmentService(self.env)
+            contacts = odoo_svc.extract_contacts()
             if not contacts:
                 return
-
-            odoo_ctx = self._enrich_with_odoo(contacts, [])
+            odoo_ctx = odoo_svc.enrich(contacts)
 
             with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-                # Sync to Supabase
                 if odoo_ctx.get('partners'):
                     self._sync_contacts_to_supabase(odoo_ctx, supa, today)
 
-                # Link IDs
                 self._link_odoo_ids(supa)
 
-                # Health scores
                 sb_contacts = [
                     {'email': e, 'contact_type': 'external'}
                     for e in odoo_ctx.get('partners', {})
@@ -320,12 +300,10 @@ class IntelligenceEngine(models.Model):
                     sb_contacts, account_summaries, today,
                 )
 
-                # Refresh view
                 supa._request(
                     '/rest/v1/rpc/refresh_contact_360', 'POST', {},
                 )
 
-                # Log event
                 supa._request('/rest/v1/events', 'POST', {
                     'event_type': 'scores_updated',
                     'source': 'cron_update_scores',
@@ -351,16 +329,13 @@ class IntelligenceEngine(models.Model):
 
     def _run_pipeline(self, today: str, start: float):
         """Ejecuta el pipeline completo. Separado para manejo de errores."""
-        # ── Cargar configuración ──────────────────────────────────────────────
         cfg = self._load_config()
         if not cfg:
             return
 
-        # ── Cargar cuentas de email desde configuración ───────────────────────
         email_accounts = get_email_accounts(self.env)
         account_departments = get_account_departments(self.env)
 
-        # ── Instanciar servicios ──────────────────────────────────────────────
         gmail, claude, voyage, supa = self._init_services(cfg)
 
         try:
@@ -379,18 +354,17 @@ class IntelligenceEngine(models.Model):
     def _run_pipeline_with_services(self, cfg, gmail, claude, voyage, supa,
                                      email_accounts, account_departments,
                                      today, start):
-        """Pipeline body — separated so supa.close() always runs.
+        """Pipeline body — separated so supa.close() always runs."""
+        from ..services.analysis_service import AnalysisService
+        from ..services.odoo_enrichment import OdooEnrichmentService
 
-        Odoo-first: primero carga partners de Odoo y sincroniza a Supabase,
-        luego los emails se procesan como capa de contexto sobre esa base.
-        """
+        analysis = AnalysisService()
+        odoo_svc = OdooEnrichmentService(self.env)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 1: Odoo → Supabase (fuente de verdad)
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 1: Odoo → Supabase ══
         _logger.info('── FASE 1: Odoo → Supabase (fuente de verdad) ──')
-        contacts = self._extract_odoo_contacts()
-        odoo_context = self._enrich_with_odoo(contacts, [])
+        contacts = odoo_svc.extract_contacts()
+        odoo_context = odoo_svc.enrich(contacts)
 
         if odoo_context.get('partners'):
             self._sync_contacts_to_supabase(odoo_context, supa, today)
@@ -400,9 +374,7 @@ class IntelligenceEngine(models.Model):
         else:
             _logger.warning('Sin partners Odoo — continuando con emails')
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 2: Leer emails (capa de contexto)
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 2: Leer emails ══
         _logger.info('── FASE 2: Lectura de emails ──')
         gmail_history_state = self._load_gmail_history_state()
         result = gmail.read_all_accounts(
@@ -417,14 +389,11 @@ class IntelligenceEngine(models.Model):
             _logger.warning('Sin emails — solo se sincronizó Odoo')
             return
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 3: Dedup + persistencia de emails/threads
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 3: Dedup + persistencia ══
         _logger.info('── FASE 3: Dedup + persistencia ──')
         emails = self._deduplicate(all_emails)
         _logger.info('Después de dedup: %d emails únicos', len(emails))
 
-        # Asignar departamento
         for e in emails:
             e['department'] = account_departments.get(e['account'], 'Otro')
 
@@ -433,16 +402,13 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando emails: %s', exc)
 
-        # Threads (contexto sobre contactos Odoo ya existentes)
         threads = self._build_threads(emails, cfg)
         try:
             supa.save_threads(threads)
         except Exception as exc:
             _logger.error('Error guardando threads: %s', exc)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 4: Análisis con Claude (por cuenta, con contexto Odoo)
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 4: Análisis con Claude ══
         _logger.info('── FASE 4: Análisis Claude por cuenta ──')
         account_summaries = self._analyze_accounts(
             emails, claude, odoo_context, account_departments, supa=supa,
@@ -453,17 +419,15 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando summaries: %s', exc)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 5: Métricas y scoring
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 5: Métricas y scoring ══
         _logger.info('── FASE 5: Métricas y scoring ──')
-        metrics = self._compute_metrics(emails, threads, cfg)
+        metrics = analysis.compute_metrics(emails, threads, cfg)
         try:
             supa.save_metrics(metrics, today)
         except Exception as exc:
             _logger.error('Error guardando métricas: %s', exc)
 
-        alerts = self._generate_alerts(
+        alerts = analysis.generate_alerts(
             threads, metrics, cfg,
             account_summaries=account_summaries,
             odoo_ctx=odoo_context,
@@ -473,11 +437,10 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando alertas: %s', exc)
 
-        client_scores = self._compute_client_scores(
+        client_scores = analysis.compute_client_scores(
             contacts, emails, threads, cfg,
             account_summaries=account_summaries,
         )
-        # Build sentiment map from Claude analysis for contacts.sentiment_score
         contact_sentiments = {}
         for s in account_summaries:
             for ec in s.get('external_contacts', []):
@@ -498,9 +461,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando client scores: %s', exc)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 6: Contexto histórico + Síntesis ejecutiva
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 6: Síntesis ejecutiva ══
         _logger.info('── FASE 6: Síntesis ejecutiva ──')
         historical = {}
         try:
@@ -508,7 +469,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.warning('Sin contexto histórico: %s', exc)
 
-        data_package = self._build_data_package(
+        data_package = analysis.build_data_package(
             today, account_summaries, metrics, alerts, threads,
             client_scores, odoo_context, historical,
         )
@@ -522,7 +483,6 @@ class IntelligenceEngine(models.Model):
                 '<p>Emails procesados: %d | Cuentas OK: %d | Fallidas: %d</p>'
             ) % (exc, len(emails), result['success_count'], result['failed_count'])
 
-        # Extraer temas
         topics = []
         try:
             topics = claude.extract_topics(briefing_html)
@@ -530,17 +490,14 @@ class IntelligenceEngine(models.Model):
             _logger.error('Error extrayendo temas: %s', exc)
         _logger.info('%d temas extraídos', len(topics))
 
-        # Guardar temas en Supabase
         if topics:
             try:
                 supa.save_topics(topics, today)
             except Exception as exc:
                 _logger.error('Error guardando topics: %s', exc)
 
-        # Build key_events for daily_summaries (frontend urgency panel)
-        key_events = self._build_key_events(alerts, account_summaries)
+        key_events = analysis.build_key_events(alerts, account_summaries)
 
-        # Guardar en daily_summaries (resumen de texto)
         try:
             supa.save_daily_summary(
                 today, briefing_html, len(emails),
@@ -550,7 +507,6 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando daily summary: %s', exc)
 
-        # Cross-department signal detection
         try:
             signals = supa._request(
                 '/rest/v1/rpc/detect_cross_department_topics', 'POST', {},
@@ -561,30 +517,22 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.debug('cross_department_signals: %s', exc)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 7: Knowledge Graph — Extracción de entidades y hechos
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 7: Knowledge Graph ══
         _logger.info('── FASE 7: Knowledge Graph ──')
         self._feed_knowledge_graph(emails, claude, supa, today)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 8: Embeddings (Voyage AI)
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 8: Embeddings ══
         if cfg.get('voyage_api_key'):
             _logger.info('── FASE 8: Embeddings ──')
             self._generate_embeddings(emails, voyage, supa)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 8.5: Scoring, patrones y aprendizaje
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 8.5: Scoring y aprendizaje ══
         _logger.info('── FASE 8.5: Scoring y aprendizaje ──')
 
-        # Generate accountability alerts from action verification
         self._generate_accountability_alerts(
             odoo_context, alerts, supa, today,
         )
 
-        # Compute and save customer health scores
         try:
             sb_contacts = [
                 {'email': e, 'contact_type': 'external'}
@@ -596,9 +544,8 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.debug('Health scores: %s', exc)
 
-        # Save communication patterns
         try:
-            patterns = self._compute_communication_patterns(
+            patterns = analysis.compute_communication_patterns(
                 emails, threads, today,
             )
             if patterns:
@@ -606,18 +553,14 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.debug('Communication patterns: %s', exc)
 
-        # Detect and save system learnings
-        self._detect_learnings(
+        analysis.detect_learnings(
             metrics, alerts, client_scores, odoo_context, supa,
         )
 
-        # Sync Gmail history state to Supabase sync_state table
         for acct, hid in result['gmail_history_state'].items():
             supa.save_sync_state(acct, str(hid))
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 9: Enviar briefing por email
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 9: Envío del briefing ══
         _logger.info('── FASE 9: Envío del briefing ──')
         sender = (cfg.get('sender_email') or '').strip()
         recipient = (cfg.get('recipient_email') or '').strip()
@@ -625,14 +568,13 @@ class IntelligenceEngine(models.Model):
             try:
                 subject = f'Intelligence Briefing — {today}'
                 gmail.send_email(sender, recipient,
-                                 subject, self._wrap_briefing_html(briefing_html, today))
+                                 subject, analysis.wrap_briefing_html(briefing_html, today))
                 _logger.info('Briefing enviado a %s', recipient)
             except Exception as exc:
                 _logger.error('Error enviando briefing: %s', exc)
         else:
             _logger.warning('Briefing no enviado: falta sender_email o recipient_email en config')
 
-        # -- Guardar en Odoo (Capa 2) --
         try:
             self._save_to_odoo(
                 today, briefing_html, emails, alerts,
@@ -643,9 +585,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('Error guardando en Odoo: %s', exc)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 10: Feedback Processing (Phase 2 — Auto-mejora)
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 10: Feedback Processing ══
         _logger.info('── FASE 10: Feedback processing ──')
         try:
             from ..services.feedback_service import FeedbackService
@@ -659,16 +599,13 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.warning('Feedback processing (non-critical): %s', exc)
 
-        # ══════════════════════════════════════════════════════════════════════
-        #  FASE 10.5: Enriquecer empresas con Claude
-        # ══════════════════════════════════════════════════════════════════════
+        # ══ FASE 10.5: Company enrichment ══
         _logger.info('── FASE 10.5: Company enrichment ──')
         try:
             self._enrich_companies(supa, claude, today)
         except Exception as exc:
             _logger.warning('Company enrichment error: %s', exc, exc_info=True)
 
-        # Refresh contact_360 materialized view
         try:
             supa._request(
                 '/rest/v1/rpc/refresh_contact_360', 'POST', {},
@@ -680,7 +617,7 @@ class IntelligenceEngine(models.Model):
         _logger.info('Pipeline completado exitosamente')
 
     # ══════════════════════════════════════════════════════════════════════════
-    #   PUNTO DE ENTRADA: CALIBRACIÓN SEMANAL (Phase 2 — Auto-mejora)
+    #   CALIBRACIÓN SEMANAL (Phase 2 — Auto-mejora)
     # ══════════════════════════════════════════════════════════════════════════
 
     @api.model
@@ -706,46 +643,37 @@ class IntelligenceEngine(models.Model):
                                 metric_before=0.0,
                                 metric_after=modifier,
                             )
-                _logger.info('Action priorities: %s', priorities)
+                    _logger.info('Action priorities: %s', priorities)
             except Exception as exc:
                 _logger.error('Error en calibración semanal: %s', exc, exc_info=True)
         _logger.info('═══ WEEKLY CALIBRATION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
-    #   ENRICH ONLY — Actualiza datos de Odoo→Supabase sin pipeline completo
+    #   ENRICH ONLY — Odoo→Supabase sin pipeline completo
     # ══════════════════════════════════════════════════════════════════════════
 
     @api.model
     def run_enrich_only(self):
-        """Sincroniza datos de Odoo → Supabase. Odoo es la fuente de verdad.
-
-        Flujo Odoo-first:
-        1. Carga TODOS los partners activos de Odoo (clientes + proveedores)
-        2. Agrupa por empresa (parent_id o is_company)
-        3. Enriquece cada partner con las 17 dimensiones
-        4. Crea/actualiza contactos y empresas en Supabase
-        5. Guarda snapshots diarios para tendencias
-        6. Recomputa health scores y refresca vistas
-
-        No lee emails, no llama a Claude para briefing.
-        """
+        """Sincroniza datos de Odoo → Supabase. Odoo es la fuente de verdad."""
         _logger.info('═══ ODOO → SUPABASE SYNC — %s ═══',
                       datetime.now(TZ_CDMX).strftime('%Y-%m-%d %H:%M'))
         cfg = self._load_config()
         if not cfg:
             return
 
+        from ..services.odoo_enrichment import OdooEnrichmentService
         from ..services.supabase_service import SupabaseService
         today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
 
-        # ── FASE 1: Cargar partners de Odoo (fuente de verdad) ──────────
-        models = self._load_odoo_models()
-        if 'partner' not in models:
+        odoo_svc = OdooEnrichmentService(self.env)
+
+        # ── FASE 1: Cargar partners de Odoo ──
+        odoo_models = odoo_svc.load_models()
+        if 'partner' not in odoo_models:
             _logger.error('res.partner no disponible')
             return
-        Partner = models['partner']
+        Partner = odoo_models['partner']
 
-        # Clientes y proveedores activos con email
         odoo_partners = Partner.search([
             ('email', '!=', False),
             ('email', '!=', ''),
@@ -761,7 +689,7 @@ class IntelligenceEngine(models.Model):
 
         _logger.info('FASE 1: %d partners activos en Odoo', len(odoo_partners))
 
-        # ── FASE 2: Enriquecer cada partner (17 dimensiones) ────────────
+        # ── FASE 2: Enriquecer cada partner (17 dimensiones) ──
         _logger.info('FASE 2: Enriquecimiento profundo')
         date_90d = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
         date_30d = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
@@ -782,8 +710,8 @@ class IntelligenceEngine(models.Model):
                 email_addr = partner.email.strip().lower()
                 if not email_addr or '@' not in email_addr:
                     continue
-                ctx = self._enrich_partner(
-                    partner, models, date_90d, date_30d,
+                ctx = odoo_svc.enrich_partner(
+                    partner, odoo_models, date_90d, date_30d,
                     date_7d, today_date,
                 )
                 odoo_ctx['partners'][email_addr] = ctx
@@ -798,22 +726,20 @@ class IntelligenceEngine(models.Model):
         _logger.info('✓ %d/%d partners enriquecidos',
                      enriched, len(odoo_partners))
 
-        # Contexto global
-        odoo_ctx['action_followup'] = self._verify_pending_actions(
+        odoo_ctx['action_followup'] = odoo_svc.verify_pending_actions(
             today_date)
-        if models.get('crm_lead'):
-            odoo_ctx['global_pipeline'] = self._get_global_pipeline(
-                models['crm_lead'])
-        if models.get('mail_activity'):
-            odoo_ctx['team_activities'] = self._get_team_activities(
-                models['mail_activity'], today_date)
+        if odoo_models.get('crm_lead'):
+            odoo_ctx['global_pipeline'] = odoo_svc.get_global_pipeline(
+                odoo_models['crm_lead'])
+        if odoo_models.get('mail_activity'):
+            odoo_ctx['team_activities'] = odoo_svc.get_team_activities(
+                odoo_models['mail_activity'], today_date)
 
-        # ── FASE 3: Sync a Supabase ────────────────────────────────────
+        # ── FASE 3: Sync a Supabase ──
         _logger.info('FASE 3: Sync a Supabase (%d partners)',
                      len(odoo_ctx['partners']))
 
         with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
-            # 3a. Asegurar que todos los partners existan como contactos
             contacts_to_save = []
             for email_addr, p in odoo_ctx['partners'].items():
                 company_name = p.get('company_name', '')
@@ -826,13 +752,10 @@ class IntelligenceEngine(models.Model):
             if contacts_to_save:
                 supa.save_contacts(contacts_to_save)
 
-            # 3b. Sync completo (contactos + empresas + revenue + snapshots)
             self._sync_contacts_to_supabase(odoo_ctx, supa, today)
-
-            # 3c. Link internal contacts + entities to Odoo IDs
             self._link_odoo_ids(supa)
 
-            # ── FASE 4: Health scores ──────────────────────────────────
+            # ── FASE 4: Health scores ──
             _logger.info('FASE 4: Health scores')
             try:
                 sb_contacts = [
@@ -849,7 +772,7 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.debug('Health scores: %s', exc)
 
-            # ── FASE 5: Company enrichment con Claude ──────────────────
+            # ── FASE 5: Company enrichment con Claude ──
             _logger.info('FASE 5: Company enrichment')
             try:
                 from ..services.claude_service import ClaudeService
@@ -861,7 +784,7 @@ class IntelligenceEngine(models.Model):
                 _logger.warning('Company enrichment: %s', exc,
                                 exc_info=True)
 
-            # ── FASE 6: Identity resolution + refresh ──────────────────
+            # ── FASE 6: Identity resolution + refresh ──
             _logger.info('FASE 6: Identity resolution')
             try:
                 supa._request(
@@ -888,7 +811,7 @@ class IntelligenceEngine(models.Model):
                      enriched)
 
     # ══════════════════════════════════════════════════════════════════════════
-    #   DATA RETENTION — Limpieza de datos antiguos
+    #   DATA RETENTION
     # ══════════════════════════════════════════════════════════════════════════
 
     @api.model
@@ -897,8 +820,6 @@ class IntelligenceEngine(models.Model):
         _logger.info('═══ DATA RETENTION ═══')
         today = fields.Date.today()
 
-        # ── Odoo cleanup ──────────────────────────────────────────────────
-        # Archive briefings older than 90 days
         old_briefings = self.env['intelligence.briefing'].sudo().search([
             ('date', '<', today - timedelta(days=90)),
             ('state', '!=', 'archived'),
@@ -907,7 +828,6 @@ class IntelligenceEngine(models.Model):
             old_briefings.write({'state': 'archived'})
             _logger.info('Archived %d old briefings', len(old_briefings))
 
-        # Delete client scores older than 180 days
         old_scores = self.env['intelligence.client.score'].sudo().search([
             ('date', '<', today - timedelta(days=180)),
         ])
@@ -916,7 +836,6 @@ class IntelligenceEngine(models.Model):
             old_scores.unlink()
             _logger.info('Deleted %d old client scores', count)
 
-        # Auto-cancel overdue actions older than 30 days
         stale_actions = self.env['intelligence.action.item'].sudo().search([
             ('state', 'in', ['open', 'in_progress']),
             ('due_date', '<', today - timedelta(days=30)),
@@ -925,7 +844,6 @@ class IntelligenceEngine(models.Model):
             stale_actions.write({'state': 'cancelled'})
             _logger.info('Auto-cancelled %d stale actions', len(stale_actions))
 
-        # ── Supabase cleanup ─────────────────────────────────────────────
         cfg = self._load_config()
         if not cfg:
             _logger.info('═══ DATA RETENTION DONE (Odoo only) ═══')
@@ -940,33 +858,25 @@ class IntelligenceEngine(models.Model):
                     datetime.now() - timedelta(days=180)
                 ).strftime('%Y-%m-%d')
 
-                # Delete old resolved alerts (>90 days)
                 supa._request(
                     '/rest/v1/alerts?is_resolved=eq.true'
                     f'&created_at=lt.{cutoff_90d}T00:00:00Z',
                     'DELETE',
                 )
-
-                # Delete old system_learning (>180 days)
                 supa._request(
                     f'/rest/v1/system_learning?learning_date=lt.{cutoff_180d}',
                     'DELETE',
                 )
-
-                # Delete old prediction_outcomes (>180 days)
                 supa._request(
                     f'/rest/v1/prediction_outcomes?prediction_date=lt.{cutoff_180d}',
                     'DELETE',
                 )
-
-                # Expire old unverified facts (>180 days)
                 supa._request(
                     '/rest/v1/facts?verified=eq.false'
                     f'&fact_date=lt.{cutoff_180d}',
                     'PATCH', {'expired': True},
                 )
 
-                # Decay fact confidence (temporal)
                 decay_result = supa.decay_fact_confidence()
                 _logger.info(
                     'Fact decay: %s decayed, %s expired',
@@ -974,7 +884,6 @@ class IntelligenceEngine(models.Model):
                     decay_result.get('expired', 0),
                 )
 
-                # Auto-deduplicate entities (same_email only)
                 dedup_result = supa.auto_deduplicate_entities()
                 if dedup_result.get('merged', 0):
                     _logger.info(
@@ -983,14 +892,12 @@ class IntelligenceEngine(models.Model):
                         dedup_result['candidates'],
                     )
 
-                # Cleanup old company snapshots (>365 days)
                 try:
                     supa._request(
                         '/rest/v1/rpc/cleanup_old_snapshots', 'POST',
                         {'p_days': 365},
                     )
                 except Exception:
-                    # Fallback: direct delete if RPC not yet deployed
                     cutoff_365d = (
                         datetime.now() - timedelta(days=365)
                     ).strftime('%Y-%m-%d')
@@ -1007,7 +914,7 @@ class IntelligenceEngine(models.Model):
         _logger.info('═══ DATA RETENTION DONE ═══')
 
     # ══════════════════════════════════════════════════════════════════════════
-    #   PUNTO DE ENTRADA: REPORTE SEMANAL (lunes 8am)
+    #   REPORTE SEMANAL
     # ══════════════════════════════════════════════════════════════════════════
 
     @api.model
@@ -1018,15 +925,16 @@ class IntelligenceEngine(models.Model):
         if not cfg:
             return
 
+        from ..services.analysis_service import AnalysisService
         from ..services.claude_service import ClaudeService
         from ..services.supabase_service import SupabaseService
 
         claude = ClaudeService(cfg['anthropic_api_key'])
+        analysis = AnalysisService()
 
         with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
             week_start = (datetime.now(TZ_CDMX) - timedelta(days=7)).strftime('%Y-%m-%d')
 
-            # Obtener métricas de últimos 7 días
             try:
                 weekly_metrics = supa._request(
                     '/rest/v1/response_metrics?order=metric_date.desc&limit=70'
@@ -1043,7 +951,6 @@ class IntelligenceEngine(models.Model):
             except Exception:
                 weekly_alerts = []
 
-            # Client scores de la semana
             try:
                 weekly_scores = supa._request(
                     '/rest/v1/customer_health_scores?order=score_date.desc'
@@ -1052,7 +959,6 @@ class IntelligenceEngine(models.Model):
             except Exception:
                 weekly_scores = []
 
-            # Daily summaries de la semana
             try:
                 weekly_summaries = supa._request(
                     '/rest/v1/daily_summaries?order=summary_date.desc&limit=7'
@@ -1066,7 +972,6 @@ class IntelligenceEngine(models.Model):
             _logger.warning('Sin datos semanales')
             return
 
-        # Agrupar alertas por tipo para análisis
         alert_by_type = defaultdict(int)
         for a in weekly_alerts:
             alert_by_type[a.get('alert_type', 'unknown')] += 1
@@ -1116,7 +1021,7 @@ class IntelligenceEngine(models.Model):
                 gmail.send_email(
                     sender, recipient,
                     f'Weekly Intelligence Report — {today}',
-                    self._wrap_briefing_html(weekly_html, today, weekly=True),
+                    analysis.wrap_briefing_html(weekly_html, today, weekly=True),
                 )
                 _logger.info('Reporte semanal enviado a %s', recipient)
             else:
@@ -1129,7 +1034,6 @@ class IntelligenceEngine(models.Model):
     # ══════════════════════════════════════════════════════════════════════════
 
     def _load_gmail_history_state(self) -> dict:
-        """Cuenta Gmail → último historyId sincronizado (JSON en ir.config_parameter)."""
         raw = (
             self.env['ir.config_parameter'].sudo()
             .get_param('quimibond_intelligence.gmail_history_state', '{}')
@@ -1211,13 +1115,12 @@ class IntelligenceEngine(models.Model):
 
     @staticmethod
     def _deduplicate(emails: list) -> list:
-        """Elimina duplicados por fingerprint (from_email|subject_norm|date_minute)."""
+        """Elimina duplicados por fingerprint."""
         seen = set()
         unique = []
         for e in emails:
             try:
                 date_str = e.get('date', '')
-                # Normalizar fecha a minuto
                 date_minute = re.sub(r':\d{2}\s', ' ', date_str)[:16]
             except Exception:
                 date_minute = ''
@@ -1251,7 +1154,6 @@ class IntelligenceEngine(models.Model):
             has_internal = any(m['sender_type'] == 'internal' for m in msgs)
             has_external = any(m['sender_type'] == 'external' for m in msgs)
 
-            # Parse RFC 2822 dates to ISO 8601 for Supabase
             def _parse_date(raw: str) -> str:
                 if not raw:
                     return datetime.now(timezone.utc).isoformat()
@@ -1268,7 +1170,6 @@ class IntelligenceEngine(models.Model):
             started_at_iso = _parse_date(first.get('date', ''))
             last_activity_iso = _parse_date(last.get('date', ''))
 
-            # Calcular horas sin respuesta
             hours_no_response = 0
             if last['sender_type'] == 'external':
                 try:
@@ -1277,7 +1178,6 @@ class IntelligenceEngine(models.Model):
                 except Exception:
                     pass
 
-            # Determinar status
             no_resp_hours = cfg.get('no_response_hours', 24)
             stalled_hours = cfg.get('stalled_thread_hours', 48)
             if hours_no_response > stalled_hours:
@@ -1309,1064 +1209,16 @@ class IntelligenceEngine(models.Model):
             })
         return threads
 
-    # ── Extracción de contactos ───────────────────────────────────────────────
-
-    def _extract_odoo_contacts(self) -> list:
-        """Extrae contactos de Odoo (fuente de verdad).
-
-        Retorna lista de dicts con email, name, contact_type para uso
-        en _enrich_with_odoo y otros métodos del pipeline.
-        """
-        models = self._load_odoo_models()
-        if 'partner' not in models:
-            _logger.warning('_extract_odoo_contacts: res.partner no disponible')
-            return []
-
-        Partner = models['partner']
-        partners = Partner.search([
-            ('email', '!=', False),
-            ('email', '!=', ''),
-            ('active', '=', True),
-            '|',
-            ('customer_rank', '>', 0),
-            ('supplier_rank', '>', 0),
-        ], order='customer_rank desc, supplier_rank desc')
-
-        contacts = []
-        seen = set()
-        for p in partners:
-            email = (p.email or '').strip().lower()
-            if not email or '@' not in email or email in seen:
-                continue
-            seen.add(email)
-            contacts.append({
-                'email': email,
-                'name': p.name or '',
-                'contact_type': 'external',
-            })
-
-        _logger.info('Odoo: %d partners activos con email', len(contacts))
-        return contacts
-
-    @staticmethod
-    def _extract_contacts(emails: list) -> list:
-        """Extrae contactos únicos de los emails (legacy, para KG/alertas)."""
-        contact_map = {}
-        for e in emails:
-            email_addr = e.get('from_email', '').lower()
-            if not email_addr:
-                continue
-            if email_addr not in contact_map:
-                contact_map[email_addr] = {
-                    'email': email_addr,
-                    'name': e.get('from_name', ''),
-                    'contact_type': e.get('sender_type', 'external'),
-                    'department': e.get('department'),
-                }
-        return list(contact_map.values())
-
-    # ── Enriquecimiento PROFUNDO con Odoo ORM ────────────────────────────────
-
-    def _enrich_with_odoo(self, contacts: list, emails: list) -> dict:
-        """Enriquecimiento profundo: 10 modelos de Odoo + verificación de acciones.
-
-        Modelos consultados:
-        1. res.partner — datos básicos, ranks, crédito
-        2. sale.order — pedidos de venta (90 días)
-        3. account.move — facturas pendientes
-        4. purchase.order — órdenes de compra
-        5. mail.message — comunicación interna (chatter, notas, emails desde Odoo)
-        6. mail.activity — actividades pendientes/completadas
-        7. crm.lead — pipeline comercial, oportunidades
-        8. stock.picking — entregas y recepciones
-        9. account.payment — pagos recibidos/emitidos
-        10. calendar.event — reuniones agendadas
-        + Verificación de action items previos (accountability)
-        """
-        odoo_ctx = {
-            'partners': {},
-            'business_summary': {},
-            'action_followup': {},
-            'global_pipeline': {},
-            'team_activities': {},
-        }
-        external_emails = [
-            c['email'] for c in contacts
-            if c['contact_type'] == 'external' and c['email']
-        ]
-
-        if not external_emails:
-            return odoo_ctx
-
-        # ── Cargar modelos disponibles (graceful si no están instalados) ────
-        models = self._load_odoo_models()
-        if 'partner' not in models:
-            return odoo_ctx
-
-        Partner = models['partner']
-        date_90d = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
-        date_30d = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-        date_7d = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-        today = datetime.now().date()
-
-        # ── Pre-cargar partners por dominio para fallback ─────────────────
-        # Agrupa emails por dominio para búsqueda eficiente
-        domain_map = {}  # domain → [email_addr, ...]
-        for ea in external_emails:
-            domain = ea.rsplit('@', 1)[-1].lower() if '@' in ea else ''
-            if domain and not self._is_generic_domain(domain):
-                domain_map.setdefault(domain, []).append(ea)
-
-        # Cache de partners por dominio: domain → [partner, ...]
-        domain_partners_cache = {}
-        for domain in domain_map:
-            try:
-                domain_partners_cache[domain] = Partner.search(
-                    [('email', '=ilike', f'%@{domain}')], limit=50,
-                )
-            except Exception:
-                domain_partners_cache[domain] = Partner
-
-        # ── Enriquecer por contacto externo ─────────────────────────────────
-        matched = 0
-        skipped = 0
-        for email_addr in external_emails:
-            try:
-                # Búsqueda 1: email exacto
-                partner = Partner.search(
-                    [('email', '=ilike', email_addr)], limit=1,
-                )
-
-                # Búsqueda 2: si no hay match exacto, buscar por dominio
-                if not partner:
-                    domain = (email_addr.rsplit('@', 1)[-1].lower()
-                              if '@' in email_addr else '')
-                    domain_partners = domain_partners_cache.get(domain)
-                    if domain_partners:
-                        # Usar el partner principal del dominio (company o
-                        # el de mayor rank)
-                        best = None
-                        for dp in domain_partners:
-                            if not best:
-                                best = dp
-                            elif dp.is_company and not best.is_company:
-                                best = dp
-                            elif (dp.customer_rank + dp.supplier_rank
-                                  > best.customer_rank + best.supplier_rank):
-                                best = dp
-                        partner = best
-
-                if not partner:
-                    skipped += 1
-                    continue
-
-                matched += 1
-                ctx = self._enrich_partner(
-                    partner, models, date_90d, date_30d, date_7d, today,
-                )
-                odoo_ctx['partners'][email_addr] = ctx
-                odoo_ctx['business_summary'][email_addr] = (
-                    ctx.get('_summary', '')
-                )
-
-            except Exception as exc:
-                _logger.warning('Odoo enrichment skip %s: %s', email_addr, exc)
-
-        _logger.info(
-            'Odoo match: %d/%d matched, %d skipped (no partner found)',
-            matched, len(external_emails), skipped,
-        )
-
-        # ── Verificación de acciones sugeridas previamente ──────────────────
-        odoo_ctx['action_followup'] = self._verify_pending_actions(today)
-
-        # ── Contexto global del pipeline comercial ──────────────────────────
-        if models.get('crm_lead'):
-            odoo_ctx['global_pipeline'] = self._get_global_pipeline(
-                models['crm_lead'],
-            )
-
-        # ── Actividades del equipo (quién tiene qué pendiente) ──────────────
-        if models.get('mail_activity'):
-            odoo_ctx['team_activities'] = self._get_team_activities(
-                models['mail_activity'], today,
-            )
-
-        _logger.info(
-            '✓ %d contactos enriquecidos (deep) | %d acciones verificadas',
-            len(odoo_ctx['partners']),
-            len(odoo_ctx.get('action_followup', {}).get('items', [])),
-        )
-        return odoo_ctx
-
-    # ── Helpers de enriquecimiento profundo ─────────────────────────────────
-
-    _GENERIC_DOMAINS = frozenset({
-        'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com',
-        'yahoo.com', 'yahoo.com.mx', 'live.com', 'live.com.mx',
-        'icloud.com', 'aol.com', 'protonmail.com', 'proton.me',
-        'msn.com', 'mail.com', 'zoho.com', 'yandex.com',
-        'google.com', 'vercel.com', 'github.com',
-    })
-
-    @classmethod
-    def _is_generic_domain(cls, domain: str) -> bool:
-        """Retorna True si el dominio es genérico (Gmail, Outlook, etc.)."""
-        return domain.lower() in cls._GENERIC_DOMAINS
-
-    def _load_odoo_models(self) -> dict:
-        """Carga los modelos ORM disponibles. Graceful si alguno no existe."""
-        models = {}
-        model_map = {
-            'partner': 'res.partner',
-            'sale_order': 'sale.order',
-            'account_move': 'account.move',
-            'purchase_order': 'purchase.order',
-            'mail_message': 'mail.message',
-            'mail_activity': 'mail.activity',
-            'crm_lead': 'crm.lead',
-            'stock_picking': 'stock.picking',
-            'account_payment': 'account.payment',
-            'calendar_event': 'calendar.event',
-            'mrp_production': 'mrp.production',
-            'product_product': 'product.product',
-        }
-        for key, model_name in model_map.items():
-            try:
-                models[key] = self.env[model_name].sudo()
-            except KeyError:
-                _logger.debug('Modelo %s no disponible (módulo no instalado)',
-                              model_name)
-        return models
-
-    def _enrich_partner(self, partner, models, date_90d, date_30d,
-                        date_7d, today) -> dict:
-        """Construye el perfil completo de un partner con todos los modelos."""
-        pid = partner.id
-        summary_parts = []
-
-        # ── 1. Datos básicos ────────────────────────────────────────────────
-        ctx = {
-            'id': pid,
-            'name': partner.name,
-            'email': partner.email,
-            'phone': partner.phone or '',
-            'is_company': partner.is_company,
-            'company_name': (partner.parent_id.name
-                             if partner.parent_id else
-                             (partner.name if partner.is_company else '')),
-            'customer_rank': partner.customer_rank,
-            'supplier_rank': partner.supplier_rank,
-            'is_customer': partner.customer_rank > 0,
-            'is_supplier': partner.supplier_rank > 0,
-            'credit_limit': getattr(partner, 'credit_limit', 0),
-            'total_invoiced': partner.total_invoiced or 0,
-        }
-
-        # ── 2. Ventas recientes (sale.order) ────────────────────────────────
-        if models.get('sale_order'):
-            sales = models['sale_order'].search([
-                ('partner_id', '=', pid),
-                ('date_order', '>=', date_90d),
-            ], order='date_order desc', limit=10)
-
-            ctx['recent_sales'] = [{
-                'name': s.name,
-                'date': s.date_order.strftime('%Y-%m-%d') if s.date_order else '',
-                'amount': s.amount_total,
-                'state': s.state,
-                'currency': s.currency_id.name,
-            } for s in sales]
-
-            if ctx['is_customer'] and ctx['recent_sales']:
-                total_sales = sum(s['amount'] for s in ctx['recent_sales'])
-                summary_parts.append(
-                    f"VENTAS: {len(ctx['recent_sales'])} pedidos "
-                    f"(${total_sales:,.0f}) en 90d"
-                )
-
-        # ── 3. Facturas pendientes (account.move) ──────────────────────────
-        if models.get('account_move'):
-            invoices = models['account_move'].search([
-                ('partner_id', '=', pid),
-                ('move_type', 'in', ['out_invoice', 'out_refund']),
-                ('payment_state', 'in', ['not_paid', 'partial']),
-            ], order='invoice_date desc', limit=10)
-
-            ctx['pending_invoices'] = [{
-                'name': inv.name,
-                'date': (inv.invoice_date.strftime('%Y-%m-%d')
-                         if inv.invoice_date else ''),
-                'amount': inv.amount_total,
-                'amount_residual': inv.amount_residual,
-                'state': inv.state,
-                'currency': inv.currency_id.name,
-                'days_overdue': (
-                    (today - inv.invoice_date_due).days
-                    if inv.invoice_date_due and inv.invoice_date_due < today
-                    else 0
-                ),
-            } for inv in invoices]
-
-            if ctx['pending_invoices']:
-                total_pend = sum(
-                    i['amount_residual'] for i in ctx['pending_invoices']
-                )
-                overdue = [
-                    i for i in ctx['pending_invoices'] if i['days_overdue'] > 0
-                ]
-                if overdue:
-                    max_overdue = max(i['days_overdue'] for i in overdue)
-                    summary_parts.append(
-                        f"FACTURAS: ${total_pend:,.0f} pendiente "
-                        f"({len(overdue)} vencidas, máx {max_overdue}d)"
-                    )
-                else:
-                    summary_parts.append(
-                        f"FACTURAS: ${total_pend:,.0f} pendiente (al corriente)"
-                    )
-
-        # ── 4. Compras (purchase.order) ─────────────────────────────────────
-        if models.get('purchase_order') and partner.supplier_rank > 0:
-            purchases = models['purchase_order'].search([
-                ('partner_id', '=', pid),
-                ('date_order', '>=', date_90d),
-            ], order='date_order desc', limit=10)
-
-            ctx['recent_purchases'] = [{
-                'name': p.name,
-                'date': (p.date_order.strftime('%Y-%m-%d')
-                         if p.date_order else ''),
-                'amount': p.amount_total,
-                'state': p.state,
-                'currency': p.currency_id.name,
-            } for p in purchases]
-
-            if ctx['recent_purchases']:
-                total_purch = sum(
-                    p['amount'] for p in ctx['recent_purchases']
-                )
-                summary_parts.append(
-                    f"COMPRAS: {len(ctx['recent_purchases'])} OC "
-                    f"(${total_purch:,.0f}) en 90d"
-                )
-
-        # ── 5. Pagos recibidos/emitidos (account.payment) ──────────────────
-        if models.get('account_payment'):
-            payments = models['account_payment'].search([
-                ('partner_id', '=', pid),
-                ('state', '=', 'posted'),
-                ('date', '>=', date_30d),
-            ], order='date desc', limit=10)
-
-            ctx['recent_payments'] = [{
-                'name': pay.name,
-                'date': pay.date.strftime('%Y-%m-%d') if pay.date else '',
-                'amount': pay.amount,
-                'payment_type': pay.payment_type,
-                'currency': pay.currency_id.name,
-            } for pay in payments]
-
-            if ctx['recent_payments']:
-                inbound = [
-                    p for p in ctx['recent_payments']
-                    if p['payment_type'] == 'inbound'
-                ]
-                outbound = [
-                    p for p in ctx['recent_payments']
-                    if p['payment_type'] == 'outbound'
-                ]
-                if inbound:
-                    total_in = sum(p['amount'] for p in inbound)
-                    summary_parts.append(
-                        f"COBROS: ${total_in:,.0f} recibido (30d)"
-                    )
-                if outbound:
-                    total_out = sum(p['amount'] for p in outbound)
-                    summary_parts.append(
-                        f"PAGOS: ${total_out:,.0f} pagado (30d)"
-                    )
-
-        # ── 6. Comunicación interna - Chatter (mail.message) ───────────────
-        if models.get('mail_message'):
-            messages = models['mail_message'].search([
-                ('res_id', '=', pid),
-                ('model', '=', 'res.partner'),
-                ('message_type', 'in', ['comment', 'email']),
-                ('date', '>=', date_7d),
-            ], order='date desc', limit=10)
-
-            ctx['recent_chatter'] = [{
-                'date': msg.date.strftime('%Y-%m-%d %H:%M') if msg.date else '',
-                'author': msg.author_id.name if msg.author_id else 'Sistema',
-                'type': msg.message_type,
-                'preview': (msg.body or '')[:200].replace('<br>', ' ')
-                           .replace('<p>', '').replace('</p>', ''),
-                'subtype': (msg.subtype_id.name
-                            if msg.subtype_id else ''),
-            } for msg in messages]
-
-            # Buscar también mensajes en modelos relacionados (SO, PO, etc.)
-            related_msgs = models['mail_message'].search([
-                ('partner_ids', 'in', pid),
-                ('message_type', 'in', ['comment', 'email']),
-                ('date', '>=', date_7d),
-                ('model', '!=', 'res.partner'),
-            ], order='date desc', limit=10)
-
-            ctx['related_chatter'] = [{
-                'date': (msg.date.strftime('%Y-%m-%d %H:%M')
-                         if msg.date else ''),
-                'author': (msg.author_id.name
-                           if msg.author_id else 'Sistema'),
-                'model': msg.model or '',
-                'res_id': msg.res_id,
-                'preview': (msg.body or '')[:200].replace('<br>', ' ')
-                           .replace('<p>', '').replace('</p>', ''),
-            } for msg in related_msgs]
-
-            total_msgs = len(ctx['recent_chatter']) + len(ctx['related_chatter'])
-            if total_msgs > 0:
-                summary_parts.append(
-                    f"COMUNICACION ODOO: {total_msgs} mensajes en 7d"
-                )
-
-        # ── 7. Actividades pendientes (mail.activity) ──────────────────────
-        if models.get('mail_activity'):
-            activities = models['mail_activity'].search([
-                ('res_id', '=', pid),
-                ('res_model', '=', 'res.partner'),
-            ], order='date_deadline asc', limit=10)
-
-            # Buscar en todos los modelos relacionados al partner
-            partner_activities = list(activities)
-            for model_name in ('sale.order', 'account.move', 'purchase.order',
-                               'crm.lead'):
-                try:
-                    related = models['mail_activity'].search([
-                        ('res_model', '=', model_name),
-                        ('res_id', 'in', self._get_partner_record_ids(
-                            partner, model_name, models,
-                        )),
-                    ], limit=10)
-                    partner_activities.extend(related)
-                except Exception:
-                    pass
-
-            ctx['pending_activities'] = [{
-                'type': act.activity_type_id.name if act.activity_type_id else 'Tarea',
-                'summary': act.summary or act.note or '',
-                'deadline': (act.date_deadline.strftime('%Y-%m-%d')
-                             if act.date_deadline else ''),
-                'assigned_to': act.user_id.name if act.user_id else '',
-                'is_overdue': (
-                    act.date_deadline < today if act.date_deadline else False
-                ),
-                'model': act.res_model or '',
-            } for act in partner_activities]
-
-            overdue_acts = [
-                a for a in ctx['pending_activities'] if a['is_overdue']
-            ]
-            pending_acts = [
-                a for a in ctx['pending_activities'] if not a['is_overdue']
-            ]
-            if overdue_acts or pending_acts:
-                parts = []
-                if overdue_acts:
-                    parts.append(f"{len(overdue_acts)} VENCIDAS")
-                if pending_acts:
-                    parts.append(f"{len(pending_acts)} pendientes")
-                summary_parts.append(
-                    f"ACTIVIDADES: {', '.join(parts)}"
-                )
-
-        # ── 8. Pipeline CRM (crm.lead) ─────────────────────────────────────
-        if models.get('crm_lead'):
-            leads = models['crm_lead'].search([
-                ('partner_id', '=', pid),
-                ('active', '=', True),
-            ], order='create_date desc', limit=5)
-
-            ctx['crm_leads'] = [{
-                'name': lead.name,
-                'stage': lead.stage_id.name if lead.stage_id else '',
-                'expected_revenue': lead.expected_revenue or 0,
-                'probability': lead.probability or 0,
-                'date_deadline': (lead.date_deadline.strftime('%Y-%m-%d')
-                                  if lead.date_deadline else ''),
-                'user': lead.user_id.name if lead.user_id else '',
-                'type': 'opportunity' if lead.type == 'opportunity' else 'lead',
-                'days_open': (
-                    (today - lead.create_date.date()).days
-                    if lead.create_date else 0
-                ),
-            } for lead in leads]
-
-            opps = [l for l in ctx['crm_leads'] if l['type'] == 'opportunity']
-            if opps:
-                total_rev = sum(l['expected_revenue'] for l in opps)
-                summary_parts.append(
-                    f"CRM: {len(opps)} oportunidades "
-                    f"(${total_rev:,.0f} esperado)"
-                )
-
-        # ── 9. Entregas y recepciones (stock.picking) ──────────────────────
-        if models.get('stock_picking'):
-            pickings = models['stock_picking'].search([
-                ('partner_id', '=', pid),
-                ('state', 'not in', ['done', 'cancel']),
-            ], order='scheduled_date asc', limit=10)
-
-            ctx['pending_deliveries'] = [{
-                'name': pick.name,
-                'type': pick.picking_type_id.name if pick.picking_type_id else '',
-                'scheduled': (pick.scheduled_date.strftime('%Y-%m-%d')
-                              if pick.scheduled_date else ''),
-                'state': pick.state,
-                'is_late': (
-                    pick.scheduled_date.date() < today
-                    if pick.scheduled_date else False
-                ),
-                'origin': pick.origin or '',
-            } for pick in pickings]
-
-            if ctx['pending_deliveries']:
-                late = [d for d in ctx['pending_deliveries'] if d['is_late']]
-                if late:
-                    summary_parts.append(
-                        f"ENTREGAS: {len(ctx['pending_deliveries'])} "
-                        f"pendientes ({len(late)} RETRASADAS)"
-                    )
-                else:
-                    summary_parts.append(
-                        f"ENTREGAS: {len(ctx['pending_deliveries'])} pendientes"
-                    )
-
-        # ── 10. Reuniones agendadas (calendar.event) ───────────────────────
-        if models.get('calendar_event'):
-            events = models['calendar_event'].search([
-                ('partner_ids', 'in', pid),
-                ('start', '>=', fields.Datetime.now()),
-            ], order='start asc', limit=5)
-
-            ctx['upcoming_meetings'] = [{
-                'name': ev.name,
-                'start': ev.start.strftime('%Y-%m-%d %H:%M') if ev.start else '',
-                'attendees': [
-                    att.display_name for att in (ev.attendee_ids or [])
-                ][:5],
-                'description': (ev.description or '')[:200],
-            } for ev in events]
-
-            if ctx['upcoming_meetings']:
-                next_meeting = ctx['upcoming_meetings'][0]
-                summary_parts.append(
-                    f"REUNION: {next_meeting['name']} ({next_meeting['start']})"
-                )
-
-        # ── 11. Manufactura (mrp.production) ────────────────────────────────
-        if models.get('mrp_production'):
-            try:
-                # Buscar producciones ligadas a pedidos de este partner
-                sale_orders = (models.get('sale_order') or self.env['sale.order'].sudo())
-                so_ids = sale_orders.search([
-                    ('partner_id', '=', pid),
-                    ('state', 'in', ['sale', 'done']),
-                    ('date_order', '>=', date_90d),
-                ]).ids
-                if so_ids:
-                    productions = models['mrp_production'].search([
-                        ('origin', 'like', 'SO'),
-                        ('state', 'not in', ['done', 'cancel']),
-                    ], limit=20)
-                    # Filtrar por origen que coincida con SOs del partner
-                    so_names = set(
-                        sale_orders.browse(so_ids).mapped('name')
-                    )
-                    partner_prods = [
-                        p for p in productions
-                        if p.origin and any(
-                            sn in (p.origin or '') for sn in so_names
-                        )
-                    ]
-
-                    ctx['manufacturing'] = [{
-                        'name': mo.name,
-                        'product': mo.product_id.name if mo.product_id else '',
-                        'qty': mo.product_qty,
-                        'state': mo.state,
-                        'date_start': (mo.date_start.strftime('%Y-%m-%d')
-                                       if mo.date_start else ''),
-                        'origin': mo.origin or '',
-                    } for mo in partner_prods[:5]]
-
-                    if ctx.get('manufacturing'):
-                        summary_parts.append(
-                            f"PRODUCCION: {len(ctx['manufacturing'])} "
-                            f"OMs en proceso"
-                        )
-            except Exception as exc:
-                _logger.debug('MRP enrichment skip: %s', exc)
-
-        # ── 12. Lifetime Value y tendencia histórica ────────────────────────
-        if models.get('account_move') and ctx['is_customer']:
-            try:
-                AM = models['account_move']
-                inv_domain = [
-                    ('partner_id', '=', pid),
-                    ('move_type', '=', 'out_invoice'),
-                    ('state', '=', 'posted'),
-                ]
-                # Use read_group for aggregates instead of loading all records
-                totals = AM.read_group(
-                    inv_domain, ['amount_total'], [],
-                )
-                lifetime_total = totals[0]['amount_total'] if totals else 0
-
-                if lifetime_total:
-                    # Get first invoice date efficiently
-                    first_inv = AM.search(
-                        inv_domain + [('invoice_date', '!=', False)],
-                        order='invoice_date asc', limit=1,
-                    )
-                    first_date = first_inv.invoice_date if first_inv else today
-                    months_active = max(1, (today - first_date).days // 30)
-                    monthly_avg = lifetime_total / months_active
-
-                    # Trend: last 3 months vs prior 3 months (2 queries)
-                    date_3m = (
-                        datetime.now() - timedelta(days=90)
-                    ).strftime('%Y-%m-%d')
-                    date_6m = (
-                        datetime.now() - timedelta(days=180)
-                    ).strftime('%Y-%m-%d')
-                    r3 = AM.read_group(
-                        inv_domain + [('invoice_date', '>=', date_3m)],
-                        ['amount_total'], [],
-                    )
-                    p3 = AM.read_group(
-                        inv_domain + [
-                            ('invoice_date', '>=', date_6m),
-                            ('invoice_date', '<', date_3m),
-                        ],
-                        ['amount_total'], [],
-                    )
-                    recent_3m = r3[0]['amount_total'] if r3 else 0
-                    prev_3m = p3[0]['amount_total'] if p3 else 0
-
-                    if prev_3m > 0:
-                        trend_pct = round(
-                            (recent_3m - prev_3m) / prev_3m * 100)
-                        trend_dir = '📈' if trend_pct > 0 else '📉'
-                    else:
-                        trend_pct = 0
-                        trend_dir = '→'
-
-                    ctx['lifetime'] = {
-                        'total_invoiced': lifetime_total,
-                        'first_invoice': first_date.strftime('%Y-%m-%d'),
-                        'months_active': months_active,
-                        'monthly_avg': round(monthly_avg, 2),
-                        'recent_3m': recent_3m or 0,
-                        'prev_3m': prev_3m or 0,
-                        'trend_pct': trend_pct,
-                    }
-                    summary_parts.append(
-                        f"LTV: ${lifetime_total:,.0f} en {months_active} meses "
-                        f"(prom ${monthly_avg:,.0f}/mes) "
-                        f"{trend_dir} {trend_pct:+d}% vs trimestre anterior"
-                    )
-            except Exception as exc:
-                _logger.debug('Lifetime enrichment: %s', exc)
-
-        # ── 13. Stock disponible y precios recientes ─────────────────────
-        if models.get('sale_order') and models.get('product_product'):
-            try:
-                recent_so = models['sale_order'].search([
-                    ('partner_id', '=', pid),
-                    ('state', 'in', ['sale', 'done']),
-                ], order='date_order desc', limit=5)
-                product_info = {}
-                for so in recent_so:
-                    for line in so.order_line:
-                        prod = line.product_id
-                        if not prod or prod.id in product_info:
-                            continue
-                        product_info[prod.id] = {
-                            'name': prod.name,
-                            'last_price': line.price_unit,
-                            'last_qty': line.product_uom_qty,
-                            'last_date': (so.date_order.strftime('%Y-%m-%d')
-                                          if so.date_order else ''),
-                            'stock_qty': prod.qty_available,
-                            'uom': (line.product_uom.name
-                                    if line.product_uom else ''),
-                        }
-                if product_info:
-                    ctx['products'] = list(product_info.values())[:10]
-                    in_stock = sum(
-                        1 for p in ctx['products'] if p['stock_qty'] > 0)
-                    summary_parts.append(
-                        f"PRODUCTOS: {len(ctx['products'])} "
-                        f"comprados ({in_stock} con stock)"
-                    )
-            except Exception as exc:
-                _logger.debug('Product enrichment: %s', exc)
-
-        # ── 14. Cartera por antigüedad (aging) ───────────────────────────
-        if models.get('account_move') and ctx.get('pending_invoices'):
-            aging = {'current': 0, '1_30': 0, '31_60': 0,
-                     '61_90': 0, '90_plus': 0}
-            for inv in ctx['pending_invoices']:
-                d = inv.get('days_overdue', 0)
-                amt = inv.get('amount_residual', 0)
-                if d <= 0:
-                    aging['current'] += amt
-                elif d <= 30:
-                    aging['1_30'] += amt
-                elif d <= 60:
-                    aging['31_60'] += amt
-                elif d <= 90:
-                    aging['61_90'] += amt
-                else:
-                    aging['90_plus'] += amt
-            ctx['aging'] = aging
-            aging_parts = []
-            if aging['1_30']:
-                aging_parts.append(f"1-30d: ${aging['1_30']:,.0f}")
-            if aging['31_60']:
-                aging_parts.append(f"31-60d: ${aging['31_60']:,.0f}")
-            if aging['61_90']:
-                aging_parts.append(f"61-90d: ${aging['61_90']:,.0f}")
-            if aging['90_plus']:
-                aging_parts.append(f"90+d: ${aging['90_plus']:,.0f}")
-            if aging_parts:
-                summary_parts.append(
-                    f"CARTERA VENCIDA: {' | '.join(aging_parts)}"
-                )
-
-        # ── 15. Contactos relacionados (misma empresa) ───────────────────
-        company_id = partner.parent_id.id if partner.parent_id else (
-            pid if partner.is_company else None
-        )
-        if company_id and models.get('partner'):
-            try:
-                siblings = models['partner'].search([
-                    '|',
-                    ('parent_id', '=', company_id),
-                    ('id', '=', company_id),
-                    ('id', '!=', pid),
-                    ('email', '!=', False),
-                ], limit=10)
-                if siblings:
-                    related = []
-                    for sib in siblings:
-                        info = {'name': sib.name, 'email': sib.email or ''}
-                        if models.get('crm_lead'):
-                            sib_leads = models['crm_lead'].search_count([
-                                ('partner_id', '=', sib.id),
-                                ('active', '=', True),
-                            ])
-                            if sib_leads:
-                                info['active_opportunities'] = sib_leads
-                        related.append(info)
-                    ctx['related_contacts'] = related
-                    summary_parts.append(
-                        f"RED: {len(related)} contactos en misma empresa"
-                    )
-            except Exception as exc:
-                _logger.debug('Related contacts: %s', exc)
-
-        # ── 16. Devoluciones y notas de crédito ──────────────────────────
-        if models.get('account_move'):
-            try:
-                credit_notes = models['account_move'].search([
-                    ('partner_id', '=', pid),
-                    ('move_type', '=', 'out_refund'),
-                    ('state', '=', 'posted'),
-                    ('invoice_date', '>=', date_90d),
-                ], order='invoice_date desc', limit=5)
-                if credit_notes:
-                    cn_total = sum(cn.amount_total for cn in credit_notes)
-                    ctx['credit_notes'] = [{
-                        'name': cn.name,
-                        'date': (cn.invoice_date.strftime('%Y-%m-%d')
-                                 if cn.invoice_date else ''),
-                        'amount': cn.amount_total,
-                        'ref': cn.ref or '',
-                    } for cn in credit_notes]
-                    summary_parts.append(
-                        f"DEVOLUCIONES: {len(credit_notes)} NC "
-                        f"(${cn_total:,.0f}) en 90d ⚠️"
-                    )
-            except Exception as exc:
-                _logger.debug('Credit notes: %s', exc)
-
-        # ── 17. Performance de entrega (on-time rate) ────────────────────
-        if models.get('stock_picking'):
-            try:
-                done_picks = models['stock_picking'].search([
-                    ('partner_id', '=', pid),
-                    ('state', '=', 'done'),
-                    ('picking_type_code', '=', 'outgoing'),
-                    ('date_done', '>=', date_90d),
-                ], limit=50)
-                if done_picks:
-                    on_time = sum(
-                        1 for p in done_picks
-                        if p.scheduled_date and p.date_done
-                        and p.date_done <= p.scheduled_date
-                    )
-                    total_done = len(done_picks)
-                    otd_rate = round(on_time / total_done * 100)
-                    avg_days = 0
-                    lead_times = []
-                    for p in done_picks:
-                        if p.create_date and p.date_done:
-                            lt = (p.date_done - p.create_date).days
-                            if lt >= 0:
-                                lead_times.append(lt)
-                    if lead_times:
-                        avg_days = round(
-                            sum(lead_times) / len(lead_times), 1)
-
-                    ctx['delivery_performance'] = {
-                        'total_delivered': total_done,
-                        'on_time_rate': otd_rate,
-                        'avg_lead_time_days': avg_days,
-                    }
-                    otd_emoji = '✅' if otd_rate >= 90 else (
-                        '⚠️' if otd_rate >= 70 else '🔴')
-                    summary_parts.append(
-                        f"ENTREGA OTD: {otd_rate}% {otd_emoji} "
-                        f"({total_done} envíos, lead time {avg_days}d)"
-                    )
-            except Exception as exc:
-                _logger.debug('Delivery performance: %s', exc)
-
-        # ── Resumen consolidado ─────────────────────────────────────────────
-        ctx['_summary'] = ' | '.join(summary_parts) if summary_parts else ''
-        return ctx
-
-    def _get_partner_record_ids(self, partner, model_name, models) -> list:
-        """IDs de registros de un modelo asociados a un partner."""
-        try:
-            if model_name == 'sale.order' and models.get('sale_order'):
-                return models['sale_order'].search([
-                    ('partner_id', '=', partner.id),
-                ]).ids[:20]
-            if model_name == 'account.move' and models.get('account_move'):
-                return models['account_move'].search([
-                    ('partner_id', '=', partner.id),
-                ]).ids[:20]
-            if model_name == 'purchase.order' and models.get('purchase_order'):
-                return models['purchase_order'].search([
-                    ('partner_id', '=', partner.id),
-                ]).ids[:20]
-            if model_name == 'crm.lead' and models.get('crm_lead'):
-                return models['crm_lead'].search([
-                    ('partner_id', '=', partner.id),
-                ]).ids[:20]
-        except Exception:
-            pass
-        return []
-
-    def _verify_pending_actions(self, today) -> dict:
-        """Verifica si las acciones sugeridas previamente se ejecutaron.
-
-        Cruza intelligence.action.item con mail.activity y mail.message
-        para detectar si el equipo actuó sobre las recomendaciones.
-        """
-        result = {
-            'items': [],
-            'completion_rate': 0,
-            'overdue_count': 0,
-            'completed_today': 0,
-        }
-        try:
-            ActionItem = self.env['intelligence.action.item'].sudo()
-            pending = ActionItem.search([
-                ('state', 'in', ['open', 'in_progress']),
-            ], order='priority_seq asc, due_date asc', limit=30)
-
-            if not pending:
-                return result
-
-            total = len(pending)
-            completed = ActionItem.search_count([
-                ('state', '=', 'done'),
-                ('write_date', '>=', today.strftime('%Y-%m-%d')),
-            ])
-            result['completed_today'] = completed
-
-            for action in pending:
-                item = {
-                    'id': action.id,
-                    'description': action.name,
-                    'type': action.action_type,
-                    'priority': action.priority,
-                    'due_date': (action.due_date.strftime('%Y-%m-%d')
-                                 if action.due_date else ''),
-                    'assigned_to': (action.assignee_id.name
-                                    if action.assignee_id else ''),
-                    'partner': (action.partner_id.name
-                                if action.partner_id else ''),
-                    'days_open': (
-                        (today - action.create_date.date()).days
-                        if action.create_date else 0
-                    ),
-                    'is_overdue': action.is_overdue,
-                    'evidence_of_action': [],
-                }
-
-                # Buscar evidencia de que alguien actuó
-                if action.partner_id:
-                    try:
-                        MailMsg = self.env['mail.message'].sudo()
-                        recent_msgs = MailMsg.search([
-                            ('res_id', '=', action.partner_id.id),
-                            ('model', '=', 'res.partner'),
-                            ('date', '>=', action.create_date),
-                            ('message_type', 'in', ['comment', 'email']),
-                        ], limit=3, order='date desc')
-
-                        for msg in recent_msgs:
-                            item['evidence_of_action'].append({
-                                'type': 'chatter_message',
-                                'date': msg.date.strftime('%Y-%m-%d %H:%M'),
-                                'author': (msg.author_id.name
-                                           if msg.author_id else ''),
-                                'preview': (msg.body or '')[:100],
-                            })
-
-                        # Buscar actividades completadas
-                        MailActivity = self.env['mail.activity'].sudo()
-                        # Actividades tipo del action_type
-                        activity_type_map = {
-                            'call': 'Llamada',
-                            'email': 'Correo',
-                            'meeting': 'Reunión',
-                        }
-                        act_type_name = activity_type_map.get(
-                            action.action_type, '',
-                        )
-                        if act_type_name:
-                            scheduled = MailActivity.search([
-                                ('res_id', '=', action.partner_id.id),
-                                ('res_model', '=', 'res.partner'),
-                            ], limit=3)
-                            for act in scheduled:
-                                item['evidence_of_action'].append({
-                                    'type': 'scheduled_activity',
-                                    'activity': (act.activity_type_id.name
-                                                 if act.activity_type_id
-                                                 else ''),
-                                    'deadline': (
-                                        act.date_deadline.strftime('%Y-%m-%d')
-                                        if act.date_deadline else ''
-                                    ),
-                                    'assigned_to': (act.user_id.name
-                                                    if act.user_id else ''),
-                                })
-                    except Exception:
-                        pass
-
-                if action.is_overdue:
-                    result['overdue_count'] += 1
-
-                result['items'].append(item)
-
-            # Tasa de completado de los últimos 7 días
-            week_ago = (
-                today - timedelta(days=7)
-            ).strftime('%Y-%m-%d')
-            total_week = ActionItem.search_count([
-                ('create_date', '>=', week_ago),
-            ])
-            done_week = ActionItem.search_count([
-                ('create_date', '>=', week_ago),
-                ('state', '=', 'done'),
-            ])
-            result['completion_rate'] = (
-                round(done_week / total_week * 100)
-                if total_week > 0 else 0
-            )
-
-        except Exception as exc:
-            _logger.warning('Action verification error: %s', exc)
-
-        return result
-
-    def _get_global_pipeline(self, CrmLead) -> dict:
-        """Resumen global del pipeline comercial."""
-        try:
-            all_opps = CrmLead.search([
-                ('type', '=', 'opportunity'),
-                ('active', '=', True),
-            ])
-            if not all_opps:
-                return {}
-
-            by_stage = defaultdict(lambda: {'count': 0, 'revenue': 0})
-            for opp in all_opps:
-                stage_name = opp.stage_id.name if opp.stage_id else 'Sin etapa'
-                by_stage[stage_name]['count'] += 1
-                by_stage[stage_name]['revenue'] += opp.expected_revenue or 0
-
-            total_revenue = sum(s['revenue'] for s in by_stage.values())
-            return {
-                'total_opportunities': len(all_opps),
-                'total_expected_revenue': total_revenue,
-                'by_stage': dict(by_stage),
-            }
-        except Exception as exc:
-            _logger.debug('Pipeline error: %s', exc)
-            return {}
-
-    def _get_team_activities(self, MailActivity, today) -> dict:
-        """Actividades pendientes del equipo agrupadas por usuario."""
-        try:
-            all_activities = MailActivity.search([
-                ('date_deadline', '<=',
-                 (today + timedelta(days=3)).strftime('%Y-%m-%d')),
-            ], order='date_deadline asc', limit=50)
-
-            by_user = defaultdict(lambda: {
-                'pending': 0, 'overdue': 0, 'items': [],
-            })
-            for act in all_activities:
-                user_name = act.user_id.name if act.user_id else 'Sin asignar'
-                is_overdue = (
-                    act.date_deadline < today if act.date_deadline else False
-                )
-                by_user[user_name]['pending'] += 1
-                if is_overdue:
-                    by_user[user_name]['overdue'] += 1
-                if len(by_user[user_name]['items']) < 5:
-                    by_user[user_name]['items'].append({
-                        'type': (act.activity_type_id.name
-                                 if act.activity_type_id else 'Tarea'),
-                        'summary': act.summary or '',
-                        'deadline': (act.date_deadline.strftime('%Y-%m-%d')
-                                     if act.date_deadline else ''),
-                        'model': act.res_model or '',
-                        'overdue': is_overdue,
-                    })
-            return dict(by_user)
-        except Exception as exc:
-            _logger.debug('Team activities error: %s', exc)
-            return {}
-
     # ── Análisis por cuenta ───────────────────────────────────────────────────
 
     def _analyze_accounts(self, emails: list, claude, odoo_context: dict,
                           account_departments: dict = None,
                           supa=None) -> list:
         """Fase 1 de Claude: análisis por cuenta con perfiles de personas."""
+        from ..services.analysis_service import AnalysisService
+        analysis = AnalysisService()
         account_departments = account_departments or {}
 
-        # Cargar perfiles conocidos de personas desde Supabase
         person_profiles = {}
         if supa:
             all_sender_emails = list({
@@ -2385,7 +1237,6 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.debug('Person profiles load: %s', exc)
 
-        # Agrupar por cuenta
         by_account = defaultdict(list)
         for e in emails:
             by_account[e['account']].append(e)
@@ -2401,8 +1252,7 @@ class IntelligenceEngine(models.Model):
             if not acct_emails:
                 continue
 
-            # Construir texto con contexto Odoo + perfiles de personas
-            email_text = self._format_emails_for_claude(
+            email_text = analysis.format_emails_for_claude(
                 acct_emails, odoo_context, person_profiles,
             )
 
@@ -2415,7 +1265,6 @@ class IntelligenceEngine(models.Model):
                 result['total_emails'] = len(acct_emails)
                 summaries.append(result)
 
-                # Save person_insights to Supabase (accumulative learning)
                 if supa and result.get('person_insights'):
                     for pi in result['person_insights']:
                         try:
@@ -2454,863 +1303,6 @@ class IntelligenceEngine(models.Model):
 
         return summaries
 
-    @staticmethod
-    def _format_emails_for_claude(emails: list, odoo_ctx: dict,
-                                  person_profiles: dict = None) -> str:
-        """Formatea emails con contexto profundo de Odoo + perfiles conocidos."""
-        person_profiles = person_profiles or {}
-        lines = []
-        for i, e in enumerate(emails, 1):
-            lines.append(f'--- EMAIL {i} ---')
-            lines.append(f'De: {e.get("from", "")}')
-            lines.append(f'Para: {e.get("to", "")}')
-            if e.get('cc'):
-                lines.append(f'CC: {e["cc"]}')
-            lines.append(f'Asunto: {e["subject"]}')
-            lines.append(f'Fecha: {e["date"]}')
-            lines.append(f'Tipo: {e["sender_type"]}')
-            if e['is_reply']:
-                lines.append('(Es respuesta)')
-            if e['has_attachments']:
-                att_names = ', '.join(
-                    a['filename'] for a in e.get('attachments', [])
-                )
-                lines.append(f'Adjuntos: {att_names}')
-
-            # Contexto de negocio de Odoo (resumen consolidado)
-            sender_email = e.get('from_email', '')
-            biz = odoo_ctx.get('business_summary', {}).get(sender_email)
-            if biz:
-                lines.append(f'[ODOO: {biz}]')
-
-            # Perfil conocido de la persona (memoria acumulativa)
-            profile = person_profiles.get(sender_email.lower())
-            if profile:
-                profile_parts = []
-                if profile.get('role'):
-                    profile_parts.append(f"Rol: {profile['role']}")
-                if profile.get('company'):
-                    profile_parts.append(f"Empresa: {profile['company']}")
-                if profile.get('decision_power'):
-                    profile_parts.append(
-                        f"Poder decisión: {profile['decision_power']}"
-                    )
-                if profile.get('communication_style'):
-                    profile_parts.append(
-                        f"Estilo: {profile['communication_style']}"
-                    )
-                if profile.get('key_interests'):
-                    interests = profile['key_interests']
-                    if isinstance(interests, list):
-                        interests = ', '.join(interests[:5])
-                    profile_parts.append(f"Intereses: {interests}")
-                if profile.get('personality_traits'):
-                    traits = profile['personality_traits']
-                    if isinstance(traits, list):
-                        traits = ', '.join(traits[:5])
-                    profile_parts.append(f"Rasgos: {traits}")
-                if profile.get('decision_factors'):
-                    factors = profile['decision_factors']
-                    if isinstance(factors, list):
-                        factors = ', '.join(factors[:5])
-                    profile_parts.append(f"Decide por: {factors}")
-                if profile.get('negotiation_style'):
-                    profile_parts.append(
-                        f"Negociación: {profile['negotiation_style']}"
-                    )
-                if profile.get('personality_notes'):
-                    profile_parts.append(
-                        f"Notas: {profile['personality_notes'][:100]}"
-                    )
-                if profile_parts:
-                    lines.append(
-                        f'[PERSONA CONOCIDA: {" | ".join(profile_parts)}]'
-                    )
-
-            body = (e.get('body') or e.get('snippet', ''))[:1500]
-            lines.append(f'Cuerpo:\n{body}')
-            lines.append('')
-        return '\n'.join(lines)
-
-    # ── Métricas ──────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _compute_metrics(emails: list, threads: list, cfg: dict) -> list:
-        """Calcula métricas de respuesta por cuenta."""
-        by_account = defaultdict(lambda: {
-            'received': 0, 'sent': 0, 'ext_received': 0, 'int_received': 0,
-        })
-
-        for e in emails:
-            acct = e['account']
-            if e.get('from_email', '').endswith(f'@{INTERNAL_DOMAIN}'):
-                by_account[acct]['sent'] += 1
-            else:
-                by_account[acct]['received'] += 1
-                if e['sender_type'] == 'external':
-                    by_account[acct]['ext_received'] += 1
-                else:
-                    by_account[acct]['int_received'] += 1
-
-        # Threads por cuenta
-        acct_threads = defaultdict(list)
-        for t in threads:
-            acct_threads[t['account']].append(t)
-
-        metrics = []
-        for acct, counts in by_account.items():
-            acct_t = acct_threads.get(acct, [])
-            replied = [t for t in acct_t if t['has_internal_reply']]
-            unanswered = [t for t in acct_t
-                          if t['status'] in ('needs_response', 'stalled')]
-
-            # Tiempos de respuesta
-            response_hours = [
-                t['hours_without_response'] for t in acct_t
-                if t['hours_without_response'] > 0
-            ]
-
-            metrics.append({
-                'account': acct,
-                'emails_received': counts['received'],
-                'emails_sent': counts['sent'],
-                'internal_received': counts['int_received'],
-                'external_received': counts['ext_received'],
-                'threads_started': len([t for t in acct_t if t['started_by_type'] == 'external']),
-                'threads_replied': len(replied),
-                'threads_unanswered': len(unanswered),
-                'avg_response_hours': (
-                    round(sum(response_hours) / len(response_hours), 1)
-                    if response_hours else None
-                ),
-                'fastest_response_hours': (
-                    round(min(response_hours), 1) if response_hours else None
-                ),
-                'slowest_response_hours': (
-                    round(max(response_hours), 1) if response_hours else None
-                ),
-            })
-        return metrics
-
-    # ── Alertas ───────────────────────────────────────────────────────────────
-
-    def _generate_alerts(self, threads: list, metrics: list, cfg: dict,
-                         account_summaries: list = None,
-                         odoo_ctx: dict = None) -> list:
-        """Genera alertas basadas en umbrales configurables.
-
-        Tipos de alerta:
-        - stalled_thread: Thread sin respuesta > 48h
-        - no_response: Thread sin respuesta > 24h
-        - high_volume: Volumen de emails superior al umbral
-        - competitor: Competidor mencionado en emails
-        - negative_sentiment: Sentimiento negativo fuerte
-        - invoice_silence: Factura vencida + sin respuesta a emails
-        - churn_risk: Cliente que dejó de escribir (>14 días sin contacto)
-        """
-        alerts = []
-        account_summaries = account_summaries or []
-        odoo_ctx = odoo_ctx or {}
-        no_resp_hours = cfg.get('no_response_hours', 24)
-        stalled_hours = cfg.get('stalled_thread_hours', 48)
-        high_vol = cfg.get('high_volume_threshold', 50)
-
-        # Alertas por threads sin respuesta
-        for t in threads:
-            if t['hours_without_response'] > stalled_hours and t['started_by_type'] == 'external':
-                alerts.append({
-                    'alert_type': 'stalled_thread',
-                    'severity': 'high',
-                    'title': f"Thread estancado: {t['subject'][:80]}",
-                    'description': (
-                        f"{t['hours_without_response']:.0f}h sin respuesta de "
-                        f"{t['last_sender']} en {t['account']}"
-                    ),
-                    'contact_name': t.get('last_sender'),
-                    'account': t['account'],
-                    'related_thread_id': t['gmail_thread_id'],
-                })
-            elif t['hours_without_response'] > no_resp_hours and t['started_by_type'] == 'external':
-                alerts.append({
-                    'alert_type': 'no_response',
-                    'severity': 'medium',
-                    'title': f"Sin respuesta: {t['subject'][:80]}",
-                    'description': (
-                        f"{t['hours_without_response']:.0f}h esperando en {t['account']}"
-                    ),
-                    'contact_name': t.get('last_sender'),
-                    'account': t['account'],
-                    'related_thread_id': t['gmail_thread_id'],
-                })
-
-        # Alerta por volumen alto
-        for m in metrics:
-            total = m['emails_received'] + m['emails_sent']
-            if total > high_vol:
-                alerts.append({
-                    'alert_type': 'high_volume',
-                    'severity': 'low',
-                    'title': f"Alto volumen: {m['account']}",
-                    'description': f'{total} emails hoy (umbral: {high_vol})',
-                    'account': m['account'],
-                })
-
-        # ── Alertas inteligentes desde análisis de Claude ────────────────────
-
-        for s in account_summaries:
-            account = s.get('account', '')
-
-            # Alerta por competidores mencionados
-            for comp in s.get('competitors_mentioned', []):
-                threat = comp.get('threat_level', 'medium')
-                severity = 'high' if threat == 'high' else 'medium'
-                alerts.append({
-                    'alert_type': 'competitor',
-                    'severity': severity,
-                    'title': (
-                        f"Competidor: {comp.get('name', '?')} "
-                        f"mencionado por {comp.get('mentioned_by', '?')}"
-                    )[:120],
-                    'description': comp.get('detail', comp.get('context', '')),
-                    'contact_name': comp.get('mentioned_by'),
-                    'account': account,
-                })
-
-            # Alerta por sentimiento negativo fuerte
-            score = s.get('sentiment_score')
-            if isinstance(score, (int, float)) and score < -0.3:
-                severity = 'critical' if score < -0.6 else 'high'
-                alerts.append({
-                    'alert_type': 'negative_sentiment',
-                    'severity': severity,
-                    'title': (
-                        f"Sentimiento negativo ({score:.1f}) en {account}"
-                    ),
-                    'description': s.get('sentiment_detail', ''),
-                    'account': account,
-                })
-
-            # Alerta por contactos con señal de riesgo
-            for contact in s.get('external_contacts', []):
-                c_score = contact.get('sentiment_score')
-                signal = contact.get('relationship_signal', '')
-                if signal == 'at_risk' or (
-                    isinstance(c_score, (int, float)) and c_score < -0.4
-                ):
-                    alerts.append({
-                        'alert_type': 'churn_risk',
-                        'severity': 'high',
-                        'title': (
-                            f"Relación en riesgo: "
-                            f"{contact.get('name', '?')} "
-                            f"({contact.get('company', '?')})"
-                        )[:120],
-                        'description': (
-                            f"Señal: {signal}. "
-                            f"Sentimiento: {c_score}. "
-                            f"Tema: {contact.get('topic', '?')}"
-                        ),
-                        'contact_name': contact.get('name'),
-                        'account': account,
-                    })
-
-        # ── Alerta: factura vencida + sin respuesta a emails ─────────────────
-
-        partners = odoo_ctx.get('partners', {})
-        # Build set of emails with stalled/no_response threads
-        stalled_emails = set()
-        for t in threads:
-            if t['status'] in ('stalled', 'needs_response'):
-                stalled_emails.update(t.get('participant_emails', []))
-
-        for email_addr, p in partners.items():
-            overdue_invoices = [
-                inv for inv in p.get('pending_invoices', [])
-                if inv.get('days_overdue', 0) > 0
-            ]
-            if overdue_invoices and email_addr in stalled_emails:
-                total_overdue = sum(
-                    inv.get('amount_residual', 0) for inv in overdue_invoices
-                )
-                max_days = max(
-                    inv.get('days_overdue', 0) for inv in overdue_invoices
-                )
-                alerts.append({
-                    'alert_type': 'invoice_silence',
-                    'severity': 'critical',
-                    'title': (
-                        f"Factura vencida + sin respuesta: "
-                        f"{p.get('name', email_addr)}"
-                    )[:120],
-                    'description': (
-                        f"${total_overdue:,.0f} en facturas vencidas "
-                        f"(máx {max_days}d) Y tiene emails sin responder. "
-                        f"Riesgo de cobranza. Requiere acción inmediata."
-                    ),
-                    'contact_name': p.get('name', email_addr),
-                    'account': '',
-                })
-
-        # ── Alerta: riesgo de entrega (stock.picking retrasado) ──────────────
-
-        for email_addr, p in partners.items():
-            for delivery in p.get('pending_deliveries', []):
-                scheduled = delivery.get('scheduled_date', '')
-                if scheduled:
-                    try:
-                        sched_dt = datetime.strptime(
-                            scheduled[:10], '%Y-%m-%d',
-                        ).date()
-                        from datetime import date as _date
-                        if sched_dt < _date.today():
-                            days_late = (_date.today() - sched_dt).days
-                            severity = 'critical' if days_late > 3 else 'high'
-                            alerts.append({
-                                'alert_type': 'delivery_risk',
-                                'severity': severity,
-                                'title': (
-                                    f"Entrega retrasada ({days_late}d): "
-                                    f"{delivery.get('name', '?')} → "
-                                    f"{p.get('name', email_addr)}"
-                                )[:120],
-                                'description': (
-                                    f"Programada: {scheduled[:10]}. "
-                                    f"Días de retraso: {days_late}. "
-                                    f"Estado: {delivery.get('state', '?')}"
-                                ),
-                                'contact_name': p.get('name', email_addr),
-                                'account': '',
-                            })
-                    except Exception:
-                        pass
-
-        # ── Alerta: pago vencido ─────────────────────────────────────────────
-
-        for email_addr, p in partners.items():
-            for inv in p.get('pending_invoices', []):
-                days_overdue = inv.get('days_overdue', 0)
-                if days_overdue > 15:
-                    severity = (
-                        'critical' if days_overdue > 45
-                        else 'high' if days_overdue > 30
-                        else 'medium'
-                    )
-                    alerts.append({
-                        'alert_type': 'payment_delay',
-                        'severity': severity,
-                        'title': (
-                            f"Pago vencido ({days_overdue}d): "
-                            f"{inv.get('name', '?')} — "
-                            f"{p.get('name', email_addr)}"
-                        )[:120],
-                        'description': (
-                            f"Factura: {inv.get('name', '?')}. "
-                            f"Monto: ${inv.get('amount_residual', 0):,.0f}. "
-                            f"Vencida hace {days_overdue} días."
-                        ),
-                        'contact_name': p.get('name', email_addr),
-                        'account': '',
-                    })
-
-        # ── Alerta: oportunidad detectada (CRM leads) ───────────────────────
-
-        for email_addr, p in partners.items():
-            for lead in p.get('crm_leads', []):
-                if lead.get('type') == 'opportunity' and lead.get(
-                    'probability', 0
-                ) >= 50:
-                    alerts.append({
-                        'alert_type': 'opportunity',
-                        'severity': 'low',
-                        'title': (
-                            f"Oportunidad: {lead.get('name', '?')} "
-                            f"({lead.get('probability', 0):.0f}%)"
-                        )[:120],
-                        'description': (
-                            f"Cliente: {p.get('name', email_addr)}. "
-                            f"Valor: ${lead.get('expected_revenue', 0):,.0f}. "
-                            f"Etapa: {lead.get('stage', '?')}"
-                        ),
-                        'contact_name': p.get('name', email_addr),
-                        'account': '',
-                    })
-
-        # ── Alerta: calidad (detectada por Claude en risks_detected) ─────────
-
-        for s in account_summaries:
-            account = s.get('account', '')
-            for risk in s.get('risks_detected', []):
-                risk_text = risk.get('risk', '').lower()
-                if any(w in risk_text for w in (
-                    'calidad', 'quality', 'reclamo', 'defecto', 'rechazo',
-                    'queja', 'devolución', 'devolucion',
-                )):
-                    alerts.append({
-                        'alert_type': 'quality_issue',
-                        'severity': risk.get('severity', 'high'),
-                        'title': f"Calidad: {risk.get('risk', '?')}"[:120],
-                        'description': (
-                            f"Mitigación sugerida: "
-                            f"{risk.get('mitigation', 'N/A')}. "
-                            f"Cuentas: {', '.join(risk.get('accounts_involved', [account]))}"
-                        ),
-                        'account': account,
-                    })
-
-        return alerts
-
-    # ── Client Scoring ────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _compute_client_scores(contacts: list, emails: list, threads: list,
-                               cfg: dict,
-                               account_summaries: list = None) -> list:
-        """Calcula score de relación 0-100 para contactos externos.
-
-        Usa sentiment_score numérico de Claude si está disponible.
-        """
-        external = [c for c in contacts if c['contact_type'] == 'external']
-        if not external:
-            return []
-
-        # Pre-computar datos por email
-        email_counts = defaultdict(int)
-        for e in emails:
-            email_counts[e.get('from_email', '')] += 1
-
-        thread_participation = defaultdict(int)
-        for t in threads:
-            for p in t.get('participant_emails', []):
-                thread_participation[p] += 1
-
-        # Build contact sentiment map from Claude analysis
-        contact_sentiments = {}
-        for s in (account_summaries or []):
-            for ec in s.get('external_contacts', []):
-                email_addr = (ec.get('email') or '').lower()
-                if email_addr and ec.get('sentiment_score') is not None:
-                    try:
-                        contact_sentiments[email_addr] = float(
-                            ec['sentiment_score'],
-                        )
-                    except (ValueError, TypeError):
-                        pass
-
-        scores = []
-        for c in external:
-            addr = c['email']
-            msg_count = email_counts.get(addr, 0)
-            thread_count = thread_participation.get(addr, 0)
-
-            # Frequency score (0-25): más emails = mejor relación
-            freq_score = min(25, 5 + msg_count * 4)
-
-            # Responsiveness score (0-25): participación en threads
-            resp_score = min(25, 5 + thread_count * 4)
-
-            # Reciprocity score (0-25): ¿reciben respuesta?
-            related_threads = [
-                t for t in threads
-                if addr in t.get('participant_emails', [])
-            ]
-            replied_count = sum(1 for t in related_threads if t['has_internal_reply'])
-            recip_score = (
-                round(replied_count / len(related_threads) * 25)
-                if related_threads else 12
-            )
-
-            # Sentiment score (0-25): use Claude's numeric score if available
-            # Convert from [-1, 1] range to [0, 25] range
-            claude_sentiment = contact_sentiments.get(addr.lower())
-            if claude_sentiment is not None:
-                # -1.0 → 0, 0.0 → 12.5, 1.0 → 25
-                sent_score = round((claude_sentiment + 1) * 12.5)
-                sent_score = max(0, min(25, sent_score))
-            else:
-                sent_score = 15  # neutral baseline
-
-            total = freq_score + resp_score + recip_score + sent_score
-
-            # Risk level
-            if total >= 60:
-                risk = 'low'
-            elif total >= 35:
-                risk = 'medium'
-            else:
-                risk = 'high'
-
-            scores.append({
-                'email': addr,
-                'total_score': total,
-                'frequency_score': freq_score,
-                'responsiveness_score': resp_score,
-                'reciprocity_score': recip_score,
-                'sentiment_score': sent_score,
-                'risk_level': risk,
-            })
-
-        return scores
-
-    # ── Key Events para daily_summaries ──────────────────────────────────────
-
-    @staticmethod
-    def _build_key_events(alerts: list, account_summaries: list) -> list:
-        """Construye key_events JSON para daily_summaries.
-
-        El frontend usa esto para el panel de urgencias del dashboard.
-        Formato: [{"type": str, "description": str, "urgency": str}]
-        """
-        events = []
-
-        # Critical and high alerts → key events
-        severity_urgency = {
-            'critical': 'critical', 'high': 'high',
-            'medium': 'medium', 'low': 'low',
-        }
-        for a in (alerts or []):
-            sev = a.get('severity', 'low')
-            if sev in ('critical', 'high'):
-                events.append({
-                    'type': a.get('alert_type', 'alert'),
-                    'description': a.get('title', ''),
-                    'urgency': severity_urgency.get(sev, 'medium'),
-                })
-
-        # Urgent items from account summaries
-        for s in (account_summaries or []):
-            for item in s.get('urgent_items', []):
-                events.append({
-                    'type': 'urgent_item',
-                    'description': item.get('item', ''),
-                    'urgency': 'high',
-                })
-
-            # Competitors mentioned → key events
-            for comp in s.get('competitors_mentioned', []):
-                threat = comp.get('threat_level', 'medium')
-                events.append({
-                    'type': 'competitor',
-                    'description': (
-                        f"Competidor {comp.get('name', '?')} mencionado "
-                        f"por {comp.get('mentioned_by', '?')}"
-                    ),
-                    'urgency': 'high' if threat == 'high' else 'medium',
-                })
-
-            # At-risk contacts → key events
-            for contact in s.get('external_contacts', []):
-                signal = contact.get('relationship_signal', '')
-                if signal == 'at_risk':
-                    events.append({
-                        'type': 'churn_risk',
-                        'description': (
-                            f"Relación en riesgo: "
-                            f"{contact.get('name', '?')} "
-                            f"({contact.get('company', '?')})"
-                        ),
-                        'urgency': 'high',
-                    })
-
-        # Dedupe and limit
-        seen = set()
-        unique = []
-        for e in events:
-            key = e['description'][:80]
-            if key not in seen:
-                seen.add(key)
-                unique.append(e)
-        return unique[:20]
-
-    # ── Data Package para síntesis ────────────────────────────────────────────
-
-    @staticmethod
-    def _build_data_package(today: str, summaries: list, metrics: list,
-                            alerts: list, threads: list, client_scores: list,
-                            odoo_ctx: dict, historical: dict) -> str:
-        """Construye el paquete de datos completo para Claude fase 2.
-
-        Incluye: análisis por cuenta, métricas, alertas, contexto profundo
-        de Odoo (10 modelos), verificación de acciones, pipeline CRM,
-        actividades del equipo, y perfiles detallados de contactos.
-        """
-        sections = [
-            f'FECHA: {today}',
-            f'TOTAL CUENTAS ANALIZADAS: {len(summaries)}',
-        ]
-
-        # ── Contexto histórico ──────────────────────────────────────────────
-        if historical.get('previousSummary'):
-            sections.append(
-                f"\nRESUMEN DEL DÍA ANTERIOR:\n"
-                f"{historical['previousSummary'][:1000]}"
-            )
-        if historical.get('openAlerts'):
-            sections.append(
-                f"\nALERTAS ABIERTAS PREVIAS:\n"
-                + json.dumps(historical['openAlerts'][:10], default=str)
-            )
-
-        # ── Resúmenes por cuenta ────────────────────────────────────────────
-        sections.append('\n═══ ANÁLISIS POR CUENTA ═══')
-        for s in summaries:
-            sections.append(
-                f"\n── {s['department']} ({s['account']}) ──\n"
-                f"Emails: {s.get('total_emails', 0)} "
-                f"(ext:{s.get('external_emails', 0)}, "
-                f"int:{s.get('internal_emails', 0)})\n"
-                f"Resumen: {s.get('summary_text', '')}\n"
-                f"Sentimiento: {s.get('overall_sentiment', 'N/A')}\n"
-                f"Items clave: {json.dumps(s.get('key_items', []), default=str, ensure_ascii=False)}\n"
-                f"Esperando respuesta: {json.dumps(s.get('waiting_response', []), default=str, ensure_ascii=False)}\n"
-                f"Urgentes: {json.dumps(s.get('urgent_items', []), default=str, ensure_ascii=False)}\n"
-                f"Contactos: {json.dumps(s.get('external_contacts', []), default=str, ensure_ascii=False)}\n"
-                f"Temas: {json.dumps(s.get('topics_detected', []), default=str, ensure_ascii=False)}\n"
-                f"Riesgos: {json.dumps(s.get('risks_detected', []), default=str, ensure_ascii=False)}\n"
-                f"Sentimiento numérico: {s.get('sentiment_score', 'N/A')}\n"
-                f"Competidores: {json.dumps(s.get('competitors_mentioned', []), default=str, ensure_ascii=False)}"
-            )
-
-        # ── Métricas ────────────────────────────────────────────────────────
-        sections.append('\n═══ MÉTRICAS DE RESPUESTA ═══')
-        for m in metrics:
-            sections.append(
-                f"{m['account']}: recv={m['emails_received']} "
-                f"sent={m['emails_sent']} "
-                f"replied={m['threads_replied']} "
-                f"unanswered={m['threads_unanswered']} "
-                f"avg_hrs={m.get('avg_response_hours', 'N/A')}"
-            )
-
-        # ── Alertas ─────────────────────────────────────────────────────────
-        if alerts:
-            sections.append(f'\n═══ ALERTAS ({len(alerts)}) ═══')
-            for a in alerts[:20]:
-                sections.append(
-                    f"[{a['severity'].upper()}] {a['alert_type']}: "
-                    f"{a['title']}"
-                )
-
-        # ══════════════════════════════════════════════════════════════════
-        #  CONTEXTO PROFUNDO DE ODOO (10 modelos)
-        # ══════════════════════════════════════════════════════════════════
-
-        # ── Perfiles detallados de contactos ────────────────────────────────
-        partners = odoo_ctx.get('partners', {})
-        if partners:
-            sections.append('\n═══ PERFILES DE CONTACTOS (Odoo ERP — datos en vivo) ═══')
-            for email_addr, p in partners.items():
-                summary = p.get('_summary', '')
-                if not summary:
-                    continue
-                parts = [f"\n── {p.get('name', email_addr)} ({email_addr}) ──"]
-                parts.append(f"RESUMEN: {summary}")
-
-                # CRM Pipeline
-                leads = p.get('crm_leads', [])
-                if leads:
-                    for l in leads[:3]:
-                        parts.append(
-                            f"  CRM: {l['name']} | Etapa: {l['stage']} | "
-                            f"Revenue: ${l['expected_revenue']:,.0f} | "
-                            f"Prob: {l['probability']}% | "
-                            f"Responsable: {l['user']} | "
-                            f"{l['days_open']}d abierto"
-                        )
-
-                # Actividades pendientes
-                acts = p.get('pending_activities', [])
-                if acts:
-                    overdue = [a for a in acts if a['is_overdue']]
-                    if overdue:
-                        parts.append(
-                            f"  ⚠ ACTIVIDADES VENCIDAS ({len(overdue)}):"
-                        )
-                        for a in overdue[:3]:
-                            parts.append(
-                                f"    - {a['type']}: {a['summary'][:80]} "
-                                f"(vencida {a['deadline']}, "
-                                f"asignada a {a['assigned_to']})"
-                            )
-                    pending = [a for a in acts if not a['is_overdue']]
-                    if pending:
-                        parts.append(
-                            f"  Actividades programadas ({len(pending)}):"
-                        )
-                        for a in pending[:3]:
-                            parts.append(
-                                f"    - {a['type']}: {a['summary'][:80]} "
-                                f"(para {a['deadline']}, {a['assigned_to']})"
-                            )
-
-                # Entregas pendientes
-                deliveries = p.get('pending_deliveries', [])
-                if deliveries:
-                    late = [d for d in deliveries if d['is_late']]
-                    if late:
-                        parts.append(
-                            f"  ⚠ ENTREGAS RETRASADAS ({len(late)}):"
-                        )
-                        for d in late[:3]:
-                            parts.append(
-                                f"    - {d['name']}: programada {d['scheduled']}"
-                                f" ({d['type']}) origen: {d['origin']}"
-                            )
-                    on_time = [d for d in deliveries if not d['is_late']]
-                    if on_time:
-                        for d in on_time[:3]:
-                            parts.append(
-                                f"  Entrega: {d['name']} programada "
-                                f"{d['scheduled']} ({d['type']})"
-                            )
-
-                # Manufactura
-                mfg = p.get('manufacturing', [])
-                if mfg:
-                    parts.append(f"  Producción en proceso ({len(mfg)}):")
-                    for m in mfg[:3]:
-                        parts.append(
-                            f"    - {m['name']}: {m['product']} "
-                            f"x{m['qty']} ({m['state']}) "
-                            f"origen: {m['origin']}"
-                        )
-
-                # Reuniones próximas
-                meetings = p.get('upcoming_meetings', [])
-                if meetings:
-                    parts.append(f"  Reuniones próximas ({len(meetings)}):")
-                    for ev in meetings[:3]:
-                        parts.append(
-                            f"    - {ev['name']} ({ev['start']}) "
-                            f"con: {', '.join(ev['attendees'][:3])}"
-                        )
-
-                # Pagos recientes
-                payments = p.get('recent_payments', [])
-                if payments:
-                    for pay in payments[:3]:
-                        direction = (
-                            'Cobro recibido' if pay['payment_type'] == 'inbound'
-                            else 'Pago emitido'
-                        )
-                        parts.append(
-                            f"  {direction}: {pay['name']} ${pay['amount']:,.0f}"
-                            f" {pay['currency']} ({pay['date']})"
-                        )
-
-                # Comunicación reciente en Odoo (chatter)
-                chatter = p.get('recent_chatter', [])
-                related = p.get('related_chatter', [])
-                all_msgs = chatter + related
-                if all_msgs:
-                    parts.append(
-                        f"  Comunicación interna Odoo ({len(all_msgs)} msgs "
-                        f"en 7d):"
-                    )
-                    for msg in all_msgs[:5]:
-                        parts.append(
-                            f"    - [{msg.get('date', '')}] "
-                            f"{msg.get('author', '')}: "
-                            f"{msg.get('preview', '')[:100]}"
-                        )
-
-                sections.append('\n'.join(parts))
-
-        # ── Verificación de acciones (accountability) ───────────────────────
-        followup = odoo_ctx.get('action_followup', {})
-        if followup.get('items'):
-            sections.append(
-                f"\n═══ VERIFICACIÓN DE ACCIONES SUGERIDAS ═══\n"
-                f"Tasa de completado (7 días): {followup.get('completion_rate', 0)}%\n"
-                f"Completadas hoy: {followup.get('completed_today', 0)}\n"
-                f"Vencidas sin hacer: {followup.get('overdue_count', 0)}"
-            )
-            for item in followup['items'][:15]:
-                status = '⚠ VENCIDA' if item['is_overdue'] else 'pendiente'
-                line = (
-                    f"\n  [{item['priority'].upper()}] {item['description'][:100]}"
-                    f" ({status})"
-                )
-                if item.get('assigned_to'):
-                    line += f" → {item['assigned_to']}"
-                if item.get('partner'):
-                    line += f" | Contacto: {item['partner']}"
-                if item.get('due_date'):
-                    line += f" | Vence: {item['due_date']}"
-                line += f" | {item['days_open']}d abierto"
-
-                # Evidencia de acción
-                evidence = item.get('evidence_of_action', [])
-                if evidence:
-                    line += '\n    EVIDENCIA ENCONTRADA:'
-                    for ev in evidence[:3]:
-                        if ev['type'] == 'chatter_message':
-                            line += (
-                                f"\n      ✓ Mensaje en Odoo de "
-                                f"{ev['author']} ({ev['date']}): "
-                                f"{ev['preview'][:80]}"
-                            )
-                        elif ev['type'] == 'scheduled_activity':
-                            line += (
-                                f"\n      ✓ Actividad programada: "
-                                f"{ev['activity']} para {ev['deadline']} "
-                                f"({ev['assigned_to']})"
-                            )
-                else:
-                    line += '\n    ✗ SIN EVIDENCIA DE ACCIÓN'
-
-                sections.append(line)
-
-        # ── Pipeline comercial global ───────────────────────────────────────
-        pipeline = odoo_ctx.get('global_pipeline', {})
-        if pipeline:
-            sections.append(
-                f"\n═══ PIPELINE COMERCIAL (CRM) ═══\n"
-                f"Total oportunidades: {pipeline.get('total_opportunities', 0)}\n"
-                f"Revenue esperado total: "
-                f"${pipeline.get('total_expected_revenue', 0):,.0f}"
-            )
-            for stage, data in pipeline.get('by_stage', {}).items():
-                sections.append(
-                    f"  {stage}: {data['count']} opps "
-                    f"(${data['revenue']:,.0f})"
-                )
-
-        # ── Actividades del equipo ──────────────────────────────────────────
-        team = odoo_ctx.get('team_activities', {})
-        if team:
-            sections.append('\n═══ ACTIVIDADES DEL EQUIPO (próximos 3 días) ═══')
-            for user_name, data in team.items():
-                overdue_str = (
-                    f' ⚠ {data["overdue"]} VENCIDAS'
-                    if data['overdue'] else ''
-                )
-                sections.append(
-                    f"\n  {user_name}: {data['pending']} pendientes"
-                    f"{overdue_str}"
-                )
-                for act in data['items'][:3]:
-                    marker = '⚠' if act['overdue'] else '·'
-                    sections.append(
-                        f"    {marker} {act['type']}: {act['summary'][:60]} "
-                        f"(vence {act['deadline']})"
-                    )
-
-        # ── Client scores ───────────────────────────────────────────────────
-        if client_scores:
-            at_risk = [s for s in client_scores if s['risk_level'] == 'high']
-            if at_risk:
-                sections.append('\n═══ CLIENTES EN RIESGO ═══')
-                for s in at_risk:
-                    sections.append(
-                        f"{s['email']}: score={s['total_score']}/100 "
-                        f"(freq={s['frequency_score']}, "
-                        f"resp={s['responsiveness_score']}, "
-                        f"recip={s['reciprocity_score']}, "
-                        f"sent={s['sentiment_score']})"
-                    )
-
-        return '\n'.join(sections)
-
     # ── Embeddings ────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -3343,7 +1335,6 @@ class IntelligenceEngine(models.Model):
             _logger.info('Embeddings: nada pendiente')
             return
 
-        # Procesar en lotes de 64
         batch_size = 64
         total = 0
         for i in range(0, len(to_embed), batch_size):
@@ -3368,83 +1359,42 @@ class IntelligenceEngine(models.Model):
     @staticmethod
     def _build_contact_odoo_context(p: dict, lifetime: dict, aging: dict,
                                      deliv: dict, today: str) -> dict:
-        """Construye odoo_context completo con todo el detalle operacional.
-
-        Incluye datos reales de ventas, facturas, productos, entregas, CRM,
-        manufactura, pagos, actividades y reuniones — no solo conteos.
-        """
+        """Construye odoo_context completo con todo el detalle operacional."""
         return {
-            # ── Identificación ──
             'name': p.get('name', ''),
             'odoo_partner_id': p.get('id'),
             'is_company': p.get('is_company', False),
             'company_name': p.get('company_name', ''),
             'synced_at': today,
-
-            # ── Métricas financieras ──
             'total_invoiced': p.get('total_invoiced', 0),
             'credit_limit': p.get('credit_limit', 0),
             'lifetime': lifetime or {},
             'aging': aging or {},
-
-            # ── Ventas (detalle de pedidos recientes) ──
             'recent_sales': p.get('recent_sales', []),
-
-            # ── Facturas pendientes (con montos y días vencidos) ──
             'pending_invoices': p.get('pending_invoices', []),
-
-            # ── Compras (OC recientes) ──
             'recent_purchases': p.get('recent_purchases', []),
-
-            # ── Pagos recibidos/emitidos ──
             'recent_payments': p.get('recent_payments', []),
-
-            # ── Productos (stock, precios, últimas cantidades) ──
             'products': p.get('products', []),
-
-            # ── CRM (oportunidades activas) ──
             'crm_leads': p.get('crm_leads', []),
-
-            # ── Entregas pendientes ──
             'pending_deliveries': p.get('pending_deliveries', []),
-
-            # ── Actividades/tareas pendientes ──
             'pending_activities': p.get('pending_activities', []),
-
-            # ── Manufactura (OMs en proceso) ──
             'manufacturing': p.get('manufacturing', []),
-
-            # ── Reuniones próximas ──
             'upcoming_meetings': p.get('upcoming_meetings', []),
-
-            # ── Notas de crédito / devoluciones ──
             'credit_notes': p.get('credit_notes', []),
-
-            # ── Performance de entrega ──
             'delivery_performance': deliv or {},
-
-            # ── Contactos relacionados (misma empresa) ──
             'related_contacts': p.get('related_contacts', []),
-
-            # ── Comunicación Odoo (chatter) ──
             'recent_chatter': p.get('recent_chatter', []),
             'related_chatter': p.get('related_chatter', []),
-
-            # ── Resumen ejecutivo (texto) ──
             'summary': p.get('_summary', ''),
         }
 
     @staticmethod
     def _build_company_odoo_context(company_name: str, partners: dict,
                                      today: str) -> dict:
-        """Agrega datos operacionales a nivel empresa desde todos sus contactos.
-
-        Consolida ventas, facturas, productos, entregas y CRM de todos los
-        contactos de la misma empresa para dar una vista 360.
-        """
+        """Agrega datos operacionales a nivel empresa desde todos sus contactos."""
         all_sales = []
         all_invoices = []
-        all_products = {}  # product_name → data (dedup)
+        all_products = {}
         all_deliveries = []
         all_leads = []
         all_manufacturing = []
@@ -3477,7 +1427,6 @@ class IntelligenceEngine(models.Model):
             for pay in p.get('recent_payments', []):
                 all_payments.append({**pay, '_contact': email_addr})
 
-        # Sort by date (most recent first)
         all_sales.sort(key=lambda x: x.get('date', ''), reverse=True)
         all_invoices.sort(
             key=lambda x: x.get('days_overdue', 0), reverse=True)
@@ -3488,8 +1437,6 @@ class IntelligenceEngine(models.Model):
             'contact_emails': contact_emails[:20],
             'total_invoiced': total_invoiced,
             'total_pending': total_pending,
-
-            # Detalle operacional consolidado (limitado para no exceder JSONB)
             'recent_sales': all_sales[:20],
             'pending_invoices': all_invoices[:20],
             'products': list(all_products.values())[:15],
@@ -3497,8 +1444,6 @@ class IntelligenceEngine(models.Model):
             'crm_leads': all_leads[:10],
             'manufacturing': all_manufacturing[:10],
             'recent_payments': all_payments[:15],
-
-            # Resumen rápido
             'sales_count_90d': len(all_sales),
             'pending_invoices_count': len(all_invoices),
             'pending_deliveries_count': len(all_deliveries),
@@ -3522,16 +1467,14 @@ class IntelligenceEngine(models.Model):
         if not partners:
             return
 
-        # ── Pre-resolve all company names in 1 batch query ──
         all_company_names = list({
             p.get('company_name', '') for p in partners.values()
             if p.get('company_name')
         })
         company_cache = supa.batch_resolve_companies(all_company_names)
 
-        # ── Phase 1: Aggregate company-level data ──
-        # Group partners by company_name to compute company-level aggregates
-        company_data = {}  # company_name → aggregated data
+        # Phase 1: Aggregate company-level data
+        company_data = {}
         for email_addr, p in partners.items():
             company_name = p.get('company_name', '')
             if not company_name:
@@ -3562,7 +1505,6 @@ class IntelligenceEngine(models.Model):
                 inv.get('amount_residual', 0)
                 for inv in p.get('pending_invoices', []))
             cd['monthly_avg'] += lifetime.get('monthly_avg', 0)
-            # Use company partner's odoo_id if it's the company itself
             if p.get('is_company'):
                 cd['odoo_partner_id'] = p.get('id')
                 cd['credit_limit'] = p.get('credit_limit', 0)
@@ -3571,7 +1513,6 @@ class IntelligenceEngine(models.Model):
             if deliv.get('on_time_rate') is not None:
                 cd['delivery_otd_rate'] = deliv['on_time_rate']
 
-        # Sync company-level data + operational context to Supabase
         snapshot_batch = []
         for company_name, cd in company_data.items():
             try:
@@ -3581,12 +1522,10 @@ class IntelligenceEngine(models.Model):
                 if not company_id:
                     continue
 
-                # Build rich operational context for this company
                 co_ctx = IntelligenceEngine._build_company_odoo_context(
                     company_name, partners, today or '',
                 )
 
-                # Sync scalar metrics + full odoo_context in one PATCH
                 patch_data = {
                     'lifetime_value': cd['lifetime_value'],
                     'total_credit_notes': cd['total_credit_notes'],
@@ -3604,7 +1543,6 @@ class IntelligenceEngine(models.Model):
 
                 supa.sync_company_odoo_data(company_id, patch_data)
 
-                # Collect snapshot for daily trend tracking
                 if today:
                     snapshot_batch.append({
                         'company_id': company_id,
@@ -3634,16 +1572,15 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.debug('Company sync %s: %s', company_name, exc)
 
-        # Batch-save daily snapshots for trend analysis
         if snapshot_batch:
             try:
                 supa.save_company_snapshots(snapshot_batch)
             except Exception as exc:
                 _logger.warning('Company snapshots: %s', exc)
 
-        # ── Phase 2: Sync individual contacts ──
+        # Phase 2: Sync individual contacts
         synced = 0
-        revenue_batch = []  # Collect revenue metrics for batch save
+        revenue_batch = []
         for email_addr, p in partners.items():
             try:
                 lifetime = p.get('lifetime', {})
@@ -3652,6 +1589,10 @@ class IntelligenceEngine(models.Model):
                 cn_total = sum(
                     cn.get('amount', 0)
                     for cn in p.get('credit_notes', [])
+                )
+                # NOTE: self is not available in @staticmethod, use class ref
+                contact_ctx = IntelligenceEngine._build_contact_odoo_context(
+                    p, lifetime, aging, deliv, today,
                 )
                 supa.sync_contact_odoo_data(email_addr, {
                     'odoo_partner_id': p.get('id'),
@@ -3662,13 +1603,10 @@ class IntelligenceEngine(models.Model):
                         'total_invoiced', p.get('total_invoiced', 0)),
                     'total_credit_notes': cn_total,
                     'delivery_otd_rate': deliv.get('on_time_rate'),
-                    'odoo_context': self._build_contact_odoo_context(
-                        p, lifetime, aging, deliv, today,
-                    ),
+                    'odoo_context': contact_ctx,
                 }, _company_cache=company_cache)
                 synced += 1
 
-                # ── Collect revenue metrics for batch save ──
                 if p.get('is_customer') and today:
                     try:
                         recent_sales = p.get('recent_sales', [])
@@ -3711,7 +1649,6 @@ class IntelligenceEngine(models.Model):
         if synced:
             _logger.info('✓ %d contactos sincronizados Odoo → Supabase', synced)
 
-        # ── Batch-save all revenue metrics (1 call instead of N) ──
         if revenue_batch:
             try:
                 supa.save_revenue_metrics_batch(revenue_batch)
@@ -3722,25 +1659,14 @@ class IntelligenceEngine(models.Model):
 
     @staticmethod
     def _enrich_companies(supa, claude, today: str):
-        """Enriquece empresas sin perfil usando Claude.
-
-        Para cada empresa sin enriched_at, recopila contexto de:
-        - Emails de sus contactos (subjects/snippets)
-        - Facts del Knowledge Graph
-        - Datos de Odoo (odoo_context)
-        - Attributes de la entity
-        Luego le pide a Claude que genere un perfil.
-
-        Batch pre-fetches contacts for all companies to reduce N+1 queries.
-        """
+        """Enriquece empresas sin perfil usando Claude."""
         companies = supa.get_companies_needing_enrichment(limit=10)
         if not companies:
             _logger.info('No hay empresas pendientes de enriquecimiento')
             return
 
-        # ── Batch pre-fetch contacts for all companies (1 query) ──
         company_ids = [co['id'] for co in companies]
-        all_contacts_map = {}  # company_id → [contacts]
+        all_contacts_map = {}
         try:
             cid_list = ','.join(str(cid) for cid in company_ids)
             all_contacts = supa._request(
@@ -3756,13 +1682,12 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.debug('batch contacts for enrichment: %s', exc)
 
-        # ── Batch pre-fetch recent emails from all contact emails (1 query) ──
         all_contact_emails = []
         for cts in all_contacts_map.values():
             for ct in cts[:5]:
                 if ct.get('email'):
                     all_contact_emails.append(ct['email'])
-        emails_by_sender = {}  # sender_email → [email records]
+        emails_by_sender = {}
         if all_contact_emails:
             try:
                 from urllib.parse import quote as _q
@@ -3788,7 +1713,6 @@ class IntelligenceEngine(models.Model):
             company_name = co['name']
 
             try:
-                # Gather context from multiple sources
                 context_parts = [f'EMPRESA: {company_name}']
 
                 if co.get('domain'):
@@ -3798,7 +1722,6 @@ class IntelligenceEngine(models.Model):
                 if co.get('is_supplier'):
                     context_parts.append('ES PROVEEDOR de Quimibond')
 
-                # Odoo context
                 odoo_ctx = co.get('odoo_context') or {}
                 if odoo_ctx and any(odoo_ctx.values()):
                     ctx_items = []
@@ -3812,7 +1735,6 @@ class IntelligenceEngine(models.Model):
                         context_parts.append(
                             'DATOS ODOO:\n' + '\n'.join(ctx_items))
 
-                # KG entity attributes (still per-company RPC — can't batch)
                 if co.get('entity_id'):
                     try:
                         entity_data = supa.get_entity_intelligence(
@@ -3837,7 +1759,6 @@ class IntelligenceEngine(models.Model):
                     except Exception:
                         pass
 
-                # Contacts from pre-fetched batch
                 contacts = all_contacts_map.get(company_id, [])
                 if contacts:
                     contact_info = []
@@ -3851,7 +1772,6 @@ class IntelligenceEngine(models.Model):
                         f'CONTACTOS ({len(contacts)}):\n'
                         + '\n'.join(contact_info))
 
-                    # Get sample emails from pre-fetched batch
                     email_lines = []
                     for ct in contacts[:5]:
                         ct_email = (ct.get('email') or '').lower()
@@ -3866,7 +1786,6 @@ class IntelligenceEngine(models.Model):
 
                 context = '\n\n'.join(context_parts)
 
-                # Ask Claude to profile the company
                 profile = claude.profile_company(company_name, context)
                 if profile:
                     supa.save_company_profile(company_id, profile)
@@ -3886,20 +1805,14 @@ class IntelligenceEngine(models.Model):
     # ── Link Odoo IDs to contacts + entities ────────────────────────────────
 
     def _link_odoo_ids(self, supa):
-        """Vincula contactos y entities del Knowledge Graph con IDs de Odoo.
-
-        1. Contactos internos → busca res.partner + res.users por email
-        2. Contactos externos sin odoo_partner_id → busca res.partner por email
-        3. Entities (person/company) → busca res.partner por email o nombre
-        4. Ejecuta resolve_all_identities() para propagar links bidireccionales
-        """
+        """Vincula contactos y entities del Knowledge Graph con IDs de Odoo."""
         Partner = self.env['res.partner'].sudo()
         try:
             Users = self.env['res.users'].sudo()
         except KeyError:
             Users = None
 
-        # ── 1. Internal contacts: link odoo_partner_id ────────────────────
+        # 1. Internal contacts
         try:
             internals = supa._request(
                 '/rest/v1/contacts?contact_type=eq.internal'
@@ -3922,7 +1835,6 @@ class IntelligenceEngine(models.Model):
                 if not partner:
                     continue
                 update = {'odoo_partner_id': partner.id}
-                # Also check if this partner has a user (for internal users)
                 if Users:
                     user = Users.search(
                         [('partner_id', '=', partner.id)], limit=1,
@@ -3942,7 +1854,7 @@ class IntelligenceEngine(models.Model):
             _logger.info('✓ %d contactos internos vinculados a Odoo',
                          linked_contacts)
 
-        # ── 2. External contacts: link odoo_partner_id ────────────────────
+        # 2. External contacts
         try:
             externals = supa._request(
                 '/rest/v1/contacts?contact_type=eq.external'
@@ -3963,7 +1875,6 @@ class IntelligenceEngine(models.Model):
                     [('email', '=ilike', email)], limit=1,
                 )
                 if not partner and c.get('name'):
-                    # Fuzzy: try by name + not company
                     partner = Partner.search(
                         [('name', '=ilike', c['name']),
                          ('is_company', '=', False)],
@@ -3981,7 +1892,7 @@ class IntelligenceEngine(models.Model):
             _logger.info('✓ %d contactos externos vinculados a Odoo',
                          linked_external)
 
-        # ── 3. Entities: link odoo_model + odoo_id ────────────────────────
+        # 3. Entities
         try:
             entities = supa._request(
                 '/rest/v1/entities?odoo_id=is.null'
@@ -4000,20 +1911,17 @@ class IntelligenceEngine(models.Model):
                 ent_name = ent.get('name', '')
                 ent_type = ent.get('entity_type', '')
 
-                # Search by email first (most reliable)
                 if ent_email:
                     partner = Partner.search(
                         [('email', '=ilike', ent_email)], limit=1,
                     )
 
-                # Fallback: search by name for companies
                 if not partner and ent_type == 'company' and ent_name:
                     partner = Partner.search(
                         [('name', '=ilike', ent_name),
                          ('is_company', '=', True)],
                         limit=1,
                     )
-                    # Try partial match
                     if not partner:
                         partner = Partner.search(
                             [('name', '=ilike', f'%{ent_name}%'),
@@ -4021,7 +1929,6 @@ class IntelligenceEngine(models.Model):
                             limit=1,
                         )
 
-                # For persons without email, search by name
                 if not partner and ent_type == 'person' and ent_name:
                     partner = Partner.search(
                         [('name', '=ilike', ent_name),
@@ -4046,7 +1953,7 @@ class IntelligenceEngine(models.Model):
         if linked_entities:
             _logger.info('✓ %d entities vinculadas a Odoo', linked_entities)
 
-        # ── 4. Resolve all identities (propagate links bidirectionally) ───
+        # 4. Resolve all identities
         try:
             result = supa._request(
                 '/rest/v1/rpc/resolve_all_identities', 'POST', {},
@@ -4067,7 +1974,6 @@ class IntelligenceEngine(models.Model):
         ActionItem = self.env['intelligence.action.item'].sudo()
 
         for item in followup['items']:
-            # Auto-complete actions with strong evidence
             if item.get('evidence_of_action') and len(
                 item['evidence_of_action']
             ) >= 2:
@@ -4086,7 +1992,6 @@ class IntelligenceEngine(models.Model):
                                   item['id'], exc)
                 continue
 
-            # Generate alert for overdue actions WITHOUT evidence
             if item['is_overdue'] and not item.get('evidence_of_action'):
                 alerts.append({
                     'alert_type': 'accountability',
@@ -4105,7 +2010,6 @@ class IntelligenceEngine(models.Model):
                     'related_contact': item.get('partner', ''),
                 })
 
-        # Save accountability alerts to Supabase
         acct_alerts = [
             a for a in alerts if a.get('alert_type') == 'accountability'
         ]
@@ -4118,162 +2022,14 @@ class IntelligenceEngine(models.Model):
                 '✓ %d alertas de accountability generadas', len(acct_alerts),
             )
 
-    # ── Communication Patterns ───────────────────────────────────────────────
-
-    @staticmethod
-    def _compute_communication_patterns(
-        emails: list, threads: list, today: str,
-    ) -> list:
-        """Calcula patrones de comunicación POR CUENTA por semana.
-
-        Schema: communication_patterns(week_start, account, total_emails,
-            response_rate, avg_response_hours, top_external_contacts,
-            top_internal_contacts, busiest_hour, common_subjects,
-            sentiment_score)
-        """
-        from email.utils import parsedate_to_datetime as _pdt
-
-        # Compute week_start (Monday of current week)
-        from datetime import datetime as _dt, timedelta
-        try:
-            d = _dt.strptime(today, '%Y-%m-%d')
-        except (ValueError, TypeError):
-            d = _dt.now()
-        week_start = (d - timedelta(days=d.weekday())).strftime('%Y-%m-%d')
-
-        # Aggregate data per account
-        by_account = defaultdict(lambda: {
-            'total': 0, 'hours': defaultdict(int),
-            'subjects': defaultdict(int),
-            'external_contacts': defaultdict(int),
-            'internal_contacts': defaultdict(int),
-            'replied_threads': 0, 'total_threads': 0,
-        })
-
-        for e in emails:
-            account = e.get('account', '')
-            if not account:
-                continue
-            data = by_account[account]
-            data['total'] += 1
-            try:
-                dt = _pdt(e.get('date', ''))
-                data['hours'][dt.hour] += 1
-            except Exception:
-                pass
-            subj = e.get('subject_normalized', e.get('subject', ''))
-            if subj:
-                data['subjects'][subj] += 1
-            sender = e.get('from_email', '')
-            if sender and e.get('sender_type') == 'external':
-                data['external_contacts'][sender] += 1
-            elif sender:
-                data['internal_contacts'][sender] += 1
-
-        # Thread stats per account
-        for t in threads:
-            account = t.get('account', '')
-            if account and account in by_account:
-                by_account[account]['total_threads'] += 1
-                if t.get('has_internal_reply'):
-                    by_account[account]['replied_threads'] += 1
-
-        patterns = []
-        for account, data in by_account.items():
-            if data['total'] < 1:
-                continue
-            # Response rate
-            resp_rate = None
-            if data['total_threads'] > 0:
-                resp_rate = round(
-                    data['replied_threads'] / data['total_threads'], 2)
-            # Busiest hour
-            busiest = None
-            if data['hours']:
-                busiest = max(data['hours'].items(), key=lambda x: x[1])[0]
-            # Top contacts (sorted by frequency, top 5)
-            top_ext = sorted(
-                data['external_contacts'].items(), key=lambda x: -x[1])[:5]
-            top_int = sorted(
-                data['internal_contacts'].items(), key=lambda x: -x[1])[:5]
-            # Common subjects
-            top_subj = sorted(
-                data['subjects'].items(), key=lambda x: -x[1])[:5]
-
-            patterns.append({
-                'week_start': week_start,
-                'account': account,
-                'total_emails': data['total'],
-                'response_rate': resp_rate,
-                'busiest_hour': busiest,
-                'top_external_contacts': [c for c, _ in top_ext],
-                'top_internal_contacts': [c for c, _ in top_int],
-                'common_subjects': [s for s, _ in top_subj],
-            })
-
-        return patterns
-
-    # ── System Learning Detection ────────────────────────────────────────────
-
-    @staticmethod
-    def _detect_learnings(metrics, alerts, client_scores, odoo_ctx, supa):
-        """Detecta patrones y los registra como aprendizajes del sistema."""
-        # 1. Detect accounts with degraded response times
-        for m in metrics:
-            if m.get('avg_response_hours') and m['avg_response_hours'] > 24:
-                supa.save_learning(
-                    'response_degradation',
-                    f"Cuenta {m['account']}: tiempo promedio de respuesta "
-                    f"{m['avg_response_hours']}h (>24h)",
-                    {'account': m['account'],
-                     'avg_hours': m['avg_response_hours'],
-                     'unanswered': m.get('threads_unanswered', 0)},
-                    account=m['account'],
-                )
-
-        # 2. Detect at-risk clients
-        at_risk = [
-            s for s in client_scores if s.get('risk_level') == 'high'
-        ]
-        if at_risk:
-            supa.save_learning(
-                'trend_identified',
-                f"{len(at_risk)} clientes en riesgo alto detectados",
-                {'clients': [s['email'] for s in at_risk[:10]]},
-            )
-
-        # 3. Detect high alert volume (pattern)
-        if len(alerts) > 15:
-            supa.save_learning(
-                'pattern_detected',
-                f"Alto volumen de alertas: {len(alerts)} alertas en un día",
-                {'alert_count': len(alerts),
-                 'types': list({a.get('alert_type') for a in alerts})},
-            )
-
-        # 4. Action completion rate insight
-        followup = odoo_ctx.get('action_followup', {})
-        rate = followup.get('completion_rate', 0)
-        if rate < 30 and followup.get('items'):
-            supa.save_learning(
-                'trend_identified',
-                f"Tasa de completado de acciones muy baja: {rate}%",
-                {'completion_rate': rate,
-                 'overdue': followup.get('overdue_count', 0),
-                 'total_pending': len(followup.get('items', []))},
-            )
-        elif rate > 80 and followup.get('items'):
-            supa.save_learning(
-                'response_improvement',
-                f"Excelente tasa de completado de acciones: {rate}%",
-                {'completion_rate': rate},
-            )
-
     # ── Knowledge Graph ──────────────────────────────────────────────────────
 
     def _feed_knowledge_graph(self, emails, claude, supa, today):
         if not emails:
             return
+
+        from ..services.analysis_service import AnalysisService
+        analysis = AnalysisService()
 
         gids = [e['gmail_message_id'] for e in emails if e.get('gmail_message_id')]
         try:
@@ -4303,7 +2059,7 @@ class IntelligenceEngine(models.Model):
         for account, acct_emails in by_account.items():
             if not acct_emails:
                 continue
-            email_text = self._format_emails_for_claude(acct_emails, {})
+            email_text = analysis.format_emails_for_claude(acct_emails, {})
             try:
                 kg = claude.extract_knowledge(email_text, account)
             except Exception as exc:
@@ -4356,7 +2112,6 @@ class IntelligenceEngine(models.Model):
             # Guardar action items en Supabase + Odoo
             for item in kg.get('action_items', []):
                 try:
-                    # Supabase
                     assignee_ent = supa.get_entity_by_name(item.get('assignee', ''))
                     related_ent = supa.get_entity_by_name(item.get('related_to', ''))
                     result = supa.save_action_item({
@@ -4375,7 +2130,6 @@ class IntelligenceEngine(models.Model):
                         if result and isinstance(result, list)
                         else False
                     )
-                    # Odoo
                     partner = False
                     related = item.get('related_to', '')
                     if related:
@@ -4415,7 +2169,7 @@ class IntelligenceEngine(models.Model):
                         _logger.debug('KG relationship save failed: %s', exc)
             _logger.info('  KG relationships: %d ok, %d failed', rel_ok, rel_fail)
 
-            # Guardar perfiles de personas (aprendizaje acumulativo)
+            # Guardar perfiles de personas
             for profile in kg.get('person_profiles', []):
                 try:
                     supa.upsert_person_profile({
@@ -4452,6 +2206,8 @@ class IntelligenceEngine(models.Model):
                 _logger.warning('KG mark_processed %s: %s', account, exc)
 
         _logger.info('Knowledge graph alimentado (con perfiles de personas)')
+
+    # ── Save to Odoo ─────────────────────────────────────────────────────────
 
     def _save_to_odoo(self, today, briefing_html, emails, alerts,
                       client_scores, contacts, execution_secs,
@@ -4514,43 +2270,3 @@ class IntelligenceEngine(models.Model):
                     'risk_level': s.get('risk_level', 'medium'),
                 })
         _logger.info('%d client scores en Odoo', len(client_scores))
-
-    @staticmethod
-    def _wrap_briefing_html(body_html: str, today: str, weekly: bool = False) -> str:
-        """Envuelve el briefing en un template HTML completo para email."""
-        title = 'Weekly Intelligence Report' if weekly else 'Daily Intelligence Briefing'
-        return f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8">
-<style>
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         max-width: 800px; margin: 0 auto; padding: 20px; color: #1a1a1a;
-         line-height: 1.6; }}
-  h1 {{ color: #1e3a5f; border-bottom: 3px solid #2563eb; padding-bottom: 10px; }}
-  h2 {{ color: #1e3a5f; margin-top: 25px; }}
-  h3 {{ color: #374151; }}
-  table {{ border-collapse: collapse; width: 100%; margin: 10px 0; }}
-  th, td {{ border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }}
-  th {{ background: #f3f4f6; font-weight: 600; }}
-  .header {{ background: linear-gradient(135deg, #1e3a5f, #2563eb);
-             color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }}
-  .header h1 {{ color: white; border: none; margin: 0; }}
-  .footer {{ margin-top: 30px; padding-top: 15px; border-top: 1px solid #e5e7eb;
-             font-size: 0.85em; color: #6b7280; }}
-  strong {{ color: #1e3a5f; }}
-  ul {{ padding-left: 20px; }}
-  li {{ margin-bottom: 5px; }}
-</style>
-</head>
-<body>
-<div class="header">
-  <h1>Quimibond {title}</h1>
-  <p style="margin:5px 0 0;opacity:0.9">{today} — Generado por Intelligence System v19</p>
-</div>
-{body_html}
-<div class="footer">
-  <p>Generado automáticamente por <strong>Quimibond Intelligence System</strong> (Odoo 19).<br>
-  Powered by Claude AI + Voyage AI + Supabase + Google Workspace.</p>
-</div>
-</body>
-</html>"""
