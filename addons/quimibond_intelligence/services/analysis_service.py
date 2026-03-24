@@ -435,6 +435,72 @@ class AnalysisService:
                         'account': account,
                     })
 
+        # ── Product Purchase Intelligence alerts ──────────────────────────────
+        for email_addr, p in partners.items():
+            patterns = p.get('purchase_patterns', {})
+            partner_name = p.get('name', email_addr)
+
+            # Volume drop alerts
+            for vd in patterns.get('volume_drops', []):
+                trend = vd.get('trend_pct', 0)
+                severity = 'high' if trend <= -50 else 'medium'
+                alerts.append({
+                    'alert_type': 'volume_drop',
+                    'severity': severity,
+                    'title': (
+                        f"Caida de volumen: {vd['product']} "
+                        f"({trend:+d}%) — {partner_name}"
+                    )[:120],
+                    'description': (
+                        f"Producto: {vd['product']}. "
+                        f"Ultimos 6m: {vd['recent_qty']:.0f} "
+                        f"vs anteriores 6m: {vd['previous_qty']:.0f} "
+                        f"({trend:+d}%). Investigar causa."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+            # Unusual discount alerts
+            for da in patterns.get('discount_anomalies', []):
+                severity = 'high' if da['delta'] > 10 else 'medium'
+                alerts.append({
+                    'alert_type': 'unusual_discount',
+                    'severity': severity,
+                    'title': (
+                        f"Descuento inusual: {da['product']} "
+                        f"({da['last_discount']:.1f}% vs "
+                        f"prom {da['avg_discount']:.1f}%) — {partner_name}"
+                    )[:120],
+                    'description': (
+                        f"Producto: {da['product']}. "
+                        f"Ultimo descuento: {da['last_discount']:.1f}%. "
+                        f"Promedio historico: {da['avg_discount']:.1f}%. "
+                        f"Diferencia: {da['delta']:+.1f} pts."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
+            # Cross-sell opportunity alerts
+            for cs in patterns.get('cross_sell', []):
+                alerts.append({
+                    'alert_type': 'cross_sell',
+                    'severity': 'low',
+                    'title': (
+                        f"Cross-sell: {cs['product']} "
+                        f"para {partner_name}"
+                    )[:120],
+                    'description': (
+                        f"{cs['similar_clients_buying']} de "
+                        f"{cs['total_similar_clients']} clientes similares "
+                        f"compran {cs['product']} pero {partner_name} no. "
+                        f"Oportunidad de venta cruzada."
+                    ),
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
         return alerts
 
     # ══════════════════════════════════════════════════════════════════════════

@@ -1375,6 +1375,7 @@ class IntelligenceEngine(models.Model):
             'recent_purchases': p.get('recent_purchases', []),
             'recent_payments': p.get('recent_payments', []),
             'products': p.get('products', []),
+            'purchase_patterns': p.get('purchase_patterns', {}),
             'crm_leads': p.get('crm_leads', []),
             'pending_deliveries': p.get('pending_deliveries', []),
             'pending_activities': p.get('pending_activities', []),
@@ -1399,9 +1400,13 @@ class IntelligenceEngine(models.Model):
         all_leads = []
         all_manufacturing = []
         all_payments = []
+        all_volume_drops = []
+        all_discount_anomalies = []
+        all_cross_sell = []
         contact_emails = []
         total_invoiced = 0
         total_pending = 0
+        total_revenue_12m = 0
 
         for email_addr, p in partners.items():
             if p.get('company_name', '') != company_name:
@@ -1426,6 +1431,19 @@ class IntelligenceEngine(models.Model):
                 all_manufacturing.append(mo)
             for pay in p.get('recent_payments', []):
                 all_payments.append({**pay, '_contact': email_addr})
+
+            # Aggregate purchase patterns
+            patterns = p.get('purchase_patterns', {})
+            total_revenue_12m += patterns.get('total_revenue_12m', 0)
+            for vd in patterns.get('volume_drops', []):
+                all_volume_drops.append({**vd, '_contact': email_addr})
+            for da in patterns.get('discount_anomalies', []):
+                all_discount_anomalies.append({**da, '_contact': email_addr})
+            for cs in patterns.get('cross_sell', []):
+                if cs.get('product') not in [
+                    x.get('product') for x in all_cross_sell
+                ]:
+                    all_cross_sell.append(cs)
 
         all_sales.sort(key=lambda x: x.get('date', ''), reverse=True)
         all_invoices.sort(
@@ -1456,6 +1474,12 @@ class IntelligenceEngine(models.Model):
             'overdue_invoices_count': sum(
                 1 for inv in all_invoices
                 if inv.get('days_overdue', 0) > 0),
+            'purchase_patterns': {
+                'total_revenue_12m': round(total_revenue_12m, 2),
+                'volume_drops': all_volume_drops[:10],
+                'discount_anomalies': all_discount_anomalies[:10],
+                'cross_sell': all_cross_sell[:5],
+            },
         }
 
     # ── Sync Odoo → Supabase contacts ──────────────────────────────────────
