@@ -31,6 +31,8 @@ class IntelligenceAlert(models.Model):
         ('volume_drop', 'Caida de volumen'),
         ('unusual_discount', 'Descuento inusual'),
         ('cross_sell', 'Oportunidad cross-sell'),
+        ('stockout_risk', 'Riesgo de desabasto'),
+        ('reorder_needed', 'Reorden necesario'),
     ], string='Tipo', required=True, index=True)
     severity = fields.Selection([
         ('low', 'Baja'),

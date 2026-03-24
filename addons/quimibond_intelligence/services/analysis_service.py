@@ -501,6 +501,78 @@ class AnalysisService:
                     'account': '',
                 })
 
+        # ── Inventory Intelligence alerts ─────────────────────────────────────
+        for email_addr, p in partners.items():
+            inv_intel = p.get('inventory_intelligence', {})
+            partner_name = p.get('name', email_addr)
+
+            for item in inv_intel.get('at_risk', []):
+                status = item.get('status', '')
+                product = item.get('product', '?')
+                days_inv = item.get('days_of_inventory')
+                current_qty = item.get('current_qty', 0)
+                can_fulfill = item.get('can_fulfill_next_order')
+                next_order = item.get('client_next_order_days')
+
+                if status == 'stockout':
+                    severity = 'critical'
+                    alert_type = 'stockout_risk'
+                    title = (
+                        f"Sin stock: {product} "
+                        f"(cliente {partner_name} lo compra)"
+                    )[:120]
+                    desc = (
+                        f"Producto {product} tiene stock 0. "
+                        f"{partner_name} lo compra regularmente."
+                    )
+                    if next_order is not None and next_order <= 7:
+                        desc += (
+                            f" Proximo pedido estimado en ~{next_order}d."
+                        )
+                elif status == 'critical':
+                    severity = 'high'
+                    alert_type = 'stockout_risk'
+                    title = (
+                        f"Stock critico: {product} "
+                        f"({days_inv}d restantes) — {partner_name}"
+                    )[:120]
+                    desc = (
+                        f"Producto {product}: {current_qty:.0f} unidades, "
+                        f"~{days_inv} dias de inventario."
+                    )
+                    if can_fulfill is False:
+                        desc += (
+                            " NO alcanza para cubrir el proximo pedido "
+                            f"de {partner_name}."
+                        )
+                elif status in ('low', 'below_reorder'):
+                    severity = 'medium'
+                    alert_type = 'reorder_needed'
+                    title = (
+                        f"Reorden sugerido: {product} "
+                        f"({current_qty:.0f} uds) — {partner_name}"
+                    )[:120]
+                    desc_parts = [
+                        f"Producto {product}: {current_qty:.0f} unidades",
+                    ]
+                    if days_inv is not None:
+                        desc_parts.append(
+                            f"~{days_inv} dias de inventario")
+                    if status == 'below_reorder':
+                        desc_parts.append("por debajo del punto de reorden")
+                    desc = '. '.join(desc_parts) + '.'
+                else:
+                    continue
+
+                alerts.append({
+                    'alert_type': alert_type,
+                    'severity': severity,
+                    'title': title,
+                    'description': desc,
+                    'contact_name': partner_name,
+                    'account': '',
+                })
+
         return alerts
 
     # ══════════════════════════════════════════════════════════════════════════

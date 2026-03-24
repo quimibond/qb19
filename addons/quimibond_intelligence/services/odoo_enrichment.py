@@ -50,6 +50,9 @@ class OdooEnrichmentService:
             'calendar_event': 'calendar.event',
             'mrp_production': 'mrp.production',
             'product_product': 'product.product',
+            'stock_quant': 'stock.quant',
+            'orderpoint': 'stock.warehouse.orderpoint',
+            'sale_order_line': 'sale.order.line',
         }
         for key, model_name in model_map.items():
             try:
@@ -747,6 +750,209 @@ class OdooEnrichmentService:
                     )
             except Exception as exc:
                 _logger.debug('Delivery performance: %s', exc)
+
+        # ── 18. Inventory Intelligence ─────────────────────────────────────
+        # Analyze stock levels for products this client buys,
+        # estimate days of inventory, flag stockout risks.
+        product_details = ctx.get('purchase_patterns', {}).get(
+            'product_details', [])
+        if product_details and models.get('stock_quant'):
+            try:
+                ctx['inventory_intelligence'] = (
+                    self._analyze_inventory_for_partner(
+                        product_details, models, today,
+                    )
+                )
+                inv_intel = ctx['inventory_intelligence']
+                if inv_intel.get('at_risk'):
+                    summary_parts.append(
+                        f"INVENTARIO: {len(inv_intel['at_risk'])} productos "
+                        f"en riesgo de desabasto"
+                    )
+                elif inv_intel.get('products'):
+                    healthy = sum(
+                        1 for p in inv_intel['products']
+                        if p['status'] == 'healthy'
+                    )
+                    summary_parts.append(
+                        f"INVENTARIO: {len(inv_intel['products'])} productos "
+                        f"monitoreados ({healthy} sanos)"
+                    )
+            except Exception as exc:
+                _logger.debug('Inventory intelligence: %s', exc)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   INVENTORY INTELLIGENCE
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _analyze_inventory_for_partner(self, product_details, models, today):
+        """Analyze inventory levels for products a client regularly buys.
+
+        Uses purchase_patterns product_details (from dim 13) to know which
+        products to check, then queries stock.quant for actual stock and
+        estimates days of inventory based on recent consumption.
+
+        Returns dict with:
+        - products: list of per-product inventory status
+        - at_risk: products with < 15 days of estimated inventory
+        - total_stock_value: estimated value of relevant stock
+        """
+        Quant = models['stock_quant']
+        Orderpoint = models.get('orderpoint')
+        SOLine = models.get('sale_order_line')
+
+        result_products = []
+        at_risk = []
+        total_stock_value = 0
+
+        # Only analyze products that the client has ordered at least twice
+        relevant = [
+            p for p in product_details if p.get('total_orders', 0) >= 2
+        ]
+        if not relevant:
+            return {'products': [], 'at_risk': [], 'total_stock_value': 0}
+
+        # Pre-load product records for name lookup
+        Product = models['product_product']
+
+        # Get global daily consumption rate from sale.order.line (last 90d)
+        date_90d = (
+            datetime.now() - timedelta(days=90)
+        ).strftime('%Y-%m-%d')
+
+        for prod_detail in relevant[:15]:
+            prod_name = prod_detail['name']
+            try:
+                # Find the product record
+                prod = Product.search(
+                    [('name', '=', prod_name), ('active', '=', True)],
+                    limit=1,
+                )
+                if not prod:
+                    continue
+
+                # Current stock across all internal locations
+                quants = Quant.search([
+                    ('product_id', '=', prod.id),
+                    ('location_id.usage', '=', 'internal'),
+                ])
+                current_qty = sum(q.quantity - q.reserved_quantity
+                                  for q in quants)
+                stock_value = current_qty * (prod.standard_price or 0)
+                total_stock_value += stock_value
+
+                # Estimate daily consumption (global, all clients, last 90d)
+                daily_consumption = 0
+                if SOLine:
+                    try:
+                        line_data = SOLine.read_group(
+                            [
+                                ('product_id', '=', prod.id),
+                                ('order_id.state', 'in', ['sale', 'done']),
+                                ('order_id.date_order', '>=', date_90d),
+                            ],
+                            ['product_uom_qty'],
+                            [],
+                        )
+                        total_sold_90d = (
+                            line_data[0]['product_uom_qty']
+                            if line_data else 0
+                        )
+                        daily_consumption = round(total_sold_90d / 90, 2)
+                    except Exception:
+                        pass
+
+                # Days of inventory
+                days_of_inventory = None
+                if daily_consumption > 0 and current_qty > 0:
+                    days_of_inventory = round(
+                        current_qty / daily_consumption)
+
+                # Reorder point info
+                reorder_min = None
+                reorder_max = None
+                if Orderpoint:
+                    try:
+                        op = Orderpoint.search([
+                            ('product_id', '=', prod.id),
+                        ], limit=1)
+                        if op:
+                            reorder_min = op.product_min_qty
+                            reorder_max = op.product_max_qty
+                    except Exception:
+                        pass
+
+                # Determine status
+                if current_qty <= 0:
+                    status = 'stockout'
+                elif days_of_inventory is not None and days_of_inventory < 7:
+                    status = 'critical'
+                elif days_of_inventory is not None and days_of_inventory < 15:
+                    status = 'low'
+                elif (reorder_min is not None
+                      and current_qty <= reorder_min):
+                    status = 'below_reorder'
+                else:
+                    status = 'healthy'
+
+                # This client's share of consumption
+                client_freq_days = prod_detail.get('avg_frequency_days')
+                client_avg_qty = (
+                    prod_detail['total_qty'] / prod_detail['total_orders']
+                    if prod_detail['total_orders'] > 0 else 0
+                )
+                next_order_estimate = None
+                if client_freq_days and prod_detail.get('last_date'):
+                    try:
+                        last_dt = datetime.strptime(
+                            prod_detail['last_date'], '%Y-%m-%d'
+                        ).date()
+                        days_since = (today - last_dt).days
+                        next_order_estimate = max(
+                            0, client_freq_days - days_since)
+                    except (ValueError, TypeError):
+                        pass
+
+                info = {
+                    'product': prod_name,
+                    'current_qty': round(current_qty, 2),
+                    'stock_value': round(stock_value, 2),
+                    'daily_consumption': daily_consumption,
+                    'days_of_inventory': days_of_inventory,
+                    'reorder_min': reorder_min,
+                    'reorder_max': reorder_max,
+                    'status': status,
+                    'client_avg_qty_per_order': round(client_avg_qty, 2),
+                    'client_frequency_days': client_freq_days,
+                    'client_next_order_days': next_order_estimate,
+                    'can_fulfill_next_order': (
+                        current_qty >= client_avg_qty
+                        if client_avg_qty > 0 else None
+                    ),
+                }
+                result_products.append(info)
+
+                if status in ('stockout', 'critical', 'low',
+                              'below_reorder'):
+                    at_risk.append({
+                        'product': prod_name,
+                        'status': status,
+                        'current_qty': round(current_qty, 2),
+                        'days_of_inventory': days_of_inventory,
+                        'daily_consumption': daily_consumption,
+                        'can_fulfill_next_order': info[
+                            'can_fulfill_next_order'],
+                        'client_next_order_days': next_order_estimate,
+                    })
+
+            except Exception as exc:
+                _logger.debug('Inventory check %s: %s', prod_name, exc)
+
+        return {
+            'products': result_products,
+            'at_risk': at_risk,
+            'total_stock_value': round(total_stock_value, 2),
+        }
 
     # ══════════════════════════════════════════════════════════════════════════
     #   PRODUCT PURCHASE INTELLIGENCE

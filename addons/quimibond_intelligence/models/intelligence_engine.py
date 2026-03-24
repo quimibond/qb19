@@ -1376,6 +1376,7 @@ class IntelligenceEngine(models.Model):
             'recent_payments': p.get('recent_payments', []),
             'products': p.get('products', []),
             'purchase_patterns': p.get('purchase_patterns', {}),
+            'inventory_intelligence': p.get('inventory_intelligence', {}),
             'crm_leads': p.get('crm_leads', []),
             'pending_deliveries': p.get('pending_deliveries', []),
             'pending_activities': p.get('pending_activities', []),
@@ -1403,6 +1404,7 @@ class IntelligenceEngine(models.Model):
         all_volume_drops = []
         all_discount_anomalies = []
         all_cross_sell = []
+        all_inventory_at_risk = []
         contact_emails = []
         total_invoiced = 0
         total_pending = 0
@@ -1445,6 +1447,14 @@ class IntelligenceEngine(models.Model):
                 ]:
                     all_cross_sell.append(cs)
 
+            # Aggregate inventory at-risk items (dedup by product)
+            inv_intel = p.get('inventory_intelligence', {})
+            for ar in inv_intel.get('at_risk', []):
+                if ar.get('product') not in [
+                    x.get('product') for x in all_inventory_at_risk
+                ]:
+                    all_inventory_at_risk.append(ar)
+
         all_sales.sort(key=lambda x: x.get('date', ''), reverse=True)
         all_invoices.sort(
             key=lambda x: x.get('days_overdue', 0), reverse=True)
@@ -1480,6 +1490,7 @@ class IntelligenceEngine(models.Model):
                 'discount_anomalies': all_discount_anomalies[:10],
                 'cross_sell': all_cross_sell[:5],
             },
+            'inventory_at_risk': all_inventory_at_risk[:10],
         }
 
     # ── Sync Odoo → Supabase contacts ──────────────────────────────────────
