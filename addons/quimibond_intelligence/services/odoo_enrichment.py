@@ -10,6 +10,46 @@ from odoo import fields
 
 _logger = logging.getLogger(__name__)
 
+
+def _safe_sum_aggregate(model, domain, field_name):
+    """Read an aggregate SUM compatible with Odoo 17+ and 19.
+
+    Odoo 17+ deprecated read_group in favor of _read_group.
+    Odoo 19 may have removed read_group entirely.
+    Returns the numeric total or 0.
+    """
+    # Try new API first (_read_group, Odoo 17+)
+    if hasattr(model, '_read_group'):
+        try:
+            result = model._read_group(
+                domain, aggregates=[f'{field_name}:sum'],
+            )
+            # _read_group returns [(val,)] when no groupby
+            if result and len(result) > 0:
+                row = result[0]
+                if isinstance(row, (list, tuple)):
+                    return row[0] or 0
+                # Some versions return dict
+                if isinstance(row, dict):
+                    return row.get(f'{field_name}', 0) or 0
+            return 0
+        except Exception as exc:
+            _logger.debug('_read_group fallback: %s', exc)
+
+    # Fallback: old API (Odoo 16 and earlier)
+    try:
+        rows = model.read_group(domain, [field_name], [])
+        return rows[0][field_name] if rows else 0
+    except Exception as exc:
+        _logger.warning('read_group failed for %s: %s', field_name, exc)
+
+    # Final fallback: brute-force search + sum
+    try:
+        records = model.search(domain)
+        return sum(getattr(r, field_name, 0) or 0 for r in records)
+    except Exception:
+        return 0
+
 # ── Dominios genéricos (Gmail, Outlook, etc.) ────────────────────────────────
 
 GENERIC_DOMAINS = frozenset({
@@ -135,11 +175,16 @@ class OdooEnrichmentService:
                        date_7d, today) -> dict:
         """Construye el perfil completo de un partner con todos los modelos."""
         pid = partner.id
+        # Use commercial_partner_id for invoice/sale queries.
+        # In Odoo, invoices/sales use commercial_partner_id (the company),
+        # not the individual contact's partner_id.
+        cpid = partner.commercial_partner_id.id if partner.commercial_partner_id else pid
         summary_parts = []
 
         # ── 1. Datos básicos ────────────────────────────────────────────────
         ctx = {
             'id': pid,
+            'commercial_partner_id': cpid,
             'name': partner.name,
             'email': partner.email,
             'phone': partner.phone or '',
@@ -157,8 +202,11 @@ class OdooEnrichmentService:
 
         # ── 2. Ventas recientes (sale.order) ────────────────────────────────
         if models.get('sale_order'):
+            # Search by both partner_id and commercial_partner_id
             sales = models['sale_order'].search([
+                '|',
                 ('partner_id', '=', pid),
+                ('partner_id', '=', cpid),
                 ('date_order', '>=', date_90d),
             ], order='date_order desc', limit=10)
 
@@ -180,7 +228,9 @@ class OdooEnrichmentService:
         # ── 3. Facturas pendientes (account.move) ──────────────────────────
         if models.get('account_move'):
             invoices = models['account_move'].search([
+                '|',
                 ('partner_id', '=', pid),
+                ('partner_id', '=', cpid),
                 ('move_type', 'in', ['out_invoice', 'out_refund']),
                 ('payment_state', 'in', ['not_paid', 'partial']),
             ], order='invoice_date desc', limit=10)
@@ -221,7 +271,9 @@ class OdooEnrichmentService:
         # ── 4. Compras (purchase.order) ─────────────────────────────────────
         if models.get('purchase_order') and partner.supplier_rank > 0:
             purchases = models['purchase_order'].search([
+                '|',
                 ('partner_id', '=', pid),
+                ('partner_id', '=', cpid),
                 ('date_order', '>=', date_90d),
             ], order='date_order desc', limit=10)
 
@@ -246,7 +298,9 @@ class OdooEnrichmentService:
         # ── 5. Pagos recibidos/emitidos (account.payment) ──────────────────
         if models.get('account_payment'):
             payments = models['account_payment'].search([
+                '|',
                 ('partner_id', '=', pid),
+                ('partner_id', '=', cpid),
                 ('state', '=', 'posted'),
                 ('date', '>=', date_30d),
             ], order='date desc', limit=10)
@@ -339,6 +393,7 @@ class OdooEnrichmentService:
     def _enrich_partner_dims_7_17(self, partner, models, ctx, summary_parts,
                                    pid, date_90d, date_7d, today):
         """Dimensiones 7-17 del enriquecimiento de partner."""
+        cpid = ctx.get('commercial_partner_id', pid)
 
         # ── 7. Actividades pendientes (mail.activity) ──────────────────────
         if models.get('mail_activity'):
@@ -392,7 +447,9 @@ class OdooEnrichmentService:
         # ── 8. Pipeline CRM (crm.lead) ─────────────────────────────────────
         if models.get('crm_lead'):
             leads = models['crm_lead'].search([
+                '|',
                 ('partner_id', '=', pid),
+                ('partner_id', '=', cpid),
                 ('active', '=', True),
             ], order='create_date desc', limit=5)
 
@@ -422,7 +479,9 @@ class OdooEnrichmentService:
         # ── 9. Entregas y recepciones (stock.picking) ──────────────────────
         if models.get('stock_picking'):
             pickings = models['stock_picking'].search([
+                '|',
                 ('partner_id', '=', pid),
+                ('partner_id', '=', cpid),
                 ('state', 'not in', ['done', 'cancel']),
             ], order='scheduled_date asc', limit=10)
 
@@ -478,7 +537,9 @@ class OdooEnrichmentService:
             try:
                 sale_orders = (models.get('sale_order') or self.env['sale.order'].sudo())
                 so_ids = sale_orders.search([
+                    '|',
                     ('partner_id', '=', pid),
+                    ('partner_id', '=', cpid),
                     ('state', 'in', ['sale', 'done']),
                     ('date_order', '>=', date_90d),
                 ]).ids
@@ -523,20 +584,25 @@ class OdooEnrichmentService:
     def _enrich_partner_dims_12_17(self, partner, models, ctx, summary_parts,
                                     pid, date_90d, today):
         """Dimensiones 12-17 del enriquecimiento de partner."""
+        cpid = ctx.get('commercial_partner_id', pid)
 
         # ── 12. Lifetime Value y tendencia histórica ────────────────────────
         if models.get('account_move') and ctx.get('is_customer'):
             try:
                 AM = models['account_move']
                 inv_domain = [
+                    '|',
                     ('partner_id', '=', pid),
+                    ('partner_id', '=', cpid),
                     ('move_type', '=', 'out_invoice'),
                     ('state', '=', 'posted'),
                 ]
-                totals = AM.read_group(
-                    inv_domain, ['amount_total'], [],
-                )
-                lifetime_total = totals[0]['amount_total'] if totals else 0
+                lifetime_total = _safe_sum_aggregate(
+                    AM, inv_domain, 'amount_total')
+
+                if not lifetime_total:
+                    # Fallback: use partner.total_invoiced (Odoo computed)
+                    lifetime_total = ctx.get('total_invoiced', 0)
 
                 if lifetime_total:
                     first_inv = AM.search(
@@ -553,19 +619,19 @@ class OdooEnrichmentService:
                     date_6m = (
                         datetime.now() - timedelta(days=180)
                     ).strftime('%Y-%m-%d')
-                    r3 = AM.read_group(
+                    recent_3m = _safe_sum_aggregate(
+                        AM,
                         inv_domain + [('invoice_date', '>=', date_3m)],
-                        ['amount_total'], [],
+                        'amount_total',
                     )
-                    p3 = AM.read_group(
+                    prev_3m = _safe_sum_aggregate(
+                        AM,
                         inv_domain + [
                             ('invoice_date', '>=', date_6m),
                             ('invoice_date', '<', date_3m),
                         ],
-                        ['amount_total'], [],
+                        'amount_total',
                     )
-                    recent_3m = r3[0]['amount_total'] if r3 else 0
-                    prev_3m = p3[0]['amount_total'] if p3 else 0
 
                     if prev_3m > 0:
                         trend_pct = round(
@@ -590,14 +656,14 @@ class OdooEnrichmentService:
                         f"{trend_dir} {trend_pct:+d}% vs trimestre anterior"
                     )
             except Exception as exc:
-                _logger.debug('Lifetime enrichment: %s', exc)
+                _logger.warning('Lifetime enrichment pid=%s: %s', pid, exc)
 
         # ── 13. Product Purchase Intelligence ─────────────────────────────
         if models.get('sale_order') and models.get('product_product'):
             try:
                 ctx['products'], ctx['purchase_patterns'] = (
                     self._analyze_purchase_patterns(
-                        pid, models, date_90d, today,
+                        cpid, models, date_90d, today,
                     )
                 )
                 patterns = ctx['purchase_patterns']
@@ -619,7 +685,7 @@ class OdooEnrichmentService:
                         f"PRODUCTOS: {' | '.join(parts)}"
                     )
             except Exception as exc:
-                _logger.debug('Product enrichment: %s', exc)
+                _logger.warning('Product enrichment pid=%s: %s', pid, exc)
 
         # ── 14. Cartera por antigüedad (aging) ───────────────────────────
         if models.get('account_move') and ctx.get('pending_invoices'):
@@ -689,7 +755,9 @@ class OdooEnrichmentService:
         if models.get('account_move'):
             try:
                 credit_notes = models['account_move'].search([
+                    '|',
                     ('partner_id', '=', pid),
+                    ('partner_id', '=', cpid),
                     ('move_type', '=', 'out_refund'),
                     ('state', '=', 'posted'),
                     ('invoice_date', '>=', date_90d),
@@ -714,7 +782,9 @@ class OdooEnrichmentService:
         if models.get('stock_picking'):
             try:
                 done_picks = models['stock_picking'].search([
+                    '|',
                     ('partner_id', '=', pid),
+                    ('partner_id', '=', cpid),
                     ('state', '=', 'done'),
                     ('picking_type_code', '=', 'outgoing'),
                     ('date_done', '>=', date_90d),
@@ -750,7 +820,7 @@ class OdooEnrichmentService:
                         f"({total_done} envíos, lead time {avg_days}d)"
                     )
             except Exception as exc:
-                _logger.debug('Delivery performance: %s', exc)
+                _logger.warning('Delivery performance pid=%s: %s', pid, exc)
 
         # ── 18. Inventory Intelligence ─────────────────────────────────────
         # Analyze stock levels for products this client buys,
@@ -780,14 +850,14 @@ class OdooEnrichmentService:
                         f"monitoreados ({healthy} sanos)"
                     )
             except Exception as exc:
-                _logger.debug('Inventory intelligence: %s', exc)
+                _logger.warning('Inventory intelligence pid=%s: %s', pid, exc)
 
         # ── 19. Payment Behavior Intelligence ──────────────────────────────
         # Compare agreed payment terms vs actual payment dates.
         if models.get('account_move') and ctx.get('is_customer'):
             try:
                 ctx['payment_behavior'] = (
-                    self._analyze_payment_behavior(pid, models, today)
+                    self._analyze_payment_behavior(cpid, models, today)
                 )
                 pb = ctx['payment_behavior']
                 if pb.get('invoices_analyzed', 0) >= 3:
@@ -809,7 +879,7 @@ class OdooEnrichmentService:
                         f"PAGO: {' | '.join(parts)}"
                     )
             except Exception as exc:
-                _logger.debug('Payment behavior: %s', exc)
+                _logger.warning('Payment behavior pid=%s: %s', pid, exc)
 
     # ══════════════════════════════════════════════════════════════════════════
     #   PAYMENT BEHAVIOR INTELLIGENCE
@@ -1043,18 +1113,14 @@ class OdooEnrichmentService:
                 daily_consumption = 0
                 if SOLine:
                     try:
-                        line_data = SOLine.read_group(
+                        total_sold_90d = _safe_sum_aggregate(
+                            SOLine,
                             [
                                 ('product_id', '=', prod.id),
                                 ('order_id.state', 'in', ['sale', 'done']),
                                 ('order_id.date_order', '>=', date_90d),
                             ],
-                            ['product_uom_qty'],
-                            [],
-                        )
-                        total_sold_90d = (
-                            line_data[0]['product_uom_qty']
-                            if line_data else 0
+                            'product_uom_qty',
                         )
                         daily_consumption = round(total_sold_90d / 90, 2)
                     except Exception:
