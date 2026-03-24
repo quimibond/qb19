@@ -903,7 +903,7 @@ class SupabaseService(SupabaseBaseClient):
     # ── Companies ─────────────────────────────────────────────────────────
 
     def batch_resolve_companies(self, names: list) -> dict:
-        """Batch-resolve company names to IDs (1 query instead of N).
+        """Batch-resolve company names to IDs (chunked queries).
 
         Returns dict: {canonical_name → company_id}
         """
@@ -913,9 +913,13 @@ class SupabaseService(SupabaseBaseClient):
         if not canonicals:
             return {}
         result = {}
+        chunk = 50
         try:
-            enc = _postgrest_in_list(canonicals)
-            if enc:
+            for i in range(0, len(canonicals), chunk):
+                part = canonicals[i:i + chunk]
+                enc = _postgrest_in_list(part)
+                if not enc:
+                    continue
                 rows = self._request(
                     f'/rest/v1/companies?canonical_name=in.({enc})'
                     '&select=id,canonical_name',
@@ -1419,11 +1423,15 @@ class SupabaseService(SupabaseBaseClient):
                     except (ValueError, TypeError):
                         pass
 
-        # ── Batch-fetch revenue_metrics (1 call instead of N) ──
+        # ── Batch-fetch revenue_metrics (chunked) ──
         revenue_map = {}  # email → latest revenue record
+        chunk = 50
         try:
-            enc = _postgrest_in_list(ext_emails)
-            if enc:
+            for i in range(0, len(ext_emails), chunk):
+                part = ext_emails[i:i + chunk]
+                enc = _postgrest_in_list(part)
+                if not enc:
+                    continue
                 rev_rows = self._request(
                     f'/rest/v1/revenue_metrics?contact_email=in.({enc})'
                     '&order=period_start.desc'
@@ -1436,11 +1444,14 @@ class SupabaseService(SupabaseBaseClient):
         except Exception as exc:
             _logger.debug('batch revenue_metrics: %s', exc)
 
-        # ── Batch-fetch previous health scores (1 call instead of N) ──
+        # ── Batch-fetch previous health scores (chunked) ──
         prev_scores_map = {}  # email → previous overall_score
         try:
-            enc = _postgrest_in_list(ext_emails)
-            if enc:
+            for i in range(0, len(ext_emails), chunk):
+                part = ext_emails[i:i + chunk]
+                enc = _postgrest_in_list(part)
+                if not enc:
+                    continue
                 prev_rows = self._request(
                     f'/rest/v1/customer_health_scores?contact_email=in.({enc})'
                     '&order=score_date.desc'
@@ -1455,52 +1466,55 @@ class SupabaseService(SupabaseBaseClient):
         except Exception as exc:
             _logger.debug('batch prev health_scores: %s', exc)
 
-        # ── Batch-fetch engagement data (facts + relationships) ──
-        # Instead of N RPC calls to get_entity_intelligence, do 2 batch queries
+        # ── Batch-fetch engagement data (facts + relationships, chunked) ──
         engagement_map = {}  # email → {'facts': int, 'rels': int}
         try:
-            enc = _postgrest_in_list(ext_emails)
-            if enc:
-                # Get entities by email
+            ent_id_map = {}  # entity_id → email (accumulated across chunks)
+            for i in range(0, len(ext_emails), chunk):
+                part = ext_emails[i:i + chunk]
+                enc = _postgrest_in_list(part)
+                if not enc:
+                    continue
                 ent_rows = self._request(
                     f'/rest/v1/entities?email=in.({enc})'
                     '&select=id,email',
                 ) or []
-                if ent_rows:
-                    ent_id_map = {}  # entity_id → email
-                    for er in ent_rows:
-                        if er.get('email') and er.get('id'):
-                            ent_id_map[er['id']] = er['email'].lower()
-                            engagement_map[er['email'].lower()] = {
-                                'facts': 0, 'rels': 0,
-                            }
-                    # Count facts per entity (batch)
-                    ent_ids = ','.join(str(eid) for eid in ent_id_map)
-                    if ent_ids:
-                        fact_rows = self._request(
-                            f'/rest/v1/facts?entity_id=in.({ent_ids})'
-                            '&expired=eq.false'
-                            '&select=entity_id',
-                        ) or []
-                        for fr in fact_rows:
-                            eid = fr.get('entity_id')
+                for er in ent_rows:
+                    if er.get('email') and er.get('id'):
+                        ent_id_map[er['id']] = er['email'].lower()
+                        engagement_map[er['email'].lower()] = {
+                            'facts': 0, 'rels': 0,
+                        }
+            # Count facts and relationships (also chunked by entity IDs)
+            if ent_id_map:
+                all_ent_ids = list(ent_id_map.keys())
+                ent_chunk = 50
+                for i in range(0, len(all_ent_ids), ent_chunk):
+                    part_ids = all_ent_ids[i:i + ent_chunk]
+                    ent_ids = ','.join(str(eid) for eid in part_ids)
+                    fact_rows = self._request(
+                        f'/rest/v1/facts?entity_id=in.({ent_ids})'
+                        '&expired=eq.false'
+                        '&select=entity_id',
+                    ) or []
+                    for fr in fact_rows:
+                        eid = fr.get('entity_id')
+                        em = ent_id_map.get(eid)
+                        if em and em in engagement_map:
+                            engagement_map[em]['facts'] += 1
+                    rel_rows = self._request(
+                        f'/rest/v1/entity_relationships'
+                        f'?or=(entity_a_id.in.({ent_ids}),'
+                        f'entity_b_id.in.({ent_ids}))'
+                        '&select=entity_a_id,entity_b_id',
+                    ) or []
+                    for rr in rel_rows:
+                        for side in ('entity_a_id', 'entity_b_id'):
+                            eid = rr.get(side)
                             em = ent_id_map.get(eid)
                             if em and em in engagement_map:
-                                engagement_map[em]['facts'] += 1
-                        # Count relationships per entity (batch)
-                        rel_rows = self._request(
-                            f'/rest/v1/entity_relationships'
-                            f'?or=(entity_a_id.in.({ent_ids}),'
-                            f'entity_b_id.in.({ent_ids}))'
-                            '&select=entity_a_id,entity_b_id',
-                        ) or []
-                        for rr in rel_rows:
-                            for side in ('entity_a_id', 'entity_b_id'):
-                                eid = rr.get(side)
-                                em = ent_id_map.get(eid)
-                                if em and em in engagement_map:
-                                    engagement_map[em]['rels'] += 1
-                                    break  # count once per relationship
+                                engagement_map[em]['rels'] += 1
+                                break  # count once per relationship
         except Exception as exc:
             _logger.debug('batch engagement data: %s', exc)
 
