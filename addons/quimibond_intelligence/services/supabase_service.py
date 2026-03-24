@@ -1410,6 +1410,26 @@ class SupabaseService(SupabaseBaseClient):
 
         ext_emails = [c['email'].lower() for c in external]
 
+        # ── Batch-fetch contact data (company_id, payment_compliance) ──
+        contact_data_map = {}  # email → {company_id, payment_compliance_score}
+        chunk = 50
+        try:
+            for i in range(0, len(ext_emails), chunk):
+                part = ext_emails[i:i + chunk]
+                enc = _postgrest_in_list(part)
+                if not enc:
+                    continue
+                rows = self._request(
+                    f'/rest/v1/contacts?email=in.({enc})'
+                    '&select=email,company_id,payment_compliance_score',
+                ) or []
+                for r in rows:
+                    em = (r.get('email') or '').lower()
+                    if em:
+                        contact_data_map[em] = r
+        except Exception as exc:
+            _logger.debug('batch contact data for health: %s', exc)
+
         # Build sentiment map from account summaries
         sentiment_map = {}
         for s in (account_summaries or []):
@@ -1602,7 +1622,7 @@ class SupabaseService(SupabaseBaseClient):
                 if fin_score > 80:
                     opportunity_signals.append('strong_revenue')
 
-                scores_to_save.append({
+                score_record = {
                     'contact_email': email_addr,
                     'score_date': today,
                     'overall_score': round(overall, 1),
@@ -1614,7 +1634,23 @@ class SupabaseService(SupabaseBaseClient):
                     'engagement_score': round(engagement_score, 1),
                     'risk_signals': risk_signals,
                     'opportunity_signals': opportunity_signals,
-                })
+                }
+
+                # Include company_id from contact data
+                cd = contact_data_map.get(email_addr)
+                if cd and cd.get('company_id'):
+                    score_record['company_id'] = cd['company_id']
+
+                # Include payment_compliance_score from contact
+                if cd and cd.get('payment_compliance_score') is not None:
+                    score_record['payment_compliance_score'] = cd[
+                        'payment_compliance_score']
+
+                # Include previous_score for tracking delta
+                if prev_score is not None:
+                    score_record['previous_score'] = round(prev_score, 1)
+
+                scores_to_save.append(score_record)
 
             except Exception as exc:
                 _logger.debug('health_score skip %s: %s', email_addr, exc)

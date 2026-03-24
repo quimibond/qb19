@@ -93,10 +93,37 @@ class SupabaseBaseClient:
         raise RuntimeError(f'Supabase request failed: {last_exc}')
 
     def _upsert_batch(self, path: str, batch: list, resolution: str):
-        """POST batch with Prefer header for conflict resolution."""
+        """POST batch with Prefer header for conflict resolution.
+
+        Validates records against sync_schema if available (logs warnings
+        for unknown columns — does NOT block the write).
+        """
+        if batch:
+            self._validate_batch(path, batch)
         self._request(path, 'POST', batch, {
             'Prefer': f'resolution={resolution},return=minimal',
         })
+
+    def _validate_batch(self, path: str, batch: list):
+        """Log warnings for records with unknown columns (possible typos).
+
+        Extracts table name from the PostgREST path (e.g. /rest/v1/emails?...)
+        and checks the first record against sync_schema.SUPABASE_SCHEMAS.
+        Only runs in debug mode to avoid overhead in production.
+        """
+        if not _logger.isEnabledFor(logging.DEBUG) or not batch:
+            return
+        try:
+            from .sync_schema import validate_record
+            # Extract table name: /rest/v1/TABLE_NAME?...
+            table = path.split('/rest/v1/')[-1].split('?')[0].strip('/')
+            if not table:
+                return
+            warnings = validate_record(table, batch[0])
+            for w in warnings:
+                _logger.debug('Schema validation: %s', w)
+        except Exception:
+            pass  # Never block writes due to validation errors
 
     def close(self):
         """Close the underlying HTTP client."""
