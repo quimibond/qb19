@@ -1652,6 +1652,12 @@ class IntelligenceEngine(models.Model):
                             inv for inv in pending_invoices
                             if inv.get('days_overdue', 0) > 0
                         ]
+                        # Sum inbound payments as total_collected
+                        total_collected = sum(
+                            pay.get('amount', 0)
+                            for pay in p.get('recent_payments', [])
+                            if pay.get('payment_type') == 'inbound'
+                        )
                         revenue_batch.append({
                             'contact_email': email_addr,
                             'period_start': today[:8] + '01',
@@ -1677,6 +1683,7 @@ class IntelligenceEngine(models.Model):
                                 if recent_sales else 0
                             ),
                             'odoo_partner_id': p.get('id'),
+                            'total_collected': total_collected,
                         })
                     except Exception as exc:
                         _logger.debug('revenue_metrics skip %s: %s',
