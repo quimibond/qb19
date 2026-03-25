@@ -13,6 +13,33 @@ from .enrichment_helpers import is_automated_sender
 _logger = logging.getLogger(__name__)
 
 
+def normalize_supabase_emails(raw_emails, account_departments=None):
+    """Normaliza emails de formato Supabase a formato interno del pipeline.
+
+    Usado por run_analyze_emails y run_update_scores para evitar duplicar
+    el mapeo de campos Supabase → interno.
+    """
+    account_departments = account_departments or {}
+    return [{
+        'account': e.get('account', ''),
+        'from': e.get('sender', ''),
+        'from_email': e.get('sender', ''),
+        'to': e.get('recipient', ''),
+        'subject': e.get('subject', ''),
+        'subject_normalized': (e.get('subject') or '').lower(),
+        'body': e.get('body', ''),
+        'snippet': e.get('snippet', ''),
+        'date': e.get('email_date', ''),
+        'gmail_message_id': e.get('gmail_message_id', ''),
+        'gmail_thread_id': e.get('gmail_thread_id', ''),
+        'attachments': e.get('attachments'),
+        'is_reply': e.get('is_reply', False),
+        'sender_type': e.get('sender_type', 'external'),
+        'has_attachments': e.get('has_attachments', False),
+        'department': account_departments.get(e.get('account', ''), 'Otro'),
+    } for e in raw_emails]
+
+
 class AnalysisService:
     """Funciones de análisis, métricas, alertas y scoring (sin estado Odoo)."""
 

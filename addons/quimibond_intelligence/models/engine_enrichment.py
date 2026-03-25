@@ -8,15 +8,9 @@ from datetime import datetime, timedelta
 
 from odoo import api, models
 
-_logger = logging.getLogger(__name__)
+from .intelligence_config import TZ_CDMX, acquire_lock, release_lock
 
-# ── Zona horaria CDMX ─────────────────────────────────────────────────────────
-try:
-    from zoneinfo import ZoneInfo
-    TZ_CDMX = ZoneInfo('America/Mexico_City')
-except ImportError:
-    import pytz
-    TZ_CDMX = pytz.timezone('America/Mexico_City')
+_logger = logging.getLogger(__name__)
 
 
 class IntelligenceEngine(models.Model):
@@ -30,10 +24,8 @@ class IntelligenceEngine(models.Model):
     def run_enrich_only(self):
         """Enriquece contactos Odoo → Supabase. Corre cada 6h."""
         lock = 'quimibond_intelligence.enrich_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
         start = time.time()
 
         try:
@@ -84,7 +76,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_enrich_only: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     # ══════════════════════════════════════════════════════════════════════════
     #   MICRO-PIPELINE: UPDATE SCORES
@@ -94,10 +86,8 @@ class IntelligenceEngine(models.Model):
     def run_update_scores(self):
         """Recalcula scores de clientes. Corre cada 12h."""
         lock = 'quimibond_intelligence.scores_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
         start = time.time()
 
         try:
@@ -105,7 +95,10 @@ class IntelligenceEngine(models.Model):
             if not cfg:
                 return
 
-            from ..services.analysis_service import AnalysisService
+            from ..services.analysis_service import (
+                AnalysisService,
+                normalize_supabase_emails,
+            )
             from ..services.odoo_enrichment import OdooEnrichmentService
             from ..services.supabase_service import SupabaseService
 
@@ -130,27 +123,7 @@ class IntelligenceEngine(models.Model):
                 except Exception:
                     recent_emails = []
 
-                # Normalizar emails para el servicio de análisis
-                emails = []
-                for e in recent_emails:
-                    emails.append({
-                        'account': e.get('account', ''),
-                        'from': e.get('sender', ''),
-                        'from_email': e.get('sender', ''),
-                        'to': e.get('recipient', ''),
-                        'subject': e.get('subject', ''),
-                        'subject_normalized': (
-                            e.get('subject') or ''
-                        ).lower(),
-                        'body': e.get('body', ''),
-                        'snippet': e.get('snippet', ''),
-                        'date': e.get('email_date', ''),
-                        'gmail_message_id': e.get('gmail_message_id', ''),
-                        'gmail_thread_id': e.get('gmail_thread_id', ''),
-                        'is_reply': e.get('is_reply', False),
-                        'sender_type': e.get('sender_type', 'external'),
-                        'has_attachments': e.get('has_attachments', False),
-                    })
+                emails = normalize_supabase_emails(recent_emails)
 
                 threads = self._build_threads(emails, cfg)
 
@@ -256,7 +229,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_update_scores: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     # ══════════════════════════════════════════════════════════════════════════
     #   HELPERS: CONTACT SYNC

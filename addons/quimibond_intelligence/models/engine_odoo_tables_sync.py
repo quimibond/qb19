@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 
 from odoo import api, fields, models
 
+from .intelligence_config import acquire_lock, release_lock
+
 _logger = logging.getLogger(__name__)
 
 
@@ -25,10 +27,8 @@ class IntelligenceEngine(models.Model):
     def run_sync_odoo_tables(self):
         """Sync productos, líneas de orden, y usuarios a Supabase."""
         lock = 'quimibond_intelligence.odoo_tables_sync_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
         start = time.time()
 
         try:
@@ -51,7 +51,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_sync_odoo_tables: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     # ── Products ──────────────────────────────────────────────────────────────
 

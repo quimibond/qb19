@@ -8,15 +8,9 @@ from datetime import datetime, timedelta
 
 from odoo import api, fields, models
 
-_logger = logging.getLogger(__name__)
+from .intelligence_config import TZ_CDMX
 
-# ── Zona horaria CDMX ─────────────────────────────────────────────────────────
-try:
-    from zoneinfo import ZoneInfo
-    TZ_CDMX = ZoneInfo('America/Mexico_City')
-except ImportError:
-    import pytz
-    TZ_CDMX = pytz.timezone('America/Mexico_City')
+_logger = logging.getLogger(__name__)
 
 
 class IntelligenceEngine(models.Model):

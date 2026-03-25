@@ -11,6 +11,8 @@ from datetime import datetime
 
 from odoo import api, models
 
+from .intelligence_config import acquire_lock, release_lock
+
 _logger = logging.getLogger(__name__)
 
 # Mapeo de estados Odoo → Frontend (Supabase)
@@ -34,10 +36,8 @@ class IntelligenceEngine(models.Model):
     def run_supabase_sync(self):
         """Empuja cambios pendientes de Odoo → Supabase. Corre cada 5 min."""
         lock = 'quimibond_intelligence.supabase_sync_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
         start = time.time()
 
         try:
@@ -62,7 +62,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_supabase_sync: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     # ── Alert sync ────────────────────────────────────────────────────────────
 

@@ -11,6 +11,8 @@ import time
 
 from odoo import api, models
 
+from .intelligence_config import acquire_lock, release_lock
+
 _logger = logging.getLogger(__name__)
 
 BRIEFING_SUBJECT_MARKER = 'Intelligence Briefing'
@@ -23,10 +25,8 @@ class IntelligenceEngine(models.Model):
     def run_check_briefing_replies(self):
         """Detecta replies al briefing y genera respuestas. Corre cada 30 min."""
         lock = 'quimibond_intelligence.briefing_reply_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
 
         try:
             cfg = self._load_config()
@@ -61,7 +61,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_check_briefing_replies: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     def _find_briefing_replies(self, supa, sender_email, recipient_email):
         """Encuentra emails que son respuestas al briefing."""

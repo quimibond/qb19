@@ -5,10 +5,52 @@ Modelo transient para gestionar parámetros del sistema desde la UI de Odoo.
 import json
 import logging
 import time
+from datetime import datetime
 
 from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
+
+# ── Zona horaria CDMX (centralizada para todo el módulo) ─────────────────────
+try:
+    from zoneinfo import ZoneInfo
+    TZ_CDMX = ZoneInfo('America/Mexico_City')
+except ImportError:
+    import pytz
+    TZ_CDMX = pytz.timezone('America/Mexico_City')
+
+# ── Lock helpers (con timeout para evitar deadlocks) ─────────────────────────
+
+LOCK_TIMEOUT_MINUTES = 60  # Si un lock lleva más de 60 min, se libera
+
+
+def acquire_lock(env, lock_name, timeout_minutes=LOCK_TIMEOUT_MINUTES):
+    """Adquiere un lock basado en ir.config_parameter con timestamp.
+
+    Retorna True si se adquirió el lock, False si ya está tomado.
+    Si el lock tiene más de timeout_minutes, se fuerza el release.
+    """
+    ICP = env['ir.config_parameter'].sudo()
+    raw = ICP.get_param(lock_name, '')
+    if raw:
+        try:
+            locked_at = datetime.fromisoformat(raw)
+            if (datetime.now() - locked_at).total_seconds() < timeout_minutes * 60:
+                return False
+            _logger.warning('Lock %s expirado (>%dm), forzando release',
+                            lock_name, timeout_minutes)
+        except (ValueError, TypeError):
+            if raw == 'true':
+                _logger.warning('Lock %s en formato legacy, forzando release',
+                                lock_name)
+    ICP.set_param(lock_name, datetime.now().isoformat())
+    return True
+
+
+def release_lock(env, lock_name):
+    """Libera un lock basado en ir.config_parameter."""
+    env['ir.config_parameter'].sudo().set_param(lock_name, '')
+
 
 # ── Valores por defecto (se usan solo si ir.config_parameter no tiene datos) ─
 DEFAULT_EMAIL_ACCOUNTS = {

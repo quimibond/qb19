@@ -12,19 +12,14 @@ from email.utils import parsedate_to_datetime
 from odoo import api, models
 
 from .intelligence_config import (
+    TZ_CDMX,
+    acquire_lock,
     get_account_departments,
     get_email_accounts,
+    release_lock,
 )
 
 _logger = logging.getLogger(__name__)
-
-# ── Zona horaria CDMX ─────────────────────────────────────────────────────────
-try:
-    from zoneinfo import ZoneInfo
-    TZ_CDMX = ZoneInfo('America/Mexico_City')
-except ImportError:
-    import pytz
-    TZ_CDMX = pytz.timezone('America/Mexico_City')
 
 
 class IntelligenceEngine(models.Model):
@@ -38,10 +33,8 @@ class IntelligenceEngine(models.Model):
     def run_sync_emails(self):
         """Sync incremental de emails desde Gmail → Supabase. Corre cada 30 min."""
         lock = 'quimibond_intelligence.sync_emails_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
         start = time.time()
 
         try:
@@ -101,7 +94,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_sync_emails: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     # ── Gmail history state ──────────────────────────────────────────────────
 
