@@ -1,8 +1,4 @@
-import logging
-
-from odoo import api, fields, models
-
-_logger = logging.getLogger(__name__)
+from odoo import fields, models
 
 
 class IntelligenceAlert(models.Model):
@@ -58,61 +54,25 @@ class IntelligenceAlert(models.Model):
     resolved_date = fields.Datetime(string='Fecha resolucion')
     supabase_id = fields.Integer(
         string='Supabase ID', index=True, copy=False)
+    supabase_synced = fields.Boolean(
+        string='Synced to Supabase', default=False, index=True)
 
     def action_acknowledge(self):
-        self.write({'state': 'acknowledged'})
-        self._sync_to_supabase('acknowledged')
+        self.write({'state': 'acknowledged', 'supabase_synced': False})
 
     def action_resolve(self):
         self.write({
             'state': 'resolved',
             'resolved_date': fields.Datetime.now(),
+            'supabase_synced': False,
         })
-        self._sync_to_supabase('resolved')
 
     def action_dismiss(self):
-        self.write({'state': 'dismissed'})
-        self._sync_to_supabase('dismissed')
+        self.write({'state': 'dismissed', 'supabase_synced': False})
 
     def action_reopen(self):
         self.write({
             'state': 'open',
             'resolved_date': False,
+            'supabase_synced': False,
         })
-        self._sync_to_supabase('open')
-
-    def _sync_to_supabase(self, state):
-        """Sync alert state changes to Supabase."""
-        get = lambda k, d='': (
-            self.env['ir.config_parameter'].sudo()
-            .get_param('quimibond_intelligence.%s' % k, d)
-        )
-        url = get('supabase_url')
-        key = get('supabase_service_role_key') or get('supabase_key')
-        if not url or not key:
-            return
-        try:
-            from ..services.supabase_service import SupabaseService
-            with SupabaseService(url, key) as supa:
-                for rec in self:
-                    if rec.supabase_id and rec.supabase_id > 0:
-                        supa.update_alert_state_by_id(
-                            rec.supabase_id, state,
-                            resolution_notes=rec.resolution_notes,
-                        )
-                    elif rec.name:
-                        _logger.info(
-                            'Alert %s has no supabase_id, using title fallback',
-                            rec.id,
-                        )
-                        supa.update_alert_state(
-                            rec.name, state,
-                            resolution_notes=rec.resolution_notes,
-                        )
-                    else:
-                        _logger.warning(
-                            'Alert %s has no supabase_id or title, cannot sync',
-                            rec.id,
-                        )
-        except Exception as exc:
-            _logger.warning('Alert sync to Supabase failed: %s', exc)

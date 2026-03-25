@@ -1,11 +1,16 @@
 """
 Quimibond Intelligence — Motor Principal (Orquestador)
-Solo contiene el pipeline diario y helpers de configuración.
-Los micro-pipelines se encuentran en:
+
+Orquestador liviano que delega a micro-pipelines independientes.
+Cada micro-pipeline corre por su propio cron Y es llamado por el daily.
+El daily solo agrega: síntesis de briefing + envío de email + save to Odoo.
+
+Micro-pipelines:
 - engine_email_sync.py: run_sync_emails
 - engine_analysis.py: run_analyze_emails
 - engine_enrichment.py: run_enrich_only, run_update_scores
 - engine_reporting.py: run_data_retention, run_weekly_analysis
+- engine_supabase_sync.py: run_supabase_sync
 """
 import json
 import logging
@@ -13,12 +18,6 @@ import time
 from datetime import datetime
 
 from odoo import api, fields, models
-
-from .intelligence_config import (
-    INTERNAL_DOMAIN,
-    get_account_departments,
-    get_email_accounts,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -47,8 +46,12 @@ class IntelligenceEngine(models.Model):
 
     @api.model
     def run_daily_intelligence(self):
-        """Método invocado por ir.cron cada día a las 19:00 CDMX."""
-        # Concurrency guard — prevent duplicate runs
+        """Método invocado por ir.cron cada día a las 19:00 CDMX.
+
+        Orquestador liviano: llama cada micro-pipeline en secuencia.
+        Si uno falla, continúa con el siguiente. Al final genera y envía
+        el briefing diario (la única pieza exclusiva del daily).
+        """
         lock_param = 'quimibond_intelligence.pipeline_running'
         ICP = self.env['ir.config_parameter'].sudo()
         if ICP.get_param(lock_param, 'false') == 'true':
@@ -61,280 +64,215 @@ class IntelligenceEngine(models.Model):
         _logger.info('═══ QUIMIBOND INTELLIGENCE — %s ═══', today)
 
         try:
-            self._run_pipeline(today, start)
-        except Exception as exc:
-            _logger.error('═══ PIPELINE FALLÓ: %s ═══', exc, exc_info=True)
+            # ── Micro-pipelines (cada uno maneja sus propios errores) ──
+            pipelines = [
+                ('Sync emails', self.run_sync_emails),
+                ('Analyze emails', self.run_analyze_emails),
+                ('Enrich contacts', self.run_enrich_only),
+                ('Update scores', self.run_update_scores),
+            ]
+            for name, fn in pipelines:
+                try:
+                    _logger.info('── %s ──', name)
+                    fn()
+                except Exception as exc:
+                    _logger.error('%s falló: %s', name, exc, exc_info=True)
+
+            # ── Briefing diario (exclusivo del daily) ──
+            try:
+                self._run_daily_briefing(today, start)
+            except Exception as exc:
+                _logger.error('Briefing falló: %s', exc, exc_info=True)
+
+            # ── Sync cambios a Supabase ──
+            try:
+                self.run_supabase_sync()
+            except Exception as exc:
+                _logger.error('Supabase sync falló: %s', exc, exc_info=True)
+
         finally:
             ICP.set_param(lock_param, 'false')
             elapsed = time.time() - start
             _logger.info('═══ PIPELINE FINALIZADO en %.1f segundos ═══', elapsed)
 
     # ══════════════════════════════════════════════════════════════════════════
-    #   PIPELINE COMPLETO (diario)
+    #   BRIEFING DIARIO (única pieza exclusiva del daily)
     # ══════════════════════════════════════════════════════════════════════════
 
-    def _run_pipeline(self, today: str, start: float):
-        """Ejecuta el pipeline completo. Separado para manejo de errores."""
+    def _run_daily_briefing(self, today: str, pipeline_start: float):
+        """Genera briefing ejecutivo, lo envía por email, y guarda en Odoo.
+
+        Lee los datos de análisis ya generados por run_analyze_emails()
+        y run_update_scores(), los sintetiza con Claude, y produce el
+        briefing diario.
+        """
         cfg = self._load_config()
         if not cfg:
             return
 
-        email_accounts = get_email_accounts(self.env)
-        account_departments = get_account_departments(self.env)
-
-        gmail, claude, voyage, supa = self._init_services(cfg)
-
-        try:
-            self._run_pipeline_with_services(
-                cfg, gmail, claude, voyage, supa,
-                email_accounts, account_departments, today, start,
-            )
-        finally:
-            supa.close()
-            stats = supa.sync_stats
-            _logger.info(
-                'Supabase sync stats: %d success, %d failed, %d skipped',
-                stats['success'], stats['failed'], stats['skipped'],
-            )
-
-    def _run_pipeline_with_services(self, cfg, gmail, claude, voyage, supa,
-                                     email_accounts, account_departments,
-                                     today, start):
-        """Pipeline body — separated so supa.close() always runs."""
         from ..services.analysis_service import AnalysisService
-        from ..services.odoo_enrichment import OdooEnrichmentService
+        from ..services.claude_service import ClaudeService
+        from ..services.supabase_service import SupabaseService
 
+        claude = ClaudeService(cfg['anthropic_api_key'])
         analysis = AnalysisService()
-        odoo_svc = OdooEnrichmentService(self.env)
 
-        # ══ FASE 1: Odoo → Supabase ══
-        _logger.info('── FASE 1: Odoo → Supabase (fuente de verdad) ──')
-        contacts = odoo_svc.extract_contacts()
-        odoo_context = odoo_svc.enrich(contacts)
+        with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+            # Leer datos del día generados por los micro-pipelines
+            account_summaries = self._read_today_summaries(supa, today)
+            if not account_summaries:
+                _logger.warning('Sin summaries para briefing — omitiendo')
+                return
 
-        if odoo_context.get('partners'):
-            self._sync_contacts_to_supabase(odoo_context, supa, today)
-            self._link_odoo_ids(supa)
-            _logger.info('✓ %d partners Odoo sincronizados',
-                         len(odoo_context['partners']))
-        else:
-            _logger.warning('Sin partners Odoo — continuando con emails')
+            metrics = self._read_today_metrics(supa, today)
+            alerts_data = self._read_today_alerts(supa, today)
+            scores_data = self._read_today_scores(supa, today)
 
-        # ══ FASE 2: Leer emails ══
-        _logger.info('── FASE 2: Lectura de emails ──')
-        gmail_history_state = self._load_gmail_history_state()
-        result = gmail.read_all_accounts(
-            email_accounts, history_state=gmail_history_state, max_workers=5,
-        )
-        self._save_gmail_history_state(result['gmail_history_state'])
-        all_emails = result['emails']
-        _logger.info('Total bruto: %d emails (%d cuentas OK, %d fallidas)',
-                      len(all_emails), result['success_count'], result['failed_count'])
-
-        if not all_emails:
-            _logger.warning('Sin emails — solo se sincronizó Odoo')
-            return
-
-        # ══ FASE 3: Dedup + persistencia ══
-        _logger.info('── FASE 3: Dedup + persistencia ──')
-        emails = self._deduplicate(all_emails)
-        _logger.info('Después de dedup: %d emails únicos', len(emails))
-
-        for e in emails:
-            e['department'] = account_departments.get(e['account'], 'Otro')
-
-        try:
-            supa.save_emails(emails)
-        except Exception as exc:
-            _logger.error('Error guardando emails: %s', exc)
-
-        threads = self._build_threads(emails, cfg)
-        try:
-            supa.save_threads(threads)
-        except Exception as exc:
-            _logger.error('Error guardando threads: %s', exc)
-
-        # ══ FASE 4: Análisis con Claude ══
-        _logger.info('── FASE 4: Análisis Claude por cuenta ──')
-        account_summaries = self._analyze_accounts(
-            emails, claude, odoo_context, account_departments, supa=supa,
-        )
-
-        try:
-            supa.save_account_summaries(account_summaries, today)
-        except Exception as exc:
-            _logger.error('Error guardando summaries: %s', exc)
-
-        # ══ FASE 5: Métricas y scoring ══
-        _logger.info('── FASE 5: Métricas y scoring ──')
-        metrics = analysis.compute_metrics(emails, threads, cfg)
-        try:
-            supa.save_metrics(metrics, today)
-        except Exception as exc:
-            _logger.error('Error guardando métricas: %s', exc)
-
-        alerts = analysis.generate_alerts(
-            threads, metrics, cfg,
-            account_summaries=account_summaries,
-            odoo_ctx=odoo_context,
-        )
-        try:
-            supa.save_alerts(alerts, today)
-        except Exception as exc:
-            _logger.error('Error guardando alertas: %s', exc)
-
-        client_scores = analysis.compute_client_scores(
-            contacts, emails, threads, cfg,
-            account_summaries=account_summaries,
-            odoo_ctx=odoo_context,
-        )
-        contact_sentiments = {}
-        for s in account_summaries:
-            for ec in s.get('external_contacts', []):
-                email_addr = (ec.get('email') or '').lower()
-                if email_addr and ec.get('sentiment_score') is not None:
-                    try:
-                        contact_sentiments[email_addr] = float(
-                            ec['sentiment_score'],
-                        )
-                    except (ValueError, TypeError):
-                        pass
-
-        try:
-            supa.save_client_scores(
-                client_scores, today,
-                contact_sentiments=contact_sentiments,
-            )
-        except Exception as exc:
-            _logger.error('Error guardando client scores: %s', exc)
-
-        # ══ FASE 6: Síntesis ejecutiva ══
-        _logger.info('── FASE 6: Síntesis ejecutiva ──')
-        historical = {}
-        try:
-            historical = supa.get_historical_context()
-        except Exception as exc:
-            _logger.warning('Sin contexto histórico: %s', exc)
-
-        data_package = analysis.build_data_package(
-            today, account_summaries, metrics, alerts, threads,
-            client_scores, odoo_context, historical,
-        )
-        try:
-            briefing_html = claude.synthesize_briefing(data_package)
-        except Exception as exc:
-            _logger.error('Error generando briefing con Claude: %s', exc)
-            briefing_html = (
-                '<h2>Briefing no disponible</h2>'
-                '<p>Error al generar el briefing: %s</p>'
-                '<p>Emails procesados: %d | Cuentas OK: %d | Fallidas: %d</p>'
-            ) % (exc, len(emails), result['success_count'], result['failed_count'])
-
-        topics = []
-        try:
-            topics = claude.extract_topics(briefing_html)
-        except Exception as exc:
-            _logger.error('Error extrayendo temas: %s', exc)
-        _logger.info('%d temas extraídos', len(topics))
-
-        if topics:
+            historical = {}
             try:
-                supa.save_topics(topics, today)
+                historical = supa.get_historical_context()
+            except Exception:
+                pass
+
+            # Construir paquete de datos para Claude
+            data_package = analysis.build_data_package(
+                today, account_summaries, metrics, alerts_data, [],
+                scores_data, {}, historical,
+            )
+
+            # Generar briefing con Claude
+            try:
+                briefing_html = claude.synthesize_briefing(data_package)
             except Exception as exc:
-                _logger.error('Error guardando topics: %s', exc)
+                _logger.error('Error generando briefing: %s', exc)
+                briefing_html = (
+                    '<h2>Briefing no disponible</h2>'
+                    f'<p>Error: {exc}</p>'
+                )
 
-        key_events = analysis.build_key_events(alerts, account_summaries)
+            # Extraer topics
+            topics = []
+            try:
+                topics = claude.extract_topics(briefing_html)
+            except Exception as exc:
+                _logger.error('Error extrayendo temas: %s', exc)
 
-        try:
-            supa.save_daily_summary(
-                today, briefing_html, len(emails),
-                result['success_count'], result['failed_count'], len(topics),
-                key_events=key_events,
-            )
-        except Exception as exc:
-            _logger.error('Error guardando daily summary: %s', exc)
+            if topics:
+                try:
+                    supa.save_topics(topics, today)
+                except Exception as exc:
+                    _logger.debug('save_topics: %s', exc)
 
-        try:
-            signals = supa._request(
-                '/rest/v1/rpc/detect_cross_department_topics', 'POST', {},
-            )
-            if signals and isinstance(signals, list) and signals:
-                _logger.info('✓ %d cross-department signals detected',
-                             len(signals))
-        except Exception as exc:
-            _logger.debug('cross_department_signals: %s', exc)
+            # Guardar daily summary en Supabase
+            key_events = analysis.build_key_events(
+                alerts_data, account_summaries)
+            try:
+                total_emails = sum(
+                    s.get('total_emails', 0) for s in account_summaries)
+                accounts_ok = len(account_summaries)
+                supa.save_daily_summary(
+                    today, briefing_html, total_emails,
+                    accounts_ok, 0, len(topics),
+                    key_events=key_events,
+                )
+            except Exception as exc:
+                _logger.error('Error guardando daily summary: %s', exc)
 
-        # ══ FASE 7: Knowledge Graph ══
-        _logger.info('── FASE 7: Knowledge Graph ──')
-        self._feed_knowledge_graph(emails, claude, supa, today)
+            # Cross-department signals
+            try:
+                supa._request(
+                    '/rest/v1/rpc/detect_cross_department_topics',
+                    'POST', {},
+                )
+            except Exception:
+                pass
 
-        # ══ FASE 8: Embeddings ══
-        if cfg.get('voyage_api_key'):
-            _logger.info('── FASE 8: Embeddings ──')
-            self._generate_embeddings(emails, voyage, supa)
+            # Refresh contact_360
+            try:
+                supa._request(
+                    '/rest/v1/rpc/refresh_contact_360', 'POST', {},
+                )
+            except Exception:
+                pass
 
-        # ══ FASE 8.5: Scoring y aprendizaje ══
-        _logger.info('── FASE 8.5: Scoring y aprendizaje ──')
+        # Enviar briefing por email
+        self._send_briefing_email(cfg, briefing_html, today, analysis)
 
-        self._generate_accountability_alerts(
-            odoo_context, alerts, supa, today,
+        # Guardar en Odoo
+        total_emails = sum(
+            s.get('total_emails', 0) for s in account_summaries)
+        self._save_to_odoo(
+            today, briefing_html, total_emails, alerts_data,
+            scores_data, time.time() - pipeline_start,
+            topics=topics,
         )
 
+        _logger.info('✓ Briefing diario completado')
+
+    # ── Lecturas de datos del día ─────────────────────────────────────────────
+
+    @staticmethod
+    def _read_today_summaries(supa, today: str) -> list:
         try:
-            sb_contacts = [
-                {'email': e, 'contact_type': 'external'}
-                for e in odoo_context.get('partners', {})
-            ]
-            supa.compute_and_save_health_scores(
-                sb_contacts, account_summaries, today,
-            )
-        except Exception as exc:
-            _logger.debug('Health scores: %s', exc)
+            return supa._request(
+                '/rest/v1/account_summaries?order=created_at.desc'
+                '&select=*'
+                f'&summary_date=eq.{today}',
+            ) or []
+        except Exception:
+            return []
 
-        for acct, hid in result['gmail_history_state'].items():
-            supa.save_sync_state(acct, str(hid))
+    @staticmethod
+    def _read_today_metrics(supa, today: str) -> list:
+        try:
+            return supa._request(
+                '/rest/v1/response_metrics?select=*'
+                f'&metric_date=eq.{today}',
+            ) or []
+        except Exception:
+            return []
 
-        # ══ FASE 9: Envío del briefing ══
-        _logger.info('── FASE 9: Envío del briefing ──')
+    @staticmethod
+    def _read_today_alerts(supa, today: str) -> list:
+        try:
+            return supa._request(
+                '/rest/v1/alerts?order=created_at.desc'
+                '&limit=200&select=*'
+                f'&created_at=gte.{today}T00:00:00Z',
+            ) or []
+        except Exception:
+            return []
+
+    @staticmethod
+    def _read_today_scores(supa, today: str) -> list:
+        try:
+            return supa._request(
+                '/rest/v1/customer_health_scores?select=*'
+                f'&score_date=eq.{today}',
+            ) or []
+        except Exception:
+            return []
+
+    # ── Envío de briefing ─────────────────────────────────────────────────────
+
+    def _send_briefing_email(self, cfg, briefing_html, today, analysis):
         sender = (cfg.get('sender_email') or '').strip()
         recipient = (cfg.get('recipient_email') or '').strip()
-        if sender and '@' in sender and recipient and '@' in recipient:
-            try:
-                subject = f'Intelligence Briefing — {today}'
-                gmail.send_email(sender, recipient,
-                                 subject, analysis.wrap_briefing_html(briefing_html, today))
-                _logger.info('Briefing enviado a %s', recipient)
-            except Exception as exc:
-                _logger.error('Error enviando briefing: %s', exc)
-        else:
-            _logger.warning('Briefing no enviado: falta sender_email o recipient_email en config')
-
+        if not (sender and '@' in sender and recipient and '@' in recipient):
+            _logger.warning('Briefing no enviado: falta sender/recipient')
+            return
         try:
-            self._save_to_odoo(
-                today, briefing_html, emails, alerts,
-                client_scores, contacts, time.time() - start,
-                topics=topics,
-                accounts_failed=result['failed_count'],
+            from ..services.gmail_service import GmailService
+            sa_info = json.loads(cfg['service_account_json'])
+            gmail = GmailService(sa_info)
+            subject = f'Intelligence Briefing — {today}'
+            gmail.send_email(
+                sender, recipient, subject,
+                analysis.wrap_briefing_html(briefing_html, today),
             )
+            _logger.info('Briefing enviado a %s', recipient)
         except Exception as exc:
-            _logger.error('Error guardando en Odoo: %s', exc)
-
-        # ══ FASE 10: Company enrichment ══
-        _logger.info('── FASE 10: Company enrichment ──')
-        try:
-            self._enrich_companies(supa, claude, today)
-        except Exception as exc:
-            _logger.warning('Company enrichment error: %s', exc, exc_info=True)
-
-        try:
-            supa._request(
-                '/rest/v1/rpc/refresh_contact_360', 'POST', {},
-            )
-            _logger.info('✓ contact_360 view refreshed')
-        except Exception as exc:
-            _logger.debug('refresh_contact_360: %s', exc)
-
-        _logger.info('Pipeline completado exitosamente')
+            _logger.error('Error enviando briefing: %s', exc)
 
     # ══════════════════════════════════════════════════════════════════════════
     #   HELPERS INTERNOS
@@ -401,66 +339,92 @@ class IntelligenceEngine(models.Model):
 
     # ── Save to Odoo ─────────────────────────────────────────────────────────
 
-    def _save_to_odoo(self, today, briefing_html, emails, alerts,
-                      client_scores, contacts, execution_secs,
+    def _save_to_odoo(self, today, briefing_html, total_emails, alerts,
+                      client_scores, execution_secs,
                       topics=None, accounts_failed=0):
+        """Persiste briefing, alertas y scores en modelos Odoo."""
         Briefing = self.env["intelligence.briefing"].sudo()
         Alert = self.env["intelligence.alert"].sudo()
         Score = self.env["intelligence.client.score"].sudo()
         Partner = self.env["res.partner"].sudo()
 
+        accounts_ok = 0
+        if isinstance(total_emails, list):
+            # Backward compat: if raw emails list passed
+            accounts_ok = len(set(e.get('account', '') for e in total_emails))
+            total_emails = len(total_emails)
+        else:
+            accounts_ok = total_emails  # approximate
+
         briefing = Briefing.create({
             'date': today,
             'briefing_type': 'daily',
             'html_content': briefing_html,
-            'total_emails': len(emails),
-            'accounts_ok': len(set(e['account'] for e in emails)),
+            'total_emails': total_emails if isinstance(total_emails, int) else 0,
+            'accounts_ok': accounts_ok,
             'accounts_failed': accounts_failed,
             'topics_count': len(topics) if topics else 0,
-            'topics_json': json.dumps(topics, default=str, ensure_ascii=False) if topics else False,
+            'topics_json': json.dumps(
+                topics, default=str, ensure_ascii=False,
+            ) if topics else False,
             'execution_seconds': execution_secs,
         })
         _logger.info('Briefing guardado en Odoo: %s', briefing.id)
 
         for a in alerts:
-            partner = False
-            contact_name = a.get('contact_name', '')
-            if contact_name:
-                partner = Partner.search([
-                    '|', ('name', 'ilike', contact_name),
-                    ('email', 'ilike', contact_name),
-                ], limit=1)
-            Alert.create({
-                'name': a.get('title', 'Alerta')[:200],
-                'alert_type': a.get('alert_type', 'anomaly'),
-                'severity': a.get('severity', 'medium'),
-                'state': 'open',
-                'description': a.get('description', ''),
-                'account': a.get('account', ''),
-                'partner_id': partner.id if partner else False,
-                'briefing_id': briefing.id,
-                'gmail_thread_id': a.get('related_thread_id', ''),
-                'supabase_id': a.get('supabase_id', False),
-            })
+            try:
+                partner = False
+                contact_name = (
+                    a.get('contact_name', '') or a.get('title', ''))
+                if contact_name:
+                    partner = Partner.search([
+                        '|', ('name', 'ilike', contact_name),
+                        ('email', 'ilike', contact_name),
+                    ], limit=1)
+                Alert.create({
+                    'name': (
+                        a.get('title', '') or a.get('name', 'Alerta')
+                    )[:200],
+                    'alert_type': a.get('alert_type', 'anomaly'),
+                    'severity': a.get('severity', 'medium'),
+                    'state': 'open',
+                    'description': a.get('description', ''),
+                    'account': a.get('account', ''),
+                    'partner_id': partner.id if partner else False,
+                    'briefing_id': briefing.id,
+                    'gmail_thread_id': a.get('related_thread_id', ''),
+                    'supabase_id': a.get('id', False) or a.get(
+                        'supabase_id', False),
+                })
+            except Exception as exc:
+                _logger.debug('save alert to Odoo: %s', exc)
         _logger.info('%d alertas guardadas en Odoo', len(alerts))
 
         for s in client_scores:
-            email_addr = s.get('email', '')
-            partner = Partner.search([
-                ('email', '=ilike', email_addr)
-            ], limit=1)
-            if partner:
-                Score.create({
-                    'partner_id': partner.id,
-                    'date': today,
-                    'email': email_addr,
-                    'total_score': s.get('total_score', 0),
-                    'frequency_score': s.get('frequency_score', 0),
-                    'responsiveness_score': s.get('responsiveness_score', 0),
-                    'reciprocity_score': s.get('reciprocity_score', 0),
-                    'sentiment_score': s.get('sentiment_score', 0),
-                    'payment_compliance_score': s.get(
-                        'payment_compliance_score', 0),
-                    'risk_level': s.get('risk_level', 'medium'),
-                })
+            try:
+                email_addr = (
+                    s.get('email', '') or s.get('contact_email', ''))
+                if not email_addr:
+                    continue
+                partner = Partner.search([
+                    ('email', '=ilike', email_addr)
+                ], limit=1)
+                if partner:
+                    Score.create({
+                        'partner_id': partner.id,
+                        'date': today,
+                        'email': email_addr,
+                        'total_score': s.get('total_score', 0) or s.get(
+                            'overall_score', 0),
+                        'frequency_score': s.get('frequency_score', 0),
+                        'responsiveness_score': s.get(
+                            'responsiveness_score', 0),
+                        'reciprocity_score': s.get('reciprocity_score', 0),
+                        'sentiment_score': s.get('sentiment_score', 0),
+                        'payment_compliance_score': s.get(
+                            'payment_compliance_score', 0),
+                        'risk_level': s.get('risk_level', 'medium'),
+                    })
+            except Exception as exc:
+                _logger.debug('save score to Odoo: %s', exc)
         _logger.info('%d client scores en Odoo', len(client_scores))
