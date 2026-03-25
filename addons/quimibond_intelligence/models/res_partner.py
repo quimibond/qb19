@@ -33,6 +33,23 @@ class ResPartner(models.Model):
     intelligence_action_ids = fields.One2many(
         'intelligence.action.item', 'partner_id',
         string='Acciones de inteligencia')
+    intelligence_priority = fields.Selection([
+        ('urgent', 'Urgente'),
+        ('high', 'Alta'),
+        ('normal', 'Normal'),
+        ('low', 'Baja'),
+    ], string='Prioridad inteligencia',
+        compute='_compute_intelligence_priority', store=True)
+
+    # ── Cache de datos de Supabase (para 360 view offline) ────────────────
+    intelligence_profile_json = fields.Text(
+        string='Perfil (cache)', copy=False)
+    intelligence_facts_json = fields.Text(
+        string='Hechos KG (cache)', copy=False)
+    intelligence_company_json = fields.Text(
+        string='Empresa (cache)', copy=False)
+    intelligence_last_sync = fields.Datetime(
+        string='Ultima sync inteligencia', copy=False)
 
     @api.depends('intelligence_score_ids', 'intelligence_score_ids.total_score')
     def _compute_intelligence_score(self):
@@ -56,18 +73,128 @@ class ResPartner(models.Model):
                     ('state', '=', 'open'),
                 ])
 
+    @api.depends('intelligence_score', 'intelligence_risk',
+                 'intelligence_alert_count')
+    def _compute_intelligence_priority(self):
+        """Computa prioridad basada en score + risk + alertas abiertas."""
+        for partner in self:
+            score = partner.intelligence_score or 0
+            risk = partner.intelligence_risk or ''
+            alerts = partner.intelligence_alert_count or 0
+
+            if risk == 'high' or score < 25 or alerts >= 5:
+                partner.intelligence_priority = 'urgent'
+            elif risk == 'medium' or score < 45 or alerts >= 3:
+                partner.intelligence_priority = 'high'
+            elif score < 65 or alerts >= 1:
+                partner.intelligence_priority = 'normal'
+            else:
+                partner.intelligence_priority = 'low'
+
     def _compute_intelligence_panorama(self):
-        """Genera panorama 360 HTML combinando Odoo + Supabase."""
+        """Genera panorama 360 HTML. Usa cache Odoo primero, Supabase como fallback."""
+        from datetime import timedelta
+        cache_ttl = timedelta(hours=24)
+        now = fields.Datetime.now()
+
         for partner in self:
             if not partner.email:
                 partner.intelligence_panorama = (
                     '<p class="text-muted">Sin email configurado</p>')
                 continue
+
+            # Intentar usar cache si es reciente
+            use_cache = (
+                partner.intelligence_last_sync
+                and (now - partner.intelligence_last_sync) < cache_ttl
+                and partner.intelligence_profile_json
+            )
+
             try:
-                partner.intelligence_panorama = self._build_panorama(partner)
+                if use_cache:
+                    partner.intelligence_panorama = (
+                        self._build_panorama_from_cache(partner))
+                else:
+                    partner.intelligence_panorama = (
+                        self._build_panorama(partner))
             except Exception as exc:
                 _logger.debug('Panorama %s: %s', partner.email, exc)
-                partner.intelligence_panorama = ''
+                # Fallback a cache si Supabase falla
+                if partner.intelligence_profile_json:
+                    try:
+                        partner.intelligence_panorama = (
+                            self._build_panorama_from_cache(partner))
+                    except Exception:
+                        partner.intelligence_panorama = ''
+                else:
+                    partner.intelligence_panorama = ''
+
+    def _build_panorama_from_cache(self, partner):
+        """Construye panorama HTML desde campos cache de Odoo."""
+        sections = []
+        profile = json.loads(partner.intelligence_profile_json or '{}')
+        facts = json.loads(partner.intelligence_facts_json or '[]')
+        company = json.loads(partner.intelligence_company_json or '{}')
+
+        if profile:
+            parts = []
+            for key, label in [
+                ('role', 'Rol'), ('company', 'Empresa'),
+                ('communication_style', 'Estilo'),
+                ('decision_power', 'Poder decisión'),
+            ]:
+                val = profile.get(key)
+                if val:
+                    parts.append(f'<strong>{label}:</strong> {val}')
+            interests = profile.get('key_interests', [])
+            if interests:
+                parts.append(
+                    f'<strong>Intereses:</strong> {", ".join(interests[:5])}')
+            if parts:
+                sections.append(
+                    '<div class="mb-3">'
+                    '<h4>Perfil</h4>'
+                    f'<p>{" | ".join(parts)}</p>'
+                    '</div>'
+                )
+
+        if facts:
+            items = ''.join(
+                f'<li>{f.get("fact_text", "")}</li>' for f in facts[:10])
+            sections.append(
+                '<div class="mb-3">'
+                '<h4>Hechos conocidos</h4>'
+                f'<ul>{items}</ul>'
+                '</div>'
+            )
+
+        if company:
+            parts = []
+            if company.get('name'):
+                parts.append(f'<strong>{company["name"]}</strong>')
+            if company.get('industry'):
+                parts.append(f'Industria: {company["industry"]}')
+            if company.get('relationship_summary'):
+                parts.append(company['relationship_summary'])
+            if parts:
+                sections.append(
+                    '<div class="mb-3">'
+                    '<h4>Empresa</h4>'
+                    f'<p>{" | ".join(parts)}</p>'
+                    '</div>'
+                )
+
+        if not sections:
+            return '<p class="text-muted">Sin datos de inteligencia en cache</p>'
+
+        cache_age = ''
+        if partner.intelligence_last_sync:
+            cache_age = (
+                f'<small class="text-muted">Cache: '
+                f'{partner.intelligence_last_sync.strftime("%Y-%m-%d %H:%M")}'
+                f'</small>'
+            )
+        return f'{"".join(sections)}{cache_age}'
 
     def _build_panorama(self, partner):
         """Construye HTML del panorama 360."""
