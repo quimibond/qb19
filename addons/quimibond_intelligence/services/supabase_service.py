@@ -28,15 +28,19 @@ class SupabaseService(
     def log_event(self, event_type: str, source: str = 'pipeline',
                   entity_type: str = None, entity_id: int = None,
                   entity_ref: str = None, payload: dict = None):
-        """Log an event to the events table for timeline tracking."""
+        """Log an event to pipeline_logs for timeline tracking."""
         try:
-            self._request('/rest/v1/events', 'POST', {
-                'event_type': event_type,
-                'source': source,
-                'entity_type': entity_type,
-                'entity_id': entity_id,
-                'entity_ref': entity_ref,
-                'payload': payload or {},
+            self._request('/rest/v1/pipeline_logs', 'POST', {
+                'level': 'info',
+                'phase': event_type,
+                'message': f'{source}: {entity_type or ""} {entity_ref or ""}',
+                'details': {
+                    'source': source,
+                    'entity_type': entity_type,
+                    'entity_id': entity_id,
+                    'entity_ref': entity_ref,
+                    **(payload or {}),
+                },
             })
         except Exception as exc:
             _logger.debug('log_event: %s', exc)

@@ -248,7 +248,7 @@ class SupabaseContactsMixin:
             return
         try:
             self._upsert_batch(
-                '/rest/v1/company_odoo_snapshots'
+                '/rest/v1/odoo_snapshots'
                 '?on_conflict=company_id,snapshot_date',
                 snapshots, 'merge-duplicates',
             )

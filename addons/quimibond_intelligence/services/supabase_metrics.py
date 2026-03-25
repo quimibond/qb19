@@ -34,7 +34,7 @@ class SupabaseMetricsMixin:
             'slowest_response_hours': m.get('slowest_response_hours'),
         } for m in metrics]
         if batch:
-            self._upsert_batch('/rest/v1/response_metrics?on_conflict=metric_date,account',
+            self._upsert_batch('/rest/v1/communication_metrics?on_conflict=metric_date,account',
                                batch, 'merge-duplicates')
             self._track(success=len(batch))
         _logger.info('✓ %d métricas guardadas', len(batch))
@@ -146,27 +146,28 @@ class SupabaseMetricsMixin:
 
     def save_account_summaries(self, summaries: list, today: str):
         batch = [{
-            'summary_date': today,
+            'scope': 'account',
+            'briefing_date': today,
             'account': s['account'],
             'department': s['department'],
             'total_emails': s.get('total_emails', 0),
             'external_emails': s.get('external_emails', 0),
             'internal_emails': s.get('internal_emails', 0),
-            'key_items': s.get('key_items', []),
             'waiting_response': s.get('waiting_response', []),
             'urgent_items': s.get('urgent_items', []),
             'external_contacts': s.get('external_contacts', []),
-            'topics_detected': s.get('topics_detected', []),
+            'topics_identified': s.get('topics_detected', []),
             'summary_text': s.get('summary_text', ''),
             'overall_sentiment': s.get('overall_sentiment'),
             'sentiment_detail': s.get('sentiment_detail'),
             'risks_detected': s.get('risks_detected'),
         } for s in summaries]
-        self._upsert_batch(
-            '/rest/v1/account_summaries?on_conflict=summary_date,account',
-            batch, 'merge-duplicates',
-        )
-        _logger.info('✓ %d account summaries guardados', len(batch))
+        for record in batch:
+            self._request(
+                '/rest/v1/briefings', 'POST', record,
+                extra_headers={'Prefer': 'resolution=merge-duplicates'},
+            )
+        _logger.info('✓ %d account briefings guardados', len(batch))
 
     # ── Client Scores ────────────────────────────────────────────────────────
 
@@ -234,27 +235,31 @@ class SupabaseMetricsMixin:
                            key_events: list = None):
         """Guarda resumen diario con key_events estructurados.
 
-        Frontend schema: daily_summaries(summary_date, email_count, summary,
-                                         key_events jsonb)
+        Schema: briefings(scope, briefing_date, summary_text, summary_html,
+                          total_emails, key_events jsonb, ...)
         """
         import re
         summary_text = re.sub(r'<[^>]+>', '', briefing_html)
         # Truncate summary_text to a reasonable size for the summary field
         summary_short = summary_text[:2000] if len(summary_text) > 2000 else summary_text
 
-        self._upsert_batch(
-            '/rest/v1/daily_summaries?on_conflict=summary_date',
-            [{
-                'summary_date': today,
+        self._request(
+            '/rest/v1/briefings',
+            'POST',
+            {
+                'scope': 'daily',
+                'briefing_date': today,
                 'total_emails': total_emails,
                 'summary_text': summary_short,
                 'summary_html': briefing_html[:50000] if briefing_html else '',
-                'accounts_read': accounts_read,
+                'accounts_processed': accounts_read,
                 'accounts_failed': accounts_failed,
                 'topics_identified': topics_count,
                 'key_events': key_events or [],
-            }],
-            'merge-duplicates',
+            },
+            extra_headers={
+                'Prefer': 'resolution=merge-duplicates',
+            },
         )
 
     # ── Historical Context ───────────────────────────────────────────────────
@@ -270,7 +275,7 @@ class SupabaseMetricsMixin:
         }
         try:
             summaries = self._request(
-                '/rest/v1/daily_summaries?order=summary_date.desc&limit=1'
+                '/rest/v1/briefings?scope=eq.daily&order=briefing_date.desc&limit=1'
                 '&select=summary_text',
             )
             if summaries:
@@ -524,7 +529,7 @@ class SupabaseMetricsMixin:
         """
         try:
             self._request(
-                '/rest/v1/customer_health_scores',
+                '/rest/v1/health_scores',
                 'POST', score,
                 extra_headers={
                     'Prefer': 'resolution=merge-duplicates',
@@ -624,7 +629,7 @@ class SupabaseMetricsMixin:
                 if not enc:
                     continue
                 prev_rows = self._request(
-                    f'/rest/v1/customer_health_scores?contact_email=in.({enc})'
+                    f'/rest/v1/health_scores?contact_email=in.({enc})'
                     '&order=score_date.desc'
                     '&select=contact_email,overall_score',
                 ) or []
@@ -810,7 +815,7 @@ class SupabaseMetricsMixin:
         if scores_to_save:
             try:
                 self._upsert_batch(
-                    '/rest/v1/customer_health_scores'
+                    '/rest/v1/health_scores'
                     '?on_conflict=contact_email,score_date',
                     scores_to_save, 'merge-duplicates',
                 )
