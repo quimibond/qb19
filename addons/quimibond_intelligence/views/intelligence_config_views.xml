@@ -144,25 +144,27 @@
     <!-- Root menu -->
     <menuitem id="menu_intelligence_root"
               name="Intelligence"
-              sequence="5"/>
+              sequence="5"
+              action="action_briefings"/>
 
     <!-- Operativo -->
     <menuitem id="menu_intelligence_ops"
               name="Operacion"
               parent="menu_intelligence_root"
-              sequence="10"/>
-
-    <menuitem id="menu_intelligence_query"
-              name="Preguntar al cerebro"
-              parent="menu_intelligence_ops"
-              action="action_query"
-              sequence="1"/>
+              sequence="10"
+              action="action_briefings"/>
 
     <menuitem id="menu_intelligence_briefings"
               name="Briefings"
               parent="menu_intelligence_ops"
               action="action_briefings"
-              sequence="10"/>
+              sequence="1"/>
+
+    <menuitem id="menu_intelligence_query"
+              name="Preguntar al cerebro"
+              parent="menu_intelligence_ops"
+              action="action_query"
+              sequence="30"/>
 
     <menuitem id="menu_intelligence_alerts"
               name="Alertas"
@@ -174,13 +176,13 @@
               name="Acciones pendientes"
               parent="menu_intelligence_ops"
               action="action_action_items"
-              sequence="30"/>
+              sequence="25"/>
 
     <menuitem id="menu_intelligence_draft_actions"
               name="Acciones sugeridas"
               parent="menu_intelligence_ops"
               action="action_draft_actions"
-              sequence="35"/>
+              sequence="28"/>
 
     <!-- Configuracion -->
     <menuitem id="menu_intelligence_settings"
