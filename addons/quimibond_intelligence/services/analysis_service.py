@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 from ..models.intelligence_config import INTERNAL_DOMAIN
-from .odoo_enrichment import is_automated_sender
+from .enrichment_helpers import is_automated_sender
 
 _logger = logging.getLogger(__name__)
 

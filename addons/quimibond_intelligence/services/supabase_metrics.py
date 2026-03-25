@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from urllib.parse import quote as url_quote
 
-from .odoo_enrichment import is_automated_sender
+from .enrichment_helpers import is_automated_sender
 from .supabase_utils import _postgrest_in_list
 
 _logger = logging.getLogger(__name__)
