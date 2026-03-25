@@ -7,6 +7,7 @@ from . import engine_reporting
 from . import engine_supabase_sync
 from . import engine_predictions
 from . import engine_briefing_reply
+from . import engine_odoo_tables_sync
 from . import intelligence_briefing
 from . import intelligence_alert
 from . import intelligence_score

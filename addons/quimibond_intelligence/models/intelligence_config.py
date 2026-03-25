@@ -248,6 +248,15 @@ class IntelligenceConfig(models.TransientModel):
                            'message': 'Predicciones ejecutadas. Revisa alertas generadas.',
                            'type': 'info'}}
 
+    def action_sync_odoo_tables(self):
+        """Sync productos, líneas de orden y usuarios a Supabase."""
+        self.action_save()
+        self.env['intelligence.engine'].run_sync_odoo_tables()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Sync Odoo Tables',
+                           'message': 'Productos, órdenes y usuarios sincronizados. Revisa los logs.',
+                           'type': 'info'}}
+
     def action_check_briefing_replies(self):
         """Busca replies al briefing y genera respuestas."""
         self.action_save()
