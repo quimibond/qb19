@@ -9,5 +9,6 @@ from . import intelligence_briefing
 from . import intelligence_alert
 from . import intelligence_score
 from . import intelligence_action
+from . import intelligence_draft_action
 from . import intelligence_query
 from . import res_partner
