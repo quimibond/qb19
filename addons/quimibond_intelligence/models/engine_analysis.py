@@ -100,9 +100,11 @@ class IntelligenceEngine(models.Model):
                             e.get('account', ''), 'Otro'),
                     })
 
-                account_summaries = self._analyze_accounts(
-                    emails, claude, odoo_context, account_departments,
-                    supa=supa,
+                account_summaries, kg_by_account = (
+                    self._analyze_accounts(
+                        emails, claude, odoo_context,
+                        account_departments, supa=supa,
+                    )
                 )
                 supa.save_account_summaries(account_summaries, today)
 
@@ -117,7 +119,10 @@ class IntelligenceEngine(models.Model):
                 )
                 supa.save_alerts(alerts, today)
 
-                self._feed_knowledge_graph(emails, claude, supa, today)
+                self._feed_knowledge_graph(
+                    emails, claude, supa, today,
+                    kg_by_account=kg_by_account,
+                )
 
                 if voyage:
                     self._generate_embeddings(emails, voyage, supa)
@@ -147,8 +152,13 @@ class IntelligenceEngine(models.Model):
 
     def _analyze_accounts(self, emails: list, claude, odoo_context: dict,
                           account_departments: dict = None,
-                          supa=None) -> list:
-        """Fase 1 de Claude: análisis por cuenta con perfiles de personas."""
+                          supa=None) -> tuple:
+        """Análisis unificado: resumen + KG en una sola llamada Claude por cuenta.
+
+        Retorna (summaries, kg_by_account) donde kg_by_account es un dict
+        de account → knowledge_graph data para alimentar el KG sin otra
+        llamada a Claude.
+        """
         from ..services.analysis_service import AnalysisService
         analysis = AnalysisService()
         account_departments = account_departments or {}
@@ -160,6 +170,8 @@ class IntelligenceEngine(models.Model):
             by_account[e['account']].append(e)
 
         summaries = []
+        kg_by_account = {}
+
         for account, acct_emails in by_account.items():
             dept = account_departments.get(account, 'Otro')
             ext_count = sum(
@@ -175,13 +187,19 @@ class IntelligenceEngine(models.Model):
             )
 
             try:
-                result = claude.summarize_account(
+                full_result = claude.analyze_account_full(
                     dept, account, email_text, ext_count, int_count,
                 )
+                result = full_result['summary']
                 result['account'] = account
                 result['department'] = dept
                 result['total_emails'] = len(acct_emails)
                 summaries.append(result)
+
+                # Guardar KG data para procesamiento posterior
+                kg_data = full_result.get('knowledge_graph', {})
+                if kg_data:
+                    kg_by_account[account] = kg_data
 
                 if supa and result.get('person_insights'):
                     for pi in result['person_insights']:
@@ -219,11 +237,18 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.error('  ✗ %s: %s', account, exc)
 
-        return summaries
+        return summaries, kg_by_account
 
     # ── Knowledge Graph ──────────────────────────────────────────────────────
 
-    def _feed_knowledge_graph(self, emails, claude, supa, today):
+    def _feed_knowledge_graph(self, emails, claude, supa, today,
+                              kg_by_account=None):
+        """Alimenta el Knowledge Graph con datos extraídos.
+
+        Si kg_by_account se proporciona (pre-extraído por analyze_account_full),
+        lo usa directamente sin llamar a Claude de nuevo. Si no, hace fallback
+        al comportamiento original con extract_knowledge().
+        """
         if not emails:
             return
 
@@ -248,6 +273,8 @@ class IntelligenceEngine(models.Model):
             _logger.info('Knowledge graph: todos los emails ya estaban procesados')
             return
 
+        kg_by_account = kg_by_account or {}
+
         by_account = defaultdict(list)
         for e in pending:
             by_account[e['account']].append(e)
@@ -258,12 +285,16 @@ class IntelligenceEngine(models.Model):
         for account, acct_emails in by_account.items():
             if not acct_emails:
                 continue
-            email_text = analysis.format_emails_for_claude(acct_emails, {})
-            try:
-                kg = claude.extract_knowledge(email_text, account)
-            except Exception as exc:
-                _logger.warning('KG extraction failed for %s: %s', account, exc)
-                continue
+
+            # Usar KG pre-extraído si disponible, sino llamar a Claude
+            kg = kg_by_account.get(account)
+            if not kg:
+                email_text = analysis.format_emails_for_claude(acct_emails, {})
+                try:
+                    kg = claude.extract_knowledge(email_text, account)
+                except Exception as exc:
+                    _logger.warning('KG extraction failed for %s: %s', account, exc)
+                    continue
 
             # Guardar entidades
             entity_map = {}
