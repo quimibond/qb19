@@ -263,10 +263,17 @@ class IntelligenceEngine(models.Model):
     # ══════════════════════════════════════════════════════════════════════════
 
     def _sync_contacts_to_supabase(self, odoo_context, supa, today):
-        """Sincroniza partners de Odoo → contacts en Supabase."""
+        """Sincroniza partners de Odoo → contacts + companies en Supabase.
+
+        Usa odoo_partner_id como llave universal. Envía detalle operacional
+        (facturas, pedidos, pagos, entregas) a companies directamente.
+        """
         partners = odoo_context.get('partners', {})
         if not partners:
             return
+
+        # Agrupar datos por company (commercial_partner_id)
+        companies_data = {}
 
         synced, failed = 0, 0
         for email_addr, pdata in partners.items():
@@ -289,22 +296,18 @@ class IntelligenceEngine(models.Model):
                 encoded = url_quote(email_addr.lower().strip(), safe='')
                 patch = {}
 
-                if pdata.get('partner_id'):
-                    patch['odoo_partner_id'] = pdata['partner_id']
+                pid = pdata.get('id') or pdata.get('partner_id')
+                cpid = pdata.get('commercial_partner_id')
+                if pid:
+                    patch['odoo_partner_id'] = pid
+                if cpid:
+                    patch['commercial_partner_id'] = cpid
                 if pdata.get('is_customer') is not None:
                     patch['is_customer'] = pdata['is_customer']
                 if pdata.get('is_supplier') is not None:
                     patch['is_supplier'] = pdata['is_supplier']
                 if pdata.get('phone'):
                     patch['phone'] = pdata['phone']
-                if pdata.get('city'):
-                    patch['city'] = pdata['city']
-                if pdata.get('state'):
-                    patch['state'] = pdata['state']
-                if pdata.get('country'):
-                    patch['country'] = pdata['country']
-                if pdata.get('vat'):
-                    patch['vat'] = pdata['vat']
 
                 # Guardar contexto completo de Odoo como JSON
                 odoo_ctx_json = {
@@ -315,6 +318,11 @@ class IntelligenceEngine(models.Model):
                     patch['odoo_context'] = json.dumps(
                         odoo_ctx_json, default=str, ensure_ascii=False,
                     )
+
+                # Acumular datos para company (por commercial_partner_id)
+                if company and cpid:
+                    if cpid not in companies_data:
+                        companies_data[cpid] = pdata
 
                 if patch:
                     supa._request(
@@ -328,9 +336,55 @@ class IntelligenceEngine(models.Model):
                 failed += 1
                 _logger.debug('sync_contact %s: %s', email_addr, exc)
 
+        # Sync operational detail to companies table
+        companies_synced = 0
+        for cpid, pdata in companies_data.items():
+            try:
+                company_patch = {}
+                # Detalle operacional como JSONB
+                for field in ('recent_sales', 'pending_invoices',
+                              'recent_payments', 'recent_purchases',
+                              'crm_leads', 'pending_deliveries',
+                              'manufacturing', 'pending_activities',
+                              'payment_behavior', 'aging', 'products',
+                              'inventory_intelligence', 'purchase_patterns'):
+                    val = pdata.get(field)
+                    if val is not None:
+                        company_patch[field] = (
+                            json.dumps(val, default=str, ensure_ascii=False)
+                            if not isinstance(val, str) else val
+                        )
+
+                # Totales
+                if pdata.get('total_invoiced'):
+                    company_patch['lifetime_value'] = pdata['total_invoiced']
+                if pdata.get('credit_limit'):
+                    company_patch['credit_limit'] = pdata['credit_limit']
+                lifetime = pdata.get('lifetime', {})
+                if lifetime.get('monthly_avg'):
+                    company_patch['monthly_avg'] = lifetime['monthly_avg']
+                if lifetime.get('trend_pct') is not None:
+                    company_patch['trend_pct'] = lifetime['trend_pct']
+                delivery = pdata.get('delivery_performance', {})
+                if delivery.get('on_time_rate') is not None:
+                    company_patch['delivery_otd_rate'] = (
+                        delivery['on_time_rate'])
+
+                if company_patch:
+                    company_patch['odoo_partner_id'] = cpid
+                    supa._request(
+                        f'/rest/v1/companies?odoo_partner_id=eq.{cpid}',
+                        'PATCH', company_patch,
+                        extra_headers={'Prefer': 'return=minimal'},
+                    )
+                    companies_synced += 1
+            except Exception as exc:
+                _logger.debug('sync_company %s: %s', cpid, exc)
+
         _logger.info(
-            'Contacts sync: %d ok, %d failed de %d total',
-            synced, failed, len(partners),
+            'Contacts sync: %d ok, %d failed de %d total. '
+            'Companies updated: %d',
+            synced, failed, len(partners), companies_synced,
         )
 
     def _link_odoo_ids(self, supa):
