@@ -74,6 +74,18 @@
             <field name="priority">12</field>
         </record>
 
+        <record id="cron_supabase_sync" model="ir.cron">
+            <field name="name">Intelligence - Supabase Sync (cada 5 min)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_supabase_sync()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">3</field>
+        </record>
+
         <!-- ══ Tareas de mantenimiento ══ -->
 
         <record id="cron_data_retention" model="ir.cron">

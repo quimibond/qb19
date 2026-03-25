@@ -1,8 +1,4 @@
-import logging
-
 from odoo import api, fields, models
-
-_logger = logging.getLogger(__name__)
 
 
 class IntelligenceActionItem(models.Model):
@@ -52,6 +48,8 @@ class IntelligenceActionItem(models.Model):
     source_account = fields.Char(string='Cuenta origen')
     supabase_id = fields.Integer(
         string='Supabase ID', index=True, copy=False)
+    supabase_synced = fields.Boolean(
+        string='Synced to Supabase', default=False, index=True)
     notes = fields.Text(string='Notas')
 
     @api.depends('priority')
@@ -71,39 +69,13 @@ class IntelligenceActionItem(models.Model):
             )
 
     def action_start(self):
-        self.write({'state': 'in_progress'})
+        self.write({'state': 'in_progress', 'supabase_synced': False})
 
     def action_done(self):
-        self.write({'state': 'done'})
-        self._sync_to_supabase()
+        self.write({'state': 'done', 'supabase_synced': False})
 
     def action_cancel(self):
-        self.write({'state': 'cancelled'})
-        self._sync_to_supabase()
+        self.write({'state': 'cancelled', 'supabase_synced': False})
 
     def action_reopen(self):
-        self.write({'state': 'open'})
-
-    def _sync_to_supabase(self):
-        """Sync action completion/cancellation to Supabase."""
-        get = lambda k, d='': (
-            self.env['ir.config_parameter'].sudo()
-            .get_param('quimibond_intelligence.%s' % k, d)
-        )
-        url = get('supabase_url')
-        key = get('supabase_service_role_key') or get('supabase_key')
-        if not url or not key:
-            return
-        try:
-            from ..services.supabase_service import SupabaseService
-            with SupabaseService(url, key) as supa:
-                for rec in self:
-                    if rec.supabase_id and rec.supabase_id > 0:
-                        supa.complete_action_item(rec.supabase_id)
-                    else:
-                        _logger.warning(
-                            'Action %s (%s) has no supabase_id, cannot sync',
-                            rec.id, rec.name[:50] if rec.name else '?',
-                        )
-        except Exception as exc:
-            _logger.warning('Action sync to Supabase failed: %s', exc)
+        self.write({'state': 'open', 'supabase_synced': False})
