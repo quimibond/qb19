@@ -32,6 +32,17 @@
                             </span>
                             <span class="o_stat_text">Alertas abiertas</span>
                         </div>
+                        <div class="o_stat_info text-center">
+                            <span class="o_stat_value">
+                                <field name="intelligence_priority" class="oe_inline"
+                                       widget="badge"
+                                       decoration-danger="intelligence_priority == 'urgent'"
+                                       decoration-warning="intelligence_priority == 'high'"
+                                       decoration-info="intelligence_priority == 'normal'"
+                                       decoration-success="intelligence_priority == 'low'"/>
+                            </span>
+                            <span class="o_stat_text">Prioridad</span>
+                        </div>
                     </group>
                     <notebook>
                         <page string="Panorama 360" name="panorama">

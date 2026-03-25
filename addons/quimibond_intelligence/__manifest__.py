@@ -1,6 +1,6 @@
 {
     'name': 'Quimibond Intelligence System',
-    'version': '19.0.24.0.0',
+    'version': '19.0.25.0.0',
     'category': 'Productivity',
     'summary': 'Deep Intelligence: Gmail + 10 modelos Odoo + Knowledge Graph + Claude AI.',
     'description': (
@@ -37,6 +37,7 @@
         'views/intelligence_briefing_views.xml',
         'views/intelligence_alert_views.xml',
         'views/intelligence_action_views.xml',
+        'views/intelligence_draft_action_views.xml',
         'views/intelligence_query_views.xml',
         'views/res_partner_views.xml',
         'views/intelligence_config_views.xml',
