@@ -203,6 +203,42 @@ class IntelligenceConfig(models.TransientModel):
                            'message': 'Partners sincronizados con detalle completo. Revisa los logs.',
                            'type': 'info'}}
 
+    def action_sync_emails(self):
+        """Ejecuta sync de emails Gmail → Supabase."""
+        self.action_save()
+        self.env['intelligence.engine'].run_sync_emails()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Sync Emails',
+                           'message': 'Emails sincronizados. Revisa los logs.',
+                           'type': 'info'}}
+
+    def action_analyze_emails(self):
+        """Ejecuta análisis de emails con Claude."""
+        self.action_save()
+        self.env['intelligence.engine'].run_analyze_emails()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Analizar Emails',
+                           'message': 'Análisis completado. Revisa los logs.',
+                           'type': 'info'}}
+
+    def action_update_scores(self):
+        """Recalcula scores de clientes."""
+        self.action_save()
+        self.env['intelligence.engine'].run_update_scores()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Actualizar Scores',
+                           'message': 'Scores actualizados. Revisa los logs.',
+                           'type': 'info'}}
+
+    def action_supabase_sync(self):
+        """Empuja cambios pendientes de Odoo a Supabase."""
+        self.action_save()
+        self.env['intelligence.engine'].run_supabase_sync()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Supabase Sync',
+                           'message': 'Cambios sincronizados a Supabase. Revisa los logs.',
+                           'type': 'info'}}
+
     def action_run_diagnostics(self):
         """Ejecuta diagnóstico completo de todos los servicios.
 
