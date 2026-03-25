@@ -239,6 +239,24 @@ class IntelligenceConfig(models.TransientModel):
                            'message': 'Cambios sincronizados a Supabase. Revisa los logs.',
                            'type': 'info'}}
 
+    def action_run_predictions(self):
+        """Ejecuta pipeline de predicciones (churn, volumen, oportunidades)."""
+        self.action_save()
+        self.env['intelligence.engine'].run_predictions()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Predicciones',
+                           'message': 'Predicciones ejecutadas. Revisa alertas generadas.',
+                           'type': 'info'}}
+
+    def action_check_briefing_replies(self):
+        """Busca replies al briefing y genera respuestas."""
+        self.action_save()
+        self.env['intelligence.engine'].run_check_briefing_replies()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Briefing Replies',
+                           'message': 'Replies procesados. Revisa los logs.',
+                           'type': 'info'}}
+
     def action_run_diagnostics(self):
         """Ejecuta diagnóstico completo de todos los servicios.
 

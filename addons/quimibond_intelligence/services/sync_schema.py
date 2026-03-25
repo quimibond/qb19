@@ -292,3 +292,40 @@ def get_writable_columns(table: str) -> set:
     if not schema:
         raise ValueError(f'Unknown table: {table}')
     return set(schema['writable'])
+
+
+def validate_record(table: str, record: dict,
+                    required: set = None) -> list:
+    """Validate a record against its Supabase schema.
+
+    Returns a list of warning strings (empty = valid).
+    """
+    schema = SUPABASE_SCHEMAS.get(table)
+    if not schema:
+        return [f'Unknown table: {table}']
+
+    warnings = []
+    all_known = schema['writable'] | schema['auto']
+
+    for key in record:
+        if key not in all_known:
+            warnings.append(f'{table}: unknown column "{key}"')
+
+    if required:
+        for col in required:
+            if col not in record:
+                warnings.append(f'{table}: missing required column "{col}"')
+
+    return warnings
+
+
+def check_coverage(table: str, record: dict) -> set:
+    """Return writable columns NOT present in the record.
+
+    Useful to detect schema drift: if a new column was added to the
+    schema but the code doesn't populate it yet.
+    """
+    schema = SUPABASE_SCHEMAS.get(table)
+    if not schema:
+        return set()
+    return schema['writable'] - set(record.keys())

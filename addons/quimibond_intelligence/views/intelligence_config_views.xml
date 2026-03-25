@@ -43,6 +43,14 @@
                                 string="Sync Odoo → Supabase"
                                 class="btn btn-sm btn-outline-secondary"
                                 confirm="Empuja alertas, acciones y scores pendientes de Odoo a Supabase. Continuar?"/>
+                        <button name="action_run_predictions" type="object"
+                                string="Predicciones"
+                                class="btn btn-sm btn-outline-warning"
+                                confirm="Analiza tendencias y genera alertas predictivas (churn, volumen, oportunidades). Continuar?"/>
+                        <button name="action_check_briefing_replies" type="object"
+                                string="Briefing Replies"
+                                class="btn btn-sm btn-outline-secondary"
+                                confirm="Busca replies al briefing y genera respuestas automáticas. Continuar?"/>
                     </div>
                 </div>
                 <sheet>

@@ -112,10 +112,91 @@ class IntelligenceEngine(models.Model):
                     )
 
                 _logger.info('✓ Supabase data retention completed')
+
+                # ── Verificación cruzada de hechos con Claude ──
+                self._verify_low_confidence_facts(supa, cfg)
+
         except Exception as exc:
             _logger.warning('Supabase retention: %s', exc)
 
         _logger.info('═══ DATA RETENTION DONE ═══')
+
+    def _verify_low_confidence_facts(self, supa, cfg):
+        """Verifica hechos de baja confianza contra emails recientes."""
+        try:
+            # Leer hechos con confianza baja pero no expirados
+            low_facts = supa._request(
+                '/rest/v1/facts?confidence=lt.0.4'
+                '&expired=eq.false'
+                '&verified=eq.false'
+                '&order=confidence.asc'
+                '&limit=20'
+                '&select=id,entity_id,fact_text,fact_type,confidence',
+            ) or []
+
+            if not low_facts:
+                return
+
+            # Leer emails recientes como contexto
+            week_ago = (
+                datetime.now() - timedelta(days=7)
+            ).strftime('%Y-%m-%d')
+            recent_emails = supa._request(
+                '/rest/v1/emails?order=email_date.desc'
+                '&limit=50'
+                '&select=sender,subject,snippet'
+                f'&email_date=gte.{week_ago}T00:00:00Z',
+            ) or []
+
+            if not recent_emails:
+                return
+
+            # Formatear para Claude
+            facts_text = '\n'.join(
+                f'[ID={f["id"]}] ({f["fact_type"]}, '
+                f'confianza={f["confidence"]}): {f["fact_text"]}'
+                for f in low_facts
+            )
+            context = '\n'.join(
+                f'De: {e.get("sender", "")} | '
+                f'Asunto: {e.get("subject", "")} | '
+                f'{(e.get("snippet", "") or "")[:200]}'
+                for e in recent_emails[:30]
+            )
+
+            from ..services.claude_service import ClaudeService
+            claude = ClaudeService(cfg['anthropic_api_key'])
+            verifications = claude.verify_facts(facts_text, context)
+
+            confirmed, contradicted = 0, 0
+            for v in verifications:
+                fact_id = v.get('fact_id')
+                verdict = v.get('verdict', 'uncertain')
+                if not fact_id:
+                    continue
+
+                if verdict == 'confirmed':
+                    supa.verify_fact(fact_id, 'claude_cross_reference')
+                    confirmed += 1
+                elif verdict == 'contradicted':
+                    supa._request(
+                        f'/rest/v1/facts?id=eq.{fact_id}',
+                        'PATCH', {
+                            'expired': True,
+                            'confidence': 0,
+                        },
+                        extra_headers={'Prefer': 'return=minimal'},
+                    )
+                    contradicted += 1
+
+            if confirmed or contradicted:
+                _logger.info(
+                    'Fact verification: %d confirmed, %d contradicted '
+                    'of %d checked',
+                    confirmed, contradicted, len(low_facts),
+                )
+        except Exception as exc:
+            _logger.debug('Fact verification: %s', exc)
 
     # ══════════════════════════════════════════════════════════════════════════
     #   REPORTE SEMANAL
