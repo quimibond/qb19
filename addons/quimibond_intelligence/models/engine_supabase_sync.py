@@ -13,6 +13,15 @@ from odoo import api, models
 
 _logger = logging.getLogger(__name__)
 
+# Mapeo de estados Odoo → Frontend (Supabase)
+# Odoo usa 'open', frontend usa 'new' como estado inicial
+ALERT_STATE_MAP = {
+    'open': 'new',
+    'acknowledged': 'acknowledged',
+    'resolved': 'resolved',
+    'dismissed': 'resolved',  # Frontend no tiene 'dismissed'
+}
+
 
 class IntelligenceEngine(models.Model):
     _inherit = 'intelligence.engine'
@@ -58,7 +67,11 @@ class IntelligenceEngine(models.Model):
     # ── Alert sync ────────────────────────────────────────────────────────────
 
     def _sync_alerts_to_supabase(self, supa) -> int:
-        """Sync unsynced alerts to Supabase. Returns count synced."""
+        """Sync unsynced alerts to Supabase. Returns count synced.
+
+        Maps Odoo states to frontend states:
+        open→new, acknowledged→acknowledged, resolved→resolved, dismissed→resolved
+        """
         alerts = self.env['intelligence.alert'].sudo().search([
             ('supabase_synced', '=', False),
         ], limit=200)
@@ -69,16 +82,18 @@ class IntelligenceEngine(models.Model):
         synced = 0
         for alert in alerts:
             try:
+                supa_state = ALERT_STATE_MAP.get(alert.state, 'new')
+                is_resolved = alert.state in ('resolved', 'dismissed')
+                patch = {
+                    'state': supa_state,
+                    'is_resolved': is_resolved,
+                }
+                if is_resolved and alert.resolved_date:
+                    patch['resolved_at'] = alert.resolved_date.isoformat()
+                if alert.resolution_notes:
+                    patch['resolution_notes'] = alert.resolution_notes
+
                 if alert.supabase_id and alert.supabase_id > 0:
-                    patch = {
-                        'state': alert.state,
-                        'is_resolved': alert.state in (
-                            'resolved', 'dismissed'),
-                    }
-                    if alert.state == 'resolved' and alert.resolved_date:
-                        patch['resolved_at'] = alert.resolved_date.isoformat()
-                    if alert.resolution_notes:
-                        patch['resolution_notes'] = alert.resolution_notes
                     supa._request(
                         f'/rest/v1/alerts?id=eq.{alert.supabase_id}',
                         'PATCH', patch,
@@ -86,18 +101,8 @@ class IntelligenceEngine(models.Model):
                     )
                     synced += 1
                 elif alert.name:
-                    # Fallback: match by title
                     from urllib.parse import quote as url_quote
                     encoded = url_quote(alert.name[:200], safe='')
-                    patch = {
-                        'state': alert.state,
-                        'is_resolved': alert.state in (
-                            'resolved', 'dismissed'),
-                    }
-                    if alert.state == 'resolved' and alert.resolved_date:
-                        patch['resolved_at'] = alert.resolved_date.isoformat()
-                    if alert.resolution_notes:
-                        patch['resolution_notes'] = alert.resolution_notes
                     supa._request(
                         f'/rest/v1/alerts?title=eq.{encoded}',
                         'PATCH', patch,

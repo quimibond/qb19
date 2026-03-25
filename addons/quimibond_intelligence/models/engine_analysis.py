@@ -64,12 +64,19 @@ class IntelligenceEngine(models.Model):
             odoo_context = odoo_svc.enrich(contacts)
 
             with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                # Buscar emails de las últimas 36h para cubrir timezone gaps
+                # (CDMX es UTC-6, emails del día anterior en horario vespertino
+                # tienen email_date en UTC que puede ser "hoy")
+                from datetime import timedelta
+                cutoff = (
+                    datetime.now(TZ_CDMX) - timedelta(hours=36)
+                ).strftime('%Y-%m-%dT%H:%M:%SZ')
                 try:
                     recent_emails = supa._request(
                         '/rest/v1/emails?order=email_date.desc'
                         '&limit=500'
                         '&select=*'
-                        f'&email_date=gte.{today}T00:00:00Z',
+                        f'&email_date=gte.{cutoff}',
                     ) or []
                 except Exception:
                     recent_emails = []
