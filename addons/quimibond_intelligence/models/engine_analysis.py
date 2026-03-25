@@ -10,17 +10,14 @@ from datetime import datetime
 
 from odoo import api, models
 
-from .intelligence_config import get_account_departments
+from .intelligence_config import (
+    TZ_CDMX,
+    acquire_lock,
+    get_account_departments,
+    release_lock,
+)
 
 _logger = logging.getLogger(__name__)
-
-# ── Zona horaria CDMX ─────────────────────────────────────────────────────────
-try:
-    from zoneinfo import ZoneInfo
-    TZ_CDMX = ZoneInfo('America/Mexico_City')
-except ImportError:
-    import pytz
-    TZ_CDMX = pytz.timezone('America/Mexico_City')
 
 
 class IntelligenceEngine(models.Model):
@@ -34,10 +31,8 @@ class IntelligenceEngine(models.Model):
     def run_analyze_emails(self):
         """Analiza emails no procesados con Claude. Corre cada 1-2h."""
         lock = 'quimibond_intelligence.analyze_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
         start = time.time()
 
         try:
@@ -47,7 +42,10 @@ class IntelligenceEngine(models.Model):
 
             account_departments = get_account_departments(self.env)
 
-            from ..services.analysis_service import AnalysisService
+            from ..services.analysis_service import (
+                AnalysisService,
+                normalize_supabase_emails,
+            )
             from ..services.claude_service import ClaudeService, VoyageService
             from ..services.odoo_enrichment import OdooEnrichmentService
             from ..services.supabase_service import SupabaseService
@@ -85,27 +83,8 @@ class IntelligenceEngine(models.Model):
                     _logger.info('Analyze: sin emails recientes')
                     return
 
-                emails = []
-                for e in recent_emails:
-                    emails.append({
-                        'account': e.get('account', ''),
-                        'from': e.get('sender', ''),
-                        'from_email': e.get('sender', ''),
-                        'to': e.get('recipient', ''),
-                        'subject': e.get('subject', ''),
-                        'subject_normalized': (e.get('subject') or '').lower(),
-                        'body': e.get('body', ''),
-                        'snippet': e.get('snippet', ''),
-                        'date': e.get('email_date', ''),
-                        'gmail_message_id': e.get('gmail_message_id', ''),
-                        'gmail_thread_id': e.get('gmail_thread_id', ''),
-                        'attachments': e.get('attachments'),
-                        'is_reply': e.get('is_reply', False),
-                        'sender_type': e.get('sender_type', 'external'),
-                        'has_attachments': e.get('has_attachments', False),
-                        'department': account_departments.get(
-                            e.get('account', ''), 'Otro'),
-                    })
+                emails = normalize_supabase_emails(
+                    recent_emails, account_departments)
 
                 account_summaries, kg_by_account = (
                     self._analyze_accounts(
@@ -153,7 +132,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_analyze_emails: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     # ── Análisis por cuenta ───────────────────────────────────────────────────
 

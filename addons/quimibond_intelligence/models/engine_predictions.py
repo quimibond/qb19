@@ -10,15 +10,9 @@ from datetime import datetime, timedelta
 
 from odoo import api, fields, models
 
-_logger = logging.getLogger(__name__)
+from .intelligence_config import acquire_lock, release_lock
 
-# ── Zona horaria CDMX ─────────────────────────────────────────────────────────
-try:
-    from zoneinfo import ZoneInfo
-    TZ_CDMX = ZoneInfo('America/Mexico_City')
-except ImportError:
-    import pytz
-    TZ_CDMX = pytz.timezone('America/Mexico_City')
+_logger = logging.getLogger(__name__)
 
 # Umbrales de predicción
 CHURN_SCORE_DROP = 15       # Puntos de caída en 30 días para predecir churn
@@ -37,10 +31,8 @@ class IntelligenceEngine(models.Model):
     def run_predictions(self):
         """Analiza tendencias y genera alertas predictivas. Corre semanal."""
         lock = 'quimibond_intelligence.predictions_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock, 'false') == 'true':
+        if not acquire_lock(self.env, lock):
             return
-        ICP.set_param(lock, 'true')
         start = time.time()
 
         try:
@@ -60,7 +52,7 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.error('run_predictions: %s', exc, exc_info=True)
         finally:
-            ICP.set_param(lock, 'false')
+            release_lock(self.env, lock)
 
     # ── Predicción de churn ───────────────────────────────────────────────────
 

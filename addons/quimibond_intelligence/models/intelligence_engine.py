@@ -19,15 +19,9 @@ from datetime import datetime
 
 from odoo import api, fields, models
 
-_logger = logging.getLogger(__name__)
+from .intelligence_config import TZ_CDMX, acquire_lock, release_lock
 
-# ── Zona horaria CDMX ─────────────────────────────────────────────────────────
-try:
-    from zoneinfo import ZoneInfo
-    TZ_CDMX = ZoneInfo('America/Mexico_City')
-except ImportError:
-    import pytz
-    TZ_CDMX = pytz.timezone('America/Mexico_City')
+_logger = logging.getLogger(__name__)
 
 
 class IntelligenceEngine(models.Model):
@@ -53,11 +47,9 @@ class IntelligenceEngine(models.Model):
         el briefing diario (la única pieza exclusiva del daily).
         """
         lock_param = 'quimibond_intelligence.pipeline_running'
-        ICP = self.env['ir.config_parameter'].sudo()
-        if ICP.get_param(lock_param, 'false') == 'true':
+        if not acquire_lock(self.env, lock_param):
             _logger.warning('Pipeline ya está corriendo — abortando')
             return
-        ICP.set_param(lock_param, 'true')
 
         start = time.time()
         today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
@@ -91,7 +83,7 @@ class IntelligenceEngine(models.Model):
                 _logger.error('Supabase sync falló: %s', exc, exc_info=True)
 
         finally:
-            ICP.set_param(lock_param, 'false')
+            release_lock(self.env, lock_param)
             elapsed = time.time() - start
             _logger.info('═══ PIPELINE FINALIZADO en %.1f segundos ═══', elapsed)
 
