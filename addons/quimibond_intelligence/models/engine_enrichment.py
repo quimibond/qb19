@@ -253,113 +253,164 @@ class IntelligenceEngine(models.Model):
     def _sync_contacts_to_supabase(self, odoo_context, supa, today):
         """Sincroniza partners de Odoo → contacts + companies en Supabase.
 
-        Usa odoo_partner_id como llave universal. Envía detalle operacional
-        (facturas, pedidos, pagos, entregas) a companies directamente.
+        Redesigned to:
+        - Use batch INSERT instead of 990 individual RPC calls
+        - Handle multi-email partners (split by ; and spaces)
+        - Validate emails before sending
+        - Create companies first, then contacts with FK
         """
+        import re
         partners = odoo_context.get('partners', {})
         if not partners:
             return
 
-        # Agrupar datos por company (commercial_partner_id)
+        EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+        def clean_emails(raw_email):
+            """Split multi-email strings and return list of valid emails."""
+            if not raw_email:
+                return []
+            # Split by ; , and whitespace
+            parts = re.split(r'[;\s,]+', raw_email.strip())
+            return [e.lower().strip() for e in parts if EMAIL_RE.match(e.strip())]
+
+        # ── Phase 1: Ensure companies exist ─────────────────────────────────
         companies_data = {}
+        company_batches = []
 
-        synced, failed = 0, 0
         for email_addr, pdata in partners.items():
+            cpid = pdata.get('commercial_partner_id')
+            company_name = (pdata.get('company_name')
+                           or pdata.get('company', '')).strip()
+
+            # Fallback: derive company from email domain
+            if not company_name and '@' in email_addr:
+                domain = email_addr.rsplit('@', 1)[-1].lower()
+                # Skip common providers
+                if domain not in (
+                    'gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com',
+                    'live.com', 'yahoo.com.mx', 'hotmail.es', 'prodigy.net.mx',
+                    'live.com.mx', 'outlook.es', 'icloud.com',
+                ):
+                    company_name = domain.split('.')[0].capitalize()
+
+            if company_name and cpid and cpid not in companies_data:
+                companies_data[cpid] = {
+                    'canonical_name': company_name.lower().strip(),
+                    'name': company_name,
+                    'odoo_partner_id': cpid,
+                    'is_customer': pdata.get('is_customer', False),
+                    'is_supplier': pdata.get('is_supplier', False),
+                }
+                pdata['_resolved_company_name'] = company_name.lower().strip()
+
+        # Batch upsert companies
+        if companies_data:
+            company_batches = list(companies_data.values())
             try:
-                params = {
-                    'p_email': email_addr,
-                    'p_name': pdata.get('name', ''),
-                    'p_contact_type': 'external',
-                }
-                company = pdata.get('company_name') or pdata.get('company', '')
-                if company:
-                    params['p_company_name'] = company
-
-                supa._request(
-                    '/rest/v1/rpc/upsert_contact', 'POST', params,
+                supa._upsert_batch(
+                    '/rest/v1/companies?on_conflict=canonical_name',
+                    company_batches, 'merge-duplicates',
                 )
-
-                # Actualizar campos extendidos del contacto
-                from urllib.parse import quote as url_quote
-                encoded = url_quote(email_addr.lower().strip(), safe='')
-                patch = {}
-
-                pid = pdata.get('id') or pdata.get('partner_id')
-                cpid = pdata.get('commercial_partner_id')
-                if pid:
-                    patch['odoo_partner_id'] = pid
-                if cpid:
-                    patch['commercial_partner_id'] = cpid
-                if pdata.get('is_customer') is not None:
-                    patch['is_customer'] = pdata['is_customer']
-                if pdata.get('is_supplier') is not None:
-                    patch['is_supplier'] = pdata['is_supplier']
-                if pdata.get('phone'):
-                    patch['phone'] = pdata['phone']
-
-                # Guardar contexto completo de Odoo como JSON
-                odoo_ctx_json = {
-                    k: v for k, v in pdata.items()
-                    if k not in ('_summary',) and v is not None
-                }
-                if odoo_ctx_json:
-                    patch['odoo_context'] = json.dumps(
-                        odoo_ctx_json, default=str, ensure_ascii=False,
-                    )
-
-                # Acumular datos para company (por commercial_partner_id)
-                if company and cpid:
-                    if cpid not in companies_data:
-                        companies_data[cpid] = pdata
-
-                if patch:
-                    supa._request(
-                        f'/rest/v1/contacts?email=eq.{encoded}',
-                        'PATCH', patch,
-                        extra_headers={'Prefer': 'return=minimal'},
-                    )
-
-                synced += 1
+                _logger.info('✓ %d companies upserted', len(company_batches))
             except Exception as exc:
-                failed += 1
-                _logger.debug('sync_contact %s: %s', email_addr, exc)
+                _logger.warning('batch companies upsert: %s', exc)
 
-        # Sync operational detail to companies table
+        # ── Phase 2: Batch upsert contacts ──────────────────────────────────
+        contact_batch = []
+        seen_emails = set()
+
+        for email_addr, pdata in partners.items():
+            # Handle multi-email partners
+            valid_emails = clean_emails(email_addr)
+            if not valid_emails:
+                continue
+
+            pid = pdata.get('id') or pdata.get('partner_id')
+            cpid = pdata.get('commercial_partner_id')
+
+            for email in valid_emails:
+                if email in seen_emails:
+                    continue
+                seen_emails.add(email)
+
+                record = {
+                    'email': email,
+                    'name': pdata.get('name', ''),
+                    'contact_type': 'external',
+                    'is_customer': pdata.get('is_customer', False),
+                    'is_supplier': pdata.get('is_supplier', False),
+                }
+                if pid:
+                    record['odoo_partner_id'] = pid
+                # odoo_context as JSON
+                odoo_ctx = {
+                    k: v for k, v in pdata.items()
+                    if k not in ('_summary', '_resolved_company_name')
+                    and v is not None
+                }
+                if odoo_ctx:
+                    record['odoo_context'] = json.dumps(
+                        odoo_ctx, default=str, ensure_ascii=False,
+                    )
+                contact_batch.append(record)
+
+        # Batch upsert contacts (50 at a time)
+        synced, failed = 0, 0
+        for i in range(0, len(contact_batch), 50):
+            chunk = contact_batch[i:i + 50]
+            try:
+                supa._upsert_batch(
+                    '/rest/v1/contacts?on_conflict=email',
+                    chunk, 'merge-duplicates',
+                )
+                synced += len(chunk)
+            except Exception as exc:
+                failed += len(chunk)
+                _logger.debug('batch contacts chunk %d: %s', i, exc)
+
+        # ── Phase 3: Sync company operational data ──────────────────────────
         companies_synced = 0
         for cpid, pdata in companies_data.items():
             try:
                 company_patch = {}
-                # Detalle operacional como JSONB
                 for field in ('recent_sales', 'pending_invoices',
                               'recent_payments', 'recent_purchases',
                               'crm_leads', 'pending_deliveries',
                               'manufacturing', 'pending_activities',
                               'payment_behavior', 'aging', 'products',
                               'inventory_intelligence', 'purchase_patterns'):
-                    val = pdata.get(field)
-                    if val is not None:
-                        company_patch[field] = (
-                            json.dumps(val, default=str, ensure_ascii=False)
-                            if not isinstance(val, str) else val
-                        )
+                    # Find first partner with this cpid that has data
+                    for em, pd in partners.items():
+                        if pd.get('commercial_partner_id') == cpid:
+                            val = pd.get(field)
+                            if val is not None:
+                                company_patch[field] = (
+                                    json.dumps(val, default=str,
+                                               ensure_ascii=False)
+                                    if not isinstance(val, str) else val
+                                )
+                            break
 
-                # Totales
-                if pdata.get('total_invoiced'):
-                    company_patch['lifetime_value'] = pdata['total_invoiced']
-                if pdata.get('credit_limit'):
-                    company_patch['credit_limit'] = pdata['credit_limit']
-                lifetime = pdata.get('lifetime', {})
+                # Totales from first matching partner
+                first_pd = next(
+                    (pd for pd in partners.values()
+                     if pd.get('commercial_partner_id') == cpid), {}
+                )
+                if first_pd.get('total_invoiced'):
+                    company_patch['lifetime_value'] = first_pd['total_invoiced']
+                if first_pd.get('credit_limit'):
+                    company_patch['credit_limit'] = first_pd['credit_limit']
+                lifetime = first_pd.get('lifetime', {})
                 if lifetime.get('monthly_avg'):
                     company_patch['monthly_avg'] = lifetime['monthly_avg']
                 if lifetime.get('trend_pct') is not None:
                     company_patch['trend_pct'] = lifetime['trend_pct']
-                delivery = pdata.get('delivery_performance', {})
+                delivery = first_pd.get('delivery_performance', {})
                 if delivery.get('on_time_rate') is not None:
-                    company_patch['delivery_otd_rate'] = (
-                        delivery['on_time_rate'])
+                    company_patch['delivery_otd_rate'] = delivery['on_time_rate']
 
                 if company_patch:
-                    company_patch['odoo_partner_id'] = cpid
                     supa._request(
                         f'/rest/v1/companies?odoo_partner_id=eq.{cpid}',
                         'PATCH', company_patch,
