@@ -100,7 +100,7 @@ class IntelligenceEngine(models.Model):
                         datetime.now() - timedelta(days=365)
                     ).strftime('%Y-%m-%d')
                     supa._request(
-                        '/rest/v1/company_odoo_snapshots'
+                        '/rest/v1/odoo_snapshots'
                         f'?snapshot_date=lt.{cutoff_365d}',
                         'DELETE',
                     )
@@ -216,7 +216,7 @@ class IntelligenceEngine(models.Model):
 
             try:
                 weekly_metrics = supa._request(
-                    '/rest/v1/response_metrics?order=metric_date.desc&limit=70'
+                    '/rest/v1/communication_metrics?order=metric_date.desc&limit=70'
                     '&select=*&metric_date=gte.' + week_start,
                 ) or []
             except Exception:
@@ -232,7 +232,7 @@ class IntelligenceEngine(models.Model):
 
             try:
                 weekly_scores = supa._request(
-                    '/rest/v1/customer_health_scores?order=score_date.desc'
+                    '/rest/v1/health_scores?order=score_date.desc'
                     '&limit=100&select=*&score_date=gte.' + week_start,
                 ) or []
             except Exception:
@@ -240,9 +240,9 @@ class IntelligenceEngine(models.Model):
 
             try:
                 weekly_summaries = supa._request(
-                    '/rest/v1/daily_summaries?order=summary_date.desc&limit=7'
-                    '&select=summary_date,summary_text,total_emails'
-                    '&summary_date=gte.' + week_start,
+                    '/rest/v1/briefings?scope=eq.daily&order=briefing_date.desc&limit=7'
+                    '&select=briefing_date,summary_text,total_emails'
+                    '&briefing_date=gte.' + week_start,
                 ) or []
             except Exception:
                 weekly_summaries = []

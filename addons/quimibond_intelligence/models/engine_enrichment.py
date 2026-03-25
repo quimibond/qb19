@@ -59,13 +59,10 @@ class IntelligenceEngine(models.Model):
                 else:
                     _logger.warning('Enrich: sin partners Odoo')
 
-                supa._request('/rest/v1/events', 'POST', {
-                    'event_type': 'contacts_enriched',
-                    'source': 'cron_enrich_only',
-                    'payload': {
-                        'partners': len(odoo_context.get('partners', {})),
-                        'elapsed_s': round(time.time() - start, 1),
-                    },
+                supa.log_event('contacts_enriched', 'cron_enrich_only',
+                               payload={
+                                   'partners': len(odoo_context.get('partners', {})),
+                                   'elapsed_s': round(time.time() - start, 1),
                 })
 
                 _logger.info(
@@ -137,9 +134,10 @@ class IntelligenceEngine(models.Model):
                 contact_sentiments = {}
                 try:
                     summaries = supa._request(
-                        '/rest/v1/daily_summaries?order=summary_date.desc'
-                        '&limit=1&select=account_summaries'
-                        f'&summary_date=gte.{cutoff_7d}',
+                        '/rest/v1/briefings?scope=eq.daily'
+                        '&order=briefing_date.desc'
+                        '&limit=1&select=metadata'
+                        f'&briefing_date=gte.{cutoff_7d}',
                     ) or []
                     for s in summaries:
                         for acct_s in (s.get('account_summaries') or []):
@@ -211,15 +209,32 @@ class IntelligenceEngine(models.Model):
                 except Exception as exc:
                     _logger.debug('Health scores: %s', exc)
 
-                supa._request('/rest/v1/events', 'POST', {
-                    'event_type': 'scores_updated',
-                    'source': 'cron_update_scores',
-                    'payload': {
-                        'client_scores': len(client_scores),
-                        'emails_analyzed': len(emails),
-                        'elapsed_s': round(time.time() - start, 1),
-                    },
-                })
+                # Sync Odoo detail tables (invoices, payments, etc.)
+                partners_ctx = odoo_context.get('partners', {})
+                odoo_detail_count = 0
+                for email_addr, ctx in partners_ctx.items():
+                    try:
+                        # Resolve company_id and odoo_partner_id
+                        cid = ctx.get('company_id')
+                        pid = ctx.get('odoo_partner_id') or ctx.get(
+                            'commercial_partner_id')
+                        if cid and pid:
+                            supa.sync_company_odoo_details(cid, pid, ctx)
+                            odoo_detail_count += 1
+                    except Exception as exc:
+                        _logger.debug('Odoo detail sync %s: %s',
+                                      email_addr, exc)
+                if odoo_detail_count:
+                    _logger.info('✓ %d companies Odoo details synced',
+                                 odoo_detail_count)
+
+                supa.log_event('scores_updated', 'cron_update_scores',
+                               payload={
+                                   'client_scores': len(client_scores),
+                                   'emails_analyzed': len(emails),
+                                   'odoo_details_synced': odoo_detail_count,
+                                   'elapsed_s': round(time.time() - start, 1),
+                               })
 
                 _logger.info(
                     '✓ Scores: %d clients, %d emails (%.1fs)',
