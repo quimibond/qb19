@@ -28,3 +28,5 @@ class IntelligenceClientScore(models.Model):
         ('stable', 'Estable'),
         ('down', 'Bajando'),
     ], string='Tendencia', default='stable')
+    supabase_synced = fields.Boolean(
+        string='Synced to Supabase', default=False, index=True)
