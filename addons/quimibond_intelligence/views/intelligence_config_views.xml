@@ -148,13 +148,15 @@
     <!-- Root menu -->
     <menuitem id="menu_intelligence_root"
               name="Intelligence"
-              sequence="5"/>
+              sequence="5"
+              action="action_briefings"/>
 
     <!-- Operativo -->
     <menuitem id="menu_intelligence_ops"
               name="Operacion"
               parent="menu_intelligence_root"
-              sequence="10"/>
+              sequence="10"
+              action="action_briefings"/>
 
     <menuitem id="menu_intelligence_briefings"
               name="Briefings"
