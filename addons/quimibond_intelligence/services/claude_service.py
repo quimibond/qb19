@@ -509,6 +509,39 @@ class ClaudeService:
 
 
 
+    def verify_facts(self, facts_text: str, recent_context: str) -> list:
+        """Verifica hechos del KG contra contexto reciente.
+
+        Retorna lista de dicts: [{fact_id, verdict, reason}]
+        verdict: 'confirmed' | 'contradicted' | 'uncertain'
+        """
+        try:
+            system = (
+                'Eres un verificador de hechos para Quimibond. '
+                'Evalúa cada hecho contra el contexto reciente. '
+                'Retorna SOLO JSON válido sin markdown.'
+            )
+            prompt = (
+                'Verifica estos hechos del Knowledge Graph contra '
+                'información reciente.\n\n'
+                f'HECHOS A VERIFICAR:\n{facts_text}\n\n'
+                f'CONTEXTO RECIENTE:\n{recent_context}\n\n'
+                'Para cada hecho retorna:\n'
+                '{"verifications": [{"fact_id": N, '
+                '"verdict": "confirmed|contradicted|uncertain", '
+                '"reason": "por qué"}]}\n\n'
+                'REGLAS:\n'
+                '- confirmed: hay evidencia que lo respalda\n'
+                '- contradicted: hay evidencia contraria\n'
+                '- uncertain: no hay suficiente información'
+            )
+            text = self._call(system, prompt, max_tokens=2000)
+            parsed = self._extract_json(text)
+            return parsed.get('verifications', [])
+        except Exception as exc:
+            _logger.warning('verify_facts: %s', exc)
+            return []
+
     def extract_knowledge(self, emails_text, account):
         """Extrae knowledge graph con perfil profundo de personas."""
         schema = (
