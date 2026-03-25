@@ -53,6 +53,15 @@ class IntelligenceEngine(models.Model):
                 if odoo_context.get('partners'):
                     self._sync_contacts_to_supabase(odoo_context, supa, today)
                     self._link_odoo_ids(supa)
+                    # Resolver company_id en todas las tablas huérfanas
+                    try:
+                        result = supa._request(
+                            '/rest/v1/rpc/resolve_all_company_links',
+                            'POST', {},
+                        )
+                        _logger.info('Company links resolved: %s', result)
+                    except Exception as exc:
+                        _logger.debug('resolve_company_links: %s', exc)
                     _logger.info('✓ %d partners sincronizados',
                                  len(odoo_context['partners']))
                 else:
