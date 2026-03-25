@@ -207,9 +207,9 @@ class IntelligenceEngine(models.Model):
     def _read_today_summaries(supa, today: str) -> list:
         try:
             return supa._request(
-                '/rest/v1/account_summaries?order=created_at.desc'
+                '/rest/v1/briefings?scope=eq.account&order=created_at.desc'
                 '&select=*'
-                f'&summary_date=eq.{today}',
+                f'&briefing_date=eq.{today}',
             ) or []
         except Exception:
             return []
@@ -218,7 +218,7 @@ class IntelligenceEngine(models.Model):
     def _read_today_metrics(supa, today: str) -> list:
         try:
             return supa._request(
-                '/rest/v1/response_metrics?select=*'
+                '/rest/v1/communication_metrics?select=*'
                 f'&metric_date=eq.{today}',
             ) or []
         except Exception:
@@ -239,7 +239,7 @@ class IntelligenceEngine(models.Model):
     def _read_today_scores(supa, today: str) -> list:
         try:
             return supa._request(
-                '/rest/v1/customer_health_scores?select=*'
+                '/rest/v1/health_scores?select=*'
                 f'&score_date=eq.{today}',
             ) or []
         except Exception:

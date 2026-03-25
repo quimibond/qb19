@@ -113,17 +113,14 @@ class IntelligenceEngine(models.Model):
                 if voyage:
                     self._generate_embeddings(emails, voyage, supa)
 
-                supa._request('/rest/v1/events', 'POST', {
-                    'event_type': 'emails_analyzed',
-                    'source': 'cron_analyze_emails',
-                    'payload': {
-                        'emails': len(emails),
-                        'summaries': len(account_summaries),
-                        'alerts': len(alerts),
-                        'odoo_partners': len(odoo_context.get('partners', {})),
-                        'elapsed_s': round(time.time() - start, 1),
-                    },
-                })
+                supa.log_event('emails_analyzed', 'cron_analyze_emails',
+                               payload={
+                                   'emails': len(emails),
+                                   'summaries': len(account_summaries),
+                                   'alerts': len(alerts),
+                                   'odoo_partners': len(odoo_context.get('partners', {})),
+                                   'elapsed_s': round(time.time() - start, 1),
+                               })
 
                 _logger.info(
                     '✓ Analyze: %d emails, %d alerts (%.1fs)',

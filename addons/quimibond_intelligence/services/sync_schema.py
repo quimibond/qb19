@@ -335,6 +335,64 @@ SUPABASE_SCHEMAS = {
         'upsert_key': ('odoo_user_id',),
     },
 
+    'odoo_invoices': {
+        'writable': {
+            'company_id', 'odoo_partner_id',
+            'name', 'move_type',
+            'amount_total', 'amount_residual', 'currency',
+            'invoice_date', 'due_date', 'payment_date',
+            'state', 'payment_state', 'days_overdue',
+            'days_to_pay', 'payment_status', 'ref',
+        },
+        'auto': {'id', 'synced_at'},
+        'upsert_key': ('odoo_partner_id', 'name'),
+    },
+
+    'odoo_payments': {
+        'writable': {
+            'company_id', 'odoo_partner_id',
+            'name', 'payment_type',
+            'amount', 'currency',
+            'payment_date', 'state',
+        },
+        'auto': {'id', 'synced_at'},
+        'upsert_key': ('odoo_partner_id', 'name'),
+    },
+
+    'odoo_deliveries': {
+        'writable': {
+            'company_id', 'odoo_partner_id',
+            'name', 'picking_type', 'origin',
+            'scheduled_date', 'date_done', 'create_date',
+            'state', 'is_late', 'lead_time_days',
+        },
+        'auto': {'id', 'synced_at'},
+        'upsert_key': ('odoo_partner_id', 'name'),
+    },
+
+    'odoo_crm_leads': {
+        'writable': {
+            'company_id', 'odoo_partner_id', 'odoo_lead_id',
+            'name', 'lead_type',
+            'stage', 'expected_revenue', 'probability',
+            'date_deadline', 'create_date', 'days_open',
+            'assigned_user', 'active',
+        },
+        'auto': {'id', 'synced_at'},
+        'upsert_key': ('odoo_lead_id',),
+    },
+
+    'odoo_activities': {
+        'writable': {
+            'company_id', 'odoo_partner_id',
+            'activity_type', 'summary',
+            'res_model', 'res_id',
+            'date_deadline', 'assigned_to', 'is_overdue',
+        },
+        'auto': {'id', 'synced_at'},
+        'upsert_key': None,  # Recreated on each sync
+    },
+
     # ═══════════════════════════════════════════════════════════════════════
     # TIER 7: SYSTEM & OPERATIONS
     # ═══════════════════════════════════════════════════════════════════════

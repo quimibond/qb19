@@ -258,6 +258,210 @@ class SupabaseContactsMixin:
             self._track(failed=len(snapshots))
             _logger.warning('save_company_snapshots: %s', exc)
 
+    # ── Odoo detail tables sync ────────────────────────────────────────────
+
+    def sync_odoo_invoices(self, company_id: int, odoo_partner_id: int,
+                           invoices: list):
+        """Sync individual invoices for a company."""
+        if not invoices:
+            return
+        batch = [{
+            'company_id': company_id,
+            'odoo_partner_id': odoo_partner_id,
+            'name': inv['name'],
+            'move_type': inv.get('move_type', 'out_invoice'),
+            'amount_total': inv.get('amount', inv.get('amount_total', 0)),
+            'amount_residual': inv.get('amount_residual', 0),
+            'currency': inv.get('currency', 'MXN'),
+            'invoice_date': inv.get('date', inv.get('invoice_date')),
+            'due_date': inv.get('due_date'),
+            'payment_date': inv.get('payment_date'),
+            'state': inv.get('state', 'posted'),
+            'payment_state': inv.get('payment_state'),
+            'days_overdue': inv.get('days_overdue', 0),
+            'days_to_pay': inv.get('days_diff', inv.get('days_to_pay')),
+            'payment_status': inv.get('status', inv.get('payment_status')),
+            'ref': inv.get('ref'),
+        } for inv in invoices]
+        try:
+            self._upsert_batch(
+                '/rest/v1/odoo_invoices?on_conflict=odoo_partner_id,name',
+                batch, 'merge-duplicates',
+            )
+            self._track(success=len(batch))
+        except Exception as exc:
+            _logger.warning('sync_odoo_invoices: %s', exc)
+
+    def sync_odoo_payments(self, company_id: int, odoo_partner_id: int,
+                           payments: list):
+        """Sync individual payments for a company."""
+        if not payments:
+            return
+        batch = [{
+            'company_id': company_id,
+            'odoo_partner_id': odoo_partner_id,
+            'name': p['name'],
+            'payment_type': p.get('payment_type', 'inbound'),
+            'amount': p.get('amount', 0),
+            'currency': p.get('currency', 'MXN'),
+            'payment_date': p['date'],
+            'state': p.get('state', 'posted'),
+        } for p in payments]
+        try:
+            self._upsert_batch(
+                '/rest/v1/odoo_payments?on_conflict=odoo_partner_id,name',
+                batch, 'merge-duplicates',
+            )
+            self._track(success=len(batch))
+        except Exception as exc:
+            _logger.warning('sync_odoo_payments: %s', exc)
+
+    def sync_odoo_deliveries(self, company_id: int, odoo_partner_id: int,
+                             deliveries: list):
+        """Sync deliveries/pickings for a company."""
+        if not deliveries:
+            return
+        batch = [{
+            'company_id': company_id,
+            'odoo_partner_id': odoo_partner_id,
+            'name': d['name'],
+            'picking_type': d.get('type'),
+            'origin': d.get('origin'),
+            'scheduled_date': d.get('scheduled'),
+            'state': d.get('state', 'draft'),
+            'is_late': d.get('is_late', False),
+        } for d in deliveries]
+        try:
+            self._upsert_batch(
+                '/rest/v1/odoo_deliveries?on_conflict=odoo_partner_id,name',
+                batch, 'merge-duplicates',
+            )
+            self._track(success=len(batch))
+        except Exception as exc:
+            _logger.warning('sync_odoo_deliveries: %s', exc)
+
+    def sync_odoo_crm_leads(self, company_id: int, odoo_partner_id: int,
+                            leads: list):
+        """Sync CRM leads/opportunities for a company."""
+        if not leads:
+            return
+        batch = [{
+            'company_id': company_id,
+            'odoo_partner_id': odoo_partner_id,
+            'odoo_lead_id': lead.get('odoo_lead_id', lead.get('id', 0)),
+            'name': lead['name'],
+            'lead_type': lead.get('type', 'lead'),
+            'stage': lead.get('stage'),
+            'expected_revenue': lead.get('expected_revenue', 0),
+            'probability': lead.get('probability', 0),
+            'date_deadline': lead.get('date_deadline'),
+            'create_date': lead.get('create_date'),
+            'days_open': lead.get('days_open', 0),
+            'assigned_user': lead.get('user'),
+            'active': lead.get('active', True),
+        } for lead in leads]
+        try:
+            self._upsert_batch(
+                '/rest/v1/odoo_crm_leads?on_conflict=odoo_lead_id',
+                batch, 'merge-duplicates',
+            )
+            self._track(success=len(batch))
+        except Exception as exc:
+            _logger.warning('sync_odoo_crm_leads: %s', exc)
+
+    def sync_odoo_activities(self, company_id: int, odoo_partner_id: int,
+                             activities: list):
+        """Sync pending activities for a company.
+
+        Activities are recreated on each sync (no upsert key).
+        """
+        if not activities:
+            return
+        # Delete existing activities for this partner first
+        try:
+            self._request(
+                f'/rest/v1/odoo_activities?odoo_partner_id=eq.{odoo_partner_id}',
+                'DELETE',
+            )
+        except Exception:
+            pass
+        batch = [{
+            'company_id': company_id,
+            'odoo_partner_id': odoo_partner_id,
+            'activity_type': a.get('type', 'Tarea'),
+            'summary': a.get('summary', ''),
+            'res_model': a.get('model', 'res.partner'),
+            'res_id': a.get('res_id'),
+            'date_deadline': a.get('deadline'),
+            'assigned_to': a.get('assigned_to'),
+            'is_overdue': a.get('is_overdue', False),
+        } for a in activities]
+        try:
+            self._upsert_batch('/rest/v1/odoo_activities', batch, 'return=minimal')
+            self._track(success=len(batch))
+        except Exception as exc:
+            _logger.warning('sync_odoo_activities: %s', exc)
+
+    def sync_company_odoo_details(self, company_id: int,
+                                  odoo_partner_id: int, ctx: dict):
+        """Sync all Odoo detail tables from enrichment context.
+
+        Called after enrich_partner() with the ctx dict containing:
+        pending_invoices, recent_payments, pending_deliveries,
+        crm_leads, pending_activities, credit_notes, etc.
+        """
+        # Invoices (pending + credit notes as out_refund)
+        invoices = []
+        for inv in ctx.get('pending_invoices', []):
+            inv.setdefault('move_type', 'out_invoice')
+            inv.setdefault('payment_state', 'not_paid')
+            invoices.append(inv)
+        for cn in ctx.get('credit_notes', []):
+            cn.setdefault('move_type', 'out_refund')
+            cn.setdefault('payment_state', 'paid')
+            invoices.append(cn)
+        # Payment behavior has recent paid invoices
+        pb = ctx.get('payment_behavior', {})
+        for inv in pb.get('recent_invoices', []):
+            invoices.append({
+                'name': inv.get('invoice', ''),
+                'move_type': 'out_invoice',
+                'amount_total': inv.get('amount', 0),
+                'amount_residual': 0,
+                'invoice_date': inv.get('invoice_date'),
+                'due_date': inv.get('due_date'),
+                'payment_date': inv.get('payment_date'),
+                'payment_state': 'paid',
+                'days_to_pay': inv.get('days_diff'),
+                'payment_status': inv.get('status'),
+                'state': 'posted',
+            })
+        self.sync_odoo_invoices(company_id, odoo_partner_id, invoices)
+
+        # Payments
+        self.sync_odoo_payments(
+            company_id, odoo_partner_id,
+            ctx.get('recent_payments', []),
+        )
+
+        # Deliveries
+        self.sync_odoo_deliveries(
+            company_id, odoo_partner_id,
+            ctx.get('pending_deliveries', []),
+        )
+
+        # CRM Leads
+        self.sync_odoo_crm_leads(
+            company_id, odoo_partner_id,
+            ctx.get('crm_leads', []),
+        )
+
+        # Activities
+        self.sync_odoo_activities(
+            company_id, odoo_partner_id,
+            ctx.get('pending_activities', []),
+        )
+
     def get_company_contacts(self, company_id: int) -> list:
         """Obtiene todos los contactos de una empresa."""
         try:

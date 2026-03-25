@@ -75,16 +75,13 @@ class IntelligenceEngine(models.Model):
                 for acct, hid in result['gmail_history_state'].items():
                     supa.save_sync_state(acct, str(hid))
 
-                supa._request('/rest/v1/events', 'POST', {
-                    'event_type': 'emails_synced',
-                    'source': 'cron_sync_emails',
-                    'payload': {
-                        'total': len(emails),
-                        'accounts_ok': result['success_count'],
-                        'accounts_failed': result['failed_count'],
-                        'threads': len(threads),
-                    },
-                })
+                supa.log_event('emails_synced', 'cron_sync_emails',
+                               payload={
+                                   'total': len(emails),
+                                   'accounts_ok': result['success_count'],
+                                   'accounts_failed': result['failed_count'],
+                                   'threads': len(threads),
+                               })
 
                 _logger.info(
                     '✓ Sync: %d emails, %d threads (%.1fs)',

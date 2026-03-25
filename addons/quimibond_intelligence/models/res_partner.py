@@ -466,9 +466,9 @@ class ResPartner(models.Model):
 
                 # Get recent topics/key_items from account_summaries
                 summaries = supa._request(
-                    '/rest/v1/account_summaries'
-                    '?order=summary_date.desc&limit=3'
-                    '&select=key_items,external_contacts',
+                    '/rest/v1/briefings?scope=eq.account'
+                    '&order=briefing_date.desc&limit=3'
+                    '&select=waiting_response,external_contacts',
                 )
                 if summaries and isinstance(summaries, list):
                     topics = []
