@@ -12,19 +12,29 @@ import os
 import sys
 import unittest
 
-# Allow running standalone without Odoo by adding the services dir to path
-_services_dir = os.path.join(
-    os.path.dirname(__file__), '..', 'services',
-)
-if _services_dir not in sys.path:
-    sys.path.insert(0, os.path.abspath(_services_dir))
+# Support both Odoo-loaded tests and standalone pytest execution.
+# When Odoo loads the module, relative imports work. When running
+# standalone (python -m pytest), we fall back to manipulating sys.path.
+try:
+    from odoo.addons.quimibond_intelligence.services.sync_schema import (
+        SUPABASE_SCHEMAS,
+        check_coverage,
+        get_writable_columns,
+        validate_record,
+    )
+except ImportError:
+    _services_dir = os.path.join(
+        os.path.dirname(__file__), '..', 'services',
+    )
+    if _services_dir not in sys.path:
+        sys.path.insert(0, os.path.abspath(_services_dir))
 
-from sync_schema import (  # noqa: E402
-    SUPABASE_SCHEMAS,
-    check_coverage,
-    get_writable_columns,
-    validate_record,
-)
+    from sync_schema import (  # noqa: E402
+        SUPABASE_SCHEMAS,
+        check_coverage,
+        get_writable_columns,
+        validate_record,
+    )
 
 
 class TestSyncSchemaRegistry(unittest.TestCase):
