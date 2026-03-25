@@ -193,6 +193,49 @@ class IntelligenceConfig(models.TransientModel):
                            'message': 'Pipeline ejecutado. Revisa los logs.',
                            'type': 'info'}}
 
+    def action_initial_setup(self):
+        """Bootstrap inicial: carga datos base de Odoo y Gmail a Supabase.
+
+        Ejecuta en secuencia (sin Claude, sin riesgo de memoria):
+        1. Enrich contactos (partners/companies → Supabase)
+        2. Sync productos, órdenes, equipo → Supabase
+        3. Sync emails (Gmail → Supabase)
+        4. Update scores (cálculo local, sin Claude)
+        5. Supabase sync (push alertas/acciones pendientes)
+
+        Después de esto, ejecutar manualmente:
+        - "Analizar Emails" (usa Claude, puede tomar varios minutos)
+        - "Pipeline completo" para el primer briefing
+        """
+        self.action_save()
+        engine = self.env['intelligence.engine']
+        steps = [
+            ('Enrich Contactos', engine.run_enrich_only),
+            ('Sync Productos/Ordenes/Equipo', engine.run_sync_odoo_tables),
+            ('Sync Emails (Gmail)', engine.run_sync_emails),
+            ('Actualizar Scores', engine.run_update_scores),
+            ('Sync Odoo → Supabase', engine.run_supabase_sync),
+        ]
+        ok, failed = 0, []
+        for name, fn in steps:
+            try:
+                _logger.info('── Setup Inicial: %s ──', name)
+                fn()
+                ok += 1
+            except Exception as exc:
+                _logger.error('Setup Inicial — %s falló: %s', name, exc, exc_info=True)
+                failed.append(name)
+
+        if failed:
+            msg = f'{ok}/{len(steps)} pasos OK. Fallaron: {", ".join(failed)}. Revisa los logs.'
+            ntype = 'warning'
+        else:
+            msg = (f'{ok}/{len(steps)} pasos completados. '
+                   'Ahora ejecuta "Analizar Emails" para el análisis con Claude.')
+            ntype = 'success'
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Setup Inicial', 'message': msg, 'type': ntype}}
+
     def action_enrich_only(self):
         """Sincroniza partners de Odoo a Supabase (Odoo = fuente de verdad)."""
         self.action_save()

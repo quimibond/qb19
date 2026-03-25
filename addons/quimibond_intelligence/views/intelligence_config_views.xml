@@ -20,6 +20,18 @@
                             class="btn-warning"
                             confirm="Ejecuta el pipeline completo (sync + analisis + enrichment + scores + briefing). Puede tomar 5-15 min. Continuar?"/>
                 </header>
+                <div class="alert alert-warning mx-3 mt-2" role="alert">
+                    <strong>Setup Inicial</strong> — Primera vez o reset completo:
+                    <div class="mt-2">
+                        <button name="action_initial_setup" type="object"
+                                string="Ejecutar Setup Inicial (sin Claude)"
+                                class="btn btn-sm btn-warning"
+                                confirm="Carga todos los datos base de Odoo y Gmail a Supabase (contactos, productos, ordenes, equipo, emails, scores). No usa Claude, no revienta memoria. Puede tomar 3-5 min. Continuar?"/>
+                        <span class="text-muted ms-2">
+                            Despues ejecuta "Analizar Emails" manualmente.
+                        </span>
+                    </div>
+                </div>
                 <div class="alert alert-info mx-3 mt-2" role="alert">
                     <strong>Micro-pipelines</strong> — Ejecutar individualmente:
                     <div class="mt-2 d-flex flex-wrap gap-2">
