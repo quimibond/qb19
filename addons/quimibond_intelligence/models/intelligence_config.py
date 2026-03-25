@@ -262,11 +262,22 @@ class IntelligenceConfig(models.TransientModel):
         for name, fn in steps:
             try:
                 _logger.info('── Setup Inicial: %s ──', name)
+                # Use savepoint to isolate each step — if one fails,
+                # the transaction is rolled back to the savepoint and
+                # subsequent steps can still execute.
+                self.env.cr.execute('SAVEPOINT setup_step')
                 fn()
+                self.env.cr.execute('RELEASE SAVEPOINT setup_step')
                 ok += 1
             except Exception as exc:
-                _logger.error('Setup Inicial — %s falló: %s', name, exc, exc_info=True)
+                _logger.error('Setup Inicial — %s falló: %s', name, exc,
+                              exc_info=True)
                 failed.append(name)
+                try:
+                    self.env.cr.execute(
+                        'ROLLBACK TO SAVEPOINT setup_step')
+                except Exception:
+                    pass  # savepoint may already be released
 
         if failed:
             msg = f'{ok}/{len(steps)} pasos OK. Fallaron: {", ".join(failed)}. Revisa los logs.'
