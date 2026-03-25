@@ -51,6 +51,96 @@ class ResPartner(models.Model):
     intelligence_last_sync = fields.Datetime(
         string='Ultima sync inteligencia', copy=False)
 
+    # ── Computed financial/operational fields (live from Odoo) ───────────
+    intel_total_invoiced = fields.Monetary(
+        string='Total facturado', compute='_compute_intel_financial',
+        currency_field='currency_id')
+    intel_total_overdue = fields.Monetary(
+        string='Saldo vencido', compute='_compute_intel_financial',
+        currency_field='currency_id')
+    intel_overdue_count = fields.Integer(
+        string='Facturas vencidas', compute='_compute_intel_financial')
+    intel_pending_deliveries = fields.Integer(
+        string='Entregas pendientes', compute='_compute_intel_operational')
+    intel_late_deliveries = fields.Integer(
+        string='Entregas atrasadas', compute='_compute_intel_operational')
+    intel_crm_pipeline_value = fields.Monetary(
+        string='Pipeline CRM', compute='_compute_intel_crm',
+        currency_field='currency_id')
+    intel_crm_opportunity_count = fields.Integer(
+        string='Oportunidades', compute='_compute_intel_crm')
+    intel_pending_activities = fields.Integer(
+        string='Actividades pendientes',
+        compute='_compute_intel_activities')
+    intel_overdue_activities = fields.Integer(
+        string='Actividades vencidas',
+        compute='_compute_intel_activities')
+
+    def _compute_intel_financial(self):
+        Move = self.env['account.move'].sudo()
+        for partner in self:
+            cpid = partner.commercial_partner_id.id or partner.id
+            domain = [
+                ('partner_id.commercial_partner_id', '=', cpid),
+                ('move_type', '=', 'out_invoice'),
+                ('state', '=', 'posted'),
+            ]
+            invoices = Move.search(domain)
+            partner.intel_total_invoiced = sum(invoices.mapped('amount_total'))
+            overdue = invoices.filtered(
+                lambda i: i.payment_state in ('not_paid', 'partial')
+                and i.invoice_date_due and i.invoice_date_due < fields.Date.today()
+            )
+            partner.intel_total_overdue = sum(overdue.mapped('amount_residual'))
+            partner.intel_overdue_count = len(overdue)
+
+    def _compute_intel_operational(self):
+        Picking = self.env['stock.picking'].sudo()
+        for partner in self:
+            cpid = partner.commercial_partner_id.id or partner.id
+            pending = Picking.search_count([
+                ('partner_id.commercial_partner_id', '=', cpid),
+                ('state', 'not in', ['done', 'cancel']),
+                ('picking_type_code', '=', 'outgoing'),
+            ])
+            late = Picking.search_count([
+                ('partner_id.commercial_partner_id', '=', cpid),
+                ('state', 'not in', ['done', 'cancel']),
+                ('picking_type_code', '=', 'outgoing'),
+                ('scheduled_date', '<', fields.Datetime.now()),
+            ])
+            partner.intel_pending_deliveries = pending
+            partner.intel_late_deliveries = late
+
+    def _compute_intel_crm(self):
+        Lead = self.env['crm.lead'].sudo()
+        for partner in self:
+            cpid = partner.commercial_partner_id.id or partner.id
+            opps = Lead.search([
+                ('partner_id.commercial_partner_id', '=', cpid),
+                ('type', '=', 'opportunity'),
+                ('active', '=', True),
+            ])
+            partner.intel_crm_pipeline_value = sum(
+                opps.mapped('expected_revenue'))
+            partner.intel_crm_opportunity_count = len(opps)
+
+    def _compute_intel_activities(self):
+        Activity = self.env['mail.activity'].sudo()
+        today = fields.Date.today()
+        for partner in self:
+            total = Activity.search_count([
+                ('res_id', '=', partner.id),
+                ('res_model', '=', 'res.partner'),
+            ])
+            overdue = Activity.search_count([
+                ('res_id', '=', partner.id),
+                ('res_model', '=', 'res.partner'),
+                ('date_deadline', '<', today),
+            ])
+            partner.intel_pending_activities = total
+            partner.intel_overdue_activities = overdue
+
     @api.depends('intelligence_score_ids', 'intelligence_score_ids.total_score')
     def _compute_intelligence_score(self):
         Score = self.env['intelligence.client.score']
