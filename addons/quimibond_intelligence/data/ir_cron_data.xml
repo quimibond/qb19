@@ -86,6 +86,30 @@
             <field name="priority">3</field>
         </record>
 
+        <record id="cron_predictions" model="ir.cron">
+            <field name="name">Intelligence - Predicciones (semanal)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_predictions()</field>
+            <field name="interval_number">7</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).strftime('%Y-%m-%d 02:00:00')"/>
+            <field name="priority">20</field>
+        </record>
+
+        <record id="cron_briefing_replies" model="ir.cron">
+            <field name="name">Intelligence - Briefing Replies (cada 30 min)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_check_briefing_replies()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">8</field>
+        </record>
+
         <!-- ══ Tareas de mantenimiento ══ -->
 
         <record id="cron_data_retention" model="ir.cron">

@@ -6,16 +6,38 @@ from odoo import api, fields, models
 _logger = logging.getLogger(__name__)
 
 
-class IntelligenceQuery(models.TransientModel):
+class IntelligenceQuery(models.Model):
     _name = 'intelligence.query'
     _description = 'Consulta al cerebro de inteligencia'
+    _order = 'create_date desc'
 
     question = fields.Text(string='Pregunta', required=True)
     answer = fields.Html(string='Respuesta', readonly=True, sanitize=True)
     context_used = fields.Text(string='Contexto utilizado', readonly=True)
+    user_id = fields.Many2one(
+        'res.users', string='Usuario', default=lambda self: self.env.user,
+        index=True)
+    session_id = fields.Char(
+        string='Sesion', index=True,
+        help='Agrupa preguntas de una conversacion')
+    parent_id = fields.Many2one(
+        'intelligence.query', string='Pregunta anterior')
 
     def action_ask(self):
         self.ensure_one()
+        # Auto-assign session if not set
+        if not self.session_id:
+            import uuid
+            self.session_id = str(uuid.uuid4())[:8]
+        # Link to previous question in session
+        if not self.parent_id and self.session_id:
+            prev = self.search([
+                ('session_id', '=', self.session_id),
+                ('id', '!=', self.id),
+            ], limit=1, order='create_date desc')
+            if prev:
+                self.parent_id = prev.id
+
         get = lambda k, d='': (
             self.env['ir.config_parameter'].sudo()
             .get_param('quimibond_intelligence.%s' % k, d)
@@ -92,8 +114,30 @@ class IntelligenceQuery(models.TransientModel):
         # Paso 5: Knowledge Graph context
         kg_context = self._search_knowledge_graph(supa, self.question)
 
+        # Paso 6: Historial de conversación (memoria)
+        history_context = ''
+        if self.session_id:
+            previous = self.search([
+                ('session_id', '=', self.session_id),
+                ('id', '!=', self.id),
+                ('answer', '!=', False),
+            ], limit=3, order='create_date desc')
+            if previous:
+                history_parts = []
+                for prev in reversed(previous):
+                    from odoo.tools import html2plaintext
+                    answer_plain = html2plaintext(
+                        prev.answer or '')[:500]
+                    history_parts.append(
+                        'PREGUNTA: %s\nRESPUESTA: %s' % (
+                            prev.question, answer_plain))
+                history_context = '\n---\n'.join(history_parts)
+
         # Construir prompt
         full_context = []
+        if history_context:
+            full_context.append(
+                'CONVERSACION PREVIA (memoria):\n%s' % history_context)
         if odoo_context:
             full_context.append('DATOS DE ODOO ERP:\n%s' % odoo_context)
         if kg_context:
@@ -118,6 +162,8 @@ class IntelligenceQuery(models.TransientModel):
             'CONTEXTO DISPONIBLE:\n%s\n\n'
             'PREGUNTA DE JOSE (Director General):\n%s\n\n'
             'Responde de forma directa, ejecutiva y accionable. '
+            'Si hay CONVERSACION PREVIA, usa ese contexto para entender '
+            'a qué se refiere la pregunta actual (follow-ups). '
             'Si el Knowledge Graph tiene hechos verificados (✓), prioriza esos datos. '
             'Usa perfiles de personas para adaptar recomendaciones de comunicacion. '
             'Si no tienes suficiente informacion, dilo claramente. '

@@ -5,6 +5,8 @@ from . import engine_analysis
 from . import engine_enrichment
 from . import engine_reporting
 from . import engine_supabase_sync
+from . import engine_predictions
+from . import engine_briefing_reply
 from . import intelligence_briefing
 from . import intelligence_alert
 from . import intelligence_score
