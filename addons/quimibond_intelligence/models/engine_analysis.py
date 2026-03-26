@@ -178,7 +178,7 @@ class IntelligenceEngine(models.Model):
         # to avoid overwhelming Claude with too many sequential requests
         sorted_accounts = sorted(
             by_account.items(), key=lambda x: len(x[1]), reverse=True,
-        )[:25]
+        )[:15]  # Max 15 accounts per run to avoid Claude overload
 
         for account, acct_emails in sorted_accounts:
             dept = account_departments.get(account, 'Otro')
