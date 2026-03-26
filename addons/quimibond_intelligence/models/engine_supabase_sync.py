@@ -146,6 +146,13 @@ class IntelligenceEngine(models.Model):
                 }
                 if action.state == 'done':
                     patch['completed_at'] = now.isoformat()
+                # Sync assignee info if available
+                if action.assignee_id:
+                    patch['assignee_name'] = action.assignee_id.name
+                    patch['assignee_email'] = (
+                        action.assignee_id.email
+                        or action.assignee_id.login
+                    )
 
                 supa._request(
                     f'/rest/v1/action_items?id=eq.{action.supabase_id}',
