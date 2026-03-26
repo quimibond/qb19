@@ -469,7 +469,8 @@ class SupabaseMetricsMixin:
                 except Exception:
                     pass  # FK is optional, proceed without it
             self._request(
-                '/rest/v1/revenue_metrics',
+                '/rest/v1/revenue_metrics'
+                '?on_conflict=contact_email,period_start,period_type',
                 'POST', metrics,
                 extra_headers={
                     'Prefer': 'resolution=merge-duplicates',
@@ -540,7 +541,8 @@ class SupabaseMetricsMixin:
         """
         try:
             self._request(
-                '/rest/v1/health_scores',
+                '/rest/v1/health_scores'
+                '?on_conflict=contact_email,score_date',
                 'POST', score,
                 extra_headers={
                     'Prefer': 'resolution=merge-duplicates',

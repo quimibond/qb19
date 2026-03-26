@@ -101,9 +101,10 @@ class SupabaseKGMixin:
             })
 
     def save_fact(self, fact):
-        """Guarda un hecho extraido (con dedup por entity_id + fact_type + hash)."""
+        """Guarda un hecho extraido (con dedup por fact_hash)."""
         return self._request(
-            '/rest/v1/facts', 'POST', fact,
+            '/rest/v1/facts?on_conflict=fact_hash',
+            'POST', fact,
             extra_headers={
                 'Prefer': 'resolution=ignore-duplicates,return=representation',
             },
