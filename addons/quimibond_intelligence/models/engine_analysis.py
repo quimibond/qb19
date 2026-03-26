@@ -171,15 +171,24 @@ class IntelligenceEngine(models.Model):
 
         summaries = []
         kg_by_account = {}
+        accounts_ok = 0
+        accounts_failed = 0
 
-        for account, acct_emails in by_account.items():
+        # Sort accounts by email count (most first) and limit to top 25
+        # to avoid overwhelming Claude with too many sequential requests
+        sorted_accounts = sorted(
+            by_account.items(), key=lambda x: len(x[1]), reverse=True,
+        )[:25]
+
+        for account, acct_emails in sorted_accounts:
             dept = account_departments.get(account, 'Otro')
             ext_count = sum(
                 1 for e in acct_emails if e['sender_type'] == 'external'
             )
             int_count = len(acct_emails) - ext_count
 
-            if not acct_emails:
+            # Skip accounts with very few emails (not worth a Claude call)
+            if len(acct_emails) < 2:
                 continue
 
             email_text = analysis.format_emails_for_claude(
@@ -187,6 +196,7 @@ class IntelligenceEngine(models.Model):
             )
 
             try:
+                _logger.info('  Analyzing %s (%d emails)...', account, len(acct_emails))
                 full_result = claude.analyze_account_full(
                     dept, account, email_text, ext_count, int_count,
                 )
@@ -232,11 +242,16 @@ class IntelligenceEngine(models.Model):
                         except Exception as exc:
                             _logger.debug('person_insight upsert: %s', exc)
 
+                accounts_ok += 1
                 _logger.info('  ✓ %s (%s): %d emails analizados',
                              dept, account, len(acct_emails))
             except Exception as exc:
+                accounts_failed += 1
                 _logger.error('  ✗ %s: %s', account, exc)
+                # Continue with next account — don't let one failure kill all
 
+        _logger.info('Account analysis: %d ok, %d failed (of %d)',
+                     accounts_ok, accounts_failed, len(sorted_accounts))
         return summaries, kg_by_account
 
     # ── Knowledge Graph ──────────────────────────────────────────────────────
