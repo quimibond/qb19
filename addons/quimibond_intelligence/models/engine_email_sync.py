@@ -83,6 +83,13 @@ class IntelligenceEngine(models.Model):
                                    'threads': len(threads),
                                })
 
+                # Neural network: resolve connections after new emails
+                try:
+                    supa._request('/rest/v1/rpc/resolve_all_connections',
+                                  'POST', {})
+                except Exception:
+                    pass
+
                 _logger.info(
                     '✓ Sync: %d emails, %d threads (%.1fs)',
                     len(emails), len(threads),

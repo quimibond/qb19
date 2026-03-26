@@ -55,6 +55,16 @@ class IntelligenceEngine(models.Model):
                     products, lines, users, invoices, payments,
                     deliveries, crm, activities, time.time() - start,
                 )
+
+                # Neural network: resolve ALL connections
+                try:
+                    result = supa._request(
+                        '/rest/v1/rpc/resolve_all_connections',
+                        'POST', {},
+                    )
+                    _logger.info('Neural network connections: %s', result)
+                except Exception as exc:
+                    _logger.debug('resolve_connections: %s', exc)
         except Exception as exc:
             _logger.error('run_sync_odoo_tables: %s', exc, exc_info=True)
         finally:
