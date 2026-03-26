@@ -317,47 +317,47 @@ class IntelligenceEngine(models.Model):
                                 len(company_batches), exc)
 
         # ── Phase 2: Batch upsert contacts ──────────────────────────────────
+        # Key distinction: is_company=True in Odoo means the partner IS
+        # a company record, not a person. The email field on company partners
+        # contains email addresses of people at that company, not the
+        # company's email. We create contacts per email WITHOUT the company
+        # name (they'll be enriched with names from Gmail later).
         contact_batch = []
         seen_emails = set()
 
         for email_addr, pdata in partners.items():
-            # Handle multi-email partners
             valid_emails = clean_emails(email_addr)
             if not valid_emails:
                 continue
 
             pid = pdata.get('id') or pdata.get('partner_id')
-            cpid = pdata.get('commercial_partner_id')
+            is_company = pdata.get('is_company', False)
+            partner_name = pdata.get('name', '')
 
-            for email in valid_emails:
+            for i, email in enumerate(valid_emails):
                 if email in seen_emails:
                     continue
                 seen_emails.add(email)
 
                 record = {
                     'email': email,
-                    'name': pdata.get('name', ''),
                     'contact_type': 'external',
                     'is_customer': pdata.get('is_customer', False),
                     'is_supplier': pdata.get('is_supplier', False),
                 }
-                if pid:
-                    record['odoo_partner_id'] = pid
-                # odoo_context as dict (PostgREST handles jsonb natively)
-                odoo_ctx = {}
-                for k, v in pdata.items():
-                    if k in ('_summary', '_resolved_company_name'):
-                        continue
-                    if v is None:
-                        continue
-                    # Convert non-serializable values to strings
-                    try:
-                        json.dumps(v)
-                        odoo_ctx[k] = v
-                    except (TypeError, ValueError):
-                        odoo_ctx[k] = str(v)
-                if odoo_ctx:
-                    record['odoo_context'] = odoo_ctx
+
+                if is_company:
+                    # Company record: emails belong to unnamed people
+                    # Only first email gets odoo_partner_id
+                    # Name left empty — will be enriched from Gmail
+                    if i == 0 and pid:
+                        record['odoo_partner_id'] = pid
+                else:
+                    # Person record: use the partner name
+                    record['name'] = partner_name
+                    if pid:
+                        record['odoo_partner_id'] = pid
+
                 contact_batch.append(record)
 
         # Batch upsert contacts (50 at a time)
@@ -423,10 +423,26 @@ class IntelligenceEngine(models.Model):
             except Exception as exc:
                 _logger.debug('sync_company %s: %s', cpid, exc)
 
+        # ── Phase 4: Sync Odoo detail tables (invoices, payments, etc.) ────
+        odoo_detail_count = 0
+        for cpid, cdata in companies_data.items():
+            try:
+                first_pd = next(
+                    (pd for pd in partners.values()
+                     if pd.get('commercial_partner_id') == cpid), {}
+                )
+                if first_pd:
+                    supa.sync_company_odoo_details(
+                        0, cpid, first_pd)  # company_id=0, resolved by trigger
+                    odoo_detail_count += 1
+            except Exception as exc:
+                _logger.debug('odoo_detail %s: %s', cpid, exc)
+
         _logger.info(
             'Contacts sync: %d ok, %d failed de %d total. '
-            'Companies updated: %d',
+            'Companies updated: %d. Odoo details: %d',
             synced, failed, len(partners), companies_synced,
+            odoo_detail_count,
         )
 
     def _link_odoo_ids(self, supa):
