@@ -55,7 +55,18 @@ class IntelligenceEngine(models.Model):
         today = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
         _logger.info('═══ QUIMIBOND INTELLIGENCE — %s ═══', today)
 
+        cfg = self._load_config()
+        supa = None
+        run_id = None
+        errors = []
+
         try:
+            if cfg:
+                from ..services.supabase_service import SupabaseService
+                supa = SupabaseService(cfg['supabase_url'], cfg['supabase_key'])
+                supa.__enter__()
+                run_id = supa.start_pipeline_run('daily')
+
             # ── Micro-pipelines (cada uno maneja sus propios errores) ──
             pipelines = [
                 ('Sync emails', self.run_sync_emails),
@@ -69,22 +80,36 @@ class IntelligenceEngine(models.Model):
                     fn()
                 except Exception as exc:
                     _logger.error('%s falló: %s', name, exc, exc_info=True)
+                    errors.append(f'{name}: {exc}')
 
             # ── Briefing diario (exclusivo del daily) ──
             try:
                 self._run_daily_briefing(today, start)
             except Exception as exc:
                 _logger.error('Briefing falló: %s', exc, exc_info=True)
+                errors.append(f'Briefing: {exc}')
 
             # ── Sync cambios a Supabase ──
             try:
                 self.run_supabase_sync()
             except Exception as exc:
                 _logger.error('Supabase sync falló: %s', exc, exc_info=True)
+                errors.append(f'Supabase sync: {exc}')
 
         finally:
-            release_lock(self.env, lock_param)
             elapsed = time.time() - start
+            if supa and run_id:
+                status = 'failed' if errors else 'completed'
+                supa.complete_pipeline_run(
+                    run_id, status=status,
+                    metadata={
+                        'duration_seconds': round(elapsed, 1),
+                        'date': today,
+                    },
+                    errors=errors or None,
+                )
+                supa.__exit__(None, None, None)
+            release_lock(self.env, lock_param)
             _logger.info('═══ PIPELINE FINALIZADO en %.1f segundos ═══', elapsed)
 
     # ══════════════════════════════════════════════════════════════════════════

@@ -4,6 +4,8 @@ Unified Supabase persistence layer.
 Inherits from base client + domain-specific mixins.
 """
 import logging
+import uuid
+from datetime import datetime
 
 from .supabase_base import SupabaseBaseClient
 from .supabase_contacts import SupabaseContactsMixin
@@ -22,6 +24,48 @@ class SupabaseService(
     SupabaseMetricsMixin,
 ):
     """Cliente para Supabase REST API (PostgREST)."""
+
+    # ── Pipeline Runs ──────────────────────────────────────────────────────
+
+    def start_pipeline_run(self, run_type: str) -> str:
+        """Create a pipeline_runs record and return its ID."""
+        run_id = str(uuid.uuid4())
+        try:
+            self._request('/rest/v1/pipeline_runs', 'POST', {
+                'id': run_id,
+                'run_type': run_type,
+                'status': 'running',
+                'started_at': datetime.now().isoformat(),
+                'emails_processed': 0,
+                'alerts_generated': 0,
+                'actions_generated': 0,
+                'errors': [],
+                'metadata': {},
+            })
+        except Exception as exc:
+            _logger.debug('start_pipeline_run: %s', exc)
+        return run_id
+
+    def complete_pipeline_run(self, run_id: str, status: str = 'completed',
+                              metadata: dict = None, errors: list = None):
+        """Update a pipeline_runs record as completed/failed."""
+        try:
+            from urllib.parse import quote as _q
+            patch = {
+                'status': status,
+                'completed_at': datetime.now().isoformat(),
+            }
+            if metadata:
+                patch['metadata'] = metadata
+            if errors:
+                patch['errors'] = errors
+            self._request(
+                f'/rest/v1/pipeline_runs?id=eq.{_q(run_id, safe="")}',
+                'PATCH', patch,
+                extra_headers={'Prefer': 'return=minimal'},
+            )
+        except Exception as exc:
+            _logger.debug('complete_pipeline_run: %s', exc)
 
     # ── Events (event sourcing) ───────────────────────────────────────────
 
