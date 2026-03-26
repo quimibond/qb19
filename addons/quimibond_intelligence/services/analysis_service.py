@@ -49,11 +49,19 @@ class AnalysisService:
 
     @staticmethod
     def format_emails_for_claude(emails: list, odoo_ctx: dict,
-                                 person_profiles: dict = None) -> str:
-        """Formatea emails con contexto profundo de Odoo + perfiles conocidos."""
+                                 person_profiles: dict = None,
+                                 max_emails: int = 20,
+                                 max_body: int = 800) -> str:
+        """Formatea emails con contexto profundo de Odoo + perfiles conocidos.
+
+        Limits: max_emails per account, max_body chars per email body.
+        This keeps the prompt under ~12K chars to avoid Claude timeouts.
+        """
         person_profiles = person_profiles or {}
+        # Take most recent emails only
+        truncated = emails[:max_emails]
         lines = []
-        for i, e in enumerate(emails, 1):
+        for i, e in enumerate(truncated, 1):
             lines.append(f'--- EMAIL {i} ---')
             lines.append(f'De: {e.get("from", "")}')
             lines.append(f'Para: {e.get("to", "")}')
@@ -120,7 +128,7 @@ class AnalysisService:
                         f'[PERSONA CONOCIDA: {" | ".join(profile_parts)}]'
                     )
 
-            body = (e.get('body') or e.get('snippet', ''))[:1500]
+            body = (e.get('body') or e.get('snippet', ''))[:max_body]
             lines.append(f'Cuerpo:\n{body}')
             lines.append('')
         return '\n'.join(lines)

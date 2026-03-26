@@ -138,6 +138,9 @@ class ClaudeService:
             '- ENTREGA OTD → si bajo, reconocer problema antes que reclamen'
         )
 
+        # Truncate email text to avoid Claude timeouts on large accounts
+        email_text = email_text[:12000]
+
         prompt = (
             f'Analiza los {ext_count + int_count} emails de {department} ({account}).\n'
             f'{ext_count} son de externos, {int_count} internos.\n\n'
