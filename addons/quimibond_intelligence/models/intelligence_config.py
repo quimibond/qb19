@@ -54,28 +54,71 @@ def release_lock(env, lock_name):
 
 # ── Valores por defecto (se usan solo si ir.config_parameter no tiene datos) ─
 DEFAULT_EMAIL_ACCOUNTS = {
-    'direcciondeoperaciones@quimibond.com': 'Dirección de Operaciones',
-    'aurelio@quimibond.com': 'Dirección',
+    # ── Dirección ──
+    'jose.mizrahi@quimibond.com': 'Dirección',
+    'direcciondeoperaciones@quimibond.com': 'Dirección',
+    'abraham@quimibond.com': 'Dirección',
     'gilberto@quimibond.com': 'Dirección',
+    'jacobo.mizrahi@quimibond.com': 'Dirección',
+    # ── Ventas ──
     'ventas@quimibond.com': 'Ventas',
-    'ventasindustrial@quimibond.com': 'Ventas Industrial',
-    'admon.ventas@quimibond.com': 'Admin Ventas',
-    'info@quimibond.com': 'Info General',
-    'manufactura@quimibond.com': 'Manufactura',
-    'planeacion@quimibond.com': 'Planeación',
+    'ventasindustrial@quimibond.com': 'Ventas',
+    'admon.ventas@quimibond.com': 'Ventas',
+    'info@quimibond.com': 'Ventas',
+    'entretelas@quimibond.com': 'Ventas',
+    'muestras@quimibond.com': 'Ventas',
+    'mas@quimibond.com': 'Ventas',
+    # ── Finanzas ──
+    'irma.luna@quimibond.com': 'Finanzas',
+    'cxcobrar@quimibond.com': 'Finanzas',
+    'cxp@quimibond.com': 'Finanzas',
+    'aurelio@quimibond.com': 'Finanzas',
+    'auxcostos@quimibond.com': 'Finanzas',
+    'berenice.vazquez@quimibond.com': 'Finanzas',
+    # ── Compras ──
+    'comprasplanta@quimibond.com': 'Compras',
+    # ── Logística / Almacén ──
     'logistica@quimibond.com': 'Logística',
-    'ingenieriacc@quimibond.com': 'Ingeniería CC',
-    'comprasplanta@quimibond.com': 'Compras Planta',
+    'almacen.toluca@quimibond.com': 'Logística',
+    'almacen1@quimibond.com': 'Logística',
+    'aux.almacentol@quimibond.com': 'Logística',
+    'control.almacen@quimibond.com': 'Logística',
+    # ── Producción ──
+    'manufactura@quimibond.com': 'Producción',
+    'planeacion@quimibond.com': 'Producción',
+    'tejido@quimibond.com': 'Producción',
+    'tintoreria@quimibond.com': 'Producción',
+    'supervisor@quimibond.com': 'Producción',
+    'operadortratadora@quimibond.com': 'Producción',
+    # ── Calidad / Laboratorio ──
     'jefe.calidad@quimibond.com': 'Calidad',
+    'auditorcalidad@quimibond.com': 'Calidad',
+    'auditormp@quimibond.com': 'Calidad',
+    'laboratorio@quimibond.com': 'Calidad',
+    'auxlaboratorio@quimibond.com': 'Calidad',
+    'laboratoristatejido@quimibond.com': 'Calidad',
+    'inspeccion@quimibond.com': 'Calidad',
+    # ── Innovación / I+D ──
     'innovacion@quimibond.com': 'Innovación',
-    'producto.innovacion@quimibond.com': 'Innovación Producto',
-    'cxp@quimibond.com': 'Cuentas por Pagar',
-    'cxcobrar@quimibond.com': 'Cuentas por Cobrar',
-    'irma.luna@quimibond.com': 'Administración',
-    'berenice.vazquez@quimibond.com': 'Administración',
-    'recursoshumanos@quimibond.com': 'Recursos Humanos',
-    'rhmexico@quimibond.com': 'RH México',
-    'jose.mizrahi@quimibond.com': 'Dirección General',
+    'producto.innovacion@quimibond.com': 'Innovación',
+    'proceso.innovacion@quimibond.com': 'Innovación',
+    'ingenieriacc@quimibond.com': 'Innovación',
+    # ── RRHH ──
+    'recursoshumanos@quimibond.com': 'RRHH',
+    'rhmexico@quimibond.com': 'RRHH',
+    # ── Sistemas ──
+    'sistemas@quimibond.com': 'Sistemas',
+    # ── Mantenimiento ──
+    'mantenimiento@quimibond.com': 'Mantenimiento',
+    # ── Atención Técnica ──
+    'tac@quimibond.com': 'Atención Técnica',
+    # ── Otros ──
+    'auxsgi@quimibond.com': 'SGI',
+    'eduardo@quimibond.com': 'Producción',
+    'javier@quimibond.com': 'Producción',
+    'juan@quimibond.com': 'Producción',
+    'magaly@quimibond.com': 'Finanzas',
+    'rocio@quimibond.com': 'Administración',
 }
 
 INTERNAL_DOMAIN = 'quimibond.com'
@@ -372,6 +415,15 @@ class IntelligenceConfig(models.TransientModel):
         return {'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {'title': 'Briefing Replies',
                            'message': 'Replies procesados. Revisa los logs.',
+                           'type': 'info'}}
+
+    def action_reverse_sync(self):
+        """Pull cambios de estado del frontend (Supabase → Odoo)."""
+        self.action_save()
+        self.env['intelligence.engine'].run_reverse_sync()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Reverse Sync',
+                           'message': 'Cambios del frontend importados a Odoo.',
                            'type': 'info'}}
 
     def action_run_diagnostics(self):

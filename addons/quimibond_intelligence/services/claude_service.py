@@ -542,8 +542,12 @@ class ClaudeService:
             _logger.warning('verify_facts: %s', exc)
             return []
 
-    def extract_knowledge(self, emails_text, account):
-        """Extrae knowledge graph con perfil profundo de personas."""
+    def extract_knowledge(self, emails_text, account, team_members=None):
+        """Extrae knowledge graph con perfil profundo de personas.
+
+        team_members: optional list of {"name": str, "email": str} for
+        Claude to use when assigning action items to specific people.
+        """
         schema = (
             '{"entities": [{"name": "str", "type": "person|company|product|machine|raw_material",'
             ' "email": "str or null", "attributes": {}}],'
@@ -591,7 +595,15 @@ class ClaudeService:
             + 'construye un perfil. Infiere rol, estilo de comunicacion, nivel de decision, '
             + 'intereses clave. Esto alimenta la memoria a largo plazo del sistema.\n'
             + '- Identifica TODAS las relaciones entre personas y empresas.\n'
+            + '- action_items.assignee: USA NOMBRES EXACTOS del equipo interno listado abajo.\n'
             + '- Solo JSON valido.'
+            + (('\n\nEQUIPO INTERNO (asigna action items a estas personas):\n'
+                + '\n'.join(
+                    f'- {m["name"]} ({m.get("email", "")}'
+                    f'{", " + m["department"] if m.get("department") else ""})'
+                    for m in (team_members or []))
+                ) if team_members else ''
+               )
         )
         try:
             system = (

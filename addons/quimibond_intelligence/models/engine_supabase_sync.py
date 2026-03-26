@@ -146,6 +146,13 @@ class IntelligenceEngine(models.Model):
                 }
                 if action.state == 'done':
                     patch['completed_at'] = now.isoformat()
+                # Sync assignee info if available
+                if action.assignee_id:
+                    patch['assignee_name'] = action.assignee_id.name
+                    patch['assignee_email'] = (
+                        action.assignee_id.email
+                        or action.assignee_id.login
+                    )
 
                 supa._request(
                     f'/rest/v1/action_items?id=eq.{action.supabase_id}',
@@ -213,3 +220,164 @@ class IntelligenceEngine(models.Model):
             remaining.write({'supabase_synced': True})
 
         return synced
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #   REVERSE SYNC: SUPABASE → ODOO (frontend state changes)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    # Mapeo de estados Supabase → Odoo
+    REVERSE_ALERT_STATE = {
+        'acknowledged': 'acknowledged',
+        'resolved': 'resolved',
+    }
+    REVERSE_ACTION_STATE = {
+        'completed': 'done',
+        'dismissed': 'cancelled',
+        'in_progress': 'in_progress',
+    }
+
+    @api.model
+    def run_reverse_sync(self):
+        """Pull state changes from Supabase → Odoo. Corre cada 5 min.
+
+        When users update alert/action state in the frontend,
+        this cron picks up those changes and applies them to Odoo.
+        """
+        lock = 'quimibond_intelligence.reverse_sync_running'
+        if not acquire_lock(self.env, lock):
+            return
+        start = time.time()
+
+        try:
+            cfg = self._load_config()
+            if not cfg:
+                return
+
+            from ..services.supabase_service import SupabaseService
+
+            with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
+                alerts_updated = self._reverse_sync_alerts(supa)
+                actions_updated = self._reverse_sync_actions(supa)
+
+                if alerts_updated or actions_updated:
+                    _logger.info(
+                        '✓ Reverse sync: %d alerts, %d actions (%.1fs)',
+                        alerts_updated, actions_updated,
+                        time.time() - start,
+                    )
+        except Exception as exc:
+            _logger.error('run_reverse_sync: %s', exc, exc_info=True)
+        finally:
+            release_lock(self.env, lock)
+
+    def _reverse_sync_alerts(self, supa) -> int:
+        """Pull alert state changes from Supabase to Odoo."""
+        # Get Odoo alerts that have a supabase_id and are still open
+        alerts = self.env['intelligence.alert'].sudo().search([
+            ('supabase_id', '>', 0),
+            ('state', '=', 'open'),
+        ], limit=500)
+
+        if not alerts:
+            return 0
+
+        # Batch-fetch current states from Supabase
+        supa_ids = [a.supabase_id for a in alerts]
+        updated = 0
+
+        # Query in chunks of 50
+        for i in range(0, len(supa_ids), 50):
+            chunk_ids = supa_ids[i:i + 50]
+            ids_str = ','.join(str(x) for x in chunk_ids)
+            try:
+                rows = supa._request(
+                    f'/rest/v1/alerts?id=in.({ids_str})'
+                    '&state=neq.new'
+                    '&select=id,state,resolved_at,resolution_notes',
+                ) or []
+            except Exception as exc:
+                _logger.debug('reverse_sync_alerts fetch: %s', exc)
+                continue
+
+            for row in rows:
+                supa_state = row.get('state', '')
+                odoo_state = self.REVERSE_ALERT_STATE.get(supa_state)
+                if not odoo_state:
+                    continue
+
+                odoo_alert = alerts.filtered(
+                    lambda a, sid=row['id']: a.supabase_id == sid
+                )
+                if not odoo_alert:
+                    continue
+
+                vals = {
+                    'state': odoo_state,
+                    'supabase_synced': True,  # Already in sync
+                }
+                if odoo_state == 'resolved':
+                    vals['resolved_date'] = (
+                        row.get('resolved_at') or
+                        datetime.now().isoformat()
+                    )
+                if row.get('resolution_notes'):
+                    vals['resolution_notes'] = row['resolution_notes']
+
+                try:
+                    odoo_alert.write(vals)
+                    updated += 1
+                except Exception as exc:
+                    _logger.debug('reverse alert %s: %s', row['id'], exc)
+
+        return updated
+
+    def _reverse_sync_actions(self, supa) -> int:
+        """Pull action state changes from Supabase to Odoo."""
+        actions = self.env['intelligence.action.item'].sudo().search([
+            ('supabase_id', '>', 0),
+            ('state', 'in', ('open', 'in_progress')),
+        ], limit=500)
+
+        if not actions:
+            return 0
+
+        supa_ids = [a.supabase_id for a in actions]
+        updated = 0
+
+        for i in range(0, len(supa_ids), 50):
+            chunk_ids = supa_ids[i:i + 50]
+            ids_str = ','.join(str(x) for x in chunk_ids)
+            try:
+                rows = supa._request(
+                    f'/rest/v1/action_items?id=in.({ids_str})'
+                    '&state=neq.pending'
+                    '&select=id,state,completed_at',
+                ) or []
+            except Exception as exc:
+                _logger.debug('reverse_sync_actions fetch: %s', exc)
+                continue
+
+            for row in rows:
+                supa_state = row.get('state', '')
+                odoo_state = self.REVERSE_ACTION_STATE.get(supa_state)
+                if not odoo_state:
+                    continue
+
+                odoo_action = actions.filtered(
+                    lambda a, sid=row['id']: a.supabase_id == sid
+                )
+                if not odoo_action:
+                    continue
+
+                vals = {
+                    'state': odoo_state,
+                    'supabase_synced': True,
+                }
+
+                try:
+                    odoo_action.write(vals)
+                    updated += 1
+                except Exception as exc:
+                    _logger.debug('reverse action %s: %s', row['id'], exc)
+
+        return updated

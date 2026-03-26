@@ -105,9 +105,26 @@ class IntelligenceEngine(models.Model):
                 )
                 supa.save_alerts(alerts, today)
 
+                # Build team list for Claude assignee resolution
+                team_members = []
+                for u in self.env['res.users'].sudo().search([
+                    ('active', '=', True),
+                    ('share', '=', False),
+                ], limit=50):
+                    member = {
+                        'name': u.name,
+                        'email': u.email or u.login,
+                    }
+                    if hasattr(u, 'department_id') and u.department_id:
+                        member['department'] = u.department_id.name
+                    elif hasattr(u, 'job_title') and u.job_title:
+                        member['department'] = u.job_title
+                    team_members.append(member)
+
                 self._feed_knowledge_graph(
                     emails, claude, supa, today,
                     kg_by_account=kg_by_account,
+                    team_members=team_members,
                 )
 
                 if voyage:
@@ -225,7 +242,7 @@ class IntelligenceEngine(models.Model):
     # ── Knowledge Graph ──────────────────────────────────────────────────────
 
     def _feed_knowledge_graph(self, emails, claude, supa, today,
-                              kg_by_account=None):
+                              kg_by_account=None, team_members=None):
         """Alimenta el Knowledge Graph con datos extraídos.
 
         Si kg_by_account se proporciona (pre-extraído por analyze_account_full),
@@ -264,6 +281,7 @@ class IntelligenceEngine(models.Model):
 
         ActionItem = self.env['intelligence.action.item'].sudo()
         Partner = self.env['res.partner'].sudo()
+        User = self.env['res.users'].sudo()
 
         for account, acct_emails in by_account.items():
             if not acct_emails:
@@ -274,7 +292,10 @@ class IntelligenceEngine(models.Model):
             if not kg:
                 email_text = analysis.format_emails_for_claude(acct_emails, {})
                 try:
-                    kg = claude.extract_knowledge(email_text, account)
+                    kg = claude.extract_knowledge(
+                        email_text, account,
+                        team_members=team_members,
+                    )
                 except Exception as exc:
                     _logger.warning('KG extraction failed for %s: %s', account, exc)
                     continue
@@ -325,11 +346,35 @@ class IntelligenceEngine(models.Model):
             # Guardar action items en Supabase + Odoo
             for item in kg.get('action_items', []):
                 try:
-                    assignee_ent = supa.get_entity_by_name(item.get('assignee', ''))
-                    related_ent = supa.get_entity_by_name(item.get('related_to', ''))
+                    # Resolve assignee: Claude gives a name, we find the user
+                    assignee_name = item.get('assignee', '')
+                    assignee_user = False
+                    assignee_email = None
+                    if assignee_name:
+                        assignee_user = User.search([
+                            '|', ('name', 'ilike', assignee_name),
+                            ('login', 'ilike', assignee_name),
+                        ], limit=1)
+                        if assignee_user:
+                            assignee_email = (
+                                assignee_user.email or assignee_user.login)
+                            assignee_name = assignee_user.name
+
+                    # Resolve related contact
+                    related = item.get('related_to', '')
+                    partner = False
+                    if related:
+                        partner = Partner.search([
+                            '|', ('name', 'ilike', related),
+                            ('email', 'ilike', related),
+                        ], limit=1)
+
+                    # Save to Supabase
                     result = supa.save_action_item({
-                        'assignee_name': item.get('assignee', ''),
+                        'assignee_name': assignee_name,
+                        'assignee_email': assignee_email,
                         'description': item.get('description', ''),
+                        'reason': item.get('reason'),
                         'action_type': item.get('type', 'other'),
                         'priority': item.get('priority', 'medium'),
                         'due_date': item.get('due_date'),
@@ -340,19 +385,16 @@ class IntelligenceEngine(models.Model):
                         if result and isinstance(result, list)
                         else False
                     )
-                    partner = False
-                    related = item.get('related_to', '')
-                    if related:
-                        partner = Partner.search([
-                            '|', ('name', 'ilike', related),
-                            ('email', 'ilike', related),
-                        ], limit=1)
+
+                    # Save to Odoo
                     ActionItem.create({
                         'name': item.get('description', '')[:200],
                         'action_type': item.get('type', 'other'),
                         'priority': item.get('priority', 'medium'),
                         'due_date': item.get('due_date') or False,
                         'partner_id': partner.id if partner else False,
+                        'assignee_id': (
+                            assignee_user.id if assignee_user else False),
                         'source_date': today,
                         'source_account': account,
                         'supabase_id': supa_id,
