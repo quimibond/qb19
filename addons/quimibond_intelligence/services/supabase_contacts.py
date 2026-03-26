@@ -404,19 +404,16 @@ class SupabaseContactsMixin:
 
     def sync_company_odoo_details(self, company_id: int,
                                   odoo_partner_id: int, ctx: dict):
-        """Sync all Odoo detail tables from enrichment context.
-
-        Called after enrich_partner() with the ctx dict containing:
-        pending_invoices, recent_payments, pending_deliveries,
-        crm_leads, pending_activities, credit_notes, etc.
-        """
+        """Sync all Odoo detail tables from enrichment context."""
         # Invoices (pending + credit notes as out_refund)
         invoices = []
         for inv in ctx.get('pending_invoices', []):
+            inv = dict(inv)  # avoid mutating original
             inv.setdefault('move_type', 'out_invoice')
             inv.setdefault('payment_state', 'not_paid')
             invoices.append(inv)
         for cn in ctx.get('credit_notes', []):
+            cn = dict(cn)
             cn.setdefault('move_type', 'out_refund')
             cn.setdefault('payment_state', 'paid')
             invoices.append(cn)
@@ -460,6 +457,16 @@ class SupabaseContactsMixin:
         self.sync_odoo_activities(
             company_id, odoo_partner_id,
             ctx.get('pending_activities', []),
+        )
+
+        _logger.info(
+            'odoo_details partner=%s: inv=%d pay=%d del=%d crm=%d act=%d',
+            odoo_partner_id,
+            len(invoices),
+            len(ctx.get('recent_payments', [])),
+            len(ctx.get('pending_deliveries', [])),
+            len(ctx.get('crm_leads', [])),
+            len(ctx.get('pending_activities', [])),
         )
 
     def get_company_contacts(self, company_id: int) -> list:
