@@ -808,19 +808,14 @@ class SupabaseMetricsMixin:
                     'opportunity_signals': opportunity_signals,
                 }
 
-                # Include company_id from contact data
+                # All records must have same keys for PostgREST batch
                 cd = contact_data_map.get(email_addr)
-                if cd and cd.get('company_id'):
-                    score_record['company_id'] = cd['company_id']
-
-                # Include payment_compliance_score from contact
-                if cd and cd.get('payment_compliance_score') is not None:
-                    score_record['payment_compliance_score'] = cd[
-                        'payment_compliance_score']
-
-                # Include previous_score for tracking delta
-                if prev_score is not None:
-                    score_record['previous_score'] = round(prev_score, 1)
+                score_record['company_id'] = (
+                    cd.get('company_id') if cd else None)
+                score_record['payment_compliance_score'] = (
+                    cd.get('payment_compliance_score') if cd else None)
+                score_record['previous_score'] = (
+                    round(prev_score, 1) if prev_score is not None else None)
 
                 scores_to_save.append(score_record)
 
