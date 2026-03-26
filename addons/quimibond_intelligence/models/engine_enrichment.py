@@ -298,7 +298,6 @@ class IntelligenceEngine(models.Model):
                 companies_data[cpid] = {
                     'canonical_name': company_name.lower().strip(),
                     'name': company_name,
-                    'odoo_partner_id': cpid,
                     'is_customer': pdata.get('is_customer', False),
                     'is_supplier': pdata.get('is_supplier', False),
                 }
@@ -413,8 +412,14 @@ class IntelligenceEngine(models.Model):
                     company_patch['delivery_otd_rate'] = delivery['on_time_rate']
 
                 if company_patch:
+                    # Set odoo_partner_id on the company
+                    company_patch['odoo_partner_id'] = cpid
+                    # PATCH by canonical_name (the upsert key)
+                    from urllib.parse import quote as _quote
+                    cn = _quote(
+                        companies_data[cpid]['canonical_name'], safe='')
                     supa._request(
-                        f'/rest/v1/companies?odoo_partner_id=eq.{cpid}',
+                        f'/rest/v1/companies?canonical_name=eq.{cn}',
                         'PATCH', company_patch,
                         extra_headers={'Prefer': 'return=minimal'},
                     )
