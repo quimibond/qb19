@@ -92,18 +92,23 @@ class IntelligenceEngine(models.Model):
                         account_departments, supa=supa,
                     )
                 )
-                supa.save_account_summaries(account_summaries, today)
+
+                # Save summaries immediately (don't wait for later steps)
+                if account_summaries:
+                    supa.save_account_summaries(account_summaries, today)
 
                 threads = self._build_threads(emails, cfg)
                 metrics = analysis.compute_metrics(emails, threads, cfg)
-                supa.save_metrics(metrics, today)
+                if metrics:
+                    supa.save_metrics(metrics, today)
 
                 alerts = analysis.generate_alerts(
                     threads, metrics, cfg,
                     account_summaries=account_summaries,
                     odoo_ctx=odoo_context,
                 )
-                supa.save_alerts(alerts, today)
+                if alerts:
+                    supa.save_alerts(alerts, today)
 
                 # Build team list for Claude assignee resolution
                 team_members = []
@@ -178,7 +183,7 @@ class IntelligenceEngine(models.Model):
         # to avoid overwhelming Claude with too many sequential requests
         sorted_accounts = sorted(
             by_account.items(), key=lambda x: len(x[1]), reverse=True,
-        )[:15]  # Max 15 accounts per run to avoid Claude overload
+        )[:8]  # Max 8 accounts per run (~8 min, within Odoo.sh 900s limit)
 
         for account, acct_emails in sorted_accounts:
             dept = account_departments.get(account, 'Otro')
