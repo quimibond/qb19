@@ -314,7 +314,8 @@ class IntelligenceEngine(models.Model):
                 )
                 _logger.info('✓ %d companies upserted', len(company_batches))
             except Exception as exc:
-                _logger.warning('batch companies upsert: %s', exc)
+                _logger.warning('batch companies upsert (%d records): %s',
+                                len(company_batches), exc)
 
         # ── Phase 2: Batch upsert contacts ──────────────────────────────────
         contact_batch = []
@@ -367,7 +368,8 @@ class IntelligenceEngine(models.Model):
                 synced += len(chunk)
             except Exception as exc:
                 failed += len(chunk)
-                _logger.debug('batch contacts chunk %d: %s', i, exc)
+                _logger.warning('batch contacts chunk %d (%d records): %s',
+                                i, len(chunk), exc)
 
         # ── Phase 3: Sync company operational data ──────────────────────────
         companies_synced = 0
