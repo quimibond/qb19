@@ -1,0 +1,25 @@
+<odoo>
+    <record id="action_custom_weighing" model="ir.actions.act_window">
+        <field name="name">Registro de Pesaje</field>
+        <field name="res_model">mrp.weigh.roll.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_workorder_id': active_id}</field>
+    </record>
+
+    <record id="mrp_workorder_view_tree_inherit_weigh" model="ir.ui.view">
+        <field name="name">mrp.workorder.view.list.inherit.weigh</field>
+        <field name="model">mrp.workorder</field>
+        <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <button name="%(pesaje_rollos_tejido.action_custom_weighing)d" 
+                        type="action" 
+                        string="PESAR" 
+                        class="btn-primary" 
+                        icon="fa-balance-scale"
+                        invisible="state not in ['ready', 'progress']"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
