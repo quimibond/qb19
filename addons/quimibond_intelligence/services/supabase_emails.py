@@ -86,9 +86,27 @@ class SupabaseEmailsMixin:
                 'account': t['account'],
             })
         if batch:
-            self._upsert_batch('/rest/v1/threads?on_conflict=gmail_thread_id',
-                               batch, 'merge-duplicates')
-            self._track(success=len(batch))
+            try:
+                self._upsert_batch(
+                    '/rest/v1/threads?on_conflict=gmail_thread_id',
+                    batch, 'merge-duplicates')
+                self._track(success=len(batch))
+            except Exception:
+                # Retry one-by-one to skip bad records
+                saved = 0
+                for t in batch:
+                    try:
+                        self._request(
+                            '/rest/v1/threads?on_conflict=gmail_thread_id',
+                            'POST', [t],
+                            extra_headers={
+                                'Prefer': 'resolution=merge-duplicates'},
+                        )
+                        saved += 1
+                    except Exception as exc:
+                        _logger.debug('thread skip %s: %s',
+                                      t.get('gmail_thread_id'), exc)
+                self._track(success=saved)
         _logger.info('✓ %d threads guardados', len(batch))
 
     # ── Embeddings ───────────────────────────────────────────────────────────

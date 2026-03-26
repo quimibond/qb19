@@ -300,14 +300,11 @@ class IntelligenceEngine(models.Model):
                 'odoo_user_id': u.id,
                 'name': u.name,
                 'email': u.email or u.login,
-                'login': u.login,
                 'department': dept,
                 'job_title': job,
-                'active': u.active,
                 'pending_activities_count': pending,
                 'overdue_activities_count': overdue,
-                'activities_json': json.dumps(
-                    activities, default=str, ensure_ascii=False),
+                'activities_json': activities,
                 'updated_at': datetime.now().isoformat(),
             })
 
