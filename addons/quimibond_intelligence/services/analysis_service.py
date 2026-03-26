@@ -50,8 +50,8 @@ class AnalysisService:
     @staticmethod
     def format_emails_for_claude(emails: list, odoo_ctx: dict,
                                  person_profiles: dict = None,
-                                 max_emails: int = 15,
-                                 max_body: int = 600) -> str:
+                                 max_emails: int = 10,
+                                 max_body: int = 400) -> str:
         """Formatea emails con contexto profundo de Odoo + perfiles conocidos.
 
         Limits: max_emails per account, max_body chars per email body.

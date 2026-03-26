@@ -240,7 +240,7 @@ class ClaudeService:
         )
 
         # Hard cap on email text to prevent timeouts
-        email_text = email_text[:10000]
+        email_text = email_text[:6000]
 
         prompt = (
             f'{department} ({account}): {ext_count} ext + {int_count} int emails.\n'
@@ -272,7 +272,7 @@ class ClaudeService:
             f'EMAILS:\n{email_text}'
         )
 
-        text = self._call(system, prompt, max_tokens=4000)
+        text = self._call(system, prompt, max_tokens=8000)
         parsed = self._extract_json(text)
 
         # Normalizar estructura
