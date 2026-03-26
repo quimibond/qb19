@@ -106,13 +106,20 @@ class IntelligenceEngine(models.Model):
                 supa.save_alerts(alerts, today)
 
                 # Build team list for Claude assignee resolution
-                team_members = [
-                    {'name': u.name, 'email': u.email or u.login}
-                    for u in self.env['res.users'].sudo().search([
-                        ('active', '=', True),
-                        ('share', '=', False),
-                    ], limit=50)
-                ]
+                team_members = []
+                for u in self.env['res.users'].sudo().search([
+                    ('active', '=', True),
+                    ('share', '=', False),
+                ], limit=50):
+                    member = {
+                        'name': u.name,
+                        'email': u.email or u.login,
+                    }
+                    if hasattr(u, 'department_id') and u.department_id:
+                        member['department'] = u.department_id.name
+                    elif hasattr(u, 'job_title') and u.job_title:
+                        member['department'] = u.job_title
+                    team_members.append(member)
 
                 self._feed_knowledge_graph(
                     emails, claude, supa, today,

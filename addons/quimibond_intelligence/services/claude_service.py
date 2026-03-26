@@ -598,8 +598,10 @@ class ClaudeService:
             + '- action_items.assignee: USA NOMBRES EXACTOS del equipo interno listado abajo.\n'
             + '- Solo JSON valido.'
             + (('\n\nEQUIPO INTERNO (asigna action items a estas personas):\n'
-                + '\n'.join(f'- {m["name"]} ({m.get("email", "")})'
-                           for m in (team_members or []))
+                + '\n'.join(
+                    f'- {m["name"]} ({m.get("email", "")}'
+                    f'{", " + m["department"] if m.get("department") else ""})'
+                    for m in (team_members or []))
                 ) if team_members else ''
                )
         )
