@@ -42,11 +42,18 @@ class IntelligenceEngine(models.Model):
                 products = self._sync_products(supa)
                 lines = self._sync_order_lines(supa)
                 users = self._sync_users(supa)
+                invoices = self._sync_invoices(supa)
+                payments = self._sync_payments(supa)
+                deliveries = self._sync_deliveries(supa)
+                crm = self._sync_crm_leads(supa)
+                activities = self._sync_activities(supa)
 
                 _logger.info(
                     '✓ Odoo tables sync: %d products, %d order lines, '
-                    '%d users (%.1fs)',
-                    products, lines, users, time.time() - start,
+                    '%d users, %d invoices, %d payments, %d deliveries, '
+                    '%d CRM leads, %d activities (%.1fs)',
+                    products, lines, users, invoices, payments,
+                    deliveries, crm, activities, time.time() - start,
                 )
         except Exception as exc:
             _logger.error('run_sync_odoo_tables: %s', exc, exc_info=True)
@@ -320,3 +327,343 @@ class IntelligenceEngine(models.Model):
         except Exception as exc:
             _logger.debug('sync_users: %s', exc)
             return 0
+
+    # ── Invoices ─────────────────────────────────────────────────────────────
+
+    def _sync_invoices(self, supa) -> int:
+        """Sync invoices (out_invoice + out_refund) from account.move."""
+        try:
+            Move = self.env['account.move'].sudo()
+        except KeyError:
+            return 0
+
+        today = fields.Date.today()
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+
+        invoices = Move.search([
+            ('move_type', 'in', ['out_invoice', 'out_refund']),
+            ('state', '=', 'posted'),
+            ('invoice_date', '>=', cutoff),
+        ], limit=5000)
+
+        if not invoices:
+            return 0
+
+        batch = []
+        for inv in invoices:
+            cpid = (inv.partner_id.commercial_partner_id.id
+                    if inv.partner_id.commercial_partner_id
+                    else inv.partner_id.id)
+
+            days_overdue = 0
+            if (inv.payment_state in ('not_paid', 'partial')
+                    and inv.invoice_date_due and inv.invoice_date_due < today):
+                days_overdue = (today - inv.invoice_date_due).days
+
+            days_to_pay = None
+            payment_status = None
+            if inv.payment_state in ('paid', 'in_payment'):
+                # Find payment date from reconciled lines
+                try:
+                    pay_date = max(
+                        (l.date for l in inv.line_ids.mapped(
+                            'matched_credit_ids.credit_move_id')
+                         if l.date),
+                        default=None,
+                    )
+                    if pay_date and inv.invoice_date_due:
+                        days_to_pay = (pay_date - inv.invoice_date_due).days
+                        if days_to_pay <= 3:
+                            payment_status = 'on_time'
+                        elif days_to_pay < 0:
+                            payment_status = 'early'
+                        else:
+                            payment_status = 'late'
+                except Exception:
+                    pass
+
+            batch.append({
+                'odoo_partner_id': cpid,
+                'name': inv.name,
+                'move_type': inv.move_type,
+                'amount_total': round(inv.amount_total, 2),
+                'amount_residual': round(inv.amount_residual, 2),
+                'currency': inv.currency_id.name if inv.currency_id else 'MXN',
+                'invoice_date': (inv.invoice_date.strftime('%Y-%m-%d')
+                                 if inv.invoice_date else None),
+                'due_date': (inv.invoice_date_due.strftime('%Y-%m-%d')
+                             if inv.invoice_date_due else None),
+                'state': inv.state,
+                'payment_state': inv.payment_state,
+                'days_overdue': days_overdue,
+                'days_to_pay': days_to_pay,
+                'payment_status': payment_status,
+                'ref': inv.ref or '',
+            })
+
+        synced = 0
+        for i in range(0, len(batch), 200):
+            chunk = batch[i:i + 200]
+            try:
+                supa._request(
+                    '/rest/v1/odoo_invoices?on_conflict=odoo_partner_id,name',
+                    'POST', chunk,
+                    extra_headers={'Prefer': 'resolution=merge-duplicates'},
+                )
+                synced += len(chunk)
+            except Exception as exc:
+                _logger.debug('sync invoices batch %d: %s', i, exc)
+
+        return synced
+
+    # ── Payments ─────────────────────────────────────────────────────────────
+
+    def _sync_payments(self, supa) -> int:
+        """Sync posted payments from account.payment."""
+        try:
+            Payment = self.env['account.payment'].sudo()
+        except KeyError:
+            return 0
+
+        cutoff = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+
+        payments = Payment.search([
+            ('state', '=', 'posted'),
+            ('date', '>=', cutoff),
+        ], limit=5000)
+
+        if not payments:
+            return 0
+
+        batch = []
+        for p in payments:
+            cpid = (p.partner_id.commercial_partner_id.id
+                    if p.partner_id and p.partner_id.commercial_partner_id
+                    else (p.partner_id.id if p.partner_id else 0))
+            if not cpid:
+                continue
+
+            batch.append({
+                'odoo_partner_id': cpid,
+                'name': p.name,
+                'payment_type': p.payment_type or 'inbound',
+                'amount': round(p.amount, 2),
+                'currency': p.currency_id.name if p.currency_id else 'MXN',
+                'payment_date': p.date.strftime('%Y-%m-%d') if p.date else None,
+                'state': p.state,
+            })
+
+        synced = 0
+        for i in range(0, len(batch), 200):
+            chunk = batch[i:i + 200]
+            try:
+                supa._request(
+                    '/rest/v1/odoo_payments?on_conflict=odoo_partner_id,name',
+                    'POST', chunk,
+                    extra_headers={'Prefer': 'resolution=merge-duplicates'},
+                )
+                synced += len(chunk)
+            except Exception as exc:
+                _logger.debug('sync payments batch %d: %s', i, exc)
+
+        return synced
+
+    # ── Deliveries ───────────────────────────────────────────────────────────
+
+    def _sync_deliveries(self, supa) -> int:
+        """Sync outgoing deliveries from stock.picking."""
+        try:
+            Picking = self.env['stock.picking'].sudo()
+        except KeyError:
+            return 0
+
+        cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        today_dt = fields.Datetime.now()
+
+        # Pending + recent completed
+        pickings = Picking.search([
+            ('picking_type_code', '=', 'outgoing'),
+            '|',
+            ('state', 'not in', ['done', 'cancel']),
+            ('date_done', '>=', cutoff),
+        ], limit=3000)
+
+        if not pickings:
+            return 0
+
+        batch = []
+        for pk in pickings:
+            cpid = (pk.partner_id.commercial_partner_id.id
+                    if pk.partner_id and pk.partner_id.commercial_partner_id
+                    else (pk.partner_id.id if pk.partner_id else 0))
+            if not cpid:
+                continue
+
+            is_late = (pk.state not in ('done', 'cancel')
+                       and pk.scheduled_date
+                       and pk.scheduled_date < today_dt)
+
+            lead_time = None
+            if pk.state == 'done' and pk.date_done and pk.create_date:
+                lead_time = round(
+                    (pk.date_done - pk.create_date).total_seconds() / 86400, 1)
+
+            batch.append({
+                'odoo_partner_id': cpid,
+                'name': pk.name,
+                'picking_type': (pk.picking_type_id.name
+                                 if pk.picking_type_id else ''),
+                'origin': pk.origin or '',
+                'scheduled_date': (pk.scheduled_date.strftime('%Y-%m-%d')
+                                   if pk.scheduled_date else None),
+                'date_done': (pk.date_done.isoformat()
+                              if pk.date_done else None),
+                'create_date': (pk.create_date.strftime('%Y-%m-%d')
+                                if pk.create_date else None),
+                'state': pk.state,
+                'is_late': is_late,
+                'lead_time_days': lead_time,
+            })
+
+        synced = 0
+        for i in range(0, len(batch), 200):
+            chunk = batch[i:i + 200]
+            try:
+                supa._request(
+                    '/rest/v1/odoo_deliveries?on_conflict=odoo_partner_id,name',
+                    'POST', chunk,
+                    extra_headers={'Prefer': 'resolution=merge-duplicates'},
+                )
+                synced += len(chunk)
+            except Exception as exc:
+                _logger.debug('sync deliveries batch %d: %s', i, exc)
+
+        return synced
+
+    # ── CRM Leads ────────────────────────────────────────────────────────────
+
+    def _sync_crm_leads(self, supa) -> int:
+        """Sync active CRM leads and opportunities."""
+        try:
+            Lead = self.env['crm.lead'].sudo()
+        except KeyError:
+            return 0
+
+        today = fields.Date.today()
+        leads = Lead.search([
+            ('active', '=', True),
+        ], limit=2000)
+
+        if not leads:
+            return 0
+
+        batch = []
+        for lead in leads:
+            cpid = (lead.partner_id.commercial_partner_id.id
+                    if lead.partner_id and lead.partner_id.commercial_partner_id
+                    else (lead.partner_id.id if lead.partner_id else None))
+
+            days_open = 0
+            if lead.create_date:
+                days_open = (datetime.now() - lead.create_date).days
+
+            batch.append({
+                'odoo_partner_id': cpid,
+                'odoo_lead_id': lead.id,
+                'name': lead.name or '',
+                'lead_type': lead.type or 'lead',
+                'stage': lead.stage_id.name if lead.stage_id else '',
+                'expected_revenue': round(lead.expected_revenue or 0, 2),
+                'probability': round(lead.probability or 0, 1),
+                'date_deadline': (lead.date_deadline.strftime('%Y-%m-%d')
+                                  if lead.date_deadline else None),
+                'create_date': (lead.create_date.strftime('%Y-%m-%d')
+                                if lead.create_date else None),
+                'days_open': days_open,
+                'assigned_user': lead.user_id.name if lead.user_id else '',
+                'active': lead.active,
+            })
+
+        synced = 0
+        for i in range(0, len(batch), 200):
+            chunk = batch[i:i + 200]
+            try:
+                supa._request(
+                    '/rest/v1/odoo_crm_leads?on_conflict=odoo_lead_id',
+                    'POST', chunk,
+                    extra_headers={'Prefer': 'resolution=merge-duplicates'},
+                )
+                synced += len(chunk)
+            except Exception as exc:
+                _logger.debug('sync CRM leads batch %d: %s', i, exc)
+
+        return synced
+
+    # ── Activities ───────────────────────────────────────────────────────────
+
+    def _sync_activities(self, supa) -> int:
+        """Sync pending activities (all models) to Supabase."""
+        try:
+            Activity = self.env['mail.activity'].sudo()
+        except KeyError:
+            return 0
+
+        today = fields.Date.today()
+
+        # All pending activities
+        activities = Activity.search([], limit=5000)
+
+        if not activities:
+            return 0
+
+        # Delete all existing activities (they're recreated each time)
+        try:
+            supa._request('/rest/v1/odoo_activities?id=gt.0', 'DELETE',
+                          extra_headers={'Prefer': 'return=minimal'})
+        except Exception:
+            pass
+
+        batch = []
+        for act in activities:
+            # Resolve partner from activity's record
+            partner_id = None
+            if act.res_model == 'res.partner':
+                partner_id = act.res_id
+            elif act.res_model in ('sale.order', 'account.move',
+                                    'purchase.order', 'crm.lead'):
+                try:
+                    record = self.env[act.res_model].sudo().browse(act.res_id)
+                    if record.exists() and record.partner_id:
+                        cpid = record.partner_id.commercial_partner_id
+                        partner_id = cpid.id if cpid else record.partner_id.id
+                except Exception:
+                    pass
+
+            batch.append({
+                'odoo_partner_id': partner_id,
+                'activity_type': (act.activity_type_id.name
+                                  if act.activity_type_id else 'Tarea'),
+                'summary': act.summary or act.note or '',
+                'res_model': act.res_model or '',
+                'res_id': act.res_id,
+                'date_deadline': (act.date_deadline.strftime('%Y-%m-%d')
+                                  if act.date_deadline else None),
+                'assigned_to': act.user_id.name if act.user_id else '',
+                'is_overdue': (act.date_deadline < today
+                               if act.date_deadline else False),
+            })
+
+        synced = 0
+        for i in range(0, len(batch), 200):
+            chunk = batch[i:i + 200]
+            try:
+                supa._request(
+                    '/rest/v1/odoo_activities',
+                    'POST', chunk,
+                    extra_headers={'Prefer': 'return=minimal'},
+                )
+                synced += len(chunk)
+            except Exception as exc:
+                _logger.debug('sync activities batch %d: %s', i, exc)
+
+        return synced
