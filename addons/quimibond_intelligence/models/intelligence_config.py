@@ -304,6 +304,35 @@ class IntelligenceConfig(models.TransientModel):
         """
         self.action_save()
         engine = self.env['intelligence.engine']
+
+        # ── Disable conflicting crons during setup to avoid
+        # SerializationFailure from concurrent ir_config_parameter writes ──
+        cron_xmlids = [
+            'cron_supabase_sync',
+            'cron_sync_emails',
+            'cron_enrich_only',
+            'cron_analyze_emails',
+            'cron_update_scores',
+            'cron_odoo_tables_sync',
+            'cron_reverse_sync',
+            'cron_briefing_replies',
+        ]
+        disabled_crons = []
+        for xmlid in cron_xmlids:
+            try:
+                cron = self.env.ref(
+                    f'quimibond_intelligence.{xmlid}', raise_if_not_found=False)
+                if cron and cron.active:
+                    cron.sudo().write({'active': False})
+                    disabled_crons.append(cron)
+            except Exception:
+                pass
+        if disabled_crons:
+            # Commit cron disable so other workers see it immediately
+            self.env.cr.commit()
+            _logger.info('Setup: %d crons deshabilitados temporalmente',
+                         len(disabled_crons))
+
         steps = [
             ('Enrich Contactos (Companies + Contacts)',
              engine.run_enrich_only),
@@ -314,25 +343,33 @@ class IntelligenceConfig(models.TransientModel):
             ('Sync Odoo → Supabase', engine.run_supabase_sync),
         ]
         ok, failed = 0, []
-        for name, fn in steps:
-            try:
-                _logger.info('── Setup Inicial: %s ──', name)
-                # Use savepoint to isolate each step — if one fails,
-                # the transaction is rolled back to the savepoint and
-                # subsequent steps can still execute.
-                self.env.cr.execute('SAVEPOINT setup_step')
-                fn()
-                self.env.cr.execute('RELEASE SAVEPOINT setup_step')
-                ok += 1
-            except Exception as exc:
-                _logger.error('Setup Inicial — %s falló: %s', name, exc,
-                              exc_info=True)
-                failed.append(name)
+        try:
+            for name, fn in steps:
                 try:
-                    self.env.cr.execute(
-                        'ROLLBACK TO SAVEPOINT setup_step')
+                    _logger.info('── Setup Inicial: %s ──', name)
+                    self.env.cr.execute('SAVEPOINT setup_step')
+                    fn()
+                    self.env.cr.execute('RELEASE SAVEPOINT setup_step')
+                    ok += 1
+                except Exception as exc:
+                    _logger.error('Setup Inicial — %s falló: %s', name, exc,
+                                  exc_info=True)
+                    failed.append(name)
+                    try:
+                        self.env.cr.execute(
+                            'ROLLBACK TO SAVEPOINT setup_step')
+                    except Exception:
+                        pass
+        finally:
+            # ── Re-enable crons regardless of success/failure ──
+            for cron in disabled_crons:
+                try:
+                    cron.sudo().write({'active': True})
                 except Exception:
-                    pass  # savepoint may already be released
+                    pass
+            if disabled_crons:
+                _logger.info('Setup: %d crons re-habilitados',
+                             len(disabled_crons))
 
         if failed:
             msg = f'{ok}/{len(steps)} pasos OK. Fallaron: {", ".join(failed)}. Revisa los logs.'
