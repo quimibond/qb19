@@ -343,16 +343,21 @@ class IntelligenceEngine(models.Model):
                 }
                 if pid:
                     record['odoo_partner_id'] = pid
-                # odoo_context as JSON
-                odoo_ctx = {
-                    k: v for k, v in pdata.items()
-                    if k not in ('_summary', '_resolved_company_name')
-                    and v is not None
-                }
+                # odoo_context as dict (PostgREST handles jsonb natively)
+                odoo_ctx = {}
+                for k, v in pdata.items():
+                    if k in ('_summary', '_resolved_company_name'):
+                        continue
+                    if v is None:
+                        continue
+                    # Convert non-serializable values to strings
+                    try:
+                        json.dumps(v)
+                        odoo_ctx[k] = v
+                    except (TypeError, ValueError):
+                        odoo_ctx[k] = str(v)
                 if odoo_ctx:
-                    record['odoo_context'] = json.dumps(
-                        odoo_ctx, default=str, ensure_ascii=False,
-                    )
+                    record['odoo_context'] = odoo_ctx
                 contact_batch.append(record)
 
         # Batch upsert contacts (50 at a time)
@@ -370,34 +375,18 @@ class IntelligenceEngine(models.Model):
                 _logger.warning('batch contacts chunk %d (%d records): %s',
                                 i, len(chunk), exc)
 
-        # ── Phase 3: Sync company operational data ──────────────────────────
+        # ── Phase 3: Update company financial summaries ────────────────────
+        from urllib.parse import quote as _quote
         companies_synced = 0
-        for cpid, pdata in companies_data.items():
+        for cpid, cdata in companies_data.items():
             try:
-                company_patch = {}
-                for field in ('recent_sales', 'pending_invoices',
-                              'recent_payments', 'recent_purchases',
-                              'crm_leads', 'pending_deliveries',
-                              'manufacturing', 'pending_activities',
-                              'payment_behavior', 'aging', 'products',
-                              'inventory_intelligence', 'purchase_patterns'):
-                    # Find first partner with this cpid that has data
-                    for em, pd in partners.items():
-                        if pd.get('commercial_partner_id') == cpid:
-                            val = pd.get(field)
-                            if val is not None:
-                                company_patch[field] = (
-                                    json.dumps(val, default=str,
-                                               ensure_ascii=False)
-                                    if not isinstance(val, str) else val
-                                )
-                            break
-
-                # Totales from first matching partner
                 first_pd = next(
                     (pd for pd in partners.values()
                      if pd.get('commercial_partner_id') == cpid), {}
                 )
+                company_patch = {'odoo_partner_id': cpid}
+
+                # Only send columns that exist in the companies table
                 if first_pd.get('total_invoiced'):
                     company_patch['lifetime_value'] = first_pd['total_invoiced']
                 if first_pd.get('credit_limit'):
@@ -410,20 +399,27 @@ class IntelligenceEngine(models.Model):
                 delivery = first_pd.get('delivery_performance', {})
                 if delivery.get('on_time_rate') is not None:
                     company_patch['delivery_otd_rate'] = delivery['on_time_rate']
+                # Store full Odoo data in odoo_context (as dict, not string)
+                odoo_ctx = {}
+                for field in ('recent_sales', 'pending_invoices',
+                              'recent_payments', 'recent_purchases',
+                              'crm_leads', 'pending_deliveries',
+                              'manufacturing', 'pending_activities',
+                              'payment_behavior', 'aging', 'products',
+                              'inventory_intelligence', 'purchase_patterns'):
+                    val = first_pd.get(field)
+                    if val is not None:
+                        odoo_ctx[field] = val
+                if odoo_ctx:
+                    company_patch['odoo_context'] = odoo_ctx
 
-                if company_patch:
-                    # Set odoo_partner_id on the company
-                    company_patch['odoo_partner_id'] = cpid
-                    # PATCH by canonical_name (the upsert key)
-                    from urllib.parse import quote as _quote
-                    cn = _quote(
-                        companies_data[cpid]['canonical_name'], safe='')
-                    supa._request(
-                        f'/rest/v1/companies?canonical_name=eq.{cn}',
-                        'PATCH', company_patch,
-                        extra_headers={'Prefer': 'return=minimal'},
-                    )
-                    companies_synced += 1
+                cn = _quote(cdata['canonical_name'], safe='')
+                supa._request(
+                    f'/rest/v1/companies?canonical_name=eq.{cn}',
+                    'PATCH', company_patch,
+                    extra_headers={'Prefer': 'return=minimal'},
+                )
+                companies_synced += 1
             except Exception as exc:
                 _logger.debug('sync_company %s: %s', cpid, exc)
 
