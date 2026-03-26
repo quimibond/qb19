@@ -266,7 +266,7 @@ class SupabaseContactsMixin:
         if not invoices:
             return
         batch = [{
-            'company_id': company_id,
+            
             'odoo_partner_id': odoo_partner_id,
             'name': inv['name'],
             'move_type': inv.get('move_type', 'out_invoice'),
@@ -298,7 +298,7 @@ class SupabaseContactsMixin:
         if not payments:
             return
         batch = [{
-            'company_id': company_id,
+            
             'odoo_partner_id': odoo_partner_id,
             'name': p['name'],
             'payment_type': p.get('payment_type', 'inbound'),
@@ -322,7 +322,7 @@ class SupabaseContactsMixin:
         if not deliveries:
             return
         batch = [{
-            'company_id': company_id,
+            
             'odoo_partner_id': odoo_partner_id,
             'name': d['name'],
             'picking_type': d.get('type'),
@@ -346,7 +346,7 @@ class SupabaseContactsMixin:
         if not leads:
             return
         batch = [{
-            'company_id': company_id,
+            
             'odoo_partner_id': odoo_partner_id,
             'odoo_lead_id': lead.get('odoo_lead_id', lead.get('id', 0)),
             'name': lead['name'],
@@ -386,7 +386,7 @@ class SupabaseContactsMixin:
         except Exception:
             pass
         batch = [{
-            'company_id': company_id,
+            
             'odoo_partner_id': odoo_partner_id,
             'activity_type': a.get('type', 'Tarea'),
             'summary': a.get('summary', ''),

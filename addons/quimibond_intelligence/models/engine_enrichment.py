@@ -428,7 +428,7 @@ class IntelligenceEngine(models.Model):
                 )
                 if first_pd:
                     supa.sync_company_odoo_details(
-                        0, cpid, first_pd)  # company_id=0, resolved by trigger
+                        None, cpid, first_pd)  # trigger resolves company_id
                     odoo_detail_count += 1
             except Exception as exc:
                 _logger.debug('odoo_detail %s: %s', cpid, exc)
