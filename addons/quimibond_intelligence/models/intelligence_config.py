@@ -248,12 +248,24 @@ class IntelligenceConfig(models.TransientModel):
         Después de esto, ejecutar manualmente:
         - "Analizar Emails" (usa Claude, puede tomar varios minutos)
         - "Pipeline completo" para el primer briefing
+
+        Orden de ejecución (por dependencias):
+        1. Enrich Contactos → crea Companies + Contacts en Supabase
+        2. Sync Datos Odoo → llena las 8 tablas (invoices, payments, etc.)
+           Depende de companies existentes para resolver company_id
+        3. Sync Emails (Gmail) → descarga emails, crea threads
+           Depende de contacts para linkear sender_contact_id
+        4. Actualizar Scores → calcula health scores
+           Depende de contacts + emails
+        5. Sync Odoo → Supabase → sincroniza alertas/acciones de Odoo
         """
         self.action_save()
         engine = self.env['intelligence.engine']
         steps = [
-            ('Enrich Contactos', engine.run_enrich_only),
-            ('Sync Productos/Ordenes/Equipo', engine.run_sync_odoo_tables),
+            ('Enrich Contactos (Companies + Contacts)',
+             engine.run_enrich_only),
+            ('Sync Datos Odoo (Invoices, Payments, Deliveries, CRM)',
+             engine.run_sync_odoo_tables),
             ('Sync Emails (Gmail)', engine.run_sync_emails),
             ('Actualizar Scores', engine.run_update_scores),
             ('Sync Odoo → Supabase', engine.run_supabase_sync),
