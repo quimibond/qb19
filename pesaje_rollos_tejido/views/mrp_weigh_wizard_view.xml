@@ -1,0 +1,46 @@
+<odoo>
+    <record id="view_mrp_weigh_roll_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.weigh.roll.wizard.form</field>
+        <field name="model">mrp.weigh.roll.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Registro de Pesaje">
+                <sheet>
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Orden de Trabajo: </strong> <field name="workorder_id" readonly="1"/><br/>
+                            <strong>Centro de Trabajo: </strong> <field name="workcenter_id" readonly="1"/>
+                        </div>
+                        <div class="col-6 text-end">
+                            <strong>Artículo: </strong> <field name="product_id" readonly="1"/>
+                        </div>
+                    </div>
+                    <hr/>
+                    <div class="row">
+                        <div class="col-6 border-end">
+                            <group string="PROGRESO DE PRODUCCIÓN">
+                                <field name="qty_to_produce" readonly="1"/>
+                                <field name="qty_produced" readonly="1" decoration-success="1" style="font-weight: bold;"/>
+                                <field name="qty_produced" widget="progressbar" nolabel="1" max_field="qty_to_produce"/>
+                            </group>
+                        </div>
+                        <div class="col-6">
+                            <group string="IDENTIFICACIÓN DEL ROLLO">
+                                <field name="roll_count" readonly="1" string="Rollos Previos" style="font-weight: bold; color: #008784;"/>
+                                <field name="next_lot_name" readonly="1" style="font-weight: bold; color: #714B67; font-size: 1.1em;"/>
+                            </group>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4 mb-4 p-4 border rounded bg-light">
+                        <label for="weight" style="font-size: 1.5em; font-weight: bold;"/><br/>
+                        <field name="weight" style="font-size: 4em; font-weight: bold; width: 50%; text-align: center;" class="oe_inline"/>
+                        <span style="font-size: 2em; margin-left: 10px;">KG</span>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="confirm_weighing" string="REGISTRAR E IMPRIMIR ETIQUETA" type="object" class="btn-primary btn-lg"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
