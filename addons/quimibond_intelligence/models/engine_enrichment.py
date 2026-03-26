@@ -303,9 +303,14 @@ class IntelligenceEngine(models.Model):
                 }
                 pdata['_resolved_company_name'] = company_name.lower().strip()
 
-        # Batch upsert companies
+        # Batch upsert companies (deduplicate by canonical_name first)
         if companies_data:
-            company_batches = list(companies_data.values())
+            seen_cn = {}
+            for cpid, cdata in companies_data.items():
+                cn = cdata['canonical_name']
+                if cn not in seen_cn:
+                    seen_cn[cn] = cdata
+            company_batches = list(seen_cn.values())
             try:
                 supa._upsert_batch(
                     '/rest/v1/companies?on_conflict=canonical_name',
@@ -339,25 +344,15 @@ class IntelligenceEngine(models.Model):
                     continue
                 seen_emails.add(email)
 
+                # All records MUST have the same keys for PostgREST batch
                 record = {
                     'email': email,
+                    'name': None if is_company else partner_name,
                     'contact_type': 'external',
                     'is_customer': pdata.get('is_customer', False),
                     'is_supplier': pdata.get('is_supplier', False),
+                    'odoo_partner_id': pid if (not is_company or i == 0) and pid else None,
                 }
-
-                if is_company:
-                    # Company record: emails belong to unnamed people
-                    # Only first email gets odoo_partner_id
-                    # Name left empty — will be enriched from Gmail
-                    if i == 0 and pid:
-                        record['odoo_partner_id'] = pid
-                else:
-                    # Person record: use the partner name
-                    record['name'] = partner_name
-                    if pid:
-                        record['odoo_partner_id'] = pid
-
                 contact_batch.append(record)
 
         # Batch upsert contacts (50 at a time)
