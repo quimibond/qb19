@@ -399,9 +399,20 @@ class IntelligenceEngine(models.Model):
         companies_synced = 0
         for cpid, cdata in companies_data.items():
             try:
-                first_pd = next(
-                    (pd for pd in partners.values()
-                     if pd.get('commercial_partner_id') == cpid), {}
+                # Find the richest partner data for this company
+                # (the one with most operational fields populated)
+                candidates = [
+                    pd for pd in partners.values()
+                    if pd.get('commercial_partner_id') == cpid
+                ]
+                first_pd = max(
+                    candidates,
+                    key=lambda pd: sum(
+                        1 for f in ('pending_invoices', 'recent_payments',
+                                    'pending_deliveries', 'crm_leads',
+                                    'recent_sales', 'pending_activities')
+                        if pd.get(f)),
+                    default={},
                 )
                 company_patch = {'odoo_partner_id': cpid}
 
@@ -446,13 +457,22 @@ class IntelligenceEngine(models.Model):
         odoo_detail_count = 0
         for cpid, cdata in companies_data.items():
             try:
-                first_pd = next(
-                    (pd for pd in partners.values()
-                     if pd.get('commercial_partner_id') == cpid), {}
+                candidates = [
+                    pd for pd in partners.values()
+                    if pd.get('commercial_partner_id') == cpid
+                ]
+                best_pd = max(
+                    candidates,
+                    key=lambda pd: sum(
+                        1 for f in ('pending_invoices', 'recent_payments',
+                                    'pending_deliveries', 'crm_leads',
+                                    'pending_activities', 'credit_notes')
+                        if pd.get(f)),
+                    default={},
                 )
-                if first_pd:
+                if best_pd:
                     supa.sync_company_odoo_details(
-                        None, cpid, first_pd)  # trigger resolves company_id
+                        None, cpid, best_pd)
                     odoo_detail_count += 1
             except Exception as exc:
                 _logger.debug('odoo_detail %s: %s', cpid, exc)
