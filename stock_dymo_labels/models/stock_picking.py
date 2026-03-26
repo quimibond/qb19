@@ -36,14 +36,15 @@ class StockPicking(models.Model):
             box_no = lot[-4:] if lot else "0000"
 
             zpl_body += f"""
-                        ^XA^CI28
-                        ^CF0,50,50^FO50,50^FDREF: {ref}^FS
-                        ^CF0,40,40^FO50,110^FB700,2,0,C^FD{name}^FS
-                        ^CF0,40,40^FO50,210^FDLote: {lot}^FS
-                        ^FO600,210^FDCant: {qty}^FS
-                        ^FO50,270^FDN. CAJA: {box_no}^FS
-                        ^FO030,330^BY3^BCN,100,Y,N,N^FD{lot}^FS
-                        ^XZ"""
+^XA^CI28
+^CF0,50,50^FO50,50^FDREF: {ref}^FS
+^CF0,40,40^FO50,110^FB700,2,0,C^FD{name}^FS
+^CF0,40,40^FO50,210^FDLote: {lot}^FS
+^FO600,210^FDCant: {qty}^FS
+^FO50,270^FDN. CAJA: {box_no}^FS
+^FO030,350^BY3^BCN,100,Y,N,N^FD{lot}^FS
+^XZ"""
+
         return {
             'type': 'ir.actions.client',
             'tag': 'print_zpl_usb',
