@@ -457,11 +457,11 @@ class IntelligenceConfig(models.TransientModel):
                         ('companies', 'id'),
                         ('entities', 'id'),
                         ('facts', 'id'),
-                        ('customer_health_scores', 'id'),
+                        ('health_scores', 'id'),
                         ('revenue_metrics', 'id'),
-                        ('daily_summaries', 'id'),
+                        ('briefings', 'id'),
                         ('alerts', 'id'),
-                        ('account_summaries', 'id'),
+                        ('communication_metrics', 'id'),
                         ('threads', 'id'),
                     ]
                     supa_ok = True

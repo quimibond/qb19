@@ -99,7 +99,7 @@ class SupabaseContactsMixin:
         try:
             result = self._request(
                 f'/rest/v1/contacts?{filter_param}&limit=1'
-                '&select=id,email,name,company,company_id,role,department,'
+                '&select=id,email,name,company_id,role,department,'
                 'decision_power,communication_style,language_preference,'
                 'key_interests,personality_notes,negotiation_style,'
                 'response_pattern,influence_on_deals,interaction_count',
