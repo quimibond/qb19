@@ -284,7 +284,7 @@ class SupabaseMetricsMixin:
             pass
         try:
             ctx['openAlerts'] = self._request(
-                '/rest/v1/alerts?is_resolved=eq.false&order=created_at.desc'
+                '/rest/v1/alerts?state=neq.resolved&order=created_at.desc'
                 '&limit=20&select=alert_type,severity,title,account',
             ) or []
         except Exception:

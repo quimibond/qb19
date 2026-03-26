@@ -65,7 +65,7 @@ class IntelligenceEngine(models.Model):
                 ).strftime('%Y-%m-%d')
 
                 supa._request(
-                    '/rest/v1/alerts?is_resolved=eq.true'
+                    '/rest/v1/alerts?state=eq.resolved'
                     f'&created_at=lt.{cutoff_90d}T00:00:00Z',
                     'DELETE',
                 )

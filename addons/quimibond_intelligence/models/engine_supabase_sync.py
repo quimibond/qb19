@@ -83,6 +83,7 @@ class IntelligenceEngine(models.Model):
         for alert in alerts:
             try:
                 supa_state = ALERT_STATE_MAP.get(alert.state, 'new')
+                is_resolved = alert.state in ('resolved', 'dismissed')
                 patch = {
                     'state': supa_state,
                 }
