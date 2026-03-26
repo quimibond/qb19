@@ -188,7 +188,12 @@ class SupabaseMetricsMixin:
         failed = 0
         for s in scores:
             try:
-                encoded_email = url_quote(s["email"], safe='')
+                # Clean email: take first valid email if multi-email
+                raw_email = s.get("email", "").strip().lower()
+                clean = raw_email.split(';')[0].split(',')[0].split()[0].strip()
+                if not clean or '@' not in clean:
+                    continue
+                encoded_email = url_quote(clean, safe='')
                 patch = {
                     'relationship_score': s['total_score'],
                     'risk_level': s['risk_level'],
@@ -198,17 +203,8 @@ class SupabaseMetricsMixin:
                 if 'payment_compliance_score' in s:
                     patch['payment_compliance_score'] = s[
                         'payment_compliance_score']
-                # Score breakdown for frontend radar charts
-                patch['score_breakdown'] = {
-                    'frequency': s.get('frequency_score', 0),
-                    'responsiveness': s.get('responsiveness_score', 0),
-                    'reciprocity': s.get('reciprocity_score', 0),
-                    'sentiment': s.get('sentiment_score', 0),
-                    'payment_compliance': s.get(
-                        'payment_compliance_score', 0),
-                }
                 # Include Claude's sentiment_score (-1 to 1) if available
-                raw_sentiment = contact_sentiments.get(s['email'].lower())
+                raw_sentiment = contact_sentiments.get(clean)
                 if raw_sentiment is not None:
                     try:
                         patch['sentiment_score'] = round(
@@ -564,7 +560,16 @@ class SupabaseMetricsMixin:
         if not external:
             return
 
-        ext_emails = [c['email'].lower() for c in external]
+        # Clean emails: take first valid email from multi-email strings
+        ext_emails = []
+        for c in external:
+            raw = (c.get('email') or '').strip().lower()
+            clean = raw.split(';')[0].split(',')[0].split()[0].strip()
+            if clean and '@' in clean:
+                c['email'] = clean  # Mutate in place for downstream use
+                ext_emails.append(clean)
+            else:
+                continue
 
         # ── Batch-fetch contact data (company_id, payment_compliance) ──
         contact_data_map = {}  # email → {company_id, payment_compliance_score}
