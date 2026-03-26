@@ -467,9 +467,14 @@ REMOVED_TABLES = {
 }
 
 
+def _resolve_table(table: str) -> str:
+    """Resolve old table name to current name if renamed."""
+    return TABLE_RENAMES.get(table, table)
+
+
 def get_writable_columns(table: str) -> set:
     """Return the set of writable columns for a Supabase table."""
-    schema = SUPABASE_SCHEMAS.get(table)
+    schema = SUPABASE_SCHEMAS.get(_resolve_table(table))
     if not schema:
         raise ValueError(f'Unknown table: {table}')
     return set(schema['writable'])
@@ -480,8 +485,9 @@ def validate_record(table: str, record: dict,
     """Validate a record against its Supabase schema.
 
     Returns a list of warning strings (empty = valid).
+    Resolves old table names automatically.
     """
-    schema = SUPABASE_SCHEMAS.get(table)
+    schema = SUPABASE_SCHEMAS.get(_resolve_table(table))
     if not schema:
         return [f'Unknown table: {table}']
 
@@ -505,8 +511,9 @@ def check_coverage(table: str, record: dict) -> set:
 
     Useful to detect schema drift: if a new column was added to the
     schema but the code doesn't populate it yet.
+    Resolves old table names automatically.
     """
-    schema = SUPABASE_SCHEMAS.get(table)
+    schema = SUPABASE_SCHEMAS.get(_resolve_table(table))
     if not schema:
         return set()
     return schema['writable'] - set(record.keys())

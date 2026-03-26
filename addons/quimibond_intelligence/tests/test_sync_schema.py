@@ -156,7 +156,7 @@ class TestRevenuMetricsCoverage(unittest.TestCase):
 
 
 class TestHealthScoreCoverage(unittest.TestCase):
-    """Verify customer_health_scores records include all expected fields."""
+    """Verify health_scores records include all expected fields."""
 
     def _build_health_score_record(self):
         """Simulate what compute_and_save_health_scores builds."""
@@ -191,24 +191,24 @@ class TestHealthScoreCoverage(unittest.TestCase):
 
     def test_no_unknown_columns(self):
         record = self._build_health_score_record()
-        warnings = validate_record('customer_health_scores', record)
+        warnings = validate_record('health_scores', record)
         unknown_warnings = [w for w in warnings if 'unknown' in w.lower()]
         self.assertEqual(unknown_warnings, [], f'Unknown columns: {warnings}')
 
     def test_coverage(self):
         record = self._build_health_score_record()
-        missing = check_coverage('customer_health_scores', record)
+        missing = check_coverage('health_scores', record)
         # contact_id is resolved from email
         allowed_missing = {'contact_id'}
         unexpected_missing = missing - allowed_missing
         self.assertFalse(
             unexpected_missing,
-            f'customer_health_scores missing columns: {unexpected_missing}',
+            f'health_scores missing columns: {unexpected_missing}',
         )
 
 
 class TestCompanySnapshotCoverage(unittest.TestCase):
-    """Verify company_odoo_snapshots records include all expected fields."""
+    """Verify odoo_snapshots records include all expected fields."""
 
     def _build_snapshot_record(self):
         return {
@@ -229,10 +229,10 @@ class TestCompanySnapshotCoverage(unittest.TestCase):
 
     def test_full_coverage(self):
         record = self._build_snapshot_record()
-        missing = check_coverage('company_odoo_snapshots', record)
+        missing = check_coverage('odoo_snapshots', record)
         self.assertFalse(
             missing,
-            f'company_odoo_snapshots missing columns: {missing}',
+            f'odoo_snapshots missing columns: {missing}',
         )
 
 
@@ -260,7 +260,10 @@ class TestEmailRecordCoverage(unittest.TestCase):
     def test_full_coverage(self):
         record = self._build_email_record()
         missing = check_coverage('emails', record)
-        self.assertFalse(missing, f'emails missing columns: {missing}')
+        # These are resolved by Supabase triggers, not set by the pipeline
+        trigger_resolved = {'company_id', 'thread_id', 'sender_contact_id'}
+        unexpected = missing - trigger_resolved
+        self.assertFalse(unexpected, f'emails missing columns: {unexpected}')
 
 
 class TestThreadRecordCoverage(unittest.TestCase):
@@ -289,7 +292,10 @@ class TestThreadRecordCoverage(unittest.TestCase):
     def test_full_coverage(self):
         record = self._build_thread_record()
         missing = check_coverage('threads', record)
-        self.assertFalse(missing, f'threads missing columns: {missing}')
+        # These are resolved by Supabase triggers, not set by the pipeline
+        trigger_resolved = {'company_id', 'started_by_contact_id'}
+        unexpected = missing - trigger_resolved
+        self.assertFalse(unexpected, f'threads missing columns: {unexpected}')
 
 
 if __name__ == '__main__':
