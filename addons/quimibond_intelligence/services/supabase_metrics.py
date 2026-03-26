@@ -168,7 +168,9 @@ class SupabaseMetricsMixin:
         } for s in summaries]
         for record in batch:
             self._request(
-                '/rest/v1/briefings', 'POST', record,
+                '/rest/v1/briefings'
+                '?on_conflict=scope,briefing_date,account',
+                'POST', record,
                 extra_headers={'Prefer': 'resolution=merge-duplicates'},
             )
         _logger.info('✓ %d account briefings guardados', len(batch))
@@ -244,11 +246,13 @@ class SupabaseMetricsMixin:
         summary_short = summary_text[:2000] if len(summary_text) > 2000 else summary_text
 
         self._request(
-            '/rest/v1/briefings',
+            '/rest/v1/briefings'
+            '?on_conflict=scope,briefing_date,account',
             'POST',
             {
                 'scope': 'daily',
                 'briefing_date': today,
+                'account': '',
                 'total_emails': total_emails,
                 'summary_text': summary_short,
                 'summary_html': briefing_html[:50000] if briefing_html else '',
