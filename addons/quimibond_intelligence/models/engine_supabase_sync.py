@@ -258,11 +258,13 @@ class IntelligenceEngine(models.Model):
             with SupabaseService(cfg['supabase_url'], cfg['supabase_key']) as supa:
                 alerts_updated = self._reverse_sync_alerts(supa)
                 actions_updated = self._reverse_sync_actions(supa)
+                commands_run = self._process_sync_commands(supa)
 
-                if alerts_updated or actions_updated:
+                if alerts_updated or actions_updated or commands_run:
                     _logger.info(
-                        '✓ Reverse sync: %d alerts, %d actions (%.1fs)',
-                        alerts_updated, actions_updated,
+                        '✓ Reverse sync: %d alerts, %d actions, '
+                        '%d commands (%.1fs)',
+                        alerts_updated, actions_updated, commands_run,
                         time.time() - start,
                     )
         except Exception as exc:
@@ -381,3 +383,101 @@ class IntelligenceEngine(models.Model):
                     _logger.debug('reverse action %s: %s', row['id'], exc)
 
         return updated
+
+    # ── Sync Commands (frontend → Odoo dispatch) ──────────────────────────
+
+    # Commands the frontend can request
+    ALLOWED_COMMANDS = {
+        'run_sync_emails',
+        'run_analyze_emails',
+        'run_enrich_only',
+        'run_update_scores',
+        'run_supabase_sync',
+        'run_sync_odoo_tables',
+        'run_daily_intelligence',
+        'run_predictions',
+    }
+
+    def _process_sync_commands(self, supa) -> int:
+        """Check sync_commands table for pending commands from frontend."""
+        try:
+            rows = supa._request(
+                '/rest/v1/sync_commands?status=eq.pending'
+                '&order=created_at.asc&limit=5'
+                '&select=id,command',
+            ) or []
+        except Exception as exc:
+            _logger.debug('process_sync_commands fetch: %s', exc)
+            return 0
+
+        if not rows:
+            return 0
+
+        executed = 0
+        engine = self.env['intelligence.engine']
+        for row in rows:
+            cmd = row.get('command', '')
+            cmd_id = row['id']
+
+            # Mark as running
+            try:
+                supa._request(
+                    f'/rest/v1/sync_commands?id=eq.{cmd_id}',
+                    'PATCH', {
+                        'status': 'running',
+                        'started_at': datetime.now().isoformat(),
+                    },
+                    extra_headers={'Prefer': 'return=minimal'},
+                )
+            except Exception:
+                pass
+
+            if cmd not in self.ALLOWED_COMMANDS:
+                _logger.warning('sync_commands: unknown command %s', cmd)
+                try:
+                    supa._request(
+                        f'/rest/v1/sync_commands?id=eq.{cmd_id}',
+                        'PATCH', {
+                            'status': 'failed',
+                            'completed_at': datetime.now().isoformat(),
+                            'result': {'error': f'Unknown command: {cmd}'},
+                        },
+                        extra_headers={'Prefer': 'return=minimal'},
+                    )
+                except Exception:
+                    pass
+                continue
+
+            # Execute the command
+            start = time.time()
+            try:
+                fn = getattr(engine, cmd)
+                fn()
+                elapsed = round(time.time() - start, 1)
+                supa._request(
+                    f'/rest/v1/sync_commands?id=eq.{cmd_id}',
+                    'PATCH', {
+                        'status': 'completed',
+                        'completed_at': datetime.now().isoformat(),
+                        'result': {'elapsed_s': elapsed},
+                    },
+                    extra_headers={'Prefer': 'return=minimal'},
+                )
+                executed += 1
+                _logger.info('sync_command %s completed (%.1fs)', cmd, elapsed)
+            except Exception as exc:
+                _logger.error('sync_command %s failed: %s', cmd, exc)
+                try:
+                    supa._request(
+                        f'/rest/v1/sync_commands?id=eq.{cmd_id}',
+                        'PATCH', {
+                            'status': 'failed',
+                            'completed_at': datetime.now().isoformat(),
+                            'result': {'error': str(exc)[:500]},
+                        },
+                        extra_headers={'Prefer': 'return=minimal'},
+                    )
+                except Exception:
+                    pass
+
+        return executed
