@@ -321,12 +321,33 @@ class IntelligenceEngine(models.Model):
                 _logger.warning('batch companies upsert (%d records): %s',
                                 len(company_batches), exc)
 
+        # ── Phase 1b: Fetch company IDs by canonical_name ─────────────────
+        # So we can link contacts to their companies in Phase 2
+        company_id_map = {}  # canonical_name → supabase company id
+        if seen_cn:
+            try:
+                from urllib.parse import quote as _q
+                for cn in seen_cn:
+                    rows = supa._request(
+                        f'/rest/v1/companies?canonical_name=eq.{_q(cn, safe="")}'
+                        '&select=id',
+                    )
+                    if rows and isinstance(rows, list) and rows:
+                        company_id_map[cn] = rows[0]['id']
+            except Exception as exc:
+                _logger.debug('fetch company ids: %s', exc)
+
+        # Build cpid → company_id lookup
+        cpid_to_company_id = {}
+        for cpid, cdata in companies_data.items():
+            cn = cdata['canonical_name']
+            if cn in company_id_map:
+                cpid_to_company_id[cpid] = company_id_map[cn]
+
         # ── Phase 2: Batch upsert contacts ──────────────────────────────────
-        # Key distinction: is_company=True in Odoo means the partner IS
-        # a company record, not a person. The email field on company partners
-        # contains email addresses of people at that company, not the
-        # company's email. We create contacts per email WITHOUT the company
-        # name (they'll be enriched with names from Gmail later).
+        # is_company=True: emails belong to people at the company (name=NULL)
+        # is_company=False: partner IS a person, use their name
+        # All contacts get linked to their company via company_id
         contact_batch = []
         seen_emails = set()
 
@@ -336,8 +357,10 @@ class IntelligenceEngine(models.Model):
                 continue
 
             pid = pdata.get('id') or pdata.get('partner_id')
+            cpid = pdata.get('commercial_partner_id')
             is_company = pdata.get('is_company', False)
             partner_name = pdata.get('name', '')
+            resolved_company_id = cpid_to_company_id.get(cpid)
 
             for i, email in enumerate(valid_emails):
                 if email in seen_emails:
@@ -352,6 +375,7 @@ class IntelligenceEngine(models.Model):
                     'is_customer': pdata.get('is_customer', False),
                     'is_supplier': pdata.get('is_supplier', False),
                     'odoo_partner_id': pid if (not is_company or i == 0) and pid else None,
+                    'company_id': resolved_company_id,
                 }
                 contact_batch.append(record)
 
