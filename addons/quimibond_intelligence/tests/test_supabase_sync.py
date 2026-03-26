@@ -9,45 +9,65 @@ Run with: python -m pytest addons/quimibond_intelligence/tests/test_supabase_syn
 import unittest
 from unittest.mock import MagicMock, patch
 
+# Matches ALERT_STATE_MAP in engine_supabase_sync.py
+ALERT_STATE_MAP = {
+    'open': 'new',
+    'acknowledged': 'acknowledged',
+    'resolved': 'resolved',
+    'dismissed': 'resolved',
+}
+
 
 class TestAlertSyncLogic(unittest.TestCase):
     """Test alert sync decision logic."""
 
     def test_alert_state_to_supabase_patch(self):
-        """Verify correct Supabase patch for each alert state."""
-        state_map = {
-            'open': {'state': 'open', 'is_resolved': False},
-            'acknowledged': {'state': 'acknowledged', 'is_resolved': False},
-            'resolved': {'state': 'resolved', 'is_resolved': True},
-            'dismissed': {'state': 'dismissed', 'is_resolved': True},
+        """Verify correct Supabase state for each Odoo alert state."""
+        expected_map = {
+            'open': 'new',
+            'acknowledged': 'acknowledged',
+            'resolved': 'resolved',
+            'dismissed': 'resolved',
         }
-        for state, expected in state_map.items():
-            patch = {
-                'state': state,
-                'is_resolved': state in ('resolved', 'dismissed'),
-            }
-            self.assertEqual(patch['state'], expected['state'])
-            self.assertEqual(patch['is_resolved'], expected['is_resolved'])
+        for odoo_state, expected_supa_state in expected_map.items():
+            supa_state = ALERT_STATE_MAP.get(odoo_state, 'new')
+            self.assertEqual(supa_state, expected_supa_state)
+
+    def test_resolved_states(self):
+        """Resolved and dismissed should be detected as resolved."""
+        for state in ('resolved', 'dismissed'):
+            is_resolved = state in ('resolved', 'dismissed')
+            self.assertTrue(is_resolved)
+
+    def test_non_resolved_states(self):
+        """Open and acknowledged should NOT be detected as resolved."""
+        for state in ('open', 'acknowledged'):
+            is_resolved = state in ('resolved', 'dismissed')
+            self.assertFalse(is_resolved)
 
     def test_resolved_includes_timestamp(self):
         """Resolved alerts should include resolved_at."""
         state = 'resolved'
         resolved_date = '2026-03-25T10:00:00'
-        patch = {'state': state, 'is_resolved': True}
-        if state == 'resolved' and resolved_date:
+        is_resolved = state in ('resolved', 'dismissed')
+        patch = {'state': ALERT_STATE_MAP.get(state, 'new')}
+        if is_resolved and resolved_date:
             patch['resolved_at'] = resolved_date
         self.assertIn('resolved_at', patch)
 
     def test_non_resolved_no_timestamp(self):
         """Non-resolved alerts should NOT include resolved_at."""
         state = 'acknowledged'
-        patch = {'state': state, 'is_resolved': False}
+        is_resolved = state in ('resolved', 'dismissed')
+        patch = {'state': ALERT_STATE_MAP.get(state, 'new')}
+        if is_resolved:
+            patch['resolved_at'] = '2026-03-25T10:00:00'
         self.assertNotIn('resolved_at', patch)
 
     def test_resolution_notes_included(self):
         """Resolution notes should be included when present."""
         notes = 'Se resolvió llamando al cliente'
-        patch = {'state': 'resolved', 'is_resolved': True}
+        patch = {'state': 'resolved'}
         if notes:
             patch['resolution_notes'] = notes
         self.assertEqual(patch['resolution_notes'], notes)

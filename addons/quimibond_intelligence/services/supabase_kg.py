@@ -101,9 +101,17 @@ class SupabaseKGMixin:
             })
 
     def save_fact(self, fact):
-        """Guarda un hecho extraido (con dedup por entity_id + fact_type + hash)."""
+        """Guarda un hecho extraido (con dedup por fact_hash).
+
+        Computes fact_hash if missing: md5(entity_id + fact_type + fact_text).
+        """
+        if not fact.get('fact_hash'):
+            import hashlib
+            raw = f"{fact.get('entity_id', '')}|{fact.get('fact_type', '')}|{fact.get('fact_text', '')}"
+            fact['fact_hash'] = hashlib.md5(raw.encode()).hexdigest()
         return self._request(
-            '/rest/v1/facts', 'POST', fact,
+            '/rest/v1/facts?on_conflict=fact_hash',
+            'POST', fact,
             extra_headers={
                 'Prefer': 'resolution=ignore-duplicates,return=representation',
             },

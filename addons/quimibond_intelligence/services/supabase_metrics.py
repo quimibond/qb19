@@ -168,7 +168,9 @@ class SupabaseMetricsMixin:
         } for s in summaries]
         for record in batch:
             self._request(
-                '/rest/v1/briefings', 'POST', record,
+                '/rest/v1/briefings'
+                '?on_conflict=scope,briefing_date,account',
+                'POST', record,
                 extra_headers={'Prefer': 'resolution=merge-duplicates'},
             )
         _logger.info('✓ %d account briefings guardados', len(batch))
@@ -244,11 +246,13 @@ class SupabaseMetricsMixin:
         summary_short = summary_text[:2000] if len(summary_text) > 2000 else summary_text
 
         self._request(
-            '/rest/v1/briefings',
+            '/rest/v1/briefings'
+            '?on_conflict=scope,briefing_date,account',
             'POST',
             {
                 'scope': 'daily',
                 'briefing_date': today,
+                'account': '',
                 'total_emails': total_emails,
                 'summary_text': summary_short,
                 'summary_html': briefing_html[:50000] if briefing_html else '',
@@ -284,7 +288,7 @@ class SupabaseMetricsMixin:
             pass
         try:
             ctx['openAlerts'] = self._request(
-                '/rest/v1/alerts?is_resolved=eq.false&order=created_at.desc'
+                '/rest/v1/alerts?state=neq.resolved&order=created_at.desc'
                 '&limit=20&select=alert_type,severity,title,account',
             ) or []
         except Exception:
@@ -465,7 +469,8 @@ class SupabaseMetricsMixin:
                 except Exception:
                     pass  # FK is optional, proceed without it
             self._request(
-                '/rest/v1/revenue_metrics',
+                '/rest/v1/revenue_metrics'
+                '?on_conflict=contact_email,period_start,period_type',
                 'POST', metrics,
                 extra_headers={
                     'Prefer': 'resolution=merge-duplicates',
@@ -536,7 +541,8 @@ class SupabaseMetricsMixin:
         """
         try:
             self._request(
-                '/rest/v1/health_scores',
+                '/rest/v1/health_scores'
+                '?on_conflict=contact_email,score_date',
                 'POST', score,
                 extra_headers={
                     'Prefer': 'resolution=merge-duplicates',
