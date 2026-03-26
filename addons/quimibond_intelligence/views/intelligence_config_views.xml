@@ -15,59 +15,104 @@
                             string="Diagnostico"
                             class="btn-secondary"
                             confirm="Ejecuta pruebas de conexion a todos los servicios. Continuar?"/>
-                    <button name="action_test_run" type="object"
-                            string="Pipeline completo"
-                            class="btn-warning"
-                            confirm="Ejecuta el pipeline completo (sync + analisis + enrichment + scores + briefing). Puede tomar 5-15 min. Continuar?"/>
                 </header>
+
+                <!-- ============================================================ -->
+                <!--  PASO 1: SETUP INICIAL (primera vez o reset)                 -->
+                <!-- ============================================================ -->
                 <div class="alert alert-warning mx-3 mt-2" role="alert">
-                    <strong>Setup Inicial</strong> — Primera vez o reset completo:
-                    <div class="mt-2">
-                        <button name="action_initial_setup" type="object"
-                                string="Ejecutar Setup Inicial (sin Claude)"
-                                class="btn btn-sm btn-warning"
-                                confirm="Carga todos los datos base de Odoo y Gmail a Supabase (contactos, productos, ordenes, equipo, emails, scores). No usa Claude, no revienta memoria. Puede tomar 3-5 min. Continuar?"/>
-                        <span class="text-muted ms-2">
-                            Despues ejecuta "Analizar Emails" manualmente.
-                        </span>
+                    <strong>PASO 1 — Setup Inicial</strong>
+                    <span class="text-muted">(primera vez o despues de reset de schema)</span>
+                    <div class="mt-1 mb-2" style="font-size: 0.9em;">
+                        Carga datos base de Odoo + Gmail a Supabase.
+                        No usa Claude, no revienta memoria. ~3-5 min.
                     </div>
+                    <button name="action_initial_setup" type="object"
+                            string="&#9654; Ejecutar Setup Inicial"
+                            class="btn btn-warning"
+                            confirm="Ejecuta en orden: 1) Contactos Odoo, 2) Datos Odoo (8 tablas), 3) Emails Gmail, 4) Scores, 5) Sync estado. ~3-5 min. Continuar?"/>
                 </div>
+
+                <!-- ============================================================ -->
+                <!--  PASO 2: ANALISIS CON CLAUDE (despues del setup)             -->
+                <!-- ============================================================ -->
                 <div class="alert alert-info mx-3 mt-2" role="alert">
-                    <strong>Micro-pipelines</strong> — Ejecutar individualmente:
-                    <div class="mt-2 d-flex flex-wrap gap-2">
-                        <button name="action_sync_emails" type="object"
-                                string="Sync Emails (Gmail)"
-                                class="btn btn-sm btn-outline-primary"
-                                confirm="Sincroniza emails nuevos de Gmail a Supabase. Continuar?"/>
-                        <button name="action_analyze_emails" type="object"
-                                string="Analizar Emails (Claude)"
-                                class="btn btn-sm btn-outline-primary"
-                                confirm="Analiza emails con Claude, genera alertas y alimenta KG. Puede tomar 3-10 min. Continuar?"/>
-                        <button name="action_enrich_only" type="object"
-                                string="Enrich Contactos (Odoo)"
-                                class="btn btn-sm btn-outline-info"
-                                confirm="Sincroniza partners de Odoo a Supabase con detalle completo. Toma 1-3 min. Continuar?"/>
-                        <button name="action_update_scores" type="object"
-                                string="Actualizar Scores"
-                                class="btn btn-sm btn-outline-info"
-                                confirm="Recalcula scores de relacion para todos los clientes. Continuar?"/>
-                        <button name="action_supabase_sync" type="object"
-                                string="Sync Odoo → Supabase"
-                                class="btn btn-sm btn-outline-secondary"
-                                confirm="Empuja alertas, acciones y scores pendientes de Odoo a Supabase. Continuar?"/>
-                        <button name="action_sync_odoo_tables" type="object"
-                                string="Sync Datos Odoo (8 tablas)"
-                                class="btn btn-sm btn-outline-info"
-                                confirm="Sincroniza: productos, ordenes, facturas, pagos, entregas, CRM, actividades y equipo. Puede tomar 2-5 min. Continuar?"/>
-                        <button name="action_run_predictions" type="object"
-                                string="Predicciones"
-                                class="btn btn-sm btn-outline-warning"
-                                confirm="Analiza tendencias y genera alertas predictivas (churn, volumen, oportunidades). Continuar?"/>
-                        <button name="action_check_briefing_replies" type="object"
-                                string="Briefing Replies"
-                                class="btn btn-sm btn-outline-secondary"
-                                confirm="Busca replies al briefing y genera respuestas automáticas. Continuar?"/>
+                    <strong>PASO 2 — Analisis con IA</strong>
+                    <span class="text-muted">(despues del setup o para re-analizar)</span>
+                    <div class="mt-1 mb-2" style="font-size: 0.9em;">
+                        Analiza emails con Claude: genera alertas, acciones,
+                        Knowledge Graph, perfiles de contacto. ~3-10 min.
                     </div>
+                    <button name="action_analyze_emails" type="object"
+                            string="&#9654; Analizar Emails (Claude)"
+                            class="btn btn-info"
+                            confirm="Analiza emails con Claude AI. Genera alertas, acciones, KG y perfiles. Puede tomar 3-10 min y consume creditos de Claude. Continuar?"/>
+                </div>
+
+                <!-- ============================================================ -->
+                <!--  PASO 3: PIPELINE COMPLETO (daily)                           -->
+                <!-- ============================================================ -->
+                <div class="alert alert-success mx-3 mt-2" role="alert">
+                    <strong>PASO 3 — Pipeline Completo</strong>
+                    <span class="text-muted">(genera briefing diario, normalmente automatico)</span>
+                    <div class="mt-1 mb-2" style="font-size: 0.9em;">
+                        Ejecuta todo: sync + analisis + enrichment + scores + briefing.
+                        Equivalente al cron diario. ~5-15 min.
+                    </div>
+                    <button name="action_test_run" type="object"
+                            string="&#9654; Pipeline Completo (Diario)"
+                            class="btn btn-success"
+                            confirm="Ejecuta el pipeline completo (sync + analisis + enrichment + scores + briefing). Equivale al cron diario. Puede tomar 5-15 min. Continuar?"/>
+                </div>
+
+                <!-- ============================================================ -->
+                <!--  MICRO-PIPELINES (avanzado, ejecutar individualmente)         -->
+                <!-- ============================================================ -->
+                <div class="mx-3 mt-2 mb-3 p-3 border rounded" style="background: #f8f9fa;">
+                    <details>
+                        <summary style="cursor: pointer;">
+                            <strong>Avanzado</strong> — Micro-pipelines individuales
+                        </summary>
+                        <div class="mt-3">
+                            <div class="mb-2"><strong>Datos de Odoo</strong></div>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button name="action_enrich_only" type="object"
+                                        string="Contactos + Empresas"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Sincroniza partners de Odoo a Supabase con detalle completo. Toma 1-3 min. Continuar?"/>
+                                <button name="action_sync_odoo_tables" type="object"
+                                        string="8 Tablas Odoo (facturas, entregas...)"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Sincroniza: productos, ordenes, facturas, pagos, entregas, CRM, actividades y equipo. Puede tomar 2-5 min. Continuar?"/>
+                                <button name="action_update_scores" type="object"
+                                        string="Recalcular Scores"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Recalcula scores de relacion para todos los clientes. Continuar?"/>
+                            </div>
+                            <div class="mb-2"><strong>Gmail + IA</strong></div>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button name="action_sync_emails" type="object"
+                                        string="Descargar Emails (Gmail)"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Sincroniza emails nuevos de Gmail a Supabase. Continuar?"/>
+                                <button name="action_run_predictions" type="object"
+                                        string="Predicciones"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Analiza tendencias y genera alertas predictivas. Continuar?"/>
+                                <button name="action_check_briefing_replies" type="object"
+                                        string="Briefing Replies"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Busca replies al briefing y genera respuestas. Continuar?"/>
+                            </div>
+                            <div class="mb-2"><strong>Sync estado</strong></div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button name="action_supabase_sync" type="object"
+                                        string="Push Odoo → Supabase"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Empuja alertas, acciones y scores pendientes de Odoo a Supabase. Continuar?"/>
+                            </div>
+                        </div>
+                    </details>
                 </div>
                 <sheet>
                     <div class="oe_title mb-4">
