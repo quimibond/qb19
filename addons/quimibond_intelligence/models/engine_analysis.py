@@ -328,14 +328,11 @@ class IntelligenceEngine(models.Model):
                     assignee_ent = supa.get_entity_by_name(item.get('assignee', ''))
                     related_ent = supa.get_entity_by_name(item.get('related_to', ''))
                     result = supa.save_action_item({
-                        'assignee_entity_id': assignee_ent.get('id') if assignee_ent else None,
                         'assignee_name': item.get('assignee', ''),
-                        'related_entity_id': related_ent.get('id') if related_ent else None,
                         'description': item.get('description', ''),
                         'action_type': item.get('type', 'other'),
                         'priority': item.get('priority', 'medium'),
                         'due_date': item.get('due_date'),
-                        'source_briefing_date': today,
                         'contact_name': item.get('related_to', ''),
                     })
                     supa_id = (

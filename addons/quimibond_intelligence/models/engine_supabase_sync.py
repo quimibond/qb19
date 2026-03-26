@@ -83,10 +83,8 @@ class IntelligenceEngine(models.Model):
         for alert in alerts:
             try:
                 supa_state = ALERT_STATE_MAP.get(alert.state, 'new')
-                is_resolved = alert.state in ('resolved', 'dismissed')
                 patch = {
                     'state': supa_state,
-                    'is_resolved': is_resolved,
                 }
                 if is_resolved and alert.resolved_date:
                     patch['resolved_at'] = alert.resolved_date.isoformat()
@@ -135,17 +133,18 @@ class IntelligenceEngine(models.Model):
                     action.write({'supabase_synced': True})
                     continue
 
-                patch = {'state': action.state}
+                # Map Odoo states to Supabase states
+                state_map = {
+                    'done': 'completed',
+                    'cancelled': 'dismissed',
+                    'in_progress': 'in_progress',
+                    'open': 'pending',
+                }
+                patch = {
+                    'state': state_map.get(action.state, 'pending'),
+                }
                 if action.state == 'done':
-                    patch['status'] = 'completed'
-                    patch['completed_date'] = now.strftime('%Y-%m-%d')
                     patch['completed_at'] = now.isoformat()
-                elif action.state == 'cancelled':
-                    patch['status'] = 'cancelled'
-                elif action.state == 'in_progress':
-                    patch['status'] = 'in_progress'
-                elif action.state == 'open':
-                    patch['status'] = 'pending'
 
                 supa._request(
                     f'/rest/v1/action_items?id=eq.{action.supabase_id}',

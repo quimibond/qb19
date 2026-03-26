@@ -105,13 +105,17 @@ class SupabaseMetricsMixin:
                 'account': a.get('account'),
                 'state': 'new',
                 'is_read': False,
-                'prediction_id': prediction_id,
                 'prediction_confidence': prediction_confidence,
             }
+            # Business context
+            if a.get('business_impact'):
+                record['business_impact'] = a['business_impact']
+            if a.get('suggested_action'):
+                record['suggested_action'] = a['suggested_action']
             # Include thread reference if available
-            thread_id = a.get('related_thread_id')
+            thread_id = a.get('related_thread_id') or a.get('thread_id')
             if thread_id:
-                record['related_thread_id'] = thread_id
+                record['thread_id'] = thread_id
             # Resolve contact_id + company_id from contact_name
             contact_info = name_to_contact.get(a.get('contact_name'))
             if contact_info:
@@ -318,19 +322,33 @@ class SupabaseMetricsMixin:
             except Exception:
                 pass
 
-        prediction_id = str(uuid.uuid4())
         prediction_confidence = item.get('confidence', 0.5)
 
-        item_with_prediction = {
-            **item,
-            'prediction_id': prediction_id,
+        # Only send columns that exist in the action_items table
+        record = {
+            'action_type': item.get('action_type', 'other'),
+            'action_category': item.get('action_category'),
+            'description': item.get('description', ''),
+            'reason': item.get('reason'),
+            'priority': item.get('priority', 'medium'),
+            'contact_name': item.get('contact_name'),
+            'contact_company': item.get('contact_company'),
+            'contact_id': item.get('contact_id'),
+            'company_id': item.get('company_id'),
+            'thread_id': item.get('thread_id'),
+            'assignee_name': item.get('assignee_name'),
+            'assignee_email': item.get('assignee_email'),
+            'state': item.get('state', 'pending'),
+            'due_date': item.get('due_date'),
             'prediction_confidence': prediction_confidence,
         }
+        # Remove None values
+        record = {k: v for k, v in record.items() if v is not None}
 
         result = None
         try:
             result = self._request(
-                '/rest/v1/action_items', 'POST', [item_with_prediction],
+                '/rest/v1/action_items', 'POST', [record],
                 extra_headers={'Prefer': 'return=representation'},
             )
         except Exception as exc:
@@ -377,9 +395,7 @@ class SupabaseMetricsMixin:
             self._request(
                 f'/rest/v1/action_items?id=eq.{action_id}',
                 'PATCH', {
-                    'status': 'completed',
                     'state': 'completed',
-                    'completed_date': now.strftime('%Y-%m-%d'),
                     'completed_at': now.isoformat(),
                 },
             )
@@ -392,7 +408,6 @@ class SupabaseMetricsMixin:
         try:
             patch = {
                 'state': state,
-                'is_resolved': state in ('resolved', 'dismissed'),
             }
             if state == 'resolved':
                 patch['resolved_at'] = datetime.now().isoformat()
@@ -407,16 +422,12 @@ class SupabaseMetricsMixin:
 
     def update_alert_state(self, alert_title: str, state: str,
                            resolution_notes: str = None):
-        """Actualiza estado de una alerta en Supabase.
-
-        El frontend filtra alertas por is_resolved y state.
-        """
+        """Actualiza estado de una alerta en Supabase."""
         try:
             from urllib.parse import quote as _quote
             encoded = _quote(alert_title[:200], safe='')
             patch = {
                 'state': state,
-                'is_resolved': state in ('resolved', 'dismissed'),
             }
             if state == 'resolved':
                 patch['resolved_at'] = datetime.now().isoformat()
