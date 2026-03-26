@@ -110,6 +110,10 @@
                                         string="Push Odoo → Supabase"
                                         class="btn btn-sm btn-outline-secondary"
                                         confirm="Empuja alertas, acciones y scores pendientes de Odoo a Supabase. Continuar?"/>
+                                <button name="action_reverse_sync" type="object"
+                                        string="Pull Supabase → Odoo"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        confirm="Importa cambios de estado del frontend (alertas reconocidas/resueltas, acciones completadas). Continuar?"/>
                             </div>
                         </div>
                     </details>

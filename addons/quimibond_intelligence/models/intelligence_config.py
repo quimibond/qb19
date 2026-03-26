@@ -374,6 +374,15 @@ class IntelligenceConfig(models.TransientModel):
                            'message': 'Replies procesados. Revisa los logs.',
                            'type': 'info'}}
 
+    def action_reverse_sync(self):
+        """Pull cambios de estado del frontend (Supabase → Odoo)."""
+        self.action_save()
+        self.env['intelligence.engine'].run_reverse_sync()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Reverse Sync',
+                           'message': 'Cambios del frontend importados a Odoo.',
+                           'type': 'info'}}
+
     def action_run_diagnostics(self):
         """Ejecuta diagnóstico completo de todos los servicios.
 

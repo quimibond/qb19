@@ -122,6 +122,18 @@
             <field name="priority">8</field>
         </record>
 
+        <record id="cron_reverse_sync" model="ir.cron">
+            <field name="name">Intelligence - Reverse Sync Frontend→Odoo (cada 5 min)</field>
+            <field name="model_id" ref="model_intelligence_engine"/>
+            <field name="state">code</field>
+            <field name="code">model.run_reverse_sync()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">4</field>
+        </record>
+
         <!-- ══ Tareas de mantenimiento ══ -->
 
         <record id="cron_data_retention" model="ir.cron">
