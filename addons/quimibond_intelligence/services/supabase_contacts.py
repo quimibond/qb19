@@ -119,6 +119,12 @@ class SupabaseContactsMixin:
         Pass _company_cache to avoid repeated company lookups.
         """
         try:
+            # Odoo partners can have multiple emails separated by ; or ,
+            # Use only the first valid email
+            email = email.split(';')[0].split(',')[0].strip()
+            if not email or '@' not in email:
+                return
+
             # Resolve company_name → company_id
             company_name = odoo_data.get('company')
             if company_name and 'company_id' not in odoo_data:

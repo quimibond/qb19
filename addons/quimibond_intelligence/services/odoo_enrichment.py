@@ -82,12 +82,17 @@ class OdooEnrichmentService(
         contacts = []
         seen = set()
         for p in partners:
-            email = (p.email or '').strip().lower()
-            if not email or '@' not in email or email in seen:
+            raw_email = (p.email or '').strip().lower()
+            if not raw_email or '@' not in raw_email:
                 continue
-            seen.add(email)
+            # Odoo partners can have multiple emails separated by ; or ,
+            # Use only the first valid email address
+            first_email = raw_email.split(';')[0].split(',')[0].strip()
+            if not first_email or '@' not in first_email or first_email in seen:
+                continue
+            seen.add(first_email)
             contacts.append({
-                'email': email,
+                'email': first_email,
                 'name': p.name or '',
                 'contact_type': 'external',
             })

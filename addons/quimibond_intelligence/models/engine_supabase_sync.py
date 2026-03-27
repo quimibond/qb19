@@ -188,8 +188,10 @@ class IntelligenceEngine(models.Model):
         synced = 0
         seen_emails = set()
         for score in scores:
-            email = (score.email or '').lower().strip()
-            if not email or email in seen_emails:
+            raw_email = (score.email or '').lower().strip()
+            # Odoo partners can have multiple emails separated by ; or ,
+            email = raw_email.split(';')[0].split(',')[0].strip()
+            if not email or '@' not in email or email in seen_emails:
                 score.write({'supabase_synced': True})
                 continue
             seen_emails.add(email)
