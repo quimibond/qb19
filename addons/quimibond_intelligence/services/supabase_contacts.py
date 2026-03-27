@@ -86,6 +86,42 @@ class SupabaseContactsMixin:
             _logger.debug('upsert_person_profile: %s', exc)
         return None
 
+    def batch_upsert_person_profiles(self, profiles: list):
+        """Actualiza perfiles de personas en batch. Más eficiente que N calls."""
+        ok, fail = 0, 0
+        for profile in profiles:
+            email = profile.get('email')
+            if not email:
+                continue
+            profile_fields = (
+                'role', 'decision_power', 'communication_style',
+                'language_preference', 'key_interests', 'personality_notes',
+                'negotiation_style', 'response_pattern', 'influence_on_deals',
+            )
+            patch = {}
+            for field in profile_fields:
+                val = profile.get(field)
+                if val is not None:
+                    patch[field] = val
+            if profile.get('department'):
+                patch['department'] = profile['department']
+            if not patch:
+                continue
+            try:
+                encoded = url_quote(email.lower().strip(), safe='')
+                self._request(
+                    f'/rest/v1/contacts?email=eq.{encoded}',
+                    'PATCH', patch,
+                    extra_headers={'Prefer': 'return=minimal'},
+                )
+                ok += 1
+            except Exception as exc:
+                fail += 1
+                _logger.debug('batch_upsert_person_profile %s: %s', email, exc)
+        if fail:
+            _logger.warning('batch_upsert_person_profiles: %d ok, %d failed',
+                            ok, fail)
+
     def get_person_profile(self, email=None, name=None):
         """Obtiene el perfil acumulado de una persona desde contacts."""
         if email:

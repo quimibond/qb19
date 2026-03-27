@@ -120,6 +120,29 @@ class SupabaseEmailsMixin:
         except Exception as exc:
             _logger.debug('Embedding update fail: %s', exc)
 
+    def batch_update_email_embeddings(self, updates: list):
+        """Actualiza embeddings en batch. updates: [(gmail_message_id, embedding), ...]
+
+        Hace PATCH individual por cada email (PostgREST no soporta batch PATCH
+        por diferentes keys), pero agrupa en chunks para log/tracking.
+        Si falla uno, continúa con los demás.
+        """
+        ok, fail = 0, 0
+        for gmail_message_id, embedding in updates:
+            try:
+                self._request(
+                    f'/rest/v1/emails?gmail_message_id=eq.{gmail_message_id}',
+                    'PATCH', {'embedding': embedding},
+                )
+                ok += 1
+            except Exception as exc:
+                fail += 1
+                _logger.debug('Embedding update fail %s: %s',
+                              gmail_message_id, exc)
+        if fail:
+            _logger.warning('batch_update_embeddings: %d ok, %d failed',
+                            ok, fail)
+
     def get_gmail_message_ids_with_embedding(self, gmail_message_ids: list) -> set:
         """IDs que ya tienen embedding en Supabase (consulta por lotes)."""
         if not gmail_message_ids:

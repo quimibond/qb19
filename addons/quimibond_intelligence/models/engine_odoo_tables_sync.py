@@ -56,13 +56,29 @@ class IntelligenceEngine(models.Model):
                     deliveries, crm, activities, time.time() - start,
                 )
 
-                # Neural network: resolve ALL connections
+                # Neural network: resolve connections (debounced, max 1x/hour)
                 try:
-                    result = supa._request(
-                        '/rest/v1/rpc/resolve_all_connections',
-                        'POST', {},
+                    last_resolve = (
+                        self.env['ir.config_parameter'].sudo()
+                        .get_param(
+                            'quimibond_intelligence.last_resolve_connections', '')
                     )
-                    _logger.info('Neural network connections: %s', result)
+                    should_resolve = (
+                        not last_resolve
+                        or (time.time() - float(last_resolve)) > 3600
+                    )
+                    if should_resolve:
+                        result = supa._request(
+                            '/rest/v1/rpc/resolve_all_connections',
+                            'POST', {},
+                        )
+                        self.env['ir.config_parameter'].sudo().set_param(
+                            'quimibond_intelligence.last_resolve_connections',
+                            str(time.time()),
+                        )
+                        _logger.info('Neural network connections: %s', result)
+                    else:
+                        _logger.info('resolve_connections: skipped (debounced)')
                 except Exception as exc:
                     _logger.debug('resolve_connections: %s', exc)
         except Exception as exc:

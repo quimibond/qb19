@@ -83,10 +83,24 @@ class IntelligenceEngine(models.Model):
                                    'threads': len(threads),
                                })
 
-                # Neural network: resolve connections after new emails
+                # Neural network: resolve connections (debounced, max 1x/hour)
                 try:
-                    supa._request('/rest/v1/rpc/resolve_all_connections',
-                                  'POST', {})
+                    last_resolve = (
+                        self.env['ir.config_parameter'].sudo()
+                        .get_param(
+                            'quimibond_intelligence.last_resolve_connections', '')
+                    )
+                    should_resolve = (
+                        not last_resolve
+                        or (time.time() - float(last_resolve)) > 3600
+                    )
+                    if should_resolve:
+                        supa._request('/rest/v1/rpc/resolve_all_connections',
+                                      'POST', {})
+                        self.env['ir.config_parameter'].sudo().set_param(
+                            'quimibond_intelligence.last_resolve_connections',
+                            str(time.time()),
+                        )
                 except Exception:
                     pass
 

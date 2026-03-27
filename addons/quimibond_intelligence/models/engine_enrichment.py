@@ -45,13 +45,32 @@ class IntelligenceEngine(models.Model):
                 if odoo_context.get('partners'):
                     self._sync_contacts_to_supabase(odoo_context, supa, today)
                     self._link_odoo_ids(supa)
-                    # Neural network: resolve ALL connections between entities
+                    # Neural network: resolve connections (debounced, max 1x/hour)
                     try:
-                        result = supa._request(
-                            '/rest/v1/rpc/resolve_all_connections',
-                            'POST', {},
+                        last_resolve = (
+                            self.env['ir.config_parameter'].sudo()
+                            .get_param(
+                                'quimibond_intelligence.last_resolve_connections',
+                                '')
                         )
-                        _logger.info('Neural network connections: %s', result)
+                        should_resolve = (
+                            not last_resolve
+                            or (time.time() - float(last_resolve)) > 3600
+                        )
+                        if should_resolve:
+                            result = supa._request(
+                                '/rest/v1/rpc/resolve_all_connections',
+                                'POST', {},
+                            )
+                            self.env['ir.config_parameter'].sudo().set_param(
+                                'quimibond_intelligence.last_resolve_connections',
+                                str(time.time()),
+                            )
+                            _logger.info('Neural network connections: %s',
+                                         result)
+                        else:
+                            _logger.info(
+                                'resolve_connections: skipped (debounced)')
                     except Exception as exc:
                         _logger.debug('resolve_connections: %s', exc)
                     _logger.info('✓ %d partners sincronizados',
