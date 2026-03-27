@@ -24,21 +24,36 @@ class OperationsMixin:
 
         # ── 7. Actividades pendientes (mail.activity) ──────────────────────
         if models.get('mail_activity'):
-            activities = models['mail_activity'].search([
+            # Batch: collect all related record IDs first, then single query
+            activity_domain = [
                 ('res_id', '=', pid),
                 ('res_model', '=', 'res.partner'),
-            ], order='date_deadline asc', limit=10)
+            ]
+            activities = models['mail_activity'].search(
+                activity_domain, order='date_deadline asc', limit=10)
 
             partner_activities = list(activities)
-            for model_name in ('sale.order', 'account.move', 'purchase.order',
-                               'crm.lead'):
+            # Build a single OR domain for all related models
+            related_domains = []
+            for model_name in ('sale.order', 'account.move',
+                               'purchase.order', 'crm.lead'):
                 try:
-                    related = models['mail_activity'].search([
-                        ('res_model', '=', model_name),
-                        ('res_id', 'in', self.get_partner_record_ids(
-                            partner, model_name, models,
-                        )),
-                    ], limit=10)
+                    rec_ids = self.get_partner_record_ids(
+                        partner, model_name, models)
+                    if rec_ids:
+                        related_domains.append(
+                            (model_name, rec_ids))
+                except Exception:
+                    pass
+            if related_domains:
+                or_domain = ['|'] * (len(related_domains) - 1)
+                for model_name, rec_ids in related_domains:
+                    or_domain.append('&')
+                    or_domain.append(('res_model', '=', model_name))
+                    or_domain.append(('res_id', 'in', rec_ids))
+                try:
+                    related = models['mail_activity'].search(
+                        or_domain, limit=20)
                     partner_activities.extend(related)
                 except Exception:
                     pass
@@ -352,16 +367,28 @@ class OperationsMixin:
                     ('email', '!=', False),
                 ], limit=10)
                 if siblings:
+                    # Batch: single query for all sibling CRM leads
+                    sib_lead_counts = {}
+                    if models.get('crm_lead'):
+                        try:
+                            groups = models['crm_lead']._read_group(
+                                [
+                                    ('partner_id', 'in', siblings.ids),
+                                    ('active', '=', True),
+                                ],
+                                groupby=['partner_id'],
+                                aggregates=['__count'],
+                            )
+                            for partner_group, count in groups:
+                                sib_lead_counts[partner_group.id] = count
+                        except Exception:
+                            pass
                     related = []
                     for sib in siblings:
                         info = {'name': sib.name, 'email': sib.email or ''}
-                        if models.get('crm_lead'):
-                            sib_leads = models['crm_lead'].search_count([
-                                ('partner_id', '=', sib.id),
-                                ('active', '=', True),
-                            ])
-                            if sib_leads:
-                                info['active_opportunities'] = sib_leads
+                        lead_count = sib_lead_counts.get(sib.id, 0)
+                        if lead_count:
+                            info['active_opportunities'] = lead_count
                         related.append(info)
                     ctx['related_contacts'] = related
                     summary_parts.append(
@@ -499,9 +526,8 @@ class OperationsMixin:
     def _analyze_inventory_for_partner(self, product_details, models, today):
         """Analyze inventory levels for products a client regularly buys.
 
-        Uses purchase_patterns product_details (from dim 13) to know which
-        products to check, then queries stock.quant for actual stock and
-        estimates days of inventory based on recent consumption.
+        Pre-loads all products, quants, and orderpoints in batch queries
+        to avoid N+1 (4 queries per product × 15 = 60 → 4 total).
 
         Returns dict with:
         - products: list of per-product inventory status
@@ -512,62 +538,111 @@ class OperationsMixin:
         Orderpoint = models.get('orderpoint')
         SOLine = models.get('sale_order_line')
 
-        result_products = []
-        at_risk = []
-        total_stock_value = 0
-
-        # Only analyze products that the client has ordered at least twice
+        # Only analyze products ordered at least twice
         relevant = [
             p for p in product_details if p.get('total_orders', 0) >= 2
-        ]
+        ][:15]
         if not relevant:
             return {'products': [], 'at_risk': [], 'total_stock_value': 0}
 
-        # Pre-load product records for name lookup
         Product = models['product_product']
-
-        # Get global daily consumption rate from sale.order.line (last 90d)
         date_90d = (
             datetime.now() - timedelta(days=90)
         ).strftime('%Y-%m-%d')
 
-        for prod_detail in relevant[:15]:
-            prod_name = prod_detail['name']
+        # ── Batch 1: Load all products by name in ONE query ────────────────
+        prod_names = [p['name'] for p in relevant]
+        all_prods = Product.search([
+            ('name', 'in', prod_names),
+            ('active', '=', True),
+        ])
+        name_to_prod = {}
+        for p in all_prods:
+            if p.name not in name_to_prod:
+                name_to_prod[p.name] = p
+
+        prod_ids = [p.id for p in name_to_prod.values()]
+        if not prod_ids:
+            return {'products': [], 'at_risk': [], 'total_stock_value': 0}
+
+        # ── Batch 2: Load all quants for these products in ONE query ───────
+        all_quants = Quant.search([
+            ('product_id', 'in', prod_ids),
+            ('location_id.usage', '=', 'internal'),
+        ])
+        # Group quants by product_id
+        quants_by_prod = {}
+        for q in all_quants:
+            quants_by_prod.setdefault(q.product_id.id, []).append(q)
+
+        # ── Batch 3: Load all orderpoints in ONE query ─────────────────────
+        ops_by_prod = {}
+        if Orderpoint:
             try:
-                # Find the product record
-                prod = Product.search(
-                    [('name', '=', prod_name), ('active', '=', True)],
-                    limit=1,
-                )
-                if not prod:
-                    continue
-
-                # Current stock across all internal locations
-                quants = Quant.search([
-                    ('product_id', '=', prod.id),
-                    ('location_id.usage', '=', 'internal'),
+                all_ops = Orderpoint.search([
+                    ('product_id', 'in', prod_ids),
                 ])
-                current_qty = sum(q.quantity - q.reserved_quantity
-                                  for q in quants)
-                stock_value = current_qty * (prod.standard_price or 0)
-                total_stock_value += stock_value
+                for op in all_ops:
+                    if op.product_id.id not in ops_by_prod:
+                        ops_by_prod[op.product_id.id] = op
+            except Exception:
+                pass
 
-                # Estimate daily consumption (global, all clients, last 90d)
-                daily_consumption = 0
-                if SOLine:
+        # ── Batch 4: Aggregate consumption for all products in ONE query ───
+        consumption_by_prod = {}
+        if SOLine:
+            try:
+                # Use read_group for bulk aggregation
+                groups = SOLine._read_group(
+                    [
+                        ('product_id', 'in', prod_ids),
+                        ('order_id.state', 'in', ['sale', 'done']),
+                        ('order_id.date_order', '>=', date_90d),
+                    ],
+                    groupby=['product_id'],
+                    aggregates=['product_uom_qty:sum'],
+                )
+                for prod_group, qty_sum in groups:
+                    consumption_by_prod[prod_group.id] = qty_sum or 0
+            except Exception:
+                # Fallback: per-product aggregation
+                for pid in prod_ids:
                     try:
-                        total_sold_90d = _safe_sum_aggregate(
+                        total = _safe_sum_aggregate(
                             SOLine,
                             [
-                                ('product_id', '=', prod.id),
+                                ('product_id', '=', pid),
                                 ('order_id.state', 'in', ['sale', 'done']),
                                 ('order_id.date_order', '>=', date_90d),
                             ],
                             'product_uom_qty',
                         )
-                        daily_consumption = round(total_sold_90d / 90, 2)
+                        consumption_by_prod[pid] = total
                     except Exception:
                         pass
+
+        # ── Process each product using pre-loaded data ─────────────────────
+        result_products = []
+        at_risk = []
+        total_stock_value = 0
+
+        for prod_detail in relevant:
+            prod_name = prod_detail['name']
+            prod = name_to_prod.get(prod_name)
+            if not prod:
+                continue
+
+            try:
+                # Current stock from pre-loaded quants
+                prod_quants = quants_by_prod.get(prod.id, [])
+                current_qty = sum(
+                    q.quantity - q.reserved_quantity for q in prod_quants)
+                stock_value = current_qty * (prod.standard_price or 0)
+                total_stock_value += stock_value
+
+                # Daily consumption from pre-loaded aggregation
+                total_sold_90d = consumption_by_prod.get(prod.id, 0)
+                daily_consumption = round(total_sold_90d / 90, 2)
 
                 # Days of inventory
                 days_of_inventory = None
@@ -575,19 +650,13 @@ class OperationsMixin:
                     days_of_inventory = round(
                         current_qty / daily_consumption)
 
-                # Reorder point info
+                # Reorder point from pre-loaded data
                 reorder_min = None
                 reorder_max = None
-                if Orderpoint:
-                    try:
-                        op = Orderpoint.search([
-                            ('product_id', '=', prod.id),
-                        ], limit=1)
-                        if op:
-                            reorder_min = op.product_min_qty
-                            reorder_max = op.product_max_qty
-                    except Exception:
-                        pass
+                op = ops_by_prod.get(prod.id)
+                if op:
+                    reorder_min = op.product_min_qty
+                    reorder_max = op.product_max_qty
 
                 # Determine status
                 if current_qty <= 0:
