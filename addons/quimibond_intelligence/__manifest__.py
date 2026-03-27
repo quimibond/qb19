@@ -25,6 +25,7 @@
     ],
     'external_dependencies': {
         'python': [
+            'anthropic',
             'google.auth',
             'googleapiclient',
             'httpx',
