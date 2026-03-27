@@ -126,6 +126,39 @@ class SupabaseKGMixin:
                 'Prefer': 'resolution=merge-duplicates,return=representation',
             })
 
+    def batch_save_facts(self, facts: list):
+        """Guarda hechos en batch (ignora duplicados por fact_hash)."""
+        if not facts:
+            return
+        import hashlib
+        for fact in facts:
+            if not fact.get('fact_hash'):
+                raw = (f"{fact.get('entity_id', '')}|"
+                       f"{fact.get('fact_type', '')}|"
+                       f"{fact.get('fact_text', '')}")
+                fact['fact_hash'] = hashlib.md5(raw.encode()).hexdigest()
+        try:
+            self._upsert_batch(
+                '/rest/v1/facts?on_conflict=fact_hash',
+                facts, 'ignore-duplicates',
+            )
+        except Exception as exc:
+            _logger.warning('batch_save_facts (%d): %s', len(facts), exc)
+
+    def batch_save_relationships(self, rels: list):
+        """Guarda relaciones en batch (merge duplicados)."""
+        if not rels:
+            return
+        try:
+            self._upsert_batch(
+                '/rest/v1/entity_relationships'
+                '?on_conflict=entity_a_id,entity_b_id,relationship_type',
+                rels, 'merge-duplicates',
+            )
+        except Exception as exc:
+            _logger.warning('batch_save_relationships (%d): %s',
+                            len(rels), exc)
+
     def get_entity_by_name(self, name):
         """Busca una entidad por nombre."""
         canonical = name.lower().strip()

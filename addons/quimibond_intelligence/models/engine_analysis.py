@@ -6,6 +6,7 @@ import json
 import logging
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 from odoo import api, models
@@ -160,6 +161,10 @@ class IntelligenceEngine(models.Model):
                           supa=None) -> tuple:
         """Análisis unificado: resumen + KG en una sola llamada Claude por cuenta.
 
+        Usa ThreadPoolExecutor para paralelizar llamadas a Claude (max 3
+        concurrentes para respetar rate limits). Person profile upserts se
+        ejecutan después secuencialmente (httpx client no es thread-safe).
+
         Retorna (summaries, kg_by_account) donde kg_by_account es un dict
         de account → knowledge_graph data para alimentar el KG sin otra
         llamada a Claude.
@@ -178,82 +183,94 @@ class IntelligenceEngine(models.Model):
         kg_by_account = {}
         accounts_ok = 0
         accounts_failed = 0
+        pending_person_insights = []
 
-        # Sort accounts by email count (most first) and limit to top 25
-        # to avoid overwhelming Claude with too many sequential requests
         sorted_accounts = sorted(
             by_account.items(), key=lambda x: len(x[1]), reverse=True,
-        )[:8]  # Max 8 accounts per run (~8 min, within Odoo.sh 900s limit)
+        )[:8]
 
+        # Preparar tareas (solo cuentas con >=2 emails)
+        tasks = []
         for account, acct_emails in sorted_accounts:
+            if len(acct_emails) < 2:
+                continue
             dept = account_departments.get(account, 'Otro')
             ext_count = sum(
                 1 for e in acct_emails if e['sender_type'] == 'external'
             )
             int_count = len(acct_emails) - ext_count
-
-            # Skip accounts with very few emails (not worth a Claude call)
-            if len(acct_emails) < 2:
-                continue
-
             email_text = analysis.format_emails_for_claude(
                 acct_emails, odoo_context, person_profiles,
             )
+            tasks.append((account, dept, email_text, ext_count, int_count,
+                          len(acct_emails)))
 
-            try:
-                _logger.info('  Analyzing %s (%d emails)...', account, len(acct_emails))
-                full_result = claude.analyze_account_full(
-                    dept, account, email_text, ext_count, int_count,
-                )
-                result = full_result['summary']
-                result['account'] = account
-                result['department'] = dept
-                result['total_emails'] = len(acct_emails)
-                summaries.append(result)
+        def _call_claude(task):
+            account, dept, email_text, ext_count, int_count, n_emails = task
+            _logger.info('  Analyzing %s (%d emails)...', account, n_emails)
+            full_result = claude.analyze_account_full(
+                dept, account, email_text, ext_count, int_count,
+            )
+            return account, dept, n_emails, full_result
 
-                # Guardar KG data para procesamiento posterior
-                kg_data = full_result.get('knowledge_graph', {})
-                if kg_data:
-                    kg_by_account[account] = kg_data
+        # Ejecutar en paralelo (max 3 workers para rate limits de Claude)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            futures = {pool.submit(_call_claude, t): t[0] for t in tasks}
+            for fut in as_completed(futures):
+                account_name = futures[fut]
+                try:
+                    account, dept, n_emails, full_result = fut.result()
+                    result = full_result['summary']
+                    result['account'] = account
+                    result['department'] = dept
+                    result['total_emails'] = n_emails
+                    summaries.append(result)
 
-                if supa and result.get('person_insights'):
-                    for pi in result['person_insights']:
-                        try:
-                            supa.upsert_person_profile({
-                                'name': pi.get('name', ''),
-                                'email': pi.get('email'),
-                                'company': pi.get('company'),
-                                'role': pi.get('role_detected'),
-                                'communication_style': pi.get(
-                                    'communication_style', 'formal',
-                                ),
-                                'key_interests': pi.get('key_interests', []),
-                                'personality_traits': pi.get(
-                                    'personality_traits', [],
-                                ),
-                                'decision_factors': pi.get(
-                                    'decision_factors', [],
-                                ),
-                                'decision_power': pi.get(
-                                    'decision_power', 'medium',
-                                ),
-                                'personality_notes': pi.get('notes', ''),
-                                'source_account': account,
-                                'last_seen_date': (
-                                    datetime.now(TZ_CDMX)
-                                    .strftime('%Y-%m-%d')
-                                ),
-                            })
-                        except Exception as exc:
-                            _logger.debug('person_insight upsert: %s', exc)
+                    kg_data = full_result.get('knowledge_graph', {})
+                    if kg_data:
+                        kg_by_account[account] = kg_data
 
-                accounts_ok += 1
-                _logger.info('  ✓ %s (%s): %d emails analizados',
-                             dept, account, len(acct_emails))
-            except Exception as exc:
-                accounts_failed += 1
-                _logger.error('  ✗ %s: %s', account, exc)
-                # Continue with next account — don't let one failure kill all
+                    # Acumular person insights para procesar después
+                    if result.get('person_insights'):
+                        for pi in result['person_insights']:
+                            pending_person_insights.append((account, pi))
+
+                    accounts_ok += 1
+                    _logger.info('  ✓ %s (%s): %d emails analizados',
+                                 dept, account, n_emails)
+                except Exception as exc:
+                    accounts_failed += 1
+                    _logger.error('  ✗ %s: %s', account_name, exc)
+
+        # Procesar person insights secuencialmente (supa no es thread-safe)
+        if supa and pending_person_insights:
+            today_str = datetime.now(TZ_CDMX).strftime('%Y-%m-%d')
+            for account, pi in pending_person_insights:
+                try:
+                    supa.upsert_person_profile({
+                        'name': pi.get('name', ''),
+                        'email': pi.get('email'),
+                        'company': pi.get('company'),
+                        'role': pi.get('role_detected'),
+                        'communication_style': pi.get(
+                            'communication_style', 'formal',
+                        ),
+                        'key_interests': pi.get('key_interests', []),
+                        'personality_traits': pi.get(
+                            'personality_traits', [],
+                        ),
+                        'decision_factors': pi.get(
+                            'decision_factors', [],
+                        ),
+                        'decision_power': pi.get(
+                            'decision_power', 'medium',
+                        ),
+                        'personality_notes': pi.get('notes', ''),
+                        'source_account': account,
+                        'last_seen_date': today_str,
+                    })
+                except Exception as exc:
+                    _logger.debug('person_insight upsert: %s', exc)
 
         _logger.info('Account analysis: %d ok, %d failed (of %d)',
                      accounts_ok, accounts_failed, len(sorted_accounts))
@@ -336,8 +353,9 @@ class IntelligenceEngine(models.Model):
                     _logger.warning('KG entity save failed (%s): %s', ent.get('name', '?'), exc)
             _logger.info('  KG entities: %d ok, %d failed', ent_ok, ent_fail)
 
-            # Guardar hechos
-            fact_ok, fact_fail, fact_skip = 0, 0, 0
+            # Guardar hechos (batch)
+            facts_batch = []
+            fact_skip = 0
             for fact in kg.get('facts', []):
                 ent_name = fact.get('entity_name', '')
                 ent_id = entity_map.get(ent_name)
@@ -345,23 +363,21 @@ class IntelligenceEngine(models.Model):
                     existing = supa.get_entity_by_name(ent_name)
                     ent_id = existing.get('id') if existing else None
                 if ent_id:
-                    try:
-                        supa.save_fact({
-                            'entity_id': ent_id,
-                            'fact_type': fact.get('type', 'information'),
-                            'fact_text': fact.get('text', ''),
-                            'fact_date': fact.get('date'),
-                            'is_future': fact.get('is_future', False),
-                            'confidence': fact.get('confidence', 0.5),
-                            'source_account': account,
-                        })
-                        fact_ok += 1
-                    except Exception as exc:
-                        fact_fail += 1
-                        _logger.debug('KG fact save failed: %s', exc)
+                    facts_batch.append({
+                        'entity_id': ent_id,
+                        'fact_type': fact.get('type', 'information'),
+                        'fact_text': fact.get('text', ''),
+                        'fact_date': fact.get('date'),
+                        'is_future': fact.get('is_future', False),
+                        'confidence': fact.get('confidence', 0.5),
+                        'source_account': account,
+                    })
                 else:
                     fact_skip += 1
-            _logger.info('  KG facts: %d ok, %d failed, %d skipped (no entity)', fact_ok, fact_fail, fact_skip)
+            if facts_batch:
+                supa.batch_save_facts(facts_batch)
+            _logger.info('  KG facts: %d batched, %d skipped (no entity)',
+                         len(facts_batch), fact_skip)
 
             # Guardar action items en Supabase + Odoo
             for item in kg.get('action_items', []):
@@ -422,51 +438,48 @@ class IntelligenceEngine(models.Model):
                 except Exception as exc:
                     _logger.debug('Action item save error: %s', exc)
 
-            # Guardar relaciones
-            rel_ok, rel_fail = 0, 0
+            # Guardar relaciones (batch)
+            rels_batch = []
             for rel in kg.get('relationships', []):
                 a_id = entity_map.get(rel.get('entity_a'))
                 b_id = entity_map.get(rel.get('entity_b'))
                 if a_id and b_id:
-                    try:
-                        supa.save_relationship({
-                            'entity_a_id': a_id,
-                            'entity_b_id': b_id,
-                            'relationship_type': rel.get('type', 'mentioned_with'),
-                            'context': rel.get('context', ''),
-                        })
-                        rel_ok += 1
-                    except Exception as exc:
-                        rel_fail += 1
-                        _logger.debug('KG relationship save failed: %s', exc)
-            _logger.info('  KG relationships: %d ok, %d failed', rel_ok, rel_fail)
-
-            # Guardar perfiles de personas
-            for profile in kg.get('person_profiles', []):
-                try:
-                    supa.upsert_person_profile({
-                        'name': profile.get('name', ''),
-                        'email': profile.get('email'),
-                        'company': profile.get('company'),
-                        'role': profile.get('role'),
-                        'department': profile.get('department'),
-                        'decision_power': profile.get('decision_power', 'medium'),
-                        'communication_style': profile.get(
-                            'communication_style', 'formal',
-                        ),
-                        'language_preference': profile.get(
-                            'language_preference', 'es',
-                        ),
-                        'key_interests': profile.get('key_interests', []),
-                        'personality_notes': profile.get('personality_notes', ''),
-                        'negotiation_style': profile.get('negotiation_style'),
-                        'response_pattern': profile.get('response_pattern'),
-                        'influence_on_deals': profile.get('influence_on_deals'),
-                        'source_account': account,
-                        'last_seen_date': today,
+                    rels_batch.append({
+                        'entity_a_id': a_id,
+                        'entity_b_id': b_id,
+                        'relationship_type': rel.get('type', 'mentioned_with'),
+                        'context': rel.get('context', ''),
                     })
-                except Exception as exc:
-                    _logger.debug('Person profile save error: %s', exc)
+            if rels_batch:
+                supa.batch_save_relationships(rels_batch)
+            _logger.info('  KG relationships: %d batched', len(rels_batch))
+
+            # Guardar perfiles de personas (batch)
+            kg_profiles = []
+            for profile in kg.get('person_profiles', []):
+                kg_profiles.append({
+                    'name': profile.get('name', ''),
+                    'email': profile.get('email'),
+                    'company': profile.get('company'),
+                    'role': profile.get('role'),
+                    'department': profile.get('department'),
+                    'decision_power': profile.get('decision_power', 'medium'),
+                    'communication_style': profile.get(
+                        'communication_style', 'formal',
+                    ),
+                    'language_preference': profile.get(
+                        'language_preference', 'es',
+                    ),
+                    'key_interests': profile.get('key_interests', []),
+                    'personality_notes': profile.get('personality_notes', ''),
+                    'negotiation_style': profile.get('negotiation_style'),
+                    'response_pattern': profile.get('response_pattern'),
+                    'influence_on_deals': profile.get('influence_on_deals'),
+                    'source_account': account,
+                    'last_seen_date': today,
+                })
+            if kg_profiles:
+                supa.batch_upsert_person_profiles(kg_profiles)
 
             batch_ids = [
                 e['gmail_message_id'] for e in acct_emails
@@ -522,8 +535,11 @@ class IntelligenceEngine(models.Model):
             ]
             try:
                 embeddings = voyage.embed(texts)
-                for e, emb in zip(batch, embeddings):
-                    supa.update_email_embedding(e['gmail_message_id'], emb)
+                updates = [
+                    (e['gmail_message_id'], emb)
+                    for e, emb in zip(batch, embeddings)
+                ]
+                supa.batch_update_email_embeddings(updates)
                 total += len(batch)
             except Exception as exc:
                 _logger.warning('Embedding batch error: %s', exc)

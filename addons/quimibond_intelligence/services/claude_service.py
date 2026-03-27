@@ -19,10 +19,27 @@ VOYAGE_ENDPOINT = 'https://api.voyageai.com/v1/embeddings'
 VOYAGE_MODEL = 'voyage-3'
 
 
+def _smart_truncate(text: str, max_chars: int = 6000) -> str:
+    """Trunca texto en un límite de línea para preservar contexto completo."""
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars].rfind('\n')
+    if cut > max_chars * 0.7:
+        return text[:cut] + '\n[... truncado]'
+    return text[:max_chars] + '\n[... truncado]'
+
+
+_MODEL_CACHE = {}
+
+
 def _resolve_model(client: anthropic.Anthropic, preferred: str) -> str:
-    """Valida el modelo preferido contra la API. Retorna uno válido o lanza error."""
+    """Valida el modelo preferido contra la API. Cachea resultado en memoria."""
+    if preferred in _MODEL_CACHE:
+        return _MODEL_CACHE[preferred]
+
     try:
         client.models.retrieve(model_id=preferred)
+        _MODEL_CACHE[preferred] = preferred
         return preferred
     except anthropic.NotFoundError:
         _logger.warning('Modelo %s no existe, buscando alternativa...', preferred)
@@ -35,10 +52,10 @@ def _resolve_model(client: anthropic.Anthropic, preferred: str) -> str:
             if 'sonnet' in m.id and 'claude' in m.id
         ]
         if sonnet_models:
-            # Ordenar por fecha de creación (más reciente primero)
             sonnet_models.sort(key=lambda m: m.created_at, reverse=True)
             fallback = sonnet_models[0].id
             _logger.warning('Usando modelo alternativo: %s', fallback)
+            _MODEL_CACHE[preferred] = fallback
             return fallback
     except Exception as exc:
         _logger.warning('No se pudo listar modelos: %s', exc)
@@ -138,8 +155,7 @@ class ClaudeService:
             '- ENTREGA OTD → si bajo, reconocer problema antes que reclamen'
         )
 
-        # Truncate email text to avoid Claude timeouts on large accounts
-        email_text = email_text[:12000]
+        email_text = _smart_truncate(email_text, 12000)
 
         prompt = (
             f'Analiza los {ext_count + int_count} emails de {department} ({account}).\n'
@@ -239,8 +255,7 @@ class ClaudeService:
             'Retorna SOLO JSON válido. Tags [ODOO:] son datos del ERP.'
         )
 
-        # Hard cap on email text to prevent timeouts
-        email_text = email_text[:6000]
+        email_text = _smart_truncate(email_text, 6000)
 
         prompt = (
             f'{department} ({account}): {ext_count} ext + {int_count} int emails.\n'
@@ -519,7 +534,7 @@ class ClaudeService:
         prompt = (
             'Analiza emails de ' + account
             + ' de Quimibond (textiles no tejidos, Mexico).\n\n'
-            + 'EMAILS:\n' + emails_text[:12000]
+            + 'EMAILS:\n' + _smart_truncate(emails_text, 12000)
             + '\n\nExtrae en JSON schema:\n' + schema
             + '\n\nREGLAS:\n'
             + '- Solo info EXPLICITA para facts. Confidence 0.8+ claros, 0.3-0.5 implicitos.\n'
