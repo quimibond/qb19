@@ -173,14 +173,30 @@ class OdooEnrichmentService(
             except Exception:
                 domain_partners_cache[domain] = Partner
 
+        # ── Batch: pre-cargar todos los partners por email ─────────────────
+        # Single query instead of N individual Partner.search calls
+        all_partners = Partner.search([
+            ('email', '!=', False),
+            ('email', '!=', ''),
+            ('active', '=', True),
+        ])
+        email_to_partner = {}
+        for p in all_partners:
+            raw = (p.email or '').strip().lower()
+            if not raw:
+                continue
+            for e in raw.replace(';', ',').split(','):
+                e = e.strip()
+                if e and '@' in e:
+                    if e not in email_to_partner:
+                        email_to_partner[e] = p
+
         # ── Enriquecer por contacto externo ─────────────────────────────────
         matched = 0
         skipped = 0
         for email_addr in external_emails:
             try:
-                partner = Partner.search(
-                    [('email', '=ilike', email_addr)], limit=1,
-                )
+                partner = email_to_partner.get(email_addr.lower())
 
                 if not partner:
                     domain = (email_addr.rsplit('@', 1)[-1].lower()
