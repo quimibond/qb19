@@ -1215,16 +1215,21 @@ class AnalysisService:
 
         # ── Client scores ───────────────────────────────────────────────────
         if client_scores:
-            at_risk = [s for s in client_scores if s['risk_level'] == 'high']
+            at_risk = [s for s in client_scores
+                       if s.get('risk_level') == 'high'
+                       or (s.get('overall_score') is not None
+                           and s['overall_score'] < 35)]
             if at_risk:
                 sections.append('\n═══ CLIENTES EN RIESGO ═══')
                 for s in at_risk:
+                    email_addr = s.get('email', s.get('contact_email', '?'))
+                    total = s.get('total_score', s.get('overall_score', '?'))
                     sections.append(
-                        f"{s['email']}: score={s['total_score']}/100 "
-                        f"(freq={s['frequency_score']}, "
-                        f"resp={s['responsiveness_score']}, "
-                        f"recip={s['reciprocity_score']}, "
-                        f"sent={s['sentiment_score']})"
+                        f"{email_addr}: score={total}/100 "
+                        f"(freq={s.get('frequency_score', s.get('communication_score', '?'))}, "
+                        f"resp={s.get('responsiveness_score', '?')}, "
+                        f"recip={s.get('reciprocity_score', s.get('engagement_score', '?'))}, "
+                        f"sent={s.get('sentiment_score', '?')})"
                     )
 
         return '\n'.join(sections)
