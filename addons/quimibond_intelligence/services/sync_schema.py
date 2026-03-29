@@ -8,10 +8,11 @@ writes to. It serves two purposes:
 2. Validation: detect missing fields before they reach production
 
 Schema hierarchy (general → particular):
-  companies → contacts → emails → threads
-  companies → odoo_snapshots
-  contacts  → health_scores, revenue_metrics
+  companies → contacts → emails → threads → email_recipients
+  companies → odoo_snapshots, odoo_invoices, odoo_deliveries, ...
+  contacts  → health_scores, revenue_metrics, communication_edges
   entities  → facts, entity_relationships
+  pipeline_runs → pipeline_logs
 
 Consolidated schema (March 2026):
   - person_profiles merged into contacts
@@ -41,7 +42,7 @@ SUPABASE_SCHEMAS = {
 
     'companies': {
         'writable': {
-            'name', 'canonical_name', 'odoo_partner_id',
+            'name', 'canonical_name', 'odoo_partner_id', 'entity_id',
             'is_customer', 'is_supplier', 'industry', 'business_type',
             'country', 'city',
             # Financial (from Odoo sync)
@@ -63,7 +64,7 @@ SUPABASE_SCHEMAS = {
 
     'contacts': {
         'writable': {
-            'email', 'name', 'company_id', 'odoo_partner_id',
+            'email', 'name', 'company_id', 'odoo_partner_id', 'entity_id',
             # Classification
             'contact_type', 'department', 'is_customer', 'is_supplier',
             # Profile (consolidated from person_profiles)
@@ -125,6 +126,25 @@ SUPABASE_SCHEMAS = {
         },
         'auto': {'id', 'created_at', 'updated_at', 'embedding'},
         'upsert_key': ('gmail_message_id',),
+    },
+
+    'email_recipients': {
+        'writable': {
+            'email_id', 'contact_id', 'recipient_email', 'recipient_name',
+        },
+        'auto': {'id', 'created_at'},
+        'upsert_key': ('email_id', 'contact_id'),
+    },
+
+    'communication_edges': {
+        'writable': {
+            'from_contact_id', 'to_contact_id',
+            'from_company_id', 'to_company_id',
+            'email_count', 'first_email_at', 'last_email_at',
+            'is_bidirectional', 'is_internal',
+        },
+        'auto': {'id', 'updated_at'},
+        'upsert_key': ('from_contact_id', 'to_contact_id'),
     },
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -315,14 +335,14 @@ SUPABASE_SCHEMAS = {
 
     'odoo_order_lines': {
         'writable': {
-            'odoo_order_id', 'odoo_partner_id', 'company_id',
+            'odoo_line_id', 'odoo_order_id', 'odoo_partner_id', 'company_id',
             'odoo_product_id',
             'order_name', 'order_date', 'order_type', 'order_state',
             'product_name', 'qty', 'price_unit', 'discount',
             'subtotal', 'currency',
         },
         'auto': {'id'},
-        'upsert_key': None,
+        'upsert_key': ('odoo_line_id',),
     },
 
     'odoo_users': {
@@ -438,6 +458,23 @@ SUPABASE_SCHEMAS = {
             'source_type', 'source_id', 'signal_type',
             'reward_score', 'context', 'account',
             'contact_email', 'reward_processed',
+        },
+        'auto': {'id', 'created_at'},
+        'upsert_key': None,
+    },
+
+    'sync_commands': {
+        'writable': {
+            'command', 'status', 'requested_by',
+            'result', 'started_at', 'completed_at',
+        },
+        'auto': {'id', 'created_at'},
+        'upsert_key': None,
+    },
+
+    'token_usage': {
+        'writable': {
+            'endpoint', 'model', 'input_tokens', 'output_tokens',
         },
         'auto': {'id', 'created_at'},
         'upsert_key': None,
