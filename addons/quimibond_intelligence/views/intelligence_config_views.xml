@@ -17,143 +17,75 @@
                             confirm="Ejecuta pruebas de conexion a todos los servicios. Continuar?"/>
                 </header>
 
-                <!-- ============================================================ -->
-                <!--  PASO 1: SETUP INICIAL (primera vez o reset)                 -->
-                <!-- ============================================================ -->
-                <div class="alert alert-warning mx-3 mt-2" role="alert">
-                    <strong>PASO 1 — Setup Inicial</strong>
-                    <span class="text-muted">(primera vez o despues de reset de schema)</span>
-                    <div class="mt-1 mb-2" style="font-size: 0.9em;">
-                        Carga datos base de Odoo + Gmail a Supabase.
-                        No usa Claude, no revienta memoria. ~3-5 min.
-                    </div>
-                    <button name="action_initial_setup" type="object"
-                            string="&#9654; Ejecutar Setup Inicial"
-                            class="btn btn-warning"
-                            confirm="Ejecuta en orden: 1) Contactos Odoo, 2) Datos Odoo (8 tablas), 3) Emails Gmail, 4) Scores, 5) Sync estado. ~3-5 min. Continuar?"/>
-                </div>
-
-                <!-- ============================================================ -->
-                <!--  PASO 2: ANALISIS CON CLAUDE (despues del setup)             -->
-                <!-- ============================================================ -->
-                <div class="alert alert-info mx-3 mt-2" role="alert">
-                    <strong>PASO 2 — Analisis con IA</strong>
-                    <span class="text-muted">(despues del setup o para re-analizar)</span>
-                    <div class="mt-1 mb-2" style="font-size: 0.9em;">
-                        Analiza emails con Claude: genera alertas, acciones,
-                        Knowledge Graph, perfiles de contacto. ~3-10 min.
-                    </div>
-                    <button name="action_analyze_emails" type="object"
-                            string="&#9654; Analizar Emails (Claude)"
-                            class="btn btn-info"
-                            confirm="Analiza emails con Claude AI. Genera alertas, acciones, KG y perfiles. Puede tomar 3-10 min y consume creditos de Claude. Continuar?"/>
-                </div>
-
-                <!-- ============================================================ -->
-                <!--  PASO 3: PIPELINE COMPLETO (daily)                           -->
-                <!-- ============================================================ -->
-                <div class="alert alert-success mx-3 mt-2" role="alert">
-                    <strong>PASO 3 — Pipeline Completo</strong>
-                    <span class="text-muted">(genera briefing diario, normalmente automatico)</span>
-                    <div class="mt-1 mb-2" style="font-size: 0.9em;">
-                        Ejecuta todo: sync + analisis + enrichment + scores + briefing.
-                        Equivalente al cron diario. ~5-15 min.
-                    </div>
-                    <button name="action_test_run" type="object"
-                            string="&#9654; Pipeline Completo (Diario)"
-                            class="btn btn-success"
-                            confirm="Ejecuta el pipeline completo (sync + analisis + enrichment + scores + briefing). Equivale al cron diario. Puede tomar 5-15 min. Continuar?"/>
-                </div>
-
-                <!-- ============================================================ -->
-                <!--  MICRO-PIPELINES (avanzado, ejecutar individualmente)         -->
-                <!-- ============================================================ -->
-                <div class="mx-3 mt-2 mb-3 p-3 border rounded" style="background: #f8f9fa;">
-                    <details>
-                        <summary style="cursor: pointer;">
-                            <strong>Avanzado</strong> — Micro-pipelines individuales
-                        </summary>
-                        <div class="mt-3">
-                            <div class="mb-2"><strong>Datos de Odoo</strong></div>
-                            <div class="d-flex flex-wrap gap-2 mb-3">
-                                <button name="action_enrich_only" type="object"
-                                        string="Contactos + Empresas"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Sincroniza partners de Odoo a Supabase con detalle completo. Toma 1-3 min. Continuar?"/>
-                                <button name="action_sync_odoo_tables" type="object"
-                                        string="8 Tablas Odoo (facturas, entregas...)"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Sincroniza: productos, ordenes, facturas, pagos, entregas, CRM, actividades y equipo. Puede tomar 2-5 min. Continuar?"/>
-                                <button name="action_update_scores" type="object"
-                                        string="Recalcular Scores"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Recalcula scores de relacion para todos los clientes. Continuar?"/>
-                            </div>
-                            <div class="mb-2"><strong>Gmail + IA</strong></div>
-                            <div class="d-flex flex-wrap gap-2 mb-3">
-                                <button name="action_sync_emails" type="object"
-                                        string="Descargar Emails (Gmail)"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Sincroniza emails nuevos de Gmail a Supabase. Continuar?"/>
-                                <button name="action_run_predictions" type="object"
-                                        string="Predicciones"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Analiza tendencias y genera alertas predictivas. Continuar?"/>
-                                <button name="action_check_briefing_replies" type="object"
-                                        string="Briefing Replies"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Busca replies al briefing y genera respuestas. Continuar?"/>
-                            </div>
-                            <div class="mb-2"><strong>Sync estado</strong></div>
-                            <div class="d-flex flex-wrap gap-2">
-                                <button name="action_supabase_sync" type="object"
-                                        string="Push Odoo → Supabase"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Empuja alertas, acciones y scores pendientes de Odoo a Supabase. Continuar?"/>
-                                <button name="action_reverse_sync" type="object"
-                                        string="Pull Supabase → Odoo"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        confirm="Importa cambios de estado del frontend (alertas reconocidas/resueltas, acciones completadas). Continuar?"/>
-                            </div>
-                        </div>
-                    </details>
-                </div>
                 <sheet>
                     <div class="oe_title mb-4">
-                        <h1>Quimibond Intelligence System</h1>
+                        <h1>Quimibond Intelligence</h1>
                         <p class="text-muted">
-                            Configuracion del cerebro de inteligencia.
-                            Conecta Gmail, Claude AI, Voyage AI y Supabase.
+                            Configuracion del sistema de inteligencia.
+                            Odoo sincroniza datos del ERP a Supabase.
+                            El analisis y dashboard estan en el
+                            <a href="https://quimibond-intelligence.vercel.app" target="_blank">
+                                frontend web</a>.
                         </p>
                     </div>
+
+                    <!-- ======================================================== -->
+                    <!--  SYNC DE DATOS ODOO (lo unico que corre en Odoo)          -->
+                    <!-- ======================================================== -->
+                    <div class="alert alert-primary mx-0 mt-2" role="alert">
+                        <strong>Sincronizar datos de Odoo</strong>
+                        <div class="mt-1 mb-2" style="font-size: 0.9em;">
+                            Envia contactos, facturas, entregas, CRM y actividades a Supabase.
+                            Esto corre automaticamente cada 6 horas.
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button name="action_enrich_only" type="object"
+                                    string="Contactos + Empresas"
+                                    class="btn btn-sm btn-outline-primary"
+                                    confirm="Sincroniza partners de Odoo a Supabase. ~2 min. Continuar?"/>
+                            <button name="action_sync_odoo_tables" type="object"
+                                    string="Tablas Odoo (facturas, entregas, CRM...)"
+                                    class="btn btn-sm btn-outline-primary"
+                                    confirm="Sincroniza facturas, pagos, entregas, CRM, actividades y equipo. ~3 min. Continuar?"/>
+                            <button name="action_supabase_sync" type="object"
+                                    string="Push alertas/acciones a Supabase"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    confirm="Empuja alertas y acciones pendientes de Odoo a Supabase. Continuar?"/>
+                            <button name="action_reverse_sync" type="object"
+                                    string="Pull cambios del frontend"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    confirm="Importa cambios de estado del frontend (alertas resueltas, acciones completadas). Continuar?"/>
+                        </div>
+                    </div>
+
                     <notebook>
-                        <page string="API Keys" name="api_keys">
+                        <page string="Conexiones" name="api_keys">
                             <group>
-                                <group string="Claude AI (Analisis)">
-                                    <field name="anthropic_api_key" password="True"/>
-                                    <field name="claude_model" placeholder="claude-sonnet-4-6"/>
-                                </group>
-                                <group string="Voyage AI (Embeddings/RAG)">
-                                    <field name="voyage_api_key" password="True"/>
-                                </group>
-                            </group>
-                            <group>
-                                <group string="Supabase (Memoria)">
+                                <group string="Supabase">
                                     <field name="supabase_url"
                                            placeholder="https://xxxx.supabase.co"/>
                                     <field name="supabase_key" password="True"/>
                                     <field name="supabase_service_role_key" password="True"/>
                                 </group>
-                                <group string="Google Workspace (Gmail)">
+                                <group string="Claude AI">
+                                    <field name="anthropic_api_key" password="True"/>
+                                    <field name="claude_model" placeholder="claude-sonnet-4-6"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Voyage AI (Embeddings)">
+                                    <field name="voyage_api_key" password="True"/>
+                                </group>
+                                <group string="Google Workspace">
                                     <label for="service_account_json"/>
                                     <field name="service_account_json" nolabel="1"
-                                           placeholder="Pega aqui el JSON completo del Service Account"/>
+                                           placeholder="JSON del Service Account de Google"/>
                                 </group>
                             </group>
                         </page>
                         <page string="Email" name="email">
                             <group>
-                                <group string="Briefing">
+                                <group string="Destinatario del briefing">
                                     <field name="sender_email"
                                            placeholder="jose.mizrahi@quimibond.com"/>
                                     <field name="recipient_email"
@@ -162,7 +94,7 @@
                             </group>
                             <separator string="Cuentas de email a monitorear"/>
                             <p class="text-muted">
-                                JSON con formato: {"email@quimibond.com": "Departamento", ...}
+                                JSON: {"email@quimibond.com": "Departamento", ...}
                             </p>
                             <field name="email_accounts_json" nolabel="1"/>
                         </page>
@@ -210,20 +142,14 @@
     <menuitem id="menu_intelligence_root"
               name="Intelligence"
               sequence="5"
-              action="action_briefings"/>
+              action="action_alerts"/>
 
     <!-- Operativo -->
     <menuitem id="menu_intelligence_ops"
               name="Operacion"
               parent="menu_intelligence_root"
               sequence="10"
-              action="action_briefings"/>
-
-    <menuitem id="menu_intelligence_briefings"
-              name="Briefings"
-              parent="menu_intelligence_ops"
-              action="action_briefings"
-              sequence="1"/>
+              action="action_alerts"/>
 
     <menuitem id="menu_intelligence_alerts"
               name="Alertas"
@@ -232,21 +158,15 @@
               sequence="10"/>
 
     <menuitem id="menu_intelligence_actions"
-              name="Acciones pendientes"
+              name="Acciones"
               parent="menu_intelligence_ops"
               action="action_action_items"
               sequence="20"/>
 
-    <menuitem id="menu_intelligence_draft_actions"
-              name="Acciones sugeridas"
+    <menuitem id="menu_intelligence_briefings"
+              name="Briefings"
               parent="menu_intelligence_ops"
-              action="action_draft_actions"
-              sequence="25"/>
-
-    <menuitem id="menu_intelligence_query"
-              name="Preguntar al cerebro"
-              parent="menu_intelligence_ops"
-              action="action_query"
+              action="action_briefings"
               sequence="30"/>
 
     <!-- Configuracion -->
@@ -256,7 +176,7 @@
               sequence="90"/>
 
     <menuitem id="menu_intelligence_config"
-              name="Ajustes del sistema"
+              name="Ajustes"
               parent="menu_intelligence_settings"
               action="action_intelligence_config"
               sequence="10"/>

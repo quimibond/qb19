@@ -1,14 +1,12 @@
 {
     'name': 'Quimibond Intelligence System',
-    'version': '19.0.27.0.0',
+    'version': '19.0.28.0.0',
     'category': 'Productivity',
-    'summary': 'Deep Intelligence: Gmail + 10 modelos Odoo + Knowledge Graph + Claude AI.',
+    'summary': 'Sincroniza datos de Odoo con el sistema de inteligencia en Supabase.',
     'description': (
-        'Cerebro de inteligencia empresarial con enriquecimiento profundo de Odoo. '
-        'Lee emails de Gmail, cruza con ventas, facturas, pagos, entregas, '
-        'producción, CRM, actividades, calendario y chatter de Odoo. '
-        'Genera briefings ejecutivos, alertas, scoring de clientes y '
-        'perfiles acumulativos de contactos con Claude AI.'
+        'Sincroniza contactos, facturas, entregas, CRM y actividades de Odoo '
+        'hacia Supabase. El analisis con IA, dashboard, alertas y briefings '
+        'se gestionan en el frontend (quimibond-intelligence.vercel.app).'
     ),
     'author': 'Quimibond',
     'website': 'https://quimibond.com',
@@ -39,8 +37,6 @@
         'views/intelligence_briefing_views.xml',
         'views/intelligence_alert_views.xml',
         'views/intelligence_action_views.xml',
-        'views/intelligence_draft_action_views.xml',
-        'views/intelligence_query_views.xml',
         'views/res_partner_views.xml',
         'views/intelligence_config_views.xml',
     ],
