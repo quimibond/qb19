@@ -212,6 +212,12 @@ class IntelligenceEngine(models.Model):
             except Exception:
                 pass
 
+            # Generate role-based briefings
+            self._generate_role_briefings(
+                claude, supa, today, data_package,
+                alerts_data, account_summaries,
+            )
+
         # Enviar briefing por email
         self._send_briefing_email(cfg, briefing_html, today, analysis)
 
@@ -225,6 +231,110 @@ class IntelligenceEngine(models.Model):
         )
 
         _logger.info('✓ Briefing diario completado')
+
+    # ── Role-based briefings ─────────────────────────────────────────────────
+
+    _ROLE_BRIEFING_CONFIGS = {
+        'director': {
+            'title': 'Briefing Dirección General',
+            'system': (
+                'Genera un briefing ejecutivo CORTO para el Director General. '
+                'Enfócate SOLO en:\n'
+                '1. KPIs financieros clave (facturación, cobranza, pipeline)\n'
+                '2. Riesgos que superen $100K MXN\n'
+                '3. Decisiones pendientes que requieren su aprobación\n'
+                '4. Accountability: quién cumplió y quién no\n'
+                '5. Top 3 acciones más importantes\n'
+                'NO incluyas detalles operativos menores. '
+                'Formato HTML con <h3>, <p>, <ul>, <strong>, <table>.'
+            ),
+        },
+        'ventas': {
+            'title': 'Briefing Ventas',
+            'system': (
+                'Genera un briefing para el equipo de Ventas. '
+                'Enfócate SOLO en:\n'
+                '1. Oportunidades nuevas y avance del pipeline CRM\n'
+                '2. Clientes en riesgo de churn (sentimiento negativo, '
+                'volumen decreciente)\n'
+                '3. Follow-ups vencidos y cotizaciones pendientes\n'
+                '4. Competidores mencionados hoy\n'
+                '5. Cross-sell/upsell oportunidades\n'
+                '6. Acciones específicas para cada vendedor\n'
+                'Formato HTML con <h3>, <p>, <ul>, <strong>, <table>.'
+            ),
+        },
+        'logistica': {
+            'title': 'Briefing Logística',
+            'system': (
+                'Genera un briefing para Logística y Operaciones. '
+                'Enfócate SOLO en:\n'
+                '1. Entregas retrasadas y pendientes (stock.picking)\n'
+                '2. Producción en proceso y problemas\n'
+                '3. Problemas de calidad detectados\n'
+                '4. Inventario crítico o en stockout\n'
+                '5. Clientes que preguntan por entregas en emails\n'
+                '6. OTD (on-time delivery) por cliente\n'
+                'Formato HTML con <h3>, <p>, <ul>, <strong>, <table>.'
+            ),
+        },
+        'compras': {
+            'title': 'Briefing Compras',
+            'system': (
+                'Genera un briefing para el equipo de Compras. '
+                'Enfócate SOLO en:\n'
+                '1. Proveedores con problemas (entregas, calidad, precios)\n'
+                '2. Negociaciones abiertas mencionadas en emails\n'
+                '3. Materias primas con stock crítico\n'
+                '4. Facturas de proveedores pendientes\n'
+                '5. Oportunidades de mejores condiciones\n'
+                'Formato HTML con <h3>, <p>, <ul>, <strong>, <table>.'
+            ),
+        },
+    }
+
+    def _generate_role_briefings(self, claude, supa, today,
+                                 data_package, alerts_data,
+                                 account_summaries):
+        """Generate role-specific briefings from the same data package."""
+        import re as _re
+
+        total_emails = sum(
+            s.get('total_emails', 0) for s in account_summaries)
+
+        for scope, config in self._ROLE_BRIEFING_CONFIGS.items():
+            try:
+                role_html = claude._call(
+                    config['system'],
+                    f'Datos del día:\n{data_package}',
+                    max_tokens=4000,
+                )
+
+                summary_text = _re.sub(r'<[^>]+>', '', role_html)
+                summary_short = summary_text[:2000]
+
+                supa._request(
+                    '/rest/v1/briefings'
+                    '?on_conflict=scope,briefing_date,account',
+                    'POST',
+                    {
+                        'scope': scope,
+                        'briefing_date': today,
+                        'account': '',
+                        'title': config['title'],
+                        'total_emails': total_emails,
+                        'summary_text': summary_short,
+                        'summary_html': role_html[:50000],
+                        'accounts_processed': len(account_summaries),
+                        'accounts_failed': 0,
+                    },
+                    extra_headers={
+                        'Prefer': 'resolution=merge-duplicates',
+                    },
+                )
+                _logger.info('  ✓ Briefing %s generado', scope)
+            except Exception as exc:
+                _logger.error('  ✗ Briefing %s: %s', scope, exc)
 
     # ── Lecturas de datos del día ─────────────────────────────────────────────
 

@@ -504,12 +504,17 @@ class IntelligenceEngine(models.Model):
         )
 
     def _link_odoo_ids(self, supa):
-        """Vincula contactos de Supabase con partners de Odoo por email."""
+        """Vincula contactos y companies de Supabase con partners de Odoo."""
+        self._link_contact_odoo_ids(supa)
+        self._link_company_odoo_ids(supa)
+
+    def _link_contact_odoo_ids(self, supa):
+        """Vincula contactos de Supabase con partners de Odoo por email + nombre fuzzy."""
         try:
             unlinked = supa._request(
                 '/rest/v1/contacts?odoo_partner_id=is.null'
                 '&contact_type=eq.external'
-                '&select=id,email'
+                '&select=id,email,name'
                 '&limit=200',
             ) or []
         except Exception as exc:
@@ -524,12 +529,27 @@ class IntelligenceEngine(models.Model):
 
         for contact in unlinked:
             email_addr = contact.get('email', '')
+            name = contact.get('name', '')
             if not email_addr:
                 continue
             try:
+                # Try exact email match first
                 partner = Partner.search(
                     [('email', '=ilike', email_addr)], limit=1,
                 )
+                # Try matching any email in multi-email partners
+                if not partner:
+                    partner = Partner.search(
+                        [('email', 'ilike', email_addr.split('@')[0] + '@')],
+                        limit=1,
+                    )
+                # Fuzzy name match as last resort (only if name is specific enough)
+                if not partner and name and len(name) > 5:
+                    partner = Partner.search(
+                        [('name', '=ilike', name),
+                         ('is_company', '=', False)],
+                        limit=1,
+                    )
                 if partner:
                     supa._request(
                         f'/rest/v1/contacts?id=eq.{contact["id"]}',
@@ -542,6 +562,68 @@ class IntelligenceEngine(models.Model):
                 _logger.debug('link_odoo_id %s: %s', email_addr, exc)
 
         _logger.info('Linked %d contactos de %d sin odoo_partner_id',
+                     linked, len(unlinked))
+
+    def _link_company_odoo_ids(self, supa):
+        """Vincula companies de Supabase con partners de Odoo por nombre."""
+        try:
+            unlinked = supa._request(
+                '/rest/v1/companies?odoo_partner_id=is.null'
+                '&select=id,name,canonical_name,domain'
+                '&limit=200',
+            ) or []
+        except Exception as exc:
+            _logger.warning('link_company_odoo_ids fetch: %s', exc)
+            return
+
+        if not unlinked:
+            return
+
+        Partner = self.env['res.partner'].sudo()
+        linked = 0
+
+        for company in unlinked:
+            name = company.get('name', '')
+            domain = company.get('domain', '')
+            if not name:
+                continue
+            try:
+                # Try exact name match on company partners
+                partner = Partner.search(
+                    [('name', '=ilike', name),
+                     ('is_company', '=', True)],
+                    limit=1,
+                )
+                # Try fuzzy name match
+                if not partner:
+                    partner = Partner.search(
+                        [('name', 'ilike', f'%{name}%'),
+                         ('is_company', '=', True)],
+                        limit=1,
+                    )
+                # Try matching by email domain
+                if not partner and domain:
+                    partner = Partner.search(
+                        [('email', 'ilike', f'%@{domain}'),
+                         ('is_company', '=', True)],
+                        limit=1,
+                    )
+                if partner:
+                    patch_data = {'odoo_partner_id': partner.id}
+                    # Also sync financial data from Odoo
+                    if partner.credit_limit:
+                        patch_data['credit_limit'] = partner.credit_limit
+                    supa._request(
+                        f'/rest/v1/companies?id=eq.{company["id"]}',
+                        'PATCH',
+                        patch_data,
+                        extra_headers={'Prefer': 'return=minimal'},
+                    )
+                    linked += 1
+            except Exception as exc:
+                _logger.debug('link_company_odoo_id %s: %s', name, exc)
+
+        _logger.info('Linked %d companies de %d sin odoo_partner_id',
                      linked, len(unlinked))
 
     # ══════════════════════════════════════════════════════════════════════════
