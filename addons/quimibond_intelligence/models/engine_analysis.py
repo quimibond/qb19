@@ -265,6 +265,9 @@ class IntelligenceEngine(models.Model):
                         'decision_power': pi.get(
                             'decision_power', 'medium',
                         ),
+                        'influence_on_deals': pi.get(
+                            'relationship_pattern',
+                        ),
                         'personality_notes': pi.get('notes', ''),
                         'source_account': account,
                         'last_seen_date': today_str,

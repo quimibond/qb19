@@ -4,6 +4,8 @@ Extraído de intelligence_engine.py: análisis, métricas, alertas, scoring, bri
 """
 import json
 import logging
+import math
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -11,6 +13,107 @@ from ..models.intelligence_config import INTERNAL_DOMAIN
 from .enrichment_helpers import is_automated_sender
 
 _logger = logging.getLogger(__name__)
+
+# Severity weights for urgency_score calculation
+_SEVERITY_WEIGHTS = {
+    'critical': 4.0,
+    'high': 3.0,
+    'medium': 2.0,
+    'low': 1.0,
+}
+
+
+def _enrich_alerts_business_value(alerts: list, odoo_ctx: dict):
+    """Enrich alerts with business_value_at_risk and urgency_score.
+
+    Looks up the partner/company lifetime_value from odoo_ctx and
+    calculates risk based on alert type and severity.
+    """
+    if not odoo_ctx:
+        return
+
+    partners = odoo_ctx.get('partners', {})
+    # Build a quick lookup: contact_name → lifetime_value
+    name_to_ltv = {}
+    for email_addr, p in partners.items():
+        name = p.get('name', email_addr)
+        ltv = p.get('lifetime_value') or p.get('total_invoiced', 0)
+        if name:
+            name_to_ltv[name.lower()] = ltv
+        name_to_ltv[email_addr.lower()] = ltv
+
+    # Alert types that directly involve money
+    _FINANCIAL_TYPES = {
+        'invoice_silence', 'payment_delay', 'payment_compliance',
+        'overdue_invoice',
+    }
+    # Alert types about relationship risk (fraction of LTV at risk)
+    _RELATIONSHIP_TYPES = {
+        'churn_risk', 'at_risk_client', 'negative_sentiment',
+        'volume_drop', 'quality_issue', 'stalled_thread',
+        'no_response',
+    }
+    # Alert types about opportunity (potential value)
+    _OPPORTUNITY_TYPES = {
+        'opportunity', 'cross_sell',
+    }
+
+    for alert in alerts:
+        contact_name = (alert.get('contact_name') or '').lower()
+        ltv = name_to_ltv.get(contact_name, 0)
+        alert_type = alert.get('alert_type', '')
+        severity = alert.get('severity', 'medium')
+        severity_w = _SEVERITY_WEIGHTS.get(severity, 1.0)
+
+        # Calculate business_value_at_risk
+        bvar = 0.0
+        if alert_type in _FINANCIAL_TYPES:
+            # For financial alerts, try to extract actual amount from description
+            desc = alert.get('description', '')
+            amounts = re.findall(r'\$[\d,]+', desc)
+            if amounts:
+                try:
+                    bvar = float(amounts[0].replace('$', '').replace(',', ''))
+                except (ValueError, IndexError):
+                    bvar = ltv * 0.1  # 10% of LTV as fallback
+            else:
+                bvar = ltv * 0.1
+        elif alert_type in _RELATIONSHIP_TYPES:
+            # Risk of losing the entire relationship
+            risk_fraction = {
+                'churn_risk': 0.8, 'at_risk_client': 0.6,
+                'negative_sentiment': 0.3, 'volume_drop': 0.5,
+                'quality_issue': 0.4, 'stalled_thread': 0.1,
+                'no_response': 0.05,
+            }
+            bvar = ltv * risk_fraction.get(alert_type, 0.2)
+        elif alert_type in _OPPORTUNITY_TYPES:
+            # For opportunities, extract expected_revenue from description
+            desc = alert.get('description', '')
+            amounts = re.findall(r'\$[\d,]+', desc)
+            if amounts:
+                try:
+                    bvar = float(amounts[0].replace('$', '').replace(',', ''))
+                except (ValueError, IndexError):
+                    bvar = ltv * 0.15
+            else:
+                bvar = ltv * 0.15
+
+        if bvar > 0:
+            alert['business_value_at_risk'] = round(bvar, 2)
+
+        # Calculate urgency_score (0-100)
+        urgency = severity_w * 10  # Base: 10-40
+        if bvar > 0:
+            # Add value component (logarithmic to avoid extreme scores)
+            urgency += min(30, math.log10(max(bvar, 1)) * 5)
+        # Boost for certain high-urgency types
+        if alert_type in ('invoice_silence', 'delivery_risk', 'stockout_risk'):
+            urgency += 20
+        elif alert_type in ('churn_risk', 'payment_delay'):
+            urgency += 10
+
+        alert['urgency_score'] = round(min(urgency, 100), 1)
 
 
 def normalize_supabase_emails(raw_emails, account_departments=None):
@@ -668,6 +771,9 @@ class AnalysisService:
                     'account': '',
                 })
 
+        # ── Enrich alerts with business value at risk ───────────────────────
+        _enrich_alerts_business_value(alerts, odoo_ctx)
+
         return alerts
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1109,16 +1215,21 @@ class AnalysisService:
 
         # ── Client scores ───────────────────────────────────────────────────
         if client_scores:
-            at_risk = [s for s in client_scores if s['risk_level'] == 'high']
+            at_risk = [s for s in client_scores
+                       if s.get('risk_level') == 'high'
+                       or (s.get('overall_score') is not None
+                           and s['overall_score'] < 35)]
             if at_risk:
                 sections.append('\n═══ CLIENTES EN RIESGO ═══')
                 for s in at_risk:
+                    email_addr = s.get('email', s.get('contact_email', '?'))
+                    total = s.get('total_score', s.get('overall_score', '?'))
                     sections.append(
-                        f"{s['email']}: score={s['total_score']}/100 "
-                        f"(freq={s['frequency_score']}, "
-                        f"resp={s['responsiveness_score']}, "
-                        f"recip={s['reciprocity_score']}, "
-                        f"sent={s['sentiment_score']})"
+                        f"{email_addr}: score={total}/100 "
+                        f"(freq={s.get('frequency_score', s.get('communication_score', '?'))}, "
+                        f"resp={s.get('responsiveness_score', '?')}, "
+                        f"recip={s.get('reciprocity_score', s.get('engagement_score', '?'))}, "
+                        f"sent={s.get('sentiment_score', '?')})"
                     )
 
         return '\n'.join(sections)

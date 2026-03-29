@@ -201,8 +201,8 @@ class SupabaseMetricsMixin:
                     continue
                 encoded_email = url_quote(clean, safe='')
                 patch = {
-                    'relationship_score': s['total_score'],
-                    'risk_level': s['risk_level'],
+                    'relationship_score': s.get('total_score', s.get('overall_score')),
+                    'risk_level': s.get('risk_level', 'medium'),
                     'updated_at': now_iso,
                 }
                 # Payment compliance score (0-20)
