@@ -370,6 +370,7 @@ class IntelligenceEngine(models.Model):
                         'fact_date': fact.get('date'),
                         'is_future': fact.get('is_future', False),
                         'confidence': fact.get('confidence', 0.5),
+                        'source_type': 'email',
                         'source_account': account,
                     })
                 else:

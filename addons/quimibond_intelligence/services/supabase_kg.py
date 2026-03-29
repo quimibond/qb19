@@ -137,13 +137,12 @@ class SupabaseKGMixin:
                        f"{fact.get('fact_type', '')}|"
                        f"{fact.get('fact_text', '')}")
                 fact['fact_hash'] = hashlib.md5(raw.encode()).hexdigest()
-        try:
-            self._upsert_batch(
-                '/rest/v1/facts?on_conflict=fact_hash',
-                facts, 'ignore-duplicates',
-            )
-        except Exception as exc:
-            _logger.warning('batch_save_facts (%d): %s', len(facts), exc)
+            if not fact.get('source_type'):
+                fact['source_type'] = 'email'
+        self._upsert_batch(
+            '/rest/v1/facts?on_conflict=fact_hash',
+            facts, 'ignore-duplicates',
+        )
 
     def batch_save_relationships(self, rels: list):
         """Guarda relaciones en batch (merge duplicados)."""
