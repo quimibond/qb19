@@ -113,9 +113,15 @@ class SupabaseMetricsMixin:
             if a.get('suggested_action'):
                 record['suggested_action'] = a['suggested_action']
             # Include thread reference if available
-            thread_id = a.get('related_thread_id') or a.get('thread_id')
-            if thread_id:
-                record['thread_id'] = thread_id
+            # gmail_thread_id is a hex string; thread_id column is bigint FK
+            raw_thread = a.get('related_thread_id') or a.get('thread_id')
+            if raw_thread and isinstance(raw_thread, int):
+                record['thread_id'] = raw_thread
+            # Business value fields from _enrich_alerts_business_value
+            if a.get('business_value_at_risk'):
+                record['business_value_at_risk'] = a['business_value_at_risk']
+            if a.get('urgency_score'):
+                record['urgency_score'] = a['urgency_score']
             # Resolve contact_id + company_id from contact_name
             contact_info = name_to_contact.get(a.get('contact_name'))
             if contact_info:
