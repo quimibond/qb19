@@ -69,8 +69,8 @@ class IntelligenceEngine(models.Model):
     def _sync_alerts_to_supabase(self, supa) -> int:
         """Sync unsynced alerts to Supabase. Returns count synced.
 
-        Maps Odoo states to frontend states:
-        open→new, acknowledged→acknowledged, resolved→resolved, dismissed→resolved
+        If alert has supabase_id → PATCH (update state).
+        If alert has no supabase_id → INSERT (create in Supabase), then store ID.
         """
         alerts = self.env['intelligence.alert'].sudo().search([
             ('supabase_synced', '=', False),
@@ -84,34 +84,50 @@ class IntelligenceEngine(models.Model):
             try:
                 supa_state = ALERT_STATE_MAP.get(alert.state, 'new')
                 is_resolved = alert.state in ('resolved', 'dismissed')
-                patch = {
-                    'state': supa_state,
-                }
-                if is_resolved and alert.resolved_date:
-                    patch['resolved_at'] = alert.resolved_date.isoformat()
-                if alert.resolution_notes:
-                    patch['resolution_notes'] = alert.resolution_notes
 
                 if alert.supabase_id and alert.supabase_id > 0:
+                    # Already exists in Supabase → PATCH state
+                    patch = {'state': supa_state}
+                    if is_resolved and alert.resolved_date:
+                        patch['resolved_at'] = alert.resolved_date.isoformat()
+                    if alert.resolution_notes:
+                        patch['resolution_notes'] = alert.resolution_notes
                     supa._request(
                         f'/rest/v1/alerts?id=eq.{alert.supabase_id}',
                         'PATCH', patch,
                         extra_headers={'Prefer': 'return=minimal'},
                     )
-                    synced += 1
-                elif alert.name:
-                    from urllib.parse import quote as url_quote
-                    encoded = url_quote(alert.name[:200], safe='')
-                    supa._request(
-                        f'/rest/v1/alerts?title=eq.{encoded}',
-                        'PATCH', patch,
-                        extra_headers={'Prefer': 'return=minimal'},
+                else:
+                    # New alert → INSERT into Supabase
+                    payload = {
+                        'alert_type': alert.alert_type or 'general',
+                        'severity': alert.severity or 'medium',
+                        'title': alert.name or '',
+                        'description': alert.description or '',
+                        'state': supa_state,
+                        'contact_name': alert.partner_id.name if alert.partner_id else None,
+                    }
+                    # Optional fields
+                    if alert.business_impact:
+                        payload['business_impact'] = alert.business_impact
+                    if alert.suggested_action:
+                        payload['suggested_action'] = alert.suggested_action
+                    if alert.business_value_at_risk:
+                        payload['business_value_at_risk'] = alert.business_value_at_risk
+
+                    result = supa._request(
+                        '/rest/v1/alerts',
+                        'POST', payload,
+                        extra_headers={'Prefer': 'return=representation'},
                     )
-                    synced += 1
+                    # Store Supabase ID back on Odoo record
+                    if result and isinstance(result, list) and result[0].get('id'):
+                        alert.write({'supabase_id': result[0]['id']})
 
                 alert.write({'supabase_synced': True})
+                synced += 1
             except Exception as exc:
-                _logger.debug('sync alert %s: %s', alert.id, exc)
+                _logger.warning('sync alert %s: %s', alert.id, exc)
 
         return synced
 
