@@ -153,12 +153,13 @@ class AnalysisService:
     @staticmethod
     def format_emails_for_claude(emails: list, odoo_ctx: dict,
                                  person_profiles: dict = None,
-                                 max_emails: int = 10,
-                                 max_body: int = 400) -> str:
+                                 max_emails: int = 30,
+                                 max_body: int = 2000) -> str:
         """Formatea emails con contexto profundo de Odoo + perfiles conocidos.
 
         Limits: max_emails per account, max_body chars per email body.
-        This keeps the prompt under ~12K chars to avoid Claude timeouts.
+        Increased from 10/400 to 30/2000 to give Claude enough context
+        for meaningful analysis instead of just snippets.
         """
         person_profiles = person_profiles or {}
         # Take most recent emails only

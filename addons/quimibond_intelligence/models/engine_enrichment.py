@@ -398,10 +398,21 @@ class IntelligenceEngine(models.Model):
                 }
                 contact_batch.append(record)
 
-        # Batch upsert contacts (50 at a time)
+        # Filter out contacts with invalid emails before batching
+        import re
+        _email_re = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+        valid_batch = []
+        for rec in contact_batch:
+            email = rec.get('email', '')
+            if email and _email_re.match(email):
+                valid_batch.append(rec)
+            else:
+                _logger.debug('Skipping contact with invalid email: %s', email)
+
+        # Batch upsert contacts (50 at a time) with one-by-one fallback
         synced, failed = 0, 0
-        for i in range(0, len(contact_batch), 50):
-            chunk = contact_batch[i:i + 50]
+        for i in range(0, len(valid_batch), 50):
+            chunk = valid_batch[i:i + 50]
             try:
                 supa._upsert_batch(
                     '/rest/v1/contacts?on_conflict=email',
@@ -409,9 +420,20 @@ class IntelligenceEngine(models.Model):
                 )
                 synced += len(chunk)
             except Exception as exc:
-                failed += len(chunk)
-                _logger.warning('batch contacts chunk %d (%d records): %s',
-                                i, len(chunk), exc)
+                _logger.warning('batch contacts chunk %d failed, retrying one-by-one: %s',
+                                i, exc)
+                # Fallback: try each contact individually
+                for rec in chunk:
+                    try:
+                        supa._upsert_batch(
+                            '/rest/v1/contacts?on_conflict=email',
+                            [rec], 'merge-duplicates',
+                        )
+                        synced += 1
+                    except Exception as inner_exc:
+                        failed += 1
+                        _logger.warning('contact upsert failed (%s): %s',
+                                        rec.get('email', '?'), inner_exc)
 
         # ── Phase 3: Update company financial summaries ────────────────────
         from urllib.parse import quote as _quote

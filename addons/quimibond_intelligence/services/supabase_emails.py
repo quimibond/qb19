@@ -196,7 +196,11 @@ class SupabaseEmailsMixin:
         return found
 
     def mark_emails_kg_processed(self, gmail_message_ids: list):
-        """Marca emails como procesados por el knowledge graph."""
+        """Marca emails como procesados por el knowledge graph.
+
+        Retries once on failure to prevent duplicate KG entries
+        from reprocessing the same emails on the next analysis run.
+        """
         if not gmail_message_ids:
             return
         chunk = 80
@@ -205,11 +209,25 @@ class SupabaseEmailsMixin:
             if not part:
                 continue
             enc = _postgrest_in_list(part)
-            try:
-                self._request(
-                    f'/rest/v1/emails?gmail_message_id=in.({enc})',
-                    'PATCH',
-                    {'kg_processed': True},
-                )
-            except Exception as exc:
-                _logger.debug('mark_emails_kg_processed: %s', exc)
+            for attempt in range(2):
+                try:
+                    self._request(
+                        f'/rest/v1/emails?gmail_message_id=in.({enc})',
+                        'PATCH',
+                        {'kg_processed': True},
+                    )
+                    break  # success
+                except Exception as exc:
+                    if attempt == 0:
+                        import time
+                        time.sleep(2)
+                        _logger.warning(
+                            'mark_emails_kg_processed retry (chunk %d): %s',
+                            i, exc,
+                        )
+                    else:
+                        _logger.error(
+                            'mark_emails_kg_processed FAILED (chunk %d, '
+                            '%d emails will be reprocessed): %s',
+                            i, len(part), exc,
+                        )

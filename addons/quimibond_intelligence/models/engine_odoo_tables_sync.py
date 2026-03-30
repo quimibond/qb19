@@ -98,7 +98,7 @@ class IntelligenceEngine(models.Model):
         products = Product.search([
             ('active', '=', True),
             ('type', '!=', 'service'),
-        ], limit=2000)
+        ])
 
         if not products:
             return 0
@@ -186,7 +186,7 @@ class IntelligenceEngine(models.Model):
                 ('order_id.date_order', '>=', cutoff),
                 ('order_id.state', 'in', ['sale', 'done']),
                 ('display_type', '=', False),
-            ], limit=5000)
+            ])
 
             batch = []
             for line in lines:
@@ -236,7 +236,7 @@ class IntelligenceEngine(models.Model):
                 ('order_id.date_order', '>=', cutoff),
                 ('order_id.state', 'in', ['purchase', 'done']),
                 ('display_type', '=', False),
-            ], limit=5000)
+            ])
 
             batch = []
             for line in po_lines:
@@ -370,7 +370,7 @@ class IntelligenceEngine(models.Model):
             ('move_type', 'in', ['out_invoice', 'out_refund']),
             ('state', '=', 'posted'),
             ('invoice_date', '>=', cutoff),
-        ], limit=5000)
+        ])
 
         if not invoices:
             return 0
@@ -456,7 +456,7 @@ class IntelligenceEngine(models.Model):
         payments = Payment.search([
             ('state', '=', 'posted'),
             ('date', '>=', cutoff),
-        ], limit=5000)
+        ])
 
         if not payments:
             return 0
@@ -512,7 +512,7 @@ class IntelligenceEngine(models.Model):
             '|',
             ('state', 'not in', ['done', 'cancel']),
             ('date_done', '>=', cutoff),
-        ], limit=3000)
+        ])
 
         if not pickings:
             return 0
@@ -578,7 +578,7 @@ class IntelligenceEngine(models.Model):
         today = fields.Date.today()
         leads = Lead.search([
             ('active', '=', True),
-        ], limit=2000)
+        ])
 
         if not leads:
             return 0
@@ -637,7 +637,7 @@ class IntelligenceEngine(models.Model):
         today = fields.Date.today()
 
         # All pending activities
-        activities = Activity.search([], limit=5000)
+        activities = Activity.search([])
 
         if not activities:
             return 0
