@@ -185,9 +185,11 @@ class IntelligenceEngine(models.Model):
         accounts_failed = 0
         pending_person_insights = []
 
+        # Analyze ALL accounts, not just top 8.
+        # Previous [:8] limit meant 14+ accounts never generated alerts.
         sorted_accounts = sorted(
             by_account.items(), key=lambda x: len(x[1]), reverse=True,
-        )[:8]
+        )
 
         # Preparar tareas (solo cuentas con >=2 emails)
         tasks = []
@@ -208,10 +210,24 @@ class IntelligenceEngine(models.Model):
         def _call_claude(task):
             account, dept, email_text, ext_count, int_count, n_emails = task
             _logger.info('  Analyzing %s (%d emails)...', account, n_emails)
-            full_result = claude.analyze_account_full(
-                dept, account, email_text, ext_count, int_count,
-            )
-            return account, dept, n_emails, full_result
+            # Retry up to 2 times with exponential backoff
+            last_exc = None
+            for attempt in range(3):
+                try:
+                    full_result = claude.analyze_account_full(
+                        dept, account, email_text, ext_count, int_count,
+                    )
+                    return account, dept, n_emails, full_result
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt < 2:
+                        wait = 2 ** (attempt + 1)  # 2s, 4s
+                        _logger.warning(
+                            '  ⚠ %s attempt %d failed, retrying in %ds: %s',
+                            account, attempt + 1, wait, exc,
+                        )
+                        time.sleep(wait)
+            raise last_exc
 
         # Ejecutar en paralelo (max 3 workers para rate limits de Claude)
         with ThreadPoolExecutor(max_workers=3) as pool:

@@ -1,6 +1,6 @@
 {
     'name': 'Quimibond Intelligence System',
-    'version': '19.0.28.0.0',
+    'version': '19.0.29.0.0',
     'category': 'Productivity',
     'summary': 'Sincroniza datos de Odoo con el sistema de inteligencia en Supabase.',
     'description': (

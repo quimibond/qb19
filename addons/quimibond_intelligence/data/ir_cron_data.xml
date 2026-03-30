@@ -62,16 +62,18 @@
             <field name="priority">15</field>
         </record>
 
+        <!-- Enrichment MUST run BEFORE analysis so Claude has fresh Odoo context.
+             Changed from 6h/priority 12 → 1h/priority 7 (runs after emails, before analysis). -->
         <record id="cron_enrich_only" model="ir.cron">
-            <field name="name">Intelligence - Sync Odoo→Supabase (cada 6h)</field>
+            <field name="name">Intelligence - Sync Odoo→Supabase (cada 1h)</field>
             <field name="model_id" ref="model_intelligence_engine"/>
             <field name="state">code</field>
             <field name="code">model.run_enrich_only()</field>
-            <field name="interval_number">6</field>
+            <field name="interval_number">1</field>
             <field name="interval_type">hours</field>
             <field name="active">True</field>
-            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=6)).strftime('%Y-%m-%d %H:%M:%S')"/>
-            <field name="priority">12</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">7</field>
         </record>
 
         <record id="cron_supabase_sync" model="ir.cron">
@@ -86,16 +88,18 @@
             <field name="priority">3</field>
         </record>
 
+        <!-- Odoo tables (invoices, deliveries, CRM, etc.) sync more frequently
+             to keep financial/operational data fresh. Changed from 6h → 2h. -->
         <record id="cron_odoo_tables_sync" model="ir.cron">
-            <field name="name">Intelligence - Sync Odoo Tables (cada 6h)</field>
+            <field name="name">Intelligence - Sync Odoo Tables (cada 2h)</field>
             <field name="model_id" ref="model_intelligence_engine"/>
             <field name="state">code</field>
             <field name="code">model.run_sync_odoo_tables()</field>
-            <field name="interval_number">6</field>
+            <field name="interval_number">2</field>
             <field name="interval_type">hours</field>
             <field name="active">True</field>
-            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=6)).strftime('%Y-%m-%d %H:%M:%S')"/>
-            <field name="priority">13</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">8</field>
         </record>
 
         <record id="cron_predictions" model="ir.cron">

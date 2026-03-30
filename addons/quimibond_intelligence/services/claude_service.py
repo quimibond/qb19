@@ -155,7 +155,7 @@ class ClaudeService:
             '- ENTREGA OTD → si bajo, reconocer problema antes que reclamen'
         )
 
-        email_text = _smart_truncate(email_text, 12000)
+        email_text = _smart_truncate(email_text, 40000)
 
         prompt = (
             f'Analiza los {ext_count + int_count} emails de {department} ({account}).\n'
@@ -267,7 +267,9 @@ class ClaudeService:
             'Retorna SOLO JSON válido. Tags [ODOO:] son datos del ERP.'
         )
 
-        email_text = _smart_truncate(email_text, 6000)
+        # 40K chars ~= 10K tokens. Claude handles 200K tokens easily.
+        # Previous 6K limit meant ~120 chars per email — not enough for analysis.
+        email_text = _smart_truncate(email_text, 40000)
 
         prompt = (
             f'{department} ({account}): {ext_count} ext + {int_count} int emails.\n'
@@ -546,7 +548,7 @@ class ClaudeService:
         prompt = (
             'Analiza emails de ' + account
             + ' de Quimibond (textiles no tejidos, Mexico).\n\n'
-            + 'EMAILS:\n' + _smart_truncate(emails_text, 12000)
+            + 'EMAILS:\n' + _smart_truncate(emails_text, 40000)
             + '\n\nExtrae en JSON schema:\n' + schema
             + '\n\nREGLAS:\n'
             + '- Solo info EXPLICITA para facts. Confidence 0.8+ claros, 0.3-0.5 implicitos.\n'
