@@ -208,7 +208,7 @@ SUPABASE_SCHEMAS = {
             'priority',
             # Linked entities
             'contact_id', 'contact_name', 'contact_company',
-            'company_id', 'thread_id',
+            'company_id', 'thread_id', 'alert_id',
             # Assignment
             'assignee_name', 'assignee_email',
             # State
