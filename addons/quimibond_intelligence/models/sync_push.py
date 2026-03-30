@@ -476,7 +476,7 @@ class QuimibondSync(models.TransientModel):
 
         # Full refresh: delete all then insert
         client.delete_all('odoo_activities')
-        return client.upsert('odoo_activities', rows, on_conflict='', batch_size=200)
+        return client.insert('odoo_activities', rows, batch_size=200)
 
     def _resolve_activity_partner(self, activity) -> int | None:
         """Resolve partner ID from activity's related model."""

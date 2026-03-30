@@ -46,6 +46,26 @@ class SupabaseClient:
                                 table, i, len(chunk), exc)
         return synced
 
+    def insert(self, table: str, rows: list, batch_size: int = 200) -> int:
+        """Plain INSERT (no upsert). For full-refresh tables."""
+        if not rows:
+            return 0
+        synced = 0
+        for i in range(0, len(rows), batch_size):
+            chunk = rows[i:i + batch_size]
+            try:
+                resp = self._http.post(
+                    f'{self.url}/rest/v1/{table}',
+                    content=json.dumps(chunk, default=str),
+                    headers={**self.headers, 'Prefer': 'return=minimal'},
+                )
+                resp.raise_for_status()
+                synced += len(chunk)
+            except Exception as exc:
+                _logger.warning('insert %s chunk %d (%d rows): %s',
+                                table, i, len(chunk), exc)
+        return synced
+
     def delete_all(self, table: str) -> None:
         """Delete all rows from a table (for full refresh tables like activities)."""
         try:
