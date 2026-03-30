@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Simple status action that triggers push manually -->
+    <record id="action_force_push" model="ir.actions.server">
+        <field name="name">Forzar Push a Supabase</field>
+        <field name="model_id" ref="model_quimibond_sync"/>
+        <field name="state">code</field>
+        <field name="code">model.push_to_supabase()</field>
+    </record>
+
+    <record id="action_force_pull" model="ir.actions.server">
+        <field name="name">Forzar Pull desde Supabase</field>
+        <field name="model_id" ref="model_quimibond_sync_pull"/>
+        <field name="state">code</field>
+        <field name="code">model.pull_from_supabase()</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_sync_root"
+        name="Quimibond Sync"
+        web_icon="quimibond_sync,static/description/icon.png"
+        sequence="100"/>
+
+    <menuitem id="menu_sync_actions"
+        name="Acciones"
+        parent="menu_sync_root"
+        sequence="10"/>
+
+    <menuitem id="menu_force_push"
+        name="Push a Supabase (manual)"
+        parent="menu_sync_actions"
+        action="action_force_push"
+        sequence="10"/>
+
+    <menuitem id="menu_force_pull"
+        name="Pull desde Supabase (manual)"
+        parent="menu_sync_actions"
+        action="action_force_pull"
+        sequence="20"/>
+
+    <!-- Link to frontend -->
+    <record id="action_open_frontend" model="ir.actions.act_url">
+        <field name="name">Abrir Quimibond Intelligence</field>
+        <field name="url">https://quimibond-intelligence.vercel.app/inbox</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_open_frontend"
+        name="Abrir Intelligence (Vercel)"
+        parent="menu_sync_root"
+        action="action_open_frontend"
+        sequence="5"/>
+
+</odoo>

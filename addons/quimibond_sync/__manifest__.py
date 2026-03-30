@@ -19,6 +19,7 @@
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'views/sync_status_views.xml',
     ],
     'installable': True,
     'application': False,
