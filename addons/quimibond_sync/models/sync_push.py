@@ -36,7 +36,7 @@ def _commercial_partner_id(partner) -> int | None:
     return cp.id if cp else partner.id
 
 
-class QuimibondSync(models.TransientModel):
+class QuimibondSync(models.AbstractModel):
     _name = 'quimibond.sync'
     _description = 'Quimibond Sync Engine'
 
@@ -70,14 +70,19 @@ class QuimibondSync(models.TransientModel):
                 'summary': summary or 'sin cambios',
                 'duration_seconds': round(elapsed, 1),
             })
+            self.env.cr.commit()
         except Exception as exc:
             _logger.error('Push to Supabase failed: %s', exc)
-            self.env['quimibond.sync.log'].sudo().create({
-                'name': 'Push fallido',
-                'direction': 'push',
-                'status': 'error',
-                'summary': str(exc)[:500],
-            })
+            try:
+                self.env['quimibond.sync.log'].sudo().create({
+                    'name': 'Push fallido',
+                    'direction': 'push',
+                    'status': 'error',
+                    'summary': str(exc)[:500],
+                })
+                self.env.cr.commit()
+            except Exception:
+                pass
         finally:
             client.close()
 

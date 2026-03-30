@@ -25,7 +25,7 @@ def _get_client(env) -> SupabaseClient | None:
     return SupabaseClient(url, key)
 
 
-class QuimibondSyncPull(models.TransientModel):
+class QuimibondSyncPull(models.AbstractModel):
     _name = 'quimibond.sync.pull'
     _description = 'Quimibond Pull from Supabase'
 
@@ -52,14 +52,19 @@ class QuimibondSyncPull(models.TransientModel):
                 'summary': summary,
                 'duration_seconds': round(elapsed, 1),
             })
+            self.env.cr.commit()
         except Exception as exc:
             _logger.error('Pull from Supabase failed: %s', exc)
-            self.env['quimibond.sync.log'].sudo().create({
-                'name': 'Pull fallido',
-                'direction': 'pull',
-                'status': 'error',
-                'summary': str(exc)[:500],
-            })
+            try:
+                self.env['quimibond.sync.log'].sudo().create({
+                    'name': 'Pull fallido',
+                    'direction': 'pull',
+                    'status': 'error',
+                    'summary': str(exc)[:500],
+                })
+                self.env.cr.commit()
+            except Exception:
+                pass
         finally:
             client.close()
 
