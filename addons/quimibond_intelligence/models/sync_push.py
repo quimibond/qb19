@@ -333,26 +333,40 @@ class QuimibondSync(models.TransientModel):
     # ── Payments (last 180 days) ─────────────────────────────────────────
 
     def _push_payments(self, client: SupabaseClient) -> int:
-        Payment = self.env['account.payment'].sudo()
-        cutoff = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
-        payments = Payment.search([
+        """Push payment data extracted from paid/partial invoices.
+
+        Odoo uses bank reconciliation (not account.payment records),
+        so we extract payment info from invoice amount_residual changes.
+        """
+        Move = self.env['account.move'].sudo()
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+
+        # Get invoices that have been paid or partially paid
+        invoices = Move.search([
+            ('move_type', 'in', ['out_invoice', 'out_refund']),
             ('state', '=', 'posted'),
-            ('date', '>=', cutoff),
+            ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
+            ('invoice_date', '>=', cutoff),
         ])
 
         rows = []
-        for p in payments:
-            pid = _commercial_partner_id(p.partner_id)
+        for inv in invoices:
+            pid = _commercial_partner_id(inv.partner_id)
             if not pid:
                 continue
+
+            amount_paid = inv.amount_total - inv.amount_residual
+            if amount_paid <= 0:
+                continue
+
             rows.append({
                 'odoo_partner_id': pid,
-                'name': p.name,
-                'payment_type': p.payment_type or 'inbound',
-                'amount': round(p.amount, 2),
-                'currency': p.currency_id.name if p.currency_id else 'MXN',
-                'payment_date': p.date.strftime('%Y-%m-%d') if p.date else None,
-                'state': p.state,
+                'name': f'PAY-{inv.name}',
+                'payment_type': 'inbound' if inv.move_type == 'out_invoice' else 'outbound',
+                'amount': round(amount_paid, 2),
+                'currency': inv.currency_id.name if inv.currency_id else 'MXN',
+                'payment_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
+                'state': 'posted',
             })
 
         return client.upsert('odoo_payments', rows,
