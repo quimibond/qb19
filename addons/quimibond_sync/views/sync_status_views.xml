@@ -32,14 +32,40 @@
         <field name="name">Forzar Push a Supabase</field>
         <field name="model_id" ref="model_quimibond_sync"/>
         <field name="state">code</field>
-        <field name="code">model.push_to_supabase()</field>
+        <field name="code">
+model.push_to_supabase()
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': 'Push completado',
+        'message': 'Los datos de Odoo se sincronizaron a Supabase. Revisa el Historial de Sync.',
+        'type': 'success',
+        'sticky': False,
+        'next': {'type': 'ir.actions.act_window', 'res_model': 'quimibond.sync.log', 'view_mode': 'list', 'name': 'Historial de Sync'},
+    },
+}
+        </field>
     </record>
 
     <record id="action_force_pull" model="ir.actions.server">
         <field name="name">Forzar Pull desde Supabase</field>
         <field name="model_id" ref="model_quimibond_sync_pull"/>
         <field name="state">code</field>
-        <field name="code">model.pull_from_supabase()</field>
+        <field name="code">
+model.pull_from_supabase()
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': 'Pull completado',
+        'message': 'Se procesaron los comandos de Supabase. Revisa el Historial de Sync.',
+        'type': 'success',
+        'sticky': False,
+        'next': {'type': 'ir.actions.act_window', 'res_model': 'quimibond.sync.log', 'view_mode': 'list', 'name': 'Historial de Sync'},
+    },
+}
+        </field>
     </record>
 
     <record id="action_open_frontend" model="ir.actions.act_url">

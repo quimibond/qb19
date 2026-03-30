@@ -36,19 +36,30 @@ class QuimibondSyncPull(models.TransientModel):
         if not client:
             return
 
+        _start = datetime.now()
         try:
             commands = self._process_commands(client)
             contacts = self._sync_new_contacts(client)
             actions = self._sync_completed_actions(client)
 
-            if commands or contacts or actions:
-                _logger.info(
-                    '✓ Pull from Supabase: %d commands, %d contacts created, '
-                    '%d actions synced',
-                    commands, contacts, actions,
-                )
+            summary = f'commands={commands}, contacts={contacts}, actions={actions}'
+            _logger.info('✓ Pull from Supabase: %s', summary)
+            elapsed = (datetime.now() - _start).total_seconds()
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': 'Pull completo',
+                'direction': 'pull',
+                'status': 'success',
+                'summary': summary,
+                'duration_seconds': round(elapsed, 1),
+            })
         except Exception as exc:
             _logger.error('Pull from Supabase failed: %s', exc)
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': 'Pull fallido',
+                'direction': 'pull',
+                'status': 'error',
+                'summary': str(exc)[:500],
+            })
         finally:
             client.close()
 
