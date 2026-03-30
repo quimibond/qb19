@@ -39,10 +39,9 @@ action = {
     'tag': 'display_notification',
     'params': {
         'title': 'Push completado',
-        'message': 'Los datos de Odoo se sincronizaron a Supabase. Revisa el Historial de Sync.',
+        'message': 'Datos sincronizados a Supabase. Ve a Historial de Sync para ver detalles.',
         'type': 'success',
         'sticky': False,
-        'next': {'type': 'ir.actions.act_window', 'res_model': 'quimibond.sync.log', 'view_mode': 'list', 'name': 'Historial de Sync'},
     },
 }
         </field>
@@ -59,10 +58,9 @@ action = {
     'tag': 'display_notification',
     'params': {
         'title': 'Pull completado',
-        'message': 'Se procesaron los comandos de Supabase. Revisa el Historial de Sync.',
+        'message': 'Comandos de Supabase procesados. Ve a Historial de Sync para ver detalles.',
         'type': 'success',
         'sticky': False,
-        'next': {'type': 'ir.actions.act_window', 'res_model': 'quimibond.sync.log', 'view_mode': 'list', 'name': 'Historial de Sync'},
     },
 }
         </field>
