@@ -47,6 +47,7 @@ class QuimibondSync(models.TransientModel):
         if not client:
             return
 
+        _start = datetime.now()
         try:
             totals = {}
             totals['contacts'] = self._push_contacts(client)
@@ -61,8 +62,22 @@ class QuimibondSync(models.TransientModel):
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
             _logger.info('✓ Push to Supabase: %s', summary or 'no changes')
+            elapsed = (datetime.now() - _start).total_seconds()
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': 'Push completo',
+                'direction': 'push',
+                'status': 'success',
+                'summary': summary or 'sin cambios',
+                'duration_seconds': round(elapsed, 1),
+            })
         except Exception as exc:
             _logger.error('Push to Supabase failed: %s', exc)
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': 'Push fallido',
+                'direction': 'push',
+                'status': 'error',
+                'summary': str(exc)[:500],
+            })
         finally:
             client.close()
 

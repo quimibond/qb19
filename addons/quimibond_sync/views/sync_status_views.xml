@@ -1,7 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Simple status action that triggers push manually -->
+    <!-- ══ Sync Log Views ══ -->
+
+    <record id="view_sync_log_tree" model="ir.ui.view">
+        <field name="name">quimibond.sync.log.tree</field>
+        <field name="model">quimibond.sync.log</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="status == 'error'" decoration-success="status == 'success'">
+                <field name="create_date" string="Fecha"/>
+                <field name="name"/>
+                <field name="direction"/>
+                <field name="status" widget="badge"
+                    decoration-success="status == 'success'"
+                    decoration-danger="status == 'error'"/>
+                <field name="summary"/>
+                <field name="duration_seconds" string="Duracion (s)"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_sync_log" model="ir.actions.act_window">
+        <field name="name">Historial de Sync</field>
+        <field name="res_model">quimibond.sync.log</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- ══ Manual Actions ══ -->
+
     <record id="action_force_push" model="ir.actions.server">
         <field name="name">Forzar Push a Supabase</field>
         <field name="model_id" ref="model_quimibond_sync"/>
@@ -16,39 +42,46 @@
         <field name="code">model.pull_from_supabase()</field>
     </record>
 
-    <!-- Menu -->
-    <menuitem id="menu_sync_root"
-        name="Quimibond Sync"
-        web_icon="quimibond_sync,static/description/icon.png"
-        sequence="100"/>
-
-    <menuitem id="menu_sync_actions"
-        name="Acciones"
-        parent="menu_sync_root"
-        sequence="10"/>
-
-    <menuitem id="menu_force_push"
-        name="Push a Supabase (manual)"
-        parent="menu_sync_actions"
-        action="action_force_push"
-        sequence="10"/>
-
-    <menuitem id="menu_force_pull"
-        name="Pull desde Supabase (manual)"
-        parent="menu_sync_actions"
-        action="action_force_pull"
-        sequence="20"/>
-
-    <!-- Link to frontend -->
     <record id="action_open_frontend" model="ir.actions.act_url">
         <field name="name">Abrir Quimibond Intelligence</field>
         <field name="url">https://quimibond-intelligence.vercel.app/inbox</field>
         <field name="target">new</field>
     </record>
 
+    <!-- ══ Menus ══ -->
+
+    <menuitem id="menu_sync_root"
+        name="Quimibond Sync"
+        web_icon="quimibond_sync,static/description/icon.png"
+        sequence="100"/>
+
+    <!-- Default action: sync log list (this is what opens when clicking the module) -->
+    <menuitem id="menu_sync_log"
+        name="Historial de Sync"
+        parent="menu_sync_root"
+        action="action_sync_log"
+        sequence="1"/>
+
+    <menuitem id="menu_sync_manual"
+        name="Ejecutar Manual"
+        parent="menu_sync_root"
+        sequence="10"/>
+
+    <menuitem id="menu_force_push"
+        name="Push a Supabase"
+        parent="menu_sync_manual"
+        action="action_force_push"
+        sequence="10"/>
+
+    <menuitem id="menu_force_pull"
+        name="Pull desde Supabase"
+        parent="menu_sync_manual"
+        action="action_force_pull"
+        sequence="20"/>
+
     <menuitem id="menu_open_frontend"
         name="Abrir Intelligence (Vercel)"
-        parent="menu_sync_actions"
+        parent="menu_sync_root"
         action="action_open_frontend"
         sequence="30"/>
 
