@@ -25,7 +25,7 @@ def _get_client(env) -> SupabaseClient | None:
     return SupabaseClient(url, key)
 
 
-class QuimibondSyncPull(models.AbstractModel):
+class QuimibondSyncPull(models.TransientModel):
     _name = 'quimibond.sync.pull'
     _description = 'Quimibond Pull from Supabase'
 

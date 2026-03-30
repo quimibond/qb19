@@ -36,7 +36,7 @@ def _commercial_partner_id(partner) -> int | None:
     return cp.id if cp else partner.id
 
 
-class QuimibondSync(models.AbstractModel):
+class QuimibondSync(models.TransientModel):
     _name = 'quimibond.sync'
     _description = 'Quimibond Sync Engine'
 
