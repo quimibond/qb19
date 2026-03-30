@@ -276,12 +276,20 @@ class QuimibondSync(models.TransientModel):
             except Exception:
                 pass
 
+            # department_id is on hr.employee, not res.users
+            dept = None
+            try:
+                if hasattr(u, 'employee_id') and u.employee_id:
+                    dept = u.employee_id.department_id.name if u.employee_id.department_id else None
+            except Exception:
+                pass
+
             rows.append({
                 'odoo_user_id': u.id,
                 'name': u.name,
                 'email': u.email or u.login,
-                'department': u.department_id.name if u.department_id else None,
-                'job_title': u.job_title or None,
+                'department': dept,
+                'job_title': getattr(u, 'job_title', None),
                 'pending_activities_count': pending,
                 'overdue_activities_count': overdue,
                 'updated_at': datetime.now().isoformat(),
