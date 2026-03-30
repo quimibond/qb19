@@ -48,8 +48,8 @@
 
     <menuitem id="menu_open_frontend"
         name="Abrir Intelligence (Vercel)"
-        parent="menu_sync_root"
+        parent="menu_sync_actions"
         action="action_open_frontend"
-        sequence="5"/>
+        sequence="30"/>
 
 </odoo>
