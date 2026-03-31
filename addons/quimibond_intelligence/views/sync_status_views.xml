@@ -76,7 +76,6 @@ action = {
 
     <menuitem id="menu_sync_root"
         name="Quimibond Sync"
-        web_icon="quimibond_sync,static/description/icon.png"
         sequence="100"/>
 
     <!-- Default action: sync log list (this is what opens when clicking the module) -->
