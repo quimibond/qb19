@@ -463,8 +463,9 @@ class QuimibondSync(models.TransientModel):
             inv_date = inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None
 
             for line in inv.invoice_line_ids:
-                # Skip section/note display lines
-                if line.display_type:
+                # Skip section/note lines (Odoo 19 uses 'product' for real lines)
+                if line.display_type in ('line_section', 'line_note',
+                                         'payment_term', 'tax', 'rounding'):
                     continue
 
                 rows.append({
