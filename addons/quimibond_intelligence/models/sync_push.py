@@ -189,6 +189,12 @@ class QuimibondSync(models.TransientModel):
                 'companies', list(companies.values()),
                 on_conflict='canonical_name', batch_size=100,
             )
+            # Update RFC via RPC (PostgREST may not see new columns in upsert)
+            rfc_map = {str(c['odoo_partner_id']): c['rfc']
+                       for c in companies.values()
+                       if c.get('rfc') and c.get('odoo_partner_id')}
+            if rfc_map:
+                client.rpc('backfill_rfc_from_json', {'data': rfc_map})
         if contacts:
             synced += client.upsert(
                 'contacts', contacts,

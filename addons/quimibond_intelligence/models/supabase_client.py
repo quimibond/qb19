@@ -104,5 +104,19 @@ class SupabaseClient:
         except Exception as exc:
             _logger.warning('patch %s: %s', table, exc)
 
+    def rpc(self, function: str, params: dict) -> dict | None:
+        """Call a Supabase RPC function."""
+        try:
+            resp = self._http.post(
+                f'{self.url}/rest/v1/rpc/{function}',
+                content=json.dumps(params, default=str),
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            _logger.warning('rpc %s: %s', function, exc)
+            return None
+
     def close(self):
         self._http.close()
