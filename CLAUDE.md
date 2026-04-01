@@ -1,59 +1,75 @@
-# Quimibond Odoo 19 Addons (qb19)
+# qb19 — Quimibond Odoo 19 Addon
 
-Addons de Odoo 19 para Quimibond (fabricante textil mexicano).
-Repo vinculado a Odoo.sh — solo contiene modulos de Odoo.
+## Que es
 
-## Modulos
+Addon de Odoo 19 que sincroniza datos operativos a Supabase para Quimibond Intelligence.
 
-- `mrp_caja_surtido` — Modulo de manufactura (caja surtido en picking)
-- `stock_dymo_labels` — Impresion de etiquetas Dymo/Zebra
-- `quimibond_intelligence` — Sistema de inteligencia (Gmail sync, Knowledge Graph, briefings, alertas, scoring, RAG)
-
-## Stack
-
-- Python (Odoo 19)
-- PostgreSQL (Odoo)
-- Supabase (embeddings, knowledge graph — schema en repo quimibond-intelligence)
-- Claude API (analisis inteligente)
-- Gmail API (sincronizacion de correos)
+**Frontend:** `quimibond/quimibond-intelligence` (Vercel)
+**Supabase:** `tozqezmivpblmcubmnpi`
 
 ## Estructura
 
 ```
-addons/
-├── mrp_caja_surtido/
-│   ├── models/
-│   ├── views/
-│   └── security/
-├── stock_dymo_labels/
-│   ├── models/
-│   ├── views/
-│   ├── reports/
-│   └── static/
-└── quimibond_intelligence/
-    ├── models/
-    ├── views/
-    ├── data/
-    ├── security/
-    └── services/
-requirements.txt
+addons/quimibond_intelligence/
+  __manifest__.py          # v19.0.30.0.0 (NO cambiar — ver nota abajo)
+  models/
+    sync_push.py           # Push Odoo → Supabase (15 modelos)
+    sync_pull.py           # Pull Supabase → Odoo
+    supabase_client.py     # REST client HTTP
+    sync_log.py            # Modelo de log
+  views/sync_status_views.xml
+  data/ir_cron_data.xml
+  security/ir.model.access.csv
 ```
 
-## Repos relacionados
+## Modelos sincronizados (15)
 
-- `quimibond-intelligence` — Frontend (Next.js 15) + Supabase migrations del sistema de inteligencia
-  - Dashboard, Emails, Chat (Claude RAG), Briefings, Alertas, Acciones, Contactos
-  - Knowledge Graph (entidades, hechos, relaciones)
-  - Sistema (sync status, DB stats)
-  - Supabase schema: 18 tablas, 6 RPC functions, RLS, pgvector
-  - Auth: password + cookie middleware
+| Metodo | Odoo Model | Supabase Table |
+|---|---|---|
+| `_push_contacts` | res.partner | contacts + companies |
+| `_push_products` | product.product | odoo_products |
+| `_push_order_lines` | sale/purchase.order.line | odoo_order_lines |
+| `_push_users` | res.users + hr.employee | odoo_users |
+| `_push_invoices` | account.move | odoo_invoices |
+| `_push_payments` | account.move (paid) | odoo_payments |
+| `_push_deliveries` | stock.picking | odoo_deliveries |
+| `_push_crm_leads` | crm.lead | odoo_crm_leads |
+| `_push_activities` | mail.activity | odoo_activities |
+| `_push_manufacturing` | mrp.production | odoo_manufacturing |
+| `_push_employees` | hr.employee | odoo_employees |
+| `_push_departments` | hr.department | odoo_departments |
+| `_push_sale_orders` | sale.order | odoo_sale_orders |
+| `_push_purchase_orders` | purchase.order | odoo_purchase_orders |
 
-## Odoo.sh
+## Crons
 
-- Odoo.sh detecta addons automaticamente buscando `__manifest__.py`
-- `requirements.txt` en raiz se instala automaticamente en cada build
-- Para actualizar un modulo en Odoo.sh, incrementar `version` en `__manifest__.py`
+- **Cada 1 hora:** `push_to_supabase()` — sync completo
+- **Cada 5 min:** `pull_from_supabase()` — comandos + contactos
 
-## Idioma
+## Deploy a produccion
 
-El codigo esta en ingles. Contenido de negocio en espanol.
+1. Push a `main`
+2. Merge `main` → `quimibond` en GitHub
+3. Shell Odoo.sh: `odoo-update quimibond_intelligence && odoosh-restart http && odoosh-restart cron`
+
+## IMPORTANTE: NO cambiar version del manifest
+
+Odoo.sh ejecuta `-u` cuando detecta cambio de version. El update detecta errores pre-existentes de Odoo Studio y marca el build como Failed. Dejar en `19.0.30.0.0` y hacer `odoo-update` manual.
+
+## Odoo.sh config
+
+```
+quimibond_intelligence.supabase_url = https://tozqezmivpblmcubmnpi.supabase.co
+quimibond_intelligence.supabase_service_key = (service key)
+```
+
+## Modelos pendientes de sincronizar
+
+| Modelo | Prioridad | Valor |
+|---|---|---|
+| stock.warehouse.orderpoint | High | Deteccion de desabasto |
+| account.payment.term | Medium | Prediccion de pago |
+| res.partner.category | Medium | Segmentacion |
+| mail.message | Medium | Comunicacion interna |
+| mrp.bom | Medium | Costos produccion |
+| quality.check | Medium | Calidad |
