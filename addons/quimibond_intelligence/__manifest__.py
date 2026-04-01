@@ -1,6 +1,6 @@
 {
     'name': 'Quimibond Intelligence',
-    'version': '19.0.31.0.0',
+    'version': '19.0.32.0.0',
     'license': 'LGPL-3',
     'category': 'Productivity',
     'summary': 'Minimal Odoo↔Supabase data bridge for Quimibond Intelligence.',

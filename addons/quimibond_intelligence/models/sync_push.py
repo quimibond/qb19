@@ -60,6 +60,10 @@ class QuimibondSync(models.TransientModel):
             totals['crm_leads'] = self._push_crm_leads(client)
             totals['activities'] = self._push_activities(client)
             totals['manufacturing'] = self._push_manufacturing(client)
+            totals['employees'] = self._push_employees(client)
+            totals['departments'] = self._push_departments(client)
+            totals['sale_orders'] = self._push_sale_orders(client)
+            totals['purchase_orders'] = self._push_purchase_orders(client)
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
             _logger.info('✓ Push to Supabase: %s', summary or 'no changes')
@@ -623,3 +627,159 @@ class QuimibondSync(models.TransientModel):
 
         return client.upsert('odoo_manufacturing', rows,
                               on_conflict='odoo_production_id', batch_size=200)
+
+    # ── HR Employees ─────────────────────────────────────────────────────
+
+    def _push_employees(self, client: SupabaseClient) -> int:
+        """Push hr.employee → odoo_employees table."""
+        try:
+            Employee = self.env['hr.employee'].sudo()
+        except KeyError:
+            _logger.info('hr.employee not available, skipping')
+            return 0
+
+        employees = Employee.search([('active', '=', True)], limit=500)
+        rows = []
+        for emp in employees:
+            rows.append({
+                'odoo_employee_id': emp.id,
+                'odoo_user_id': emp.user_id.id if emp.user_id else None,
+                'name': emp.name,
+                'work_email': emp.work_email or (emp.user_id.email if emp.user_id else None),
+                'work_phone': emp.work_phone or emp.mobile_phone or None,
+                'department_name': emp.department_id.name if emp.department_id else None,
+                'department_id': emp.department_id.id if emp.department_id else None,
+                'job_title': emp.job_title or None,
+                'job_name': emp.job_id.name if emp.job_id else None,
+                'manager_name': emp.parent_id.name if emp.parent_id else None,
+                'manager_id': emp.parent_id.id if emp.parent_id else None,
+                'coach_name': emp.coach_id.name if emp.coach_id else None,
+                'is_active': emp.active,
+            })
+
+        return client.upsert('odoo_employees', rows,
+                              on_conflict='odoo_employee_id', batch_size=100)
+
+    # ── HR Departments ───────────────────────────────────────────────────
+
+    def _push_departments(self, client: SupabaseClient) -> int:
+        """Push hr.department → odoo_departments table."""
+        try:
+            Dept = self.env['hr.department'].sudo()
+        except KeyError:
+            _logger.info('hr.department not available, skipping')
+            return 0
+
+        departments = Dept.search([('active', '=', True)], limit=200)
+        rows = []
+        for dept in departments:
+            # Count members
+            member_count = 0
+            try:
+                member_count = len(dept.member_ids) if hasattr(dept, 'member_ids') else 0
+            except Exception:
+                pass
+
+            rows.append({
+                'odoo_department_id': dept.id,
+                'name': dept.name,
+                'parent_name': dept.parent_id.name if dept.parent_id else None,
+                'parent_id': dept.parent_id.id if dept.parent_id else None,
+                'manager_name': dept.manager_id.name if dept.manager_id else None,
+                'manager_id': dept.manager_id.id if dept.manager_id else None,
+                'member_count': member_count,
+            })
+
+        return client.upsert('odoo_departments', rows,
+                              on_conflict='odoo_department_id', batch_size=100)
+
+    # ── Sale Orders (headers) ────────────────────────────────────────────
+
+    def _push_sale_orders(self, client: SupabaseClient) -> int:
+        """Push sale.order headers → odoo_sale_orders table."""
+        try:
+            SO = self.env['sale.order'].sudo()
+        except KeyError:
+            _logger.info('sale.order not available, skipping')
+            return 0
+
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        orders = SO.search([
+            ('date_order', '>=', cutoff),
+            ('state', 'in', ['sale', 'done']),
+        ], limit=2000)
+
+        rows = []
+        for o in orders:
+            pid = _commercial_partner_id(o.partner_id) if o.partner_id else None
+
+            # Margin calculation
+            margin = None
+            margin_pct = None
+            try:
+                margin = round(o.margin, 2) if hasattr(o, 'margin') else None
+                if margin is not None and o.amount_untaxed > 0:
+                    margin_pct = round(margin / o.amount_untaxed * 100, 1)
+            except Exception:
+                pass
+
+            rows.append({
+                'odoo_order_id': o.id,
+                'name': o.name,
+                'odoo_partner_id': pid,
+                'salesperson_name': o.user_id.name if o.user_id else None,
+                'salesperson_email': o.user_id.email if o.user_id else None,
+                'salesperson_user_id': o.user_id.id if o.user_id else None,
+                'team_name': o.team_id.name if hasattr(o, 'team_id') and o.team_id else None,
+                'amount_total': round(o.amount_total, 2),
+                'amount_untaxed': round(o.amount_untaxed, 2),
+                'margin': margin,
+                'margin_percent': margin_pct,
+                'currency': o.currency_id.name if o.currency_id else 'MXN',
+                'state': o.state,
+                'date_order': o.date_order.strftime('%Y-%m-%d') if o.date_order else None,
+                'commitment_date': o.commitment_date.strftime('%Y-%m-%d') if hasattr(o, 'commitment_date') and o.commitment_date else None,
+                'create_date': o.create_date.strftime('%Y-%m-%d') if o.create_date else None,
+            })
+
+        return client.upsert('odoo_sale_orders', rows,
+                              on_conflict='odoo_order_id', batch_size=200)
+
+    # ── Purchase Orders (headers) ────────────────────────────────────────
+
+    def _push_purchase_orders(self, client: SupabaseClient) -> int:
+        """Push purchase.order headers → odoo_purchase_orders table."""
+        try:
+            PO = self.env['purchase.order'].sudo()
+        except KeyError:
+            _logger.info('purchase.order not available, skipping')
+            return 0
+
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        orders = PO.search([
+            ('date_order', '>=', cutoff),
+            ('state', 'in', ['purchase', 'done']),
+        ], limit=2000)
+
+        rows = []
+        for o in orders:
+            pid = _commercial_partner_id(o.partner_id) if o.partner_id else None
+
+            rows.append({
+                'odoo_order_id': o.id,
+                'name': o.name,
+                'odoo_partner_id': pid,
+                'buyer_name': o.user_id.name if o.user_id else None,
+                'buyer_email': o.user_id.email if o.user_id else None,
+                'buyer_user_id': o.user_id.id if o.user_id else None,
+                'amount_total': round(o.amount_total, 2),
+                'amount_untaxed': round(o.amount_untaxed, 2),
+                'currency': o.currency_id.name if o.currency_id else 'MXN',
+                'state': o.state,
+                'date_order': o.date_order.strftime('%Y-%m-%d') if o.date_order else None,
+                'date_approve': o.date_approve.strftime('%Y-%m-%d') if hasattr(o, 'date_approve') and o.date_approve else None,
+                'create_date': o.create_date.strftime('%Y-%m-%d') if o.create_date else None,
+            })
+
+        return client.upsert('odoo_purchase_orders', rows,
+                              on_conflict='odoo_order_id', batch_size=200)
