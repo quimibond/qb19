@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_subproduct_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.subproduct.wizard.form</field>
+        <field name="model">mrp.subproduct.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Pesaje de Subproducto">
+                <sheet>
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Orden de Trabajo: </strong> <field name="workorder_id" readonly="1"/><br/>
+                            <strong>Centro de Trabajo: </strong> <field name="workcenter_id" readonly="1"/>
+                        </div>
+                        <div class="col-6 text-end">
+                            <strong>Subproducto: </strong> <field name="product_id" readonly="1" class="fw-bold text-primary"/>
+                        </div>
+                    </div>
+                    <hr/>
+                    <div class="row">
+                        <div class="col-12 text-center">
+                            <group>
+                                <field name="next_lot_name" readonly="1" style="font-weight: bold; color: #714B67; font-size: 1.2em; text-align: center;"/>
+                            </group>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4 mb-4 p-4 border rounded bg-light shadow-sm">
+                        <label for="weight" string="PESO DEL SUBPRODUCTO" style="font-size: 1.5em; font-weight: bold; color: #333;"/><br/>
+                        <field name="weight" style="font-size: 4.5em; font-weight: bold; width: 50%; text-align: center;" class="oe_inline"/>
+                        <span style="font-size: 2em; margin-left: 10px; color: #666;">KG</span>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="confirm_subproduct" string="REGISTRAR SUBPRODUCTO E IMPRIMIR" type="object" class="btn-primary btn-lg shadow"/>
+                    <button string="Cancelar" class="btn-secondary btn-lg" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

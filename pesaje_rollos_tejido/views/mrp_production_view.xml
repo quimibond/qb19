@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="mrp_production_view_form_inherit_zpl" model="ir.ui.view">
         <field name="name">mrp.production.view.form.inherit.zpl</field>

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from odoo import models, fields, api
 
 class MrpWeighRollWizard(models.TransientModel):
@@ -20,23 +21,43 @@ class MrpWeighRollWizard(models.TransientModel):
     def _compute_next_lot_name(self):
         for reg in self:
             if reg.production_id:
-                ref = reg.product_id.default_code or "TELA"
-                
-                # Verificación segura del campo de lote de producción
-                prod = reg.production_id
-                mo_lot = ""
-                
-                if hasattr(prod, 'lot_producing_id') and prod.lot_producing_id:
-                    mo_lot = prod.lot_producing_id.name
-                else:
-                    # Si no existe el campo, usamos el final del nombre de la MO
-                    mo_lot = prod.name.split('/')[-1]
-                
-                next_count = prod.roll_count + 1
-                reg.next_lot_name = f"{ref}{mo_lot}-{next_count:04d}"
+                mo_identifier = reg.production_id.name.split('/')[-1]
+                reg.next_lot_name = f"{mo_identifier}-{(reg.production_id.roll_count + 1):04d}"
             else:
-                reg.next_lot_name = "N/A"
+                reg.next_lot_name = False
 
     def confirm_weighing(self):
         self.ensure_one()
         return self.production_id.action_register_roll_with_weight(self.weight)
+
+class MrpSubproductWizard(models.TransientModel):
+    _name = 'mrp.subproduct.wizard'
+    _description = 'Asistente de Pesado de Subproducto'
+
+    workorder_id = fields.Many2one('mrp.workorder', string="Orden de Trabajo")
+    production_id = fields.Many2one('mrp.production', related="workorder_id.production_id", string="Orden de Fabricación")
+    workcenter_id = fields.Many2one('mrp.workcenter', related="workorder_id.workcenter_id", string="Centro de Trabajo")
+    
+    product_id = fields.Many2one('product.product', string="Subproducto", compute="_compute_subproduct")
+    next_lot_name = fields.Char(string="Lote a Generar", compute="_compute_next_lot_name")
+    weight = fields.Float(string="Peso Subproducto (kg)", digits=(12, 3), required=True)
+    
+    @api.depends('production_id')
+    def _compute_subproduct(self):
+        for reg in self:
+            move = reg.production_id.move_byproduct_ids[:1]
+            reg.product_id = move.product_id if move else False
+
+    @api.depends('production_id')
+    def _compute_next_lot_name(self):
+        for reg in self:
+            if reg.production_id:
+                mo_identifier = reg.production_id.name.split('/')[-1]
+                reg.next_lot_name = f"SUB-{mo_identifier}-{fields.Date.today()}"
+            else:
+                reg.next_lot_name = False
+
+    def confirm_subproduct(self):
+        self.ensure_one()
+        # Llamamos al nombre exacto definido en mrp_production.py
+        return self.production_id.action_register_subproduct_manual(self.weight, self.next_lot_name)
