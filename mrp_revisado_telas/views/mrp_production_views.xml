@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="product_template_form_view_inherit_revisado" model="ir.ui.view">
+            <field name="name">product.template.form.inherit.revisado</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_only_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='inventory']" position="inside">
+                    <field name="categ_name_static" invisible="1"/>
+                    <group string="Control de Calidad (Tejido)" 
+                           invisible="categ_name_static != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'">
+                        <field name="porcentaje_revision_standard" widget="percentage"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="mrp_workorder_view_list_inherit_revisado" model="ir.ui.view">
+            <field name="name">mrp.workorder.list.inherit.revisado</field>
+            <field name="model">mrp.workorder</field>
+            <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='state']" position="after">
+                    <button name="%(action_mrp_revisado_wizard)d" 
+                            string="REVISAR" type="action" class="btn-success" icon="fa-search"
+                            context="{'default_production_id': production_id}"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="mrp_production_form_inherit_revisado" model="ir.ui.view">
+            <field name="name">mrp.production.form.inherit.revisado</field>
+            <field name="model">mrp.production</field>
+            <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Control de Calidad (Revisado)" name="pesaje_revision">
+                        <group>
+                            <field name="porcentaje_revision" widget="percentage" readonly="1"/>
+                        </group>
+                        <field name="move_finished_ids" mode="list">
+                            <list create="0" delete="0">
+                                <field name="move_line_ids">
+                                    <list create="0" delete="0">
+                                        <field name="lot_id" string="Número de Rollo"/>
+                                        <field name="quantity" string="Kg Inicial"/>
+                                        <field name="needs_review" string="Sorteado"/>
+                                        <field name="is_reviewed" string="Revisado"/>
+                                    </list>
+                                </field>
+                            </list>
+                        </field>
+                    </page>
+                    
+                    <page string="Historial de Calidad" name="quality_log">
+                        <field name="revision_log_ids" readonly="1">
+                            <list string="Logs de Revisión">
+                                <field name="create_date" string="Fecha/Hora"/>
+                                <field name="user_id" string="Revisor"/>
+                                <field name="lot_id" string="Rollo"/>
+                                <field name="peso_original" string="Peso Original" sum="Total Original"/>
+                                <field name="peso_final" string="Peso Revisado" sum="Total Revisado"/>
+                                <field name="diferencia" string="Diferencia" sum="Total Dif"/>
+                            </list>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

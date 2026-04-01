@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_mrp_revisado_wizard" model="ir.actions.act_window">
+        <field name="name">Revisado de Calidad</field>
+        <field name="res_model">mrp.revisado.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_mrp_revisado_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.revisado.wizard.form</field>
+        <field name="model">mrp.revisado.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <div class="alert alert-warning" role="alert" style="font-size: 16px;">
+                    <strong>PENDIENTES:</strong> <field name="rollos_pendientes_text"/>
+                </div>
+                <group>
+                    <group string="Datos de la Orden">
+                        <field name="production_id" readonly="1"/>
+                        <field name="workcenter_id"/>
+                        <field name="product_id"/>
+                    </group>
+                    <group string="Lectura y Pesaje">
+                        <field name="barcode_scan" placeholder="Escanee el rollo..."/>
+                        <field name="lot_id" invisible="not lot_id"/>
+                        <field name="peso_original" invisible="not lot_id"/>
+                        <field name="peso_actual" style="font-size: 24px; color: red; font-weight: bold;"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="confirmar_revisado" string="Confirmar Peso" type="object" class="btn-primary"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
