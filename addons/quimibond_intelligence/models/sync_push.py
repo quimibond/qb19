@@ -55,6 +55,7 @@ class QuimibondSync(models.TransientModel):
             totals['order_lines'] = self._push_order_lines(client)
             totals['users'] = self._push_users(client)
             totals['invoices'] = self._push_invoices(client)
+            totals['invoice_lines'] = self._push_invoice_lines(client)
             totals['payments'] = self._push_payments(client)
             totals['deliveries'] = self._push_deliveries(client)
             totals['crm_leads'] = self._push_crm_leads(client)
@@ -147,12 +148,14 @@ class QuimibondSync(models.TransientModel):
                 # This is a company (top-level partner)
                 cn = (p.name or '').strip()
                 if cn and cn not in companies:
+                    rfc = (p.vat or '').strip() or None
                     companies[cn] = {
                         'canonical_name': cn,
                         'name': cn,
                         'odoo_partner_id': cp_id,
                         'is_customer': is_customer,
                         'is_supplier': is_supplier,
+                        'rfc': rfc,
                         'domain': domain,
                         'country': p.country_id.name if p.country_id else None,
                         'city': p.city or None,
@@ -435,6 +438,53 @@ class QuimibondSync(models.TransientModel):
 
         return client.upsert('odoo_invoices', rows,
                               on_conflict='odoo_partner_id,name', batch_size=200)
+
+    # ── Invoice Lines (last 12 months) ────────────────────────────────────
+
+    def _push_invoice_lines(self, client: SupabaseClient) -> int:
+        """Push account.move.line → odoo_invoice_lines table."""
+        Move = self.env['account.move'].sudo()
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+
+        invoices = Move.search([
+            ('move_type', 'in', [
+                'out_invoice', 'out_refund', 'in_invoice', 'in_refund',
+            ]),
+            ('state', '=', 'posted'),
+            ('invoice_date', '>=', cutoff),
+        ])
+
+        rows = []
+        for inv in invoices:
+            pid = _commercial_partner_id(inv.partner_id)
+            if not pid:
+                continue
+
+            inv_date = inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None
+
+            for line in inv.invoice_line_ids:
+                # Skip section/note display lines
+                if line.display_type:
+                    continue
+
+                rows.append({
+                    'odoo_line_id': line.id,
+                    'odoo_move_id': inv.id,
+                    'odoo_partner_id': pid,
+                    'move_name': inv.name,
+                    'move_type': inv.move_type,
+                    'invoice_date': inv_date,
+                    'odoo_product_id': line.product_id.id if line.product_id else None,
+                    'product_name': line.product_id.name if line.product_id else (line.name or '')[:200],
+                    'quantity': round(line.quantity, 2),
+                    'price_unit': round(line.price_unit, 2),
+                    'discount': round(line.discount, 2),
+                    'price_subtotal': round(line.price_subtotal, 2),
+                    'price_total': round(line.price_total, 2),
+                })
+
+        return client.upsert('odoo_invoice_lines', rows,
+                              on_conflict='odoo_line_id', batch_size=200)
 
     # ── Payments (last 180 days) ─────────────────────────────────────────
 
