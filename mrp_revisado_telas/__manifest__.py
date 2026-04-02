@@ -9,7 +9,8 @@
     'depends': [
         'mrp', 
         'stock',
-        'pesaje_rollos_tejido'
+        'pesaje_rollos_tejido',
+        'quality_control'
     ],
     'data': [
         # 1. Seguridad siempre primero

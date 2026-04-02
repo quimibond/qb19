@@ -12,43 +12,62 @@
         <field name="model">mrp.revisado.wizard</field>
         <field name="arch" type="xml">
             <form string="Revisado de Calidad">
-                <div class="alert alert-warning" role="alert" style="font-size: 16px; margin-bottom: 10px;">
-                    <strong>ROLLOS PENDIENTES:</strong> <field name="rollos_pendientes_text"/>
+                <div class="alert alert-warning" role="alert" style="font-size: 16px; margin-bottom: 10px;" 
+                     invisible="not rollos_pendientes_text">
+                    <strong>ESTADO DE REVISIÓN:</strong> <field name="rollos_pendientes_text" readonly="1"/>
                 </div>
 
-                <group>
-                    <group string="DATOS DE LA ORDEN">
-                        <field name="production_id" readonly="1" options="{'no_open': True}"/>
-                        <field name="workcenter_id" readonly="1"/>
-                        <field name="product_id" readonly="1"/>
+                <sheet>
+                    <group>
+                        <group string="DATOS DE LA ORDEN">
+                            <field name="production_id" readonly="1" options="{'no_open': True}"/>
+                            <field name="workcenter_id" readonly="1"/>
+                            <field name="product_id" readonly="1"/>
+                        </group>
+                        
+                        <group string="LECTURA Y PESAJE">
+                            <field name="barcode_scan" 
+                                   placeholder="Escanee el rollo..." 
+                                   invisible="lot_id != False"/>
+                            
+                            <field name="lot_id" 
+                                   readonly="1" 
+                                   force_save="1" 
+                                   invisible="not lot_id"
+                                   options="{'no_open': True}"/>
+                            
+                            <field name="peso_original" 
+                                   readonly="1" 
+                                   force_save="1" 
+                                   invisible="not lot_id"/>
+                            
+                            <label for="peso_actual" string="Nuevo Peso (Kg)" invisible="not lot_id"/>
+                            <div class="o_row" invisible="not lot_id">
+                                <field name="peso_actual" 
+                                       style="font-size: 32px; color: #2C3E50; font-weight: bold; width: 150px;" 
+                                       placeholder="0.0000"
+                                       required="lot_id != False"/>
+                                <span class="fw-bold">KG</span>
+                            </div>
+
+                            <field name="causa_id" 
+                                   options="{'no_create': True, 'no_open': True}"
+                                   invisible="not lot_id"
+                                   required="lot_id != False"
+                                   placeholder="Seleccione causa..."/>
+                        </group>
                     </group>
-                    <group string="LECTURA Y PESAJE">
-                        <field name="barcode_scan" placeholder="Escanee el rollo..." required="1"/>
-                        
-                        <field name="lot_id" 
-                               readonly="1" 
-                               force_save="1" 
-                               invisible="not lot_id"
-                               options="{'no_open': True}"/>
-                        
-                        <field name="peso_original" 
-                               readonly="1" 
-                               force_save="1" 
-                               invisible="not lot_id"/>
-                        
-                        <field name="peso_actual" 
-                               style="font-size: 32px; color: red; font-weight: bold;" 
-                               placeholder="0.0000"/>
-                    </group>
-                </group>
+                </sheet>
 
                 <footer>
                     <button name="confirmar_revisado" 
-                            string="Confirmar Peso" 
+                            string="GUARDAR E IMPRIMIR ETIQUETA" 
                             type="object" 
-                            class="btn-primary" 
+                            class="btn-primary btn-lg" 
+                            invisible="not lot_id"
                             data-hotkey="q"/>
-                    <button string="Cerrar" 
+                    
+                    <button string="CANCELAR / LIMPIAR" 
                             class="btn-secondary" 
                             special="cancel" 
                             data-hotkey="x"/>

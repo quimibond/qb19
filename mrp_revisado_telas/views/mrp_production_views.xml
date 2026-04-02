@@ -16,37 +16,27 @@
             </field>
         </record>
 
-        <record id="mrp_workorder_view_list_inherit_revisado" model="ir.ui.view">
-            <field name="name">mrp.workorder.list.inherit.revisado</field>
-            <field name="model">mrp.workorder</field>
-            <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
-            <field name="arch" type="xml">
-                <xpath expr="//field[@name='state']" position="after">
-                    <button name="%(action_mrp_revisado_wizard)d" 
-                            string="REVISAR" type="action" class="btn-success" icon="fa-search"
-                            context="{'default_production_id': production_id}"/>
-                </xpath>
-            </field>
-        </record>
-
-        <record id="mrp_production_form_inherit_revisado" model="ir.ui.view">
+        <record id="mrp_production_form_view_inherit_revisado" model="ir.ui.view">
             <field name="name">mrp.production.form.inherit.revisado</field>
             <field name="model">mrp.production</field>
             <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
             <field name="arch" type="xml">
+                
+                <xpath expr="//field[@name='product_id']" position="after">
+                    <field name="rollos_revisados_count" string="Rollos Revisados:"/>
+                </xpath>
+
                 <xpath expr="//notebook" position="inside">
-                    <page string="Control de Calidad (Revisado)" name="pesaje_revision">
-                        <group>
-                            <field name="porcentaje_revision" widget="percentage" readonly="1"/>
-                        </group>
-                        <field name="move_finished_ids" mode="list">
+                    <page string="Rollos Registrados" name="recorded_rolls">
+                        <field name="move_finished_ids" invisible="1"/>
+                        <field name="move_finished_ids" mode="list" readonly="1">
                             <list create="0" delete="0">
+                                <field name="product_id" string="Producto"/>
                                 <field name="move_line_ids">
                                     <list create="0" delete="0">
                                         <field name="lot_id" string="Número de Rollo"/>
                                         <field name="quantity" string="Kg Inicial"/>
-                                        <field name="needs_review" string="Sorteado"/>
-                                        <field name="is_reviewed" string="Revisado"/>
+                                        <field name="is_reviewed" string="Revisado" widget="boolean_toggle"/>
                                     </list>
                                 </field>
                             </list>
@@ -55,16 +45,39 @@
                     
                     <page string="Historial de Calidad" name="quality_log">
                         <field name="revision_log_ids" readonly="1">
-                            <list string="Logs de Revisión">
+                            <list string="Logs de Revisión" decoration-danger="diferencia &gt; 0" decoration-success="diferencia &lt; 0">
                                 <field name="create_date" string="Fecha/Hora"/>
-                                <field name="user_id" string="Revisor"/>
+                                <field name="user_id" string="Revisor" widget="many2one_avatar_user"/>
                                 <field name="lot_id" string="Rollo"/>
-                                <field name="peso_original" string="Peso Inicial"/>
-                                <field name="peso_final" string="Peso Revisado"/>
-                                <field name="diferencia" string="Diferencia"/>
+                                <field name="peso_original" string="Peso Inicial (Kg)" sum="Total Inicial"/>
+                                <field name="peso_final" string="Peso Revisado (Kg)" sum="Total Final"/>
+                                <field name="diferencia" string="Dif." sum="Total Diferencia"/>
+                                <field name="causa_id" string="Causa de Desviación" optional="show"/>
                             </list>
                         </field>
                     </page>
+
+                    <page string="Última Etiqueta ZPL" name="zpl_label_debug">
+                        <group>
+                            <field name="last_zpl_label" widget="ace" options="{'mode': 'text'}" nolabel="1"/>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="mrp_workorder_view_list_inherit_revisado" model="ir.ui.view">
+            <field name="name">mrp.workorder.list.inherit.revisado</field>
+            <field name="model">mrp.workorder</field>
+            <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='state']" position="after">
+                    <button name="%(action_mrp_revisado_wizard)d" 
+                            type="action" 
+                            string="REVISAR CALIDAD" 
+                            class="btn-warning" 
+                            invisible="state not in ('ready', 'progress')"
+                            context="{'default_production_id': production_id}"/>
                 </xpath>
             </field>
         </record>
