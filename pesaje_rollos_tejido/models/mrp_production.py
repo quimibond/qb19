@@ -9,42 +9,45 @@ class MrpProduction(models.Model):
     last_zpl_label = fields.Text(string="Última Etiqueta ZPL", readonly=True, copy=False)
 
     def action_register_roll_with_weight(self, weight):
-        """ Registro de rollos de tela con recálculo de consumo inmediato """
+        """ 
+        Registro de rollos con vinculación de lote y limpieza de movimiento total.
+        Afecta qty_producing en MO y qty_produced en WO.
+        """
         self.ensure_one()
         if weight <= 0:
             raise UserError(_("El peso debe ser mayor a cero."))
 
-        # 1. Incrementar contador y definir nombres
         self.roll_count += 1
         mo_identifier = self.name.split('/')[-1]
         lot_name = f"{mo_identifier}-{self.roll_count:04d}"
         barcode_data = f"{self.name}|{self.roll_count}"
 
-        # 2. Crear Lote para el Rollo (CORRECCIÓN: Incluye Peso y Vínculo)
+        # 1. Crear Lote con peso inicial para que el Wizard lo vea
         new_lot = self.env['stock.lot'].create({
             'name': lot_name,
             'product_id': self.product_id.id,
             'company_id': self.company_id.id,
             'production_id': self.id,
-            'product_qty': weight,
+            'product_qty': weight, 
         })
 
-        # 3. Gestionar Movimiento de Inventario
         finished_move = self.move_finished_ids.filtered(
             lambda x: x.product_id == self.product_id and x.state not in ('done', 'cancel')
         )[:1]
 
         if finished_move:
-            # CORRECCIÓN PUNTO 1: Limpiar cantidad planificada original
+            # Limpiar la cantidad planificada original para evitar duplicidad
             if finished_move.product_uom_qty != 0:
                 finished_move.write({'product_uom_qty': 0})
 
             current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
             
+            # 2. Crear línea de movimiento con nombre de lote para el historial
             self.env['stock.move.line'].create({
                 'move_id': finished_move.id,
                 'product_id': self.product_id.id,
                 'lot_id': new_lot.id,
+                'lot_name': lot_name,
                 'quantity': weight,
                 'location_id': finished_move.location_id.id,
                 'location_dest_id': finished_move.location_dest_id.id,
@@ -52,25 +55,27 @@ class MrpProduction(models.Model):
                 'production_id': self.id,
             })
             
+            # Actualizar avance en MO y WO
             self.qty_producing += weight
             if current_wo:
                 current_wo.qty_produced += weight
             
-            # Recálculo de consumos original
+            # Recálculo de consumos de materia prima
             self.move_raw_ids._recompute_state()
             self.move_raw_ids._action_assign()
 
-        # 4. Imprimir etiqueta
         self._print_zpl_label(lot_name, weight, barcode_data)
 
-        # 5. Sorteo de Calidad
         if hasattr(self, '_auto_sorteo_revision'):
             self._auto_sorteo_revision() 
         
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_register_subproduct_manual(self, weight, lot_name=False):
-        """ Registro de subproductos íntegro """
+        """ 
+        Registro de subproductos.
+        CORRECCIÓN: Ahora también suma al avance (qty_producing/qty_produced).
+        """
         self.ensure_one()
         if weight <= 0:
             raise UserError(_("El peso del subproducto debe ser mayor a cero."))
@@ -89,20 +94,31 @@ class MrpProduction(models.Model):
             'company_id': self.company_id.id,
         })
 
+        # Buscamos la orden de trabajo activa para vincular el avance del subproducto
+        current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
+
         self.env['stock.move.line'].create({
             'move_id': sub_move.id,
             'product_id': sub_move.product_id.id,
             'lot_id': new_lot.id,
+            'lot_name': lot_name,
             'quantity': weight,
             'location_id': sub_move.location_id.id,
             'location_dest_id': sub_move.location_dest_id.id,
+            'workorder_id': current_wo.id if current_wo else False,
             'production_id': self.id,
         })
+
+        # --- CORRECCIÓN CLAVE: Sumar peso al avance de la MO y WO ---
+        self.qty_producing += weight
+        if current_wo:
+            current_wo.qty_produced += weight
+        # -----------------------------------------------------------
 
         self.move_raw_ids._recompute_state()
         self.move_raw_ids._action_assign()
 
-        # Calidad Nativa
+        # Validación automática de Calidad Nativa
         quality_checks = self.env['quality.check'].search([
             ('production_id', '=', self.id),
             ('quality_state', '=', 'none')
