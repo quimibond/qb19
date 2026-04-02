@@ -59,9 +59,9 @@
                                 <field name="create_date" string="Fecha/Hora"/>
                                 <field name="user_id" string="Revisor"/>
                                 <field name="lot_id" string="Rollo"/>
-                                <field name="peso_original" string="Peso Original" sum="Total Original"/>
-                                <field name="peso_final" string="Peso Revisado" sum="Total Revisado"/>
-                                <field name="diferencia" string="Diferencia" sum="Total Dif"/>
+                                <field name="peso_original" string="Peso Inicial"/>
+                                <field name="peso_final" string="Peso Revisado"/>
+                                <field name="diferencia" string="Diferencia"/>
                             </list>
                         </field>
                     </page>
