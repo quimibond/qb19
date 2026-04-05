@@ -22,7 +22,7 @@ addons/quimibond_intelligence/
   security/ir.model.access.csv
 ```
 
-## Modelos sincronizados (16)
+## Modelos sincronizados (17)
 
 | Metodo | Odoo Model | Supabase Table |
 |---|---|---|
@@ -41,6 +41,17 @@ addons/quimibond_intelligence/
 | `_push_departments` | hr.department | odoo_departments |
 | `_push_sale_orders` | sale.order | odoo_sale_orders |
 | `_push_purchase_orders` | purchase.order | odoo_purchase_orders |
+| `_push_orderpoints` | stock.warehouse.orderpoint | odoo_orderpoints |
+
+## Campos clave de Odoo
+
+- **`default_code`** = Referencia Interna del producto → se guarda como `internal_ref` en odoo_products y `product_ref` en order/invoice lines. **SIEMPRE usar para display en frontend.**
+- **`commercial_partner_id`** = Empresa padre en Odoo → se resuelve via `_commercial_partner_id()` para linkear a companies.
+- **`vat`** = RFC fiscal → se guarda como `rfc` en companies.
+- **`salesperson_user_id`** en sale_orders = vendedor real → se usa para asignar insights.
+- **`buyer_user_id`** en purchase_orders = comprador real → se usa para insights de proveedores.
+
+Ver mapeo completo de campos en `quimibond-intelligence/CLAUDE.md`.
 
 ## Crons
 
