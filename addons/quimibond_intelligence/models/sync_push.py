@@ -65,6 +65,7 @@ class QuimibondSync(models.TransientModel):
             totals['departments'] = self._push_departments(client)
             totals['sale_orders'] = self._push_sale_orders(client)
             totals['purchase_orders'] = self._push_purchase_orders(client)
+            totals['orderpoints'] = self._push_orderpoints(client)
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
             _logger.info('✓ Push to Supabase: %s', summary or 'no changes')
@@ -912,3 +913,45 @@ class QuimibondSync(models.TransientModel):
 
         return client.upsert('odoo_purchase_orders', rows,
                               on_conflict='odoo_order_id', batch_size=200)
+
+    # ── Stock Reorder Rules (orderpoints) ────────────────────────────────
+
+    def _push_orderpoints(self, client: SupabaseClient) -> int:
+        """Push stock.warehouse.orderpoint → odoo_orderpoints table.
+        Critical for desabasto (stockout) detection."""
+        try:
+            Orderpoint = self.env['stock.warehouse.orderpoint'].sudo()
+        except KeyError:
+            _logger.info('stock.warehouse.orderpoint not available, skipping')
+            return 0
+
+        orderpoints = Orderpoint.search([('active', '=', True)], limit=5000)
+
+        rows = []
+        for op in orderpoints:
+            product = op.product_id
+            qty_on_hand = 0.0
+            qty_forecast = 0.0
+            try:
+                qty_on_hand = product.qty_available or 0.0
+                qty_forecast = product.virtual_available or 0.0
+            except Exception:
+                pass
+
+            rows.append({
+                'odoo_orderpoint_id': op.id,
+                'odoo_product_id': product.id if product else None,
+                'product_name': product.name if product else '',
+                'warehouse_name': op.warehouse_id.name if op.warehouse_id else '',
+                'location_name': op.location_id.complete_name if op.location_id else '',
+                'product_min_qty': round(op.product_min_qty, 2),
+                'product_max_qty': round(op.product_max_qty, 2),
+                'qty_to_order': round(getattr(op, 'qty_to_order', 0) or 0, 2),
+                'qty_on_hand': round(qty_on_hand, 2),
+                'qty_forecast': round(qty_forecast, 2),
+                'trigger_type': getattr(op, 'trigger', 'auto'),
+                'active': op.active,
+            })
+
+        return client.upsert('odoo_orderpoints', rows,
+                              on_conflict='odoo_orderpoint_id', batch_size=200)
