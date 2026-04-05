@@ -142,6 +142,19 @@ class QuimibondSyncPull(models.TransientModel):
         Partner = self.env['res.partner'].sudo()
         created = 0
 
+        # Pre-fetch all needed company mappings in one batch (avoids N+1)
+        company_ids = list({c['company_id'] for c in contacts if c.get('company_id')})
+        company_map = {}  # supabase_company_id -> odoo_partner_id
+        if company_ids:
+            for cid in company_ids:
+                companies_data = client.fetch('companies', {
+                    'id': f'eq.{cid}',
+                    'select': 'id,odoo_partner_id',
+                    'limit': '1',
+                })
+                if companies_data and companies_data[0].get('odoo_partner_id'):
+                    company_map[cid] = companies_data[0]['odoo_partner_id']
+
         for contact in contacts:
             email = (contact.get('email') or '').strip().lower()
             name = contact.get('name') or email
@@ -165,17 +178,10 @@ class QuimibondSyncPull(models.TransientModel):
                     'is_company': False,
                     'customer_rank': 1,
                 }
-                # Link to parent company if company_id exists in Supabase
+                # Link to parent company using pre-fetched map
                 company_id = contact.get('company_id')
-                if company_id:
-                    # Look up the company's odoo_partner_id
-                    companies = client.fetch('companies', {
-                        'id': f'eq.{company_id}',
-                        'select': 'odoo_partner_id',
-                        'limit': '1',
-                    })
-                    if companies and companies[0].get('odoo_partner_id'):
-                        vals['parent_id'] = companies[0]['odoo_partner_id']
+                if company_id and company_id in company_map:
+                    vals['parent_id'] = company_map[company_id]
 
                 partner = Partner.create(vals)
 
@@ -197,7 +203,7 @@ class QuimibondSyncPull(models.TransientModel):
         # Fetch recently completed/dismissed actions
         actions = client.fetch('action_items', {
             'state': 'in.(completed,dismissed)',
-            'updated_at': f'gte.{(datetime.now().replace(hour=0, minute=0)).isoformat()}',
+            'updated_at': f'gte.{datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()}',
             'select': 'id,state,contact_name,description',
             'limit': '50',
         })

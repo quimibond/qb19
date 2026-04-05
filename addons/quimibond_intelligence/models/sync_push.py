@@ -161,17 +161,14 @@ class QuimibondSync(models.TransientModel):
                         'city': p.city or None,
                     }
 
-            # Resolve the display name:
-            # - For contacts with a parent company, use the contact's own name
-            # - For company partners, use the company name (better than NULL)
-            # - For contacts without parent, use their name directly
             contact_name = p.name or None
-            if p.is_company and p.parent_id:
-                # Child company — use name
-                contact_name = p.name
-            elif not p.is_company and p.parent_id:
-                # Contact under a company — use contact name
-                contact_name = p.name
+
+            # Resolve company canonical name for linking
+            company_cn = None
+            if p.parent_id:
+                company_cn = (p.parent_id.name or '').strip() or None
+            elif p.is_company:
+                company_cn = (p.name or '').strip() or None
 
             for email in emails:
                 contacts.append({
@@ -179,6 +176,7 @@ class QuimibondSync(models.TransientModel):
                     'name': contact_name,
                     'contact_type': 'external',
                     'odoo_partner_id': p.id if len(emails) == 1 else None,
+                    'company': company_cn,
                     'is_customer': is_customer,
                     'is_supplier': is_supplier,
                 })
@@ -210,6 +208,23 @@ class QuimibondSync(models.TransientModel):
         # Use a broad search and filter by checking the product is storable.
         products = Product.search([('active', '=', True)], limit=6000)
 
+        # Pre-fetch all reorder rules in one query (avoids N+1)
+        orderpoint_map = {}  # product_id -> {min, max}
+        try:
+            Orderpoint = self.env['stock.warehouse.orderpoint'].sudo()
+            all_orderpoints = Orderpoint.search([
+                ('product_id', 'in', products.ids),
+            ])
+            for op in all_orderpoints:
+                pid = op.product_id.id
+                if pid not in orderpoint_map:
+                    orderpoint_map[pid] = {
+                        'min': op.product_min_qty,
+                        'max': op.product_max_qty,
+                    }
+        except Exception:
+            pass
+
         rows = []
         for p in products:
             # Use computed fields from product.product which aggregate stock.quant
@@ -239,17 +254,11 @@ class QuimibondSync(models.TransientModel):
             # Determine product type string
             ptype = getattr(p, 'detailed_type', None) or getattr(p, 'type', 'consu')
 
-            # Get reorder rules if available
+            # Get reorder rules from pre-fetched map
             reorder_min = reorder_max = 0.0
-            try:
-                orderpoints = self.env['stock.warehouse.orderpoint'].sudo().search([
-                    ('product_id', '=', p.id),
-                ], limit=1)
-                if orderpoints:
-                    reorder_min = orderpoints[0].product_min_qty
-                    reorder_max = orderpoints[0].product_max_qty
-            except Exception:
-                pass
+            if p.id in orderpoint_map:
+                reorder_min = orderpoint_map[p.id]['min']
+                reorder_max = orderpoint_map[p.id]['max']
 
             # Get full category path for better classification
             category = ''
@@ -334,7 +343,7 @@ class QuimibondSync(models.TransientModel):
                     'order_type': 'purchase',
                     'order_state': o.state,
                     'product_name': l.product_id.name if l.product_id else '',
-                    'qty': round(l.product_qty, 2),
+                    'qty': round(getattr(l, 'product_uom_qty', l.product_qty), 2),
                     'price_unit': round(l.price_unit, 2),
                     'discount': 0,
                     'subtotal': round(l.price_subtotal, 2),
@@ -522,13 +531,16 @@ class QuimibondSync(models.TransientModel):
             if amount_paid <= 0:
                 continue
 
+            # Use write_date as proxy for payment date (closer to actual payment
+            # than invoice_date). invoice_date is when invoice was created, not paid.
+            payment_date = inv.write_date or inv.invoice_date
             rows.append({
                 'odoo_partner_id': pid,
                 'name': f'PAY-{inv.name}',
                 'payment_type': 'inbound' if inv.move_type == 'out_invoice' else 'outbound',
                 'amount': round(amount_paid, 2),
                 'currency': inv.currency_id.name if inv.currency_id else 'MXN',
-                'payment_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
+                'payment_date': payment_date.strftime('%Y-%m-%d') if payment_date else None,
                 'state': 'posted',
             })
 
@@ -611,7 +623,7 @@ class QuimibondSync(models.TransientModel):
 
     def _push_activities(self, client: SupabaseClient) -> int:
         Activity = self.env['mail.activity'].sudo()
-        activities = Activity.search([])
+        activities = Activity.search([], limit=5000)
         today = datetime.now().date()
 
         rows = []
