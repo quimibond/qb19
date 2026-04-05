@@ -97,11 +97,35 @@ class QuimibondSync(models.TransientModel):
     def _push_contacts(self, client: SupabaseClient) -> int:
         """Push res.partner → contacts + companies tables."""
         Partner = self.env['res.partner'].sudo()
+
+        # Base: partners with email that are customers or suppliers
         partners = Partner.search([
             ('email', '!=', False),
             ('email', '!=', ''),
             '|', ('customer_rank', '>', 0), ('supplier_rank', '>', 0),
         ])
+
+        # Also include partners referenced by invoices/orders but missing ranks
+        # These are the ones that cause orphan invoices in Supabase
+        try:
+            Move = self.env['account.move'].sudo()
+            cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            invoice_partner_ids = Move.search([
+                ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
+                ('state', '=', 'posted'),
+                ('invoice_date', '>=', cutoff),
+            ]).mapped('partner_id.commercial_partner_id').ids
+
+            missing_ids = set(invoice_partner_ids) - set(partners.ids)
+            if missing_ids:
+                extra = Partner.browse(list(missing_ids)).filtered(
+                    lambda p: p.email and p.email.strip()
+                )
+                if extra:
+                    partners = partners | extra
+                    _logger.info('Added %d partners from invoices (missing rank)', len(extra))
+        except Exception as exc:
+            _logger.warning('Extra partner fetch: %s', exc)
 
         companies = {}  # canonical_name → {fields}
         contacts = []   # [{fields}]
@@ -180,6 +204,42 @@ class QuimibondSync(models.TransientModel):
                     'is_customer': is_customer,
                     'is_supplier': is_supplier,
                 })
+
+        # Also push companies from invoice partners that may lack email
+        # (these cause orphan invoices worth millions)
+        try:
+            existing_partner_ids = {c['odoo_partner_id'] for c in companies.values()
+                                    if c.get('odoo_partner_id')}
+            Move = self.env['account.move'].sudo()
+            cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            inv_partners = Move.search([
+                ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
+                ('state', '=', 'posted'),
+                ('invoice_date', '>=', cutoff),
+            ]).mapped('partner_id.commercial_partner_id')
+
+            for p in inv_partners:
+                cp_id = p.id
+                if cp_id in existing_partner_ids:
+                    continue
+                cn = (p.name or '').strip()
+                if not cn:
+                    continue
+                if cn not in companies:
+                    companies[cn] = {
+                        'canonical_name': cn,
+                        'name': cn,
+                        'odoo_partner_id': cp_id,
+                        'is_customer': p.customer_rank > 0,
+                        'is_supplier': p.supplier_rank > 0,
+                        'rfc': (p.vat or '').strip() or None,
+                        'domain': None,
+                        'country': p.country_id.name if p.country_id else None,
+                        'city': p.city or None,
+                    }
+                    existing_partner_ids.add(cp_id)
+        except Exception as exc:
+            _logger.warning('Invoice partner companies: %s', exc)
 
         synced = 0
         if companies:
