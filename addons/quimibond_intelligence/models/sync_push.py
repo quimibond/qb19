@@ -101,6 +101,20 @@ class QuimibondSync(models.TransientModel):
                 _logger.info('Identity resolution triggered after push')
             except Exception as exc:
                 _logger.warning('Identity resolution RPC failed: %s', exc)
+
+            # Export schema catalog once per day
+            try:
+                last_schema = ICP.get_param(
+                    'quimibond_intelligence.last_schema_export', '')
+                today = _start.strftime('%Y-%m-%d')
+                if last_schema != today:
+                    self.push_schema_catalog()
+                    ICP.set_param(
+                        'quimibond_intelligence.last_schema_export', today)
+                    _logger.info('Schema catalog exported for %s', today)
+            except Exception as exc:
+                _logger.warning('Schema catalog export failed: %s', exc)
+
             self.env.cr.commit()
         except Exception as exc:
             _logger.error('Push to Supabase failed: %s', exc)
@@ -116,6 +130,117 @@ class QuimibondSync(models.TransientModel):
                 pass
         finally:
             client.close()
+
+    # ── Schema Catalog ────────────────────────────────────────────────────
+
+    @api.model
+    def push_schema_catalog(self):
+        """Export all installed Odoo models and fields to Supabase.
+
+        This lets the intelligence layer know exactly what data exists
+        in Odoo without guessing field names. Run manually or on deploy.
+        """
+        client = _get_client(self.env)
+        if not client:
+            return
+
+        # Models we care about for business intelligence
+        MODELS = [
+            'res.partner', 'product.product', 'product.template',
+            'sale.order', 'sale.order.line',
+            'purchase.order', 'purchase.order.line',
+            'account.move', 'account.move.line',
+            'account.payment', 'account.payment.term',
+            'stock.picking', 'stock.move',
+            'stock.warehouse.orderpoint', 'stock.quant',
+            'crm.lead', 'mail.activity',
+            'hr.employee', 'hr.department',
+            'mrp.production', 'mrp.bom',
+            'res.currency', 'res.company',
+            'product.pricelist', 'product.pricelist.item',
+            'res.partner.category',
+        ]
+
+        rows = []
+        for model_name in MODELS:
+            try:
+                Model = self.env[model_name].sudo()
+            except KeyError:
+                _logger.info('Model %s not available, skipping', model_name)
+                continue
+
+            model_desc = Model._description or model_name
+
+            for fname, field in Model._fields.items():
+                # Skip internal/private fields
+                if fname.startswith('_') or fname in ('id', 'create_uid',
+                    'write_uid', 'create_date', 'write_date', '__last_update'):
+                    continue
+
+                relation = None
+                if field.type in ('many2one', 'many2many', 'one2many'):
+                    relation = field.comodel_name
+
+                selection_values = None
+                if field.type == 'selection':
+                    try:
+                        sel = field.selection
+                        if callable(sel):
+                            sel = sel(Model)
+                        selection_values = sel
+                    except Exception:
+                        pass
+
+                rows.append({
+                    'model_name': model_name,
+                    'model_description': model_desc,
+                    'field_name': fname,
+                    'field_type': field.type,
+                    'field_description': field.string or fname,
+                    'required': bool(field.required),
+                    'readonly': bool(field.readonly),
+                    'relation': relation,
+                    'selection_values': selection_values,
+                    'synced_to_supabase': fname in self._get_synced_fields(model_name),
+                })
+
+        if rows:
+            # Full refresh: delete and re-insert
+            client.delete_all('odoo_schema_catalog')
+            count = client.insert('odoo_schema_catalog', rows, batch_size=500)
+            _logger.info('Schema catalog: %d fields exported from %d models',
+                         count, len(MODELS))
+
+        client.close()
+
+    def _get_synced_fields(self, model_name):
+        """Return set of field names that are currently synced for a model."""
+        # Map of model → fields we push to Supabase
+        SYNCED = {
+            'res.partner': {'name', 'email', 'vat', 'customer_rank', 'supplier_rank',
+                           'is_company', 'parent_id', 'commercial_partner_id',
+                           'country_id', 'city', 'category_id',
+                           'property_payment_term_id', 'property_supplier_payment_term_id',
+                           'credit_limit'},
+            'product.product': {'name', 'default_code', 'categ_id', 'uom_id',
+                               'type', 'qty_available', 'virtual_available',
+                               'standard_price', 'list_price', 'active', 'barcode'},
+            'sale.order': {'name', 'partner_id', 'state', 'amount_total',
+                          'amount_untaxed', 'date_order', 'user_id', 'margin',
+                          'margin_percent'},
+            'purchase.order': {'name', 'partner_id', 'state', 'amount_total',
+                              'date_order', 'user_id'},
+            'account.move': {'name', 'partner_id', 'move_type', 'state',
+                           'amount_total', 'amount_residual', 'currency_id',
+                           'invoice_date', 'invoice_date_due', 'payment_state', 'ref'},
+            'stock.picking': {'name', 'partner_id', 'picking_type_id', 'state',
+                            'scheduled_date', 'date_done', 'origin'},
+            'crm.lead': {'name', 'partner_id', 'type', 'stage_id', 'user_id',
+                        'expected_revenue', 'probability', 'date_deadline', 'active'},
+            'hr.employee': {'name', 'work_email', 'department_id', 'job_id',
+                          'job_title', 'parent_id', 'coach_id'},
+        }
+        return SYNCED.get(model_name, set())
 
     # ── Contacts & Companies ─────────────────────────────────────────────
 
