@@ -221,18 +221,23 @@ class QuimibondSync(models.TransientModel):
                            'is_company', 'parent_id', 'commercial_partner_id',
                            'country_id', 'city', 'category_id',
                            'property_payment_term_id', 'property_supplier_payment_term_id',
-                           'credit_limit'},
+                           'credit_limit', 'credit', 'debit', 'total_invoiced',
+                           'total_overdue'},
             'product.product': {'name', 'default_code', 'categ_id', 'uom_id',
                                'type', 'qty_available', 'virtual_available',
-                               'standard_price', 'list_price', 'active', 'barcode'},
+                               'standard_price', 'list_price', 'active', 'barcode',
+                               'avg_cost', 'weight'},
             'sale.order': {'name', 'partner_id', 'state', 'amount_total',
                           'amount_untaxed', 'date_order', 'user_id', 'margin',
                           'margin_percent'},
             'purchase.order': {'name', 'partner_id', 'state', 'amount_total',
                               'date_order', 'user_id'},
             'account.move': {'name', 'partner_id', 'move_type', 'state',
-                           'amount_total', 'amount_residual', 'currency_id',
-                           'invoice_date', 'invoice_date_due', 'payment_state', 'ref'},
+                           'amount_total', 'amount_residual', 'amount_tax',
+                           'amount_untaxed', 'currency_id',
+                           'invoice_date', 'invoice_date_due', 'payment_state', 'ref',
+                           'invoice_payment_term_id',
+                           'l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state'},
             'stock.picking': {'name', 'partner_id', 'picking_type_id', 'state',
                             'scheduled_date', 'date_done', 'origin'},
             'crm.lead': {'name', 'partner_id', 'type', 'stage_id', 'user_id',
@@ -329,12 +334,19 @@ class QuimibondSync(models.TransientModel):
                 cn = (p.name or '').strip()
                 if cn and cn not in companies:
                     rfc = (p.vat or '').strip() or None
-                    credit_limit = None
+                    # Financial totals (computed by Odoo from account.move)
+                    total_receivable = total_payable = total_invoiced_odoo = None
+                    total_overdue_odoo = credit_limit = None
                     try:
+                        total_receivable = round(p.credit, 2) if hasattr(p, 'credit') else None
+                        total_payable = round(p.debit, 2) if hasattr(p, 'debit') else None
+                        total_invoiced_odoo = round(p.total_invoiced, 2) if hasattr(p, 'total_invoiced') else None
+                        total_overdue_odoo = round(p.total_overdue, 2) if hasattr(p, 'total_overdue') else None
                         if hasattr(p, 'credit_limit') and p.credit_limit:
                             credit_limit = round(p.credit_limit, 2)
                     except Exception:
                         pass
+
                     companies[cn] = {
                         'canonical_name': cn,
                         'name': cn,
@@ -345,10 +357,14 @@ class QuimibondSync(models.TransientModel):
                         'domain': domain,
                         'country': p.country_id.name if p.country_id else None,
                         'city': p.city or None,
+                        'credit_limit': credit_limit,
+                        'total_receivable': total_receivable,
+                        'total_payable': total_payable,
+                        'total_invoiced_odoo': total_invoiced_odoo,
+                        'total_overdue_odoo': total_overdue_odoo,
                         'odoo_context': {
                             'payment_term': payment_term,
                             'supplier_payment_term': supplier_payment_term,
-                            'credit_limit': credit_limit,
                             'tags': tags if tags else None,
                         },
                     }
@@ -513,6 +529,8 @@ class QuimibondSync(models.TransientModel):
                 'reorder_max': round(reorder_max, 2),
                 'standard_price': round(p.standard_price, 2),
                 'list_price': round(p.lst_price, 2),
+                'avg_cost': round(p.avg_cost, 2) if hasattr(p, 'avg_cost') and p.avg_cost else None,
+                'weight': round(p.weight, 4) if hasattr(p, 'weight') and p.weight else None,
                 'active': p.active,
                 'updated_at': datetime.now().isoformat(),
             })
@@ -684,18 +702,41 @@ class QuimibondSync(models.TransientModel):
                 if inv.invoice_date_due < today:
                     days_overdue = (today - inv.invoice_date_due).days
 
+            # Payment term
+            pay_term = None
+            try:
+                if inv.invoice_payment_term_id:
+                    pay_term = inv.invoice_payment_term_id.name
+            except Exception:
+                pass
+
+            # CFDI fields (Mexico e-invoicing)
+            cfdi_uuid = None
+            cfdi_sat = None
+            try:
+                cfdi_uuid = getattr(inv, 'l10n_mx_edi_cfdi_uuid', None) or None
+                cfdi_sat = getattr(inv, 'l10n_mx_edi_cfdi_sat_state', None) or None
+            except Exception:
+                pass
+
             rows.append({
                 'odoo_partner_id': pid,
                 'name': inv.name,
                 'move_type': inv.move_type,
                 'amount_total': round(inv.amount_total, 2),
                 'amount_residual': round(inv.amount_residual, 2),
+                'amount_tax': round(inv.amount_tax, 2) if hasattr(inv, 'amount_tax') else None,
+                'amount_untaxed': round(inv.amount_untaxed, 2) if hasattr(inv, 'amount_untaxed') else None,
+                'amount_paid': round(inv.amount_total - inv.amount_residual, 2),
                 'currency': inv.currency_id.name if inv.currency_id else 'MXN',
                 'invoice_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
                 'due_date': inv.invoice_date_due.strftime('%Y-%m-%d') if inv.invoice_date_due else None,
                 'state': inv.state,
                 'payment_state': inv.payment_state,
                 'days_overdue': days_overdue,
+                'payment_term': pay_term,
+                'cfdi_uuid': cfdi_uuid,
+                'cfdi_sat_state': cfdi_sat,
                 'ref': inv.ref or '',
             })
 
