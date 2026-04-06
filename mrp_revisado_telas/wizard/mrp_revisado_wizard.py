@@ -15,107 +15,143 @@ class MrpRevisadoWizard(models.TransientModel):
     rollos_pendientes_text = fields.Text(string="Pendientes", compute="_compute_rollos_pendientes")
     barcode_scan = fields.Char(string='Escanear Rollo')
     
-    # Campos de datos del rollo (Clave para la persistencia)
+    # Campos de datos del rollo
     lot_id = fields.Many2one('stock.lot', string='ID Rollo')
     peso_original = fields.Float(string="Peso Original (Kg)", readonly=True)
     peso_actual = fields.Float(string='Nuevo Peso (Kg)', digits=(12, 4))
 
+    # Punto 6: Causa de la desviación (Etiquetas de Calidad filtradas por TEJIDO)
+    causa_id = fields.Many2one(
+        'quality.tag', 
+        string="Causa de Desviación", 
+        domain="[('name', '=like', 'TEJIDO%')]",
+        help="Seleccione la causa del ajuste de peso"
+    )
+
     @api.depends('production_id')
     def _compute_rollos_pendientes(self):
-        """ Calcula qué rollos sorteados faltan por revisar para mostrar en el banner amarillo """
-        for wizard in self:
-            lotes = self.env['stock.lot'].search([
-                ('production_id', '=', wizard.production_id.id),
-                ('needs_review', '=', True),
-                ('is_reviewed', '=', False)
-            ])
-            wizard.rollos_pendientes_text = ", ".join(lotes.mapped('name')) if lotes else "Ninguno pendiente"
+        for reg in self:
+            if reg.production_id:
+                revisados = reg.production_id.rollos_revisados_count
+                requeridos = reg.production_id.rollos_requeridos_count
+                
+                if revisados >= requeridos:
+                    reg.rollos_pendientes_text = f"¡META CUMPLIDA! ({revisados} revisados)"
+                else:
+                    faltantes = requeridos - revisados
+                    reg.rollos_pendientes_text = f"Faltan {faltantes} rollos por revisar para cumplir el requisito del Centro de Trabajo ({revisados}/{requeridos})."
+            else:
+                reg.rollos_pendientes_text = ""
 
     @api.onchange('barcode_scan')
     def _onchange_barcode_scan(self):
-        """ Busca el lote y recupera su peso actual del movimiento de inventario """
+        """ 
+        Busca el lote y recupera su peso original.
+        Eliminada la restricción de 'needs_review' para permitir revisión manual.
+        """
         if self.barcode_scan:
+            # Buscamos el lote por nombre y vinculación a la OF
             lot = self.env['stock.lot'].search([
-                ('name', '=', self.barcode_scan),
+                ('name', '=', self.barcode_scan.strip()),
                 ('production_id', '=', self.production_id.id)
             ], limit=1)
             
             if lot:
-                if not lot.needs_review:
-                    raise UserError(_("Este rollo NO fue seleccionado para revisión aleatoria."))
+                # 1. Validación de ya revisado (esta sí se queda)
                 if lot.is_reviewed:
+                    self.barcode_scan = False
                     raise UserError(_("Este rollo YA fue revisado y procesado."))
                 
-                self.lot_id = lot
+                self.lot_id = lot.id
                 
-                # Buscamos el peso real en el movimiento de inventario (stock.move.line)
-                # Esto es más preciso que leer el lote directamente si hay retraso en el cálculo de Odoo
+                # 2. Recuperar el peso. Intentamos primero por la línea de movimiento 
+                # (que es el peso real en la MO) y si no, directamente del lote.
                 move_line = self.env['stock.move.line'].search([
                     ('lot_id', '=', lot.id),
                     ('production_id', '=', self.production_id.id)
                 ], limit=1)
                 
-                self.peso_original = move_line.quantity if move_line else lot.product_qty
+                # ASIGNACIÓN: Aquí es donde se soluciona el "blanco"
+                peso_detectado = move_line.quantity if move_line else lot.product_qty
+                
+                self.peso_original = peso_detectado
+                self.peso_actual = peso_detectado
+                
+                # Limpiar escáner para el siguiente
+                self.barcode_scan = False 
             else:
+                barcode_err = self.barcode_scan
+                self.barcode_scan = False
                 self.lot_id = False
                 self.peso_original = 0.0
-                raise UserError(_("El código de rollo no pertenece a esta Orden de Fabricación."))
+                raise UserError(_("El código de rollo '%s' no pertenece a esta Orden de Fabricación.") % barcode_err)
 
     def confirmar_revisado(self):
-        """ 
-        PROCESO CRÍTICO: 
-        1. Valida persistencia del lote.
-        2. Crea registro en el Log de Historial.
-        3. Actualiza el movimiento de inventario (stock.move.line).
-        4. Ajusta los totales de la MO y la WO por la diferencia de peso.
-        """
         self.ensure_one()
-
-        # SEGURIDAD: Si por error de sesión el lot_id llega vacío, intentamos recuperarlo por el texto del escáner
-        if not self.lot_id and self.barcode_scan:
-            self.lot_id = self.env['stock.lot'].search([
-                ('name', '=', self.barcode_scan),
-                ('production_id', '=', self.production_id.id)
-            ], limit=1)
-
         if not self.lot_id:
-            raise UserError(_("Error de lectura: El sistema perdió la referencia del rollo. Por favor, escanee de nuevo."))
+            raise UserError(_("Debe escanear un rollo válido antes de confirmar."))
 
-        if self.peso_actual <= 0:
-            raise UserError(_("Debe capturar un peso mayor a cero para confirmar la revisión."))
+        # VALIDACIÓN QUIRÚRGICA: Redondeo a 2 decimales para evitar diferencias de báscula
+        peso_orig_rd = round(self.peso_original, 2)
+        peso_act_rd = round(self.peso_actual, 2)
+        hubo_desviacion_actual = peso_orig_rd != peso_act_rd
 
-        # 1. Crear el registro en el historial (Log de Calidad)
+        # Si el peso CAMBIÓ y no seleccionó causa, lanzamos el error manualmente
+        if hubo_desviacion_actual and not self.causa_id:
+            raise UserError(_("El peso ha cambiado (De %.2f a %.2f). Debe seleccionar una Causa de Desviación.") % (peso_orig_rd, peso_act_rd))
+
+        # 1. Crear el log de revisión (Punto 5)
+        # Si no hay desviación, causa_id será False y Odoo lo permitirá porque ya no es required en el modelo
         self.env['mrp.revision.log'].create({
             'production_id': self.production_id.id,
             'lot_id': self.lot_id.id,
             'peso_original': self.peso_original,
             'peso_final': self.peso_actual,
+            'causa_id': self.causa_id.id if hubo_desviacion_actual else False,
         })
 
-        # 2. Buscar el movimiento contable de inventario original para corregirlo
+        # 2. Buscar el movimiento de inventario para corregir cantidades (Lógica original)
         move_line = self.env['stock.move.line'].search([
             ('lot_id', '=', self.lot_id.id),
             ('production_id', '=', self.production_id.id)
         ], limit=1)
 
         if move_line:
-            # Calculamos la diferencia (p.e. si pesaba 35 y ahora 32, diff = -3)
             diferencia = self.peso_actual - move_line.quantity
-            
-            # Actualizamos la cantidad del movimiento real (Esto afecta el Stock Físico)
             move_line.write({'quantity': self.peso_actual})
-            
-            # 3. Ajustar el avance de la Orden de Fabricación (qty_producing)
             self.production_id.qty_producing += diferencia
-            
-            # 4. Ajustar el avance de la Orden de Trabajo (qty_produced)
             if move_line.workorder_id:
                 move_line.workorder_id.qty_produced += diferencia
 
-        # 5. Actualizar el Lote y marcarlo como revisado para liberar el candado de cierre
+        # 3. Actualizar el Lote y marcarlo como revisado
         self.lot_id.write({
-            'product_qty': self.peso_actual,
-            'is_reviewed': True
+            'is_reviewed': True,
+            'product_qty': self.peso_actual
         })
 
-        return {'type': 'ir.actions.act_window_close'}
+        # --- REVISIÓN DE CONTROL DE CALIDAD (Lógica Blindada) ---
+        self.production_id.invalidate_recordset(['rollos_revisados_count', 'revision_log_ids'])
+        
+        revisados_reales = len(self.production_id.revision_log_ids)
+        meta_reales = self.production_id.rollos_requeridos_count
+        meta_alcanzada = revisados_reales >= meta_reales
+        
+        # Verificamos desviaciones acumuladas redondeando a 2 decimales
+        hay_desviacion_acumulada = any(round(log.peso_original, 2) != round(log.peso_final, 2) for log in self.production_id.revision_log_ids)
+        tiene_subproducto = any(m.quantity > 0 for m in self.production_id.move_byproduct_ids)
+
+        if meta_alcanzada:
+            if (not hay_desviacion_acumulada) or (hay_desviacion_acumulada and tiene_subproducto):
+                checks = self.env['quality.check'].search([
+                    ('production_id', '=', self.production_id.id),
+                    ('state', '=', 'in_progress')
+                ])
+                for check in checks:
+                    check.action_pass()
+        # --- FIN LÓGICA CALIDAD ---
+
+        # Punto 2: Impresión de etiqueta SOLO si hubo cambio de peso real
+        if hubo_desviacion_actual:
+            self.production_id._print_zpl_label(self.lot_id.name, self.peso_actual, self.lot_id.name)
+
+        return {'type': 'ir.actions.client', 'tag': 'reload'}

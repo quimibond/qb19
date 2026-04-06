@@ -4,73 +4,122 @@ from odoo.exceptions import UserError
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
+    
     categ_name_static = fields.Char(related='categ_id.complete_name', string="Categoría", store=False)
     porcentaje_revision_standard = fields.Float(string='% Revisión Estándar', default=0.1)
 
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
+    # El conteo de revisados sí se almacena para reportes y velocidad
+    rollos_revisados_count = fields.Integer(
+        string="Rollos Revisados", 
+        compute="_compute_rollos_revisados_count",
+        store=True
+    )
+
+    # REVISIÓN: store=False para que siempre lea el valor real del Centro de Trabajo
+    rollos_requeridos_count = fields.Integer(
+        string="Meta de Revisión (WC)",
+        compute="_compute_rollos_requeridos_count",
+        store=False, 
+        help="Número de rollos requeridos según la configuración del Centro de Trabajo."
+    )
+
     porcentaje_revision = fields.Float(string='% de Revisión', compute='_compute_revision_perc')
     revision_log_ids = fields.One2many('mrp.revision.log', 'production_id', string="Log Calidad")
 
     def _compute_revision_perc(self):
         get_param = self.env['ir.config_parameter'].sudo().get_param
-        val = float(get_param('pesaje_rollos_tejido.qc_sample_percentage', default=10.0)) / 100.0
+        val = float(get_param('mrp_revisado_telas.mrp_revision_percentage', default=0.1))
         for reg in self:
             reg.porcentaje_revision = val
 
-    def button_mark_done(self):
-        for production in self:
-            if production.product_id.categ_id.complete_name == 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg':
-                pendientes = production.move_finished_ids.move_line_ids.lot_id.filtered(lambda l: l.needs_review and not l.is_reviewed)
-                if pendientes:
-                    raise UserError(_("CALIDAD: Faltan revisiones: %s") % ", ".join(pendientes.mapped('name')))
-        return super(MrpProduction, self).button_mark_done()
+    @api.depends('revision_log_ids')
+    def _compute_rollos_revisados_count(self):
+        for reg in self:
+            reg.rollos_revisados_count = len(reg.revision_log_ids)
 
-    def _auto_sorteo_revision(self):
-        for production in self:
-            if production.product_id.categ_id.complete_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg':
-                continue
-            lotes = production.move_finished_ids.move_line_ids.lot_id
-            if not lotes: continue
-            cuota = max(1, int(len(lotes) * production.porcentaje_revision))
-            if len(lotes.filtered(lambda l: l.needs_review)) < cuota:
-                ultimo = lotes.sorted('id', reverse=True)[0]
-                if not ultimo.needs_review:
-                    ultimo.write({'needs_review': True})
+    @api.depends('workorder_ids.workcenter_id', 'workorder_ids.state')
+    def _compute_rollos_requeridos_count(self):
+        """
+        CORRECCIÓN: Obtiene la meta del centro de trabajo real desde las órdenes de trabajo,
+        permitiendo que el dato cambie si planeación mueve la orden a un centro alterno.
+        """
+        for reg in self:
+            # Buscamos la orden de trabajo activa (lista o en proceso)
+            active_wo = reg.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
+            
+            # Si no hay activa, tomamos la primera de la lista como referencia
+            target_wo = active_wo or reg.workorder_ids[:1]
+            
+            if target_wo and target_wo.workcenter_id:
+                # Accedemos al campo 'numero_rollos_revisar' del centro de trabajo vinculado a la WO
+                reg.rollos_requeridos_count = target_wo.workcenter_id.numero_rollos_revisar
+            else:
+                # Respaldo: si no hay WOs, intenta el campo directo del respaldo
+                if reg.workcenter_id:
+                    reg.rollos_requeridos_count = reg.workcenter_id.numero_rollos_revisar
+                else:
+                    reg.rollos_requeridos_count = 0
 
 class MrpWorkorder(models.Model):
     _inherit = 'mrp.workorder'
-    def button_finish(self):
-        for wo in self:
-            pendientes = wo.production_id.move_finished_ids.move_line_ids.lot_id.filtered(lambda l: l.needs_review and not l.is_reviewed)
-            if pendientes:
-                raise UserError(_("CALIDAD: Revise rollos sorteados antes de finalizar."))
-        return super(MrpWorkorder, self).button_finish()
 
-# ESTA SECCIÓN SOLUCIONA EL ERROR:
-class StockMoveLine(models.Model):
-    _inherit = 'stock.move.line'
-    needs_review = fields.Boolean(related='lot_id.needs_review', string="Sorteado", readonly=True)
-    is_reviewed = fields.Boolean(related='lot_id.is_reviewed', string="Revisado", readonly=True)
+    def button_finish(self):
+        """ Validación de cierre de la Orden de Trabajo (Tableta/Lista) """
+        for wo in self:
+            prod = wo.production_id
+            if prod.product_id.categ_id.complete_name == 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg':
+                if prod.rollos_revisados_count < prod.rollos_requeridos_count:
+                    raise UserError(_(
+                        "Control de Calidad Obligatorio:\n"
+                        "Se deben revisar al menos %s rollos en el centro de trabajo %s.\n"
+                        "Progreso: %s de %s rollos.") % (
+                            prod.rollos_requeridos_count, 
+                            wo.workcenter_id.name,
+                            prod.rollos_revisados_count, 
+                            prod.rollos_requeridos_count
+                        ))
+        return super(MrpWorkorder, self).button_finish()
 
 class MrpRevisionLog(models.Model):
     _name = 'mrp.revision.log'
-    _description = 'Log de Calidad'
+    _description = 'Log de Revisión de Calidad de Telas'
     _order = 'create_date desc'
-    production_id = fields.Many2one('mrp.production')
-    lot_id = fields.Many2one('stock.lot', string="Rollo")
+
+    production_id = fields.Many2one('mrp.production', string="Orden de Fabricación", ondelete='cascade', index=True)
+    lot_id = fields.Many2one('stock.lot', string="Rollo", required=True)
     user_id = fields.Many2one('res.users', string="Revisor", default=lambda self: self.env.user)
-    peso_original = fields.Float()
-    peso_final = fields.Float()
-    diferencia = fields.Float(compute="_compute_diff", store=True)
-    create_date = fields.Datetime(default=fields.Datetime.now)
+    
+    peso_original = fields.Float(string="Peso Inicial", readonly=True)
+    peso_final = fields.Float(string="Peso Revisado")
+    diferencia = fields.Float(compute="_compute_diff", string="Diferencia", store=True)
+    create_date = fields.Datetime(string="Fecha/Hora", default=fields.Datetime.now)
+
     @api.depends('peso_original', 'peso_final')
     def _compute_diff(self):
-        for reg in self: reg.diferencia = reg.peso_final - reg.peso_original
+        for reg in self:
+            # Lógica original: Peso Inicial - Peso Revisado
+            reg.diferencia = reg.peso_original - reg.peso_final
+    
+    causa_id = fields.Many2one(
+        'quality.tag', 
+        string="Causa de Desviación",
+        domain="[('name', '=like', 'TEJIDO%')]",
+        required=False
+    )
 
 class StockLot(models.Model):
     _inherit = 'stock.lot'
-    production_id = fields.Many2one('mrp.production')
-    needs_review = fields.Boolean(default=False)
-    is_reviewed = fields.Boolean(default=False)
+    needs_review = fields.Boolean(string="Necesita Revisión", default=False)
+    is_reviewed = fields.Boolean(string="Revisado", default=False)
+
+class MrpWorkcenter(models.Model):
+    _inherit = 'mrp.workcenter'
+
+    numero_rollos_revisar = fields.Integer(
+        string='Muestreo: Rollos a Revisar', 
+        default=1,
+        help="Número de rollos que el sistema exigirá pesar en este Centro de Trabajo."
+    )
