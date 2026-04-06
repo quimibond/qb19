@@ -21,36 +21,20 @@
             <field name="model">mrp.production</field>
             <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
             <field name="arch" type="xml">
-                
                 <xpath expr="//field[@name='product_id']" position="after">
-                    <field name="rollos_revisados_count" string="Rollos Revisados:"/>
+                    <field name="rollos_revisados_count" string="Rollos Revisados" readonly="1"/>
+                    <field name="rollos_requeridos_count" string="Meta de Revisión" readonly="1" decoration-info="1" widget="badge"/>
                 </xpath>
 
                 <xpath expr="//notebook" position="inside">
-                    <page string="Rollos Registrados" name="recorded_rolls">
-                        <field name="move_finished_ids" invisible="1"/>
-                        <field name="move_finished_ids" mode="list" readonly="1">
-                            <list create="0" delete="0">
-                                <field name="product_id" string="Producto"/>
-                                <field name="move_line_ids">
-                                    <list create="0" delete="0">
-                                        <field name="lot_id" string="Número de Rollo"/>
-                                        <field name="quantity" string="Kg Inicial"/>
-                                        <field name="is_reviewed" string="Revisado" widget="boolean_toggle"/>
-                                    </list>
-                                </field>
-                            </list>
-                        </field>
-                    </page>
-                    
-                    <page string="Historial de Calidad" name="quality_log">
+                    <page string="Log de Revisión" name="revision_log">
                         <field name="revision_log_ids" readonly="1">
-                            <list string="Logs de Revisión" decoration-danger="diferencia &gt; 0" decoration-success="diferencia &lt; 0">
-                                <field name="create_date" string="Fecha/Hora"/>
-                                <field name="user_id" string="Revisor" widget="many2one_avatar_user"/>
-                                <field name="lot_id" string="Rollo"/>
-                                <field name="peso_original" string="Peso Inicial (Kg)" sum="Total Inicial"/>
-                                <field name="peso_final" string="Peso Revisado (Kg)" sum="Total Final"/>
+                            <list>
+                                <field name="create_date" string="Fecha"/>
+                                <field name="lot_id"/>
+                                <field name="user_id" widget="many2one_avatar_user"/>
+                                <field name="peso_original"/>
+                                <field name="peso_final"/>
                                 <field name="diferencia" string="Dif." sum="Total Diferencia"/>
                                 <field name="causa_id" string="Causa de Desviación" optional="show"/>
                             </list>
@@ -62,6 +46,19 @@
                             <field name="last_zpl_label" widget="ace" options="{'mode': 'text'}" nolabel="1"/>
                         </group>
                     </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="mrp_workcenter_view_form_inherit_revisado" model="ir.ui.view">
+            <field name="name">mrp.workcenter.form.inherit.revisado</field>
+            <field name="model">mrp.workcenter</field>
+            <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@name='capacity']" position="after">
+                    <group string="Configuración de Calidad">
+                        <field name="numero_rollos_revisar"/>
+                    </group>
                 </xpath>
             </field>
         </record>

@@ -62,17 +62,6 @@ class MrpProduction(models.Model):
         self.move_raw_ids._recompute_state()
         self.move_raw_ids._action_assign()
 
-        # Validación automática de Calidad Nativa (Mantenida)
-        quality_checks = self.env['quality.check'].search([
-            ('production_id', '=', self.id),
-            ('quality_state', '=', 'none')
-        ])
-        for check in quality_checks:
-            if hasattr(check, 'do_pass'):
-                check.do_pass()
-            else:
-                check.write({'quality_state': 'pass', 'user_id': self.env.user.id})
-
         # Punto 1: Impresión de etiqueta de Producto (Rollo)
         self._print_zpl_label(lot_name, weight, barcode_data)
         
@@ -81,17 +70,26 @@ class MrpProduction(models.Model):
     def action_register_subproduct_manual(self, weight, lot_name=False):
         """ 
         Registro de subproductos con validación contra el historial de revisión.
-        Punto 10 y 11 del documento.
+        Punto 10 y 11 del documento. Adaptado para Odoo 19.
         """
         self.ensure_one()
         if weight <= 0:
             raise UserError(_("El peso debe ser mayor a cero."))
 
+        # --- VALIDACIÓN DE META ---
+        revisados = getattr(self, 'rollos_revisados_count', 0)
+        meta = getattr(self, 'rollos_requeridos_count', 0)
+
+        if revisados < meta:
+            raise UserError(_(
+                "No se puede registrar el subproducto aún.\n"
+                "Meta de revisión: %s rollos. Revisados actualmente: %s."
+            ) % (meta, revisados))
+
         # Punto 10: Validación del total del subproducto vs diferencia acumulada en revisión
-        # revision_log_ids es el campo definido en el módulo mrp_revisado_telas
         total_diff_revisado = sum(self.revision_log_ids.mapped('diferencia'))
         
-        if weight > total_diff_revisado:
+        if round(weight, 2) > round(total_diff_revisado, 2):
             raise UserError(_("Error: El peso del subproducto (%.3f) no puede exceder la suma de diferencias de revisión (%.3f).") % (weight, total_diff_revisado))
 
         sub_move = self.move_byproduct_ids.filtered(lambda x: x.state not in ('done', 'cancel'))[:1]
@@ -132,7 +130,7 @@ class MrpProduction(models.Model):
             scrap_location = self.env['stock.location'].search([('scrap_location', '=', True)], limit=1)
             self.env['stock.scrap'].create({
                 'production_id': self.id,
-                'product_id': self.product_id.id, # Merma del producto principal tejido
+                'product_id': self.product_id.id, 
                 'scrap_qty': diff_merma,
                 'location_id': self.location_src_id.id,
                 'scrap_location_id': scrap_location.id,
@@ -140,6 +138,21 @@ class MrpProduction(models.Model):
 
         self.move_raw_ids._recompute_state()
         self.move_raw_ids._action_assign()
+
+        # --- CIERRE AUTOMÁTICO DE CONTROL DE CALIDAD (Odoo 19) ---
+        # En Odoo 19 el campo es 'quality_state'
+        checks = self.env['quality.check'].search([
+            ('production_id', '=', self.id),
+            ('quality_state', '!=', 'pass')
+        ])
+        for check in checks:
+            # Forzamos el estado a 'pass' y registramos fecha y usuario
+            check.write({
+                'quality_state': 'pass',
+                'user_id': self.env.user.id,
+                'control_date': fields.Datetime.now()
+            })
+        # --- FIN CIERRE AUTOMÁTICO ---
 
         # Punto 3: Impresión de etiqueta de Subproducto
         self._print_subproduct_zpl(sub_move.product_id, weight, lot_name)
@@ -183,3 +196,4 @@ class StockLot(models.Model):
     production_id = fields.Many2one('mrp.production', string="Orden de Fabricación")
     needs_review = fields.Boolean(string="Necesita Revisión", default=False)
     is_reviewed = fields.Boolean(string="Revisado", default=False)
+

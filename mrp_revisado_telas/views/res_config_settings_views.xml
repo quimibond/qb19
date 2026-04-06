@@ -1,3 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="mrp_workcenter_view_form_inherit_revisado" model="ir.ui.view">
+         <field name="name">mrp.workcenter.form.inherit.revisado</field>
+         <field name="model">mrp.workcenter</field>
+         <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+         <field name="arch" type="xml">
+            <xpath expr="//group[@name='capacity']" position="after">
+                <group string="Configuración de Calidad">
+                    <field name="numero_rollos_revisar"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
 </odoo>
