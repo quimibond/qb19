@@ -11,6 +11,9 @@ class ProductTemplate(models.Model):
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
+    # Agregamos este campo para que coincida con lo que pide tu vista XML
+    needs_review = fields.Boolean(string="Necesita Revisión", default=False)
+
     # El conteo de revisados sí se almacena para reportes y velocidad
     rollos_revisados_count = fields.Integer(
         string="Rollos Revisados", 
