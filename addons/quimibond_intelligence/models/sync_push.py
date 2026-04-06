@@ -179,11 +179,14 @@ class QuimibondSync(models.TransientModel):
             except Exception:
                 pass
 
-            # Extract payment terms
+            # Extract payment terms (customer and supplier)
             payment_term = None
+            supplier_payment_term = None
             try:
                 if hasattr(p, 'property_payment_term_id') and p.property_payment_term_id:
                     payment_term = p.property_payment_term_id.name
+                if hasattr(p, 'property_supplier_payment_term_id') and p.property_supplier_payment_term_id:
+                    supplier_payment_term = p.property_supplier_payment_term_id.name
             except Exception:
                 pass
 
@@ -201,6 +204,12 @@ class QuimibondSync(models.TransientModel):
                 cn = (p.name or '').strip()
                 if cn and cn not in companies:
                     rfc = (p.vat or '').strip() or None
+                    credit_limit = None
+                    try:
+                        if hasattr(p, 'credit_limit') and p.credit_limit:
+                            credit_limit = round(p.credit_limit, 2)
+                    except Exception:
+                        pass
                     companies[cn] = {
                         'canonical_name': cn,
                         'name': cn,
@@ -211,6 +220,12 @@ class QuimibondSync(models.TransientModel):
                         'domain': domain,
                         'country': p.country_id.name if p.country_id else None,
                         'city': p.city or None,
+                        'odoo_context': {
+                            'payment_term': payment_term,
+                            'supplier_payment_term': supplier_payment_term,
+                            'credit_limit': credit_limit,
+                            'tags': tags if tags else None,
+                        },
                     }
 
             contact_name = p.name or None
@@ -521,7 +536,10 @@ class QuimibondSync(models.TransientModel):
         Move = self.env['account.move'].sudo()
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         domain = [
-            ('move_type', 'in', ['out_invoice', 'out_refund']),
+            ('move_type', 'in', [
+                'out_invoice', 'out_refund',
+                'in_invoice', 'in_refund',
+            ]),
             ('state', '=', 'posted'),
             ('invoice_date', '>=', cutoff),
         ]
