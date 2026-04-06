@@ -23,47 +23,87 @@ class SupabaseClient:
 
     def upsert(self, table: str, rows: list, on_conflict: str,
                batch_size: int = 200) -> int:
-        """Upsert rows into a Supabase table. Returns total rows synced."""
+        """Upsert rows into a Supabase table with retry. Returns total rows synced."""
         if not rows:
             return 0
         synced = 0
         for i in range(0, len(rows), batch_size):
             chunk = rows[i:i + batch_size]
-            try:
-                resp = self._http.post(
-                    f'{self.url}/rest/v1/{table}',
-                    content=json.dumps(chunk, default=str),
-                    headers={
-                        **self.headers,
-                        'Prefer': f'resolution=merge-duplicates,return=minimal',
-                    },
-                    params={'on_conflict': on_conflict},
-                )
-                resp.raise_for_status()
-                synced += len(chunk)
-            except Exception as exc:
-                _logger.warning('upsert %s chunk %d (%d rows): %s',
-                                table, i, len(chunk), exc)
+            last_exc = None
+            for attempt in range(4):  # 0, 1, 2, 3
+                try:
+                    if attempt > 0:
+                        import time
+                        time.sleep(min(2 ** attempt, 16))
+                        _logger.info('Retry %d/3 upsert %s chunk %d', attempt, table, i)
+                    resp = self._http.post(
+                        f'{self.url}/rest/v1/{table}',
+                        content=json.dumps(chunk, default=str),
+                        headers={
+                            **self.headers,
+                            'Prefer': 'resolution=merge-duplicates,return=minimal',
+                        },
+                        params={'on_conflict': on_conflict},
+                    )
+                    if resp.status_code in (429, 502, 503, 504) and attempt < 3:
+                        last_exc = Exception(f'HTTP {resp.status_code}')
+                        continue
+                    resp.raise_for_status()
+                    synced += len(chunk)
+                    last_exc = None
+                    break
+                except (httpx.NetworkError, httpx.TimeoutException) as exc:
+                    last_exc = exc
+                    if attempt >= 3:
+                        _logger.warning('upsert %s chunk %d failed after retries: %s',
+                                        table, i, exc)
+                except Exception as exc:
+                    _logger.warning('upsert %s chunk %d (%d rows): %s',
+                                    table, i, len(chunk), exc)
+                    break  # Don't retry non-retryable errors
+            if last_exc:
+                _logger.warning('upsert %s chunk %d gave up after retries: %s',
+                                table, i, last_exc)
         return synced
 
     def insert(self, table: str, rows: list, batch_size: int = 200) -> int:
-        """Plain INSERT (no upsert). For full-refresh tables."""
+        """Plain INSERT (no upsert) with retry. For full-refresh tables."""
         if not rows:
             return 0
         synced = 0
         for i in range(0, len(rows), batch_size):
             chunk = rows[i:i + batch_size]
-            try:
-                resp = self._http.post(
-                    f'{self.url}/rest/v1/{table}',
-                    content=json.dumps(chunk, default=str),
-                    headers={**self.headers, 'Prefer': 'return=minimal'},
-                )
-                resp.raise_for_status()
-                synced += len(chunk)
-            except Exception as exc:
-                _logger.warning('insert %s chunk %d (%d rows): %s',
-                                table, i, len(chunk), exc)
+            last_exc = None
+            for attempt in range(4):  # 0, 1, 2, 3
+                try:
+                    if attempt > 0:
+                        import time
+                        time.sleep(min(2 ** attempt, 16))
+                        _logger.info('Retry %d/3 insert %s chunk %d', attempt, table, i)
+                    resp = self._http.post(
+                        f'{self.url}/rest/v1/{table}',
+                        content=json.dumps(chunk, default=str),
+                        headers={**self.headers, 'Prefer': 'return=minimal'},
+                    )
+                    if resp.status_code in (429, 502, 503, 504) and attempt < 3:
+                        last_exc = Exception(f'HTTP {resp.status_code}')
+                        continue
+                    resp.raise_for_status()
+                    synced += len(chunk)
+                    last_exc = None
+                    break
+                except (httpx.NetworkError, httpx.TimeoutException) as exc:
+                    last_exc = exc
+                    if attempt >= 3:
+                        _logger.warning('insert %s chunk %d failed after retries: %s',
+                                        table, i, exc)
+                except Exception as exc:
+                    _logger.warning('insert %s chunk %d (%d rows): %s',
+                                    table, i, len(chunk), exc)
+                    break  # Don't retry non-retryable errors
+            if last_exc:
+                _logger.warning('insert %s chunk %d gave up after retries: %s',
+                                table, i, last_exc)
         return synced
 
     def delete_all(self, table: str) -> None:

@@ -47,25 +47,39 @@ class QuimibondSync(models.TransientModel):
         if not client:
             return
 
+        # Get last sync timestamp for incremental sync
+        ICP = self.env['ir.config_parameter'].sudo()
+        last_sync_str = ICP.get_param('quimibond_intelligence.last_sync_date', '')
+        incremental = bool(last_sync_str)
+        last_sync = None
+        if incremental:
+            try:
+                last_sync = datetime.strptime(last_sync_str, '%Y-%m-%d %H:%M:%S')
+                # Add 1-minute overlap to avoid missing records
+                last_sync = last_sync - timedelta(minutes=1)
+            except (ValueError, TypeError):
+                last_sync = None
+                incremental = False
+
         _start = datetime.now()
         try:
             totals = {}
-            totals['contacts'] = self._push_contacts(client)
-            totals['products'] = self._push_products(client)
-            totals['order_lines'] = self._push_order_lines(client)
-            totals['users'] = self._push_users(client)
-            totals['invoices'] = self._push_invoices(client)
-            totals['invoice_lines'] = self._push_invoice_lines(client)
-            totals['payments'] = self._push_payments(client)
-            totals['deliveries'] = self._push_deliveries(client)
-            totals['crm_leads'] = self._push_crm_leads(client)
+            totals['contacts'] = self._push_contacts(client, last_sync=last_sync)
+            totals['products'] = self._push_products(client, last_sync=last_sync)
+            totals['order_lines'] = self._push_order_lines(client, last_sync=last_sync)
+            totals['users'] = self._push_users(client, last_sync=last_sync)
+            totals['invoices'] = self._push_invoices(client, last_sync=last_sync)
+            totals['invoice_lines'] = self._push_invoice_lines(client, last_sync=last_sync)
+            totals['payments'] = self._push_payments(client, last_sync=last_sync)
+            totals['deliveries'] = self._push_deliveries(client, last_sync=last_sync)
+            totals['crm_leads'] = self._push_crm_leads(client, last_sync=last_sync)
             totals['activities'] = self._push_activities(client)
-            totals['manufacturing'] = self._push_manufacturing(client)
-            totals['employees'] = self._push_employees(client)
-            totals['departments'] = self._push_departments(client)
-            totals['sale_orders'] = self._push_sale_orders(client)
-            totals['purchase_orders'] = self._push_purchase_orders(client)
-            totals['orderpoints'] = self._push_orderpoints(client)
+            totals['manufacturing'] = self._push_manufacturing(client, last_sync=last_sync)
+            totals['employees'] = self._push_employees(client, last_sync=last_sync)
+            totals['departments'] = self._push_departments(client, last_sync=last_sync)
+            totals['sale_orders'] = self._push_sale_orders(client, last_sync=last_sync)
+            totals['purchase_orders'] = self._push_purchase_orders(client, last_sync=last_sync)
+            totals['orderpoints'] = self._push_orderpoints(client, last_sync=last_sync)
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
             _logger.info('✓ Push to Supabase: %s', summary or 'no changes')
@@ -77,6 +91,16 @@ class QuimibondSync(models.TransientModel):
                 'summary': summary or 'sin cambios',
                 'duration_seconds': round(elapsed, 1),
             })
+            # Save sync timestamp for next incremental run
+            ICP.set_param('quimibond_intelligence.last_sync_date',
+                          _start.strftime('%Y-%m-%d %H:%M:%S'))
+
+            # Trigger identity resolution after successful push
+            try:
+                client.rpc('resolve_all_identities', {})
+                _logger.info('Identity resolution triggered after push')
+            except Exception as exc:
+                _logger.warning('Identity resolution RPC failed: %s', exc)
             self.env.cr.commit()
         except Exception as exc:
             _logger.error('Push to Supabase failed: %s', exc)
@@ -95,16 +119,19 @@ class QuimibondSync(models.TransientModel):
 
     # ── Contacts & Companies ─────────────────────────────────────────────
 
-    def _push_contacts(self, client: SupabaseClient) -> int:
+    def _push_contacts(self, client: SupabaseClient, last_sync=None) -> int:
         """Push res.partner → contacts + companies tables."""
         Partner = self.env['res.partner'].sudo()
 
         # Base: partners with email that are customers or suppliers
-        partners = Partner.search([
+        domain = [
             ('email', '!=', False),
             ('email', '!=', ''),
             '|', ('customer_rank', '>', 0), ('supplier_rank', '>', 0),
-        ])
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        partners = Partner.search(domain)
 
         # Also include partners referenced by invoices/orders but missing ranks
         # These are the ones that cause orphan invoices in Supabase
@@ -263,11 +290,14 @@ class QuimibondSync(models.TransientModel):
 
     # ── Products ─────────────────────────────────────────────────────────
 
-    def _push_products(self, client: SupabaseClient) -> int:
+    def _push_products(self, client: SupabaseClient, last_sync=None) -> int:
         Product = self.env['product.product'].sudo()
         # In Odoo 19, 'type' was renamed to 'detailed_type' in some versions.
         # Use a broad search and filter by checking the product is storable.
-        products = Product.search([('active', '=', True)], limit=6000)
+        domain = [('active', '=', True)]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        products = Product.search(domain, limit=6000)
 
         # Pre-fetch all reorder rules in one query (avoids N+1)
         orderpoint_map = {}  # product_id -> {min, max}
@@ -351,18 +381,21 @@ class QuimibondSync(models.TransientModel):
 
     # ── Order Lines (Sale + Purchase, last 12 months) ────────────────────
 
-    def _push_order_lines(self, client: SupabaseClient) -> int:
+    def _push_order_lines(self, client: SupabaseClient, last_sync=None) -> int:
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         rows = []
 
         # Sale order lines
         try:
             SOLine = self.env['sale.order.line'].sudo()
-            lines = SOLine.search([
+            so_domain = [
                 ('order_id.date_order', '>=', cutoff),
                 ('order_id.state', 'in', ['sale', 'done']),
                 ('display_type', '=', False),
-            ])
+            ]
+            if last_sync:
+                so_domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+            lines = SOLine.search(so_domain)
             for l in lines:
                 o = l.order_id
                 rows.append({
@@ -388,11 +421,14 @@ class QuimibondSync(models.TransientModel):
         # Purchase order lines
         try:
             POLine = self.env['purchase.order.line'].sudo()
-            po_lines = POLine.search([
+            po_domain = [
                 ('order_id.date_order', '>=', cutoff),
                 ('order_id.state', 'in', ['purchase', 'done']),
                 ('display_type', '=', False),
-            ])
+            ]
+            if last_sync:
+                po_domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+            po_lines = POLine.search(po_domain)
             for l in po_lines:
                 o = l.order_id
                 rows.append({
@@ -419,9 +455,12 @@ class QuimibondSync(models.TransientModel):
 
     # ── Users ────────────────────────────────────────────────────────────
 
-    def _push_users(self, client: SupabaseClient) -> int:
+    def _push_users(self, client: SupabaseClient, last_sync=None) -> int:
         User = self.env['res.users'].sudo()
-        users = User.search([('active', '=', True), ('share', '=', False)], limit=200)
+        domain = [('active', '=', True), ('share', '=', False)]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        users = User.search(domain, limit=200)
         today = datetime.now().date()
 
         # Pre-fetch all activities for efficiency
@@ -478,14 +517,17 @@ class QuimibondSync(models.TransientModel):
 
     # ── Invoices (last 12 months) ────────────────────────────────────────
 
-    def _push_invoices(self, client: SupabaseClient) -> int:
+    def _push_invoices(self, client: SupabaseClient, last_sync=None) -> int:
         Move = self.env['account.move'].sudo()
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-        invoices = Move.search([
+        domain = [
             ('move_type', 'in', ['out_invoice', 'out_refund']),
             ('state', '=', 'posted'),
             ('invoice_date', '>=', cutoff),
-        ])
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        invoices = Move.search(domain)
 
         today = datetime.now().date()
         rows = []
@@ -519,18 +561,21 @@ class QuimibondSync(models.TransientModel):
 
     # ── Invoice Lines (last 12 months) ────────────────────────────────────
 
-    def _push_invoice_lines(self, client: SupabaseClient) -> int:
+    def _push_invoice_lines(self, client: SupabaseClient, last_sync=None) -> int:
         """Push account.move.line → odoo_invoice_lines table."""
         Move = self.env['account.move'].sudo()
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
-        invoices = Move.search([
+        domain = [
             ('move_type', 'in', [
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund',
             ]),
             ('state', '=', 'posted'),
             ('invoice_date', '>=', cutoff),
-        ])
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        invoices = Move.search(domain)
 
         rows = []
         for inv in invoices:
@@ -568,7 +613,7 @@ class QuimibondSync(models.TransientModel):
 
     # ── Payments (last 180 days) ─────────────────────────────────────────
 
-    def _push_payments(self, client: SupabaseClient) -> int:
+    def _push_payments(self, client: SupabaseClient, last_sync=None) -> int:
         """Push payment data extracted from paid/partial invoices.
 
         Odoo uses bank reconciliation (not account.payment records),
@@ -578,12 +623,15 @@ class QuimibondSync(models.TransientModel):
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
         # Get invoices that have been paid or partially paid
-        invoices = Move.search([
+        domain = [
             ('move_type', 'in', ['out_invoice', 'out_refund']),
             ('state', '=', 'posted'),
             ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
             ('invoice_date', '>=', cutoff),
-        ])
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        invoices = Move.search(domain)
 
         rows = []
         for inv in invoices:
@@ -613,15 +661,18 @@ class QuimibondSync(models.TransientModel):
 
     # ── Deliveries (pending + last 90 days) ──────────────────────────────
 
-    def _push_deliveries(self, client: SupabaseClient) -> int:
+    def _push_deliveries(self, client: SupabaseClient, last_sync=None) -> int:
         Picking = self.env['stock.picking'].sudo()
         cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
-        pickings = Picking.search([
+        domain = [
             ('picking_type_code', '=', 'outgoing'),
             '|',
             ('state', 'not in', ['done', 'cancel']),
             ('date_done', '>=', cutoff),
-        ])
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        pickings = Picking.search(domain)
 
         now = datetime.now()
         rows = []
@@ -657,9 +708,12 @@ class QuimibondSync(models.TransientModel):
 
     # ── CRM Leads ────────────────────────────────────────────────────────
 
-    def _push_crm_leads(self, client: SupabaseClient) -> int:
+    def _push_crm_leads(self, client: SupabaseClient, last_sync=None) -> int:
         Lead = self.env['crm.lead'].sudo()
-        leads = Lead.search([('active', '=', True)])
+        domain = [('active', '=', True)]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        leads = Lead.search(domain)
         now = datetime.now()
 
         rows = []
@@ -726,7 +780,7 @@ class QuimibondSync(models.TransientModel):
 
     # ── Manufacturing Orders ─────────────────────────────────────────────
 
-    def _push_manufacturing(self, client: SupabaseClient) -> int:
+    def _push_manufacturing(self, client: SupabaseClient, last_sync=None) -> int:
         """Push mrp.production → odoo_manufacturing table."""
         try:
             MO = self.env['mrp.production'].sudo()
@@ -735,11 +789,14 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
-        productions = MO.search([
+        domain = [
             '|',
             ('state', 'not in', ['done', 'cancel']),
             ('date_start', '>=', cutoff),
-        ], limit=500)
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        productions = MO.search(domain, limit=500)
 
         rows = []
         for mo in productions:
@@ -763,7 +820,7 @@ class QuimibondSync(models.TransientModel):
 
     # ── HR Employees ─────────────────────────────────────────────────────
 
-    def _push_employees(self, client: SupabaseClient) -> int:
+    def _push_employees(self, client: SupabaseClient, last_sync=None) -> int:
         """Push hr.employee → odoo_employees table."""
         try:
             Employee = self.env['hr.employee'].sudo()
@@ -771,7 +828,10 @@ class QuimibondSync(models.TransientModel):
             _logger.info('hr.employee not available, skipping')
             return 0
 
-        employees = Employee.search([('active', '=', True)], limit=500)
+        domain = [('active', '=', True)]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        employees = Employee.search(domain, limit=500)
         rows = []
         for emp in employees:
             rows.append({
@@ -795,7 +855,7 @@ class QuimibondSync(models.TransientModel):
 
     # ── HR Departments ───────────────────────────────────────────────────
 
-    def _push_departments(self, client: SupabaseClient) -> int:
+    def _push_departments(self, client: SupabaseClient, last_sync=None) -> int:
         """Push hr.department → odoo_departments table."""
         try:
             Dept = self.env['hr.department'].sudo()
@@ -803,7 +863,10 @@ class QuimibondSync(models.TransientModel):
             _logger.info('hr.department not available, skipping')
             return 0
 
-        departments = Dept.search([('active', '=', True)], limit=200)
+        domain = [('active', '=', True)]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        departments = Dept.search(domain, limit=200)
         rows = []
         for dept in departments:
             # Count members
@@ -828,7 +891,7 @@ class QuimibondSync(models.TransientModel):
 
     # ── Sale Orders (headers) ────────────────────────────────────────────
 
-    def _push_sale_orders(self, client: SupabaseClient) -> int:
+    def _push_sale_orders(self, client: SupabaseClient, last_sync=None) -> int:
         """Push sale.order headers → odoo_sale_orders table."""
         try:
             SO = self.env['sale.order'].sudo()
@@ -837,10 +900,13 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-        orders = SO.search([
+        domain = [
             ('date_order', '>=', cutoff),
             ('state', 'in', ['sale', 'done']),
-        ], limit=2000)
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        orders = SO.search(domain, limit=2000)
 
         rows = []
         for o in orders:
@@ -880,7 +946,7 @@ class QuimibondSync(models.TransientModel):
 
     # ── Purchase Orders (headers) ────────────────────────────────────────
 
-    def _push_purchase_orders(self, client: SupabaseClient) -> int:
+    def _push_purchase_orders(self, client: SupabaseClient, last_sync=None) -> int:
         """Push purchase.order headers → odoo_purchase_orders table."""
         try:
             PO = self.env['purchase.order'].sudo()
@@ -889,10 +955,13 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-        orders = PO.search([
+        domain = [
             ('date_order', '>=', cutoff),
             ('state', 'in', ['purchase', 'done']),
-        ], limit=2000)
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        orders = PO.search(domain, limit=2000)
 
         rows = []
         for o in orders:
@@ -919,7 +988,7 @@ class QuimibondSync(models.TransientModel):
 
     # ── Stock Reorder Rules (orderpoints) ────────────────────────────────
 
-    def _push_orderpoints(self, client: SupabaseClient) -> int:
+    def _push_orderpoints(self, client: SupabaseClient, last_sync=None) -> int:
         """Push stock.warehouse.orderpoint → odoo_orderpoints table.
         Critical for desabasto (stockout) detection."""
         try:
@@ -928,7 +997,10 @@ class QuimibondSync(models.TransientModel):
             _logger.info('stock.warehouse.orderpoint not available, skipping')
             return 0
 
-        orderpoints = Orderpoint.search([('active', '=', True)], limit=5000)
+        domain = [('active', '=', True)]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        orderpoints = Orderpoint.search(domain, limit=5000)
 
         rows = []
         for op in orderpoints:

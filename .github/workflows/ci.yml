@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install httpx flake8
+
+      - name: Lint
+        run: flake8 addons/ --max-line-length=120 --ignore=E501,W503,E302,E303,E266,W291,W293
+
+      - name: Syntax check
+        run: python -m py_compile addons/quimibond_intelligence/models/sync_push.py && python -m py_compile addons/quimibond_intelligence/models/sync_pull.py && python -m py_compile addons/quimibond_intelligence/models/supabase_client.py
