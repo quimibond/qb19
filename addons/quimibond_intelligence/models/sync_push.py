@@ -1310,58 +1310,64 @@ class QuimibondSync(models.TransientModel):
             _logger.info('account.payment not available, skipping')
             return 0
 
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-        domain = [
-            ('state', 'not in', ['canceled', 'rejected']),
-            ('date', '>=', cutoff),
-        ]
-        # Skip incremental filter on first run (table may be empty)
-        if last_sync:
-            existing = client.fetch('odoo_account_payments', {'limit': '1', 'select': 'id'})
-            if existing:
-                domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        payments = Payment.search(domain, limit=5000)
+        try:
+            cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            domain = [('date', '>=', cutoff)]
+            # Skip incremental filter on first run (table may be empty)
+            if last_sync:
+                existing = client.fetch('odoo_account_payments', {'limit': '1', 'select': 'id'})
+                if existing:
+                    domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+            payments = Payment.search(domain, limit=5000)
+            _logger.info('account_payments: found %d records', len(payments))
 
-        rows = []
-        for p in payments:
-            pid = _commercial_partner_id(p.partner_id) if p.partner_id else None
+            rows = []
+            for p in payments:
+                try:
+                    pid = _commercial_partner_id(p.partner_id) if p.partner_id else None
 
-            journal_name = None
-            try:
-                journal_name = p.journal_id.name if p.journal_id else None
-            except Exception:
-                pass
+                    journal_name = None
+                    try:
+                        journal_name = p.journal_id.name if p.journal_id else None
+                    except Exception:
+                        pass
 
-            payment_method = None
-            try:
-                if hasattr(p, 'payment_method_line_id') and p.payment_method_line_id:
-                    payment_method = p.payment_method_line_id.name
-                elif hasattr(p, 'payment_method_id') and p.payment_method_id:
-                    payment_method = p.payment_method_id.name
-            except Exception:
-                pass
+                    payment_method = None
+                    try:
+                        if hasattr(p, 'payment_method_line_id') and p.payment_method_line_id:
+                            payment_method = p.payment_method_line_id.name
+                        elif hasattr(p, 'payment_method_id') and p.payment_method_id:
+                            payment_method = p.payment_method_id.name
+                    except Exception:
+                        pass
 
-            rows.append({
-                'odoo_payment_id': p.id,
-                'odoo_partner_id': pid,
-                'name': p.name or '',
-                'payment_type': p.payment_type,      # inbound / outbound
-                'partner_type': p.partner_type or '',  # customer / supplier
-                'amount': round(p.amount, 2),
-                'amount_signed': round(p.amount_company_currency_signed, 2) if hasattr(p, 'amount_company_currency_signed') else None,
-                'currency': p.currency_id.name if p.currency_id else 'MXN',
-                'date': p.date.strftime('%Y-%m-%d') if p.date else None,
-                'ref': p.ref or '',
-                'journal_name': journal_name,
-                'payment_method': payment_method,
-                'state': p.state,
-                'is_matched': getattr(p, 'is_matched', None),
-                'is_reconciled': getattr(p, 'is_reconciled', None),
-                'reconciled_invoices_count': getattr(p, 'reconciled_invoices_count', 0) or 0,
-            })
+                    rows.append({
+                        'odoo_payment_id': p.id,
+                        'odoo_partner_id': pid,
+                        'name': p.name or '',
+                        'payment_type': p.payment_type or '',
+                        'partner_type': p.partner_type or '',
+                        'amount': round(p.amount or 0, 2),
+                        'amount_signed': round(p.amount_company_currency_signed, 2) if hasattr(p, 'amount_company_currency_signed') and p.amount_company_currency_signed else None,
+                        'currency': p.currency_id.name if p.currency_id else 'MXN',
+                        'date': p.date.strftime('%Y-%m-%d') if p.date else None,
+                        'ref': (p.ref or '') if hasattr(p, 'ref') else '',
+                        'journal_name': journal_name,
+                        'payment_method': payment_method,
+                        'state': p.state or '',
+                        'is_matched': bool(getattr(p, 'is_matched', False)),
+                        'is_reconciled': bool(getattr(p, 'is_reconciled', False)),
+                        'reconciled_invoices_count': int(getattr(p, 'reconciled_invoices_count', 0) or 0),
+                    })
+                except Exception as exc:
+                    _logger.warning('account_payment %s: %s', p.id, exc)
 
-        return client.upsert('odoo_account_payments', rows,
-                              on_conflict='odoo_payment_id', batch_size=200)
+            _logger.info('account_payments: pushing %d rows', len(rows))
+            return client.upsert('odoo_account_payments', rows,
+                                  on_conflict='odoo_payment_id', batch_size=200)
+        except Exception as exc:
+            _logger.error('_push_account_payments failed: %s', exc)
+            return 0
 
     # ── Chart of Accounts ───────────────────────────────────────────────
 
@@ -1377,25 +1383,32 @@ class QuimibondSync(models.TransientModel):
             _logger.info('account.account not available, skipping')
             return 0
 
-        # Always full sync — chart of accounts rarely changes and is small
-        accounts = Account.search([])
+        try:
+            # Always full sync — chart of accounts rarely changes and is small
+            accounts = Account.search([])
+            _logger.info('chart_of_accounts: found %d accounts', len(accounts))
 
-        rows = []
-        for acc in accounts:
-            # account_type in Odoo 19 determines P&L vs Balance Sheet
-            acc_type = getattr(acc, 'account_type', None) or ''
+            rows = []
+            for acc in accounts:
+                try:
+                    acc_type = getattr(acc, 'account_type', None) or ''
+                    rows.append({
+                        'odoo_account_id': acc.id,
+                        'code': acc.code or '',
+                        'name': acc.name or '',
+                        'account_type': acc_type,
+                        'reconcile': bool(acc.reconcile) if hasattr(acc, 'reconcile') else False,
+                        'deprecated': bool(getattr(acc, 'deprecated', False)),
+                    })
+                except Exception as exc:
+                    _logger.warning('chart_of_accounts %s: %s', acc.id, exc)
 
-            rows.append({
-                'odoo_account_id': acc.id,
-                'code': acc.code or '',
-                'name': acc.name or '',
-                'account_type': acc_type,
-                'reconcile': acc.reconcile if hasattr(acc, 'reconcile') else False,
-                'deprecated': getattr(acc, 'deprecated', False),
-            })
-
-        return client.upsert('odoo_chart_of_accounts', rows,
-                              on_conflict='odoo_account_id', batch_size=200)
+            _logger.info('chart_of_accounts: pushing %d rows', len(rows))
+            return client.upsert('odoo_chart_of_accounts', rows,
+                                  on_conflict='odoo_account_id', batch_size=200)
+        except Exception as exc:
+            _logger.error('_push_chart_of_accounts failed: %s', exc)
+            return 0
 
     # ── Account Balances (monthly, for P&L) ─────────────────────────────
 
