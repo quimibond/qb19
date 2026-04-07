@@ -13,7 +13,7 @@ Addon de Odoo 19 que sincroniza datos operativos a Supabase para Quimibond Intel
 addons/quimibond_intelligence/
   __manifest__.py          # v19.0.30.0.0 (NO cambiar — ver nota abajo)
   models/
-    sync_push.py           # Push Odoo → Supabase (16 modelos)
+    sync_push.py           # Push Odoo → Supabase (20 modelos)
     sync_pull.py           # Pull Supabase → Odoo
     supabase_client.py     # REST client HTTP
     sync_log.py            # Modelo de log
@@ -22,7 +22,7 @@ addons/quimibond_intelligence/
   security/ir.model.access.csv
 ```
 
-## Modelos sincronizados (17)
+## Modelos sincronizados (20)
 
 | Metodo | Odoo Model | Supabase Table |
 |---|---|---|
@@ -42,6 +42,10 @@ addons/quimibond_intelligence/
 | `_push_sale_orders` | sale.order | odoo_sale_orders |
 | `_push_purchase_orders` | purchase.order | odoo_purchase_orders |
 | `_push_orderpoints` | stock.warehouse.orderpoint | odoo_orderpoints |
+| `_push_account_payments` | account.payment | odoo_account_payments |
+| `_push_chart_of_accounts` | account.account | odoo_chart_of_accounts |
+| `_push_account_balances` | account.move.line (aggregated) | odoo_account_balances |
+| `_push_bank_balances` | account.journal (bank/cash) | odoo_bank_balances |
 
 ## Campos clave de Odoo
 

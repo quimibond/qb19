@@ -80,6 +80,10 @@ class QuimibondSync(models.TransientModel):
             totals['sale_orders'] = self._push_sale_orders(client, last_sync=last_sync)
             totals['purchase_orders'] = self._push_purchase_orders(client, last_sync=last_sync)
             totals['orderpoints'] = self._push_orderpoints(client, last_sync=last_sync)
+            totals['account_payments'] = self._push_account_payments(client, last_sync=last_sync)
+            totals['chart_of_accounts'] = self._push_chart_of_accounts(client, last_sync=last_sync)
+            totals['account_balances'] = self._push_account_balances(client, last_sync=last_sync)
+            totals['bank_balances'] = self._push_bank_balances(client, last_sync=last_sync)
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
             _logger.info('✓ Push to Supabase: %s', summary or 'no changes')
@@ -151,6 +155,8 @@ class QuimibondSync(models.TransientModel):
             'purchase.order', 'purchase.order.line',
             'account.move', 'account.move.line',
             'account.payment', 'account.payment.term',
+            'account.account', 'account.journal',
+            'account.tax',
             'stock.picking', 'stock.move',
             'stock.warehouse.orderpoint', 'stock.quant',
             'crm.lead', 'mail.activity',
@@ -238,6 +244,15 @@ class QuimibondSync(models.TransientModel):
                            'invoice_date', 'invoice_date_due', 'payment_state', 'ref',
                            'invoice_payment_term_id',
                            'l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state'},
+            'account.move.line': {'account_id', 'debit', 'credit', 'balance',
+                                 'date', 'name', 'partner_id', 'journal_id'},
+            'account.payment': {'name', 'partner_id', 'amount', 'payment_type',
+                               'partner_type', 'date', 'ref', 'state', 'journal_id',
+                               'payment_method_line_id', 'is_matched', 'is_reconciled',
+                               'amount_company_currency_signed'},
+            'account.account': {'code', 'name', 'account_type', 'reconcile'},
+            'account.journal': {'name', 'type', 'currency_id', 'bank_account_id',
+                               'default_account_id'},
             'stock.picking': {'name', 'partner_id', 'picking_type_id', 'state',
                             'scheduled_date', 'date_done', 'origin'},
             'crm.lead': {'name', 'partner_id', 'type', 'stage_id', 'user_id',
@@ -357,6 +372,15 @@ class QuimibondSync(models.TransientModel):
                     except Exception:
                         pass
 
+                    # Build odoo_context with only non-null values
+                    odoo_ctx = {}
+                    if payment_term:
+                        odoo_ctx['payment_term'] = payment_term
+                    if supplier_payment_term:
+                        odoo_ctx['supplier_payment_term'] = supplier_payment_term
+                    if tags:
+                        odoo_ctx['tags'] = tags
+
                     companies[cn] = {
                         'canonical_name': cn,
                         'name': cn,
@@ -372,11 +396,7 @@ class QuimibondSync(models.TransientModel):
                         'total_payable': total_payable,
                         'total_invoiced_odoo': total_invoiced_odoo,
                         'total_overdue_odoo': total_overdue_odoo,
-                        'odoo_context': {
-                            'payment_term': payment_term,
-                            'supplier_payment_term': supplier_payment_term,
-                            'tags': tags if tags else None,
-                        },
+                        'odoo_context': odoo_ctx,
                     }
 
             contact_name = p.name or None
@@ -427,6 +447,18 @@ class QuimibondSync(models.TransientModel):
                 if not cn:
                     continue
                 if cn not in companies:
+                    # Financial totals (same as main path)
+                    total_receivable = total_payable = None
+                    total_invoiced_odoo = total_overdue_odoo = credit_limit = None
+                    try:
+                        total_receivable = round(p.credit, 2) if hasattr(p, 'credit') else None
+                        total_payable = round(p.debit, 2) if hasattr(p, 'debit') else None
+                        total_invoiced_odoo = round(p.total_invoiced, 2) if hasattr(p, 'total_invoiced') else None
+                        total_overdue_odoo = round(p.total_overdue, 2) if hasattr(p, 'total_overdue') else None
+                        if hasattr(p, 'credit_limit') and p.credit_limit:
+                            credit_limit = round(p.credit_limit, 2)
+                    except Exception:
+                        pass
                     companies[cn] = {
                         'canonical_name': cn,
                         'name': cn,
@@ -437,6 +469,11 @@ class QuimibondSync(models.TransientModel):
                         'domain': None,
                         'country': p.country_id.name if p.country_id else None,
                         'city': p.city or None,
+                        'credit_limit': credit_limit,
+                        'total_receivable': total_receivable,
+                        'total_payable': total_payable,
+                        'total_invoiced_odoo': total_invoiced_odoo,
+                        'total_overdue_odoo': total_overdue_odoo,
                     }
                     existing_partner_ids.add(cp_id)
         except Exception as exc:
@@ -448,7 +485,30 @@ class QuimibondSync(models.TransientModel):
                 'companies', list(companies.values()),
                 on_conflict='canonical_name', batch_size=100,
             )
-            # Update RFC via RPC (PostgREST may not see new columns in upsert)
+            # Backfill financial data via RPC (PostgREST upsert may miss
+            # columns added after schema cache was built)
+            fin_map = {}
+            for c in companies.values():
+                pid = c.get('odoo_partner_id')
+                if not pid:
+                    continue
+                fin = {}
+                if c.get('total_receivable') is not None:
+                    fin['total_receivable'] = c['total_receivable']
+                if c.get('total_payable') is not None:
+                    fin['total_payable'] = c['total_payable']
+                if c.get('total_invoiced_odoo') is not None:
+                    fin['total_invoiced_odoo'] = c['total_invoiced_odoo']
+                if c.get('total_overdue_odoo') is not None:
+                    fin['total_overdue_odoo'] = c['total_overdue_odoo']
+                if c.get('odoo_context'):
+                    fin['odoo_context'] = c['odoo_context']
+                if fin:
+                    fin_map[str(pid)] = fin
+            if fin_map:
+                client.rpc('backfill_company_financials', {'data': fin_map})
+
+            # Update RFC via RPC
             rfc_map = {str(c['odoo_partner_id']): c['rfc']
                        for c in companies.values()
                        if c.get('rfc') and c.get('odoo_partner_id')}
@@ -824,8 +884,12 @@ class QuimibondSync(models.TransientModel):
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
         # Get invoices that have been paid or partially paid
+        # Include both customer (out_) and supplier (in_) invoices
         domain = [
-            ('move_type', 'in', ['out_invoice', 'out_refund']),
+            ('move_type', 'in', [
+                'out_invoice', 'out_refund',
+                'in_invoice', 'in_refund',
+            ]),
             ('state', '=', 'posted'),
             ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
             ('invoice_date', '>=', cutoff),
@@ -850,7 +914,7 @@ class QuimibondSync(models.TransientModel):
             rows.append({
                 'odoo_partner_id': pid,
                 'name': f'PAY-{inv.name}',
-                'payment_type': 'inbound' if inv.move_type == 'out_invoice' else 'outbound',
+                'payment_type': 'inbound' if inv.move_type in ('out_invoice', 'in_refund') else 'outbound',
                 'amount': round(amount_paid, 2),
                 'currency': inv.currency_id.name if inv.currency_id else 'MXN',
                 'payment_date': payment_date.strftime('%Y-%m-%d') if payment_date else None,
@@ -1231,3 +1295,238 @@ class QuimibondSync(models.TransientModel):
 
         return client.upsert('odoo_orderpoints', rows,
                               on_conflict='odoo_orderpoint_id', batch_size=200)
+
+    # ── Account Payments (real payment records) ─────────────────────────
+
+    def _push_account_payments(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push account.payment → odoo_account_payments table.
+
+        Real payment records from Odoo (not proxy from invoices).
+        Includes payment method, journal, bank reconciliation status.
+        """
+        try:
+            Payment = self.env['account.payment'].sudo()
+        except KeyError:
+            _logger.info('account.payment not available, skipping')
+            return 0
+
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        domain = [
+            ('state', '!=', 'canceled'),
+            ('date', '>=', cutoff),
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        payments = Payment.search(domain, limit=5000)
+
+        rows = []
+        for p in payments:
+            pid = _commercial_partner_id(p.partner_id) if p.partner_id else None
+
+            journal_name = None
+            try:
+                journal_name = p.journal_id.name if p.journal_id else None
+            except Exception:
+                pass
+
+            payment_method = None
+            try:
+                if hasattr(p, 'payment_method_line_id') and p.payment_method_line_id:
+                    payment_method = p.payment_method_line_id.name
+                elif hasattr(p, 'payment_method_id') and p.payment_method_id:
+                    payment_method = p.payment_method_id.name
+            except Exception:
+                pass
+
+            rows.append({
+                'odoo_payment_id': p.id,
+                'odoo_partner_id': pid,
+                'name': p.name or '',
+                'payment_type': p.payment_type,      # inbound / outbound
+                'partner_type': p.partner_type or '',  # customer / supplier
+                'amount': round(p.amount, 2),
+                'amount_signed': round(p.amount_company_currency_signed, 2) if hasattr(p, 'amount_company_currency_signed') else None,
+                'currency': p.currency_id.name if p.currency_id else 'MXN',
+                'date': p.date.strftime('%Y-%m-%d') if p.date else None,
+                'ref': p.ref or '',
+                'journal_name': journal_name,
+                'payment_method': payment_method,
+                'state': p.state,
+                'is_matched': getattr(p, 'is_matched', None),
+                'is_reconciled': getattr(p, 'is_reconciled', None),
+                'reconciled_invoices_count': getattr(p, 'reconciled_invoices_count', 0) or 0,
+            })
+
+        return client.upsert('odoo_account_payments', rows,
+                              on_conflict='odoo_payment_id', batch_size=200)
+
+    # ── Chart of Accounts ───────────────────────────────────────────────
+
+    def _push_chart_of_accounts(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push account.account → odoo_chart_of_accounts table.
+
+        The chart of accounts is the foundation for P&L and Balance Sheet.
+        """
+        try:
+            Account = self.env['account.account'].sudo()
+        except KeyError:
+            _logger.info('account.account not available, skipping')
+            return 0
+
+        domain = []
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        accounts = Account.search(domain)
+
+        rows = []
+        for acc in accounts:
+            # account_type in Odoo 19 determines P&L vs Balance Sheet
+            acc_type = getattr(acc, 'account_type', None) or ''
+
+            rows.append({
+                'odoo_account_id': acc.id,
+                'code': acc.code or '',
+                'name': acc.name or '',
+                'account_type': acc_type,
+                'reconcile': acc.reconcile if hasattr(acc, 'reconcile') else False,
+                'deprecated': getattr(acc, 'deprecated', False),
+            })
+
+        return client.upsert('odoo_chart_of_accounts', rows,
+                              on_conflict='odoo_account_id', batch_size=200)
+
+    # ── Account Balances (monthly, for P&L) ─────────────────────────────
+
+    def _push_account_balances(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push monthly account balances → odoo_account_balances table.
+
+        Aggregates account.move.line by account + month for P&L and
+        Balance Sheet reporting. Only posted entries.
+        """
+        try:
+            Line = self.env['account.move.line'].sudo()
+        except KeyError:
+            _logger.info('account.move.line not available, skipping')
+            return 0
+
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+
+        # Use read_group for efficient aggregation in Odoo
+        try:
+            groups = Line.read_group(
+                domain=[
+                    ('parent_state', '=', 'posted'),
+                    ('date', '>=', cutoff),
+                    ('display_type', 'not in', ['line_section', 'line_note']),
+                ],
+                fields=['account_id', 'debit:sum', 'credit:sum', 'balance:sum'],
+                groupby=['account_id', 'date:month'],
+                lazy=False,
+            )
+        except Exception as exc:
+            _logger.warning('read_group account balances failed: %s', exc)
+            return 0
+
+        # Build account cache for names/codes
+        account_cache = {}
+        try:
+            Account = self.env['account.account'].sudo()
+            for acc in Account.search([]):
+                account_cache[acc.id] = {
+                    'code': acc.code or '',
+                    'name': acc.name or '',
+                    'account_type': getattr(acc, 'account_type', '') or '',
+                }
+        except Exception:
+            pass
+
+        rows = []
+        for g in groups:
+            acc_id = g['account_id'][0] if g['account_id'] else None
+            if not acc_id:
+                continue
+
+            acc_info = account_cache.get(acc_id, {})
+            # date:month returns 'April 2026' format
+            month_str = g.get('date:month', '')
+
+            rows.append({
+                'odoo_account_id': acc_id,
+                'account_code': acc_info.get('code', ''),
+                'account_name': acc_info.get('name', ''),
+                'account_type': acc_info.get('account_type', ''),
+                'period': month_str,
+                'debit': round(g.get('debit', 0) or 0, 2),
+                'credit': round(g.get('credit', 0) or 0, 2),
+                'balance': round(g.get('balance', 0) or 0, 2),
+            })
+
+        # Full refresh (balances change as entries are posted)
+        if rows:
+            client.delete_all('odoo_account_balances')
+            return client.insert('odoo_account_balances', rows, batch_size=500)
+        return 0
+
+    # ── Bank Balances ───────────────────────────────────────────────────
+
+    def _push_bank_balances(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push bank journal balances → odoo_bank_balances table.
+
+        Shows current cash position from bank-type journals.
+        """
+        try:
+            Journal = self.env['account.journal'].sudo()
+        except KeyError:
+            _logger.info('account.journal not available, skipping')
+            return 0
+
+        journals = Journal.search([('type', 'in', ['bank', 'cash'])])
+
+        rows = []
+        for j in journals:
+            # Get the default debit/credit account for balance
+            balance = 0.0
+            try:
+                # In Odoo 19, journal has default_account_id
+                if hasattr(j, 'default_account_id') and j.default_account_id:
+                    # Sum all posted journal items on this account
+                    Line = self.env['account.move.line'].sudo()
+                    result = Line.read_group(
+                        domain=[
+                            ('account_id', '=', j.default_account_id.id),
+                            ('parent_state', '=', 'posted'),
+                        ],
+                        fields=['balance:sum'],
+                        groupby=[],
+                    )
+                    if result:
+                        balance = result[0].get('balance', 0) or 0
+            except Exception as exc:
+                _logger.warning('Bank balance for %s: %s', j.name, exc)
+
+            bank_account = None
+            try:
+                if hasattr(j, 'bank_account_id') and j.bank_account_id:
+                    bank_account = j.bank_account_id.acc_number
+                elif hasattr(j, 'bank_acc_number'):
+                    bank_account = j.bank_acc_number
+            except Exception:
+                pass
+
+            rows.append({
+                'odoo_journal_id': j.id,
+                'name': j.name,
+                'journal_type': j.type,  # bank / cash
+                'currency': j.currency_id.name if j.currency_id else (
+                    j.company_id.currency_id.name if j.company_id and j.company_id.currency_id else 'MXN'
+                ),
+                'bank_account': bank_account,
+                'current_balance': round(balance, 2),
+                'updated_at': datetime.now().isoformat(),
+            })
+
+        # Full refresh (small table, balances change)
+        if rows:
+            client.delete_all('odoo_bank_balances')
+            return client.insert('odoo_bank_balances', rows, batch_size=50)
+        return 0
