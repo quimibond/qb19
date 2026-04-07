@@ -1312,11 +1312,14 @@ class QuimibondSync(models.TransientModel):
 
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         domain = [
-            ('state', '!=', 'canceled'),
+            ('state', 'not in', ['canceled', 'rejected']),
             ('date', '>=', cutoff),
         ]
+        # Skip incremental filter on first run (table may be empty)
         if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+            existing = client.fetch('odoo_account_payments', {'limit': '1', 'select': 'id'})
+            if existing:
+                domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         payments = Payment.search(domain, limit=5000)
 
         rows = []
@@ -1366,6 +1369,7 @@ class QuimibondSync(models.TransientModel):
         """Push account.account → odoo_chart_of_accounts table.
 
         The chart of accounts is the foundation for P&L and Balance Sheet.
+        Always full sync (small table, ~100 rows).
         """
         try:
             Account = self.env['account.account'].sudo()
@@ -1373,10 +1377,8 @@ class QuimibondSync(models.TransientModel):
             _logger.info('account.account not available, skipping')
             return 0
 
-        domain = []
-        if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        accounts = Account.search(domain)
+        # Always full sync — chart of accounts rarely changes and is small
+        accounts = Account.search([])
 
         rows = []
         for acc in accounts:
