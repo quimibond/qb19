@@ -329,7 +329,17 @@ class QuimibondSync(models.TransientModel):
                                    'protonmail.com', 'outlook.es'):
                     domain = d
 
-            if p.is_company or not p.parent_id:
+            # Only treat as company if Odoo marks it as company,
+            # or if it's a standalone partner whose commercial_partner is itself.
+            # Avoids creating fake "companies" from individual contacts
+            # (e.g., "Acosta, Mario" instead of "CONTINENTAL").
+            cp = p.commercial_partner_id
+            is_real_company = p.is_company or (
+                not p.parent_id and cp and cp.id == p.id
+                and not _EMAIL_RE.match((p.name or '').strip())
+                and '@' not in (p.name or '')
+            )
+            if is_real_company:
                 # This is a company (top-level partner)
                 cn = (p.name or '').strip()
                 if cn and cn not in companies:
@@ -372,11 +382,18 @@ class QuimibondSync(models.TransientModel):
             contact_name = p.name or None
 
             # Resolve company canonical name for linking
+            # Use commercial_partner_id for better resolution (handles
+            # contacts like "Acosta, Mario" → "CONTINENTAL" parent)
             company_cn = None
             if p.parent_id:
                 company_cn = (p.parent_id.name or '').strip() or None
             elif p.is_company:
                 company_cn = (p.name or '').strip() or None
+            else:
+                # Standalone contact — try commercial_partner_id
+                cp = p.commercial_partner_id
+                if cp and cp.id != p.id:
+                    company_cn = (cp.name or '').strip() or None
 
             for email in emails:
                 contacts.append({
