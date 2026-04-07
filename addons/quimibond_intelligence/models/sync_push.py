@@ -347,6 +347,15 @@ class QuimibondSync(models.TransientModel):
                     except Exception:
                         pass
 
+                    # Build odoo_context with only non-null values
+                    odoo_ctx = {}
+                    if payment_term:
+                        odoo_ctx['payment_term'] = payment_term
+                    if supplier_payment_term:
+                        odoo_ctx['supplier_payment_term'] = supplier_payment_term
+                    if tags:
+                        odoo_ctx['tags'] = tags
+
                     companies[cn] = {
                         'canonical_name': cn,
                         'name': cn,
@@ -362,11 +371,7 @@ class QuimibondSync(models.TransientModel):
                         'total_payable': total_payable,
                         'total_invoiced_odoo': total_invoiced_odoo,
                         'total_overdue_odoo': total_overdue_odoo,
-                        'odoo_context': {
-                            'payment_term': payment_term,
-                            'supplier_payment_term': supplier_payment_term,
-                            'tags': tags if tags else None,
-                        },
+                        'odoo_context': odoo_ctx,
                     }
 
             contact_name = p.name or None
@@ -410,6 +415,18 @@ class QuimibondSync(models.TransientModel):
                 if not cn:
                     continue
                 if cn not in companies:
+                    # Financial totals (same as main path)
+                    total_receivable = total_payable = None
+                    total_invoiced_odoo = total_overdue_odoo = credit_limit = None
+                    try:
+                        total_receivable = round(p.credit, 2) if hasattr(p, 'credit') else None
+                        total_payable = round(p.debit, 2) if hasattr(p, 'debit') else None
+                        total_invoiced_odoo = round(p.total_invoiced, 2) if hasattr(p, 'total_invoiced') else None
+                        total_overdue_odoo = round(p.total_overdue, 2) if hasattr(p, 'total_overdue') else None
+                        if hasattr(p, 'credit_limit') and p.credit_limit:
+                            credit_limit = round(p.credit_limit, 2)
+                    except Exception:
+                        pass
                     companies[cn] = {
                         'canonical_name': cn,
                         'name': cn,
@@ -420,6 +437,11 @@ class QuimibondSync(models.TransientModel):
                         'domain': None,
                         'country': p.country_id.name if p.country_id else None,
                         'city': p.city or None,
+                        'credit_limit': credit_limit,
+                        'total_receivable': total_receivable,
+                        'total_payable': total_payable,
+                        'total_invoiced_odoo': total_invoiced_odoo,
+                        'total_overdue_odoo': total_overdue_odoo,
                     }
                     existing_partner_ids.add(cp_id)
         except Exception as exc:
@@ -431,7 +453,30 @@ class QuimibondSync(models.TransientModel):
                 'companies', list(companies.values()),
                 on_conflict='canonical_name', batch_size=100,
             )
-            # Update RFC via RPC (PostgREST may not see new columns in upsert)
+            # Backfill financial data via RPC (PostgREST upsert may miss
+            # columns added after schema cache was built)
+            fin_map = {}
+            for c in companies.values():
+                pid = c.get('odoo_partner_id')
+                if not pid:
+                    continue
+                fin = {}
+                if c.get('total_receivable') is not None:
+                    fin['total_receivable'] = c['total_receivable']
+                if c.get('total_payable') is not None:
+                    fin['total_payable'] = c['total_payable']
+                if c.get('total_invoiced_odoo') is not None:
+                    fin['total_invoiced_odoo'] = c['total_invoiced_odoo']
+                if c.get('total_overdue_odoo') is not None:
+                    fin['total_overdue_odoo'] = c['total_overdue_odoo']
+                if c.get('odoo_context'):
+                    fin['odoo_context'] = c['odoo_context']
+                if fin:
+                    fin_map[str(pid)] = fin
+            if fin_map:
+                client.rpc('backfill_company_financials', {'data': fin_map})
+
+            # Update RFC via RPC
             rfc_map = {str(c['odoo_partner_id']): c['rfc']
                        for c in companies.values()
                        if c.get('rfc') and c.get('odoo_partner_id')}
@@ -807,8 +852,12 @@ class QuimibondSync(models.TransientModel):
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
         # Get invoices that have been paid or partially paid
+        # Include both customer (out_) and supplier (in_) invoices
         domain = [
-            ('move_type', 'in', ['out_invoice', 'out_refund']),
+            ('move_type', 'in', [
+                'out_invoice', 'out_refund',
+                'in_invoice', 'in_refund',
+            ]),
             ('state', '=', 'posted'),
             ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
             ('invoice_date', '>=', cutoff),
@@ -833,7 +882,7 @@ class QuimibondSync(models.TransientModel):
             rows.append({
                 'odoo_partner_id': pid,
                 'name': f'PAY-{inv.name}',
-                'payment_type': 'inbound' if inv.move_type == 'out_invoice' else 'outbound',
+                'payment_type': 'inbound' if inv.move_type in ('out_invoice', 'in_refund') else 'outbound',
                 'amount': round(amount_paid, 2),
                 'currency': inv.currency_id.name if inv.currency_id else 'MXN',
                 'payment_date': payment_date.strftime('%Y-%m-%d') if payment_date else None,
