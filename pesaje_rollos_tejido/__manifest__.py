@@ -26,6 +26,7 @@
         'views/mrp_production_view.xml',        # Pestaña ZPL en la MO
         'views/mrp_workorder_tablet_view.xml',  # Botones PESAR y SUBPRODUCTO en tableta
         'views/res_config_settings_view.xml',   # Configuraciones adicionales
+        'report/ir_actions_report.xml',
     ],
     'installable': True,
     'application': True,
