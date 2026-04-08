@@ -767,6 +767,41 @@ class QuimibondSync(models.TransientModel):
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         invoices = Move.search(domain)
 
+        # Batch-read CFDI computed fields via .read() to avoid prefetch failures.
+        # l10n_mx_edi_cfdi_uuid is a non-stored computed field that depends on
+        # l10n_mx_edi_document_ids. Attribute access (getattr) can fail silently
+        # when the prefetch batch contains records with broken EDI documents.
+        # .read() forces per-record computation and returns dicts reliably.
+        cfdi_map = {}
+        try:
+            cfdi_fields = ['l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state']
+            for batch_start in range(0, len(invoices), 200):
+                batch = invoices[batch_start:batch_start + 200]
+                try:
+                    for row in batch.read(cfdi_fields):
+                        uuid_val = row.get('l10n_mx_edi_cfdi_uuid')
+                        sat_val = row.get('l10n_mx_edi_cfdi_sat_state')
+                        cfdi_map[row['id']] = {
+                            'uuid': uuid_val if uuid_val else None,
+                            'sat': sat_val if sat_val else None,
+                        }
+                except Exception as exc:
+                    # If batch read fails, try individual reads
+                    _logger.warning('CFDI batch read failed, trying individual: %s', exc)
+                    for inv in batch:
+                        try:
+                            data = inv.read(cfdi_fields)[0]
+                            uuid_val = data.get('l10n_mx_edi_cfdi_uuid')
+                            sat_val = data.get('l10n_mx_edi_cfdi_sat_state')
+                            cfdi_map[inv.id] = {
+                                'uuid': uuid_val if uuid_val else None,
+                                'sat': sat_val if sat_val else None,
+                            }
+                        except Exception:
+                            cfdi_map[inv.id] = {'uuid': None, 'sat': None}
+        except Exception as exc:
+            _logger.error('CFDI field reading failed entirely: %s', exc)
+
         today = datetime.now().date()
         rows = []
         for inv in invoices:
@@ -787,14 +822,10 @@ class QuimibondSync(models.TransientModel):
             except Exception:
                 pass
 
-            # CFDI fields (Mexico e-invoicing)
-            cfdi_uuid = None
-            cfdi_sat = None
-            try:
-                cfdi_uuid = getattr(inv, 'l10n_mx_edi_cfdi_uuid', None) or None
-                cfdi_sat = getattr(inv, 'l10n_mx_edi_cfdi_sat_state', None) or None
-            except Exception:
-                pass
+            # CFDI fields from pre-read map
+            cfdi = cfdi_map.get(inv.id, {})
+            cfdi_uuid = cfdi.get('uuid')
+            cfdi_sat = cfdi.get('sat')
 
             rows.append({
                 'odoo_partner_id': pid,
