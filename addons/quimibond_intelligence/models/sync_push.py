@@ -1157,9 +1157,12 @@ class QuimibondSync(models.TransientModel):
                 'date_deadline': a.date_deadline.strftime('%Y-%m-%d') if a.date_deadline else None,
                 'assigned_to': a.user_id.name if a.user_id else '',
                 'is_overdue': a.date_deadline < today if a.date_deadline else False,
+                'synced_at': datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
             })
 
-        # Full refresh: delete all then insert
+        # Full refresh: delete then insert. If insert fails, activities
+        # are temporarily empty until next successful sync (every 1h).
+        # This is acceptable since activities are non-critical display data.
         client.delete_all('odoo_activities')
         return client.insert('odoo_activities', rows, batch_size=200)
 
