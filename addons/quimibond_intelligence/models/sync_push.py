@@ -465,7 +465,6 @@ class QuimibondSync(models.TransientModel):
                     'name': contact_name,
                     'contact_type': 'external',
                     'odoo_partner_id': p.id if len(emails) == 1 else None,
-                    'company': company_cn,
                     'is_customer': is_customer,
                     'is_supplier': is_supplier,
                 })
@@ -569,12 +568,38 @@ class QuimibondSync(models.TransientModel):
 
     def _push_products(self, client: SupabaseClient, last_sync=None) -> int:
         Product = self.env['product.product'].sudo()
-        # In Odoo 19, 'type' was renamed to 'detailed_type' in some versions.
-        # Use a broad search and filter by checking the product is storable.
+        # Active products
         domain = [('active', '=', True)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         products = Product.search(domain)
+
+        # Also include inactive products referenced in posted invoices/orders
+        # (otherwise invoice_lines and order_lines have orphan product IDs)
+        if not last_sync:
+            try:
+                self.env.cr.execute("""
+                    SELECT DISTINCT product_id FROM account_move_line
+                    WHERE product_id IS NOT NULL AND move_id IN (
+                        SELECT id FROM account_move
+                        WHERE state = 'posted'
+                        AND move_type IN ('out_invoice','out_refund','in_invoice','in_refund')
+                    )
+                    UNION
+                    SELECT DISTINCT product_id FROM sale_order_line
+                    WHERE product_id IS NOT NULL
+                    UNION
+                    SELECT DISTINCT product_id FROM purchase_order_line
+                    WHERE product_id IS NOT NULL
+                """)
+                all_product_ids = {r[0] for r in self.env.cr.fetchall()}
+                missing_ids = list(all_product_ids - set(products.ids))
+                if missing_ids:
+                    inactive = Product.with_context(active_test=False).browse(missing_ids).exists()
+                    products |= inactive
+                    _logger.info('Products: added %d inactive/archived products referenced in lines', len(inactive))
+            except Exception as exc:
+                _logger.warning('Products: failed to fetch inactive products: %s', exc)
 
         # Pre-fetch all reorder rules in one query (avoids N+1)
         orderpoint_map = {}  # product_id -> {min, max}
@@ -857,6 +882,13 @@ class QuimibondSync(models.TransientModel):
                 'cfdi_sat_state': cfdi_sat,
                 'ref': inv.ref or '',
             })
+
+        # Deduplicate: keep last occurrence per (odoo_partner_id, name)
+        # to avoid "ON CONFLICT DO UPDATE cannot affect row a second time"
+        seen = {}
+        for row in rows:
+            seen[(row['odoo_partner_id'], row['name'])] = row
+        rows = list(seen.values())
 
         return client.upsert('odoo_invoices', rows,
                               on_conflict='odoo_partner_id,name', batch_size=200)
