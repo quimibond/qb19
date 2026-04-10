@@ -753,18 +753,16 @@ class QuimibondSync(models.TransientModel):
 
         return client.upsert('odoo_users', rows, on_conflict='odoo_user_id')
 
-    # ── Invoices (last 12 months) ────────────────────────────────────────
+    # ── Invoices (ALL history) ──────────────────────────────────────────
 
     def _push_invoices(self, client: SupabaseClient, last_sync=None) -> int:
         Move = self.env['account.move'].sudo()
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         domain = [
             ('move_type', 'in', [
                 'out_invoice', 'out_refund',
                 'in_invoice', 'in_refund',
             ]),
             ('state', '=', 'posted'),
-            ('invoice_date', '>=', cutoff),
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
