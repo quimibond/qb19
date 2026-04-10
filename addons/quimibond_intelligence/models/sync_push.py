@@ -31,48 +31,32 @@ def _get_client(env) -> SupabaseClient | None:
 
 
 def _build_cfdi_map(env, invoice_ids: list) -> dict:
-    """Build {invoice_id: {uuid, sat}} from l10n_mx_edi_document.
+    """Build {invoice_id: {uuid, sat}} from l10n_mx_edi.document via ORM.
 
     The stored field l10n_mx_edi_cfdi_uuid on account.move is stale after
     the Odoo 17→19 migration — .read() returns NULL. The UI shows the UUID
     because loading the form triggers the recompute chain; the sync doesn't.
 
     Instead of reading the stored field, we go straight to the source:
-    l10n_mx_edi_document.attachment_uuid via SQL. We query both the Many2one
-    move_id (payments/legacy) and the Many2many relation table (Odoo 19
-    invoices) since Odoo 19 links invoices to documents via M2M, not move_id.
+    l10n_mx_edi.document records linked via invoice_ids (M2M).
     """
     if not invoice_ids:
         return {}
 
     result = {}
     try:
-        env.cr.execute("""
-            WITH doc_uuids AS (
-                -- Many2one move_id (payments + legacy migrated invoices)
-                SELECT d.move_id AS invoice_id,
-                       d.attachment_uuid, d.sat_state, d.id
-                FROM l10n_mx_edi_document d
-                WHERE d.move_id = ANY(%(ids)s)
-                  AND d.attachment_uuid IS NOT NULL
-                  AND d.attachment_uuid != ''
-                UNION ALL
-                -- Many2many invoice_ids (Odoo 19 native invoices)
-                SELECT rel.invoice_id AS invoice_id,
-                       d.attachment_uuid, d.sat_state, d.id
-                FROM l10n_mx_edi_invoice_document_ids_rel rel
-                JOIN l10n_mx_edi_document d ON d.id = rel.document_id
-                WHERE rel.invoice_id = ANY(%(ids)s)
-                  AND d.attachment_uuid IS NOT NULL
-                  AND d.attachment_uuid != ''
-            )
-            SELECT DISTINCT ON (invoice_id)
-                   invoice_id, attachment_uuid, sat_state
-            FROM doc_uuids
-            ORDER BY invoice_id, id DESC
-        """, {'ids': invoice_ids})
-        for mid, uuid_val, sat_val in env.cr.fetchall():
-            result[mid] = {'uuid': uuid_val, 'sat': sat_val or None}
+        Document = env['l10n_mx_edi.document'].sudo()
+        docs = Document.search([
+            ('invoice_ids', 'in', invoice_ids),
+            ('attachment_uuid', '!=', False),
+        ], order='id desc')
+        for doc in docs:
+            for inv_id in doc.invoice_ids.ids:
+                if inv_id not in result and inv_id in invoice_ids:
+                    result[inv_id] = {
+                        'uuid': doc.attachment_uuid,
+                        'sat': doc.sat_state or None,
+                    }
     except Exception as exc:
         _logger.warning('CFDI map build failed: %s', exc)
 
