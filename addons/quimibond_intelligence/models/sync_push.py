@@ -30,78 +30,82 @@ def _get_client(env) -> SupabaseClient | None:
     return SupabaseClient(url, key)
 
 
-def _extract_cfdi_uuid_fallback(inv) -> str | None:
-    """Try multiple paths to extract CFDI UUID from an invoice.
+def _bulk_extract_cfdi_uuids(env, invoice_ids: list) -> dict:
+    """Extract CFDI UUIDs via direct SQL for invoices where ORM returns empty.
 
-    In Odoo 19 after migration from earlier versions, the computed field
-    l10n_mx_edi_cfdi_uuid may return False even when the CFDI exists.
-    This happens because:
-    - l10n_mx_edi.document records may not be linked (migration gap)
-    - edi_document_ids (old model) may have data but l10n_mx_edi_document_ids doesn't
-    - The CFDI XML attachment exists but the document record is missing
+    The computed field l10n_mx_edi_cfdi_uuid in Odoo 19 requires specific
+    context that batch .read() doesn't provide. But the data IS in the DB:
+    - l10n_mx_edi_document table has attachment_uuid
+    - ir_attachment has the CFDI XML with UUID inside
 
-    We try: l10n_mx_edi_document_ids → edi_document_ids → CFDI attachment XML.
+    Direct SQL bypasses the ORM compute issues entirely.
     """
-    import re as _re
-    uuid_pattern = _re.compile(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+    if not invoice_ids:
+        return {}
+
+    result = {}
+    cr = env.cr
 
     try:
-        # Path 1: l10n_mx_edi_document_ids (Odoo 17+ Mexican EDI)
-        docs = getattr(inv, 'l10n_mx_edi_document_ids', None)
-        if docs:
-            for doc in docs:
-                for attr in ('attachment_uuid', 'cfdi_uuid', 'uuid'):
-                    val = getattr(doc, attr, None)
-                    if val and uuid_pattern.match(str(val)):
-                        return str(val)
-    except Exception:
-        pass
+        # Path 1: l10n_mx_edi_document → attachment_uuid (Odoo 19 native)
+        cr.execute("""
+            SELECT d.move_id, d.attachment_uuid
+            FROM l10n_mx_edi_document d
+            WHERE d.move_id = ANY(%s)
+              AND d.attachment_uuid IS NOT NULL
+              AND d.attachment_uuid != ''
+              AND d.state IN ('invoice_sent', 'sent', 'ginvoice_sent')
+        """, [invoice_ids])
+        for row in cr.fetchall():
+            result[row[0]] = row[1]
+    except Exception as e:
+        _logger.info('CFDI SQL path 1 (l10n_mx_edi_document): %s', e)
 
-    try:
-        # Path 2: l10n_mx_edi_invoice_document_ids (many2many variant)
-        docs = getattr(inv, 'l10n_mx_edi_invoice_document_ids', None)
-        if docs:
-            for doc in docs:
-                for attr in ('attachment_uuid', 'cfdi_uuid', 'uuid'):
-                    val = getattr(doc, attr, None)
-                    if val and uuid_pattern.match(str(val)):
-                        return str(val)
-    except Exception:
-        pass
+    # For IDs still missing, try other paths
+    missing = [mid for mid in invoice_ids if mid not in result]
+    if missing:
+        try:
+            # Path 2: l10n_mx_edi_document without state filter
+            cr.execute("""
+                SELECT d.move_id, d.attachment_uuid
+                FROM l10n_mx_edi_document d
+                WHERE d.move_id = ANY(%s)
+                  AND d.attachment_uuid IS NOT NULL
+                  AND d.attachment_uuid != ''
+                ORDER BY d.id DESC
+            """, [missing])
+            for row in cr.fetchall():
+                if row[0] not in result:
+                    result[row[0]] = row[1]
+        except Exception as e:
+            _logger.info('CFDI SQL path 2 (l10n_mx_edi_document no filter): %s', e)
 
-    try:
-        # Path 3: edi_document_ids (generic Odoo EDI, pre-17 migration)
-        edi_docs = getattr(inv, 'edi_document_ids', None)
-        if edi_docs:
-            for edi in edi_docs:
-                # Some EDI docs store the CFDI attachment
-                att = getattr(edi, 'attachment_id', None)
-                if att and att.name and att.name.endswith('.xml'):
-                    content = att.raw or att.datas
-                    if content:
-                        import base64
-                        xml_str = base64.b64decode(content).decode('utf-8', errors='ignore') if isinstance(content, bytes) and len(content) < 100 else ''
-                        if not xml_str and att.datas:
-                            xml_str = base64.b64decode(att.datas).decode('utf-8', errors='ignore')
-                        match = uuid_pattern.search(xml_str[:5000])
-                        if match:
-                            return match.group(0)
-    except Exception:
-        pass
+    missing = [mid for mid in invoice_ids if mid not in result]
+    if missing:
+        try:
+            # Path 3: Parse UUID from CFDI XML attachment
+            cr.execute("""
+                SELECT am.id, encode(a.raw, 'escape')
+                FROM account_move am
+                JOIN ir_attachment a ON a.res_model = 'account.move'
+                  AND a.res_id = am.id
+                  AND a.name LIKE '%%.xml'
+                WHERE am.id = ANY(%s)
+                  AND a.raw IS NOT NULL
+                LIMIT 500
+            """, [missing])
+            import re as _re
+            uuid_re = _re.compile(r'UUID="([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"', _re.IGNORECASE)
+            for row in cr.fetchall():
+                if row[0] not in result and row[1]:
+                    xml_snippet = row[1][:5000] if isinstance(row[1], str) else ''
+                    match = uuid_re.search(xml_snippet)
+                    if match:
+                        result[row[0]] = match.group(1)
+        except Exception as e:
+            _logger.info('CFDI SQL path 3 (XML parse): %s', e)
 
-    try:
-        # Path 4: l10n_mx_edi_cfdi_attachment_id (direct CFDI attachment link)
-        att = getattr(inv, 'l10n_mx_edi_cfdi_attachment_id', None)
-        if att and att.datas:
-            import base64
-            xml_str = base64.b64decode(att.datas).decode('utf-8', errors='ignore')
-            match = uuid_pattern.search(xml_str[:5000])
-            if match:
-                return match.group(0)
-    except Exception:
-        pass
-
-    return None
+    return result
 
 
 def _commercial_partner_id(partner) -> int | None:
@@ -843,45 +847,31 @@ class QuimibondSync(models.TransientModel):
         # .read() forces per-record computation and returns dicts reliably.
         cfdi_map = {}
         try:
-            cfdi_fields = ['l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state',
-                          'l10n_mx_edi_cfdi_state', 'edi_state']
+            # Step 1: ORM batch read for computed fields
+            cfdi_fields = ['l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state']
             for batch_start in range(0, len(invoices), 200):
                 batch = invoices[batch_start:batch_start + 200]
                 try:
                     for row in batch.read(cfdi_fields):
                         uuid_val = row.get('l10n_mx_edi_cfdi_uuid')
                         sat_val = row.get('l10n_mx_edi_cfdi_sat_state')
-                        cfdi_state = row.get('l10n_mx_edi_cfdi_state')
-                        edi_state = row.get('edi_state')
-                        # If UUID is empty, try ALL fallback paths
-                        if not uuid_val:
-                            inv_rec = batch.browse(row['id'])
-                            uuid_val = _extract_cfdi_uuid_fallback(inv_rec)
                         cfdi_map[row['id']] = {
                             'uuid': uuid_val if uuid_val else None,
                             'sat': sat_val if sat_val else None,
-                            'cfdi_state': cfdi_state if cfdi_state else None,
-                            'edi_state': edi_state if edi_state else None,
                         }
                 except Exception as exc:
-                    _logger.warning('CFDI batch read failed, trying individual: %s', exc)
+                    _logger.warning('CFDI batch read failed: %s', exc)
                     for inv in batch:
-                        try:
-                            data = inv.read(cfdi_fields)[0]
-                            uuid_val = data.get('l10n_mx_edi_cfdi_uuid')
-                            sat_val = data.get('l10n_mx_edi_cfdi_sat_state')
-                            cfdi_state = data.get('l10n_mx_edi_cfdi_state')
-                            edi_state = data.get('edi_state')
-                            if not uuid_val:
-                                uuid_val = _extract_cfdi_uuid_fallback(inv)
-                            cfdi_map[inv.id] = {
-                                'uuid': uuid_val if uuid_val else None,
-                                'sat': sat_val if sat_val else None,
-                                'cfdi_state': cfdi_state if cfdi_state else None,
-                                'edi_state': edi_state if edi_state else None,
-                            }
-                        except Exception:
-                            cfdi_map[inv.id] = {'uuid': None, 'sat': None}
+                        cfdi_map[inv.id] = {'uuid': None, 'sat': None}
+
+            # Step 2: Direct SQL fallback for invoices where ORM returned empty
+            missing_ids = [mid for mid, v in cfdi_map.items() if not v.get('uuid')]
+            if missing_ids:
+                sql_uuids = _bulk_extract_cfdi_uuids(self.env, missing_ids)
+                for mid, uuid_val in sql_uuids.items():
+                    cfdi_map[mid]['uuid'] = uuid_val
+                _logger.info('CFDI SQL fallback: found %d/%d missing UUIDs',
+                             len(sql_uuids), len(missing_ids))
         except Exception as exc:
             _logger.error('CFDI field reading failed entirely: %s', exc)
 
@@ -928,8 +918,6 @@ class QuimibondSync(models.TransientModel):
                 'payment_term': pay_term,
                 'cfdi_uuid': cfdi_uuid,
                 'cfdi_sat_state': cfdi_sat,
-                'cfdi_state': cfdi.get('cfdi_state'),
-                'edi_state': cfdi.get('edi_state'),
                 'ref': inv.ref or '',
             })
 
