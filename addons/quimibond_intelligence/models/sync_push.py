@@ -617,17 +617,15 @@ class QuimibondSync(models.TransientModel):
 
         return client.upsert('odoo_products', rows, on_conflict='odoo_product_id', batch_size=100)
 
-    # ── Order Lines (Sale + Purchase, last 12 months) ────────────────────
+    # ── Order Lines (Sale + Purchase, ALL history) ────────────────────
 
     def _push_order_lines(self, client: SupabaseClient, last_sync=None) -> int:
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         rows = []
 
         # Sale order lines
         try:
             SOLine = self.env['sale.order.line'].sudo()
             so_domain = [
-                ('order_id.date_order', '>=', cutoff),
                 ('order_id.state', 'in', ['sale', 'done']),
                 ('display_type', '=', False),
             ]
@@ -660,7 +658,6 @@ class QuimibondSync(models.TransientModel):
         try:
             POLine = self.env['purchase.order.line'].sudo()
             po_domain = [
-                ('order_id.date_order', '>=', cutoff),
                 ('order_id.state', 'in', ['purchase', 'done']),
                 ('display_type', '=', False),
             ]
@@ -887,19 +884,17 @@ class QuimibondSync(models.TransientModel):
         return client.upsert('odoo_invoices', rows,
                               on_conflict='odoo_partner_id,name', batch_size=200)
 
-    # ── Invoice Lines (last 12 months) ────────────────────────────────────
+    # ── Invoice Lines (ALL history) ──────────────────────────────────────
 
     def _push_invoice_lines(self, client: SupabaseClient, last_sync=None) -> int:
         """Push account.move.line → odoo_invoice_lines table."""
         Move = self.env['account.move'].sudo()
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
         domain = [
             ('move_type', 'in', [
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund',
             ]),
             ('state', '=', 'posted'),
-            ('invoice_date', '>=', cutoff),
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
@@ -948,7 +943,6 @@ class QuimibondSync(models.TransientModel):
         so we extract payment info from invoice amount_residual changes.
         """
         Move = self.env['account.move'].sudo()
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
         # Get invoices that have been paid or partially paid
         # Include both customer (out_) and supplier (in_) invoices
@@ -959,7 +953,6 @@ class QuimibondSync(models.TransientModel):
             ]),
             ('state', '=', 'posted'),
             ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
-            ('invoice_date', '>=', cutoff),
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
@@ -1231,9 +1224,7 @@ class QuimibondSync(models.TransientModel):
             _logger.info('sale.order not available, skipping')
             return 0
 
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         domain = [
-            ('date_order', '>=', cutoff),
             ('state', 'in', ['sale', 'done']),
         ]
         if last_sync:
@@ -1286,9 +1277,7 @@ class QuimibondSync(models.TransientModel):
             _logger.info('purchase.order not available, skipping')
             return 0
 
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         domain = [
-            ('date_order', '>=', cutoff),
             ('state', 'in', ['purchase', 'done']),
         ]
         if last_sync:
@@ -1378,8 +1367,7 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         try:
-            cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-            domain = [('date', '>=', cutoff)]
+            domain = []
             # Skip incremental filter on first run (table may be empty)
             if last_sync:
                 existing = client.fetch('odoo_account_payments', {'limit': '1', 'select': 'id'})
@@ -1491,14 +1479,11 @@ class QuimibondSync(models.TransientModel):
             _logger.info('account.move.line not available, skipping')
             return 0
 
-        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-
         # Use read_group for efficient aggregation in Odoo
         try:
             groups = Line.read_group(
                 domain=[
                     ('parent_state', '=', 'posted'),
-                    ('date', '>=', cutoff),
                     ('display_type', 'not in', ['line_section', 'line_note']),
                 ],
                 fields=['account_id', 'debit:sum', 'credit:sum', 'balance:sum'],
