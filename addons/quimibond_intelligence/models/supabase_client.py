@@ -48,6 +48,12 @@ class SupabaseClient:
                     if resp.status_code in (429, 502, 503, 504) and attempt < 3:
                         last_exc = Exception(f'HTTP {resp.status_code}')
                         continue
+                    if resp.status_code >= 400:
+                        body = resp.text[:500]
+                        _logger.error(
+                            'upsert %s chunk %d (%d rows) HTTP %d: %s',
+                            table, i, len(chunk), resp.status_code, body,
+                        )
                     resp.raise_for_status()
                     synced += len(chunk)
                     last_exc = None
@@ -64,6 +70,12 @@ class SupabaseClient:
             if last_exc:
                 _logger.warning('upsert %s chunk %d gave up after retries: %s',
                                 table, i, last_exc)
+        lost = len(rows) - synced
+        if lost > 0:
+            _logger.error(
+                'upsert %s: %d/%d rows LOST (%.1f%% failure rate)',
+                table, lost, len(rows), 100.0 * lost / len(rows),
+            )
         return synced
 
     def insert(self, table: str, rows: list, batch_size: int = 200) -> int:
