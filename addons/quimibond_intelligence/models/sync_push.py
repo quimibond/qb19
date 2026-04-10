@@ -30,6 +30,144 @@ def _get_client(env) -> SupabaseClient | None:
     return SupabaseClient(url, key)
 
 
+_UUID_RE = re.compile(
+    r'UUID="([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})"',
+    re.IGNORECASE,
+)
+
+
+def _build_cfdi_map(env, invoice_ids: list) -> dict:
+    """Build {invoice_id: {uuid, sat}} for a list of account.move IDs.
+
+    Three strategies, each covering a different failure mode:
+
+    1) SQL on l10n_mx_edi_document.attachment_uuid — fast, no file I/O.
+       Queries BOTH the Many2one move_id (payments/legacy) AND the Many2many
+       relation table l10n_mx_edi_invoice_document_ids_rel (Odoo 19 invoices).
+       The old code only used move_id, missing all Odoo 19-native invoices.
+
+    2) ORM parse of l10n_mx_edi.document → attachment_id XML — for documents
+       where attachment_uuid is empty (common after Odoo 17→19 migration).
+       Uses ORM so filestore/S3 reads work (raw SQL can't access filestore).
+
+    3) ORM parse of ir.attachment on account.move — legacy fallback for
+       invoices with no l10n_mx_edi.document at all.
+    """
+    if not invoice_ids:
+        return {}
+
+    result = {}
+
+    # ── Strategy 1: SQL fast path — attachment_uuid ──────────────────────
+    try:
+        env.cr.execute("""
+            WITH doc_uuids AS (
+                -- Path A: Many2one move_id (payments + migrated invoices)
+                SELECT d.move_id AS invoice_id,
+                       d.attachment_uuid, d.sat_state, d.id
+                FROM l10n_mx_edi_document d
+                WHERE d.move_id = ANY(%(ids)s)
+                  AND d.attachment_uuid IS NOT NULL
+                  AND d.attachment_uuid != ''
+
+                UNION ALL
+
+                -- Path B: Many2many invoice_ids (Odoo 19 native invoices)
+                SELECT rel.account_move_id AS invoice_id,
+                       d.attachment_uuid, d.sat_state, d.id
+                FROM l10n_mx_edi_invoice_document_ids_rel rel
+                JOIN l10n_mx_edi_document d ON d.id = rel.l10n_mx_edi_document_id
+                WHERE rel.account_move_id = ANY(%(ids)s)
+                  AND d.attachment_uuid IS NOT NULL
+                  AND d.attachment_uuid != ''
+            )
+            SELECT DISTINCT ON (invoice_id)
+                   invoice_id, attachment_uuid, sat_state
+            FROM doc_uuids
+            ORDER BY invoice_id, id DESC
+        """, {'ids': invoice_ids})
+        for mid, uuid_val, sat_val in env.cr.fetchall():
+            result[mid] = {'uuid': uuid_val, 'sat': sat_val or None}
+    except Exception as exc:
+        _logger.warning('CFDI strategy 1 (SQL attachment_uuid): %s', exc)
+
+    # ── Strategy 2: ORM — parse XML from document attachment ─────────────
+    missing = [mid for mid in invoice_ids if mid not in result]
+    if missing:
+        try:
+            Document = env['l10n_mx_edi.document'].sudo()
+            # Search via ORM handles the M2M transparently
+            docs = Document.search([
+                '|',
+                ('move_id', 'in', missing),
+                ('invoice_ids', 'in', missing),
+                ('attachment_id', '!=', False),
+            ], order='id desc')
+            for doc in docs:
+                # Resolve invoice ID from whichever link exists
+                linked_ids = doc.invoice_ids.ids if doc.invoice_ids else []
+                if doc.move_id:
+                    linked_ids.append(doc.move_id.id)
+                for mid in linked_ids:
+                    if mid in result or mid not in missing:
+                        continue
+                    try:
+                        raw = doc.attachment_id.raw
+                        if not raw:
+                            continue
+                        text = bytes(raw[:5000]).decode('utf-8', errors='ignore')
+                        m = _UUID_RE.search(text)
+                        if m:
+                            result[mid] = {
+                                'uuid': m.group(1),
+                                'sat': doc.sat_state or None,
+                            }
+                    except Exception:
+                        continue
+            found = sum(1 for mid in missing if mid in result)
+            if found:
+                _logger.info(
+                    'CFDI strategy 2 (document XML ORM): found %d/%d',
+                    found, len(missing),
+                )
+        except Exception as exc:
+            _logger.warning('CFDI strategy 2 (document XML ORM): %s', exc)
+
+    # ── Strategy 3: ORM — parse XML attached directly to account.move ────
+    missing = [mid for mid in invoice_ids if mid not in result]
+    if missing:
+        try:
+            Attachment = env['ir.attachment'].sudo()
+            atts = Attachment.search([
+                ('res_model', '=', 'account.move'),
+                ('res_id', 'in', missing),
+                ('name', 'like', '.xml'),
+            ])
+            for att in atts:
+                if att.res_id in result:
+                    continue
+                try:
+                    raw = att.raw
+                    if not raw:
+                        continue
+                    text = bytes(raw[:5000]).decode('utf-8', errors='ignore')
+                    m = _UUID_RE.search(text)
+                    if m:
+                        result[att.res_id] = {'uuid': m.group(1), 'sat': None}
+                except Exception:
+                    continue
+            found = sum(1 for mid in missing if mid in result)
+            if found:
+                _logger.info(
+                    'CFDI strategy 3 (move XML ORM): found %d/%d',
+                    found, len(missing),
+                )
+        except Exception as exc:
+            _logger.warning('CFDI strategy 3 (move XML ORM): %s', exc)
+
+    return result
+
+
 def _commercial_partner_id(partner) -> int | None:
     """Resolve commercial partner ID (parent company)."""
     cp = partner.commercial_partner_id
@@ -762,29 +900,11 @@ class QuimibondSync(models.TransientModel):
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         invoices = Move.search(domain)
 
-        # CFDI fields: read via .read() which triggers ORM compute.
-        # Known issue: l10n_mx_edi_cfdi_uuid returns False for some invoices
-        # from Jul 2025-Feb 2026 (post Odoo 17→19 migration). Needs investigation
-        # — see CLAUDE.md for details.
-        cfdi_map = {}
-        try:
-            cfdi_fields = ['l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state']
-            for batch_start in range(0, len(invoices), 200):
-                batch = invoices[batch_start:batch_start + 200]
-                try:
-                    for row in batch.read(cfdi_fields):
-                        uuid_val = row.get('l10n_mx_edi_cfdi_uuid')
-                        sat_val = row.get('l10n_mx_edi_cfdi_sat_state')
-                        cfdi_map[row['id']] = {
-                            'uuid': uuid_val if uuid_val else None,
-                            'sat': sat_val if sat_val else None,
-                        }
-                except Exception as exc:
-                    _logger.warning('CFDI batch read failed: %s', exc)
-                    for inv in batch:
-                        cfdi_map[inv.id] = {'uuid': None, 'sat': None}
-        except Exception as exc:
-            _logger.error('CFDI field reading failed entirely: %s', exc)
+        # CFDI UUID + SAT state: bypasses the stored computed field on
+        # account.move which is stale for post-migration invoices (Jul 2025+).
+        # Reads directly from l10n_mx_edi.document via SQL (M2M aware) and
+        # ORM XML parsing (filestore-safe). See _build_cfdi_map docstring.
+        cfdi_map = _build_cfdi_map(self.env, invoices.ids)
 
         today = datetime.now().date()
         rows = []
