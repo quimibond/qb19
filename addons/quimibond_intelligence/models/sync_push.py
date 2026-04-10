@@ -58,11 +58,11 @@ def _build_cfdi_map(env, invoice_ids: list) -> dict:
                   AND d.attachment_uuid != ''
                 UNION ALL
                 -- Many2many invoice_ids (Odoo 19 native invoices)
-                SELECT rel.account_move_id AS invoice_id,
+                SELECT rel.invoice_id AS invoice_id,
                        d.attachment_uuid, d.sat_state, d.id
                 FROM l10n_mx_edi_invoice_document_ids_rel rel
-                JOIN l10n_mx_edi_document d ON d.id = rel.l10n_mx_edi_document_id
-                WHERE rel.account_move_id = ANY(%(ids)s)
+                JOIN l10n_mx_edi_document d ON d.id = rel.document_id
+                WHERE rel.invoice_id = ANY(%(ids)s)
                   AND d.attachment_uuid IS NOT NULL
                   AND d.attachment_uuid != ''
             )
