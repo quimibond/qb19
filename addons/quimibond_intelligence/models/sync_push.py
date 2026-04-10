@@ -142,10 +142,7 @@ class QuimibondSync(models.TransientModel):
             totals['products'] = self._push_products(client, last_sync=last_sync)
             totals['order_lines'] = self._push_order_lines(client, last_sync=last_sync)
             totals['users'] = self._push_users(client, last_sync=last_sync)
-            # Invoices: always full sync (only ~3K rows) to ensure CFDI UUID
-            # backfill works. Computed fields like l10n_mx_edi_cfdi_uuid don't
-            # update write_date, so incremental sync misses UUID changes.
-            totals['invoices'] = self._push_invoices(client, last_sync=None)
+            totals['invoices'] = self._push_invoices(client, last_sync=last_sync)
             totals['invoice_lines'] = self._push_invoice_lines(client, last_sync=last_sync)
             totals['payments'] = self._push_payments(client, last_sync=last_sync)
             totals['deliveries'] = self._push_deliveries(client, last_sync=last_sync)
