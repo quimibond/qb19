@@ -774,16 +774,35 @@ class QuimibondSync(models.TransientModel):
         # .read() forces per-record computation and returns dicts reliably.
         cfdi_map = {}
         try:
-            cfdi_fields = ['l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state']
+            cfdi_fields = ['l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state',
+                          'l10n_mx_edi_cfdi_state', 'edi_state']
             for batch_start in range(0, len(invoices), 200):
                 batch = invoices[batch_start:batch_start + 200]
                 try:
                     for row in batch.read(cfdi_fields):
                         uuid_val = row.get('l10n_mx_edi_cfdi_uuid')
                         sat_val = row.get('l10n_mx_edi_cfdi_sat_state')
+                        cfdi_state = row.get('l10n_mx_edi_cfdi_state')
+                        edi_state = row.get('edi_state')
+                        # If UUID is empty but CFDI state shows it was sent,
+                        # try reading from the document relation directly
+                        if not uuid_val and cfdi_state in ('sent', 'signed'):
+                            try:
+                                inv_rec = batch.browse(row['id'])
+                                docs = inv_rec.l10n_mx_edi_document_ids
+                                if docs:
+                                    for doc in docs:
+                                        att_uuid = getattr(doc, 'attachment_uuid', None)
+                                        if att_uuid:
+                                            uuid_val = att_uuid
+                                            break
+                            except Exception:
+                                pass
                         cfdi_map[row['id']] = {
                             'uuid': uuid_val if uuid_val else None,
                             'sat': sat_val if sat_val else None,
+                            'cfdi_state': cfdi_state if cfdi_state else None,
+                            'edi_state': edi_state if edi_state else None,
                         }
                 except Exception as exc:
                     # If batch read fails, try individual reads
@@ -793,9 +812,23 @@ class QuimibondSync(models.TransientModel):
                             data = inv.read(cfdi_fields)[0]
                             uuid_val = data.get('l10n_mx_edi_cfdi_uuid')
                             sat_val = data.get('l10n_mx_edi_cfdi_sat_state')
+                            cfdi_state = data.get('l10n_mx_edi_cfdi_state')
+                            edi_state = data.get('edi_state')
+                            if not uuid_val and cfdi_state in ('sent', 'signed'):
+                                try:
+                                    docs = inv.l10n_mx_edi_document_ids
+                                    for doc in docs:
+                                        att_uuid = getattr(doc, 'attachment_uuid', None)
+                                        if att_uuid:
+                                            uuid_val = att_uuid
+                                            break
+                                except Exception:
+                                    pass
                             cfdi_map[inv.id] = {
                                 'uuid': uuid_val if uuid_val else None,
                                 'sat': sat_val if sat_val else None,
+                                'cfdi_state': cfdi_state if cfdi_state else None,
+                                'edi_state': edi_state if edi_state else None,
                             }
                         except Exception:
                             cfdi_map[inv.id] = {'uuid': None, 'sat': None}
@@ -845,6 +878,8 @@ class QuimibondSync(models.TransientModel):
                 'payment_term': pay_term,
                 'cfdi_uuid': cfdi_uuid,
                 'cfdi_sat_state': cfdi_sat,
+                'cfdi_state': cfdi.get('cfdi_state'),
+                'edi_state': cfdi.get('edi_state'),
                 'ref': inv.ref or '',
             })
 
