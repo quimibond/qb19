@@ -807,8 +807,11 @@ class QuimibondSync(models.TransientModel):
             ]),
             ('state', '=', 'posted'),
         ]
-        if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        # Temporarily skip incremental filter to force full re-sync of all
+        # invoices and populate cfdi_uuid via the new M2M query.
+        # TODO: restore after first successful full sync
+        # if last_sync:
+        #     domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         invoices = Move.search(domain)
 
         # CFDI UUID + SAT state: bypasses the stored computed field on
