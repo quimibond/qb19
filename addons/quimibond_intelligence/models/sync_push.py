@@ -30,84 +30,6 @@ def _get_client(env) -> SupabaseClient | None:
     return SupabaseClient(url, key)
 
 
-def _bulk_extract_cfdi_uuids(env, invoice_ids: list) -> dict:
-    """Extract CFDI UUIDs via direct SQL for invoices where ORM returns empty.
-
-    The computed field l10n_mx_edi_cfdi_uuid in Odoo 19 requires specific
-    context that batch .read() doesn't provide. But the data IS in the DB:
-    - l10n_mx_edi_document table has attachment_uuid
-    - ir_attachment has the CFDI XML with UUID inside
-
-    Direct SQL bypasses the ORM compute issues entirely.
-    """
-    if not invoice_ids:
-        return {}
-
-    result = {}
-    cr = env.cr
-
-    try:
-        # Path 1: l10n_mx_edi_document → attachment_uuid (Odoo 19 native)
-        cr.execute("""
-            SELECT d.move_id, d.attachment_uuid
-            FROM l10n_mx_edi_document d
-            WHERE d.move_id = ANY(%s)
-              AND d.attachment_uuid IS NOT NULL
-              AND d.attachment_uuid != ''
-              AND d.state IN ('invoice_sent', 'sent', 'ginvoice_sent')
-        """, [invoice_ids])
-        for row in cr.fetchall():
-            result[row[0]] = row[1]
-    except Exception as e:
-        _logger.info('CFDI SQL path 1 (l10n_mx_edi_document): %s', e)
-
-    # For IDs still missing, try other paths
-    missing = [mid for mid in invoice_ids if mid not in result]
-    if missing:
-        try:
-            # Path 2: l10n_mx_edi_document without state filter
-            cr.execute("""
-                SELECT d.move_id, d.attachment_uuid
-                FROM l10n_mx_edi_document d
-                WHERE d.move_id = ANY(%s)
-                  AND d.attachment_uuid IS NOT NULL
-                  AND d.attachment_uuid != ''
-                ORDER BY d.id DESC
-            """, [missing])
-            for row in cr.fetchall():
-                if row[0] not in result:
-                    result[row[0]] = row[1]
-        except Exception as e:
-            _logger.info('CFDI SQL path 2 (l10n_mx_edi_document no filter): %s', e)
-
-    missing = [mid for mid in invoice_ids if mid not in result]
-    if missing:
-        try:
-            # Path 3: Parse UUID from CFDI XML attachment
-            cr.execute("""
-                SELECT am.id, encode(a.raw, 'escape')
-                FROM account_move am
-                JOIN ir_attachment a ON a.res_model = 'account.move'
-                  AND a.res_id = am.id
-                  AND a.name LIKE '%%.xml'
-                WHERE am.id = ANY(%s)
-                  AND a.raw IS NOT NULL
-                LIMIT 500
-            """, [missing])
-            import re as _re
-            uuid_re = _re.compile(r'UUID="([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"', _re.IGNORECASE)
-            for row in cr.fetchall():
-                if row[0] not in result and row[1]:
-                    xml_snippet = row[1][:5000] if isinstance(row[1], str) else ''
-                    match = uuid_re.search(xml_snippet)
-                    if match:
-                        result[row[0]] = match.group(1)
-        except Exception as e:
-            _logger.info('CFDI SQL path 3 (XML parse): %s', e)
-
-    return result
-
-
 def _commercial_partner_id(partner) -> int | None:
     """Resolve commercial partner ID (parent company)."""
     cp = partner.commercial_partner_id
@@ -840,14 +762,12 @@ class QuimibondSync(models.TransientModel):
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         invoices = Move.search(domain)
 
-        # Batch-read CFDI computed fields via .read() to avoid prefetch failures.
-        # l10n_mx_edi_cfdi_uuid is a non-stored computed field that depends on
-        # l10n_mx_edi_document_ids. Attribute access (getattr) can fail silently
-        # when the prefetch batch contains records with broken EDI documents.
-        # .read() forces per-record computation and returns dicts reliably.
+        # CFDI fields: read via .read() which triggers ORM compute.
+        # Known issue: l10n_mx_edi_cfdi_uuid returns False for some invoices
+        # from Jul 2025-Feb 2026 (post Odoo 17→19 migration). Needs investigation
+        # — see CLAUDE.md for details.
         cfdi_map = {}
         try:
-            # Step 1: ORM batch read for computed fields
             cfdi_fields = ['l10n_mx_edi_cfdi_uuid', 'l10n_mx_edi_cfdi_sat_state']
             for batch_start in range(0, len(invoices), 200):
                 batch = invoices[batch_start:batch_start + 200]
@@ -863,15 +783,6 @@ class QuimibondSync(models.TransientModel):
                     _logger.warning('CFDI batch read failed: %s', exc)
                     for inv in batch:
                         cfdi_map[inv.id] = {'uuid': None, 'sat': None}
-
-            # Step 2: Direct SQL fallback for invoices where ORM returned empty
-            missing_ids = [mid for mid, v in cfdi_map.items() if not v.get('uuid')]
-            if missing_ids:
-                sql_uuids = _bulk_extract_cfdi_uuids(self.env, missing_ids)
-                for mid, uuid_val in sql_uuids.items():
-                    cfdi_map[mid]['uuid'] = uuid_val
-                _logger.info('CFDI SQL fallback: found %d/%d missing UUIDs',
-                             len(sql_uuids), len(missing_ids))
         except Exception as exc:
             _logger.error('CFDI field reading failed entirely: %s', exc)
 
