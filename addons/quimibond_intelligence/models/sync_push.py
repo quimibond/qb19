@@ -1198,7 +1198,7 @@ class QuimibondSync(models.TransientModel):
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        orders = SO.search(domain, limit=2000)
+        orders = SO.search(domain)
 
         rows = []
         for o in orders:
@@ -1251,7 +1251,7 @@ class QuimibondSync(models.TransientModel):
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        orders = PO.search(domain, limit=2000)
+        orders = PO.search(domain)
 
         rows = []
         for o in orders:
