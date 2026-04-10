@@ -83,6 +83,14 @@ class QuimibondSync(models.TransientModel):
         # Get last sync timestamp for incremental sync
         ICP = self.env['ir.config_parameter'].sudo()
         last_sync_str = ICP.get_param('quimibond_intelligence.last_sync_date', '')
+
+        # One-time full sync: if force_full_sync is set, ignore last_sync
+        # and clear the flag after completion.
+        force_full = ICP.get_param('quimibond_intelligence.force_full_sync', '')
+        if force_full:
+            last_sync_str = ''
+            _logger.info('Full sync forced via force_full_sync parameter')
+
         incremental = bool(last_sync_str)
         last_sync = None
         if incremental:
@@ -131,6 +139,9 @@ class QuimibondSync(models.TransientModel):
             # Save sync timestamp for next incremental run
             ICP.set_param('quimibond_intelligence.last_sync_date',
                           _start.strftime('%Y-%m-%d %H:%M:%S'))
+            # Clear one-time full sync flag
+            if force_full:
+                ICP.set_param('quimibond_intelligence.force_full_sync', '')
 
             # Trigger identity resolution after successful push
             try:
@@ -563,7 +574,7 @@ class QuimibondSync(models.TransientModel):
         domain = [('active', '=', True)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        products = Product.search(domain, limit=6000)
+        products = Product.search(domain)
 
         # Pre-fetch all reorder rules in one query (avoids N+1)
         orderpoint_map = {}  # product_id -> {min, max}
@@ -791,11 +802,8 @@ class QuimibondSync(models.TransientModel):
             ]),
             ('state', '=', 'posted'),
         ]
-        # Temporarily skip incremental filter to force full re-sync of all
-        # invoices and populate cfdi_uuid via the new M2M query.
-        # TODO: restore after first successful full sync
-        # if last_sync:
-        #     domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         invoices = Move.search(domain)
 
         # CFDI UUID + SAT state: bypasses the stored computed field on
@@ -1035,7 +1043,7 @@ class QuimibondSync(models.TransientModel):
 
     def _push_activities(self, client: SupabaseClient) -> int:
         Activity = self.env['mail.activity'].sudo()
-        activities = Activity.search([], limit=5000)
+        activities = Activity.search([])
         today = datetime.now().date()
 
         rows = []
@@ -1090,7 +1098,7 @@ class QuimibondSync(models.TransientModel):
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        productions = MO.search(domain, limit=500)
+        productions = MO.search(domain)
 
         rows = []
         for mo in productions:
