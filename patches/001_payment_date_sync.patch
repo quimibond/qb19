@@ -1,0 +1,98 @@
+diff --git a/addons/quimibond_intelligence/models/sync_push.py b/addons/quimibond_intelligence/models/sync_push.py
+index 5e71a51..688262a 100644
+--- a/addons/quimibond_intelligence/models/sync_push.py
++++ b/addons/quimibond_intelligence/models/sync_push.py
+@@ -69,6 +69,59 @@ def _commercial_partner_id(partner) -> int | None:
+     return cp.id if cp else partner.id
+ 
+ 
++def _build_payment_date_map(env, invoice_ids: list) -> dict:
++    """Build {invoice_id: date} from account.partial.reconcile via ORM.
++
++    For each paid/in_payment invoice, finds the last reconciliation date
++    by looking at partial reconcile records on the invoice's receivable/
++    payable lines.  This is the real payment date (not write_date proxy).
++    """
++    if not invoice_ids:
++        return {}
++
++    result = {}
++    try:
++        Reconcile = env['account.partial.reconcile'].sudo()
++        MoveLine = env['account.move.line'].sudo()
++
++        # Get receivable/payable lines for these invoices
++        lines = MoveLine.search([
++            ('move_id', 'in', invoice_ids),
++            ('account_type', 'in', [
++                'asset_receivable', 'liability_payable',
++            ]),
++        ])
++        if not lines:
++            return result
++
++        line_ids = lines.ids
++        # Map line_id \u2192 move_id for quick lookup
++        line_to_move = {ln.id: ln.move_id.id for ln in lines}
++
++        # Find all partial reconcile records touching these lines
++        reconciles = Reconcile.search([
++            '|',
++            ('debit_move_id', 'in', line_ids),
++            ('credit_move_id', 'in', line_ids),
++        ])
++
++        for rec in reconciles:
++            rec_date = rec.create_date.date() if rec.create_date else None
++            if not rec_date:
++                continue
++            # Check which side is our invoice line
++            for line_id in (rec.debit_move_id.id, rec.credit_move_id.id):
++                move_id = line_to_move.get(line_id)
++                if move_id and move_id in invoice_ids:
++                    # Keep the latest reconciliation date per invoice
++                    if move_id not in result or rec_date > result[move_id]:
++                        result[move_id] = rec_date
++    except Exception as exc:
++        _logger.warning('Payment date map build failed: %s', exc)
++
++    return result
++
++
+ class QuimibondSync(models.TransientModel):
+     _name = 'quimibond.sync'
+     _description = 'Quimibond Sync Engine'
+@@ -837,6 +890,9 @@ class QuimibondSync(models.TransientModel):
+         # ORM XML parsing (filestore-safe). See _build_cfdi_map docstring.
+         cfdi_map = _build_cfdi_map(self.env, invoices.ids)
+ 
++        # Payment dates from account.partial.reconcile (real payment date)
++        payment_date_map = _build_payment_date_map(self.env, invoices.ids)
++
+         today = datetime.now().date()
+         rows = []
+         for inv in invoices:
+@@ -862,6 +918,14 @@ class QuimibondSync(models.TransientModel):
+             cfdi_uuid = cfdi.get('uuid')
+             cfdi_sat = cfdi.get('sat')
+ 
++            # Payment date and days_to_pay from reconciliation
++            pay_date = payment_date_map.get(inv.id)
++            pay_date_str = pay_date.strftime('%Y-%m-%d') if pay_date else None
++            days_to_pay = None
++            if pay_date and inv.invoice_date:
++                delta = (pay_date - inv.invoice_date).days
++                days_to_pay = max(delta, 0)
++
+             rows.append({
+                 'odoo_partner_id': pid,
+                 'name': inv.name,
+@@ -877,6 +941,8 @@ class QuimibondSync(models.TransientModel):
+                 'state': inv.state,
+                 'payment_state': inv.payment_state,
+                 'days_overdue': days_overdue,
++                'days_to_pay': days_to_pay,
++                'payment_date': pay_date_str,
+                 'payment_term': pay_term,
+                 'cfdi_uuid': cfdi_uuid,
+                 'cfdi_sat_state': cfdi_sat,
