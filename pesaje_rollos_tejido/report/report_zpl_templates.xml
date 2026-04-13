@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_zpl_label">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o.last_zpl_label"/>
+        </t>
+    </template>
+
+    <template id="report_subproduct_zpl">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o.last_zpl_label"/>
+        </t>
+    </template>
+</odoo>

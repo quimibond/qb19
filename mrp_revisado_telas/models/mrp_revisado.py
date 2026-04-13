@@ -66,6 +66,24 @@ class MrpProduction(models.Model):
                 else:
                     reg.rollos_requeridos_count = 0
 
+    def _print_zpl_label(self, lote_name, peso, nombre_producto):
+        """ Genera el código ZPL para la etiqueta de tela revisada """
+        self.ensure_one()
+        ahora = fields.Datetime.now()
+        
+        # Diseño de la etiqueta (puedes ajustar las coordenadas ^FO)
+        zpl = f"""^XA^PW812^LL1218^CI28^FO20,20^GB770,1170,4^FS
+^FO50,60^A0N,30,30^FDFECHA REVISADO: {ahora}^FS
+^FO50,110^A0N,40,40^FDPRODUCTO: {nombre_producto[:30]}^FS
+^FO50,170^A0N,30,30^FDORDEN: {self.name}^FS
+^FO180,280^A0N,180,180^FD{peso:0.3f} KG^FS
+^FO50,550^A0N,60,60^FDLOTE: {lote_name}^FS
+^FO100,700^BQN,2,10^FDQA,{lote_name}^FS^XZ"""
+        
+        # GUARDAR EN EL CAMPO QUE LEE LA PLANTILLA XML
+        self.last_zpl_label = zpl
+        return True
+
 class MrpWorkorder(models.Model):
     _inherit = 'mrp.workorder'
 
