@@ -78,6 +78,48 @@ class SupabaseClient:
             )
         return synced
 
+    def upsert_with_details(self, table: str, rows: list, on_conflict: str,
+                            batch_size: int = 200) -> tuple:
+        """
+        Upsert rows and return (success_count, [(row, error_dict), ...]).
+
+        Unlike upsert(), this never swallows errors. Every batch that fails
+        after retries is reported individually so the caller can record each
+        lost row via IngestionCore.report_failure.
+
+        error_dict has keys: code (str), detail (str), status (int).
+        """
+        if not rows:
+            return 0, []
+        ok_count = 0
+        failed = []
+        url = f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}"
+        headers = {**self.headers, 'Prefer': 'resolution=merge-duplicates,return=minimal'}
+
+        for i in range(0, len(rows), batch_size):
+            chunk = rows[i:i + batch_size]
+            try:
+                response = self._http.post(url, headers=headers, content=json.dumps(chunk))
+                response.raise_for_status()
+                ok_count += len(chunk)
+            except httpx.HTTPStatusError as e:
+                code = f"http_{e.response.status_code // 100}xx"
+                detail = (e.response.text or '')[:4000]
+                for row in chunk:
+                    failed.append((row, {
+                        'code': code,
+                        'detail': detail,
+                        'status': e.response.status_code,
+                    }))
+            except httpx.RequestError as e:
+                for row in chunk:
+                    failed.append((row, {
+                        'code': 'network_error',
+                        'detail': str(e)[:4000],
+                        'status': 0,
+                    }))
+        return ok_count, failed
+
     def insert(self, table: str, rows: list, batch_size: int = 200) -> int:
         """Plain INSERT (no upsert) with retry. For full-refresh tables."""
         if not rows:
@@ -156,19 +198,14 @@ class SupabaseClient:
         except Exception as exc:
             _logger.warning('patch %s: %s', table, exc)
 
-    def rpc(self, function: str, params: dict) -> dict | None:
-        """Call a Supabase RPC function."""
-        try:
-            resp = self._http.post(
-                f'{self.url}/rest/v1/rpc/{function}',
-                content=json.dumps(params, default=str),
-                headers=self.headers,
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except Exception as exc:
-            _logger.warning('rpc %s: %s', function, exc)
+    def rpc(self, name: str, params: dict):
+        """Call a Postgres function via PostgREST RPC endpoint."""
+        url = f"{self.url}/rest/v1/rpc/{name}"
+        response = self._http.post(url, content=json.dumps(params or {}))
+        response.raise_for_status()
+        if response.status_code == 204 or not response.content:
             return None
+        return response.json()
 
     def close(self):
         self._http.close()
