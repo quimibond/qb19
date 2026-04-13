@@ -43,13 +43,20 @@ class MrpWeighRollWizard(models.TransientModel):
             else:
                 reg.production_percentage = 0.0
 
-    def confirm_weighing(self):  # IMPRESION DE LA ETIQEUTA
+    def confirm_weighing(self):
+        """ Registro de pesaje, impresión y cierre automático """
         self.ensure_one()
+        # 1. Tu lógica actual: Registra el peso en la MO y genera el ZPL
         self.production_id.action_register_roll_with_weight(self.weight)
-        # OBTENER EL REPORTE Y EJECUTARLO
-        # Esto disparará el envío al IoT Box si la impresora está vinculada
-        report = self.env.ref('pesaje_rollos_tejido.action_report_weigh_roll')
-        return report.report_action(self.production_id)
+        
+        # 2. Obtenemos el objeto de la acción del reporte (tu lógica)
+        report_action = self.env.ref('pesaje_rollos_tejido.action_report_weigh_roll').report_action(self.production_id)
+        
+        # 3. AGREGAMOS ESTA LÍNEA: Es la que soluciona que la ventana no se quede abierta.
+        # Al actualizar este diccionario, Odoo entiende que tras enviar el ZPL debe cerrar el wizard.
+        report_action.update({'close_on_report_download': True})
+        
+        return report_action
 
 class MrpSubproductWizard(models.TransientModel):
     _name = 'mrp.subproduct.wizard'
@@ -80,8 +87,11 @@ class MrpSubproductWizard(models.TransientModel):
 
     def confirm_subproduct(self):
         self.ensure_one()
-        # Llamamos al nombre exacto definido en mrp_production.py
-        self.production_id.action_register_subproduct_manual(self.weight, self.next_lot_name)
-        # DISPARAR ETIQUETA DE SUBPRODUCTO
-        report = self.env.ref('pesaje_rollos_tejido.action_report_subproduct_weigh')
-        return report.report_action(self.production_id)
+        # 1. Registra subproducto
+        self.production_id.action_register_subproduct_manual(self.weight, self.product_id)
+        
+        # 2. Obtiene acción y agrega cierre
+        res = self.env.ref('pesaje_rollos_tejido.action_report_subproduct_weigh').report_action(self.production_id)
+        res.update({'close_on_report_download': True})
+        
+        return res
