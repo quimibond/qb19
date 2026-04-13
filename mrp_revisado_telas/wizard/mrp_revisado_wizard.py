@@ -162,8 +162,10 @@ class MrpRevisadoWizard(models.TransientModel):
         # Punto 2: Impresión de etiqueta SOLO si hubo cambio de peso real
         if hubo_desviacion_actual:
             self.production_id._print_zpl_label(self.lot_id.name, self.peso_actual, self.lot_id.name)
-            # DISPARO HACIA EL IOT VIRTUAL
-            # Buscamos la referencia al reporte definido en tu XML de revisado
-            return self.env.ref('mrp_revisado_telas.action_report_revisado_label').report_action(self.production_id)
+            
+            # DISPARO HACIA EL IOT VIRTUAL CON CIERRE DE VENTANA
+            report_action = self.env.ref('mrp_revisado_telas.action_report_revisado_label').report_action(self.production_id)
+            report_action.update({'close_on_report_download': True})
+            return report_action
 
         return {'type': 'ir.actions.client', 'tag': 'reload'}

@@ -67,20 +67,19 @@ class MrpProduction(models.Model):
                     reg.rollos_requeridos_count = 0
 
     def _print_zpl_label(self, lote_name, peso, nombre_producto):
-        """ Genera el código ZPL para la etiqueta de tela revisada """
+        """ Genera etiqueta para Tela Revisada (10x7.5cm) - Código 128 """
         self.ensure_one()
-        ahora = fields.Datetime.now()
+        ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         
-        # Diseño de la etiqueta (puedes ajustar las coordenadas ^FO)
-        zpl = f"""^XA^PW812^LL1218^CI28^FO20,20^GB770,1170,4^FS
-^FO50,60^A0N,30,30^FDFECHA REVISADO: {ahora}^FS
-^FO50,110^A0N,40,40^FDPRODUCTO: {nombre_producto[:30]}^FS
-^FO50,170^A0N,30,30^FDORDEN: {self.name}^FS
-^FO180,280^A0N,180,180^FD{peso:0.3f} KG^FS
-^FO50,550^A0N,60,60^FDLOTE: {lote_name}^FS
-^FO100,700^BQN,2,10^FDQA,{lote_name}^FS^XZ"""
-        
-        # GUARDAR EN EL CAMPO QUE LEE LA PLANTILLA XML
+        # PW812 = 10cm | LL609 = 7.5cm | BC = Código 128
+        zpl = f"""^XA^PW812^LL609^CI28
+^FO40,40^A0N,25,25^FDFECHA REVISADO: {ahora}^FS
+^FO40,85^A0N,30,30^FDOF: {self.name}^FS
+^FO40,130^A0N,25,25^FDPRODUCTO: {nombre_producto[:45]}^FS
+^FO380,210^A0N,150,150^FD{peso:0.3f} KG^FS
+^FO40,380^A0N,45,45^FDLOTE: {lote_name}^FS
+^FO40,440^BCN,100,Y,N,N^FD{lote_name}^FS
+^XZ"""
         self.last_zpl_label = zpl
         return True
 

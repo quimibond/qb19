@@ -187,34 +187,39 @@ class MrpProduction(models.Model):
         return True
 
     def _print_zpl_label(self, lot_name, weight, barcode_data):
-        """ Genera etiqueta ZPL para el rollo (Pesaje y Revisado) """
+        """ Genera etiqueta ZPL para el rollo (Pesaje Original) """
         self.ensure_one()
-        # Punto 1: Obtener fecha, hora y centro de trabajo actual
-        ahora = fields.Datetime.context_timestamp(self, datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')
+        ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
         wc_name = current_wo.workcenter_id.name if current_wo else "N/A"
 
-        zpl = f"""^XA^PW812^LL1218^CI28^FO20,20^GB770,1170,4^FS
-^FO50,60^A0N,30,30^FDFECHA: {ahora}^FS
-^FO50,110^A0N,40,40^FDPRODUCTO: {self.product_id.display_name[:30]}^FS
-^FO50,170^A0N,30,30^FDWC: {wc_name} | OF: {self.name}^FS
-^FO180,280^A0N,180,180^FD{weight:0.3f} KG^FS
-^FO50,550^A0N,60,60^FDLOTE: {lot_name}^FS
-^FO100,700^BQN,2,10^FDQA,{lot_name}^FS^XZ"""
+        # PW812 = 10cm | LL609 = 7.5cm | BC = Código 128
+        zpl = f"""^XA^PW812^LL609^CI28
+^FO40,40^A0N,25,25^FDFECHA/HORA: {ahora}^FS
+^FO40,80^A0N,30,30^FDWC: {wc_name[:25]}^FS
+^FO40,120^A0N,35,35^FDOF: {self.name}^FS
+^FO40,165^A0N,25,25^FDPRODUCTO: {self.product_id.name[:45]}^FS
+^FO380,210^A0N,150,150^FD{weight:0.3f} KG^FS
+^FO40,380^A0N,45,45^FDLOTE: {lot_name}^FS
+^FO40,440^BCN,100,Y,N,N^FD{lot_name}^FS
+^XZ"""
         self.last_zpl_label = zpl
         return True
 
     def _print_subproduct_zpl(self, product, weight, lot_name):
-        """ Genera etiqueta ZPL para el subproducto """
+        """ Genera etiqueta ZPL para el subproducto (Código 128) """
         self.ensure_one()
-        # Punto 3: Datos requeridos para subproducto
-        ahora = fields.Datetime.context_timestamp(self, datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')
+        ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         
-        zpl = f"""^XA^CI28^FO50,50^A0N,30,30^FDFECHA: {ahora}^FS
-^FO50,100^A0N,40,40^FDPRODUCTO: {product.name[:30]}^FS
-^FO50,160^A0N,40,40^FDLOTE: {lot_name}^FS
-^FO50,220^A0N,60,60^FDPESO: {weight:0.3f} KG^FS
-^FO100,320^BQN,2,8^FDQA,{lot_name}^FS^XZ"""
+        zpl = f"""^XA^PW812^LL609^CI28
+^FO40,40^A0N,40,40^FDSUBPRODUCTO^FS
+^FO40,90^A0N,25,25^FDFECHA: {ahora}^FS
+^FO40,135^A0N,25,25^FDPRODUCTO: {product.name[:45]}^FS
+^FO40,180^A0N,25,25^FDORIGEN: {self.name}^FS
+^FO380,230^A0N,150,150^FD{weight:0.3f} KG^FS
+^FO40,410^A0N,45,45^FDLOTE: {lot_name}^FS
+^FO40,470^BCN,100,Y,N,N^FD{lot_name}^FS
+^XZ"""
         self.last_zpl_label = zpl
         return True
     
