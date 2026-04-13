@@ -136,6 +136,10 @@ class QuimibondSync(models.TransientModel):
     FULL_PUSH_METHODS = frozenset([
         'employees', 'departments', 'orderpoints', 'chart_of_accounts',
         'crm_leads', 'bank_balances', 'users',
+        # Added 2026-04-13: these tables were stuck at near-zero rows because
+        # incremental write_date filter missed records not recently edited.
+        'products', 'sale_orders', 'purchase_orders', 'invoice_lines',
+        'deliveries', 'manufacturing', 'account_payments',
     ])
 
     def _run_push(self, client, label, method_fn, last_sync=None):
@@ -826,6 +830,21 @@ class QuimibondSync(models.TransientModel):
             lines = SOLine.search(so_domain)
             for l in lines:
                 o = l.order_id
+                # MXN conversion: use order's amount_total vs company currency
+                currency = o.currency_id.name if o.currency_id else 'MXN'
+                mxn_ratio = 1.0
+                if currency != 'MXN':
+                    try:
+                        # sale.order doesn't have amount_total_signed, use
+                        # the currency rate at order date as approximation
+                        company_cur = o.company_id.currency_id if o.company_id else None
+                        if company_cur and o.currency_id and company_cur != o.currency_id:
+                            mxn_ratio = o.currency_id._convert(
+                                1.0, company_cur, o.company_id,
+                                o.date_order or datetime.now().date(),
+                            )
+                    except Exception:
+                        pass
                 rows.append({
                     'odoo_line_id': l.id,
                     'odoo_order_id': o.id,
@@ -838,10 +857,14 @@ class QuimibondSync(models.TransientModel):
                     'product_name': l.product_id.name if l.product_id else '',
                     'product_ref': l.product_id.default_code or '' if l.product_id else '',
                     'qty': round(l.product_uom_qty, 2),
+                    'qty_delivered': round(getattr(l, 'qty_delivered', 0) or 0, 2),
+                    'qty_invoiced': round(getattr(l, 'qty_invoiced', 0) or 0, 2),
                     'price_unit': round(l.price_unit, 2),
                     'discount': round(l.discount, 2),
                     'subtotal': round(l.price_subtotal, 2),
-                    'currency': o.currency_id.name if o.currency_id else 'MXN',
+                    'subtotal_mxn': round(l.price_subtotal * mxn_ratio, 2),
+                    'currency': currency,
+                    'salesperson_name': o.user_id.name if o.user_id else None,
                 })
         except Exception as exc:
             _logger.warning('Sale order lines: %s', exc)
@@ -858,6 +881,18 @@ class QuimibondSync(models.TransientModel):
             po_lines = POLine.search(po_domain)
             for l in po_lines:
                 o = l.order_id
+                currency = o.currency_id.name if o.currency_id else 'MXN'
+                mxn_ratio = 1.0
+                if currency != 'MXN':
+                    try:
+                        company_cur = o.company_id.currency_id if o.company_id else None
+                        if company_cur and o.currency_id and company_cur != o.currency_id:
+                            mxn_ratio = o.currency_id._convert(
+                                1.0, company_cur, o.company_id,
+                                o.date_order or datetime.now().date(),
+                            )
+                    except Exception:
+                        pass
                 rows.append({
                     'odoo_line_id': -l.id,  # Negative to avoid collision with sale lines
                     'odoo_order_id': o.id,
@@ -870,10 +905,14 @@ class QuimibondSync(models.TransientModel):
                     'product_name': l.product_id.name if l.product_id else '',
                     'product_ref': l.product_id.default_code or '' if l.product_id else '',
                     'qty': round(getattr(l, 'product_uom_qty', l.product_qty), 2),
+                    'qty_delivered': round(getattr(l, 'qty_received', 0) or 0, 2),
+                    'qty_invoiced': round(getattr(l, 'qty_invoiced', 0) or 0, 2),
                     'price_unit': round(l.price_unit, 2),
                     'discount': 0,
                     'subtotal': round(l.price_subtotal, 2),
-                    'currency': o.currency_id.name if o.currency_id else 'MXN',
+                    'subtotal_mxn': round(l.price_subtotal * mxn_ratio, 2),
+                    'currency': currency,
+                    'salesperson_name': o.user_id.name if o.user_id else None,
                 })
         except Exception as exc:
             _logger.warning('Purchase order lines: %s', exc)
@@ -1011,6 +1050,36 @@ class QuimibondSync(models.TransientModel):
                     delta = (pay_date - inv.invoice_date).days
                     days_to_pay = max(delta, 0)
 
+                # MXN amounts: amount_total_signed is always in company
+                # currency (MXN).  For MXN invoices the value equals
+                # amount_total; for USD/EUR it is the converted amount.
+                # sign: out_invoice positive, in_invoice negative by Odoo
+                # convention — we store absolute value so sums make sense.
+                amt_signed = getattr(inv, 'amount_total_signed', None)
+                amount_total_mxn = round(abs(amt_signed), 2) if amt_signed is not None else None
+                # amount_untaxed_signed doesn't exist, derive from ratio
+                if amount_total_mxn and inv.amount_total:
+                    ratio = abs(amt_signed) / inv.amount_total if inv.amount_total else 1.0
+                    amount_untaxed_mxn = round(inv.amount_untaxed * ratio, 2)
+                    amount_residual_mxn = round(inv.amount_residual * ratio, 2)
+                else:
+                    amount_untaxed_mxn = round(inv.amount_untaxed, 2)
+                    amount_residual_mxn = round(inv.amount_residual, 2)
+
+                # Salesperson: from linked sale order or invoice's user
+                salesperson_name = None
+                salesperson_user_id = None
+                try:
+                    # Prefer the invoice's own user_id (commercial responsible)
+                    if inv.invoice_user_id:
+                        salesperson_name = inv.invoice_user_id.name
+                        salesperson_user_id = inv.invoice_user_id.id
+                    elif inv.user_id:
+                        salesperson_name = inv.user_id.name
+                        salesperson_user_id = inv.user_id.id
+                except Exception:
+                    pass
+
                 rows.append({
                     'odoo_partner_id': pid,
                     'name': inv.name,
@@ -1020,6 +1089,9 @@ class QuimibondSync(models.TransientModel):
                     'amount_tax': round(inv.amount_tax, 2) if hasattr(inv, 'amount_tax') else None,
                     'amount_untaxed': round(inv.amount_untaxed, 2) if hasattr(inv, 'amount_untaxed') else None,
                     'amount_paid': round(inv.amount_total - inv.amount_residual, 2),
+                    'amount_total_mxn': amount_total_mxn,
+                    'amount_untaxed_mxn': amount_untaxed_mxn,
+                    'amount_residual_mxn': amount_residual_mxn,
                     'currency': inv.currency_id.name if inv.currency_id else 'MXN',
                     'invoice_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
                     'due_date': inv.invoice_date_due.strftime('%Y-%m-%d') if inv.invoice_date_due else None,
@@ -1031,6 +1103,8 @@ class QuimibondSync(models.TransientModel):
                     'payment_term': pay_term,
                     'cfdi_uuid': cfdi_uuid,
                     'cfdi_sat_state': cfdi_sat,
+                    'salesperson_name': salesperson_name,
+                    'salesperson_user_id': salesperson_user_id,
                     'ref': inv.ref or '',
                     'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
                 })
@@ -1100,6 +1174,13 @@ class QuimibondSync(models.TransientModel):
                                          'payment_term', 'tax', 'rounding'):
                     continue
 
+                # MXN conversion ratio from parent invoice
+                inv_currency = inv.currency_id.name if inv.currency_id else 'MXN'
+                mxn_ratio = 1.0
+                amt_signed = getattr(inv, 'amount_total_signed', None)
+                if amt_signed is not None and inv.amount_total:
+                    mxn_ratio = abs(amt_signed) / inv.amount_total
+
                 rows.append({
                     'odoo_line_id': line.id,
                     'odoo_move_id': inv.id,
@@ -1115,6 +1196,9 @@ class QuimibondSync(models.TransientModel):
                     'discount': round(line.discount, 2),
                     'price_subtotal': round(line.price_subtotal, 2),
                     'price_total': round(line.price_total, 2),
+                    'currency': inv_currency,
+                    'price_subtotal_mxn': round(line.price_subtotal * mxn_ratio, 2),
+                    'price_total_mxn': round(line.price_total * mxn_ratio, 2),
                 })
 
         return client.upsert('odoo_invoice_lines', rows,
@@ -1127,6 +1211,11 @@ class QuimibondSync(models.TransientModel):
 
         Odoo uses bank reconciliation (not account.payment records),
         so we extract payment info from invoice amount_residual changes.
+
+        NOTE: This is a "proxy" payment table. odoo_account_payments has the
+        real account.payment records with bank/method details. This table is
+        kept for backward-compat but now includes payment_category and
+        correct payment_date from account.partial.reconcile.
         """
         core = IngestionCore(client)
         run_id, core_watermark = core.start_run(
@@ -1143,7 +1232,7 @@ class QuimibondSync(models.TransientModel):
             Move = self.env['account.move'].sudo()
 
             # Get invoices that have been paid or partially paid
-            # Include both customer (out_) and supplier (in_) invoices
+            # EXCLUDE payroll (entry type) — only customer/supplier invoices
             domain = [
                 ('move_type', 'in', [
                     'out_invoice', 'out_refund',
@@ -1156,6 +1245,9 @@ class QuimibondSync(models.TransientModel):
                 domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
             invoices = Move.search(domain)
 
+            # Real payment dates from account.partial.reconcile
+            payment_date_map = _build_payment_date_map(self.env, invoices.ids)
+
             rows = []
             for inv in invoices:
                 pid = _commercial_partner_id(inv.partner_id)
@@ -1166,16 +1258,41 @@ class QuimibondSync(models.TransientModel):
                 if amount_paid <= 0:
                     continue
 
-                # Use write_date as proxy for payment date (closer to actual payment
-                # than invoice_date). invoice_date is when invoice was created, not paid.
-                payment_date = inv.write_date or inv.invoice_date
+                # Determine payment category
+                if inv.move_type in ('out_invoice', 'out_refund'):
+                    pay_category = 'customer'
+                elif inv.move_type in ('in_invoice', 'in_refund'):
+                    pay_category = 'supplier'
+                else:
+                    pay_category = 'other'
+
+                # Use REAL payment date from reconciliation (not write_date)
+                real_pay_date = payment_date_map.get(inv.id)
+                if real_pay_date:
+                    payment_date_str = real_pay_date.strftime('%Y-%m-%d')
+                elif inv.invoice_date:
+                    # Fallback: invoice_date (better than write_date)
+                    payment_date_str = inv.invoice_date.strftime('%Y-%m-%d')
+                else:
+                    payment_date_str = None
+
+                # MXN conversion
+                amt_signed = getattr(inv, 'amount_total_signed', None)
+                if amt_signed is not None and inv.amount_total:
+                    mxn_ratio = abs(amt_signed) / inv.amount_total
+                    amount_mxn = round(amount_paid * mxn_ratio, 2)
+                else:
+                    amount_mxn = round(amount_paid, 2)
+
                 rows.append({
                     'odoo_partner_id': pid,
                     'name': f'PAY-{inv.name}',
                     'payment_type': 'inbound' if inv.move_type in ('out_invoice', 'in_refund') else 'outbound',
                     'amount': round(amount_paid, 2),
+                    'amount_mxn': amount_mxn,
                     'currency': inv.currency_id.name if inv.currency_id else 'MXN',
-                    'payment_date': payment_date.strftime('%Y-%m-%d') if payment_date else None,
+                    'payment_date': payment_date_str,
+                    'payment_category': pay_category,
                     'state': 'posted',
                     'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
                 })
@@ -1213,8 +1330,10 @@ class QuimibondSync(models.TransientModel):
     def _push_deliveries(self, client: SupabaseClient, last_sync=None) -> int:
         Picking = self.env['stock.picking'].sudo()
         cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        # Include BOTH outgoing (to customers) and incoming (from suppliers)
+        # for full OTD tracking on both sides of the supply chain.
         domain = [
-            ('picking_type_code', '=', 'outgoing'),
+            ('picking_type_code', 'in', ['outgoing', 'incoming']),
             '|',
             ('state', 'not in', ['done', 'cancel']),
             ('date_done', '>=', cutoff),
@@ -1243,6 +1362,7 @@ class QuimibondSync(models.TransientModel):
                 'odoo_partner_id': pid,
                 'name': pk.name,
                 'picking_type': pk.picking_type_id.name if pk.picking_type_id else '',
+                'picking_type_code': pk.picking_type_code or '',
                 'origin': pk.origin or '',
                 'scheduled_date': pk.scheduled_date.strftime('%Y-%m-%d') if pk.scheduled_date else None,
                 'date_done': pk.date_done.isoformat() if pk.date_done else None,
@@ -1472,6 +1592,23 @@ class QuimibondSync(models.TransientModel):
             except Exception:
                 pass
 
+            # MXN conversion for multi-currency orders
+            currency = o.currency_id.name if o.currency_id else 'MXN'
+            amount_total_mxn = round(o.amount_total, 2)
+            amount_untaxed_mxn = round(o.amount_untaxed, 2)
+            if currency != 'MXN':
+                try:
+                    company_cur = o.company_id.currency_id if o.company_id else None
+                    if company_cur and o.currency_id and company_cur != o.currency_id:
+                        rate = o.currency_id._convert(
+                            1.0, company_cur, o.company_id,
+                            o.date_order or datetime.now().date(),
+                        )
+                        amount_total_mxn = round(o.amount_total * rate, 2)
+                        amount_untaxed_mxn = round(o.amount_untaxed * rate, 2)
+                except Exception:
+                    pass
+
             rows.append({
                 'odoo_order_id': o.id,
                 'name': o.name,
@@ -1482,9 +1619,11 @@ class QuimibondSync(models.TransientModel):
                 'team_name': o.team_id.name if hasattr(o, 'team_id') and o.team_id else None,
                 'amount_total': round(o.amount_total, 2),
                 'amount_untaxed': round(o.amount_untaxed, 2),
+                'amount_total_mxn': amount_total_mxn,
+                'amount_untaxed_mxn': amount_untaxed_mxn,
                 'margin': margin,
                 'margin_percent': margin_pct,
-                'currency': o.currency_id.name if o.currency_id else 'MXN',
+                'currency': currency,
                 'state': o.state,
                 'date_order': o.date_order.strftime('%Y-%m-%d') if o.date_order else None,
                 'commitment_date': o.commitment_date.strftime('%Y-%m-%d') if hasattr(o, 'commitment_date') and o.commitment_date else None,
@@ -1515,6 +1654,23 @@ class QuimibondSync(models.TransientModel):
         for o in orders:
             pid = _commercial_partner_id(o.partner_id) if o.partner_id else None
 
+            # MXN conversion
+            currency = o.currency_id.name if o.currency_id else 'MXN'
+            amount_total_mxn = round(o.amount_total, 2)
+            amount_untaxed_mxn = round(o.amount_untaxed, 2)
+            if currency != 'MXN':
+                try:
+                    company_cur = o.company_id.currency_id if o.company_id else None
+                    if company_cur and o.currency_id and company_cur != o.currency_id:
+                        rate = o.currency_id._convert(
+                            1.0, company_cur, o.company_id,
+                            o.date_order or datetime.now().date(),
+                        )
+                        amount_total_mxn = round(o.amount_total * rate, 2)
+                        amount_untaxed_mxn = round(o.amount_untaxed * rate, 2)
+                except Exception:
+                    pass
+
             rows.append({
                 'odoo_order_id': o.id,
                 'name': o.name,
@@ -1524,7 +1680,9 @@ class QuimibondSync(models.TransientModel):
                 'buyer_user_id': o.user_id.id if o.user_id else None,
                 'amount_total': round(o.amount_total, 2),
                 'amount_untaxed': round(o.amount_untaxed, 2),
-                'currency': o.currency_id.name if o.currency_id else 'MXN',
+                'amount_total_mxn': amount_total_mxn,
+                'amount_untaxed_mxn': amount_untaxed_mxn,
+                'currency': currency,
                 'state': o.state,
                 'date_order': o.date_order.strftime('%Y-%m-%d') if o.date_order else None,
                 'date_approve': o.date_approve.strftime('%Y-%m-%d') if hasattr(o, 'date_approve') and o.date_approve else None,
@@ -1734,6 +1892,34 @@ class QuimibondSync(models.TransientModel):
         except Exception:
             pass
 
+        # Month name → number mapping for Spanish locale (Odoo read_group
+        # returns localized month names like "enero 2026", "febrero 2026").
+        _MONTH_ES = {
+            'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+            'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+            'septiembre': '09', 'octubre': '10', 'noviembre': '11',
+            'diciembre': '12',
+        }
+        # English fallback
+        _MONTH_EN = {
+            'january': '01', 'february': '02', 'march': '03', 'april': '04',
+            'may': '05', 'june': '06', 'july': '07', 'august': '08',
+            'september': '09', 'october': '10', 'november': '11',
+            'december': '12',
+        }
+
+        def _normalize_period(raw: str) -> str:
+            """Convert 'abril 2026' or 'April 2026' → '2026-04'."""
+            if not raw:
+                return raw
+            parts = raw.strip().lower().split()
+            if len(parts) == 2:
+                month_name, year = parts
+                month_num = _MONTH_ES.get(month_name) or _MONTH_EN.get(month_name)
+                if month_num and year.isdigit():
+                    return f'{year}-{month_num}'
+            return raw  # fallback: return as-is
+
         rows = []
         for g in groups:
             acc_id = g['account_id'][0] if g['account_id'] else None
@@ -1741,8 +1927,8 @@ class QuimibondSync(models.TransientModel):
                 continue
 
             acc_info = account_cache.get(acc_id, {})
-            # date:month returns 'April 2026' format
-            month_str = g.get('date:month', '')
+            # date:month returns 'abril 2026' format — normalize to '2026-04'
+            month_str = _normalize_period(g.get('date:month', ''))
 
             rows.append({
                 'odoo_account_id': acc_id,
