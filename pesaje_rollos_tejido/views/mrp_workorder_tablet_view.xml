@@ -21,11 +21,15 @@
         <field name="model">mrp.workorder</field>
         <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
         <field name="arch" type="xml">
-            <xpath expr="//list" position="inside">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="product_id_category_name" column_invisible="1"/>
+                
                 <button name="%(pesaje_rollos_tejido.action_custom_weighing)d" 
-                        type="action" string="PESAR" class="btn-primary" icon="fa-balance-scale"/>
+                        type="action" string="PESAR" class="btn-primary" icon="fa-balance-scale"
+                        invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'"/>
                 <button name="%(pesaje_rollos_tejido.action_mrp_subproduct_wizard)d" 
-                        type="action" string="SUBPRODUCTO" class="btn-secondary" icon="fa-recycle"/>
+                        type="action" string="SUBPRODUCTO" class="btn-secondary" icon="fa-recycle"
+                        invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'"/>
             </xpath>
         </field>
     </record>

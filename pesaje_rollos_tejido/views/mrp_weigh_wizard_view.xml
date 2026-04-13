@@ -21,7 +21,7 @@
                             <group string="PROGRESO DE PRODUCCIÓN">
                                 <field name="qty_to_produce" readonly="1"/>
                                 <field name="qty_produced" readonly="1" decoration-success="1" style="font-weight: bold;"/>
-                                <field name="qty_produced" widget="progressbar" nolabel="1" max_field="qty_to_produce"/>
+                                <field name="production_percentage" widget="percentage"/>
                             </group>
                         </div>
                         <div class="col-6">

@@ -13,6 +13,11 @@ class MrpWeighRollWizard(models.TransientModel):
     qty_to_produce = fields.Float(related="production_id.product_qty", string="Total a Producir")
     qty_produced = fields.Float(related="production_id.qty_producing", string="Producido al Momento")
     roll_count = fields.Integer(related="production_id.roll_count", string="Rollos Registrados")
+
+    production_percentage = fields.Float(
+        string="Porcentaje de Producción", 
+        compute="_compute_production_percentage"
+    )
     
     next_lot_name = fields.Char(string="Número de Lote a Generar", compute="_compute_next_lot_name")
     weight = fields.Float(string="Peso del Rollo Actual (kg)", digits=(12, 3), required=True)
@@ -25,6 +30,18 @@ class MrpWeighRollWizard(models.TransientModel):
                 reg.next_lot_name = f"{mo_identifier}-{(reg.production_id.roll_count + 1):04d}"
             else:
                 reg.next_lot_name = False
+
+    @api.depends('weight', 'qty_produced', 'qty_to_produce')
+    def _compute_production_percentage(self):
+        for reg in self:
+            # Sumamos lo ya producido en la OF + el peso que está en la báscula ahorita
+            total_con_este_rollo = reg.qty_produced + reg.weight
+            
+            if reg.qty_to_produce > 0:
+                # Calculamos el avance total real incluyendo el rollo actual
+                reg.production_percentage = total_con_este_rollo / reg.qty_to_produce
+            else:
+                reg.production_percentage = 0.0
 
     def confirm_weighing(self):
         self.ensure_one()

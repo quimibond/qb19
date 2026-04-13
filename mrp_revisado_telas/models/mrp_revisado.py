@@ -69,6 +69,12 @@ class MrpProduction(models.Model):
 class MrpWorkorder(models.Model):
     _inherit = 'mrp.workorder'
 
+    product_id_category_name = fields.Char(
+        related='production_id.product_id.categ_id.display_name',
+        string="Categoria de Producto",
+        readonly=True
+    )
+
     def button_finish(self):
         """ Validación de cierre de la Orden de Trabajo (Tableta/Lista) """
         for wo in self:
@@ -117,6 +123,7 @@ class StockLot(models.Model):
     _inherit = 'stock.lot'
     needs_review = fields.Boolean(string="Necesita Revisión", default=False)
     is_reviewed = fields.Boolean(string="Revisado", default=False)
+    production_id = fields.Many2one('mrp.production', string="Orden de Fabricación")
 
 class MrpWorkcenter(models.Model):
     _inherit = 'mrp.workcenter'

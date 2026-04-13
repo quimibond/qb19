@@ -7,18 +7,23 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="after">
                 <field name="show_barcode_scan" invisible="1"/>
-                <div class="alert alert-info" role="alert" 
-                     invisible="not show_barcode_scan or state in ['done', 'cancel']">
+                
+                <div class="alert alert-info" role="alert" invisible="not show_barcode_scan or state in ['done', 'cancel']">
+                    <div style="margin-bottom: 15px; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;">
+                        <button name="action_prepare_for_physical_scan" 
+                                string="LIMPIAR OPERACIÓN PARA ESCANEO FÍSICO" 
+                                type="object" 
+                                class="btn-danger" 
+                                confirm="¿Desea eliminar las líneas precargadas para iniciar el escaneo físico?"/>
+                    </div>
+                    
                     <group>
                         <field name="barcode_scan_batch" 
-                               placeholder="COLOQUE EL CURSOR AQUÍ Y ESCANEE..." 
-                               default_focus="1"
-                               autocomplete="off"
-                               force_save="1"/>
+                               string="ESCANEAR ETIQUETA"
+                               placeholder="ESCANEE AQUÍ..." 
+                               default_focus="1" 
+                               autocomplete="off"/>
                     </group>
-                    <p style="margin-bottom:0px;">
-                        <strong>Surtido Toluca:</strong> Al escanear, el sistema procesará el lote y recargará la página automáticamente.
-                    </p>
                 </div>
             </xpath>
         </field>

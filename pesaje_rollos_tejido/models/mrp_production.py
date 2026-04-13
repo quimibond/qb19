@@ -6,8 +6,15 @@ import datetime
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
+    product_id_category_name = fields.Char(
+        related='product_id.categ_id.display_name', 
+        string="Categoría del Producto", 
+        store=False
+    )
+
     roll_count = fields.Integer(string="Contador de Rollos", default=0, copy=False)
     last_zpl_label = fields.Text(string="Última Etiqueta ZPL", readonly=True, copy=False)
+
 
     def action_register_roll_with_weight(self, weight):
         """ 
@@ -106,23 +113,44 @@ class MrpProduction(models.Model):
             'company_id': self.company_id.id,
         })
 
-        current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
 
-        self.env['stock.move.line'].create({
-            'move_id': sub_move.id,
-            'product_id': sub_move.product_id.id,
-            'lot_id': new_lot.id,
-            'lot_name': lot_name,
-            'quantity': weight,
-            'location_id': sub_move.location_id.id,
-            'location_dest_id': sub_move.location_dest_id.id,
-            'workorder_id': current_wo.id if current_wo else False,
-            'production_id': self.id,
-        })
+        current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
+        
+        move_line = sub_move.move_line_ids.filtered(lambda l: not l.lot_id)[:1]
+        
+              # Para que Odoo no borre mov al cerrar WO se marca cantidad y picked
+        if move_line:
+            move_line.write({
+                'lot_id': new_lot.id,
+                'quantity': weight,
+                'picked': True,
+                'workorder_id': current_wo.id if current_wo else False,
+            })
+        else:
+            self.env['stock.move.line'].create({
+                'move_id': sub_move.id,
+                'product_id': sub_move.product_id.id,
+                'lot_id': new_lot.id,
+                'lot_name': lot_name,
+                'quantity': weight,
+                'location_id': sub_move.location_id.id,
+                'location_dest_id': sub_move.location_dest_id.id,
+                'workorder_id': current_wo.id if current_wo else False,
+                'production_id': self.id,
+                'picked': True, # Se marca linea de detalle como procesada
+            })
+
+        sub_move.move_line_ids.filtered(lambda l: not l.lot_id or l.quantity == 0).unlink()
+
+        sub_move._set_quantity_done(weight)
 
         self.qty_producing += weight
         if current_wo:
             current_wo.qty_produced += weight
+
+        for line in sub_move.move_line_ids:
+            if not line.lot_id and line.lot_name:
+                line.lot_id = new_lot.id
 
         # Punto 11: Registrar la diferencia como merma si el subproducto es menor a la revisión
         diff_merma = total_diff_revisado - weight
