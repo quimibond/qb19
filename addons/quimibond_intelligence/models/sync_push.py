@@ -589,12 +589,15 @@ class QuimibondSync(models.TransientModel):
                 if cp and cp.id != p.id:
                     company_cn = (cp.name or '').strip() or None
 
-            for email in emails:
+            for i, email in enumerate(emails):
+                # Always set odoo_partner_id on the FIRST email so we never
+                # lose the Odoo link. Previously, partners with 2+ emails got
+                # None on all entries — breaking joins to invoices/orders.
                 contacts.append({
                     'email': email,
                     'name': contact_name,
                     'contact_type': 'external',
-                    'odoo_partner_id': p.id if len(emails) == 1 else None,
+                    'odoo_partner_id': p.id if i == 0 else None,
                     'is_customer': is_customer,
                     'is_supplier': is_supplier,
                 })
@@ -654,9 +657,12 @@ class QuimibondSync(models.TransientModel):
 
         synced = 0
         if companies:
+            # Use odoo_partner_id as conflict key (not canonical_name) so that
+            # company renames in Odoo update the existing row instead of
+            # creating a duplicate. All Odoo-sourced companies have partner_id.
             synced += client.upsert(
                 'companies', list(companies.values()),
-                on_conflict='canonical_name', batch_size=100,
+                on_conflict='odoo_partner_id', batch_size=100,
             )
             # Backfill financial data via RPC (PostgREST upsert may miss
             # columns added after schema cache was built)
@@ -2019,7 +2025,15 @@ class QuimibondSync(models.TransientModel):
             _logger.info('account.journal not available, skipping')
             return 0
 
-        journals = Journal.search([('type', 'in', ['bank', 'cash'])])
+        # Only sync journals from active operating companies (filters out
+        # generic "Bank"/"Cash" journals from inactive/test companies that
+        # bloated the table from ~15 useful journals to 61 rows of noise).
+        Company = self.env['res.company'].sudo()
+        active_company_ids = Company.search([]).ids
+        journals = Journal.search([
+            ('type', 'in', ['bank', 'cash']),
+            ('company_id', 'in', active_company_ids),
+        ])
 
         rows = []
         for j in journals:
