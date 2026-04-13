@@ -88,6 +88,15 @@ class MrpRevisadoWizard(models.TransientModel):
 
     def confirmar_revisado(self):
         self.ensure_one()
+
+        # Validamos que el peso actual no sea superior al original
+        if self.peso_actual > self.peso_original:
+            raise UserError(_(
+                "Error de Validación:\n"
+                "El nuevo peso (%.3f kg) no puede ser mayor al peso original "
+                "del rollo (%.3f kg)."
+            ) % (self.peso_actual, self.peso_original))
+
         if not self.lot_id:
             raise UserError(_("Debe escanear un rollo válido antes de confirmar."))
 

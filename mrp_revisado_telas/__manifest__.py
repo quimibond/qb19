@@ -23,8 +23,9 @@
         'views/res_config_settings_views.xml',
         
         # 4. Vistas que heredan y agregan botones
-        # 'views/mrp_production_views.xml',
+        'views/mrp_production_views.xml',
         'views/stock_lot_views.xml',
+        'report/ir_actions_report.xml',
     ],
     'assets': {
         'web.assets_backend': [
