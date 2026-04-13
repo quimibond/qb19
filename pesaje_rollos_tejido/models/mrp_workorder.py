@@ -6,6 +6,7 @@ class MrpWorkorder(models.Model):
 
     product_id_category_name = fields.Char(
         related='production_id.product_id.categ_id.display_name',
+        string='Categoria de Producto',
         readonly=True
     )
 
