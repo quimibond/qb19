@@ -127,6 +127,69 @@ class QuimibondSync(models.TransientModel):
     _name = 'quimibond.sync'
     _description = 'Quimibond Sync Engine'
 
+    # Tablas que SIEMPRE hacen full push (no incremental), incluso cuando
+    # last_sync esta seteado. Son catalogos pequenos donde el riesgo de
+    # perderlos por incremental fallido es mayor al costo de re-enviarlos.
+    # Se detecto el 13-abr-2026 que chart_of_accounts (5d), orderpoints (8d),
+    # employees/departments (12d) y crm_leads (18d) quedaban stale porque
+    # el filtro write_date no los tocaba entre runs.
+    FULL_PUSH_METHODS = frozenset([
+        'employees', 'departments', 'orderpoints', 'chart_of_accounts',
+        'crm_leads', 'bank_balances', 'users',
+    ])
+
+    def _run_push(self, client, label, method_fn, last_sync=None):
+        """Ejecuta un metodo _push_* aislado: cualquier excepcion queda
+        capturada (no tumba el resto del sync) y loggea a Supabase
+        pipeline_logs con phase='odoo_push' — asi podemos auditar desde
+        el frontend sin necesidad de shell de Odoo.sh.
+
+        Para tablas en FULL_PUSH_METHODS fuerza last_sync=None.
+        """
+        method_start = datetime.now()
+        status = 'success'
+        error_msg = None
+        rows = 0
+        effective_last_sync = None if label in self.FULL_PUSH_METHODS else last_sync
+
+        try:
+            try:
+                rows = method_fn(client, last_sync=effective_last_sync) or 0
+            except TypeError:
+                # Metodos que no aceptan last_sync (ej: _push_activities)
+                rows = method_fn(client) or 0
+        except Exception as exc:
+            status = 'error'
+            error_msg = str(exc)[:500]
+            _logger.exception('Push %s failed', label)
+
+        elapsed = (datetime.now() - method_start).total_seconds()
+
+        # Loggea a Supabase (best-effort: si el log mismo falla, seguimos).
+        try:
+            client.insert('pipeline_logs', [{
+                'level': 'error' if status == 'error' else 'info',
+                'phase': 'odoo_push',
+                'message': (
+                    f'[{label}] {rows} rows pushed in {elapsed:.1f}s'
+                    if status == 'success'
+                    else f'[{label}] FAILED after {elapsed:.1f}s: {error_msg}'
+                ),
+                'details': {
+                    'method': label,
+                    'rows': rows,
+                    'status': status,
+                    'elapsed_s': round(elapsed, 1),
+                    'error': error_msg,
+                    'last_sync': last_sync.strftime('%Y-%m-%d %H:%M:%S') if last_sync else None,
+                    'full_push': label in self.FULL_PUSH_METHODS,
+                },
+            }])
+        except Exception as log_exc:
+            _logger.warning('Failed to log push metric: %s', log_exc)
+
+        return rows
+
     @api.model
     def push_to_supabase(self):
         """Main cron entry point: push all Odoo data to Supabase."""
@@ -158,30 +221,39 @@ class QuimibondSync(models.TransientModel):
 
         _start = datetime.now()
         try:
+            # Mapeo label → (metodo). _run_push aisla errores por metodo y
+            # loggea cada resultado a Supabase pipeline_logs (phase='odoo_push').
+            methods = [
+                ('contacts', self._push_contacts),
+                ('products', self._push_products),
+                ('order_lines', self._push_order_lines),
+                ('users', self._push_users),
+                ('invoices', self._push_invoices),
+                ('invoice_lines', self._push_invoice_lines),
+                ('payments', self._push_payments),
+                ('deliveries', self._push_deliveries),
+                ('crm_leads', self._push_crm_leads),
+                ('activities', self._push_activities),
+                ('manufacturing', self._push_manufacturing),
+                ('employees', self._push_employees),
+                ('departments', self._push_departments),
+                ('sale_orders', self._push_sale_orders),
+                ('purchase_orders', self._push_purchase_orders),
+                ('orderpoints', self._push_orderpoints),
+                ('account_payments', self._push_account_payments),
+                ('chart_of_accounts', self._push_chart_of_accounts),
+                ('account_balances', self._push_account_balances),
+                ('bank_balances', self._push_bank_balances),
+            ]
             totals = {}
-            totals['contacts'] = self._push_contacts(client, last_sync=last_sync)
-            totals['products'] = self._push_products(client, last_sync=last_sync)
-            totals['order_lines'] = self._push_order_lines(client, last_sync=last_sync)
-            totals['users'] = self._push_users(client, last_sync=last_sync)
-            totals['invoices'] = self._push_invoices(client, last_sync=last_sync)
-            totals['invoice_lines'] = self._push_invoice_lines(client, last_sync=last_sync)
-            totals['payments'] = self._push_payments(client, last_sync=last_sync)
-            totals['deliveries'] = self._push_deliveries(client, last_sync=last_sync)
-            totals['crm_leads'] = self._push_crm_leads(client, last_sync=last_sync)
-            totals['activities'] = self._push_activities(client)
-            totals['manufacturing'] = self._push_manufacturing(client, last_sync=last_sync)
-            totals['employees'] = self._push_employees(client, last_sync=last_sync)
-            totals['departments'] = self._push_departments(client, last_sync=last_sync)
-            totals['sale_orders'] = self._push_sale_orders(client, last_sync=last_sync)
-            totals['purchase_orders'] = self._push_purchase_orders(client, last_sync=last_sync)
-            totals['orderpoints'] = self._push_orderpoints(client, last_sync=last_sync)
-            totals['account_payments'] = self._push_account_payments(client, last_sync=last_sync)
-            totals['chart_of_accounts'] = self._push_chart_of_accounts(client, last_sync=last_sync)
-            totals['account_balances'] = self._push_account_balances(client, last_sync=last_sync)
-            totals['bank_balances'] = self._push_bank_balances(client, last_sync=last_sync)
+            for label, fn in methods:
+                totals[label] = self._run_push(client, label, fn, last_sync=last_sync)
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
+            failed = [k for k, v in totals.items() if v == 0]
             _logger.info('✓ Push to Supabase: %s', summary or 'no changes')
+            if failed:
+                _logger.warning('Push methods with 0 rows: %s', ', '.join(failed))
             elapsed = (datetime.now() - _start).total_seconds()
             self.env['quimibond.sync.log'].sudo().create({
                 'name': 'Push completo',
