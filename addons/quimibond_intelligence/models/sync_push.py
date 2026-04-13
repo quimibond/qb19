@@ -1628,6 +1628,7 @@ class QuimibondSync(models.TransientModel):
                 'date_order': o.date_order.strftime('%Y-%m-%d') if o.date_order else None,
                 'commitment_date': o.commitment_date.strftime('%Y-%m-%d') if hasattr(o, 'commitment_date') and o.commitment_date else None,
                 'create_date': o.create_date.strftime('%Y-%m-%d') if o.create_date else None,
+                'odoo_company_id': o.company_id.id if o.company_id else None,
             })
 
         return client.upsert('odoo_sale_orders', rows,
@@ -1687,6 +1688,7 @@ class QuimibondSync(models.TransientModel):
                 'date_order': o.date_order.strftime('%Y-%m-%d') if o.date_order else None,
                 'date_approve': o.date_approve.strftime('%Y-%m-%d') if hasattr(o, 'date_approve') and o.date_approve else None,
                 'create_date': o.create_date.strftime('%Y-%m-%d') if o.create_date else None,
+                'odoo_company_id': o.company_id.id if o.company_id else None,
             })
 
         return client.upsert('odoo_purchase_orders', rows,
@@ -2059,6 +2061,8 @@ class QuimibondSync(models.TransientModel):
                 ),
                 'bank_account': bank_account,
                 'current_balance': round(balance, 2),
+                'odoo_company_id': j.company_id.id if j.company_id else None,
+                'company_name': j.company_id.name if j.company_id else None,
                 'updated_at': datetime.now().isoformat(),
             })
 
