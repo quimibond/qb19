@@ -87,11 +87,16 @@ class MrpSubproductWizard(models.TransientModel):
 
     def confirm_subproduct(self):
         self.ensure_one()
-        # 1. Registra subproducto
-        self.production_id.action_register_subproduct_manual(self.weight, self.product_id)
+        # 1. Registramos y capturamos el objeto del lote creado
+        # IMPORTANTE: Tu función en mrp_production debe retornar el lote creado
+        lot = self.production_id.action_register_subproduct_manual(self.weight, self.product_id)
         
-        # 2. Obtiene acción y agrega cierre
+        # 2. Si la función no retorna el lote, lo buscamos por el nombre que calculó el wizard
+        lot_to_print = lot.name if lot else self.next_lot_name
+
+        # 3. Disparamos la impresión pasando el nombre del lote correcto
+        self.production_id._print_subproduct_zpl(self.product_id, self.weight, lot_to_print)
+        
         res = self.env.ref('pesaje_rollos_tejido.action_report_subproduct_weigh').report_action(self.production_id)
         res.update({'close_on_report_download': True})
-        
         return res

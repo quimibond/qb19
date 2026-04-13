@@ -67,18 +67,26 @@ class MrpProduction(models.Model):
                     reg.rollos_requeridos_count = 0
 
     def _print_zpl_label(self, lote_name, peso, nombre_producto):
-        """ Genera etiqueta para Tela Revisada (10x7.5cm) - Código 128 """
+        """ Etiqueta de Revisado Corregida (10x7.5cm) """
         self.ensure_one()
+        # Mantenemos FECHA REVISADO para este proceso
         ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         
-        # PW812 = 10cm | LL609 = 7.5cm | BC = Código 128
+        # Punto 3: Centro de Trabajo (WC)
+        wc_name = self.workcenter_id.name if self.workcenter_id else "N/A"
+
+        # Punto 2: Referencia y Descripción del producto
+        producto_desc = self.product_id.display_name 
+
+        # PW812 = 10cm | LL609 = 7.5cm
         zpl = f"""^XA^PW812^LL609^CI28
-^FO40,40^A0N,25,25^FDFECHA REVISADO: {ahora}^FS
-^FO40,85^A0N,30,30^FDOF: {self.name}^FS
-^FO40,130^A0N,25,25^FDPRODUCTO: {nombre_producto[:45]}^FS
-^FO380,210^A0N,150,150^FD{peso:0.3f} KG^FS
-^FO40,380^A0N,45,45^FDLOTE: {lote_name}^FS
-^FO40,440^BCN,100,Y,N,N^FD{lote_name}^FS
+^FO50,40^A0N,25,25^FDFECHA REVISADO : {ahora}^FS
+^FO50,80^A0N,25,25^FDCENTRO DE TRABAJO : {wc_name}^FS
+^FO50,120^A0N,25,25^FDORDEN DE FABRICACION : {self.name}^FS
+^FO50,160^A0N,20,20^FDPRODUCTO : {producto_desc[:70]}^FS
+^FO0,230^FB812,1,0,C^A0N,100,90^FD{peso:.4f} kg^FS
+^FO180,360^BCN,110,N,N,N^FD{lote_name}^FS
+^FO0,510^FB812,1,0,C^A0N,30,30^FDLOTE : {lote_name}^FS
 ^XZ"""
         self.last_zpl_label = zpl
         return True

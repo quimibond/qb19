@@ -187,38 +187,48 @@ class MrpProduction(models.Model):
         return True
 
     def _print_zpl_label(self, lot_name, weight, barcode_data):
-        """ Genera etiqueta ZPL para el rollo (Pesaje Original) """
+        """ Etiqueta de Pesaje Original Corregida (10x7.5cm) """
         self.ensure_one()
+        # Punto 1: Encabezado exacto
         ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        
+        # Punto 4: Centro de Trabajo (Extraído de la WO activa)
         current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
         wc_name = current_wo.workcenter_id.name if current_wo else "N/A"
 
-        # PW812 = 10cm | LL609 = 7.5cm | BC = Código 128
+        # Punto 3: Referencia y Descripción del producto (display_name)
+        producto_desc = self.product_id.display_name 
+
+        # --- PARÁMETROS ZPL ---
+        # PW812 = 10cm de ancho
+        # LL609 = 7.5cm de alto
+        # ^FB = Bloque de texto para centrado automático (C = Center)
         zpl = f"""^XA^PW812^LL609^CI28
-^FO40,40^A0N,25,25^FDFECHA/HORA: {ahora}^FS
-^FO40,80^A0N,30,30^FDWC: {wc_name[:25]}^FS
-^FO40,120^A0N,35,35^FDOF: {self.name}^FS
-^FO40,165^A0N,25,25^FDPRODUCTO: {self.product_id.name[:45]}^FS
-^FO380,210^A0N,150,150^FD{weight:0.3f} KG^FS
-^FO40,380^A0N,45,45^FDLOTE: {lot_name}^FS
-^FO40,440^BCN,100,Y,N,N^FD{lot_name}^FS
+^FO50,40^A0N,25,25^FDFECHA : {ahora}^FS
+^FO50,80^A0N,25,25^FDCENTRO DE TRABAJO : {wc_name}^FS
+^FO50,120^A0N,25,25^FDORDEN DE FABRICACION : {self.name}^FS
+^FO50,160^A0N,20,20^FDPRODUCTO : {producto_desc[:70]}^FS
+^FO0,230^FB812,1,0,C^A0N,100,90^FD{weight:.4f} kg^FS
+^FO180,360^BCN,110,N,N,N^FD{lot_name}^FS
+^FO0,510^FB812,1,0,C^A0N,35,35^FDLOTE : {lot_name}^FS
 ^XZ"""
         self.last_zpl_label = zpl
         return True
 
     def _print_subproduct_zpl(self, product, weight, lot_name):
-        """ Genera etiqueta ZPL para el subproducto (Código 128) """
+        """ Genera etiqueta ZPL para el subproducto corregida """
         self.ensure_one()
         ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         
+        # PW812 = 10cm | LL609 = 7.5cm
         zpl = f"""^XA^PW812^LL609^CI28
-^FO40,40^A0N,40,40^FDSUBPRODUCTO^FS
-^FO40,90^A0N,25,25^FDFECHA: {ahora}^FS
-^FO40,135^A0N,25,25^FDPRODUCTO: {product.name[:45]}^FS
-^FO40,180^A0N,25,25^FDORIGEN: {self.name}^FS
-^FO380,230^A0N,150,150^FD{weight:0.3f} KG^FS
-^FO40,410^A0N,45,45^FDLOTE: {lot_name}^FS
-^FO40,470^BCN,100,Y,N,N^FD{lot_name}^FS
+^FO50,40^A0N,40,40^FDSUBPRODUCTO^FS
+^FO50,100^A0N,25,25^FDFECHA : {ahora}^FS
+^FO50,140^A0N,25,25^FDPRODUCTO : {product.display_name[:70]}^FS
+^FO50,180^A0N,25,25^FDORIGEN : {self.name}^FS
+^FO0,250^FB812,1,0,C^A0N,100,90^FD{weight:.4f} kg^FS
+^FO180,380^BCN,110,N,N,N^FD{lot_name}^FS
+^FO0,520^FB812,1,0,C^A0N,30,30^FDLOTE : {lot_name}^FS
 ^XZ"""
         self.last_zpl_label = zpl
         return True
