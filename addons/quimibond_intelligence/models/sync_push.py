@@ -1056,47 +1056,85 @@ class QuimibondSync(models.TransientModel):
         Odoo uses bank reconciliation (not account.payment records),
         so we extract payment info from invoice amount_residual changes.
         """
-        Move = self.env['account.move'].sudo()
+        core = IngestionCore(client)
+        run_id, core_watermark = core.start_run(
+            source='odoo',
+            table='odoo_payments',
+            run_type='full' if not last_sync else 'incremental',
+            triggered_by='cron',
+        )
+        effective_watermark = core_watermark or (last_sync.isoformat() if last_sync else None)
+        status = 'success'
+        final_watermark = effective_watermark
+        ok = 0
+        try:
+            Move = self.env['account.move'].sudo()
 
-        # Get invoices that have been paid or partially paid
-        # Include both customer (out_) and supplier (in_) invoices
-        domain = [
-            ('move_type', 'in', [
-                'out_invoice', 'out_refund',
-                'in_invoice', 'in_refund',
-            ]),
-            ('state', '=', 'posted'),
-            ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
-        ]
-        if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        invoices = Move.search(domain)
+            # Get invoices that have been paid or partially paid
+            # Include both customer (out_) and supplier (in_) invoices
+            domain = [
+                ('move_type', 'in', [
+                    'out_invoice', 'out_refund',
+                    'in_invoice', 'in_refund',
+                ]),
+                ('state', '=', 'posted'),
+                ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
+            ]
+            if last_sync:
+                domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+            invoices = Move.search(domain)
 
-        rows = []
-        for inv in invoices:
-            pid = _commercial_partner_id(inv.partner_id)
-            if not pid:
-                continue
+            rows = []
+            for inv in invoices:
+                pid = _commercial_partner_id(inv.partner_id)
+                if not pid:
+                    continue
 
-            amount_paid = inv.amount_total - inv.amount_residual
-            if amount_paid <= 0:
-                continue
+                amount_paid = inv.amount_total - inv.amount_residual
+                if amount_paid <= 0:
+                    continue
 
-            # Use write_date as proxy for payment date (closer to actual payment
-            # than invoice_date). invoice_date is when invoice was created, not paid.
-            payment_date = inv.write_date or inv.invoice_date
-            rows.append({
-                'odoo_partner_id': pid,
-                'name': f'PAY-{inv.name}',
-                'payment_type': 'inbound' if inv.move_type in ('out_invoice', 'in_refund') else 'outbound',
-                'amount': round(amount_paid, 2),
-                'currency': inv.currency_id.name if inv.currency_id else 'MXN',
-                'payment_date': payment_date.strftime('%Y-%m-%d') if payment_date else None,
-                'state': 'posted',
-            })
+                # Use write_date as proxy for payment date (closer to actual payment
+                # than invoice_date). invoice_date is when invoice was created, not paid.
+                payment_date = inv.write_date or inv.invoice_date
+                rows.append({
+                    'odoo_partner_id': pid,
+                    'name': f'PAY-{inv.name}',
+                    'payment_type': 'inbound' if inv.move_type in ('out_invoice', 'in_refund') else 'outbound',
+                    'amount': round(amount_paid, 2),
+                    'currency': inv.currency_id.name if inv.currency_id else 'MXN',
+                    'payment_date': payment_date.strftime('%Y-%m-%d') if payment_date else None,
+                    'state': 'posted',
+                    'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
+                })
 
-        return client.upsert('odoo_payments', rows,
-                              on_conflict='odoo_partner_id,name', batch_size=200)
+            # === swap upsert → upsert_with_details ===
+            ok, failed = client.upsert_with_details(
+                'odoo_payments', rows, on_conflict='odoo_partner_id,name', batch_size=200
+            )
+            core.report_batch(run_id, attempted=len(rows), succeeded=ok, failed=len(failed))
+            for row, err in failed:
+                core.report_failure(
+                    run_id=run_id,
+                    entity_id=str(row.get('name') or row.get('odoo_partner_id') or ''),
+                    error_code=err['code'],
+                    error_detail=err['detail'],
+                    payload=row,
+                )
+            if failed:
+                status = 'partial'
+            if rows:
+                final_watermark = max(
+                    (r.get('write_date') for r in rows if r.get('write_date')),
+                    default=effective_watermark,
+                )
+        except Exception as e:
+            status = 'failed'
+            _logger.exception('push_payments failed: %s', e)
+            core.complete_run(run_id, status=status, high_watermark=effective_watermark)
+            raise
+        core.complete_run(run_id, status=status, high_watermark=final_watermark)
+        return ok
 
     # ── Deliveries (pending + last 90 days) ──────────────────────────────
 
