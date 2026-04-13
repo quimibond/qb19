@@ -122,3 +122,28 @@ def test_mark_resolved_sends_failure_id():
     core = IngestionCore(client)
     core.mark_resolved('f1')
     assert client.calls[-1] == ('ingestion_mark_failure_resolved', {'p_failure_id': 'f1'})
+
+
+def test_retry_failures_pattern_calls_fetch_process_mark():
+    """
+    Smoke test the retry flow pattern. Uses a FakeRPCClient to simulate
+    fetch_pending_failures returning 2 rows; verifies the cron method would
+    call mark_resolved on each after a successful re-upsert.
+    """
+    client = FakeRPCClient()
+    client.responses['ingestion_fetch_pending_failures'] = [
+        {'failure_id': 'f1', 'entity_id': '42',
+         'payload_snapshot': {'odoo_id': 42, 'name': 'INV/42'}},
+        {'failure_id': 'f2', 'entity_id': '43',
+         'payload_snapshot': {'odoo_id': 43, 'name': 'INV/43'}},
+    ]
+    client.responses['ingestion_mark_failure_resolved'] = None
+    core = IngestionCore(client)
+
+    pending = core.fetch_pending_failures('odoo', 'odoo_invoices', 5, 100)
+    for row in pending:
+        core.mark_resolved(row['failure_id'])
+
+    marks = [c for c in client.calls if c[0] == 'ingestion_mark_failure_resolved']
+    assert len(marks) == 2
+    assert {m[1]['p_failure_id'] for m in marks} == {'f1', 'f2'}

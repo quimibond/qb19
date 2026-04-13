@@ -1689,6 +1689,63 @@ class QuimibondSync(models.TransientModel):
             return client.insert('odoo_account_balances', rows, batch_size=500)
         return 0
 
+    # ── Retry Failures ─────────────────────────────────────────────────
+
+    @api.model
+    def _retry_failures(self):
+        """
+        Called every 30 minutes by ir_cron_retry_failures. For Plan 1 scope,
+        fetches up to 50 pending failures per table and re-upserts them using
+        the saved payload snapshot. Successful retries are marked resolved;
+        persistent failures bump retry_count via a fresh retry run.
+        """
+        client = _get_client(self.env)
+        if client is None:
+            return
+        core = IngestionCore(client)
+        tables = [
+            ('odoo', 'odoo_invoices', 'odoo_partner_id,name'),
+            ('odoo', 'odoo_payments', 'odoo_partner_id,name'),
+        ]
+        max_retries = 5
+        for source, table, conflict in tables:
+            pending = core.fetch_pending_failures(source, table, max_retries, limit=50)
+            if not pending:
+                continue
+            # Build the row list from payload snapshots; drop any with no payload
+            rows_with_meta = [
+                (p, p.get('payload_snapshot'))
+                for p in pending
+                if p.get('payload_snapshot')
+            ]
+            if not rows_with_meta:
+                continue
+            rows = [r for _, r in rows_with_meta]
+            ok_count, failed = client.upsert_with_details(
+                table, rows, on_conflict=conflict, batch_size=200
+            )
+            # Mark resolved: anything not in the failed list succeeded
+            failed_names = {
+                str(row.get('name') or '')
+                for row, _ in failed
+            }
+            for p, row in rows_with_meta:
+                if str(row.get('name') or '') not in failed_names:
+                    core.mark_resolved(p['failure_id'])
+            # Report the still-failing ones under a fresh retry run
+            if failed:
+                run_id, _ = core.start_run(source, table, 'retry', 'cron')
+                core.report_batch(run_id, len(rows), ok_count, len(failed))
+                for row, err in failed:
+                    core.report_failure(
+                        run_id=run_id,
+                        entity_id=str(row.get('name') or ''),
+                        error_code=err['code'],
+                        error_detail=err['detail'],
+                        payload=row,
+                    )
+                core.complete_run(run_id, 'partial', None)
+
     # ── Bank Balances ───────────────────────────────────────────────────
 
     def _push_bank_balances(self, client: SupabaseClient, last_sync=None) -> int:
