@@ -21,6 +21,9 @@ class FakeRPCClient:
             return resp(params) if callable(resp) else resp
         return None
 
+    # Alias for the strict variant — ingestion_core uses rpc_strict
+    rpc_strict = rpc
+
 
 def test_start_run_returns_run_id_and_watermark():
     client = FakeRPCClient()

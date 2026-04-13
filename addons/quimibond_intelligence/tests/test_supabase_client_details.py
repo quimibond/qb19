@@ -49,7 +49,7 @@ def test_upsert_with_details_batch_failure_records_each_row():
     assert 'schema mismatch' in err0['detail']
 
 
-def test_rpc_posts_to_rpc_endpoint():
+def test_rpc_strict_posts_to_rpc_endpoint():
     mock = MagicMock()
     resp = MagicMock()
     resp.status_code = 200
@@ -57,7 +57,7 @@ def test_rpc_posts_to_rpc_endpoint():
     mock.post.return_value = resp
 
     c = _make_client(mock)
-    result = c.rpc('ingestion_start_run', {
+    result = c.rpc_strict('ingestion_start_run', {
         'p_source': 'odoo', 'p_table': 'odoo_invoices',
         'p_run_type': 'incremental', 'p_triggered_by': 'cron',
     })
@@ -65,3 +65,19 @@ def test_rpc_posts_to_rpc_endpoint():
     assert result == [{'run_id': 'r1', 'last_watermark': None}]
     call_args = mock.post.call_args
     assert '/rest/v1/rpc/ingestion_start_run' in call_args[0][0]
+
+
+def test_rpc_lenient_returns_none_on_error():
+    """The lenient rpc() catches HTTP errors and returns None to preserve
+    backward compatibility with existing callers in sync_push.py."""
+    mock = MagicMock()
+    resp_fail = MagicMock()
+    resp_fail.status_code = 500
+    resp_fail.text = 'internal server error'
+    resp_fail.raise_for_status.side_effect = httpx.HTTPStatusError(
+        'boom', request=MagicMock(), response=resp_fail)
+    mock.post.return_value = resp_fail
+
+    c = _make_client(mock)
+    result = c.rpc('resolve_all_identities', {})
+    assert result is None  # lenient catches and returns None

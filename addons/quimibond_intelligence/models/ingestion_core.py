@@ -9,8 +9,10 @@ Usage:
     core.complete_run(run_id, 'success', new_watermark)
 
 The `client` object must expose a single method:
-    rpc(name: str, params: dict) -> response
+    rpc_strict(name: str, params: dict) -> response
 where `response` is whatever the RPC returned (dict, list, scalar, or None).
+The strict variant must raise on HTTP errors so IngestionCore can propagate
+failures to the caller. (For lenient / fire-and-forget RPCs use rpc().)
 """
 import logging
 from typing import Any, Optional
@@ -25,7 +27,7 @@ class IngestionCore:
     # 1. start_run → (run_id, last_watermark)
     def start_run(self, source: str, table: str, run_type: str,
                   triggered_by: str) -> tuple[str, Optional[str]]:
-        resp = self._c.rpc('ingestion_start_run', {
+        resp = self._c.rpc_strict('ingestion_start_run', {
             'p_source': source,
             'p_table': table,
             'p_run_type': run_type,
@@ -38,7 +40,7 @@ class IngestionCore:
     # 2. report_batch
     def report_batch(self, run_id: str, attempted: int,
                      succeeded: int, failed: int) -> None:
-        self._c.rpc('ingestion_report_batch', {
+        self._c.rpc_strict('ingestion_report_batch', {
             'p_run_id': run_id,
             'p_attempted': attempted,
             'p_succeeded': succeeded,
@@ -48,7 +50,7 @@ class IngestionCore:
     # 3. report_failure → failure_id
     def report_failure(self, run_id: str, entity_id: str, error_code: str,
                        error_detail: str, payload: Optional[dict]) -> str:
-        return self._c.rpc('ingestion_report_failure', {
+        return self._c.rpc_strict('ingestion_report_failure', {
             'p_run_id': run_id,
             'p_entity_id': str(entity_id),
             'p_error_code': error_code,
@@ -59,7 +61,7 @@ class IngestionCore:
     # 4. complete_run
     def complete_run(self, run_id: str, status: str,
                      high_watermark: Optional[str]) -> None:
-        self._c.rpc('ingestion_complete_run', {
+        self._c.rpc_strict('ingestion_complete_run', {
             'p_run_id': run_id,
             'p_status': status,
             'p_high_watermark': high_watermark,
@@ -70,7 +72,7 @@ class IngestionCore:
                             window_start: str, window_end: str,
                             source_count: Optional[int],
                             missing_entity_ids: Optional[list]) -> str:
-        return self._c.rpc('ingestion_report_source_count', {
+        return self._c.rpc_strict('ingestion_report_source_count', {
             'p_source': source,
             'p_table': table,
             'p_window_start': window_start,
@@ -82,7 +84,7 @@ class IngestionCore:
     # 6. fetch_pending_failures → list of failure rows
     def fetch_pending_failures(self, source: str, table: str,
                                max_retries: int, limit: int) -> list:
-        resp = self._c.rpc('ingestion_fetch_pending_failures', {
+        resp = self._c.rpc_strict('ingestion_fetch_pending_failures', {
             'p_source': source,
             'p_table': table,
             'p_max_retries': max_retries,
@@ -92,6 +94,6 @@ class IngestionCore:
 
     # 7. mark_resolved
     def mark_resolved(self, failure_id: str) -> None:
-        self._c.rpc('ingestion_mark_failure_resolved', {
+        self._c.rpc_strict('ingestion_mark_failure_resolved', {
             'p_failure_id': failure_id,
         })

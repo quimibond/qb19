@@ -198,10 +198,39 @@ class SupabaseClient:
         except Exception as exc:
             _logger.warning('patch %s: %s', table, exc)
 
-    def rpc(self, name: str, params: dict):
-        """Call a Postgres function via PostgREST RPC endpoint."""
+    def rpc(self, function: str, params: dict):
+        """
+        Call a Supabase RPC function (lenient).
+        Catches exceptions and returns None on error. Use this for ad-hoc
+        / fire-and-forget RPC calls where transient failures should not
+        crash the caller. For ingestion-critical RPCs use rpc_strict().
+        """
+        try:
+            resp = self._http.post(
+                f'{self.url}/rest/v1/rpc/{function}',
+                content=json.dumps(params or {}, default=str),
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            if resp.status_code == 204 or not resp.content:
+                return None
+            return resp.json()
+        except Exception as exc:
+            _logger.warning('rpc %s: %s', function, exc)
+            return None
+
+    def rpc_strict(self, name: str, params: dict):
+        """
+        Call a Postgres function via PostgREST RPC endpoint (strict).
+        Raises on any HTTP error so the caller can record the failure.
+        Used by IngestionCore where every error must propagate.
+        """
         url = f"{self.url}/rest/v1/rpc/{name}"
-        response = self._http.post(url, content=json.dumps(params or {}))
+        response = self._http.post(
+            url,
+            content=json.dumps(params or {}, default=str),
+            headers=self.headers,
+        )
         response.raise_for_status()
         if response.status_code == 204 or not response.content:
             return None
