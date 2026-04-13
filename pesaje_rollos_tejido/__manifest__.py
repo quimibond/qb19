@@ -27,6 +27,7 @@
         'views/mrp_workorder_tablet_view.xml',  # Botones PESAR y SUBPRODUCTO en tableta
         'views/res_config_settings_view.xml',   # Configuraciones adicionales
         'report/ir_actions_report.xml',
+        'report/report_zpl_templates.xml',
     ],
     'installable': True,
     'application': True,

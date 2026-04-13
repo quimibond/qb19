@@ -26,6 +26,7 @@
         'views/mrp_production_views.xml',
         'views/stock_lot_views.xml',
         'report/ir_actions_report.xml',
+        'report/report_revisado_templates.xml',
     ],
     'assets': {
         'web.assets_backend': [
