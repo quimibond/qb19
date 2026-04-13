@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 from odoo import api, models
 
+from .ingestion_core import IngestionCore
 from .supabase_client import SupabaseClient
 
 _logger = logging.getLogger(__name__)
@@ -872,92 +873,130 @@ class QuimibondSync(models.TransientModel):
     # ── Invoices (ALL history) ──────────────────────────────────────────
 
     def _push_invoices(self, client: SupabaseClient, last_sync=None) -> int:
-        Move = self.env['account.move'].sudo()
-        domain = [
-            ('move_type', 'in', [
-                'out_invoice', 'out_refund',
-                'in_invoice', 'in_refund',
-            ]),
-            ('state', '=', 'posted'),
-        ]
-        if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        invoices = Move.search(domain)
+        core = IngestionCore(client)
+        run_id, core_watermark = core.start_run(
+            source='odoo',
+            table='odoo_invoices',
+            run_type='full' if not last_sync else 'incremental',
+            triggered_by='cron',
+        )
+        effective_watermark = core_watermark or (last_sync.isoformat() if last_sync else None)
+        status = 'success'
+        final_watermark = effective_watermark
+        ok = 0
+        try:
+            Move = self.env['account.move'].sudo()
+            domain = [
+                ('move_type', 'in', [
+                    'out_invoice', 'out_refund',
+                    'in_invoice', 'in_refund',
+                ]),
+                ('state', '=', 'posted'),
+            ]
+            if last_sync:
+                domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+            invoices = Move.search(domain)
 
-        # CFDI UUID + SAT state: bypasses the stored computed field on
-        # account.move which is stale for post-migration invoices (Jul 2025+).
-        # Reads directly from l10n_mx_edi.document via SQL (M2M aware) and
-        # ORM XML parsing (filestore-safe). See _build_cfdi_map docstring.
-        cfdi_map = _build_cfdi_map(self.env, invoices.ids)
+            # CFDI UUID + SAT state: bypasses the stored computed field on
+            # account.move which is stale for post-migration invoices (Jul 2025+).
+            # Reads directly from l10n_mx_edi.document via SQL (M2M aware) and
+            # ORM XML parsing (filestore-safe). See _build_cfdi_map docstring.
+            cfdi_map = _build_cfdi_map(self.env, invoices.ids)
 
-        # Payment dates from account.partial.reconcile (real payment date)
-        payment_date_map = _build_payment_date_map(self.env, invoices.ids)
+            # Payment dates from account.partial.reconcile (real payment date)
+            payment_date_map = _build_payment_date_map(self.env, invoices.ids)
 
-        today = datetime.now().date()
-        rows = []
-        for inv in invoices:
-            pid = _commercial_partner_id(inv.partner_id)
-            if not pid:
-                continue
+            today = datetime.now().date()
+            rows = []
+            for inv in invoices:
+                pid = _commercial_partner_id(inv.partner_id)
+                if not pid:
+                    continue
 
-            days_overdue = 0
-            if inv.payment_state in ('not_paid', 'partial') and inv.invoice_date_due:
-                if inv.invoice_date_due < today:
-                    days_overdue = (today - inv.invoice_date_due).days
+                days_overdue = 0
+                if inv.payment_state in ('not_paid', 'partial') and inv.invoice_date_due:
+                    if inv.invoice_date_due < today:
+                        days_overdue = (today - inv.invoice_date_due).days
 
-            # Payment term
-            pay_term = None
-            try:
-                if inv.invoice_payment_term_id:
-                    pay_term = inv.invoice_payment_term_id.name
-            except Exception:
-                pass
+                # Payment term
+                pay_term = None
+                try:
+                    if inv.invoice_payment_term_id:
+                        pay_term = inv.invoice_payment_term_id.name
+                except Exception:
+                    pass
 
-            # CFDI fields from pre-read map
-            cfdi = cfdi_map.get(inv.id, {})
-            cfdi_uuid = cfdi.get('uuid')
-            cfdi_sat = cfdi.get('sat')
+                # CFDI fields from pre-read map
+                cfdi = cfdi_map.get(inv.id, {})
+                cfdi_uuid = cfdi.get('uuid')
+                cfdi_sat = cfdi.get('sat')
 
-            # Payment date and days_to_pay from reconciliation
-            pay_date = payment_date_map.get(inv.id)
-            pay_date_str = pay_date.strftime('%Y-%m-%d') if pay_date else None
-            days_to_pay = None
-            if pay_date and inv.invoice_date:
-                delta = (pay_date - inv.invoice_date).days
-                days_to_pay = max(delta, 0)
+                # Payment date and days_to_pay from reconciliation
+                pay_date = payment_date_map.get(inv.id)
+                pay_date_str = pay_date.strftime('%Y-%m-%d') if pay_date else None
+                days_to_pay = None
+                if pay_date and inv.invoice_date:
+                    delta = (pay_date - inv.invoice_date).days
+                    days_to_pay = max(delta, 0)
 
-            rows.append({
-                'odoo_partner_id': pid,
-                'name': inv.name,
-                'move_type': inv.move_type,
-                'amount_total': round(inv.amount_total, 2),
-                'amount_residual': round(inv.amount_residual, 2),
-                'amount_tax': round(inv.amount_tax, 2) if hasattr(inv, 'amount_tax') else None,
-                'amount_untaxed': round(inv.amount_untaxed, 2) if hasattr(inv, 'amount_untaxed') else None,
-                'amount_paid': round(inv.amount_total - inv.amount_residual, 2),
-                'currency': inv.currency_id.name if inv.currency_id else 'MXN',
-                'invoice_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
-                'due_date': inv.invoice_date_due.strftime('%Y-%m-%d') if inv.invoice_date_due else None,
-                'state': inv.state,
-                'payment_state': inv.payment_state,
-                'days_overdue': days_overdue,
-                'days_to_pay': days_to_pay,
-                'payment_date': pay_date_str,
-                'payment_term': pay_term,
-                'cfdi_uuid': cfdi_uuid,
-                'cfdi_sat_state': cfdi_sat,
-                'ref': inv.ref or '',
-            })
+                rows.append({
+                    'odoo_partner_id': pid,
+                    'name': inv.name,
+                    'move_type': inv.move_type,
+                    'amount_total': round(inv.amount_total, 2),
+                    'amount_residual': round(inv.amount_residual, 2),
+                    'amount_tax': round(inv.amount_tax, 2) if hasattr(inv, 'amount_tax') else None,
+                    'amount_untaxed': round(inv.amount_untaxed, 2) if hasattr(inv, 'amount_untaxed') else None,
+                    'amount_paid': round(inv.amount_total - inv.amount_residual, 2),
+                    'currency': inv.currency_id.name if inv.currency_id else 'MXN',
+                    'invoice_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
+                    'due_date': inv.invoice_date_due.strftime('%Y-%m-%d') if inv.invoice_date_due else None,
+                    'state': inv.state,
+                    'payment_state': inv.payment_state,
+                    'days_overdue': days_overdue,
+                    'days_to_pay': days_to_pay,
+                    'payment_date': pay_date_str,
+                    'payment_term': pay_term,
+                    'cfdi_uuid': cfdi_uuid,
+                    'cfdi_sat_state': cfdi_sat,
+                    'ref': inv.ref or '',
+                    'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
+                })
 
-        # Deduplicate: keep last occurrence per (odoo_partner_id, name)
-        # to avoid "ON CONFLICT DO UPDATE cannot affect row a second time"
-        seen = {}
-        for row in rows:
-            seen[(row['odoo_partner_id'], row['name'])] = row
-        rows = list(seen.values())
+            # Deduplicate: keep last occurrence per (odoo_partner_id, name)
+            # to avoid "ON CONFLICT DO UPDATE cannot affect row a second time"
+            seen = {}
+            for row in rows:
+                seen[(row['odoo_partner_id'], row['name'])] = row
+            rows = list(seen.values())
 
-        return client.upsert('odoo_invoices', rows,
-                              on_conflict='odoo_partner_id,name', batch_size=200)
+            # === swap upsert → upsert_with_details ===
+            ok, failed = client.upsert_with_details(
+                'odoo_invoices', rows, on_conflict='odoo_partner_id,name', batch_size=200
+            )
+            core.report_batch(run_id, attempted=len(rows), succeeded=ok, failed=len(failed))
+            for row, err in failed:
+                core.report_failure(
+                    run_id=run_id,
+                    entity_id=str(row.get('name') or row.get('odoo_partner_id') or ''),
+                    error_code=err['code'],
+                    error_detail=err['detail'],
+                    payload=row,
+                )
+            if failed:
+                status = 'partial'
+            if rows:
+                final_watermark = max(
+                    (r.get('write_date') for r in rows if r.get('write_date')),
+                    default=effective_watermark,
+                )
+        except Exception as e:
+            status = 'failed'
+            _logger.exception('push_invoices failed: %s', e)
+            core.complete_run(run_id, status=status, high_watermark=effective_watermark)
+            raise
+        core.complete_run(run_id, status=status, high_watermark=final_watermark)
+        return ok
 
     # ── Invoice Lines (ALL history) ──────────────────────────────────────
 
