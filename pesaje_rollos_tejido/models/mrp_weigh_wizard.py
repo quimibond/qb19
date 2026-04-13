@@ -43,9 +43,13 @@ class MrpWeighRollWizard(models.TransientModel):
             else:
                 reg.production_percentage = 0.0
 
-    def confirm_weighing(self):
+    def confirm_weighing(self):  # IMPRESION DE LA ETIQEUTA
         self.ensure_one()
-        return self.production_id.action_register_roll_with_weight(self.weight)
+        self.production_id.action_register_roll_with_weight(self.weight)
+        # OBTENER EL REPORTE Y EJECUTARLO
+        # Esto disparará el envío al IoT Box si la impresora está vinculada
+        report = self.env.ref('pesaje_rollos_tejido.action_report_weigh_roll')
+        return report.report_action(self.production_id)
 
 class MrpSubproductWizard(models.TransientModel):
     _name = 'mrp.subproduct.wizard'
@@ -77,4 +81,7 @@ class MrpSubproductWizard(models.TransientModel):
     def confirm_subproduct(self):
         self.ensure_one()
         # Llamamos al nombre exacto definido en mrp_production.py
-        return self.production_id.action_register_subproduct_manual(self.weight, self.next_lot_name)
+        self.production_id.action_register_subproduct_manual(self.weight, self.next_lot_name)
+        # DISPARAR ETIQUETA DE SUBPRODUCTO
+        report = self.env.ref('pesaje_rollos_tejido.action_report_subproduct_weigh')
+        return report.report_action(self.production_id)
