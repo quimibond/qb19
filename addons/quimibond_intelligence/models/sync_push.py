@@ -157,6 +157,9 @@ class QuimibondSync(models.TransientModel):
         # BOMs are a small catalog (~hundreds) and active flag changes
         # are not always reflected in write_date. Always full push.
         'boms',
+        # Sprint 13e: UoM master is tiny + line UoM was added later, so
+        # order_lines need full re-push to populate the new column.
+        'uoms', 'order_lines',
     ])
 
     def _run_push(self, client, label, method_fn, last_sync=None):
@@ -267,6 +270,7 @@ class QuimibondSync(models.TransientModel):
                 ('bank_balances', self._push_bank_balances),
                 ('currency_rates', self._push_currency_rates),
                 ('boms', self._push_boms),
+                ('uoms', self._push_uoms),
             ]
             totals = {}
             for label, fn in methods:
@@ -875,6 +879,7 @@ class QuimibondSync(models.TransientModel):
                             )
                     except Exception:
                         pass
+                line_uom_obj = getattr(l, 'product_uom', None) or getattr(l, 'product_uom_id', None)
                 rows.append({
                     'odoo_line_id': l.id,
                     'odoo_order_id': o.id,
@@ -894,6 +899,8 @@ class QuimibondSync(models.TransientModel):
                     'subtotal': round(l.price_subtotal, 2),
                     'subtotal_mxn': round(l.price_subtotal * mxn_ratio, 2),
                     'currency': currency,
+                    'line_uom': line_uom_obj.name if line_uom_obj else None,
+                    'line_uom_id': line_uom_obj.id if line_uom_obj else None,
                     'salesperson_name': o.user_id.name if o.user_id else None,
                     'odoo_company_id': o.company_id.id if o.company_id else None,
                 })
@@ -924,6 +931,7 @@ class QuimibondSync(models.TransientModel):
                             )
                     except Exception:
                         pass
+                line_uom_obj = getattr(l, 'product_uom', None) or getattr(l, 'product_uom_id', None)
                 rows.append({
                     'odoo_line_id': -l.id,  # Negative to avoid collision with sale lines
                     'odoo_order_id': o.id,
@@ -943,6 +951,8 @@ class QuimibondSync(models.TransientModel):
                     'subtotal': round(l.price_subtotal, 2),
                     'subtotal_mxn': round(l.price_subtotal * mxn_ratio, 2),
                     'currency': currency,
+                    'line_uom': line_uom_obj.name if line_uom_obj else None,
+                    'line_uom_id': line_uom_obj.id if line_uom_obj else None,
                     'salesperson_name': o.user_id.name if o.user_id else None,
                     'odoo_company_id': o.company_id.id if o.company_id else None,
                 })
@@ -1219,6 +1229,7 @@ class QuimibondSync(models.TransientModel):
                 if amt_signed is not None and inv.amount_total:
                     mxn_ratio = abs(amt_signed) / inv.amount_total
 
+                line_uom_obj = getattr(line, 'product_uom_id', None)
                 rows.append({
                     'odoo_line_id': line.id,
                     'odoo_move_id': inv.id,
@@ -1237,6 +1248,8 @@ class QuimibondSync(models.TransientModel):
                     'currency': inv_currency,
                     'price_subtotal_mxn': round(line.price_subtotal * mxn_ratio, 2),
                     'price_total_mxn': round(line.price_total * mxn_ratio, 2),
+                    'line_uom': line_uom_obj.name if line_uom_obj else None,
+                    'line_uom_id': line_uom_obj.id if line_uom_obj else None,
                     'odoo_company_id': inv.company_id.id if inv.company_id else None,
                 })
 
@@ -2287,3 +2300,50 @@ class QuimibondSync(models.TransientModel):
             client.upsert('mrp_bom_lines', line_rows,
                           on_conflict='odoo_bom_line_id', batch_size=500)
         return len(bom_rows)
+
+    # ── UoMs (uom.uom master table) ──────────────────────────────────────
+
+    def _push_uoms(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push uom.uom -> odoo_uoms table.
+
+        Sprint 13e: needed to convert sale/invoice line quantities back
+        to the product's canonical UoM when they differ. Conversion is
+        within a UoM category (length, weight, volume); cross-category
+        conversion is product-dependent and only flagged downstream.
+
+        Odoo convention for `factor`: ratio relative to the category
+        reference UoM. A SMALLER unit has factor > 1 (e.g. cm.factor =
+        100 if m is the reference). Conversion math:
+            qty_in_target = qty * (target.factor / source.factor)
+        when both share the same category_id.
+        """
+        try:
+            Uom = self.env['uom.uom'].sudo()
+        except KeyError:
+            _logger.info('uom.uom not available, skipping')
+            return 0
+
+        uoms = Uom.search([])
+        rows = []
+        for u in uoms:
+            try:
+                cat = getattr(u, 'category_id', None)
+                rows.append({
+                    'odoo_uom_id': u.id,
+                    'name': u.name or '',
+                    'category_id': cat.id if cat else None,
+                    'category_name': cat.name if cat else None,
+                    'factor': float(u.factor) if hasattr(u, 'factor') else None,
+                    'factor_inv': float(u.factor_inv) if hasattr(u, 'factor_inv') else None,
+                    'uom_type': getattr(u, 'uom_type', None),
+                    'active': bool(getattr(u, 'active', True)),
+                    'rounding': float(getattr(u, 'rounding', 0) or 0),
+                    'synced_at': datetime.now().isoformat(),
+                })
+            except Exception as exc:
+                _logger.warning('uom %s: %s', u.id, exc)
+
+        if not rows:
+            return 0
+        return client.upsert('odoo_uoms', rows,
+                             on_conflict='odoo_uom_id', batch_size=200)
