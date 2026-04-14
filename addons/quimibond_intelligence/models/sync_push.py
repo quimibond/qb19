@@ -262,6 +262,7 @@ class QuimibondSync(models.TransientModel):
                 ('chart_of_accounts', self._push_chart_of_accounts),
                 ('account_balances', self._push_account_balances),
                 ('bank_balances', self._push_bank_balances),
+                ('currency_rates', self._push_currency_rates),
             ]
             totals = {}
             for label, fn in methods:
@@ -832,6 +833,7 @@ class QuimibondSync(models.TransientModel):
                 'avg_cost': round(p.avg_cost, 2) if hasattr(p, 'avg_cost') and p.avg_cost else None,
                 'weight': round(p.weight, 4) if hasattr(p, 'weight') and p.weight else None,
                 'active': p.active,
+                'odoo_company_id': p.company_id.id if p.company_id else None,
                 'updated_at': datetime.now().isoformat(),
             })
 
@@ -1002,6 +1004,7 @@ class QuimibondSync(models.TransientModel):
                 'pending_activities_count': acts['pending'],
                 'overdue_activities_count': acts['overdue'],
                 'activities_json': [],  # Will be populated below
+                'odoo_company_id': u.company_id.id if u.company_id else None,
                 'updated_at': datetime.now().isoformat(),
             })
 
@@ -1394,6 +1397,7 @@ class QuimibondSync(models.TransientModel):
                 lead_time = round((pk.date_done - pk.create_date).total_seconds() / 86400, 1)
 
             rows.append({
+                'odoo_picking_id': pk.id,
                 'odoo_partner_id': pid,
                 'name': pk.name,
                 'picking_type': pk.picking_type_id.name if pk.picking_type_id else '',
@@ -1409,13 +1413,14 @@ class QuimibondSync(models.TransientModel):
             })
 
         return client.upsert('odoo_deliveries', rows,
-                              on_conflict='odoo_partner_id,name', batch_size=200)
+                              on_conflict='odoo_picking_id', batch_size=200)
 
     # ── CRM Leads ────────────────────────────────────────────────────────
 
     def _push_crm_leads(self, client: SupabaseClient, last_sync=None) -> int:
         Lead = self.env['crm.lead'].sudo()
-        domain = [('active', '=', True)]
+        cid = self._get_company_id()
+        domain = [('active', '=', True), ('company_id', '=', cid)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         leads = Lead.search(domain)
@@ -1437,6 +1442,7 @@ class QuimibondSync(models.TransientModel):
                 'days_open': days_open,
                 'assigned_user': l.user_id.name if l.user_id else '',
                 'active': l.active,
+                'odoo_company_id': l.company_id.id if l.company_id else None,
             })
 
         return client.upsert('odoo_crm_leads', rows,
@@ -1560,6 +1566,7 @@ class QuimibondSync(models.TransientModel):
                 'manager_id': emp.parent_id.id if emp.parent_id else None,
                 'coach_name': emp.coach_id.name if emp.coach_id else None,
                 'is_active': emp.active,
+                'odoo_company_id': emp.company_id.id if emp.company_id else None,
             })
 
         return client.upsert('odoo_employees', rows,
@@ -1597,6 +1604,7 @@ class QuimibondSync(models.TransientModel):
                 'manager_name': dept.manager_id.name if dept.manager_id else None,
                 'manager_id': dept.manager_id.id if dept.manager_id else None,
                 'member_count': member_count,
+                'odoo_company_id': dept.company_id.id if dept.company_id else None,
             })
 
         return client.upsert('odoo_departments', rows,
@@ -1780,6 +1788,7 @@ class QuimibondSync(models.TransientModel):
                 'qty_forecast': round(qty_forecast, 2),
                 'trigger_type': getattr(op, 'trigger', 'auto'),
                 'active': op.active,
+                'odoo_company_id': op.company_id.id if op.company_id else None,
             })
 
         return client.upsert('odoo_orderpoints', rows,
@@ -1899,6 +1908,7 @@ class QuimibondSync(models.TransientModel):
                         'account_type': acc_type,
                         'reconcile': bool(acc.reconcile) if hasattr(acc, 'reconcile') else False,
                         'deprecated': bool(getattr(acc, 'deprecated', False)),
+                        'odoo_company_id': acc.company_id.id if acc.company_id else None,
                     })
                 except Exception as exc:
                     _logger.warning('chart_of_accounts %s: %s', acc.id, exc)
@@ -2141,4 +2151,61 @@ class QuimibondSync(models.TransientModel):
         if rows:
             client.delete_all('odoo_bank_balances')
             return client.insert('odoo_bank_balances', rows, batch_size=50)
+        return 0
+
+    # ── Currency Rates ───────────────────────────────────────────────────
+
+    def _push_currency_rates(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push res.currency.rate → odoo_currency_rates table.
+
+        Pushes the latest rate for each active foreign currency so Supabase
+        views can convert USD/EUR amounts to MXN using real Odoo rates
+        instead of hardcoded values.
+        """
+        try:
+            Rate = self.env['res.currency.rate'].sudo()
+        except KeyError:
+            _logger.info('res.currency.rate not available, skipping')
+            return 0
+
+        cid = self._get_company_id()
+        company = self.env['res.company'].sudo().browse(cid)
+        company_currency = company.currency_id.name if company.currency_id else 'MXN'
+
+        # Get all currencies that have rates defined
+        Currency = self.env['res.currency'].sudo()
+        currencies = Currency.search([('active', '=', True)])
+
+        rows = []
+        for cur in currencies:
+            if cur.name == company_currency:
+                continue  # Skip MXN→MXN
+
+            # Get the latest rate for this currency in the company
+            rates = Rate.search([
+                ('currency_id', '=', cur.id),
+                ('company_id', 'in', [cid, False]),
+            ], order='name desc', limit=30)  # last 30 rate entries
+
+            for r in rates:
+                # Odoo stores inverse rate: 1 / (foreign per base)
+                # e.g. if 1 USD = 19.5 MXN, Odoo stores rate = 1/19.5 = 0.05128
+                inverse_rate = r.rate or 0
+                if inverse_rate > 0:
+                    mxn_rate = round(1.0 / inverse_rate, 6)
+                else:
+                    continue
+
+                rows.append({
+                    'currency': cur.name,
+                    'rate': mxn_rate,
+                    'inverse_rate': round(inverse_rate, 10),
+                    'rate_date': r.name.strftime('%Y-%m-%d') if r.name else None,
+                    'odoo_company_id': cid,
+                })
+
+        if rows:
+            return client.upsert('odoo_currency_rates', rows,
+                                  on_conflict='currency,rate_date,odoo_company_id',
+                                  batch_size=200)
         return 0
