@@ -66,6 +66,89 @@ action = {
         </field>
     </record>
 
+    <!-- ══ Backfill historico (Sprints 5-7) ══ -->
+
+    <record id="action_backfill_invoice_lines" model="ir.actions.server">
+        <field name="name">Backfill Invoice Lines (historico)</field>
+        <field name="model_id" ref="model_quimibond_sync"/>
+        <field name="state">code</field>
+        <field name="code">
+result = model.manual_backfill_invoice_lines()
+env.cr.commit()
+msg = (
+    'Procesadas {invoices_processed} facturas, '
+    '{lines_pushed} lineas. '
+    'Cursor: {last_id_processed}. '
+    'Terminado: {finished}. '
+    'Tiempo: {elapsed_seconds}s.'
+).format(**result)
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': 'Backfill invoice_lines',
+        'message': msg,
+        'type': 'success' if result['finished'] else 'warning',
+        'sticky': True,
+    },
+}
+        </field>
+    </record>
+
+    <record id="action_backfill_cfdi_states" model="ir.actions.server">
+        <field name="name">Backfill CFDI States (historico)</field>
+        <field name="model_id" ref="model_quimibond_sync"/>
+        <field name="state">code</field>
+        <field name="code">
+result = model.manual_backfill_cfdi_states()
+env.cr.commit()
+msg = (
+    'Procesadas {invoices_processed} facturas, '
+    '{rows_updated} actualizadas en Supabase. '
+    'Cursor: {last_id_processed}. '
+    'Terminado: {finished}. '
+    'Tiempo: {elapsed_seconds}s.'
+).format(**result)
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': 'Backfill cfdi_states',
+        'message': msg,
+        'type': 'success' if result['finished'] else 'warning',
+        'sticky': True,
+    },
+}
+        </field>
+    </record>
+
+    <record id="action_backfill_account_payments" model="ir.actions.server">
+        <field name="name">Backfill Account Payments (historico)</field>
+        <field name="model_id" ref="model_quimibond_sync"/>
+        <field name="state">code</field>
+        <field name="code">
+result = model.manual_backfill_account_payments()
+env.cr.commit()
+msg = (
+    'Procesados {payments_processed} pagos, '
+    '{rows_pushed} pusheados a Supabase. '
+    'Cursor: {last_id_processed}. '
+    'Terminado: {finished}. '
+    'Tiempo: {elapsed_seconds}s.'
+).format(**result)
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': 'Backfill account_payments',
+        'message': msg,
+        'type': 'success' if result['finished'] else 'warning',
+        'sticky': True,
+    },
+}
+        </field>
+    </record>
+
     <record id="action_open_frontend" model="ir.actions.act_url">
         <field name="name">Abrir Quimibond Intelligence</field>
         <field name="url">https://quimibond-intelligence.vercel.app/inbox</field>
@@ -101,6 +184,29 @@ action = {
         parent="menu_sync_manual"
         action="action_force_pull"
         sequence="20"/>
+
+    <menuitem id="menu_sync_backfill"
+        name="Backfill Historico"
+        parent="menu_sync_root"
+        sequence="20"/>
+
+    <menuitem id="menu_backfill_invoice_lines"
+        name="Backfill Invoice Lines"
+        parent="menu_sync_backfill"
+        action="action_backfill_invoice_lines"
+        sequence="10"/>
+
+    <menuitem id="menu_backfill_cfdi_states"
+        name="Backfill CFDI States"
+        parent="menu_sync_backfill"
+        action="action_backfill_cfdi_states"
+        sequence="20"/>
+
+    <menuitem id="menu_backfill_account_payments"
+        name="Backfill Account Payments"
+        parent="menu_sync_backfill"
+        action="action_backfill_account_payments"
+        sequence="30"/>
 
     <menuitem id="menu_open_frontend"
         name="Abrir Intelligence (Vercel)"
