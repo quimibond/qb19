@@ -70,7 +70,7 @@ class MrpProduction(models.Model):
         self.move_raw_ids._action_assign()
 
         # Punto 1: Impresión de etiqueta de Producto (Rollo)
-        self._print_zpl_label(lot_name, weight, barcode_data)
+        self._print_zpl_pesaje_original(lot_name, weight, lot_name)
         
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
@@ -105,14 +105,23 @@ class MrpProduction(models.Model):
 
         if not lot_name:
             mo_identifier = self.name.split('/')[-1]
+            # Mantenemos tu formato original (SUB-MO-2026-04-13)
             lot_name = f"SUB-{mo_identifier}-{fields.Date.today()}"
         
-        new_lot = self.env['stock.lot'].create({
-            'name': lot_name,
-            'product_id': sub_move.product_id.id,
-            'company_id': self.company_id.id,
-        })
+        # BUSQUEDA PREVIA: Si el lote ya se creó hoy, lo usamos en lugar de fallar
+        new_lot = self.env['stock.lot'].search([
+            ('name', '=', lot_name),
+            ('product_id', '=', sub_move.product_id.id),
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
 
+        # Solo se crea si no existe
+        if not new_lot:
+            new_lot = self.env['stock.lot'].create({
+                'name': lot_name,
+                'product_id': sub_move.product_id.id,
+                'company_id': self.company_id.id,
+            })
 
         current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
         
@@ -186,48 +195,46 @@ class MrpProduction(models.Model):
         self._print_subproduct_zpl(sub_move.product_id, weight, lot_name)
         return True
 
-    def _print_zpl_label(self, lot_name, weight, barcode_data):
+    def _print_zpl_pesaje_original(self, lot_name, weight, barcode_data):
         """ Etiqueta de Pesaje Original Corregida (10x7.5cm) """
         self.ensure_one()
-        # Punto 1: Encabezado exacto
         ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         
-        # Punto 4: Centro de Trabajo (Extraído de la WO activa)
-        current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
-        wc_name = current_wo.workcenter_id.name if current_wo else "N/A"
+        # Búsqueda mejorada del Centro de Trabajo (Punto 4)
+        wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
+        if not wo:
+            wo = self.workorder_ids[:1]
+        wc_name = wo.workcenter_id.name if wo else "N/A"
 
-        # Punto 3: Referencia y Descripción del producto (display_name)
         producto_desc = self.product_id.display_name 
 
-        # --- PARÁMETROS ZPL ---
-        # PW812 = 10cm de ancho
-        # LL609 = 7.5cm de alto
-        # ^FB = Bloque de texto para centrado automático (C = Center)
+        # PW812 = 10cm | LL609 = 7.5cm
+        # ^BY2 = Grosor fino | ^FO100 = Inicio a la izquierda
         zpl = f"""^XA^PW812^LL609^CI28
 ^FO50,40^A0N,25,25^FDFECHA : {ahora}^FS
 ^FO50,80^A0N,25,25^FDCENTRO DE TRABAJO : {wc_name}^FS
 ^FO50,120^A0N,25,25^FDORDEN DE FABRICACION : {self.name}^FS
 ^FO50,160^A0N,20,20^FDPRODUCTO : {producto_desc[:70]}^FS
 ^FO0,230^FB812,1,0,C^A0N,100,90^FD{weight:.4f} kg^FS
-^FO180,360^BCN,110,N,N,N^FD{lot_name}^FS
+^BY2,3,110^FO100,360^BCN,110,N,N,N^FD{lot_name}^FS
 ^FO0,510^FB812,1,0,C^A0N,35,35^FDLOTE : {lot_name}^FS
 ^XZ"""
         self.last_zpl_label = zpl
         return True
 
     def _print_subproduct_zpl(self, product, weight, lot_name):
-        """ Genera etiqueta ZPL para el subproducto corregida """
+        """ Genera etiqueta ZPL para el subproducto corregida (10x7.5cm) """
         self.ensure_one()
         ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         
-        # PW812 = 10cm | LL609 = 7.5cm
+        # PW812 = 10cm de ancho | LL609 = 7.5cm de alto
         zpl = f"""^XA^PW812^LL609^CI28
 ^FO50,40^A0N,40,40^FDSUBPRODUCTO^FS
 ^FO50,100^A0N,25,25^FDFECHA : {ahora}^FS
 ^FO50,140^A0N,25,25^FDPRODUCTO : {product.display_name[:70]}^FS
 ^FO50,180^A0N,25,25^FDORIGEN : {self.name}^FS
 ^FO0,250^FB812,1,0,C^A0N,100,90^FD{weight:.4f} kg^FS
-^FO180,380^BCN,110,N,N,N^FD{lot_name}^FS
+^BY2,3,110^FO100,380^BCN,110,N,N,N^FD{lot_name}^FS
 ^FO0,520^FB812,1,0,C^A0N,30,30^FDLOTE : {lot_name}^FS
 ^XZ"""
         self.last_zpl_label = zpl

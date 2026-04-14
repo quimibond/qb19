@@ -46,14 +46,21 @@ class MrpWeighRollWizard(models.TransientModel):
     def confirm_weighing(self):
         """ Registro de pesaje, impresión y cierre automático """
         self.ensure_one()
-        # 1. Tu lógica actual: Registra el peso en la MO y genera el ZPL
+        # 1. Registra el peso en la MO
         self.production_id.action_register_roll_with_weight(self.weight)
         
-        # 2. Obtenemos el objeto de la acción del reporte (tu lógica)
+        # 2. Generar datos para la nueva función de impresión
+        mo_identifier = self.production_id.name.split('/')[-1]
+        lot_name = f"{mo_identifier}-{self.production_id.roll_count:04d}"
+        
+        # 3. LLAMADA CRÍTICA: Forzamos el uso de la función de pesaje original
+        # Esto corrige el Centro de Trabajo (evita N/A) y el diseño del código de barras
+        self.production_id._print_zpl_pesaje_original(lot_name, self.weight, lot_name)
+        
+        # 4. Disparo del reporte
         report_action = self.env.ref('pesaje_rollos_tejido.action_report_weigh_roll').report_action(self.production_id)
         
-        # 3. AGREGAMOS ESTA LÍNEA: Es la que soluciona que la ventana no se quede abierta.
-        # Al actualizar este diccionario, Odoo entiende que tras enviar el ZPL debe cerrar el wizard.
+        # 5. Cerramos la ventana automáticamente
         report_action.update({'close_on_report_download': True})
         
         return report_action

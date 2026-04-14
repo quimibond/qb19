@@ -69,23 +69,23 @@ class MrpProduction(models.Model):
     def _print_zpl_label(self, lote_name, peso, nombre_producto):
         """ Etiqueta de Revisado Corregida (10x7.5cm) """
         self.ensure_one()
-        # Mantenemos FECHA REVISADO para este proceso
         ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         
-        # Punto 3: Centro de Trabajo (WC)
+        # Corrección Centro de Trabajo: Usamos el campo workcenter_id de la MO
         wc_name = self.workcenter_id.name if self.workcenter_id else "N/A"
 
-        # Punto 2: Referencia y Descripción del producto
+        # Referencia y Descripción
         producto_desc = self.product_id.display_name 
 
         # PW812 = 10cm | LL609 = 7.5cm
+        # ^BY2 = Grosor fino | ^FO100 = Inicio a la izquierda
         zpl = f"""^XA^PW812^LL609^CI28
 ^FO50,40^A0N,25,25^FDFECHA REVISADO : {ahora}^FS
 ^FO50,80^A0N,25,25^FDCENTRO DE TRABAJO : {wc_name}^FS
 ^FO50,120^A0N,25,25^FDORDEN DE FABRICACION : {self.name}^FS
 ^FO50,160^A0N,20,20^FDPRODUCTO : {producto_desc[:70]}^FS
 ^FO0,230^FB812,1,0,C^A0N,100,90^FD{peso:.4f} kg^FS
-^FO180,360^BCN,110,N,N,N^FD{lote_name}^FS
+^BY2,3,110^FO100,360^BCN,110,N,N,N^FD{lote_name}^FS
 ^FO0,510^FB812,1,0,C^A0N,30,30^FDLOTE : {lote_name}^FS
 ^XZ"""
         self.last_zpl_label = zpl
