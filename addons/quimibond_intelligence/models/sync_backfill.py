@@ -9,17 +9,18 @@ NUNCA se pushean. Resultado: 26,353 facturas posteadas (97% del
 histórico) sin líneas en Supabase, lo que rompe customer_margin_analysis,
 product_margin_analysis, invoice_line_margins y todo cálculo de margen.
 
-Este módulo extiende el modelo `quimibond.sync.push` con un método
-`manual_backfill_invoice_lines()` que se invoca manualmente desde el
-shell de Odoo.
+Sprint 6: el mismo cron tampoco pusheó nunca cfdi_state ni edi_state
+sobre odoo_invoices → 14,490 facturas posteadas con cfdi_state=NULL
+y compliance SAT offline. manual_backfill_cfdi_states() lo recupera.
 
-Uso:
+Este módulo extiende el modelo `quimibond.sync.push` con métodos
+one-shot que se invocan manualmente desde el shell de Odoo:
+
     env['quimibond.sync.push'].manual_backfill_invoice_lines()
-    env['quimibond.sync.push'].manual_backfill_invoice_lines(max_batches=10)
-    env['quimibond.sync.push'].manual_backfill_invoice_lines(reset_cursor=True)
+    env['quimibond.sync.push'].manual_backfill_cfdi_states()
 
-El cursor (último id procesado) se persiste en ir.config_parameter para
-poder reanudar si la corrida se interrumpe.
+Cada método persiste un cursor independiente en ir.config_parameter
+para poder reanudar si la corrida se interrumpe.
 """
 
 import logging
@@ -36,6 +37,9 @@ _INVOICE_MOVE_TYPES = ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']
 # Display types de account.move.line que NO son líneas de producto
 _NON_PRODUCT_LINE_TYPES = ('line_section', 'line_note', 'payment_term',
                            'tax', 'rounding')
+
+# Tipos de movimiento out (facturas a clientes) — para backfill CFDI
+_OUT_INVOICE_MOVE_TYPES = ['out_invoice', 'out_refund']
 
 
 def _commercial_partner_id(partner):
@@ -59,6 +63,42 @@ def _get_supabase_client(env):
         _logger.error('Supabase URL/service key no configurado')
         return None
     return SupabaseClient(url, key)
+
+
+def _build_cfdi_state_map(env, invoice_ids):
+    """Build {invoice_id: {uuid, sat_state, doc_state}} from
+    l10n_mx_edi.document via ORM. Mirror del helper en sync_push.py
+    extendido para incluir el state del documento (no sólo uuid + sat_state).
+
+    El UUID y el sat_state ya se pushean en _push_invoices via _build_cfdi_map.
+    Pero `state` (= estado del workflow CFDI: 'sent', 'cancel', etc) y
+    `account.move.edi_state` nunca se pushearon → 14,490 facturas con
+    cfdi_state=NULL.
+    """
+    if not invoice_ids:
+        return {}
+
+    result = {}
+    try:
+        Document = env['l10n_mx_edi.document'].sudo()
+        docs = Document.search([
+            ('invoice_ids', 'in', invoice_ids),
+        ], order='id desc')
+        for doc in docs:
+            uuid = getattr(doc, 'attachment_uuid', None)
+            sat = getattr(doc, 'sat_state', None)
+            doc_state = getattr(doc, 'state', None)
+            for inv_id in doc.invoice_ids.ids:
+                if inv_id not in result and inv_id in invoice_ids:
+                    result[inv_id] = {
+                        'uuid': uuid,
+                        'sat': sat or None,
+                        'doc_state': doc_state or None,
+                    }
+    except Exception as exc:
+        _logger.warning('CFDI state map build failed: %s', exc)
+
+    return result
 
 
 def _build_invoice_line_rows(invoices):
@@ -246,4 +286,177 @@ class QuimibondSyncBackfill(models.Model):
             'elapsed_seconds': round(elapsed, 1),
         }
         _logger.info('[backfill_invoice_lines] SUMMARY: %s', result)
+        return result
+
+    def manual_backfill_cfdi_states(self, batch_size=500, max_batches=None,
+                                    reset_cursor=False):
+        """One-shot backfill de cfdi_state, edi_state, cfdi_uuid y
+        cfdi_sat_state sobre odoo_invoices.
+
+        El cron _push_invoices nunca pusheó cfdi_state ni edi_state →
+        14,490 facturas posteadas (100% de las out_invoice) sin cumplimiento
+        SAT visible en Supabase.
+
+        Esta función itera por TODAS las account.move out (out_invoice +
+        out_refund) en orden ascendente de id, lee uuid/sat_state/doc_state
+        de l10n_mx_edi.document y edi_state directamente de la factura,
+        y llama a la RPC update_invoice_cfdi_states_bulk en Supabase con
+        un payload por batch.
+
+        La RPC sólo actualiza filas existentes (no inserta), y usa
+        COALESCE para no sobreescribir datos válidos con NULL.
+
+        Args:
+            batch_size: cantidad de account.move por batch (default 500)
+            max_batches: límite de batches (None = sin límite)
+            reset_cursor: si True, ignora el cursor guardado y empieza desde 0
+
+        Returns:
+            dict con summary: batches_run, invoices_processed,
+                              rows_updated, last_id_processed,
+                              finished, elapsed_seconds.
+
+        Uso desde shell:
+            env['quimibond.sync.push'].manual_backfill_cfdi_states(max_batches=5)
+            env['quimibond.sync.push'].manual_backfill_cfdi_states()
+            env['quimibond.sync.push'].manual_backfill_cfdi_states(reset_cursor=True)
+        """
+        client = _get_supabase_client(self.env)
+        if not client:
+            raise UserError('Supabase client no configurado')
+
+        ICP = self.env['ir.config_parameter'].sudo()
+        cursor_key = 'quimibond_intelligence.cfdi_states_backfill_cursor'
+
+        if reset_cursor:
+            ICP.set_param(cursor_key, '0')
+            _logger.info('[backfill_cfdi_states] cursor reseteado a 0')
+
+        try:
+            cursor = int(ICP.get_param(cursor_key, '0') or '0')
+        except (ValueError, TypeError):
+            cursor = 0
+
+        Move = self.env['account.move'].sudo()
+        cid = self._get_company_id()
+        base_domain = [
+            ('company_id', '=', cid),
+            ('move_type', 'in', _OUT_INVOICE_MOVE_TYPES),
+            ('state', '=', 'posted'),
+        ]
+
+        total_remaining = Move.search_count(base_domain + [('id', '>', cursor)])
+        _logger.info(
+            '[backfill_cfdi_states] cursor=%s total_remaining=%s '
+            'batch_size=%s max_batches=%s',
+            cursor, total_remaining, batch_size, max_batches,
+        )
+
+        start_ts = datetime.now()
+        batches_run = 0
+        invoices_processed = 0
+        rows_updated = 0
+        last_id = cursor
+        finished = False
+
+        while True:
+            if max_batches is not None and batches_run >= max_batches:
+                _logger.info(
+                    '[backfill_cfdi_states] max_batches alcanzado: %s',
+                    max_batches,
+                )
+                break
+
+            domain = base_domain + [('id', '>', last_id)]
+            invoices = Move.search(domain, order='id asc', limit=batch_size)
+            if not invoices:
+                finished = True
+                _logger.info('[backfill_cfdi_states] sin más facturas, terminado')
+                break
+
+            cfdi_map = _build_cfdi_state_map(self.env, invoices.ids)
+
+            payload = []
+            for inv in invoices:
+                pid = _commercial_partner_id(inv.partner_id)
+                if not pid or not inv.name:
+                    continue
+                cfdi = cfdi_map.get(inv.id, {})
+                edi_state = getattr(inv, 'edi_state', None)
+
+                # Skip si no hay nada nuevo que pushear
+                if not any([
+                    cfdi.get('uuid'),
+                    cfdi.get('sat'),
+                    cfdi.get('doc_state'),
+                    edi_state,
+                ]):
+                    continue
+
+                payload.append({
+                    'odoo_partner_id': pid,
+                    'name': inv.name,
+                    'cfdi_uuid': cfdi.get('uuid'),
+                    'cfdi_sat_state': cfdi.get('sat'),
+                    'cfdi_state': cfdi.get('doc_state'),
+                    'edi_state': edi_state,
+                })
+
+            if payload:
+                try:
+                    rpc_result = client.rpc(
+                        'update_invoice_cfdi_states_bulk',
+                        {'p_data': payload},
+                    )
+                    if isinstance(rpc_result, dict):
+                        rows_updated += int(rpc_result.get('rows_updated', 0))
+                    elif isinstance(rpc_result, list) and rpc_result:
+                        rows_updated += int(
+                            (rpc_result[0] or {}).get('rows_updated', 0)
+                        )
+                except Exception as exc:
+                    _logger.warning(
+                        '[backfill_cfdi_states] RPC error en batch %s: %s',
+                        batches_run + 1, exc,
+                    )
+
+            invoices_processed += len(invoices)
+            last_id = invoices[-1].id
+            batches_run += 1
+
+            ICP.set_param(cursor_key, str(last_id))
+
+            _logger.info(
+                '[backfill_cfdi_states] batch %s: %s facturas (%s payload), '
+                'last_id=%s',
+                batches_run, len(invoices), len(payload), last_id,
+            )
+
+        elapsed = (datetime.now() - start_ts).total_seconds()
+
+        try:
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': f'Backfill cfdi_states ({batches_run} batches)',
+                'direction': 'push',
+                'status': 'success' if finished else 'partial',
+                'summary': (
+                    f'invoices={invoices_processed} '
+                    f'updated={rows_updated} '
+                    f'last_id={last_id} '
+                    f'finished={finished}'
+                ),
+                'duration_seconds': round(elapsed, 1),
+            })
+        except Exception as exc:
+            _logger.warning('No se pudo crear sync_log: %s', exc)
+
+        result = {
+            'batches_run': batches_run,
+            'invoices_processed': invoices_processed,
+            'rows_updated': rows_updated,
+            'last_id_processed': last_id,
+            'finished': finished,
+            'elapsed_seconds': round(elapsed, 1),
+        }
+        _logger.info('[backfill_cfdi_states] SUMMARY: %s', result)
         return result
