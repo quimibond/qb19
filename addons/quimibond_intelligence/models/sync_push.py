@@ -127,6 +127,16 @@ class QuimibondSync(models.TransientModel):
     _name = 'quimibond.sync'
     _description = 'Quimibond Sync Engine'
 
+    # Main operating company. All accounting, bank balances, manufacturing,
+    # and orderpoints are filtered to this company to avoid mixing data from
+    # personal/test companies in the same Odoo instance.
+    # Set via config param quimibond_intelligence.company_id (default: 1).
+    def _get_company_id(self):
+        """Return the operating company ID for filtering multi-company data."""
+        ICP = self.env['ir.config_parameter'].sudo()
+        cid = ICP.get_param('quimibond_intelligence.company_id', '1')
+        return int(cid)
+
     # Tablas que SIEMPRE hacen full push (no incremental), incluso cuando
     # last_sync esta seteado. Son catalogos pequenos donde el riesgo de
     # perderlos por incremental fallido es mayor al costo de re-enviarlos.
@@ -1003,7 +1013,9 @@ class QuimibondSync(models.TransientModel):
         ok = 0
         try:
             Move = self.env['account.move'].sudo()
+            cid = self._get_company_id()
             domain = [
+                ('company_id', '=', cid),
                 ('move_type', 'in', [
                     'out_invoice', 'out_refund',
                     'in_invoice', 'in_refund',
@@ -1155,8 +1167,10 @@ class QuimibondSync(models.TransientModel):
     def _push_invoice_lines(self, client: SupabaseClient, last_sync=None) -> int:
         """Push account.move.line → odoo_invoice_lines table."""
         Move = self.env['account.move'].sudo()
+        cid = self._get_company_id()
 
         domain = [
+            ('company_id', '=', cid),
             ('move_type', 'in', [
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund',
             ]),
@@ -1239,7 +1253,9 @@ class QuimibondSync(models.TransientModel):
 
             # Get invoices that have been paid or partially paid
             # EXCLUDE payroll (entry type) — only customer/supplier invoices
+            cid = self._get_company_id()
             domain = [
+                ('company_id', '=', cid),
                 ('move_type', 'in', [
                     'out_invoice', 'out_refund',
                     'in_invoice', 'in_refund',
@@ -1466,8 +1482,10 @@ class QuimibondSync(models.TransientModel):
             _logger.info('mrp.production not available, skipping manufacturing sync')
             return 0
 
+        cid = self._get_company_id()
         cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
         domain = [
+            ('company_id', '=', cid),
             '|',
             ('state', 'not in', ['done', 'cancel']),
             ('date_start', '>=', cutoff),
@@ -1506,7 +1524,8 @@ class QuimibondSync(models.TransientModel):
             _logger.info('hr.employee not available, skipping')
             return 0
 
-        domain = [('active', '=', True)]
+        cid = self._get_company_id()
+        domain = [('active', '=', True), ('company_id', '=', cid)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         employees = Employee.search(domain, limit=500)
@@ -1541,7 +1560,8 @@ class QuimibondSync(models.TransientModel):
             _logger.info('hr.department not available, skipping')
             return 0
 
-        domain = [('active', '=', True)]
+        cid = self._get_company_id()
+        domain = [('active', '=', True), ('company_id', '=', cid)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         departments = Dept.search(domain, limit=200)
@@ -1711,7 +1731,8 @@ class QuimibondSync(models.TransientModel):
             _logger.info('stock.warehouse.orderpoint not available, skipping')
             return 0
 
-        domain = [('active', '=', True)]
+        cid = self._get_company_id()
+        domain = [('active', '=', True), ('company_id', '=', cid)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         orderpoints = Orderpoint.search(domain, limit=5000)
@@ -1760,7 +1781,8 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         try:
-            domain = []
+            cid = self._get_company_id()
+            domain = [('company_id', '=', cid)]
             # Skip incremental filter on first run (table may be empty)
             if last_sync:
                 existing = client.fetch('odoo_account_payments', {'limit': '1', 'select': 'id'})
@@ -1832,8 +1854,10 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         try:
-            # Always full sync — chart of accounts rarely changes and is small
-            accounts = Account.search([])
+            # Filter to operating company only — Odoo instance has 8 companies
+            # but we only want Quimibond's chart of accounts.
+            cid = self._get_company_id()
+            accounts = Account.search([('company_id', '=', cid)])
             _logger.info('chart_of_accounts: found %d accounts', len(accounts))
 
             rows = []
@@ -1873,11 +1897,14 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         # Use read_group for efficient aggregation in Odoo
+        # Filter to operating company to avoid mixing P&L from 8 companies
+        cid = self._get_company_id()
         try:
             groups = Line.read_group(
                 domain=[
                     ('parent_state', '=', 'posted'),
                     ('display_type', 'not in', ['line_section', 'line_note']),
+                    ('company_id', '=', cid),
                 ],
                 fields=['account_id', 'debit:sum', 'credit:sum', 'balance:sum'],
                 groupby=['account_id', 'date:month'],
@@ -1887,11 +1914,11 @@ class QuimibondSync(models.TransientModel):
             _logger.warning('read_group account balances failed: %s', exc)
             return 0
 
-        # Build account cache for names/codes
+        # Build account cache for names/codes (same company filter)
         account_cache = {}
         try:
             Account = self.env['account.account'].sudo()
-            for acc in Account.search([]):
+            for acc in Account.search([('company_id', '=', cid)]):
                 account_cache[acc.id] = {
                     'code': acc.code or '',
                     'name': acc.name or '',
@@ -2025,14 +2052,11 @@ class QuimibondSync(models.TransientModel):
             _logger.info('account.journal not available, skipping')
             return 0
 
-        # Only sync journals from active operating companies (filters out
-        # generic "Bank"/"Cash" journals from inactive/test companies that
-        # bloated the table from ~15 useful journals to 61 rows of noise).
-        Company = self.env['res.company'].sudo()
-        active_company_ids = Company.search([]).ids
+        # Only sync journals from the operating company
+        cid = self._get_company_id()
         journals = Journal.search([
             ('type', 'in', ['bank', 'cash']),
-            ('company_id', 'in', active_company_ids),
+            ('company_id', '=', cid),
         ])
 
         rows = []
