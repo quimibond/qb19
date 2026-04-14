@@ -471,7 +471,9 @@ class QuimibondSync(models.TransientModel):
         try:
             Move = self.env['account.move'].sudo()
             cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            cid = self._get_company_id()
             invoice_partner_ids = Move.search([
+                ('company_id', '=', cid),
                 ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
                 ('state', '=', 'posted'),
                 ('invoice_date', '>=', cutoff),
@@ -623,7 +625,9 @@ class QuimibondSync(models.TransientModel):
                                     if c.get('odoo_partner_id')}
             Move = self.env['account.move'].sudo()
             cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            cid = self._get_company_id()
             inv_partners = Move.search([
+                ('company_id', '=', cid),
                 ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
                 ('state', '=', 'posted'),
                 ('invoice_date', '>=', cutoff),
@@ -885,6 +889,7 @@ class QuimibondSync(models.TransientModel):
                     'subtotal_mxn': round(l.price_subtotal * mxn_ratio, 2),
                     'currency': currency,
                     'salesperson_name': o.user_id.name if o.user_id else None,
+                    'odoo_company_id': o.company_id.id if o.company_id else None,
                 })
         except Exception as exc:
             _logger.warning('Sale order lines: %s', exc)
@@ -933,6 +938,7 @@ class QuimibondSync(models.TransientModel):
                     'subtotal_mxn': round(l.price_subtotal * mxn_ratio, 2),
                     'currency': currency,
                     'salesperson_name': o.user_id.name if o.user_id else None,
+                    'odoo_company_id': o.company_id.id if o.company_id else None,
                 })
         except Exception as exc:
             _logger.warning('Purchase order lines: %s', exc)
@@ -1129,6 +1135,7 @@ class QuimibondSync(models.TransientModel):
                     'salesperson_user_id': salesperson_user_id,
                     'ref': inv.ref or '',
                     'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
+                    'odoo_company_id': inv.company_id.id if inv.company_id else None,
                 })
 
             # Deduplicate: keep last occurrence per (odoo_partner_id, name)
@@ -1223,6 +1230,7 @@ class QuimibondSync(models.TransientModel):
                     'currency': inv_currency,
                     'price_subtotal_mxn': round(line.price_subtotal * mxn_ratio, 2),
                     'price_total_mxn': round(line.price_total * mxn_ratio, 2),
+                    'odoo_company_id': inv.company_id.id if inv.company_id else None,
                 })
 
         return client.upsert('odoo_invoice_lines', rows,
@@ -1321,6 +1329,7 @@ class QuimibondSync(models.TransientModel):
                     'payment_category': pay_category,
                     'state': 'posted',
                     'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
+                    'odoo_company_id': inv.company_id.id if inv.company_id else None,
                 })
 
             # === swap upsert → upsert_with_details ===
@@ -1396,6 +1405,7 @@ class QuimibondSync(models.TransientModel):
                 'state': pk.state,
                 'is_late': is_late,
                 'lead_time_days': lead_time,
+                'odoo_company_id': pk.company_id.id if pk.company_id else None,
             })
 
         return client.upsert('odoo_deliveries', rows,
@@ -1513,6 +1523,7 @@ class QuimibondSync(models.TransientModel):
                 'create_date': mo.create_date.strftime('%Y-%m-%d') if mo.create_date else None,
                 'assigned_user': mo.user_id.name if mo.user_id else '',
                 'origin': mo.origin or '',
+                'odoo_company_id': mo.company_id.id if mo.company_id else None,
             })
 
         return client.upsert('odoo_manufacturing', rows,
@@ -1601,7 +1612,9 @@ class QuimibondSync(models.TransientModel):
             _logger.info('sale.order not available, skipping')
             return 0
 
+        cid = self._get_company_id()
         domain = [
+            ('company_id', '=', cid),
             ('state', 'in', ['sale', 'done']),
         ]
         if last_sync:
@@ -1674,7 +1687,9 @@ class QuimibondSync(models.TransientModel):
             _logger.info('purchase.order not available, skipping')
             return 0
 
+        cid = self._get_company_id()
         domain = [
+            ('company_id', '=', cid),
             ('state', 'in', ['purchase', 'done']),
         ]
         if last_sync:
@@ -1832,6 +1847,7 @@ class QuimibondSync(models.TransientModel):
                         'is_matched': bool(getattr(p, 'is_matched', False)),
                         'is_reconciled': bool(getattr(p, 'is_reconciled', False)),
                         'reconciled_invoices_count': int(getattr(p, 'reconciled_invoices_count', 0) or 0),
+                        'odoo_company_id': p.company_id.id if p.company_id else None,
                     })
                 except Exception as exc:
                     _logger.warning('account_payment %s: %s', p.id, exc)
@@ -1930,7 +1946,12 @@ class QuimibondSync(models.TransientModel):
         account_cache = {}
         try:
             Account = self.env['account.account'].sudo()
-            for acc in Account.search([('company_id', '=', cid)]):
+            # In Odoo 19, account.account uses shared chart of accounts
+            # (company_id filter returns 0 results in shared mode).
+            accounts = Account.search([('company_id', '=', cid)])
+            if not accounts:
+                accounts = Account.search([])
+            for acc in accounts:
                 account_cache[acc.id] = {
                     'code': acc.code or '',
                     'name': acc.name or '',
