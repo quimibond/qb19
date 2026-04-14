@@ -108,9 +108,10 @@ class MrpProduction(models.Model):
             # Mantenemos tu formato original (SUB-MO-2026-04-13)
             lot_name = f"SUB-{mo_identifier}-{fields.Date.today()}"
         
-        # BUSQUEDA PREVIA: Si el lote ya se creó hoy, lo usamos en lugar de fallar
+        # CORRECCIÓN DE SINTAXIS Y BÚSQUEDA (Línea 112)
+        # Aseguramos que lot_name sea string y cerramos correctamente el domain
         new_lot = self.env['stock.lot'].search([
-            ('name', '=', lot_name),
+            ('name', '=', str(lot_name)),
             ('product_id', '=', sub_move.product_id.id),
             ('company_id', '=', self.company_id.id)
         ], limit=1)
@@ -121,6 +122,8 @@ class MrpProduction(models.Model):
                 'name': lot_name,
                 'product_id': sub_move.product_id.id,
                 'company_id': self.company_id.id,
+                'production_id': self.id,     # Tu campo original
+                'product_qty': weight,
             })
 
         current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
@@ -193,12 +196,16 @@ class MrpProduction(models.Model):
 
         # Punto 3: Impresión de etiqueta de Subproducto
         self._print_subproduct_zpl(sub_move.product_id, weight, lot_name)
-        return True
+        
+        return new_lot
 
     def _print_zpl_pesaje_original(self, lot_name, weight, barcode_data):
         """ Etiqueta de Pesaje Original Corregida (10x7.5cm) """
         self.ensure_one()
-        ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        # --- CAMBIO AQUÍ: Convertir UTC a Hora Local del Usuario ---
+        ahora_utc = fields.Datetime.now()
+        ahora_local = fields.Datetime.context_timestamp(self, ahora_utc)
+        ahora = ahora_local.strftime('%d/%m/%Y %H:%M:%S')
         
         # Búsqueda mejorada del Centro de Trabajo (Punto 4)
         wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
@@ -225,8 +232,12 @@ class MrpProduction(models.Model):
     def _print_subproduct_zpl(self, product, weight, lot_name):
         """ Genera etiqueta ZPL para el subproducto corregida (10x7.5cm) """
         self.ensure_one()
-        ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-        
+        # --- CAMBIO AQUÍ: Convertir UTC a Hora Local del Usuario ---
+        ahora_utc = fields.Datetime.now()
+        ahora_local = fields.Datetime.context_timestamp(self, ahora_utc)
+        ahora = ahora_local.strftime('%d/%m/%Y %H:%M:%S')
+        # -----------------------------------------------------------
+
         # PW812 = 10cm de ancho | LL609 = 7.5cm de alto
         zpl = f"""^XA^PW812^LL609^CI28
 ^FO50,40^A0N,40,40^FDSUBPRODUCTO^FS
