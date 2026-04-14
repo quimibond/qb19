@@ -13,11 +13,17 @@ Sprint 6: el mismo cron tampoco pusheó nunca cfdi_state ni edi_state
 sobre odoo_invoices → 14,490 facturas posteadas con cfdi_state=NULL
 y compliance SAT offline. manual_backfill_cfdi_states() lo recupera.
 
+Sprint 7: _push_account_payments tiene `limit=5000` hardcodeado en el
+primer full-sync → cobertura 36% de los pagos reales. El cron incremental
+captura los nuevos vía write_date, pero los históricos > 5K nunca se
+recuperan. manual_backfill_account_payments() los completa.
+
 Este módulo extiende el modelo `quimibond.sync.push` con métodos
 one-shot que se invocan manualmente desde el shell de Odoo:
 
     env['quimibond.sync.push'].manual_backfill_invoice_lines()
     env['quimibond.sync.push'].manual_backfill_cfdi_states()
+    env['quimibond.sync.push'].manual_backfill_account_payments()
 
 Cada método persiste un cursor independiente en ir.config_parameter
 para poder reanudar si la corrida se interrumpe.
@@ -99,6 +105,63 @@ def _build_cfdi_state_map(env, invoice_ids):
         _logger.warning('CFDI state map build failed: %s', exc)
 
     return result
+
+
+def _build_account_payment_rows(payments):
+    """Construye payload para upsert en odoo_account_payments desde un
+    recordset de account.payment. Mirror de la lógica de
+    `_push_account_payments` para mantener este módulo aislado.
+    """
+    rows = []
+    for p in payments:
+        try:
+            pid = _commercial_partner_id(p.partner_id) if p.partner_id else None
+
+            journal_name = None
+            try:
+                journal_name = p.journal_id.name if p.journal_id else None
+            except Exception:
+                pass
+
+            payment_method = None
+            try:
+                if hasattr(p, 'payment_method_line_id') and p.payment_method_line_id:
+                    payment_method = p.payment_method_line_id.name
+                elif hasattr(p, 'payment_method_id') and p.payment_method_id:
+                    payment_method = p.payment_method_id.name
+            except Exception:
+                pass
+
+            amount_signed = None
+            if hasattr(p, 'amount_company_currency_signed'):
+                acs = p.amount_company_currency_signed
+                if acs:
+                    amount_signed = round(acs, 2)
+
+            rows.append({
+                'odoo_payment_id': p.id,
+                'odoo_partner_id': pid,
+                'name': p.name or '',
+                'payment_type': p.payment_type or '',
+                'partner_type': p.partner_type or '',
+                'amount': round(p.amount or 0, 2),
+                'amount_signed': amount_signed,
+                'currency': p.currency_id.name if p.currency_id else 'MXN',
+                'date': p.date.strftime('%Y-%m-%d') if p.date else None,
+                'ref': (p.ref or '') if hasattr(p, 'ref') else '',
+                'journal_name': journal_name,
+                'payment_method': payment_method,
+                'state': p.state or '',
+                'is_matched': bool(getattr(p, 'is_matched', False)),
+                'is_reconciled': bool(getattr(p, 'is_reconciled', False)),
+                'reconciled_invoices_count': int(
+                    getattr(p, 'reconciled_invoices_count', 0) or 0
+                ),
+                'odoo_company_id': p.company_id.id if p.company_id else None,
+            })
+        except Exception as exc:
+            _logger.warning('account_payment %s: %s', p.id, exc)
+    return rows
 
 
 def _build_invoice_line_rows(invoices):
@@ -459,4 +522,136 @@ class QuimibondSyncBackfill(models.Model):
             'elapsed_seconds': round(elapsed, 1),
         }
         _logger.info('[backfill_cfdi_states] SUMMARY: %s', result)
+        return result
+
+    def manual_backfill_account_payments(self, batch_size=500, max_batches=None,
+                                          reset_cursor=False):
+        """One-shot backfill de odoo_account_payments para pagos históricos.
+
+        El cron _push_account_payments en sync_push.py tiene `limit=5000`
+        hardcodeado en la primera corrida full-sync, por lo que sólo cubre
+        los primeros 5,000 account.payment records (por orden default de
+        Odoo). Audit 2026-04-14: 5,000 pagos sincronizados de 13,868
+        facturas pagadas → cobertura ~36%.
+
+        Esta función itera por TODOS los account.payment en orden ascendente
+        de id, en chunks de batch_size, y los empuja al upsert idempotente.
+        Mismo patrón que manual_backfill_invoice_lines (Sprint 5).
+
+        Args:
+            batch_size: cantidad de account.payment por batch (default 500)
+            max_batches: límite de batches (None = sin límite)
+            reset_cursor: si True, ignora el cursor guardado y empieza desde 0
+
+        Returns:
+            dict con summary: batches_run, payments_processed, rows_pushed,
+                              last_id_processed, finished, elapsed_seconds.
+
+        Uso desde shell:
+            env['quimibond.sync.push'].manual_backfill_account_payments(max_batches=5)
+            env['quimibond.sync.push'].manual_backfill_account_payments()
+            env['quimibond.sync.push'].manual_backfill_account_payments(reset_cursor=True)
+        """
+        client = _get_supabase_client(self.env)
+        if not client:
+            raise UserError('Supabase client no configurado')
+
+        try:
+            Payment = self.env['account.payment'].sudo()
+        except KeyError:
+            raise UserError('account.payment no disponible en este Odoo')
+
+        ICP = self.env['ir.config_parameter'].sudo()
+        cursor_key = 'quimibond_intelligence.account_payments_backfill_cursor'
+
+        if reset_cursor:
+            ICP.set_param(cursor_key, '0')
+            _logger.info('[backfill_account_payments] cursor reseteado a 0')
+
+        try:
+            cursor = int(ICP.get_param(cursor_key, '0') or '0')
+        except (ValueError, TypeError):
+            cursor = 0
+
+        cid = self._get_company_id()
+        base_domain = [('company_id', '=', cid)]
+
+        total_remaining = Payment.search_count(
+            base_domain + [('id', '>', cursor)]
+        )
+        _logger.info(
+            '[backfill_account_payments] cursor=%s total_remaining=%s '
+            'batch_size=%s max_batches=%s',
+            cursor, total_remaining, batch_size, max_batches,
+        )
+
+        start_ts = datetime.now()
+        batches_run = 0
+        payments_processed = 0
+        rows_pushed = 0
+        last_id = cursor
+        finished = False
+
+        while True:
+            if max_batches is not None and batches_run >= max_batches:
+                _logger.info(
+                    '[backfill_account_payments] max_batches alcanzado: %s',
+                    max_batches,
+                )
+                break
+
+            domain = base_domain + [('id', '>', last_id)]
+            payments = Payment.search(domain, order='id asc', limit=batch_size)
+            if not payments:
+                finished = True
+                _logger.info('[backfill_account_payments] sin más pagos, terminado')
+                break
+
+            rows = _build_account_payment_rows(payments)
+            if rows:
+                pushed = client.upsert(
+                    'odoo_account_payments', rows,
+                    on_conflict='odoo_payment_id', batch_size=200,
+                )
+                rows_pushed += pushed
+
+            payments_processed += len(payments)
+            last_id = payments[-1].id
+            batches_run += 1
+
+            ICP.set_param(cursor_key, str(last_id))
+
+            _logger.info(
+                '[backfill_account_payments] batch %s: %s pagos (%s rows), '
+                'last_id=%s',
+                batches_run, len(payments), len(rows), last_id,
+            )
+
+        elapsed = (datetime.now() - start_ts).total_seconds()
+
+        try:
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': f'Backfill account_payments ({batches_run} batches)',
+                'direction': 'push',
+                'status': 'success' if finished else 'partial',
+                'summary': (
+                    f'payments={payments_processed} '
+                    f'pushed={rows_pushed} '
+                    f'last_id={last_id} '
+                    f'finished={finished}'
+                ),
+                'duration_seconds': round(elapsed, 1),
+            })
+        except Exception as exc:
+            _logger.warning('No se pudo crear sync_log: %s', exc)
+
+        result = {
+            'batches_run': batches_run,
+            'payments_processed': payments_processed,
+            'rows_pushed': rows_pushed,
+            'last_id_processed': last_id,
+            'finished': finished,
+            'elapsed_seconds': round(elapsed, 1),
+        }
+        _logger.info('[backfill_account_payments] SUMMARY: %s', result)
         return result
