@@ -69,7 +69,10 @@ class MrpProduction(models.Model):
     def _print_zpl_label(self, lote_name, peso, nombre_producto):
         """ Etiqueta de Revisado Corregida (10x7.5cm) """
         self.ensure_one()
-        ahora = fields.Datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        # --- CAMBIO AQUÍ: Convertir UTC a Hora Local del Usuario ---
+        ahora_utc = fields.Datetime.now()
+        ahora_local = fields.Datetime.context_timestamp(self, ahora_utc)
+        ahora = ahora_local.strftime('%d/%m/%Y %H:%M:%S')
         
         # Corrección Centro de Trabajo: Usamos el campo workcenter_id de la MO
         wc_name = self.workcenter_id.name if self.workcenter_id else "N/A"
