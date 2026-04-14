@@ -655,3 +655,61 @@ class QuimibondSyncBackfill(models.TransientModel):
         }
         _logger.info('[backfill_account_payments] SUMMARY: %s', result)
         return result
+
+    # ── Backfill BOMs (mrp.bom + mrp.bom.line) ───────────────────────────
+
+    def manual_backfill_boms(self):
+        """One-shot full push de mrp.bom + mrp.bom.line a Supabase.
+
+        BOMs es un catálogo chico (centenas de recetas activas), así que no
+        usa cursor: trae todo, hace upsert. Llamada manual:
+
+            env['quimibond.sync'].manual_backfill_boms()
+
+        Devuelve dict con `boms_pushed`, `finished=True` y `elapsed_seconds`.
+        """
+        client = _get_supabase_client(self.env)
+        if not client:
+            raise UserError('Supabase URL/service key no configurado.')
+
+        start_ts = datetime.now()
+
+        # Reutiliza el método _push_boms del modelo principal.
+        # last_sync=None fuerza full push.
+        try:
+            boms_pushed = self._push_boms(client, last_sync=None)
+        except Exception as exc:
+            _logger.exception('[backfill_boms] fallo: %s', exc)
+            try:
+                self.env['quimibond.sync.log'].sudo().create({
+                    'name': 'Backfill mrp.bom',
+                    'direction': 'push',
+                    'status': 'error',
+                    'summary': f'Error: {exc}',
+                    'duration_seconds': round(
+                        (datetime.now() - start_ts).total_seconds(), 1),
+                })
+            except Exception:
+                pass
+            raise
+
+        elapsed = (datetime.now() - start_ts).total_seconds()
+
+        try:
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': 'Backfill mrp.bom',
+                'direction': 'push',
+                'status': 'success',
+                'summary': f'boms={boms_pushed}',
+                'duration_seconds': round(elapsed, 1),
+            })
+        except Exception as exc:
+            _logger.warning('No se pudo crear sync_log: %s', exc)
+
+        result = {
+            'boms_pushed': boms_pushed,
+            'finished': True,
+            'elapsed_seconds': round(elapsed, 1),
+        }
+        _logger.info('[backfill_boms] SUMMARY: %s', result)
+        return result

@@ -154,6 +154,9 @@ class QuimibondSync(models.TransientModel):
         # (salesperson_name, amount_*_mxn, payment_category) get populated.
         # Can be removed after first successful full sync.
         'invoices', 'payments',
+        # BOMs are a small catalog (~hundreds) and active flag changes
+        # are not always reflected in write_date. Always full push.
+        'boms',
     ])
 
     def _run_push(self, client, label, method_fn, last_sync=None):
@@ -263,6 +266,7 @@ class QuimibondSync(models.TransientModel):
                 ('account_balances', self._push_account_balances),
                 ('bank_balances', self._push_bank_balances),
                 ('currency_rates', self._push_currency_rates),
+                ('boms', self._push_boms),
             ]
             totals = {}
             for label, fn in methods:
@@ -2209,3 +2213,77 @@ class QuimibondSync(models.TransientModel):
                                   on_conflict='currency,rate_date,odoo_company_id',
                                   batch_size=200)
         return 0
+
+    # ── BOMs (mrp.bom + mrp.bom.line) ────────────────────────────────────
+
+    def _push_boms(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push mrp.bom + mrp.bom.line → mrp_boms / mrp_bom_lines tables.
+
+        BOMs unlock real manufacturing cost: instead of relying on the
+        cached standard_price (often stale or zero for finished goods),
+        we can roll down each BOM to sum component standard_prices and
+        derive the actual unit cost of each manufactured product.
+
+        Returns the number of bom headers pushed (0 if mrp not installed).
+        """
+        try:
+            Bom = self.env['mrp.bom'].sudo()
+        except KeyError:
+            _logger.info('mrp.bom not available, skipping')
+            return 0
+
+        cid = self._get_company_id()
+        domain = [
+            ('active', '=', True),
+            '|', ('company_id', '=', cid), ('company_id', '=', False),
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+
+        boms = Bom.search(domain)
+        if not boms:
+            return 0
+
+        bom_rows = []
+        line_rows = []
+        for bom in boms:
+            # Resolve product (variant) and template
+            tmpl = bom.product_tmpl_id
+            variant = bom.product_id  # may be empty (BOM applies to all variants)
+            display_product = variant if variant else (tmpl.product_variant_id if tmpl else False)
+
+            bom_rows.append({
+                'odoo_bom_id': bom.id,
+                'odoo_product_tmpl_id': tmpl.id if tmpl else None,
+                'odoo_product_id': display_product.id if display_product else None,
+                'product_name': display_product.name if display_product else (tmpl.name if tmpl else ''),
+                'product_ref': (display_product.default_code or '') if display_product else '',
+                'product_qty': float(bom.product_qty or 1.0),
+                'product_uom': bom.product_uom_id.name if bom.product_uom_id else '',
+                'code': bom.code or '',
+                'bom_type': bom.type or 'normal',
+                'active': bool(bom.active),
+                'odoo_company_id': bom.company_id.id if bom.company_id else None,
+                'synced_at': datetime.now().isoformat(),
+            })
+
+            for line in bom.bom_line_ids:
+                comp = line.product_id
+                line_rows.append({
+                    'odoo_bom_line_id': line.id,
+                    'odoo_bom_id': bom.id,
+                    'odoo_product_id': comp.id if comp else None,
+                    'product_name': comp.name if comp else '',
+                    'product_ref': (comp.default_code or '') if comp else '',
+                    'product_qty': float(line.product_qty or 0.0),
+                    'product_uom': line.product_uom_id.name if line.product_uom_id else '',
+                    'synced_at': datetime.now().isoformat(),
+                })
+
+        # Push headers first, then lines (FK soft via odoo_bom_id)
+        client.upsert('mrp_boms', bom_rows,
+                      on_conflict='odoo_bom_id', batch_size=200)
+        if line_rows:
+            client.upsert('mrp_bom_lines', line_rows,
+                          on_conflict='odoo_bom_line_id', batch_size=500)
+        return len(bom_rows)

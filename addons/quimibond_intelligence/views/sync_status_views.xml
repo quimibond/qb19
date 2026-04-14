@@ -149,6 +149,30 @@ action = {
         </field>
     </record>
 
+    <record id="action_backfill_boms" model="ir.actions.server">
+        <field name="name">Backfill BOMs (mrp.bom)</field>
+        <field name="model_id" ref="model_quimibond_sync"/>
+        <field name="state">code</field>
+        <field name="code">
+result = model.manual_backfill_boms()
+env.cr.commit()
+msg = (
+    'BOMs pusheados: {boms_pushed}. '
+    'Tiempo: {elapsed_seconds}s.'
+).format(**result)
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': 'Backfill mrp.bom',
+        'message': msg,
+        'type': 'success',
+        'sticky': True,
+    },
+}
+        </field>
+    </record>
+
     <record id="action_open_frontend" model="ir.actions.act_url">
         <field name="name">Abrir Quimibond Intelligence</field>
         <field name="url">https://quimibond-intelligence.vercel.app/inbox</field>
@@ -207,6 +231,12 @@ action = {
         parent="menu_sync_backfill"
         action="action_backfill_account_payments"
         sequence="30"/>
+
+    <menuitem id="menu_backfill_boms"
+        name="Backfill BOMs"
+        parent="menu_sync_backfill"
+        action="action_backfill_boms"
+        sequence="40"/>
 
     <menuitem id="menu_open_frontend"
         name="Abrir Intelligence (Vercel)"
