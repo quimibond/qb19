@@ -150,6 +150,10 @@ class QuimibondSync(models.TransientModel):
         # incremental write_date filter missed records not recently edited.
         'products', 'sale_orders', 'purchase_orders', 'invoice_lines',
         'deliveries', 'manufacturing', 'account_payments',
+        # Force full push for invoices/payments so new fields
+        # (salesperson_name, amount_*_mxn, payment_category) get populated.
+        # Can be removed after first successful full sync.
+        'invoices', 'payments',
     ])
 
     def _run_push(self, client, label, method_fn, last_sync=None):
@@ -1854,10 +1858,18 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         try:
-            # Filter to operating company only — Odoo instance has 8 companies
-            # but we only want Quimibond's chart of accounts.
+            # In Odoo 19, account.account uses shared chart of accounts
+            # (company_id filter returns 0 results in shared mode).
+            # Instead, we push ALL accounts and let Supabase clean up
+            # the ones without movements via account_balances join.
             cid = self._get_company_id()
-            accounts = Account.search([('company_id', '=', cid)])
+            try:
+                accounts = Account.search([('company_id', '=', cid)])
+                if not accounts:
+                    # Shared chart mode — fall back to all accounts
+                    accounts = Account.search([])
+            except Exception:
+                accounts = Account.search([])
             _logger.info('chart_of_accounts: found %d accounts', len(accounts))
 
             rows = []
