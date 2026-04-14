@@ -16,6 +16,7 @@ class SyncLog(models.Model):
     ], string='Direccion', required=True)
     status = fields.Selection([
         ('success', 'Exitoso'),
+        ('partial', 'Parcial'),
         ('error', 'Error'),
     ], string='Estado', required=True)
     summary = fields.Text('Resumen')
