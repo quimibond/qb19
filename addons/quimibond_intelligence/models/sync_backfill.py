@@ -18,12 +18,12 @@ primer full-sync → cobertura 36% de los pagos reales. El cron incremental
 captura los nuevos vía write_date, pero los históricos > 5K nunca se
 recuperan. manual_backfill_account_payments() los completa.
 
-Este módulo extiende el modelo `quimibond.sync.push` con métodos
+Este módulo extiende el modelo `quimibond.sync` con métodos
 one-shot que se invocan manualmente desde el shell de Odoo:
 
-    env['quimibond.sync.push'].manual_backfill_invoice_lines()
-    env['quimibond.sync.push'].manual_backfill_cfdi_states()
-    env['quimibond.sync.push'].manual_backfill_account_payments()
+    env['quimibond.sync'].manual_backfill_invoice_lines()
+    env['quimibond.sync'].manual_backfill_cfdi_states()
+    env['quimibond.sync'].manual_backfill_account_payments()
 
 Cada método persiste un cursor independiente en ir.config_parameter
 para poder reanudar si la corrida se interrumpe.
@@ -216,9 +216,9 @@ def _build_invoice_line_rows(invoices):
     return rows
 
 
-class QuimibondSyncBackfill(models.Model):
+class QuimibondSyncBackfill(models.TransientModel):
     """Inherit del modelo principal para agregar operaciones one-shot."""
-    _inherit = 'quimibond.sync.push'
+    _inherit = 'quimibond.sync'
 
     def manual_backfill_invoice_lines(self, batch_size=500, max_batches=None,
                                       reset_cursor=False):
@@ -243,9 +243,9 @@ class QuimibondSyncBackfill(models.Model):
                               finished, elapsed_seconds.
 
         Uso desde shell:
-            env['quimibond.sync.push'].manual_backfill_invoice_lines()
-            env['quimibond.sync.push'].manual_backfill_invoice_lines(max_batches=10)
-            env['quimibond.sync.push'].manual_backfill_invoice_lines(reset_cursor=True)
+            env['quimibond.sync'].manual_backfill_invoice_lines()
+            env['quimibond.sync'].manual_backfill_invoice_lines(max_batches=10)
+            env['quimibond.sync'].manual_backfill_invoice_lines(reset_cursor=True)
         """
         client = _get_supabase_client(self.env)
         if not client:
@@ -380,9 +380,9 @@ class QuimibondSyncBackfill(models.Model):
                               finished, elapsed_seconds.
 
         Uso desde shell:
-            env['quimibond.sync.push'].manual_backfill_cfdi_states(max_batches=5)
-            env['quimibond.sync.push'].manual_backfill_cfdi_states()
-            env['quimibond.sync.push'].manual_backfill_cfdi_states(reset_cursor=True)
+            env['quimibond.sync'].manual_backfill_cfdi_states(max_batches=5)
+            env['quimibond.sync'].manual_backfill_cfdi_states()
+            env['quimibond.sync'].manual_backfill_cfdi_states(reset_cursor=True)
         """
         client = _get_supabase_client(self.env)
         if not client:
@@ -548,9 +548,9 @@ class QuimibondSyncBackfill(models.Model):
                               last_id_processed, finished, elapsed_seconds.
 
         Uso desde shell:
-            env['quimibond.sync.push'].manual_backfill_account_payments(max_batches=5)
-            env['quimibond.sync.push'].manual_backfill_account_payments()
-            env['quimibond.sync.push'].manual_backfill_account_payments(reset_cursor=True)
+            env['quimibond.sync'].manual_backfill_account_payments(max_batches=5)
+            env['quimibond.sync'].manual_backfill_account_payments()
+            env['quimibond.sync'].manual_backfill_account_payments(reset_cursor=True)
         """
         client = _get_supabase_client(self.env)
         if not client:
