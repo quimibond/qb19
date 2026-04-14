@@ -830,6 +830,7 @@ class QuimibondSync(models.TransientModel):
                 'internal_ref': p.default_code or '',
                 'category': category,
                 'uom': p.uom_id.name if p.uom_id else '',
+                'uom_id': p.uom_id.id if p.uom_id else None,
                 'product_type': ptype,
                 'stock_qty': round(stock_qty, 2),
                 'reserved_qty': round(reserved_qty, 2),
