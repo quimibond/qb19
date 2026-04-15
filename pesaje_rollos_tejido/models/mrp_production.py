@@ -250,7 +250,56 @@ class MrpProduction(models.Model):
 ^XZ"""
         self.last_zpl_label = zpl
         return True
-    
+
+    def button_mark_done(self):
+        """
+        Elimina el rollo de ajuste igualando la cantidad planeada de la MO
+        al total realmente pesado (rollos + subproducto), justo antes del cierre.
+        Esta solución NO toca los movimientos de inventario, por lo que no borra rollos.
+        """
+        self.ensure_one()
+        
+        # Solo aplicamos la lógica si hemos registrado rollos con nuestro módulo
+        if self.roll_count > 0:
+            # 1. Calculamos el total real producido (Producto Principal)
+            finished_move = self.move_finished_ids.filtered(
+                lambda x: x.product_id == self.product_id and x.state not in ('done', 'cancel')
+            )[:1]
+            
+            if finished_move:
+                # Sumamos el peso real de todos tus rollos
+                total_rollos = sum(finished_move.move_line_ids.mapped('quantity'))
+                
+                # Buscamos si hay subproductos pesados
+                # (Asumiendo que el subproducto se registra en su propio movimiento)
+                byproduct_moves = self.move_byproduct_ids.filtered(
+                    lambda x: x.state not in ('done', 'cancel')
+                )
+                total_subproductos = sum(byproduct_moves.mapped('move_line_ids.quantity'))
+                
+                # El total producido que Odoo debe considerar es la suma de ambos
+                total_producido_real = total_rollos + total_subproductos
+                
+                if total_producido_real > 0:
+                    # AJUSTE CRÍTICO: Igualamos la cantidad planeada de la MO al total real.
+                    # Al hacer esto, Odoo 19 ve que se planeó X y se produjo X.
+                    # Diferencia = 0, por lo tanto, NO genera rollo de ajuste.
+                    self.write({
+                        'product_qty': total_producido_real,
+                        'qty_producing': total_rollos, # El progreso visual es solo sobre el principal
+                    })
+                    
+                    # Opcional: Para el subproducto, aseguramos que su movimiento 
+                    # tenga la demanda correcta para que no genere su propio ajuste.
+                    for smove in byproduct_moves:
+                        total_smove = sum(smove.move_line_ids.mapped('quantity'))
+                        if total_smove > 0:
+                            smove.write({'product_uom_qty': total_smove})
+
+        # Ejecutamos el cierre estándar de Odoo. Como 'product_qty' ahora es igual
+        # a lo producido, cerrará sin generar rollos fantasma.
+        return super(MrpProduction, self).button_mark_done()
+
 class StockLot(models.Model):
     _inherit = 'stock.lot'
 
