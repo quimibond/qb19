@@ -2122,23 +2122,31 @@ class QuimibondSync(models.TransientModel):
 
         rows = []
         for j in journals:
-            # Get the default debit/credit account for balance
-            balance = 0.0
+            # Compute both company-currency balance (MXN) and foreign-currency
+            # native balance from the same read_group.
+            #
+            # account.move.line.balance        = debit - credit (company ccy, MXN)
+            # account.move.line.amount_currency = native foreign-currency amount
+            #
+            # For USD/EUR journals we want BOTH:
+            #   - current_balance_mxn -> MXN ledger value (used for aggregations)
+            #   - current_balance     -> native foreign value (for display)
+            balance_mxn = 0.0
+            balance_native = 0.0
             try:
-                # In Odoo 19, journal has default_account_id
                 if hasattr(j, 'default_account_id') and j.default_account_id:
-                    # Sum all posted journal items on this account
                     Line = self.env['account.move.line'].sudo()
                     result = Line.read_group(
                         domain=[
                             ('account_id', '=', j.default_account_id.id),
                             ('parent_state', '=', 'posted'),
                         ],
-                        fields=['balance:sum'],
+                        fields=['balance:sum', 'amount_currency:sum'],
                         groupby=[],
                     )
                     if result:
-                        balance = result[0].get('balance', 0) or 0
+                        balance_mxn = result[0].get('balance', 0) or 0
+                        balance_native = result[0].get('amount_currency', 0) or 0
             except Exception as exc:
                 _logger.warning('Bank balance for %s: %s', j.name, exc)
 
@@ -2151,15 +2159,28 @@ class QuimibondSync(models.TransientModel):
             except Exception:
                 pass
 
+            company_currency = (
+                j.company_id.currency_id.name
+                if j.company_id and j.company_id.currency_id else 'MXN'
+            )
+            journal_currency = j.currency_id.name if j.currency_id else company_currency
+
+            # If journal operates in a foreign currency AND has amount_currency
+            # data, current_balance = native foreign value. Otherwise,
+            # current_balance = MXN ledger balance (same as _mxn).
+            if journal_currency != company_currency and balance_native:
+                current_balance = round(balance_native, 2)
+            else:
+                current_balance = round(balance_mxn, 2)
+
             rows.append({
                 'odoo_journal_id': j.id,
                 'name': j.name,
                 'journal_type': j.type,  # bank / cash
-                'currency': j.currency_id.name if j.currency_id else (
-                    j.company_id.currency_id.name if j.company_id and j.company_id.currency_id else 'MXN'
-                ),
+                'currency': journal_currency,
                 'bank_account': bank_account,
-                'current_balance': round(balance, 2),
+                'current_balance': current_balance,
+                'current_balance_mxn': round(balance_mxn, 2),
                 'odoo_company_id': j.company_id.id if j.company_id else None,
                 'company_name': j.company_id.name if j.company_id else None,
                 'updated_at': datetime.now().isoformat(),
