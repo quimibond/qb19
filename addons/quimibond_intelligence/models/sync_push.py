@@ -1920,13 +1920,29 @@ class QuimibondSync(models.TransientModel):
                 accounts = Account.search([])
             _logger.info('chart_of_accounts: found %d accounts', len(accounts))
 
+            # Odoo 17+ changed account.account.code to a computed per-company
+            # field backed by code_store_ids (account.code.mapping). Reading
+            # acc.code without company context returns empty for accounts not
+            # scoped to the user's default company. Force the target company.
+            accounts_ctx = accounts.with_company(cid) if cid else accounts
+
             rows = []
-            for acc in accounts:
+            for acc in accounts_ctx:
                 try:
                     acc_type = getattr(acc, 'account_type', None) or ''
+                    code = acc.code or ''
+                    # Fallback: read directly from code_store_ids mapping
+                    if not code and hasattr(acc, 'code_store_ids'):
+                        mapping = acc.code_store_ids.filtered(
+                            lambda m: m.company_id.id == cid
+                        )
+                        if mapping:
+                            code = mapping[0].code or ''
+                        elif acc.code_store_ids:
+                            code = acc.code_store_ids[0].code or ''
                     rows.append({
                         'odoo_account_id': acc.id,
-                        'code': acc.code or '',
+                        'code': code,
                         'name': acc.name or '',
                         'account_type': acc_type,
                         'reconcile': bool(acc.reconcile) if hasattr(acc, 'reconcile') else False,
@@ -1976,18 +1992,28 @@ class QuimibondSync(models.TransientModel):
             _logger.warning('read_group account balances failed: %s', exc)
             return 0
 
-        # Build account cache for names/codes (same company filter)
+        # Build account cache for names/codes (same company filter).
+        # Odoo 17+: force company context so code_store_ids is resolved
+        # against the target company (code is a computed per-company field).
         account_cache = {}
         try:
             Account = self.env['account.account'].sudo()
-            # In Odoo 19, account.account uses shared chart of accounts
-            # (company_id filter returns 0 results in shared mode).
             accounts = Account.search([('company_id', '=', cid)])
             if not accounts:
                 accounts = Account.search([])
+            accounts = accounts.with_company(cid) if cid else accounts
             for acc in accounts:
+                code = acc.code or ''
+                if not code and hasattr(acc, 'code_store_ids'):
+                    mapping = acc.code_store_ids.filtered(
+                        lambda m: m.company_id.id == cid
+                    )
+                    if mapping:
+                        code = mapping[0].code or ''
+                    elif acc.code_store_ids:
+                        code = acc.code_store_ids[0].code or ''
                 account_cache[acc.id] = {
-                    'code': acc.code or '',
+                    'code': code,
                     'name': acc.name or '',
                     'account_type': getattr(acc, 'account_type', '') or '',
                 }
