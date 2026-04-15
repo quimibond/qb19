@@ -1905,6 +1905,11 @@ class QuimibondSync(models.TransientModel):
             # (company_id filter returns 0 results in shared mode).
             # Instead, we push ALL accounts and let Supabase clean up
             # the ones without movements via account_balances join.
+            #
+            # Use active_test=False so that archived accounts are also
+            # synced (with active=false flag). Views downstream filter
+            # by active=true to ignore them.
+            Account = Account.with_context(active_test=False)
             cid = self._get_company_id()
             try:
                 accounts = Account.search([('company_id', '=', cid)])
@@ -1926,6 +1931,7 @@ class QuimibondSync(models.TransientModel):
                         'account_type': acc_type,
                         'reconcile': bool(acc.reconcile) if hasattr(acc, 'reconcile') else False,
                         'deprecated': bool(getattr(acc, 'deprecated', False)),
+                        'active': bool(getattr(acc, 'active', True)),
                         'odoo_company_id': acc.company_id.id if acc.company_id else None,
                     })
                 except Exception as exc:
