@@ -89,6 +89,17 @@ class MrpRevisadoWizard(models.TransientModel):
     def confirmar_revisado(self):
         self.ensure_one()
 
+        # NUEVO CANDADO ESTRICTO:
+        revisados_actuales = len(self.production_id.revision_log_ids)
+        meta_requerida = self.production_id.rollos_requeridos_count
+    
+        if revisados_actuales >= meta_requerida:
+            raise UserError(_(
+                 "Meta de revisión completada.\n"
+                 "Ya se han revisado %s rollos de una meta de %s. "
+                 "No se permiten revisiones adicionales."
+            ) % (revisados_actuales, meta_requerida))
+
         # Validamos que el peso actual no sea superior al original
         if self.peso_actual > self.peso_original:
             raise UserError(_(
