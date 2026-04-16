@@ -1264,8 +1264,75 @@ class QuimibondSync(models.TransientModel):
 
     # ── Invoice Lines (ALL history) ──────────────────────────────────────
 
+    def _compute_invoice_fx_ratio(self, inv) -> float:
+        """Resuelve MXN-per-native-unit para una factura.
+
+        Fallback chain (H12):
+          1. amount_total_signed / amount_total (sanity-checked)
+          2. currency_id._convert() a company currency en invoice_date
+          3. res.currency.rate.rate en la fecha de la factura
+          4. 1.0 (MXN-native o no resoluble)
+
+        Extraído como helper para ser reutilizable + testeable.
+        """
+        inv_currency = inv.currency_id.name if inv.currency_id else 'MXN'
+        mxn_ratio = 1.0
+
+        amt_signed = getattr(inv, 'amount_total_signed', None)
+        if amt_signed is not None and inv.amount_total:
+            ratio_from_signed = abs(amt_signed) / inv.amount_total
+            # Sanity: en non-MXN un ratio ≈1.0 es FX no aplicada, forzar fallback.
+            if ratio_from_signed > 0 and not (
+                inv_currency != 'MXN' and abs(ratio_from_signed - 1.0) < 0.001
+            ):
+                mxn_ratio = ratio_from_signed
+
+        if mxn_ratio == 1.0 and inv_currency != 'MXN' and inv.currency_id:
+            try:
+                company = inv.company_id or self.env.company
+                target = company.currency_id
+                on_date = inv.invoice_date or inv.date or datetime.now().date()
+                converted = inv.currency_id._convert(
+                    1.0, target, company, on_date, round=False,
+                )
+                if converted and converted > 0:
+                    mxn_ratio = float(converted)
+            except Exception as exc:
+                _logger.debug('FX _convert failed for %s: %s', inv.name, exc)
+
+        if mxn_ratio == 1.0 and inv_currency != 'MXN':
+            try:
+                Rate = self.env['res.currency.rate'].sudo()
+                on_date = inv.invoice_date or datetime.now().date()
+                rate_row = Rate.search(
+                    [
+                        ('currency_id', '=', inv.currency_id.id),
+                        ('name', '<=', on_date.strftime('%Y-%m-%d')),
+                    ],
+                    order='name desc',
+                    limit=1,
+                )
+                if rate_row and rate_row.rate:
+                    mxn_ratio = 1.0 / float(rate_row.rate)
+            except Exception as exc:
+                _logger.debug(
+                    'FX res.currency.rate fallback failed for %s: %s',
+                    inv.name, exc,
+                )
+
+        return mxn_ratio
+
     def _push_invoice_lines(self, client: SupabaseClient, last_sync=None) -> int:
-        """Push account.move.line → odoo_invoice_lines table."""
+        """Push account.move.line → odoo_invoice_lines table.
+
+        H11 refactor (2026-04-17): antes iteraba invoice por invoice y accedía
+        `inv.invoice_line_ids` lazy, causando N+1 queries ORM. Para 14,520
+        facturas esto rebasaba el timeout del cron → 97% de invoices sin
+        lines pushed. Ahora:
+          1. Search invoices + precompute FX ratios (UNA vez)
+          2. Bulk search de TODAS las lines con move_id IN (...)
+          3. Single pass sobre lines usando inv_map precomputado
+        """
         Move = self.env['account.move'].sudo()
         cid = self._get_company_id()
 
@@ -1280,108 +1347,81 @@ class QuimibondSync(models.TransientModel):
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         invoices = Move.search(domain)
 
-        rows = []
+        if not invoices:
+            return 0
+
+        # Precompute metadata + FX ratios (un loop sobre invoices solo).
+        inv_map: dict[int, dict] = {}
+        ratios: dict[int, float] = {}
         for inv in invoices:
             pid = _commercial_partner_id(inv.partner_id)
             if not pid:
                 continue
+            inv_map[inv.id] = {
+                'pid': pid,
+                'name': inv.name,
+                'move_type': inv.move_type,
+                'invoice_date': (
+                    inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None
+                ),
+                'currency': inv.currency_id.name if inv.currency_id else 'MXN',
+                'company_id': inv.company_id.id if inv.company_id else None,
+            }
+            ratios[inv.id] = self._compute_invoice_fx_ratio(inv)
 
-            inv_date = inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None
+        if not inv_map:
+            return 0
 
-            # H12: pre-compute MXN ratio fuera del loop de lineas (todas
-            # las lineas de una factura usan la misma moneda).
-            # Fallback chain para el ratio:
-            #   1. amount_total_signed / amount_total (método actual)
-            #   2. currency_id._convert() a company currency en la fecha
-            #      de la factura (fuente canonica de Odoo)
-            #   3. rate from res.currency.rate en la fecha de la factura
-            #   4. 1.0 (MXN-native o no resoluble)
-            inv_currency = inv.currency_id.name if inv.currency_id else 'MXN'
-            mxn_ratio = 1.0
-            amt_signed = getattr(inv, 'amount_total_signed', None)
-            if amt_signed is not None and inv.amount_total:
-                ratio_from_signed = abs(amt_signed) / inv.amount_total
-                # Sanity: si signed == total y la moneda no es la de la
-                # company, el ratio está corrupto (factura legacy). Forzar
-                # fallback.
-                if ratio_from_signed > 0 and not (
-                    inv_currency != 'MXN' and abs(ratio_from_signed - 1.0) < 0.001
-                ):
-                    mxn_ratio = ratio_from_signed
+        _logger.info(
+            '_push_invoice_lines: %d invoices, fetching lines in bulk',
+            len(inv_map),
+        )
 
-            if mxn_ratio == 1.0 and inv_currency != 'MXN' and inv.currency_id:
-                # Fallback: usar la API oficial de Odoo para convertir.
-                try:
-                    company = inv.company_id or self.env.company
-                    target = company.currency_id
-                    on_date = inv.invoice_date or inv.date or datetime.now().date()
-                    converted = inv.currency_id._convert(
-                        1.0, target, company, on_date, round=False,
-                    )
-                    if converted and converted > 0:
-                        mxn_ratio = float(converted)
-                except Exception as exc:
-                    _logger.debug(
-                        'FX fallback _convert failed for %s: %s',
-                        inv.name, exc,
-                    )
+        # Bulk fetch de lines — reemplaza el lazy loop `for inv: for line in inv.invoice_line_ids`.
+        Line = self.env['account.move.line'].sudo()
+        lines = Line.search([
+            ('move_id', 'in', list(inv_map.keys())),
+            ('display_type', 'not in',
+             ['line_section', 'line_note', 'payment_term', 'tax', 'rounding']),
+        ])
 
-            if mxn_ratio == 1.0 and inv_currency != 'MXN':
-                # Último fallback: leer res.currency.rate directamente.
-                try:
-                    Rate = self.env['res.currency.rate'].sudo()
-                    on_date = inv.invoice_date or datetime.now().date()
-                    rate_row = Rate.search(
-                        [
-                            ('currency_id', '=', inv.currency_id.id),
-                            ('name', '<=', on_date.strftime('%Y-%m-%d')),
-                        ],
-                        order='name desc',
-                        limit=1,
-                    )
-                    if rate_row and rate_row.rate:
-                        # rate = company_curr_per_1_target_curr
-                        # Odoo convention: rate es cuántas unidades de
-                        # la moneda de la tasa valen 1 unidad de la moneda
-                        # pivot (MXN en este caso si pivot = company). Si
-                        # invertido, ajustar. Aquí asumimos inverse.
-                        mxn_ratio = 1.0 / float(rate_row.rate)
-                except Exception as exc:
-                    _logger.debug(
-                        'FX fallback res.currency.rate failed for %s: %s',
-                        inv.name, exc,
-                    )
+        rows = []
+        for line in lines:
+            mv_id = line.move_id.id
+            ctx = inv_map.get(mv_id)
+            if not ctx:
+                continue
+            ratio = ratios.get(mv_id, 1.0)
+            line_uom_obj = getattr(line, 'product_uom_id', None)
+            rows.append({
+                'odoo_line_id': line.id,
+                'odoo_move_id': mv_id,
+                'odoo_partner_id': ctx['pid'],
+                'move_name': ctx['name'],
+                'move_type': ctx['move_type'],
+                'invoice_date': ctx['invoice_date'],
+                'odoo_product_id': line.product_id.id if line.product_id else None,
+                'product_name': (
+                    line.product_id.name if line.product_id else (line.name or '')[:200]
+                ),
+                'product_ref': line.product_id.default_code or '' if line.product_id else '',
+                'quantity': round(line.quantity, 2),
+                'price_unit': round(line.price_unit, 2),
+                'discount': round(line.discount, 2),
+                'price_subtotal': round(line.price_subtotal, 2),
+                'price_total': round(line.price_total, 2),
+                'currency': ctx['currency'],
+                'price_subtotal_mxn': round(line.price_subtotal * ratio, 2),
+                'price_total_mxn': round(line.price_total * ratio, 2),
+                'line_uom': line_uom_obj.name if line_uom_obj else None,
+                'line_uom_id': line_uom_obj.id if line_uom_obj else None,
+                'odoo_company_id': ctx['company_id'],
+            })
 
-            for line in inv.invoice_line_ids:
-                # Skip section/note lines (Odoo 19 uses 'product' for real lines)
-                if line.display_type in ('line_section', 'line_note',
-                                         'payment_term', 'tax', 'rounding'):
-                    continue
-
-                line_uom_obj = getattr(line, 'product_uom_id', None)
-                rows.append({
-                    'odoo_line_id': line.id,
-                    'odoo_move_id': inv.id,
-                    'odoo_partner_id': pid,
-                    'move_name': inv.name,
-                    'move_type': inv.move_type,
-                    'invoice_date': inv_date,
-                    'odoo_product_id': line.product_id.id if line.product_id else None,
-                    'product_name': line.product_id.name if line.product_id else (line.name or '')[:200],
-                    'product_ref': line.product_id.default_code or '' if line.product_id else '',
-                    'quantity': round(line.quantity, 2),
-                    'price_unit': round(line.price_unit, 2),
-                    'discount': round(line.discount, 2),
-                    'price_subtotal': round(line.price_subtotal, 2),
-                    'price_total': round(line.price_total, 2),
-                    'currency': inv_currency,
-                    'price_subtotal_mxn': round(line.price_subtotal * mxn_ratio, 2),
-                    'price_total_mxn': round(line.price_total * mxn_ratio, 2),
-                    'line_uom': line_uom_obj.name if line_uom_obj else None,
-                    'line_uom_id': line_uom_obj.id if line_uom_obj else None,
-                    'odoo_company_id': inv.company_id.id if inv.company_id else None,
-                })
-
+        _logger.info(
+            '_push_invoice_lines: upserting %d rows from %d invoices',
+            len(rows), len(inv_map),
+        )
         return client.upsert('odoo_invoice_lines', rows,
                               on_conflict='odoo_line_id', batch_size=200)
 
