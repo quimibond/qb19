@@ -70,6 +70,74 @@ def _commercial_partner_id(partner) -> int | None:
     return cp.id if cp else partner.id
 
 
+# H9 — partner name validation (audit 2026-04-16)
+# Odoo produce partners con names como "8141", "5806" o strings de 1-2
+# caracteres, a menudo importados desde sistemas legacy. Antes se
+# pusheaban tal cual y aparecían como "8141" en /companies. Este helper
+# devuelve el mejor nombre disponible o None (skip) aplicando la misma
+# regla de frontend `sanitizeCompanyName`.
+_NUMERIC_ONLY = re.compile(r'^[0-9]+$')
+
+
+def _best_partner_name(partner) -> str | None:
+    """Devuelve el mejor nombre disponible para un partner.
+
+    Orden de preferencia:
+      1. `partner.name` si es real (no vacío, no numérico puro, >=3 chars)
+      2. `commercial_partner_id.name` si es real (partner pertenece a una
+         empresa padre con nombre bueno)
+      3. `partner.vat` (RFC) — identificable aunque feo
+      4. Dominio del primer email (`@acme.com` → `acme.com`)
+      5. None — el caller debe skip.
+    """
+    def _clean(s):
+        if not s:
+            return None
+        t = s.strip()
+        if not t or len(t) < 3 or _NUMERIC_ONLY.match(t):
+            return None
+        return t
+
+    # 1. Partner.name directo
+    name = _clean(partner.name)
+    if name:
+        return name
+
+    # 2. Commercial parent
+    try:
+        cp = partner.commercial_partner_id
+        if cp and cp.id != partner.id:
+            name = _clean(cp.name)
+            if name:
+                return name
+    except Exception:
+        pass
+
+    # 3. VAT / RFC
+    try:
+        name = _clean(partner.vat)
+        if name:
+            return name
+    except Exception:
+        pass
+
+    # 4. Email domain
+    try:
+        raw = (partner.email or '').split(',')[0].split(';')[0].strip()
+        if '@' in raw:
+            dom = raw.split('@')[-1].strip().lower()
+            dom = _clean(dom)
+            if dom and dom not in {
+                'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com',
+                'live.com', 'icloud.com', 'protonmail.com', 'outlook.es',
+            }:
+                return dom
+    except Exception:
+        pass
+
+    return None
+
+
 def _build_payment_date_map(env, invoice_ids: list) -> dict:
     """Build {invoice_id: date} from account.partial.reconcile via ORM.
 
@@ -554,8 +622,10 @@ class QuimibondSync(models.TransientModel):
                 and '@' not in (p.name or '')
             )
             if is_real_company:
-                # This is a company (top-level partner)
-                cn = (p.name or '').strip()
+                # This is a company (top-level partner).
+                # H9: usar _best_partner_name para caer a commercial_parent/
+                # vat/email si partner.name es basura ("8141", "—", etc.).
+                cn = _best_partner_name(p)
                 if cn and cn not in companies:
                     rfc = (p.vat or '').strip() or None
                     # Financial totals (computed by Odoo from account.move)
@@ -646,7 +716,8 @@ class QuimibondSync(models.TransientModel):
                 cp_id = p.id
                 if cp_id in existing_partner_ids:
                     continue
-                cn = (p.name or '').strip()
+                # H9: igual que arriba, usar helper con fallback chain.
+                cn = _best_partner_name(p)
                 if not cn:
                     continue
                 if cn not in companies:
@@ -1217,18 +1288,75 @@ class QuimibondSync(models.TransientModel):
 
             inv_date = inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None
 
+            # H12: pre-compute MXN ratio fuera del loop de lineas (todas
+            # las lineas de una factura usan la misma moneda).
+            # Fallback chain para el ratio:
+            #   1. amount_total_signed / amount_total (método actual)
+            #   2. currency_id._convert() a company currency en la fecha
+            #      de la factura (fuente canonica de Odoo)
+            #   3. rate from res.currency.rate en la fecha de la factura
+            #   4. 1.0 (MXN-native o no resoluble)
+            inv_currency = inv.currency_id.name if inv.currency_id else 'MXN'
+            mxn_ratio = 1.0
+            amt_signed = getattr(inv, 'amount_total_signed', None)
+            if amt_signed is not None and inv.amount_total:
+                ratio_from_signed = abs(amt_signed) / inv.amount_total
+                # Sanity: si signed == total y la moneda no es la de la
+                # company, el ratio está corrupto (factura legacy). Forzar
+                # fallback.
+                if ratio_from_signed > 0 and not (
+                    inv_currency != 'MXN' and abs(ratio_from_signed - 1.0) < 0.001
+                ):
+                    mxn_ratio = ratio_from_signed
+
+            if mxn_ratio == 1.0 and inv_currency != 'MXN' and inv.currency_id:
+                # Fallback: usar la API oficial de Odoo para convertir.
+                try:
+                    company = inv.company_id or self.env.company
+                    target = company.currency_id
+                    on_date = inv.invoice_date or inv.date or datetime.now().date()
+                    converted = inv.currency_id._convert(
+                        1.0, target, company, on_date, round=False,
+                    )
+                    if converted and converted > 0:
+                        mxn_ratio = float(converted)
+                except Exception as exc:
+                    _logger.debug(
+                        'FX fallback _convert failed for %s: %s',
+                        inv.name, exc,
+                    )
+
+            if mxn_ratio == 1.0 and inv_currency != 'MXN':
+                # Último fallback: leer res.currency.rate directamente.
+                try:
+                    Rate = self.env['res.currency.rate'].sudo()
+                    on_date = inv.invoice_date or datetime.now().date()
+                    rate_row = Rate.search(
+                        [
+                            ('currency_id', '=', inv.currency_id.id),
+                            ('name', '<=', on_date.strftime('%Y-%m-%d')),
+                        ],
+                        order='name desc',
+                        limit=1,
+                    )
+                    if rate_row and rate_row.rate:
+                        # rate = company_curr_per_1_target_curr
+                        # Odoo convention: rate es cuántas unidades de
+                        # la moneda de la tasa valen 1 unidad de la moneda
+                        # pivot (MXN en este caso si pivot = company). Si
+                        # invertido, ajustar. Aquí asumimos inverse.
+                        mxn_ratio = 1.0 / float(rate_row.rate)
+                except Exception as exc:
+                    _logger.debug(
+                        'FX fallback res.currency.rate failed for %s: %s',
+                        inv.name, exc,
+                    )
+
             for line in inv.invoice_line_ids:
                 # Skip section/note lines (Odoo 19 uses 'product' for real lines)
                 if line.display_type in ('line_section', 'line_note',
                                          'payment_term', 'tax', 'rounding'):
                     continue
-
-                # MXN conversion ratio from parent invoice
-                inv_currency = inv.currency_id.name if inv.currency_id else 'MXN'
-                mxn_ratio = 1.0
-                amt_signed = getattr(inv, 'amount_total_signed', None)
-                if amt_signed is not None and inv.amount_total:
-                    mxn_ratio = abs(amt_signed) / inv.amount_total
 
                 line_uom_obj = getattr(line, 'product_uom_id', None)
                 rows.append({
