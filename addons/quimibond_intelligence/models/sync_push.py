@@ -2205,10 +2205,24 @@ class QuimibondSync(models.TransientModel):
             else:
                 current_balance = round(balance_mxn, 2)
 
+            # Detect credit card journals. Odoo's account.journal.type only
+            # has 'bank' and 'cash' — credit cards are configured as type='bank'
+            # with a default_account_id whose account_type is
+            # 'liability_credit_card'. Downstream dashboards need to distinguish
+            # them (display as "Tarjeta" and classify as cc_debt in cash
+            # bucketing), so we override journal_type='credit' when detected.
+            effective_type = j.type
+            try:
+                acc = j.default_account_id
+                if acc and getattr(acc, 'account_type', None) == 'liability_credit_card':
+                    effective_type = 'credit'
+            except Exception:
+                pass
+
             rows.append({
                 'odoo_journal_id': j.id,
                 'name': j.name,
-                'journal_type': j.type,  # bank / cash
+                'journal_type': effective_type,  # bank / cash / credit
                 'currency': journal_currency,
                 'bank_account': bank_account,
                 'current_balance': current_balance,
