@@ -87,7 +87,9 @@ class SyncAudit(models.TransientModel):
             'source': 'odoo',
             'model': model,
             'invariant_key': invariant_key,
-            'bucket_key': bucket_key,
+            # audit_runs.bucket_key is NOT NULL; use empty string for
+            # snapshot invariants (products.*) that don't bucket by period.
+            'bucket_key': bucket_key if bucket_key is not None else '',
             'odoo_value': odoo_v,
             'supabase_value': supa_v,
             'diff': diff,
@@ -109,7 +111,7 @@ class SyncAudit(models.TransientModel):
             'source': 'odoo',
             'model': model,
             'invariant_key': invariant_key,
-            'bucket_key': None,
+            'bucket_key': '',
             'odoo_value': None,
             'supabase_value': None,
             'diff': None,
