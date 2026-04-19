@@ -3,3 +3,4 @@ access_quimibond_sync,quimibond.sync,model_quimibond_sync,base.group_system,1,1,
 access_quimibond_sync_pull,quimibond.sync.pull,model_quimibond_sync_pull,base.group_system,1,1,1,0
 access_quimibond_sync_log,quimibond.sync.log,model_quimibond_sync_log,base.group_user,1,0,0,0
 access_quimibond_sync_log_admin,quimibond.sync.log.admin,model_quimibond_sync_log,base.group_system,1,1,1,1
+access_quimibond_sync_audit,quimibond.sync.audit,model_quimibond_sync_audit,base.group_system,1,1,1,0

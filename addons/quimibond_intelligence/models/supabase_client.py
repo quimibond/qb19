@@ -236,5 +236,53 @@ class SupabaseClient:
             return None
         return response.json()
 
+    def count_exact(self, table: str, params: dict = None) -> int:
+        """COUNT exacto via PostgREST. Usa header Prefer: count=exact."""
+        try:
+            resp = self._http.get(
+                f'{self.url}/rest/v1/{table}',
+                params=params or {},
+                headers={**self.headers,
+                         'Prefer': 'count=exact',
+                         'Range-Unit': 'items',
+                         'Range': '0-0'},
+            )
+            resp.raise_for_status()
+            cr = resp.headers.get('Content-Range', '')
+            # formato: "0-0/1234"
+            if '/' in cr:
+                total = cr.split('/')[-1]
+                if total.isdigit():
+                    return int(total)
+            return len(resp.json() or [])
+        except Exception as exc:
+            _logger.warning('count_exact %s: %s', table, exc)
+            return 0
+
+    def fetch_all(self, table: str, params: dict = None,
+                  page_size: int = 1000) -> list:
+        """Fetch con paginación automática."""
+        out = []
+        offset = 0
+        while True:
+            p = dict(params or {})
+            p.setdefault('limit', str(page_size))
+            p['offset'] = str(offset)
+            try:
+                resp = self._http.get(
+                    f'{self.url}/rest/v1/{table}',
+                    params=p, headers=self.headers,
+                )
+                resp.raise_for_status()
+                batch = resp.json() or []
+            except Exception as exc:
+                _logger.warning('fetch_all %s offset %d: %s', table, offset, exc)
+                break
+            out.extend(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
+        return out
+
     def close(self):
         self._http.close()
