@@ -236,8 +236,12 @@ class SyncAudit(models.TransientModel):
     # ---------------------------------------------------------------
     # CLASS-LEVEL CONSTANTS para audit_account_balances
     # ---------------------------------------------------------------
+    # Catálogo SAT MX: códigos con formato XXX.YY.ZZ (ej 115.01.01).
+    # Inventario = 115.* (NO 1150 como en el plan genérico Odoo).
+    # CMV = 5* (501 costo ventas, 503 devoluciones compras, 505 compras MP).
+    # Ingresos = 4* (401 ventas, 402 devoluciones, 403 ingresos principal).
     ACCOUNT_GROUPS = {
-        'account_balances.inventory_accounts_balance': ("1150%",),
+        'account_balances.inventory_accounts_balance': ("115%",),
         'account_balances.cogs_accounts_balance': ("5%",),
         'account_balances.revenue_accounts_balance': ("4%",),
     }
