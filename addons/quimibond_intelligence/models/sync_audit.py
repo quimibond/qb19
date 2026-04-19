@@ -218,31 +218,367 @@ class SyncAudit(models.TransientModel):
         return counts
 
     # ---------------------------------------------------------------
-    # Métodos audit_* — stubs (se implementan en Tasks 1.x)
+    # CLASS-LEVEL CONSTANTS para audit_account_balances
     # ---------------------------------------------------------------
-    def audit_products(self, client, run_id, date_from, date_to, tolerances, dry_run):
-        pass
+    ACCOUNT_GROUPS = {
+        'account_balances.inventory_accounts_balance': ("1150%",),
+        'account_balances.cogs_accounts_balance': ("5%",),
+        'account_balances.revenue_accounts_balance': ("4%",),
+    }
+
+    # ---------------------------------------------------------------
+    # Métodos audit_* — implementados en Tasks 1.1–1.7
+    # ---------------------------------------------------------------
+    def audit_products(self, client, run_id, date_from, date_to,
+                       tolerances, dry_run):
+        """Invariantes 1-4: snapshot de productos."""
+        Product = self.env['product.product']
+
+        # 1. count_active
+        odoo_count = Product.search_count([('active', '=', True)])
+        supa_count = client.count_exact('odoo_products',
+                                        {'active': 'eq.true'})
+        self._record_cross(client, run_id, 'products', 'products.count_active',
+                          None, odoo_count, supa_count,
+                          tolerances, date_from, date_to, dry_run=dry_run)
+
+        # 2. count_with_default_code
+        odoo_with_code = Product.search_count([
+            ('active', '=', True), ('default_code', '!=', False),
+        ])
+        supa_with_code = client.count_exact('odoo_products', {
+            'active': 'eq.true',
+            'internal_ref': 'not.is.null',
+        })
+        self._record_cross(client, run_id, 'products',
+                          'products.count_with_default_code',
+                          None, odoo_with_code, supa_with_code,
+                          tolerances, date_from, date_to, dry_run=dry_run)
+
+        # 3. sum_standard_price
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(standard_price), 0)
+            FROM product_product pp
+            JOIN product_template pt ON pp.product_tmpl_id = pt.id
+            WHERE pp.active = true
+        """)
+        odoo_sum = float(self.env.cr.fetchone()[0] or 0)
+        supa_rows = client.fetch_all('odoo_products', {
+            'active': 'eq.true', 'select': 'standard_price',
+        })
+        supa_sum = sum(float(r.get('standard_price') or 0) for r in supa_rows)
+        self._record_cross(client, run_id, 'products',
+                          'products.sum_standard_price',
+                          None, odoo_sum, supa_sum,
+                          tolerances, date_from, date_to, dry_run=dry_run)
+
+        # 4. null_uom_count
+        odoo_null_uom = Product.search_count([
+            ('active', '=', True), ('uom_id', '=', False),
+        ])
+        supa_null_uom = client.count_exact('odoo_products', {
+            'active': 'eq.true', 'uom_id': 'is.null',
+        })
+        self._record_cross(client, run_id, 'products',
+                          'products.null_uom_count',
+                          None, odoo_null_uom, supa_null_uom,
+                          tolerances, date_from, date_to, dry_run=dry_run)
 
     def audit_invoice_lines(self, client, run_id, date_from, date_to,
                             tolerances, dry_run):
-        pass
+        """Invariantes 5-7: por bucket (year-month, move_type, company)."""
+        # -- Odoo side: SQL directo para eficiencia --
+        self.env.cr.execute("""
+            SELECT to_char(am.invoice_date, 'YYYY-MM') AS ym,
+                   am.move_type,
+                   am.company_id,
+                   COUNT(*) AS cnt,
+                   SUM(
+                     CASE WHEN am.move_type IN ('out_refund','in_refund')
+                          THEN -1 ELSE 1 END
+                     * aml.price_subtotal
+                     * COALESCE(
+                         CASE WHEN am.currency_id = rc_mxn.id THEN 1.0
+                              ELSE rcr.rate END,
+                         1.0)
+                   ) AS sum_mxn,
+                   SUM(
+                     CASE WHEN am.move_type IN ('out_refund','in_refund')
+                          THEN -1 ELSE 1 END
+                     * aml.quantity
+                   ) AS sum_qty
+            FROM account_move_line aml
+            JOIN account_move am ON aml.move_id = am.id
+            JOIN res_currency rc_mxn ON rc_mxn.name = 'MXN'
+            LEFT JOIN res_currency_rate rcr
+              ON rcr.currency_id = am.currency_id
+              AND rcr.company_id = am.company_id
+              AND rcr.name <= am.invoice_date
+            WHERE am.state = 'posted'
+              AND am.move_type IN ('out_invoice','out_refund',
+                                   'in_invoice','in_refund')
+              AND am.invoice_date BETWEEN %s AND %s
+              AND aml.display_type IS NULL  -- sólo líneas de producto
+            GROUP BY ym, am.move_type, am.company_id
+        """, (date_from, date_to))
+        odoo_buckets = {}
+        for ym, move_type, company_id, cnt, sum_mxn, sum_qty in self.env.cr.fetchall():
+            key = f'{ym}|{move_type}|{company_id}'
+            odoo_buckets[key] = {
+                'count': int(cnt or 0),
+                'sum_mxn': float(sum_mxn or 0),
+                'sum_qty': float(sum_qty or 0),
+            }
+
+        # -- Supabase side: via view v_audit_invoice_lines_buckets --
+        supa_rows = client.fetch_all('v_audit_invoice_lines_buckets', {
+            'date_from': f'gte.{date_from}',
+            'date_to': f'lte.{date_to}',
+        })
+        supa_buckets = {r['bucket_key']: r for r in supa_rows}
+
+        all_keys = set(odoo_buckets) | set(supa_buckets)
+        for key in all_keys:
+            o = odoo_buckets.get(key, {'count': 0, 'sum_mxn': 0, 'sum_qty': 0})
+            s = supa_buckets.get(key, {'count': 0, 'sum_subtotal_mxn': 0,
+                                       'sum_qty': 0})
+            self._record_cross(
+                client, run_id, 'invoice_lines',
+                'invoice_lines.count_per_bucket', key,
+                o['count'], s.get('count', 0), tolerances,
+                date_from, date_to, dry_run=dry_run)
+            self._record_cross(
+                client, run_id, 'invoice_lines',
+                'invoice_lines.sum_subtotal_signed_mxn', key,
+                o['sum_mxn'], s.get('sum_subtotal_mxn', 0), tolerances,
+                date_from, date_to, dry_run=dry_run)
+            self._record_cross(
+                client, run_id, 'invoice_lines',
+                'invoice_lines.sum_qty_signed', key,
+                o['sum_qty'], s.get('sum_qty', 0), tolerances,
+                date_from, date_to, dry_run=dry_run)
 
     def audit_order_lines(self, client, run_id, date_from, date_to,
                           tolerances, dry_run):
-        pass
+        """Invariantes 8-10: sale + purchase separados."""
+        # SALE
+        self.env.cr.execute("""
+            SELECT to_char(so.date_order, 'YYYY-MM') AS ym,
+                   'sale' AS otype,
+                   so.company_id,
+                   COUNT(*) AS cnt,
+                   SUM(sol.price_subtotal
+                       * COALESCE(
+                           CASE WHEN so.currency_id = rc_mxn.id THEN 1.0
+                                ELSE rcr.rate END,
+                           1.0)) AS sum_mxn,
+                   SUM(sol.product_uom_qty) AS sum_qty
+            FROM sale_order_line sol
+            JOIN sale_order so ON sol.order_id = so.id
+            JOIN res_currency rc_mxn ON rc_mxn.name = 'MXN'
+            LEFT JOIN res_currency_rate rcr
+              ON rcr.currency_id = so.currency_id
+             AND rcr.company_id = so.company_id
+             AND rcr.name <= so.date_order::date
+            WHERE so.state IN ('sale','done')
+              AND so.date_order::date BETWEEN %s AND %s
+            GROUP BY ym, so.company_id
+        """, (date_from, date_to))
+        rows_sale = self.env.cr.fetchall()
+
+        # PURCHASE
+        self.env.cr.execute("""
+            SELECT to_char(po.date_order, 'YYYY-MM') AS ym,
+                   'purchase' AS otype,
+                   po.company_id,
+                   COUNT(*) AS cnt,
+                   SUM(pol.price_subtotal
+                       * COALESCE(
+                           CASE WHEN po.currency_id = rc_mxn.id THEN 1.0
+                                ELSE rcr.rate END,
+                           1.0)) AS sum_mxn,
+                   SUM(pol.product_qty) AS sum_qty
+            FROM purchase_order_line pol
+            JOIN purchase_order po ON pol.order_id = po.id
+            JOIN res_currency rc_mxn ON rc_mxn.name = 'MXN'
+            LEFT JOIN res_currency_rate rcr
+              ON rcr.currency_id = po.currency_id
+             AND rcr.company_id = po.company_id
+             AND rcr.name <= po.date_order::date
+            WHERE po.state IN ('purchase','done')
+              AND po.date_order::date BETWEEN %s AND %s
+            GROUP BY ym, po.company_id
+        """, (date_from, date_to))
+        rows_purchase = self.env.cr.fetchall()
+
+        odoo_buckets = {}
+        for ym, otype, cid, cnt, sm, sq in rows_sale + rows_purchase:
+            key = f'{ym}|{otype}|{cid}'
+            odoo_buckets[key] = {'count': int(cnt or 0),
+                                 'sum_mxn': float(sm or 0),
+                                 'sum_qty': float(sq or 0)}
+
+        # Supabase
+        supa_rows = client.fetch_all('v_audit_order_lines_buckets', {})
+        supa_buckets = {r['bucket_key']: r for r in supa_rows}
+
+        for key in set(odoo_buckets) | set(supa_buckets):
+            o = odoo_buckets.get(key, {'count': 0, 'sum_mxn': 0, 'sum_qty': 0})
+            s = supa_buckets.get(key, {})
+            self._record_cross(client, run_id, 'order_lines',
+                              'order_lines.count_per_bucket', key,
+                              o['count'], s.get('count', 0), tolerances,
+                              date_from, date_to, dry_run=dry_run)
+            self._record_cross(client, run_id, 'order_lines',
+                              'order_lines.sum_subtotal_mxn', key,
+                              o['sum_mxn'], s.get('sum_subtotal_mxn', 0),
+                              tolerances, date_from, date_to, dry_run=dry_run)
+            self._record_cross(client, run_id, 'order_lines',
+                              'order_lines.sum_qty', key,
+                              o['sum_qty'], s.get('sum_qty', 0),
+                              tolerances, date_from, date_to, dry_run=dry_run)
 
     def audit_deliveries(self, client, run_id, date_from, date_to,
                          tolerances, dry_run):
-        pass
+        """Invariante 11: count done per month × state × company."""
+        self.env.cr.execute("""
+            SELECT to_char(date_done, 'YYYY-MM') AS ym,
+                   state,
+                   company_id,
+                   COUNT(*) AS cnt
+            FROM stock_picking
+            WHERE date_done IS NOT NULL
+              AND date_done::date BETWEEN %s AND %s
+              AND state IN ('done','cancel')
+            GROUP BY ym, state, company_id
+        """, (date_from, date_to))
+        odoo = {f'{ym}|{st}|{cid}': int(cnt)
+                for ym, st, cid, cnt in self.env.cr.fetchall()}
+
+        supa_rows = client.fetch_all('v_audit_deliveries_buckets', {})
+        supa = {r['bucket_key']: int(r['count']) for r in supa_rows}
+
+        for key in set(odoo) | set(supa):
+            self._record_cross(client, run_id, 'deliveries',
+                              'deliveries.count_done_per_month', key,
+                              odoo.get(key, 0), supa.get(key, 0),
+                              tolerances, date_from, date_to, dry_run=dry_run)
 
     def audit_manufacturing(self, client, run_id, date_from, date_to,
                             tolerances, dry_run):
-        pass
+        """Invariantes 12-13: por state × company × month."""
+        self.env.cr.execute("""
+            SELECT to_char(date_start, 'YYYY-MM') AS ym,
+                   state, company_id,
+                   COUNT(*) AS cnt,
+                   SUM(qty_produced) AS sum_qty
+            FROM mrp_production
+            WHERE date_start::date BETWEEN %s AND %s
+            GROUP BY ym, state, company_id
+        """, (date_from, date_to))
+        odoo = {}
+        for ym, st, cid, cnt, sq in self.env.cr.fetchall():
+            key = f'{ym}|{st}|{cid}'
+            odoo[key] = {'count': int(cnt or 0), 'sum_qty': float(sq or 0)}
+
+        supa_rows = client.fetch_all('v_audit_manufacturing_buckets', {})
+        supa = {r['bucket_key']: r for r in supa_rows}
+
+        for key in set(odoo) | set(supa):
+            o = odoo.get(key, {'count': 0, 'sum_qty': 0})
+            s = supa.get(key, {})
+            self._record_cross(client, run_id, 'manufacturing',
+                              'manufacturing.count_per_state', key,
+                              o['count'], int(s.get('count') or 0),
+                              tolerances, date_from, date_to, dry_run=dry_run)
+            self._record_cross(client, run_id, 'manufacturing',
+                              'manufacturing.sum_qty_produced', key,
+                              o['sum_qty'], float(s.get('sum_qty') or 0),
+                              tolerances, date_from, date_to, dry_run=dry_run)
 
     def audit_account_balances(self, client, run_id, date_from, date_to,
                                 tolerances, dry_run):
-        pass
+        """Invariantes 14-16: balance de cuentas por período × company."""
+        for invariant_key, patterns in self.ACCOUNT_GROUPS.items():
+            cond = ' OR '.join(["code_store LIKE %s"] * len(patterns))
+            # Nota: en Odoo 17+ código vive en account.code.mapping (code_store_ids);
+            # usamos la representación "code" del account.account.
+            self.env.cr.execute(f"""
+                SELECT to_char(aml.date, 'YYYY-MM') AS ym,
+                       aml.company_id,
+                       SUM(aml.balance) AS bal
+                FROM account_move_line aml
+                JOIN account_move am ON aml.move_id = am.id
+                JOIN account_account aa ON aml.account_id = aa.id
+                WHERE am.state = 'posted'
+                  AND aml.date BETWEEN %s AND %s
+                  AND ({cond.replace('code_store', 'aa.code')})
+                GROUP BY ym, aml.company_id
+            """, (date_from, date_to, *patterns))
+            odoo = {f'{ym}|{cid}': float(b or 0)
+                    for ym, cid, b in self.env.cr.fetchall()}
+
+            supa_rows = client.fetch_all('v_audit_account_balances_buckets',
+                                        {'invariant_key': f'eq.{invariant_key}'})
+            supa = {r['bucket_key']: float(r['balance']) for r in supa_rows}
+
+            for key in set(odoo) | set(supa):
+                self._record_cross(client, run_id, 'account_balances',
+                                  invariant_key, key,
+                                  odoo.get(key, 0), supa.get(key, 0),
+                                  tolerances, date_from, date_to, dry_run=dry_run)
 
     def audit_bank_balances(self, client, run_id, date_from, date_to,
                             tolerances, dry_run):
-        pass
+        """Invariantes 17-18: snapshot por journal."""
+        # 17. count per journal
+        self.env.cr.execute("""
+            SELECT id, company_id FROM account_journal
+            WHERE type IN ('bank','cash') AND active = true
+        """)
+        odoo_journals = {f'journal_{jid}|{cid}': 1
+                         for jid, cid in self.env.cr.fetchall()}
+        odoo_count = len(odoo_journals)
+        supa_count = client.count_exact('odoo_bank_balances',
+                                        {'active': 'eq.true'})
+        self._record_cross(client, run_id, 'bank_balances',
+                          'bank_balances.count_per_journal', None,
+                          odoo_count, supa_count, tolerances,
+                          date_from, date_to, dry_run=dry_run)
+
+        # 18. native_balance_per_journal
+        # Usamos la misma lógica que sync_push._push_bank_balances
+        Journal = self.env['account.journal']
+        journals = Journal.search([
+            ('type', 'in', ['bank', 'cash']), ('active', '=', True),
+        ])
+        for j in journals:
+            # balance nativo: suma de asientos en la cuenta del journal
+            # en su currency propia (sin convertir)
+            default_account = j.default_account_id
+            if not default_account:
+                continue
+            self.env.cr.execute("""
+                SELECT COALESCE(SUM(
+                    CASE WHEN aml.currency_id IS NOT NULL
+                         THEN aml.amount_currency
+                         ELSE aml.balance END
+                ), 0)
+                FROM account_move_line aml
+                JOIN account_move am ON aml.move_id = am.id
+                WHERE aml.account_id = %s
+                  AND am.state = 'posted'
+            """, (default_account.id,))
+            odoo_bal = float(self.env.cr.fetchone()[0] or 0)
+            supa_rows = client.fetch('odoo_bank_balances', {
+                'journal_id': f'eq.{j.id}',
+                'odoo_company_id': f'eq.{j.company_id.id}',
+                'select': 'native_balance',
+            }) or []
+            supa_bal = float(supa_rows[0]['native_balance']
+                             if supa_rows else 0)
+            key = f'journal_{j.id}|{j.company_id.id}'
+            self._record_cross(client, run_id, 'bank_balances',
+                              'bank_balances.native_balance_per_journal',
+                              key, odoo_bal, supa_bal, tolerances,
+                              date_from, date_to, dry_run=dry_run)
