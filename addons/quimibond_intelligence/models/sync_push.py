@@ -333,6 +333,7 @@ class QuimibondSync(models.TransientModel):
                 ('purchase_orders', self._push_purchase_orders),
                 ('orderpoints', self._push_orderpoints),
                 ('account_payments', self._push_account_payments),
+                ('payment_invoice_links', self._push_payment_invoice_links),
                 ('chart_of_accounts', self._push_chart_of_accounts),
                 ('account_balances', self._push_account_balances),
                 ('bank_balances', self._push_bank_balances),
@@ -1198,6 +1199,7 @@ class QuimibondSync(models.TransientModel):
                     pass
 
                 rows.append({
+                    'odoo_invoice_id': inv.id,
                     'odoo_partner_id': pid,
                     'name': inv.name,
                     'move_type': inv.move_type,
@@ -2052,6 +2054,89 @@ class QuimibondSync(models.TransientModel):
                                   on_conflict='odoo_payment_id', batch_size=200)
         except Exception as exc:
             _logger.error('_push_account_payments failed: %s', exc)
+            return 0
+
+    def _push_payment_invoice_links(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push account.payment.reconciled_invoice_ids → odoo_payment_invoice_links.
+
+        Expone la relación payment↔invoice que Odoo mantiene en el m2m
+        `reconciled_invoice_ids`. Habilita matching Syntage↔Odoo via CFDI UUID:
+            Syntage doctos_relacionados[].uuid_docto
+              → odoo_invoices.cfdi_uuid
+              → odoo_payment_invoice_links.odoo_invoice_id
+              → odoo_payment_invoice_links.odoo_payment_id
+              → odoo_account_payments
+        """
+        try:
+            Payment = self.env['account.payment'].sudo()
+        except KeyError:
+            _logger.info('account.payment not available, skipping payment_invoice_links')
+            return 0
+
+        try:
+            cid = self._get_company_id()
+            domain = [
+                ('company_id', '=', cid),
+                ('reconciled_invoice_ids', '!=', False),
+            ]
+            # Incremental por write_date del payment (si una reconciliación cambia,
+            # Odoo actualiza el payment). Skip si la tabla está vacía.
+            if last_sync:
+                existing = client.fetch(
+                    'odoo_payment_invoice_links', {'limit': '1', 'select': 'id'}
+                )
+                if existing:
+                    domain.append(
+                        ('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S'))
+                    )
+
+            payments = Payment.search(domain, limit=5000)
+            _logger.info('payment_invoice_links: scanning %d payments', len(payments))
+
+            rows = []
+            touched_payment_ids = []
+            for p in payments:
+                try:
+                    invoices = p.reconciled_invoice_ids
+                    if not invoices:
+                        continue
+                    touched_payment_ids.append(p.id)
+                    comp_id = p.company_id.id if p.company_id else None
+                    for inv in invoices:
+                        rows.append({
+                            'odoo_payment_id': p.id,
+                            'odoo_invoice_id': inv.id,
+                            'odoo_company_id': comp_id,
+                        })
+                except Exception as exc:
+                    _logger.warning('payment_invoice_links %s: %s', p.id, exc)
+
+            # Full replace por payment_id tocado: los m2m pueden perder filas
+            # (reconciliaciones deshechas). Borrar + re-insertar garantiza
+            # consistencia sin correr full scan.
+            if touched_payment_ids:
+                # Supabase REST DELETE con filter IN. Batching para URL length.
+                batch = 500
+                for i in range(0, len(touched_payment_ids), batch):
+                    chunk = touched_payment_ids[i:i + batch]
+                    try:
+                        client.delete(
+                            'odoo_payment_invoice_links',
+                            {'odoo_payment_id': f'in.({",".join(str(x) for x in chunk)})'},
+                        )
+                    except Exception as exc:
+                        _logger.warning('payment_invoice_links delete chunk failed: %s', exc)
+
+            _logger.info('payment_invoice_links: pushing %d link rows', len(rows))
+            if not rows:
+                return 0
+            return client.upsert(
+                'odoo_payment_invoice_links', rows,
+                on_conflict='odoo_payment_id,odoo_invoice_id',
+                batch_size=500,
+            )
+        except Exception as exc:
+            _logger.error('_push_payment_invoice_links failed: %s', exc)
             return 0
 
     # ── Chart of Accounts ───────────────────────────────────────────────

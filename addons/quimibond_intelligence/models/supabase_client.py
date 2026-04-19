@@ -172,6 +172,24 @@ class SupabaseClient:
         except Exception as exc:
             _logger.warning('delete_all %s: %s', table, exc)
 
+    def delete(self, table: str, filters: dict) -> None:
+        """Delete rows matching PostgREST filters.
+
+        Example: client.delete('odoo_payment_invoice_links',
+                               {'odoo_payment_id': 'in.(1,2,3)'})
+        """
+        if not filters:
+            raise ValueError("delete requires at least one filter (safety)")
+        try:
+            resp = self._http.delete(
+                f'{self.url}/rest/v1/{table}',
+                headers={**self.headers, 'Prefer': 'return=minimal'},
+                params=filters,
+            )
+            resp.raise_for_status()
+        except Exception as exc:
+            _logger.warning('delete %s %s: %s', table, filters, exc)
+
     def fetch(self, table: str, params: dict = None) -> list:
         """Fetch rows from a Supabase table."""
         try:
