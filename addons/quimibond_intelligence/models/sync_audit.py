@@ -515,7 +515,7 @@ class SyncAudit(models.TransientModel):
             SELECT to_char(date_start, 'YYYY-MM') AS ym,
                    state, company_id,
                    COUNT(*) AS cnt,
-                   SUM(qty_produced) AS sum_qty
+                   SUM(qty_producing) AS sum_qty
             FROM mrp_production
             WHERE date_start::date BETWEEN %s AND %s
             GROUP BY ym, state, company_id
