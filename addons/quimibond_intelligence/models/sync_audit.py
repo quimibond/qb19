@@ -189,7 +189,7 @@ class SyncAudit(models.TransientModel):
         # Disparar invariantes internos SQL
         if not dry_run:
             try:
-                client.rpc('run_internal_audits', {
+                client.rpc_strict('run_internal_audits', {
                     'p_date_from': str(date_from),
                     'p_date_to': str(date_to),
                     'p_run_id': run_id,
