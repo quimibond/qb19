@@ -10,7 +10,7 @@ import json
 import logging
 import traceback
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from odoo import api, fields, models
 from .supabase_client import SupabaseClient
@@ -216,6 +216,17 @@ class SyncAudit(models.TransientModel):
         for r in rows:
             counts[r['severity']] = counts.get(r['severity'], 0) + 1
         return counts
+
+    def run_audit_last_year(self):
+        """Convenience wrapper called by cron and UI action.
+
+        The ir.cron / ir.actions.server `code` field runs in safe_eval
+        where `from datetime import ...` is forbidden. Keep the date
+        arithmetic here so the XML only does `model.run_audit_last_year()`.
+        """
+        today = date.today()
+        start = today - timedelta(days=365)
+        return self.run_all(date_from=str(start), date_to=str(today))
 
     # ---------------------------------------------------------------
     # CLASS-LEVEL CONSTANTS para audit_account_balances

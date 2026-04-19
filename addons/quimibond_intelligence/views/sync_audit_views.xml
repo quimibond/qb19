@@ -5,10 +5,7 @@
     <field name="model_id" ref="model_quimibond_sync_audit"/>
     <field name="state">code</field>
     <field name="code">
-from datetime import date, timedelta
-to_d = date.today()
-from_d = to_d - timedelta(days=365)
-res = model.run_all(date_from=str(from_d), date_to=str(to_d))
+res = model.run_audit_last_year()
 action = {
   'type': 'ir.actions.client',
   'tag': 'display_notification',
@@ -16,7 +13,7 @@ action = {
     'title': 'Audit run complete',
     'message': 'run_id=%s summary=%s' % (res['run_id'], res['summary']),
     'sticky': True,
-    'type': 'success' if res['summary'].get('error',0) == 0 else 'warning',
+    'type': 'success' if res['summary'].get('error', 0) == 0 else 'warning',
   },
 }
     </field>
