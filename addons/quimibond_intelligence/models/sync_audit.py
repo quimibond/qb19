@@ -179,8 +179,13 @@ class SyncAudit(models.TransientModel):
             if not method:
                 _logger.warning('audit: scope %s sin método, skip', name)
                 continue
+            # Savepoint so a SQL failure in one invariant does not abort the
+            # outer transaction and cascade into every following method
+            # (psycopg "current transaction is aborted" chain).
             try:
-                method(client, run_id, date_from, date_to, tolerances, dry_run)
+                with self.env.cr.savepoint():
+                    method(client, run_id, date_from, date_to,
+                           tolerances, dry_run)
             except Exception as exc:
                 _logger.exception('audit %s falló: %s', name, exc)
                 self._record_error(client, run_id, name, f'{name}.orchestrator',
@@ -267,13 +272,10 @@ class SyncAudit(models.TransientModel):
                           tolerances, date_from, date_to, dry_run=dry_run)
 
         # 3. sum_standard_price
-        self.env.cr.execute("""
-            SELECT COALESCE(SUM(standard_price), 0)
-            FROM product_product pp
-            JOIN product_template pt ON pp.product_tmpl_id = pt.id
-            WHERE pp.active = true
-        """)
-        odoo_sum = float(self.env.cr.fetchone()[0] or 0)
+        # Odoo 17+: standard_price is a company-dependent field stored as
+        # jsonb on product.template, so raw SQL SUM fails. Use ORM instead.
+        active_products = Product.search([('active', '=', True)])
+        odoo_sum = float(sum(active_products.mapped('standard_price') or [0]))
         supa_rows = client.fetch_all('odoo_products', {
             'active': 'eq.true', 'select': 'standard_price',
         })
@@ -509,25 +511,43 @@ class SyncAudit(models.TransientModel):
 
     def audit_account_balances(self, client, run_id, date_from, date_to,
                                 tolerances, dry_run):
-        """Invariantes 14-16: balance de cuentas por período × company."""
+        """Invariantes 14-16: balance de cuentas por período × company.
+
+        Odoo 17+: account.account.code es per-company vía code_store_ids.
+        Resolvemos los ids por compañía vía ORM con with_company(cid) y
+        filtramos en SQL por account_id IN (...) en vez de aa.code LIKE ...
+        """
+        Account = self.env['account.account']
+        Company = self.env['res.company']
+        companies = Company.search([])
+
         for invariant_key, patterns in self.ACCOUNT_GROUPS.items():
-            cond = ' OR '.join(["code_store LIKE %s"] * len(patterns))
-            # Nota: en Odoo 17+ código vive en account.code.mapping (code_store_ids);
-            # usamos la representación "code" del account.account.
-            self.env.cr.execute(f"""
-                SELECT to_char(aml.date, 'YYYY-MM') AS ym,
-                       aml.company_id,
-                       SUM(aml.balance) AS bal
-                FROM account_move_line aml
-                JOIN account_move am ON aml.move_id = am.id
-                JOIN account_account aa ON aml.account_id = aa.id
-                WHERE am.state = 'posted'
-                  AND aml.date BETWEEN %s AND %s
-                  AND ({cond.replace('code_store', 'aa.code')})
-                GROUP BY ym, aml.company_id
-            """, (date_from, date_to, *patterns))
-            odoo = {f'{ym}|{cid}': float(b or 0)
-                    for ym, cid, b in self.env.cr.fetchall()}
+            prefixes = tuple(p.rstrip('%') for p in patterns)
+
+            # Agregamos odoo per (month, company) igual que antes, pero los
+            # accounts se resuelven en ORM con contexto por compañía.
+            odoo = {}
+            for company in companies:
+                accounts_ctx = Account.with_company(company.id).search([])
+                matching_ids = [
+                    a.id for a in accounts_ctx
+                    if (a.code or '').startswith(prefixes)
+                ]
+                if not matching_ids:
+                    continue
+                self.env.cr.execute("""
+                    SELECT to_char(aml.date, 'YYYY-MM') AS ym,
+                           SUM(aml.balance) AS bal
+                    FROM account_move_line aml
+                    JOIN account_move am ON aml.move_id = am.id
+                    WHERE am.state = 'posted'
+                      AND aml.date BETWEEN %s AND %s
+                      AND aml.account_id IN %s
+                      AND aml.company_id = %s
+                    GROUP BY ym
+                """, (date_from, date_to, tuple(matching_ids), company.id))
+                for ym, bal in self.env.cr.fetchall():
+                    odoo[f'{ym}|{company.id}'] = float(bal or 0)
 
             supa_rows = client.fetch_all('v_audit_account_balances_buckets',
                                         {'invariant_key': f'eq.{invariant_key}'})
