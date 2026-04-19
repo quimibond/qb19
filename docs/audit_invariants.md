@@ -61,12 +61,14 @@ filas en `audit_runs` con `source='odoo'` (cross-check) o `source='supabase'`
 **Acción:** revisar cómo se calcula subtotal (con/sin descuento, con/sin impuesto).
 
 ### `invoice_lines.fx_present`
-**Mide:** líneas en moneda ≠ MXN con FX faltante.
+**Mide:** líneas en moneda ≠ MXN con `price_subtotal_mxn` NULL.
 **Acción:** `_push_invoice_lines` no convirtió para esa moneda.
+**Nota:** versión simplificada — el schema no tiene `exchange_rate`, así que no se puede verificar la tasa misma, sólo la presencia del monto MXN.
 
-### `invoice_lines.fx_sanity`
-**Mide:** consistencia `price × rate ≈ price_mxn` (1% tolerancia).
-**Acción:** FX mal capturado en el momento del push.
+### `invoice_lines.fx_sanity` — **STUBBED**
+**Estado:** la view siempre devuelve 0 filas; el orquestador fuerza severity='ok'.
+**Motivo:** `odoo_invoice_lines` en Supabase no tiene columna `exchange_rate` (sólo `currency` y `price_subtotal_mxn`). No se puede reconstruir `price × rate ≈ price_mxn`.
+**Para habilitar:** añadir `exchange_rate numeric` al push de `_push_invoice_lines` y recrear la view con la lógica original del plan.
 
 ### `order_lines.orphan_product`, `.orphan_order_sale`, `.orphan_order_purchase`
 **Mide:** líneas con FK roto a producto/header.
@@ -124,3 +126,18 @@ WHERE run_id = '<uuid>'
   AND severity <> 'ok'
 ORDER BY abs(diff) DESC NULLS LAST;
 ```
+
+## Schema mismatches conocidos (Fase 1 → Fase 2)
+
+Al aplicar las migraciones encontramos que el schema real de Supabase difiere de lo asumido en el plan. Las views se ajustaron en `20260419_audit_invariants_views.sql`, pero estos gaps son inputs para Fase 2:
+
+| Tabla | Plan asumió | Real | Impacto |
+|---|---|---|---|
+| `odoo_invoice_lines` | `invoice_id` FK | `odoo_move_id` | Views corregidas |
+| `odoo_invoice_lines` | `currency_code`, `exchange_rate` | sólo `currency` (text) | D stubbed, C simplificado |
+| `odoo_order_lines` | `price_subtotal`, `price_subtotal_mxn`, `date_order`, `product_id`, `order_id` | `subtotal`, `subtotal_mxn`, `order_date`, `odoo_product_id`, `odoo_order_id` | Views corregidas |
+| `odoo_account_balances` | `odoo_company_id`, `period_end` | sin company_id, `period` text | Company derivado via join a CoA |
+| `odoo_chart_of_accounts` | `account_code` | `code` | Views corregidas |
+| `odoo_deliveries` / `contacts` | `partner_id` / `odoo_id` | `odoo_partner_id` ambos | Views corregidas |
+
+**Recomendación Fase 2:** considerar añadir `exchange_rate` al push de invoice lines para rehabilitar D, y homogeneizar nombres de columna en futuras migraciones.
