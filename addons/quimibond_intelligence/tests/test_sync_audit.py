@@ -205,3 +205,30 @@ class TestAuditBankBalances(TransactionCase):
                                        dry_run=False)
         keys = {r['invariant_key'] for r in captured}
         self.assertIn('bank_balances.count_per_journal', keys)
+
+
+@tagged('post_install', '-at_install')
+class TestAuditIntegrationSeverity(TransactionCase):
+    """Verifica que inyectar ruido resulta en severity != 'ok'."""
+
+    def setUp(self):
+        super().setUp()
+        self.Audit = self.env['quimibond.sync.audit']
+
+    def test_products_count_mismatch_gives_error(self):
+        # Odoo tiene N productos; mockeamos Supabase con N+1000
+        odoo_count = self.env['product.product'].search_count(
+            [('active','=',True)])
+        client = MagicMock()
+        client.count_exact.return_value = odoo_count + 1000
+        client.fetch_all.return_value = []
+        captured = []
+        client.upsert.side_effect = lambda t, r, **k: (
+            captured.extend(r) if t == 'audit_runs' else None)
+
+        self.Audit.audit_products(client, 'test-sev', '2026-01-01',
+                                  '2026-04-19', {}, dry_run=False)
+        rows = [r for r in captured
+                if r['invariant_key'] == 'products.count_active']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['severity'], 'error')

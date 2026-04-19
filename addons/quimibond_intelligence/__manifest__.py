@@ -18,8 +18,10 @@
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'data/ir_cron_audit.xml',
         'data/ir_cron_retry_failures.xml',
         'views/sync_status_views.xml',
+        'views/sync_audit_views.xml',
     ],
     'installable': True,
     'application': True,
