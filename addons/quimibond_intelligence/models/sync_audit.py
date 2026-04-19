@@ -299,8 +299,16 @@ class SyncAudit(models.TransientModel):
 
     def audit_invoice_lines(self, client, run_id, date_from, date_to,
                             tolerances, dry_run):
-        """Invariantes 5-7: por bucket (year-month, move_type, company)."""
-        # -- Odoo side: SQL directo para eficiencia --
+        """Invariantes 5-7: por bucket (year-month, move_type, company).
+
+        Dos fixes respecto al plan original:
+        1. LATERAL subquery para currency_rate (evita cartesiano: LEFT JOIN
+           con `rcr.name <= invoice_date` multiplicaba cada línea por el
+           número de tasas históricas disponibles).
+        2. display_type filter replica lo que hace _push_invoice_lines:
+           `NOT IN ('line_section','line_note','payment_term','tax','rounding')`
+           tratando NULL como incluido.
+        """
         self.env.cr.execute("""
             SELECT to_char(am.invoice_date, 'YYYY-MM') AS ym,
                    am.move_type,
@@ -323,15 +331,22 @@ class SyncAudit(models.TransientModel):
             FROM account_move_line aml
             JOIN account_move am ON aml.move_id = am.id
             JOIN res_currency rc_mxn ON rc_mxn.name = 'MXN'
-            LEFT JOIN res_currency_rate rcr
-              ON rcr.currency_id = am.currency_id
-              AND rcr.company_id = am.company_id
-              AND rcr.name <= am.invoice_date
+            LEFT JOIN LATERAL (
+              SELECT rate
+              FROM res_currency_rate
+              WHERE currency_id = am.currency_id
+                AND company_id = am.company_id
+                AND name <= am.invoice_date
+              ORDER BY name DESC
+              LIMIT 1
+            ) rcr ON true
             WHERE am.state = 'posted'
               AND am.move_type IN ('out_invoice','out_refund',
                                    'in_invoice','in_refund')
               AND am.invoice_date BETWEEN %s AND %s
-              AND aml.display_type IS NULL  -- sólo líneas de producto
+              AND (aml.display_type IS NULL
+                   OR aml.display_type NOT IN
+                      ('line_section','line_note','payment_term','tax','rounding'))
             GROUP BY ym, am.move_type, am.company_id
         """, (date_from, date_to))
         odoo_buckets = {}
@@ -374,7 +389,7 @@ class SyncAudit(models.TransientModel):
     def audit_order_lines(self, client, run_id, date_from, date_to,
                           tolerances, dry_run):
         """Invariantes 8-10: sale + purchase separados."""
-        # SALE
+        # SALE — LATERAL subquery evita cartesiano con currency_rate
         self.env.cr.execute("""
             SELECT to_char(so.date_order, 'YYYY-MM') AS ym,
                    'sale' AS otype,
@@ -389,17 +404,22 @@ class SyncAudit(models.TransientModel):
             FROM sale_order_line sol
             JOIN sale_order so ON sol.order_id = so.id
             JOIN res_currency rc_mxn ON rc_mxn.name = 'MXN'
-            LEFT JOIN res_currency_rate rcr
-              ON rcr.currency_id = so.currency_id
-             AND rcr.company_id = so.company_id
-             AND rcr.name <= so.date_order::date
+            LEFT JOIN LATERAL (
+              SELECT rate
+              FROM res_currency_rate
+              WHERE currency_id = so.currency_id
+                AND company_id = so.company_id
+                AND name <= so.date_order::date
+              ORDER BY name DESC
+              LIMIT 1
+            ) rcr ON true
             WHERE so.state IN ('sale','done')
               AND so.date_order::date BETWEEN %s AND %s
             GROUP BY ym, so.company_id
         """, (date_from, date_to))
         rows_sale = self.env.cr.fetchall()
 
-        # PURCHASE
+        # PURCHASE — mismo patrón LATERAL
         self.env.cr.execute("""
             SELECT to_char(po.date_order, 'YYYY-MM') AS ym,
                    'purchase' AS otype,
@@ -414,10 +434,15 @@ class SyncAudit(models.TransientModel):
             FROM purchase_order_line pol
             JOIN purchase_order po ON pol.order_id = po.id
             JOIN res_currency rc_mxn ON rc_mxn.name = 'MXN'
-            LEFT JOIN res_currency_rate rcr
-              ON rcr.currency_id = po.currency_id
-             AND rcr.company_id = po.company_id
-             AND rcr.name <= po.date_order::date
+            LEFT JOIN LATERAL (
+              SELECT rate
+              FROM res_currency_rate
+              WHERE currency_id = po.currency_id
+                AND company_id = po.company_id
+                AND name <= po.date_order::date
+              ORDER BY name DESC
+              LIMIT 1
+            ) rcr ON true
             WHERE po.state IN ('purchase','done')
               AND po.date_order::date BETWEEN %s AND %s
             GROUP BY ym, po.company_id
