@@ -592,8 +592,15 @@ class SyncAudit(models.TransientModel):
 
     def audit_bank_balances(self, client, run_id, date_from, date_to,
                             tolerances, dry_run):
-        """Invariantes 17-18: snapshot por journal."""
-        # 17. count per journal
+        """Invariantes 17-18: snapshot por journal.
+
+        Schema real de odoo_bank_balances (no hay `active`, `journal_id`,
+        ni `native_balance` — los nombres del plan original no existían):
+          - FK al journal: `odoo_journal_id`
+          - balance en su moneda: `current_balance`
+          - balance convertido MXN: `current_balance_mxn`
+        """
+        # 17. count per journal (snapshot)
         self.env.cr.execute("""
             SELECT id, company_id FROM account_journal
             WHERE type IN ('bank','cash') AND active = true
@@ -601,22 +608,18 @@ class SyncAudit(models.TransientModel):
         odoo_journals = {f'journal_{jid}|{cid}': 1
                          for jid, cid in self.env.cr.fetchall()}
         odoo_count = len(odoo_journals)
-        supa_count = client.count_exact('odoo_bank_balances',
-                                        {'active': 'eq.true'})
+        supa_count = client.count_exact('odoo_bank_balances', {})
         self._record_cross(client, run_id, 'bank_balances',
                           'bank_balances.count_per_journal', None,
                           odoo_count, supa_count, tolerances,
                           date_from, date_to, dry_run=dry_run)
 
         # 18. native_balance_per_journal
-        # Usamos la misma lógica que sync_push._push_bank_balances
         Journal = self.env['account.journal']
         journals = Journal.search([
             ('type', 'in', ['bank', 'cash']), ('active', '=', True),
         ])
         for j in journals:
-            # balance nativo: suma de asientos en la cuenta del journal
-            # en su currency propia (sin convertir)
             default_account = j.default_account_id
             if not default_account:
                 continue
@@ -633,11 +636,11 @@ class SyncAudit(models.TransientModel):
             """, (default_account.id,))
             odoo_bal = float(self.env.cr.fetchone()[0] or 0)
             supa_rows = client.fetch('odoo_bank_balances', {
-                'journal_id': f'eq.{j.id}',
+                'odoo_journal_id': f'eq.{j.id}',
                 'odoo_company_id': f'eq.{j.company_id.id}',
-                'select': 'native_balance',
+                'select': 'current_balance',
             }) or []
-            supa_bal = float(supa_rows[0]['native_balance']
+            supa_bal = float(supa_rows[0]['current_balance']
                              if supa_rows else 0)
             key = f'journal_{j.id}|{j.company_id.id}'
             self._record_cross(client, run_id, 'bank_balances',
