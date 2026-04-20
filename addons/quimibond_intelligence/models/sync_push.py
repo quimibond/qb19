@@ -40,6 +40,10 @@ def _build_cfdi_map(env, invoice_ids: list) -> dict:
 
     Instead of reading the stored field, we go straight to the source:
     l10n_mx_edi.document records linked via invoice_ids (M2M).
+
+    KNOWN BUG (2026-04-20, Fase 2 audit): see TODO below — this function
+    over-assigns UUIDs for complemento de pago (tipo P) documents.
+    See memory: project_cfdi_uuid_bug_2026_04_20.md
     """
     if not invoice_ids:
         return {}
@@ -47,6 +51,23 @@ def _build_cfdi_map(env, invoice_ids: list) -> dict:
     result = {}
     try:
         Document = env['l10n_mx_edi.document'].sudo()
+
+        # BUG (2026-04-20, Fase 2 audit): this function over-assigns UUIDs.
+        # For complemento de pago documents (tipo P), `invoice_ids` is the
+        # M2M of ALL invoices the payment covers — iterating it below
+        # assigns the payment's UUID to each of those invoices instead of
+        # their own. Result: 1,547 UUIDs were duplicated across 5,321
+        # invoices in Supabase (cleaned up in migration
+        # 20260420_fase2_11_archive_null_dup_cfdi_uuid.sql). The UNIQUE
+        # partial index on odoo_invoices.cfdi_uuid now rejects duplicates
+        # at upsert time, so next syncs fail row-level but don't corrupt.
+        #
+        # TODO(addon-fix): filter/assign by the document's PRIMARY move,
+        # not its M2M. Options to investigate:
+        #   - use doc.move_id (if exposed — points to the original invoice)
+        #   - filter by doc.move_type in ('ingreso','egreso') — ignore tipo P docs
+        #   - join l10n_mx_edi.document through account.move.l10n_mx_edi_cfdi_document_ids
+        # See memory: project_cfdi_uuid_bug_2026_04_20.md
         docs = Document.search([
             ('invoice_ids', 'in', invoice_ids),
             ('attachment_uuid', '!=', False),
@@ -235,10 +256,10 @@ class QuimibondSync(models.TransientModel):
         # incremental write_date filter missed records not recently edited.
         'products', 'sale_orders', 'purchase_orders', 'invoice_lines',
         'deliveries', 'manufacturing', 'account_payments',
-        # Force full push for invoices/payments so new fields
+        # Force full push for invoices so new fields
         # (salesperson_name, amount_*_mxn, payment_category) get populated.
         # Can be removed after first successful full sync.
-        'invoices', 'payments',
+        'invoices',
         # BOMs are a small catalog (~hundreds) and active flag changes
         # are not always reflected in write_date. Always full push.
         'boms',
@@ -339,7 +360,6 @@ class QuimibondSync(models.TransientModel):
                 ('users', self._push_users),
                 ('invoices', self._push_invoices),
                 ('invoice_lines', self._push_invoice_lines),
-                ('payments', self._push_payments),
                 ('deliveries', self._push_deliveries),
                 ('crm_leads', self._push_crm_leads),
                 ('activities', self._push_activities),
@@ -1502,136 +1522,6 @@ class QuimibondSync(models.TransientModel):
         )
         return total_ok
 
-    # ── Payments (last 180 days) ─────────────────────────────────────────
-
-    def _push_payments(self, client: SupabaseClient, last_sync=None) -> int:
-        """Push payment data extracted from paid/partial invoices.
-
-        Odoo uses bank reconciliation (not account.payment records),
-        so we extract payment info from invoice amount_residual changes.
-
-        NOTE: This is a "proxy" payment table. odoo_account_payments has the
-        real account.payment records with bank/method details. This table is
-        kept for backward-compat but now includes payment_category and
-        correct payment_date from account.partial.reconcile.
-        """
-        core = IngestionCore(client)
-        run_id, core_watermark = core.start_run(
-            source='odoo',
-            table='odoo_payments',
-            run_type='full' if not last_sync else 'incremental',
-            triggered_by='cron',
-        )
-        effective_watermark = core_watermark or (last_sync.isoformat() if last_sync else None)
-        status = 'success'
-        final_watermark = effective_watermark
-        ok = 0
-        try:
-            Move = self.env['account.move'].sudo()
-
-            # Get invoices that have been paid or partially paid
-            # EXCLUDE payroll (entry type) — only customer/supplier invoices
-            cids = self._get_company_ids()
-            domain = [
-                ('company_id', 'in', cids),
-                ('move_type', 'in', [
-                    'out_invoice', 'out_refund',
-                    'in_invoice', 'in_refund',
-                ]),
-                ('state', '=', 'posted'),
-                ('payment_state', 'in', ['paid', 'in_payment', 'partial']),
-            ]
-            if last_sync:
-                domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-            invoices = Move.search(domain)
-
-            # Real payment dates from account.partial.reconcile
-            payment_date_map = _build_payment_date_map(self.env, invoices.ids)
-
-            rows = []
-            for inv in invoices:
-                pid = _commercial_partner_id(inv.partner_id)
-                if not pid:
-                    continue
-
-                amount_paid = inv.amount_total - inv.amount_residual
-                if amount_paid <= 0:
-                    continue
-
-                # Determine payment category
-                if inv.move_type in ('out_invoice', 'out_refund'):
-                    pay_category = 'customer'
-                elif inv.move_type in ('in_invoice', 'in_refund'):
-                    pay_category = 'supplier'
-                else:
-                    pay_category = 'other'
-
-                # Use REAL payment date from reconciliation (not write_date)
-                real_pay_date = payment_date_map.get(inv.id)
-                if real_pay_date:
-                    payment_date_str = real_pay_date.strftime('%Y-%m-%d')
-                elif inv.invoice_date:
-                    # Fallback: invoice_date (better than write_date)
-                    payment_date_str = inv.invoice_date.strftime('%Y-%m-%d')
-                else:
-                    payment_date_str = None
-
-                # MXN conversion
-                amt_signed = getattr(inv, 'amount_total_signed', None)
-                if amt_signed is not None and inv.amount_total:
-                    mxn_ratio = abs(amt_signed) / inv.amount_total
-                    amount_mxn = round(amount_paid * mxn_ratio, 2)
-                else:
-                    amount_mxn = round(amount_paid, 2)
-
-                # Prefijo company_id en el name para evitar colisiones en
-                # multi-company (unique (partner_id, name) en Supabase).
-                # Dos companies pueden tener invoice names iguales al mismo
-                # partner externo → mismo PAY-name → 409. Con C{cid} prefix
-                # son únicos. 2026-04-20.
-                pay_cid = inv.company_id.id if inv.company_id else 0
-                rows.append({
-                    'odoo_partner_id': pid,
-                    'name': f'PAY-C{pay_cid}-{inv.name}',
-                    'payment_type': 'inbound' if inv.move_type in ('out_invoice', 'in_refund') else 'outbound',
-                    'amount': round(amount_paid, 2),
-                    'amount_mxn': amount_mxn,
-                    'currency': inv.currency_id.name if inv.currency_id else 'MXN',
-                    'payment_date': payment_date_str,
-                    'payment_category': pay_category,
-                    'state': 'posted',
-                    'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
-                    'odoo_company_id': inv.company_id.id if inv.company_id else None,
-                })
-
-            # === swap upsert → upsert_with_details ===
-            ok, failed = client.upsert_with_details(
-                'odoo_payments', rows, on_conflict='odoo_partner_id,name', batch_size=200
-            )
-            core.report_batch(run_id, attempted=len(rows), succeeded=ok, failed=len(failed))
-            for row, err in failed:
-                core.report_failure(
-                    run_id=run_id,
-                    entity_id=str(row.get('name') or row.get('odoo_partner_id') or ''),
-                    error_code=err['code'],
-                    error_detail=err['detail'],
-                    payload=row,
-                )
-            if failed:
-                status = 'partial'
-            if rows:
-                final_watermark = max(
-                    (r.get('write_date') for r in rows if r.get('write_date')),
-                    default=effective_watermark,
-                )
-        except Exception as e:
-            status = 'failed'
-            _logger.exception('push_payments failed: %s', e)
-            core.complete_run(run_id, status=status, high_watermark=effective_watermark)
-            raise
-        core.complete_run(run_id, status=status, high_watermark=final_watermark)
-        return ok
-
     # ── Deliveries (pending + last 90 days) ──────────────────────────────
 
     def _push_deliveries(self, client: SupabaseClient, last_sync=None) -> int:
@@ -2450,7 +2340,6 @@ class QuimibondSync(models.TransientModel):
         core = IngestionCore(client)
         tables = [
             ('odoo', 'odoo_invoices', 'odoo_partner_id,name'),
-            ('odoo', 'odoo_payments', 'odoo_partner_id,name'),
         ]
         max_retries = 5
         for source, table, conflict in tables:
