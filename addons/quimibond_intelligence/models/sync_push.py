@@ -1407,8 +1407,14 @@ class QuimibondSync(models.TransientModel):
                     line.product_id.name if line.product_id else (line.name or '')[:200]
                 ),
                 'product_ref': line.product_id.default_code or '' if line.product_id else '',
-                'quantity': round(line.quantity, 2),
-                'price_unit': round(line.price_unit, 2),
+                # price_unit y quantity con 6 decimales — Odoo internamente
+                # usa Product Price precision (6 por default), que al
+                # redondear a 2 en items con cantidad enorme (millones) causa
+                # drift de miles $$ vs price_subtotal (el "oficial" de Odoo).
+                # Fase 2 fix — audit invariant invoice_lines.price_recompute
+                # detectó 31,883 líneas con drift por este redondeo.
+                'quantity': round(line.quantity, 6),
+                'price_unit': round(line.price_unit, 6),
                 'discount': round(line.discount, 2),
                 'price_subtotal': round(line.price_subtotal, 2),
                 'price_total': round(line.price_total, 2),
