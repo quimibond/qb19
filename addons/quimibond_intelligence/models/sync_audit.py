@@ -127,6 +127,22 @@ class SyncAudit(models.TransientModel):
             client.upsert('audit_runs', [row],
                           on_conflict='run_id,source,model,invariant_key,bucket_key')
 
+    def _filter_buckets_in_window(self, supa_rows, date_from, date_to):
+        """Filtra supa_rows por ventana, usando el prefix YYYY-MM de bucket_key.
+
+        Varias views (order_lines, deliveries, manufacturing,
+        account_balances) agrupan por YYYY-MM pero NO exponen columnas
+        filtrables por PostgREST. Filtramos aquí para no mezclar buckets
+        históricos fuera de la ventana que el Odoo-side no va a producir,
+        lo cual se vería como `odoo_value=0` vs `supabase_value=N` → error
+        falso.
+        """
+        from_ym = str(date_from)[:7]  # 'YYYY-MM'
+        to_ym = str(date_to)[:7]
+        return [r for r in supa_rows
+                if r.get('bucket_key')
+                and from_ym <= r['bucket_key'][:7] <= to_ym]
+
     # ---------------------------------------------------------------
     # Helpers de queries Supabase (agregados)
     # ---------------------------------------------------------------
@@ -462,8 +478,9 @@ class SyncAudit(models.TransientModel):
                                  'sum_mxn': float(sm or 0),
                                  'sum_qty': float(sq or 0)}
 
-        # Supabase
+        # Supabase — filtrar por ventana para no traer buckets históricos
         supa_rows = client.fetch_all('v_audit_order_lines_buckets', {})
+        supa_rows = self._filter_buckets_in_window(supa_rows, date_from, date_to)
         supa_buckets = {r['bucket_key']: r for r in supa_rows}
 
         for key in set(odoo_buckets) | set(supa_buckets):
@@ -500,6 +517,7 @@ class SyncAudit(models.TransientModel):
                 for ym, st, cid, cnt in self.env.cr.fetchall()}
 
         supa_rows = client.fetch_all('v_audit_deliveries_buckets', {})
+        supa_rows = self._filter_buckets_in_window(supa_rows, date_from, date_to)
         supa = {r['bucket_key']: int(r['count']) for r in supa_rows}
 
         for key in set(odoo) | set(supa):
@@ -526,6 +544,7 @@ class SyncAudit(models.TransientModel):
             odoo[key] = {'count': int(cnt or 0), 'sum_qty': float(sq or 0)}
 
         supa_rows = client.fetch_all('v_audit_manufacturing_buckets', {})
+        supa_rows = self._filter_buckets_in_window(supa_rows, date_from, date_to)
         supa = {r['bucket_key']: r for r in supa_rows}
 
         for key in set(odoo) | set(supa):
@@ -582,6 +601,7 @@ class SyncAudit(models.TransientModel):
 
             supa_rows = client.fetch_all('v_audit_account_balances_buckets',
                                         {'invariant_key': f'eq.{invariant_key}'})
+            supa_rows = self._filter_buckets_in_window(supa_rows, date_from, date_to)
             supa = {r['bucket_key']: float(r['balance']) for r in supa_rows}
 
             for key in set(odoo) | set(supa):
