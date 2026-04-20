@@ -410,7 +410,13 @@ class SyncAudit(models.TransientModel):
 
     def audit_order_lines(self, client, run_id, date_from, date_to,
                           tolerances, dry_run):
-        """Invariantes 8-10: sale + purchase separados."""
+        """Invariantes 8-10: sale + purchase separados.
+
+        display_type filter (sol.display_type IS NULL / pol.display_type IS NULL)
+        replica lo que hace _push_order_lines. Sin esto el audit contaba
+        section headers / notes / groups como líneas y el delta con Supabase
+        era sistemático (2026-04-20: 54 errors order_lines sólo por esto).
+        """
         # SALE — LATERAL subquery evita cartesiano con currency_rate
         self.env.cr.execute("""
             SELECT to_char(so.date_order, 'YYYY-MM') AS ym,
@@ -437,6 +443,7 @@ class SyncAudit(models.TransientModel):
             ) rcr ON true
             WHERE so.state IN ('sale','done')
               AND so.date_order::date BETWEEN %s AND %s
+              AND sol.display_type IS NULL
             GROUP BY ym, so.company_id
         """, (date_from, date_to))
         rows_sale = self.env.cr.fetchall()
@@ -467,6 +474,7 @@ class SyncAudit(models.TransientModel):
             ) rcr ON true
             WHERE po.state IN ('purchase','done')
               AND po.date_order::date BETWEEN %s AND %s
+              AND pol.display_type IS NULL
             GROUP BY ym, po.company_id
         """, (date_from, date_to))
         rows_purchase = self.env.cr.fetchall()
