@@ -713,3 +713,136 @@ class QuimibondSyncBackfill(models.TransientModel):
         }
         _logger.info('[backfill_boms] SUMMARY: %s', result)
         return result
+
+    # ------------------------------------------------------------------
+    # manual_backfill_deliveries — one-shot FULL push sin cutoff de 90/365d.
+    # ------------------------------------------------------------------
+    def manual_backfill_deliveries(self, batch_size=500, max_batches=None,
+                                   reset_cursor=False):
+        """One-shot backfill completo de stock.picking → odoo_deliveries.
+
+        El push regular (`_push_deliveries`) tiene cutoff de 365d por
+        performance. Este método recorre TODOS los pickings incoming/outgoing
+        en orden ascendente de id, en batches de `batch_size`, con cursor
+        persistido en ir.config_parameter.
+
+        Uso desde shell::
+
+            env['quimibond.sync'].manual_backfill_deliveries()
+            env['quimibond.sync'].manual_backfill_deliveries(max_batches=10)
+            env['quimibond.sync'].manual_backfill_deliveries(reset_cursor=True)
+        """
+        client = _get_supabase_client(self.env)
+        if not client:
+            raise UserError('Supabase client no configurado')
+
+        ICP = self.env['ir.config_parameter'].sudo()
+        cursor_key = 'quimibond_intelligence.deliveries_backfill_cursor'
+
+        if reset_cursor:
+            ICP.set_param(cursor_key, '0')
+            _logger.info('[backfill_deliveries] cursor reseteado a 0')
+
+        try:
+            cursor = int(ICP.get_param(cursor_key, '0') or '0')
+        except (ValueError, TypeError):
+            cursor = 0
+
+        Picking = self.env['stock.picking'].sudo()
+        base_domain = [
+            ('picking_type_code', 'in', ['outgoing', 'incoming']),
+        ]
+
+        start_ts = datetime.now()
+        batches_run = 0
+        total_pushed = 0
+        last_id = cursor
+
+        while True:
+            if max_batches is not None and batches_run >= max_batches:
+                break
+            domain = base_domain + [('id', '>', cursor)]
+            pickings = Picking.search(domain, order='id asc', limit=batch_size)
+            if not pickings:
+                _logger.info('[backfill_deliveries] finished — cursor=%d', cursor)
+                break
+
+            now = datetime.now()
+            rows = []
+            for pk in pickings:
+                pid = _commercial_partner_id(pk.partner_id) if pk.partner_id else None
+                if not pid:
+                    continue
+                is_late = (
+                    pk.state not in ('done', 'cancel')
+                    and pk.scheduled_date
+                    and pk.scheduled_date < now
+                )
+                lead_time = None
+                if pk.state == 'done' and pk.date_done and pk.create_date:
+                    lead_time = round(
+                        (pk.date_done - pk.create_date).total_seconds() / 86400, 1
+                    )
+                rows.append({
+                    'odoo_picking_id': pk.id,
+                    'odoo_partner_id': pid,
+                    'name': pk.name,
+                    'picking_type': pk.picking_type_id.name if pk.picking_type_id else '',
+                    'picking_type_code': pk.picking_type_code or '',
+                    'origin': pk.origin or '',
+                    'scheduled_date': pk.scheduled_date.strftime('%Y-%m-%d')
+                                      if pk.scheduled_date else None,
+                    'date_done': pk.date_done.isoformat() if pk.date_done else None,
+                    'create_date': pk.create_date.strftime('%Y-%m-%d')
+                                   if pk.create_date else None,
+                    'state': pk.state,
+                    'is_late': is_late,
+                    'lead_time_days': lead_time,
+                    'odoo_company_id': pk.company_id.id if pk.company_id else None,
+                })
+
+            if rows:
+                pushed = client.upsert('odoo_deliveries', rows,
+                                       on_conflict='odoo_picking_id',
+                                       batch_size=200)
+                total_pushed += pushed
+
+            last_id = pickings[-1].id
+            cursor = last_id
+            ICP.set_param(cursor_key, str(cursor))
+            batches_run += 1
+            _logger.info(
+                '[backfill_deliveries] batch %d: %d pickings, %d rows, cursor=%d',
+                batches_run, len(pickings), len(rows), cursor,
+            )
+
+        elapsed = (datetime.now() - start_ts).total_seconds()
+        # finished=True si no quedan más pickings pendientes
+        remaining = Picking.search_count(
+            base_domain + [('id', '>', cursor)]
+        )
+        result = {
+            'batches_run': batches_run,
+            'deliveries_pushed': total_pushed,
+            'last_id_processed': last_id,
+            'remaining': remaining,
+            'finished': remaining == 0,
+            'elapsed_seconds': round(elapsed, 1),
+        }
+
+        try:
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': 'Backfill stock.picking',
+                'direction': 'push',
+                'status': 'success' if result['finished'] else 'partial',
+                'summary': (
+                    f"batches={batches_run} pushed={total_pushed} "
+                    f"cursor={cursor} remaining={remaining}"
+                ),
+                'duration_seconds': round(elapsed, 1),
+            })
+        except Exception as exc:
+            _logger.warning('No se pudo crear sync_log: %s', exc)
+
+        _logger.info('[backfill_deliveries] SUMMARY: %s', result)
+        return result

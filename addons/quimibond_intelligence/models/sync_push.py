@@ -1561,7 +1561,11 @@ class QuimibondSync(models.TransientModel):
 
     def _push_deliveries(self, client: SupabaseClient, last_sync=None) -> int:
         Picking = self.env['stock.picking'].sudo()
-        cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        # Cutoff: 365 días para cubrir reportes 12m rolling. Antes 90d
+        # dejaba todo 2025 sin sincronizar (audit invariant expuso el gap
+        # 2026-04-20). Para backfill histórico completo ver
+        # manual_backfill_deliveries() en sync_backfill.
+        cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         # Include BOTH outgoing (to customers) and incoming (from suppliers)
         # for full OTD tracking on both sides of the supply chain.
         domain = [
