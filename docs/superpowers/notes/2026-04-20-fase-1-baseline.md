@@ -65,3 +65,40 @@ Archivos con flag activo en src/ (excluye docs/):
 - Se resolvió calculando valores en queries separadas y haciendo VALUES literal.
 - Valores de `syntage_gap_cfdis` y `syntage_match_pct` confirmados con NOT EXISTS (más eficiente).
 - `company_profile_columns = 0`: la matview existe pero `information_schema.columns` no reporta columnas para matviews — comportamiento esperado de Postgres (matviews no aparecen en information_schema.columns).
+
+## Final (2026-04-20)
+
+```json
+{
+  "reconciliation_issues_open_total": 44660,
+  "reconciliation_issues_open_payment_missing_complemento": 730,
+  "reconciliation_issues_open_complemento_missing_payment": 22754,
+  "reconciliation_issues_open_cancelled_but_posted": 97,
+  "reconciliation_issues_open_amount_mismatch": 21,
+  "syntage_match_pct_odoo_to_syntage": 77.82,
+  "company_profile_column_count": 40,
+  "autoresolve_triggers_count": 7
+}
+```
+
+## Delta baseline → final
+
+| Métrica | Baseline | Final |
+|---|---|---|
+| reconciliation_issues_open_total | 44660 | 44660 |
+| payment_missing_complemento | 730 | 730 |
+| complemento_missing_payment | 22754 | 22754 |
+| cancelled_but_posted | 97 | 97 |
+| amount_mismatch | 21 | 21 |
+| syntage_match_pct | 77.76 | 77.82 |
+| company_profile columnas (pg_attribute) | n/a (bug query) | 40 |
+| auto-resolve triggers | 0 | 7 |
+
+## Notas importantes
+- Los 7 triggers de auto-resolve están LIVE — resolverán issues cuando lleguen nuevos datos que satisfagan las condiciones.
+- Backfills de Tasks 2-5 no cerraron issues existentes porque los datos actuales no satisfacen las condiciones (ej: complemento_missing_payment tiene odoo_invoice_id=NULL por diseño; necesita fuzzy matching que es out-of-scope para Fase 1 — queda para Fase 2).
+- Syntage gap requiere acción manual del user (ver `2026-04-20-syntage-backfill-gap.md`).
+- company_profile extendido a 40 columnas totales (vs baseline donde information_schema reportaba 0 para MVs — bug confirmado).
+- syntage_match_pct subió mínimamente de 77.76 → 77.82 (nuevas facturas en Syntage durante el día).
+
+**Fase 1 cerrada: 2026-04-20**
