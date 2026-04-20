@@ -40,6 +40,10 @@ def _build_cfdi_map(env, invoice_ids: list) -> dict:
 
     Instead of reading the stored field, we go straight to the source:
     l10n_mx_edi.document records linked via invoice_ids (M2M).
+
+    KNOWN BUG (2026-04-20, Fase 2 audit): see TODO below — this function
+    over-assigns UUIDs for complemento de pago (tipo P) documents.
+    See memory: project_cfdi_uuid_bug_2026_04_20.md
     """
     if not invoice_ids:
         return {}
@@ -47,6 +51,23 @@ def _build_cfdi_map(env, invoice_ids: list) -> dict:
     result = {}
     try:
         Document = env['l10n_mx_edi.document'].sudo()
+
+        # BUG (2026-04-20, Fase 2 audit): this function over-assigns UUIDs.
+        # For complemento de pago documents (tipo P), `invoice_ids` is the
+        # M2M of ALL invoices the payment covers — iterating it below
+        # assigns the payment's UUID to each of those invoices instead of
+        # their own. Result: 1,547 UUIDs were duplicated across 5,321
+        # invoices in Supabase (cleaned up in migration
+        # 20260420_fase2_11_archive_null_dup_cfdi_uuid.sql). The UNIQUE
+        # partial index on odoo_invoices.cfdi_uuid now rejects duplicates
+        # at upsert time, so next syncs fail row-level but don't corrupt.
+        #
+        # TODO(addon-fix): filter/assign by the document's PRIMARY move,
+        # not its M2M. Options to investigate:
+        #   - use doc.move_id (if exposed — points to the original invoice)
+        #   - filter by doc.move_type in ('ingreso','egreso') — ignore tipo P docs
+        #   - join l10n_mx_edi.document through account.move.l10n_mx_edi_cfdi_document_ids
+        # See memory: project_cfdi_uuid_bug_2026_04_20.md
         docs = Document.search([
             ('invoice_ids', 'in', invoice_ids),
             ('attachment_uuid', '!=', False),
