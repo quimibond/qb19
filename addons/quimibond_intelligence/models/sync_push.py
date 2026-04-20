@@ -568,6 +568,35 @@ class QuimibondSync(models.TransientModel):
         except Exception as exc:
             _logger.warning('Extra partner fetch: %s', exc)
 
+        # Also include partners referenced by deliveries (stock.picking):
+        # carriers, transportistas, partners internos sin rank ni email.
+        # Audit 2026-04-20: 304 orphan deliveries usaban 54 partners
+        # distintos que quedaban fuera de contacts. Email NOT required here
+        # porque muchos de estos son operacionales, no comerciales.
+        operational_partner_ids = set()
+        try:
+            Picking = self.env['stock.picking'].sudo()
+            cutoff_d = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            picking_partner_ids = Picking.search([
+                ('picking_type_code', 'in', ['outgoing', 'incoming']),
+                '|',
+                ('state', 'not in', ['done', 'cancel']),
+                ('date_done', '>=', cutoff_d),
+            ]).mapped('partner_id.commercial_partner_id').ids
+
+            missing_pk_ids = set(picking_partner_ids) - set(partners.ids)
+            if missing_pk_ids:
+                extra_pk = Partner.with_context(active_test=False).browse(
+                    list(missing_pk_ids)
+                ).exists()
+                if extra_pk:
+                    partners = partners | extra_pk
+                    operational_partner_ids = set(extra_pk.ids)
+                    _logger.info('Added %d partners from deliveries (no rank/email)',
+                                 len(extra_pk))
+        except Exception as exc:
+            _logger.warning('Extra partner fetch (pickings): %s', exc)
+
         companies = {}  # canonical_name → {fields}
         contacts = []   # [{fields}]
 
@@ -577,7 +606,10 @@ class QuimibondSync(models.TransientModel):
                 for e in re.split(r'[;,\s]+', p.email or '')
                 if _EMAIL_RE.match(e.strip())
             ]
-            if not emails:
+            # Partners operacionales (referenciados solo en pickings, sin
+            # rank ni email) se permiten sin email — su función es mantener
+            # referential integrity con odoo_deliveries.odoo_partner_id.
+            if not emails and p.id not in operational_partner_ids:
                 continue
 
             cp_id = _commercial_partner_id(p)
@@ -698,6 +730,19 @@ class QuimibondSync(models.TransientModel):
                     'is_supplier': is_supplier,
                 })
 
+            # Operational partners without email (carriers, internal, etc.):
+            # emitir un contact row sin email para mantener FK integrity con
+            # odoo_deliveries.odoo_partner_id.
+            if not emails and p.id in operational_partner_ids:
+                contacts.append({
+                    'email': None,
+                    'name': contact_name,
+                    'contact_type': 'external',
+                    'odoo_partner_id': p.id,
+                    'is_customer': is_customer,
+                    'is_supplier': is_supplier,
+                })
+
         # Also push companies from invoice partners that may lack email
         # (these cause orphan invoices worth millions)
         try:
@@ -793,10 +838,23 @@ class QuimibondSync(models.TransientModel):
             if rfc_map:
                 client.rpc('backfill_rfc_from_json', {'data': rfc_map})
         if contacts:
-            synced += client.upsert(
-                'contacts', contacts,
-                on_conflict='email', batch_size=50,
-            )
+            # Split: contacts con email → on_conflict='email' (unique idx);
+            # contacts sin email (operacionales de pickings) → on_conflict=
+            # 'odoo_partner_id' (unique partial idx WHERE odoo_partner_id
+            # IS NOT NULL). Se necesitan upserts separados porque PostgREST
+            # solo permite una cláusula on_conflict por llamada.
+            with_email = [c for c in contacts if c.get('email')]
+            without_email = [c for c in contacts if not c.get('email')]
+            if with_email:
+                synced += client.upsert(
+                    'contacts', with_email,
+                    on_conflict='email', batch_size=50,
+                )
+            if without_email:
+                synced += client.upsert(
+                    'contacts', without_email,
+                    on_conflict='odoo_partner_id', batch_size=50,
+                )
         return synced
 
     # ── Products ─────────────────────────────────────────────────────────
