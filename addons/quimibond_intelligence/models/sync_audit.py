@@ -342,7 +342,8 @@ class SyncAudit(models.TransientModel):
                      * aml.price_subtotal
                      * COALESCE(
                          CASE WHEN am.currency_id = rc_mxn.id THEN 1.0
-                              ELSE rcr.rate END,
+                              WHEN rcr.rate > 0 THEN (1.0 / rcr.rate)
+                              ELSE 1.0 END,
                          1.0)
                    ) AS sum_mxn,
                    SUM(
@@ -426,7 +427,8 @@ class SyncAudit(models.TransientModel):
                    SUM(sol.price_subtotal
                        * COALESCE(
                            CASE WHEN so.currency_id = rc_mxn.id THEN 1.0
-                                ELSE rcr.rate END,
+                                WHEN rcr.rate > 0 THEN (1.0 / rcr.rate)
+                                ELSE 1.0 END,
                            1.0)) AS sum_mxn,
                    SUM(sol.product_uom_qty) AS sum_qty
             FROM sale_order_line sol
@@ -457,7 +459,8 @@ class SyncAudit(models.TransientModel):
                    SUM(pol.price_subtotal
                        * COALESCE(
                            CASE WHEN po.currency_id = rc_mxn.id THEN 1.0
-                                ELSE rcr.rate END,
+                                WHEN rcr.rate > 0 THEN (1.0 / rcr.rate)
+                                ELSE 1.0 END,
                            1.0)) AS sum_mxn,
                    SUM(pol.product_qty) AS sum_qty
             FROM purchase_order_line pol
