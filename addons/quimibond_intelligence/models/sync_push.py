@@ -803,38 +803,17 @@ class QuimibondSync(models.TransientModel):
 
     def _push_products(self, client: SupabaseClient, last_sync=None) -> int:
         Product = self.env['product.product'].sudo()
-        # Active products
-        domain = [('active', '=', True)]
+        # Traemos TODOS los productos (active + inactive) y propagamos el
+        # flag real. Antes el filtro active=True no incluía archivados, y
+        # cuando se archivaba un producto en Odoo, Supabase quedaba con la
+        # última versión active=true (audit detectó 447 fantasmas
+        # 2026-04-20). Con active_test=False + sin filtro active, cada
+        # upsert refresca el flag real.
+        ProductAll = Product.with_context(active_test=False)
+        domain = []
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        products = Product.search(domain)
-
-        # Also include inactive products referenced in posted invoices/orders
-        # (otherwise invoice_lines and order_lines have orphan product IDs)
-        if not last_sync:
-            try:
-                self.env.cr.execute("""
-                    SELECT DISTINCT product_id FROM account_move_line
-                    WHERE product_id IS NOT NULL AND move_id IN (
-                        SELECT id FROM account_move
-                        WHERE state = 'posted'
-                        AND move_type IN ('out_invoice','out_refund','in_invoice','in_refund')
-                    )
-                    UNION
-                    SELECT DISTINCT product_id FROM sale_order_line
-                    WHERE product_id IS NOT NULL
-                    UNION
-                    SELECT DISTINCT product_id FROM purchase_order_line
-                    WHERE product_id IS NOT NULL
-                """)
-                all_product_ids = {r[0] for r in self.env.cr.fetchall()}
-                missing_ids = list(all_product_ids - set(products.ids))
-                if missing_ids:
-                    inactive = Product.with_context(active_test=False).browse(missing_ids).exists()
-                    products |= inactive
-                    _logger.info('Products: added %d inactive/archived products referenced in lines', len(inactive))
-            except Exception as exc:
-                _logger.warning('Products: failed to fetch inactive products: %s', exc)
+        products = ProductAll.search(domain)
 
         # Pre-fetch all reorder rules in one query (avoids N+1)
         orderpoint_map = {}  # product_id -> {min, max}
