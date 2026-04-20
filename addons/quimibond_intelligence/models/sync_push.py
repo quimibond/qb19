@@ -1685,14 +1685,7 @@ class QuimibondSync(models.TransientModel):
     def _push_crm_leads(self, client: SupabaseClient, last_sync=None) -> int:
         Lead = self.env['crm.lead'].sudo()
         cids = self._get_company_ids()
-        # Include leads with no company_id set (False) — in Odoo, crm.lead
-        # records created from email/inbox often have company_id=False even
-        # though they belong to the main company. Restricting to 'in cids' alone
-        # excluded ~95% of leads. Use OR to capture both cases.
-        domain = [
-            ('active', '=', True),
-            '|', ('company_id', 'in', cids), ('company_id', '=', False),
-        ]
+        domain = [('active', '=', True), ('company_id', 'in', cids)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         leads = Lead.search(domain)
