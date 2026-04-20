@@ -2164,59 +2164,65 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         try:
-            # In Odoo 19, account.account uses shared chart of accounts
-            # (company_id filter returns 0 results in shared mode).
-            # Instead, we push ALL accounts and let Supabase clean up
-            # the ones without movements via account_balances join.
-            #
-            # Use active_test=False so that archived accounts are also
-            # synced (with active=false flag). Views downstream filter
-            # by active=true to ignore them.
+            # Odoo 17+: account.account.code es computed per-company via
+            # code_store_ids. Para Quimibond MX con multi-company (12+ orgs
+            # con catálogos SAT propios), iteramos por compañía y resolvemos
+            # el code en el contexto de cada una. Antes se usaba solo
+            # self._get_company_id() (company 1), dejando 1,044 cuentas de
+            # las otras 11 companies con code='' (audit expuso 2026-04-20).
             Account = Account.with_context(active_test=False)
-            cid = self._get_company_id()
-            try:
-                accounts = Account.search([('company_id', '=', cid)])
-                if not accounts:
-                    # Shared chart mode — fall back to all accounts
-                    accounts = Account.search([])
-            except Exception:
-                accounts = Account.search([])
-            _logger.info('chart_of_accounts: found %d accounts', len(accounts))
-
-            # Odoo 17+ changed account.account.code to a computed per-company
-            # field backed by code_store_ids (account.code.mapping). Reading
-            # acc.code without company context returns empty for accounts not
-            # scoped to the user's default company. Force the target company.
-            accounts_ctx = accounts.with_company(cid) if cid else accounts
+            Company = self.env['res.company'].sudo()
+            companies = Company.search([])
 
             rows = []
-            for acc in accounts_ctx:
+            seen_acc_ids = set()
+            for company in companies:
+                cid = company.id
+                # Try the direct company_id filter first; if empty (Odoo 17+
+                # shared chart mode) or if it raises, fall back to all.
                 try:
-                    acc_type = getattr(acc, 'account_type', None) or ''
-                    code = acc.code or ''
-                    # Fallback: read directly from code_store_ids mapping
-                    if not code and hasattr(acc, 'code_store_ids'):
-                        mapping = acc.code_store_ids.filtered(
-                            lambda m: m.company_id.id == cid
-                        )
-                        if mapping:
-                            code = mapping[0].code or ''
-                        elif acc.code_store_ids:
-                            code = acc.code_store_ids[0].code or ''
-                    rows.append({
-                        'odoo_account_id': acc.id,
-                        'code': code,
-                        'name': acc.name or '',
-                        'account_type': acc_type,
-                        'reconcile': bool(acc.reconcile) if hasattr(acc, 'reconcile') else False,
-                        'deprecated': bool(getattr(acc, 'deprecated', False)),
-                        'active': bool(getattr(acc, 'active', True)),
-                        'odoo_company_id': acc.company_id.id if acc.company_id else None,
-                    })
-                except Exception as exc:
-                    _logger.warning('chart_of_accounts %s: %s', acc.id, exc)
+                    accounts = Account.search([('company_id', '=', cid)])
+                    if not accounts:
+                        # Shared chart: todas las cuentas accesibles por esta
+                        # company via company_ids many2many (o all).
+                        accounts = Account.search([])
+                except Exception:
+                    accounts = Account.search([])
 
-            _logger.info('chart_of_accounts: pushing %d rows', len(rows))
+                accounts_ctx = accounts.with_company(cid)
+                for acc in accounts_ctx:
+                    try:
+                        code = acc.code or ''
+                        # Fallback adicional: leer directamente code_store_ids
+                        if not code and hasattr(acc, 'code_store_ids'):
+                            mapping = acc.code_store_ids.filtered(
+                                lambda m: m.company_id.id == cid
+                            )
+                            if mapping:
+                                code = mapping[0].code or ''
+
+                        # Skip si la cuenta no tiene code en este contexto
+                        # (significa que no "pertenece" a esta company).
+                        if not code and acc.id in seen_acc_ids:
+                            continue
+
+                        acc_type = getattr(acc, 'account_type', None) or ''
+                        rows.append({
+                            'odoo_account_id': acc.id,
+                            'code': code,
+                            'name': acc.name or '',
+                            'account_type': acc_type,
+                            'reconcile': bool(acc.reconcile) if hasattr(acc, 'reconcile') else False,
+                            'deprecated': bool(getattr(acc, 'deprecated', False)),
+                            'active': bool(getattr(acc, 'active', True)),
+                            'odoo_company_id': cid,
+                        })
+                        seen_acc_ids.add(acc.id)
+                    except Exception as exc:
+                        _logger.warning('chart_of_accounts %s: %s', acc.id, exc)
+
+            _logger.info('chart_of_accounts: pushing %d rows across %d companies',
+                         len(rows), len(companies))
             return client.upsert('odoo_chart_of_accounts', rows,
                                   on_conflict='odoo_account_id', batch_size=200)
         except Exception as exc:
@@ -2255,33 +2261,42 @@ class QuimibondSync(models.TransientModel):
             _logger.warning('read_group account balances failed: %s', exc)
             return 0
 
-        # Build account cache for names/codes (same company filter).
-        # Odoo 17+: force company context so code_store_ids is resolved
-        # against the target company (code is a computed per-company field).
+        # Build account cache for names/codes. Mismo patrón multi-company
+        # que _push_chart_of_accounts: iteramos res.company para que el
+        # compute de `code` (Odoo 17+ code_store_ids) se resuelva
+        # correctamente. Antes un solo with_company(cid) dejaba el cache
+        # vacío (si company_id filter raised) o con codes incompletos,
+        # causando account_code='' en 100% de odoo_account_balances.
         account_cache = {}
         try:
             Account = self.env['account.account'].sudo()
-            accounts = Account.search([('company_id', '=', cid)])
-            if not accounts:
-                accounts = Account.search([])
-            accounts = accounts.with_company(cid) if cid else accounts
-            for acc in accounts:
-                code = acc.code or ''
-                if not code and hasattr(acc, 'code_store_ids'):
-                    mapping = acc.code_store_ids.filtered(
-                        lambda m: m.company_id.id == cid
-                    )
-                    if mapping:
-                        code = mapping[0].code or ''
-                    elif acc.code_store_ids:
-                        code = acc.code_store_ids[0].code or ''
-                account_cache[acc.id] = {
-                    'code': code,
-                    'name': acc.name or '',
-                    'account_type': getattr(acc, 'account_type', '') or '',
-                }
-        except Exception:
-            pass
+            Company = self.env['res.company'].sudo()
+            for company in Company.search([]):
+                company_cid = company.id
+                try:
+                    accounts = Account.search([('company_id', '=', company_cid)])
+                    if not accounts:
+                        accounts = Account.search([])
+                except Exception:
+                    accounts = Account.search([])
+                for acc in accounts.with_company(company_cid):
+                    code = acc.code or ''
+                    if not code and hasattr(acc, 'code_store_ids'):
+                        mapping = acc.code_store_ids.filtered(
+                            lambda m: m.company_id.id == company_cid
+                        )
+                        if mapping:
+                            code = mapping[0].code or ''
+                    # Solo registrar si tenemos code (cuenta "pertenece" a
+                    # esta company) o si no hay entry previa para la acc.
+                    if code or acc.id not in account_cache:
+                        account_cache[acc.id] = {
+                            'code': code,
+                            'name': acc.name or '',
+                            'account_type': getattr(acc, 'account_type', '') or '',
+                        }
+        except Exception as exc:
+            _logger.warning('account_balances cache build failed: %s', exc)
 
         # Month name → number mapping for Spanish locale (Odoo read_group
         # returns localized month names like "enero 2026", "febrero 2026").
