@@ -1269,17 +1269,19 @@ class QuimibondSync(models.TransientModel):
                         'odoo_company_id': inv.company_id.id if inv.company_id else None,
                     })
 
-                # Deduplicate within chunk: keep last occurrence per
-                # (odoo_partner_id, name) para evitar "ON CONFLICT ... cannot
-                # affect row a second time". Cross-chunk dupes las resuelve
-                # Postgres vía on_conflict en el upsert.
+                # Deduplicate within chunk por odoo_invoice_id (el PK natural
+                # de Odoo, único cross-company). Antes usábamos (partner_id,
+                # name) pero con multi-company colisionaba: companies 2/3/4
+                # pueden facturar al mismo partner con el mismo nombre de
+                # factura → 409 Conflict en el upsert → 99% de invoices no
+                # company-1 perdidos. 2026-04-20.
                 seen = {}
                 for row in rows:
-                    seen[(row['odoo_partner_id'], row['name'])] = row
+                    seen[row['odoo_invoice_id']] = row
                 rows = list(seen.values())
 
                 ok_batch, failed_batch = client.upsert_with_details(
-                    'odoo_invoices', rows, on_conflict='odoo_partner_id,name', batch_size=200
+                    'odoo_invoices', rows, on_conflict='odoo_invoice_id', batch_size=200
                 )
                 ok += ok_batch
                 total_attempted += len(rows)
@@ -1582,9 +1584,15 @@ class QuimibondSync(models.TransientModel):
                 else:
                     amount_mxn = round(amount_paid, 2)
 
+                # Prefijo company_id en el name para evitar colisiones en
+                # multi-company (unique (partner_id, name) en Supabase).
+                # Dos companies pueden tener invoice names iguales al mismo
+                # partner externo → mismo PAY-name → 409. Con C{cid} prefix
+                # son únicos. 2026-04-20.
+                pay_cid = inv.company_id.id if inv.company_id else 0
                 rows.append({
                     'odoo_partner_id': pid,
-                    'name': f'PAY-{inv.name}',
+                    'name': f'PAY-C{pay_cid}-{inv.name}',
                     'payment_type': 'inbound' if inv.move_type in ('out_invoice', 'in_refund') else 'outbound',
                     'amount': round(amount_paid, 2),
                     'amount_mxn': amount_mxn,
