@@ -40,6 +40,15 @@ class SyncAudit(models.TransientModel):
     # ---------------------------------------------------------------
     # Configuración y cliente Supabase
     # ---------------------------------------------------------------
+    def _get_company_id(self) -> int:
+        """Scope del audit a la compañía operativa (Quimibond) — evita contar
+        facturas/órdenes de personas físicas que usan la misma instancia de
+        Odoo para contabilidad personal. Debe matchear `quimibond.sync._get_company_id`.
+        """
+        ICP = self.env['ir.config_parameter'].sudo()
+        cid = ICP.get_param('quimibond_intelligence.company_id', '1')
+        return int(cid)
+
     def _get_client(self) -> SupabaseClient:
         ICP = self.env['ir.config_parameter'].sudo()
         url = ICP.get_param('quimibond_intelligence.supabase_url')
@@ -330,7 +339,11 @@ class SyncAudit(models.TransientModel):
         2. display_type filter replica lo que hace _push_invoice_lines:
            `NOT IN ('line_section','line_note','payment_term','tax','rounding')`
            tratando NULL como incluido.
+        3. company_id filter — scopea a Quimibond (company 1) para no
+           contar facturas de personas físicas (Jacobo Mizrahi etc.) que
+           usan la misma instancia de Odoo. Debe matchear al push.
         """
+        cid = self._get_company_id()
         self.env.cr.execute("""
             SELECT to_char(am.invoice_date, 'YYYY-MM') AS ym,
                    am.move_type,
@@ -367,11 +380,12 @@ class SyncAudit(models.TransientModel):
               AND am.move_type IN ('out_invoice','out_refund',
                                    'in_invoice','in_refund')
               AND am.invoice_date BETWEEN %s AND %s
+              AND am.company_id = %s
               AND (aml.display_type IS NULL
                    OR aml.display_type NOT IN
                       ('line_section','line_note','payment_term','tax','rounding'))
             GROUP BY ym, am.move_type, am.company_id
-        """, (date_from, date_to))
+        """, (date_from, date_to, cid))
         odoo_buckets = {}
         for ym, move_type, company_id, cnt, sum_mxn, sum_qty in self.env.cr.fetchall():
             key = f'{ym}|{move_type}|{company_id}'
@@ -417,7 +431,11 @@ class SyncAudit(models.TransientModel):
         replica lo que hace _push_order_lines. Sin esto el audit contaba
         section headers / notes / groups como líneas y el delta con Supabase
         era sistemático (2026-04-20: 54 errors order_lines sólo por esto).
+
+        company_id filter — scopea a Quimibond (company 1) para excluir
+        órdenes de personas físicas.
         """
+        cid = self._get_company_id()
         # SALE — LATERAL subquery evita cartesiano con currency_rate
         self.env.cr.execute("""
             SELECT to_char(so.date_order, 'YYYY-MM') AS ym,
@@ -445,9 +463,10 @@ class SyncAudit(models.TransientModel):
             ) rcr ON true
             WHERE so.state IN ('sale','done')
               AND so.date_order::date BETWEEN %s AND %s
+              AND so.company_id = %s
               AND sol.display_type IS NULL
             GROUP BY ym, so.company_id
-        """, (date_from, date_to))
+        """, (date_from, date_to, cid))
         rows_sale = self.env.cr.fetchall()
 
         # PURCHASE — mismo patrón LATERAL
@@ -477,9 +496,10 @@ class SyncAudit(models.TransientModel):
             ) rcr ON true
             WHERE po.state IN ('purchase','done')
               AND po.date_order::date BETWEEN %s AND %s
+              AND po.company_id = %s
               AND pol.display_type IS NULL
             GROUP BY ym, po.company_id
-        """, (date_from, date_to))
+        """, (date_from, date_to, cid))
         rows_purchase = self.env.cr.fetchall()
 
         odoo_buckets = {}
@@ -512,7 +532,11 @@ class SyncAudit(models.TransientModel):
 
     def audit_deliveries(self, client, run_id, date_from, date_to,
                          tolerances, dry_run):
-        """Invariante 11: count done per month × state × company."""
+        """Invariante 11: count done per month × state × company.
+
+        company_id filter — scopea a Quimibond (company 1).
+        """
+        cid = self._get_company_id()
         self.env.cr.execute("""
             SELECT to_char(date_done, 'YYYY-MM') AS ym,
                    state,
@@ -522,8 +546,9 @@ class SyncAudit(models.TransientModel):
             WHERE date_done IS NOT NULL
               AND date_done::date BETWEEN %s AND %s
               AND state IN ('done','cancel')
+              AND company_id = %s
             GROUP BY ym, state, company_id
-        """, (date_from, date_to))
+        """, (date_from, date_to, cid))
         odoo = {f'{ym}|{st}|{cid}': int(cnt)
                 for ym, st, cid, cnt in self.env.cr.fetchall()}
 
@@ -539,7 +564,11 @@ class SyncAudit(models.TransientModel):
 
     def audit_manufacturing(self, client, run_id, date_from, date_to,
                             tolerances, dry_run):
-        """Invariantes 12-13: por state × company × month."""
+        """Invariantes 12-13: por state × company × month.
+
+        company_id filter — scopea a Quimibond (company 1).
+        """
+        cid = self._get_company_id()
         self.env.cr.execute("""
             SELECT to_char(date_start, 'YYYY-MM') AS ym,
                    state, company_id,
@@ -547,8 +576,9 @@ class SyncAudit(models.TransientModel):
                    SUM(qty_producing) AS sum_qty
             FROM mrp_production
             WHERE date_start::date BETWEEN %s AND %s
+              AND company_id = %s
             GROUP BY ym, state, company_id
-        """, (date_from, date_to))
+        """, (date_from, date_to, cid))
         odoo = {}
         for ym, st, cid, cnt, sq in self.env.cr.fetchall():
             key = f'{ym}|{st}|{cid}'
@@ -577,10 +607,14 @@ class SyncAudit(models.TransientModel):
         Odoo 17+: account.account.code es per-company vía code_store_ids.
         Resolvemos los ids por compañía vía ORM con with_company(cid) y
         filtramos en SQL por account_id IN (...) en vez de aa.code LIKE ...
+
+        Scopea a Quimibond (company 1) — personas físicas (Jacobo etc.)
+        tienen sus propios balances contables que no deben mezclarse.
         """
+        cid = self._get_company_id()
         Account = self.env['account.account']
         Company = self.env['res.company']
-        companies = Company.search([])
+        companies = Company.browse(cid)
 
         for invariant_key, patterns in self.ACCOUNT_GROUPS.items():
             prefixes = tuple(p.rstrip('%') for p in patterns)
@@ -630,12 +664,17 @@ class SyncAudit(models.TransientModel):
           - FK al journal: `odoo_journal_id`
           - balance en su moneda: `current_balance`
           - balance convertido MXN: `current_balance_mxn`
+
+        Scopea a Quimibond (company 1) — journals de personas físicas
+        no deben mezclarse con los de la empresa operativa.
         """
+        op_cid = self._get_company_id()
         # 17. count per journal (snapshot)
         self.env.cr.execute("""
             SELECT id, company_id FROM account_journal
             WHERE type IN ('bank','cash') AND active = true
-        """)
+              AND company_id = %s
+        """, (op_cid,))
         odoo_journals = {f'journal_{jid}|{cid}': 1
                          for jid, cid in self.env.cr.fetchall()}
         odoo_count = len(odoo_journals)
@@ -649,6 +688,7 @@ class SyncAudit(models.TransientModel):
         Journal = self.env['account.journal']
         journals = Journal.search([
             ('type', 'in', ['bank', 'cash']), ('active', '=', True),
+            ('company_id', '=', op_cid),
         ])
         for j in journals:
             default_account = j.default_account_id
