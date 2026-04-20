@@ -205,6 +205,23 @@ class QuimibondSync(models.TransientModel):
         cid = ICP.get_param('quimibond_intelligence.company_id', '1')
         return int(cid)
 
+    # Multi-company: if quimibond_intelligence.company_ids is set (comma-
+    # separated list), usa esa lista. Si no, cae al single-company legacy
+    # [_get_company_id()] para backward-compat. Esto permite opt-in a
+    # multi-company sin romper el setup existente. Ejemplo:
+    #   env['ir.config_parameter'].sudo().set_param(
+    #     'quimibond_intelligence.company_ids', '1,2,3,4,16')
+    def _get_company_ids(self):
+        """Return the list of company IDs to include in the push."""
+        ICP = self.env['ir.config_parameter'].sudo()
+        raw = (ICP.get_param('quimibond_intelligence.company_ids') or '').strip()
+        if raw:
+            try:
+                return [int(x.strip()) for x in raw.split(',') if x.strip()]
+            except (ValueError, TypeError):
+                pass
+        return [self._get_company_id()]
+
     # Tablas que SIEMPRE hacen full push (no incremental), incluso cuando
     # last_sync esta seteado. Son catalogos pequenos donde el riesgo de
     # perderlos por incremental fallido es mayor al costo de re-enviarlos.
@@ -549,9 +566,9 @@ class QuimibondSync(models.TransientModel):
         try:
             Move = self.env['account.move'].sudo()
             cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-            cid = self._get_company_id()
+            cids = self._get_company_ids()
             invoice_partner_ids = Move.search([
-                ('company_id', '=', cid),
+                ('company_id', 'in', cids),
                 ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
                 ('state', '=', 'posted'),
                 ('invoice_date', '>=', cutoff),
@@ -705,9 +722,9 @@ class QuimibondSync(models.TransientModel):
                                     if c.get('odoo_partner_id')}
             Move = self.env['account.move'].sudo()
             cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-            cid = self._get_company_id()
+            cids = self._get_company_ids()
             inv_partners = Move.search([
-                ('company_id', '=', cid),
+                ('company_id', 'in', cids),
                 ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
                 ('state', '=', 'posted'),
                 ('invoice_date', '>=', cutoff),
@@ -1127,9 +1144,9 @@ class QuimibondSync(models.TransientModel):
         ok = 0
         try:
             Move = self.env['account.move'].sudo()
-            cid = self._get_company_id()
+            cids = self._get_company_ids()
             domain = [
-                ('company_id', '=', cid),
+                ('company_id', 'in', cids),
                 ('move_type', 'in', [
                     'out_invoice', 'out_refund',
                     'in_invoice', 'in_refund',
@@ -1371,10 +1388,10 @@ class QuimibondSync(models.TransientModel):
           3. Single pass sobre lines usando inv_map precomputado
         """
         Move = self.env['account.move'].sudo()
-        cid = self._get_company_id()
+        cids = self._get_company_ids()
 
         domain = [
-            ('company_id', '=', cid),
+            ('company_id', 'in', cids),
             ('move_type', 'in', [
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund',
             ]),
@@ -1512,9 +1529,9 @@ class QuimibondSync(models.TransientModel):
 
             # Get invoices that have been paid or partially paid
             # EXCLUDE payroll (entry type) — only customer/supplier invoices
-            cid = self._get_company_id()
+            cids = self._get_company_ids()
             domain = [
-                ('company_id', '=', cid),
+                ('company_id', 'in', cids),
                 ('move_type', 'in', [
                     'out_invoice', 'out_refund',
                     'in_invoice', 'in_refund',
@@ -1667,8 +1684,8 @@ class QuimibondSync(models.TransientModel):
 
     def _push_crm_leads(self, client: SupabaseClient, last_sync=None) -> int:
         Lead = self.env['crm.lead'].sudo()
-        cid = self._get_company_id()
-        domain = [('active', '=', True), ('company_id', '=', cid)]
+        cids = self._get_company_ids()
+        domain = [('active', '=', True), ('company_id', 'in', cids)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         leads = Lead.search(domain)
@@ -1750,10 +1767,10 @@ class QuimibondSync(models.TransientModel):
             _logger.info('mrp.production not available, skipping manufacturing sync')
             return 0
 
-        cid = self._get_company_id()
+        cids = self._get_company_ids()
         cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
         domain = [
-            ('company_id', '=', cid),
+            ('company_id', 'in', cids),
             '|',
             ('state', 'not in', ['done', 'cancel']),
             ('date_start', '>=', cutoff),
@@ -1793,8 +1810,8 @@ class QuimibondSync(models.TransientModel):
             _logger.info('hr.employee not available, skipping')
             return 0
 
-        cid = self._get_company_id()
-        domain = [('active', '=', True), ('company_id', '=', cid)]
+        cids = self._get_company_ids()
+        domain = [('active', '=', True), ('company_id', 'in', cids)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         employees = Employee.search(domain, limit=500)
@@ -1830,8 +1847,8 @@ class QuimibondSync(models.TransientModel):
             _logger.info('hr.department not available, skipping')
             return 0
 
-        cid = self._get_company_id()
-        domain = [('active', '=', True), ('company_id', '=', cid)]
+        cids = self._get_company_ids()
+        domain = [('active', '=', True), ('company_id', 'in', cids)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         departments = Dept.search(domain, limit=200)
@@ -1868,9 +1885,9 @@ class QuimibondSync(models.TransientModel):
             _logger.info('sale.order not available, skipping')
             return 0
 
-        cid = self._get_company_id()
+        cids = self._get_company_ids()
         domain = [
-            ('company_id', '=', cid),
+            ('company_id', 'in', cids),
             ('state', 'in', ['sale', 'done']),
         ]
         if last_sync:
@@ -1943,9 +1960,9 @@ class QuimibondSync(models.TransientModel):
             _logger.info('purchase.order not available, skipping')
             return 0
 
-        cid = self._get_company_id()
+        cids = self._get_company_ids()
         domain = [
-            ('company_id', '=', cid),
+            ('company_id', 'in', cids),
             ('state', 'in', ['purchase', 'done']),
         ]
         if last_sync:
@@ -2006,8 +2023,8 @@ class QuimibondSync(models.TransientModel):
             _logger.info('stock.warehouse.orderpoint not available, skipping')
             return 0
 
-        cid = self._get_company_id()
-        domain = [('active', '=', True), ('company_id', '=', cid)]
+        cids = self._get_company_ids()
+        domain = [('active', '=', True), ('company_id', 'in', cids)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         orderpoints = Orderpoint.search(domain, limit=5000)
@@ -2057,8 +2074,8 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         try:
-            cid = self._get_company_id()
-            domain = [('company_id', '=', cid)]
+            cids = self._get_company_ids()
+            domain = [('company_id', 'in', cids)]
             # Skip incremental filter on first run (table may be empty)
             if last_sync:
                 existing = client.fetch('odoo_account_payments', {'limit': '1', 'select': 'id'})
@@ -2134,9 +2151,9 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         try:
-            cid = self._get_company_id()
+            cids = self._get_company_ids()
             domain = [
-                ('company_id', '=', cid),
+                ('company_id', 'in', cids),
                 ('reconciled_invoice_ids', '!=', False),
             ]
             # Incremental por write_date del payment (si una reconciliación cambia,
@@ -2227,11 +2244,11 @@ class QuimibondSync(models.TransientModel):
             rows = []
             seen_acc_ids = set()
             for company in companies:
-                cid = company.id
+                company_cid = company.id
                 # Try the direct company_id filter first; if empty (Odoo 17+
                 # shared chart mode) or if it raises, fall back to all.
                 try:
-                    accounts = Account.search([('company_id', '=', cid)])
+                    accounts = Account.search([('company_id', '=', company_cid)])
                     if not accounts:
                         # Shared chart: todas las cuentas accesibles por esta
                         # company via company_ids many2many (o all).
@@ -2239,14 +2256,14 @@ class QuimibondSync(models.TransientModel):
                 except Exception:
                     accounts = Account.search([])
 
-                accounts_ctx = accounts.with_company(cid)
+                accounts_ctx = accounts.with_company(company_cid)
                 for acc in accounts_ctx:
                     try:
                         code = acc.code or ''
                         # Fallback adicional: leer directamente code_store_ids
                         if not code and hasattr(acc, 'code_store_ids'):
                             mapping = acc.code_store_ids.filtered(
-                                lambda m: m.company_id.id == cid
+                                lambda m: m.company_id.id == company_cid
                             )
                             if mapping:
                                 code = mapping[0].code or ''
@@ -2265,7 +2282,7 @@ class QuimibondSync(models.TransientModel):
                             'reconcile': bool(acc.reconcile) if hasattr(acc, 'reconcile') else False,
                             'deprecated': bool(getattr(acc, 'deprecated', False)),
                             'active': bool(getattr(acc, 'active', True)),
-                            'odoo_company_id': cid,
+                            'odoo_company_id': company_cid,
                         })
                         seen_acc_ids.add(acc.id)
                     except Exception as exc:
@@ -2295,16 +2312,16 @@ class QuimibondSync(models.TransientModel):
 
         # Use read_group for efficient aggregation in Odoo
         # Filter to operating company to avoid mixing P&L from 8 companies
-        cid = self._get_company_id()
+        cids = self._get_company_ids()
         try:
             groups = Line.read_group(
                 domain=[
                     ('parent_state', '=', 'posted'),
                     ('display_type', 'not in', ['line_section', 'line_note']),
-                    ('company_id', '=', cid),
+                    ('company_id', 'in', cids),
                 ],
                 fields=['account_id', 'debit:sum', 'credit:sum', 'balance:sum'],
-                groupby=['account_id', 'date:month'],
+                groupby=['account_id', 'date:month', 'company_id'],
                 lazy=False,
             )
         except Exception as exc:
@@ -2386,6 +2403,12 @@ class QuimibondSync(models.TransientModel):
             # date:month returns 'abril 2026' format — normalize to '2026-04'
             month_str = _normalize_period(g.get('date:month', ''))
 
+            # Nota: groupby incluye 'company_id' para que read_group devuelva
+            # UNA fila por (account, month, company). La tabla
+            # odoo_account_balances no tiene columna odoo_company_id todavía
+            # (TODO: ALTER TABLE), por eso no la embebemos en el row. El
+            # company_id lo resuelve la view v_audit_account_balances_buckets
+            # via JOIN con odoo_chart_of_accounts.odoo_company_id.
             rows.append({
                 'odoo_account_id': acc_id,
                 'account_code': acc_info.get('code', ''),
@@ -2474,10 +2497,10 @@ class QuimibondSync(models.TransientModel):
             return 0
 
         # Only sync journals from the operating company
-        cid = self._get_company_id()
+        cids = self._get_company_ids()
         journals = Journal.search([
             ('type', 'in', ['bank', 'cash']),
-            ('company_id', '=', cid),
+            ('company_id', 'in', cids),
         ])
 
         rows = []
@@ -2581,41 +2604,45 @@ class QuimibondSync(models.TransientModel):
             _logger.info('res.currency.rate not available, skipping')
             return 0
 
-        cid = self._get_company_id()
-        company = self.env['res.company'].sudo().browse(cid)
-        company_currency = company.currency_id.name if company.currency_id else 'MXN'
-
+        cids = self._get_company_ids()
         # Get all currencies that have rates defined
         Currency = self.env['res.currency'].sudo()
         currencies = Currency.search([('active', '=', True)])
+        Company = self.env['res.company'].sudo()
 
         rows = []
-        for cur in currencies:
-            if cur.name == company_currency:
-                continue  # Skip MXN→MXN
+        # Iterate per company — cada una puede tener currency base distinta
+        # y rate entries propias (company_id IS NULL son rates compartidas).
+        for cid in cids:
+            company = Company.browse(cid)
+            company_currency = company.currency_id.name if company.currency_id else 'MXN'
 
-            # Get the latest rate for this currency in the company
-            rates = Rate.search([
-                ('currency_id', '=', cur.id),
-                ('company_id', 'in', [cid, False]),
-            ], order='name desc', limit=30)  # last 30 rate entries
+            for cur in currencies:
+                if cur.name == company_currency:
+                    continue  # Skip base→base
 
-            for r in rates:
-                # Odoo stores inverse rate: 1 / (foreign per base)
-                # e.g. if 1 USD = 19.5 MXN, Odoo stores rate = 1/19.5 = 0.05128
-                inverse_rate = r.rate or 0
-                if inverse_rate > 0:
-                    mxn_rate = round(1.0 / inverse_rate, 6)
-                else:
-                    continue
+                # Get the latest rate for this currency in the company
+                rates = Rate.search([
+                    ('currency_id', '=', cur.id),
+                    ('company_id', 'in', [cid, False]),
+                ], order='name desc', limit=30)  # last 30 rate entries
 
-                rows.append({
-                    'currency': cur.name,
-                    'rate': mxn_rate,
-                    'inverse_rate': round(inverse_rate, 10),
-                    'rate_date': r.name.strftime('%Y-%m-%d') if r.name else None,
-                    'odoo_company_id': cid,
-                })
+                for r in rates:
+                    # Odoo stores inverse rate: 1 / (foreign per base)
+                    # e.g. if 1 USD = 19.5 MXN, Odoo stores rate = 1/19.5 = 0.05128
+                    inverse_rate = r.rate or 0
+                    if inverse_rate > 0:
+                        mxn_rate = round(1.0 / inverse_rate, 6)
+                    else:
+                        continue
+
+                    rows.append({
+                        'currency': cur.name,
+                        'rate': mxn_rate,
+                        'inverse_rate': round(inverse_rate, 10),
+                        'rate_date': r.name.strftime('%Y-%m-%d') if r.name else None,
+                        'odoo_company_id': cid,
+                    })
 
         if rows:
             return client.upsert('odoo_currency_rates', rows,
@@ -2641,10 +2668,10 @@ class QuimibondSync(models.TransientModel):
             _logger.info('mrp.bom not available, skipping')
             return 0
 
-        cid = self._get_company_id()
+        cids = self._get_company_ids()
         domain = [
             ('active', '=', True),
-            '|', ('company_id', '=', cid), ('company_id', '=', False),
+            '|', ('company_id', 'in', cids), ('company_id', '=', False),
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
