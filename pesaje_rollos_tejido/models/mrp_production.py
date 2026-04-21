@@ -167,6 +167,7 @@ class MrpProduction(models.Model):
 
         # Punto 11: Registrar la diferencia como merma si el subproducto es menor a la revisión
         # Punto 11: Registrar la diferencia como merma prorrateada
+        # Punto 11: Registrar la diferencia como merma prorrateada
         diff_merma = total_diff_revisado - weight
         if diff_merma > 0:
             scrap_loc = self.env['stock.location'].search([
@@ -197,7 +198,7 @@ class MrpProduction(models.Model):
                             if lineas_con_lote:
                                 v_lot_id = lineas_con_lote[0].lot_id.id
 
-                            # 1. CREACIÓN MANUAL
+                            # 1. CREACIÓN MANUAL CON CONTEXTO LIMPIO
                             nuevo_scrap = self.env['stock.scrap'].sudo().with_context(clean_context=True).create({
                                 'product_id': move.product_id.id,
                                 'scrap_qty': v_cantidad_scrap,
@@ -209,17 +210,21 @@ class MrpProduction(models.Model):
                                 'scrap_reason_tag_ids': [(6, 0, [reason_tag.id])],
                             })
 
-                            # 2. VALIDACIÓN
+                            # ASIGNACIÓN DE SECUENCIA PARA EVITAR EL "NUEVO" EN ODOO SH
+                            if not nuevo_scrap.name or nuevo_scrap.name in ('Nuevo', '/'):
+                                nuevo_scrap.name = self.env['ir.sequence'].next_by_code('stock.scrap') or '/'
+
+                            # 2. VALIDACIÓN ESTÁNDAR
                             nuevo_scrap.action_validate()
                             
-                            # 3. EL "GOLPE DE MARTILLO" (Ajustado para plural move_ids)
+                            # 3. EL "GOLPE DE MARTILLO" (Blindaje de decimales y estado)
                             if nuevo_scrap.state != 'done' or nuevo_scrap.scrap_qty != v_cantidad_scrap:
                                 nuevo_scrap.sudo().write({
                                     'state': 'done',
                                     'scrap_qty': v_cantidad_scrap,
                                 })
                                 
-                                # Buscamos el movimiento en move_id o move_ids según disponibilidad
+                                # Compatibilidad move_id / move_ids para Odoo SH
                                 internal_move = getattr(nuevo_scrap, 'move_id', False) or (nuevo_scrap.move_ids[:1] if nuevo_scrap.move_ids else False)
                                 
                                 if internal_move:
@@ -229,7 +234,7 @@ class MrpProduction(models.Model):
                                         'picked': True
                                     })
 
-                            # --- VINCULACIÓN FINAL GARANTIZADA ---
+                            # VINCULACIÓN FINAL A LA MO PARA QUE APAREZCA EN LA PESTAÑA DE DESECHOS
                             nuevo_scrap.sudo().write({'production_id': self.id})
             else:
                 raise UserError("No se encontró ubicación de Scrap configurada.")
