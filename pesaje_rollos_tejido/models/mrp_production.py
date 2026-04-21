@@ -197,7 +197,7 @@ class MrpProduction(models.Model):
                             if lineas_con_lote:
                                 v_lot_id = lineas_con_lote[0].lot_id.id
 
-                            # 1. CREACIÓN MANUAL (Sin disparadores de Odoo)
+                            # 1. CREACIÓN MANUAL
                             nuevo_scrap = self.env['stock.scrap'].sudo().with_context(clean_context=True).create({
                                 'product_id': move.product_id.id,
                                 'scrap_qty': v_cantidad_scrap,
@@ -209,29 +209,30 @@ class MrpProduction(models.Model):
                                 'scrap_reason_tag_ids': [(6, 0, [reason_tag.id])],
                             })
 
-                            # 2. VALIDACIÓN (Lo que ya te funcionó)
+                            # 2. VALIDACIÓN
                             nuevo_scrap.action_validate()
                             
-                            # 3. EL "GOLPE DE MARTILLO" (Corregido para ligar SIEMPRE)
-                            # Si falló la validación estándar, forzamos estado y cantidad
+                            # 3. EL "GOLPE DE MARTILLO" (Ajustado para plural move_ids)
                             if nuevo_scrap.state != 'done' or nuevo_scrap.scrap_qty != v_cantidad_scrap:
                                 nuevo_scrap.sudo().write({
                                     'state': 'done',
                                     'scrap_qty': v_cantidad_scrap,
                                 })
-                                if nuevo_scrap.move_id:
-                                    nuevo_scrap.move_id.sudo().write({
+                                
+                                # Buscamos el movimiento en move_id o move_ids según disponibilidad
+                                internal_move = getattr(nuevo_scrap, 'move_id', False) or (nuevo_scrap.move_ids[:1] if nuevo_scrap.move_ids else False)
+                                
+                                if internal_move:
+                                    internal_move.sudo().write({
                                         'state': 'done',
                                         'quantity': v_cantidad_scrap,
                                         'picked': True
                                     })
 
                             # --- VINCULACIÓN FINAL GARANTIZADA ---
-                            # Independientemente de si falló o no el paso anterior, 
-                            # ahora que el registro está blindado, lo pegamos a la MO.
                             nuevo_scrap.sudo().write({'production_id': self.id})
             else:
-                raise UserError("No se encontró ubicación de Scrap.")
+                raise UserError("No se encontró ubicación de Scrap configurada.")
 
         self.move_raw_ids._recompute_state()
         self.move_raw_ids._action_assign()
