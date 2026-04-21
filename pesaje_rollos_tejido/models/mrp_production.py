@@ -2,6 +2,7 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import datetime
+from odoo.tools import float_round, float_compare
 
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
@@ -165,16 +166,72 @@ class MrpProduction(models.Model):
                 line.lot_id = new_lot.id
 
         # Punto 11: Registrar la diferencia como merma si el subproducto es menor a la revisión
+        # Punto 11: Registrar la diferencia como merma prorrateada
         diff_merma = total_diff_revisado - weight
         if diff_merma > 0:
-            scrap_location = self.env['stock.location'].search([('scrap_location', '=', True)], limit=1)
-            self.env['stock.scrap'].create({
-                'production_id': self.id,
-                'product_id': self.product_id.id, 
-                'scrap_qty': diff_merma,
-                'location_id': self.location_src_id.id,
-                'scrap_location_id': scrap_location.id,
-            })
+            scrap_loc = self.env['stock.location'].search([
+                ('usage', '=', 'inventory'),
+                ('complete_name', 'ilike', 'Scrap')
+            ], limit=1) or self.env['stock.location'].search([('usage', '=', 'inventory')], limit=1)
+
+            if scrap_loc:
+                reason_tag = self.env['stock.scrap.reason.tag'].search([('name', '=', 'MERMA')], limit=1)
+                if not reason_tag:
+                    reason_tag = self.env['stock.scrap.reason.tag'].create({'name': 'MERMA'})
+
+                moves_en_produccion = self.move_raw_ids.filtered(
+                    lambda m: m.state not in ('cancel', 'draft') and m.quantity > 0
+                )
+                
+                total_surtido_mo = sum(m.quantity for m in moves_en_produccion)
+                uom_kg_id = self.env.ref('uom.product_uom_kgm').id
+
+                if total_surtido_mo > 0:
+                    for move in moves_en_produccion:
+                        v_proporcion = float(move.quantity) / float(total_surtido_mo)
+                        v_cantidad_scrap = float_round(float(diff_merma) * v_proporcion, precision_digits=4)
+
+                        if v_cantidad_scrap > 0:
+                            v_lot_id = False
+                            lineas_con_lote = move.move_line_ids.filtered(lambda l: l.lot_id and l.quantity > 0)
+                            if lineas_con_lote:
+                                v_lot_id = lineas_con_lote[0].lot_id.id
+
+                            # 1. CREACIÓN MANUAL (Sin disparadores de Odoo)
+                            nuevo_scrap = self.env['stock.scrap'].sudo().with_context(clean_context=True).create({
+                                'product_id': move.product_id.id,
+                                'scrap_qty': v_cantidad_scrap,
+                                'lot_id': v_lot_id,
+                                'location_id': move.location_dest_id.id, 
+                                'scrap_location_id': scrap_loc.id,
+                                'product_uom_id': uom_kg_id,
+                                'origin': "MERMA MO: " + (self.name or ''),
+                                'scrap_reason_tag_ids': [(6, 0, [reason_tag.id])],
+                            })
+
+                            # 2. VALIDACIÓN (Lo que ya te funcionó)
+                            nuevo_scrap.action_validate()
+                            
+                            # 3. EL "GOLPE DE MARTILLO" (Corregido para ligar SIEMPRE)
+                            # Si falló la validación estándar, forzamos estado y cantidad
+                            if nuevo_scrap.state != 'done' or nuevo_scrap.scrap_qty != v_cantidad_scrap:
+                                nuevo_scrap.sudo().write({
+                                    'state': 'done',
+                                    'scrap_qty': v_cantidad_scrap,
+                                })
+                                if nuevo_scrap.move_id:
+                                    nuevo_scrap.move_id.sudo().write({
+                                        'state': 'done',
+                                        'quantity': v_cantidad_scrap,
+                                        'picked': True
+                                    })
+
+                            # --- VINCULACIÓN FINAL GARANTIZADA ---
+                            # Independientemente de si falló o no el paso anterior, 
+                            # ahora que el registro está blindado, lo pegamos a la MO.
+                            nuevo_scrap.sudo().write({'production_id': self.id})
+            else:
+                raise UserError("No se encontró ubicación de Scrap.")
 
         self.move_raw_ids._recompute_state()
         self.move_raw_ids._action_assign()
