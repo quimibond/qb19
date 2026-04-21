@@ -87,20 +87,25 @@ def _build_cfdi_state_map(env, invoice_ids):
     result = {}
     try:
         Document = env['l10n_mx_edi.document'].sudo()
+        # FIXED (2026-04-20, SP0): use doc.move_id (1:1 FK) not invoice_ids (M2M)
+        # to avoid complemento de pago UUIDs leaking into invoice rows.
         docs = Document.search([
-            ('invoice_ids', 'in', invoice_ids),
+            ('move_id', 'in', invoice_ids),
         ], order='id desc')
         for doc in docs:
-            uuid = getattr(doc, 'attachment_uuid', None)
-            sat = getattr(doc, 'sat_state', None)
-            doc_state = getattr(doc, 'state', None)
-            for inv_id in doc.invoice_ids.ids:
-                if inv_id not in result and inv_id in invoice_ids:
-                    result[inv_id] = {
-                        'uuid': uuid,
-                        'sat': sat or None,
-                        'doc_state': doc_state or None,
-                    }
+            if not doc.move_id:
+                continue
+            if doc.move_id.move_type not in (
+                'out_invoice', 'out_refund', 'in_invoice', 'in_refund'
+            ):
+                continue
+            mid = doc.move_id.id
+            if mid not in result:
+                result[mid] = {
+                    'uuid': getattr(doc, 'attachment_uuid', None),
+                    'sat': getattr(doc, 'sat_state', None) or None,
+                    'doc_state': getattr(doc, 'state', None) or None,
+                }
     except Exception as exc:
         _logger.warning('CFDI state map build failed: %s', exc)
 
