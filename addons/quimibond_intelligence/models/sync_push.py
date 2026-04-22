@@ -866,6 +866,28 @@ class QuimibondSync(models.TransientModel):
                       and row.get('odoo_partner_id') is not None):
                     dedup_contacts[key] = row
             contacts = list(dedup_contacts.values())
+
+            # Second-pass dedup by odoo_partner_id (2026-04-22): aun después
+            # del dedup por email, múltiples rows pueden compartir
+            # odoo_partner_id (un mismo contacto de Odoo con varios emails).
+            # Supabase tiene UNIQUE(odoo_partner_id) además del on_conflict=
+            # email, así que el upsert con on_conflict=email no detecta el
+            # choque por partner y lanza 23505 → chunk entero perdido (16.2%
+            # failure rate observed). Preferimos la row con email no-null.
+            by_partner: dict[int, dict] = {}
+            passthrough: list[dict] = []
+            for row in contacts:
+                pid = row.get('odoo_partner_id')
+                if not pid:
+                    passthrough.append(row)
+                    continue
+                existing = by_partner.get(pid)
+                if existing is None:
+                    by_partner[pid] = row
+                elif not existing.get('email') and row.get('email'):
+                    by_partner[pid] = row
+            contacts = list(by_partner.values()) + passthrough
+
             synced += client.upsert(
                 'contacts', contacts,
                 on_conflict='email', batch_size=50,
