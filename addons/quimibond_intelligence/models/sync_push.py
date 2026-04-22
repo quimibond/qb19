@@ -257,9 +257,11 @@ class QuimibondSync(models.TransientModel):
         # BOMs are a small catalog (~hundreds) and active flag changes
         # are not always reflected in write_date. Always full push.
         'boms',
-        # Sprint 13e: UoM master is tiny + line UoM was added later, so
-        # order_lines need full re-push to populate the new column.
-        'uoms', 'order_lines',
+        # SP5.5 (2026-04-22): uoms + payment_invoice_links dropped from the
+        # list — Silver SP5 dropped those Supabase tables intentionally
+        # (frontend consumes canonical_payments + relations). The push was
+        # returning 404 every hour and losing 76 / 4,333 rows.
+        'order_lines',
     ])
 
     def _run_push(self, client, label, method_fn, last_sync=None):
@@ -364,13 +366,18 @@ class QuimibondSync(models.TransientModel):
                 ('purchase_orders', self._push_purchase_orders),
                 ('orderpoints', self._push_orderpoints),
                 ('account_payments', self._push_account_payments),
-                ('payment_invoice_links', self._push_payment_invoice_links),
+                # SP5.5 (2026-04-22): payment_invoice_links + uoms removed.
+                # Both Supabase tables were dropped in Silver SP5 (frontend
+                # now reads canonical_payments + relations). Every hourly
+                # push returned 404 for 4,333 + 76 rows respectively.
+                # The _push_payment_invoice_links / _push_uoms helpers are
+                # kept in this file in case the tables are ever re-added,
+                # but are no longer dispatched by the cron.
                 ('chart_of_accounts', self._push_chart_of_accounts),
                 ('account_balances', self._push_account_balances),
                 ('bank_balances', self._push_bank_balances),
                 ('currency_rates', self._push_currency_rates),
                 ('boms', self._push_boms),
-                ('uoms', self._push_uoms),
             ]
             totals = {}
             for label, fn in methods:
