@@ -1172,166 +1172,289 @@ class QuimibondSync(models.TransientModel):
             # Batch loop — antes cargábamos las 26k+ facturas en memoria junto
             # con cfdi_map y payment_date_map (cada uno por move_id), + rows
             # dicts. El worker de Odoo.sh era OOM-killed durante full-sync
-            # (2026-04-20). Ahora procesamos en chunks de 2000 y vaciamos
-            # ORM caches entre chunks.
+            # (2026-04-20). Ahora procesamos en chunks y vaciamos ORM caches
+            # entre chunks.
+            #
+            # SP5.5 (2026-04-22): BATCH 2000 → 1000 + commit/invalidate se mueve
+            # ANTES del upsert (antes estaba después), para que el cursor de
+            # Odoo no quede "idle-in-transaction" durante los 10+ POSTs HTTP
+            # secuenciales del chunk. Eso era el origen del "connection already
+            # closed after 800+s": Postgres mataba la sesión por idle-in-tx.
+            # Adicionalmente cada chunk se ejecuta en try/except propio — si
+            # un chunk falla se loggea y seguimos con el siguiente, en vez de
+            # tumbar el sync entero + arrastrar sale_orders/account_balances.
             invoice_ids = Move.search(domain).ids
-            BATCH = 2000
+            BATCH = 1000
             today = datetime.now().date()
+            total = len(invoice_ids)
+            num_chunks = (total + BATCH - 1) // BATCH if total else 0
             all_failed: list = []
             total_attempted = 0
-            for chunk_start in range(0, len(invoice_ids), BATCH):
+            chunks_failed = 0
+            # Cap the per-chunk individual failure reports — un sub-batch de
+            # 200 rows con 502 disparaba 200 RPCs secuenciales a
+            # ingestion_report_failure, amplificando la indisponibilidad.
+            REPORT_FAILURE_CAP = 25
+            chunk_idx = 0
+            for chunk_start in range(0, total, BATCH):
+                chunk_idx += 1
                 chunk_ids = invoice_ids[chunk_start:chunk_start + BATCH]
-                invoices = Move.browse(chunk_ids)
+                t_chunk_start = datetime.now()
+                try:
+                    invoices = Move.browse(chunk_ids)
 
-                # CFDI UUID + SAT state: bypasses the stored computed field on
-                # account.move which is stale for post-migration invoices (Jul 2025+).
-                cfdi_map = _build_cfdi_map(self.env, chunk_ids)
+                    # CFDI UUID + SAT state: bypasses the stored computed field on
+                    # account.move which is stale for post-migration invoices (Jul 2025+).
+                    cfdi_map = _build_cfdi_map(self.env, chunk_ids)
 
-                # Payment dates from account.partial.reconcile (real payment date)
-                payment_date_map = _build_payment_date_map(self.env, chunk_ids)
+                    # Payment dates from account.partial.reconcile (real payment date)
+                    payment_date_map = _build_payment_date_map(self.env, chunk_ids)
 
-                rows = []
-                for inv in invoices:
-                    pid = _commercial_partner_id(inv.partner_id)
-                    if not pid:
-                        continue
+                    rows = []
+                    for inv in invoices:
+                        pid = _commercial_partner_id(inv.partner_id)
+                        if not pid:
+                            continue
 
-                    days_overdue = 0
-                    if inv.payment_state in ('not_paid', 'partial') and inv.invoice_date_due:
-                        if inv.invoice_date_due < today:
-                            days_overdue = (today - inv.invoice_date_due).days
+                        days_overdue = 0
+                        if inv.payment_state in ('not_paid', 'partial') and inv.invoice_date_due:
+                            if inv.invoice_date_due < today:
+                                days_overdue = (today - inv.invoice_date_due).days
 
-                    # Payment term
-                    pay_term = None
+                        # Payment term
+                        pay_term = None
+                        try:
+                            if inv.invoice_payment_term_id:
+                                pay_term = inv.invoice_payment_term_id.name
+                        except Exception:
+                            pass
+
+                        # CFDI fields from pre-read map
+                        cfdi = cfdi_map.get(inv.id, {})
+                        cfdi_uuid = cfdi.get('uuid')
+                        cfdi_sat = cfdi.get('sat')
+
+                        # Payment date and days_to_pay from reconciliation
+                        pay_date = payment_date_map.get(inv.id)
+                        pay_date_str = pay_date.strftime('%Y-%m-%d') if pay_date else None
+                        days_to_pay = None
+                        if pay_date and inv.invoice_date:
+                            delta = (pay_date - inv.invoice_date).days
+                            days_to_pay = max(delta, 0)
+
+                        # MXN amounts: amount_total_signed is always in company
+                        # currency (MXN).  For MXN invoices the value equals
+                        # amount_total; for USD/EUR it is the converted amount.
+                        # sign: out_invoice positive, in_invoice negative by Odoo
+                        # convention — we store absolute value so sums make sense.
+                        amt_signed = getattr(inv, 'amount_total_signed', None)
+                        amount_total_mxn = round(abs(amt_signed), 2) if amt_signed is not None else None
+                        # amount_untaxed_signed doesn't exist, derive from ratio
+                        if amount_total_mxn and inv.amount_total:
+                            ratio = abs(amt_signed) / inv.amount_total if inv.amount_total else 1.0
+                            amount_untaxed_mxn = round(inv.amount_untaxed * ratio, 2)
+                            amount_residual_mxn = round(inv.amount_residual * ratio, 2)
+                        else:
+                            amount_untaxed_mxn = round(inv.amount_untaxed, 2)
+                            amount_residual_mxn = round(inv.amount_residual, 2)
+
+                        # Salesperson: from linked sale order or invoice's user
+                        salesperson_name = None
+                        salesperson_user_id = None
+                        try:
+                            # Prefer the invoice's own user_id (commercial responsible)
+                            if inv.invoice_user_id:
+                                salesperson_name = inv.invoice_user_id.name
+                                salesperson_user_id = inv.invoice_user_id.id
+                            elif inv.user_id:
+                                salesperson_name = inv.user_id.name
+                                salesperson_user_id = inv.user_id.id
+                        except Exception:
+                            pass
+
+                        rows.append({
+                            'odoo_invoice_id': inv.id,
+                            'odoo_partner_id': pid,
+                            'name': inv.name,
+                            'move_type': inv.move_type,
+                            'amount_total': round(inv.amount_total, 2),
+                            'amount_residual': round(inv.amount_residual, 2),
+                            'amount_tax': round(inv.amount_tax, 2) if hasattr(inv, 'amount_tax') else None,
+                            'amount_untaxed': round(inv.amount_untaxed, 2) if hasattr(inv, 'amount_untaxed') else None,
+                            'amount_paid': round(inv.amount_total - inv.amount_residual, 2),
+                            'amount_total_mxn': amount_total_mxn,
+                            'amount_untaxed_mxn': amount_untaxed_mxn,
+                            'amount_residual_mxn': amount_residual_mxn,
+                            'currency': inv.currency_id.name if inv.currency_id else 'MXN',
+                            'invoice_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
+                            'due_date': inv.invoice_date_due.strftime('%Y-%m-%d') if inv.invoice_date_due else None,
+                            'state': inv.state,
+                            'payment_state': inv.payment_state,
+                            'days_overdue': days_overdue,
+                            'days_to_pay': days_to_pay,
+                            'payment_date': pay_date_str,
+                            'payment_term': pay_term,
+                            'cfdi_uuid': cfdi_uuid,
+                            'cfdi_sat_state': cfdi_sat,
+                            'salesperson_name': salesperson_name,
+                            'salesperson_user_id': salesperson_user_id,
+                            'ref': inv.ref or '',
+                            'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
+                            'odoo_company_id': inv.company_id.id if inv.company_id else None,
+                            # SP5 §14.3 (2026-04-21): reversed_entry_id for canonical_credit_notes linkage
+                            'reversed_entry_id': inv.reversed_entry_id.id if inv.reversed_entry_id else None,
+                        })
+
+                    # Deduplicate within chunk por odoo_invoice_id (el PK natural
+                    # de Odoo, único cross-company). Antes usábamos (partner_id,
+                    # name) pero con multi-company colisionaba: companies 2/3/4
+                    # pueden facturar al mismo partner con el mismo nombre de
+                    # factura → 409 Conflict en el upsert → 99% de invoices no
+                    # company-1 perdidos. 2026-04-20.
+                    seen = {}
+                    for row in rows:
+                        seen[row['odoo_invoice_id']] = row
+                    rows = list(seen.values())
+
+                    # SP5.5: liberamos recordset y commiteamos ANTES del upsert.
+                    # El ORM cache ya no se necesita (rows son dicts planos) y
+                    # mantener el cursor PG "idle-in-transaction" durante los
+                    # 5+ POSTs HTTP secuenciales dispara idle_in_transaction_
+                    # session_timeout → "connection already closed".
+                    invoices.invalidate_recordset()
+                    self.env.cr.commit()
+
+                    ok_batch, failed_batch = client.upsert_with_details(
+                        'odoo_invoices', rows, on_conflict='odoo_invoice_id', batch_size=200
+                    )
+                    ok += ok_batch
+                    total_attempted += len(rows)
+                    all_failed.extend(failed_batch)
+
+                    # Best-effort telemetry. Si el RPC mismo devuelve 5xx (p.e.
+                    # cuando Supabase está degradado) NO queremos que arrastre
+                    # el chunk entero — loggea y continúa.
                     try:
-                        if inv.invoice_payment_term_id:
-                            pay_term = inv.invoice_payment_term_id.name
+                        core.report_batch(
+                            run_id,
+                            attempted=len(rows),
+                            succeeded=ok_batch,
+                            failed=len(failed_batch),
+                        )
+                    except Exception as exc:
+                        _logger.warning(
+                            'report_batch RPC failed for invoices chunk %d/%d: %s',
+                            chunk_idx, num_chunks, exc,
+                        )
+
+                    # Cap per-chunk individual failure reports. Un sub-batch
+                    # de 200 con 502 generaba 200 RPCs secuenciales a
+                    # ingestion_report_failure, amplificando la indisponibilidad
+                    # a varios minutos. Reportamos hasta REPORT_FAILURE_CAP y
+                    # un summary para el resto.
+                    fail_reports_sent = 0
+                    for row, err in failed_batch[:REPORT_FAILURE_CAP]:
+                        try:
+                            core.report_failure(
+                                run_id=run_id,
+                                entity_id=str(row.get('name') or row.get('odoo_partner_id') or ''),
+                                error_code=err['code'],
+                                error_detail=err['detail'],
+                                payload=row,
+                            )
+                            fail_reports_sent += 1
+                        except Exception as exc:
+                            _logger.warning(
+                                'report_failure RPC failed for invoice chunk %d/%d: %s',
+                                chunk_idx, num_chunks, exc,
+                            )
+                            break  # Supabase degradado — aborta fan-out
+                    if len(failed_batch) > fail_reports_sent:
+                        _logger.warning(
+                            '_push_invoices chunk %d/%d: %d rows failed, '
+                            'only %d individual reports sent (cap %d).',
+                            chunk_idx, num_chunks, len(failed_batch),
+                            fail_reports_sent, REPORT_FAILURE_CAP,
+                        )
+
+                    if rows:
+                        batch_watermark = max(
+                            (r.get('write_date') for r in rows if r.get('write_date')),
+                            default=None,
+                        )
+                        if batch_watermark and (final_watermark is None or batch_watermark > final_watermark):
+                            final_watermark = batch_watermark
+
+                    elapsed = (datetime.now() - t_chunk_start).total_seconds()
+                    try:
+                        client.insert('pipeline_logs', [{
+                            'level': 'warning' if failed_batch else 'info',
+                            'phase': 'odoo_push',
+                            'message': (
+                                f'[invoices] chunk {chunk_idx}/{num_chunks}: '
+                                f'{ok_batch}/{len(rows)} pushed, '
+                                f'{len(failed_batch)} failed in {elapsed:.1f}s'
+                            ),
+                            'details': {
+                                'chunk': chunk_idx,
+                                'total_chunks': num_chunks,
+                                'ok': ok_batch,
+                                'failed': len(failed_batch),
+                                'elapsed_s': round(elapsed, 1),
+                            },
+                        }])
                     except Exception:
                         pass
-
-                    # CFDI fields from pre-read map
-                    cfdi = cfdi_map.get(inv.id, {})
-                    cfdi_uuid = cfdi.get('uuid')
-                    cfdi_sat = cfdi.get('sat')
-
-                    # Payment date and days_to_pay from reconciliation
-                    pay_date = payment_date_map.get(inv.id)
-                    pay_date_str = pay_date.strftime('%Y-%m-%d') if pay_date else None
-                    days_to_pay = None
-                    if pay_date and inv.invoice_date:
-                        delta = (pay_date - inv.invoice_date).days
-                        days_to_pay = max(delta, 0)
-
-                    # MXN amounts: amount_total_signed is always in company
-                    # currency (MXN).  For MXN invoices the value equals
-                    # amount_total; for USD/EUR it is the converted amount.
-                    # sign: out_invoice positive, in_invoice negative by Odoo
-                    # convention — we store absolute value so sums make sense.
-                    amt_signed = getattr(inv, 'amount_total_signed', None)
-                    amount_total_mxn = round(abs(amt_signed), 2) if amt_signed is not None else None
-                    # amount_untaxed_signed doesn't exist, derive from ratio
-                    if amount_total_mxn and inv.amount_total:
-                        ratio = abs(amt_signed) / inv.amount_total if inv.amount_total else 1.0
-                        amount_untaxed_mxn = round(inv.amount_untaxed * ratio, 2)
-                        amount_residual_mxn = round(inv.amount_residual * ratio, 2)
-                    else:
-                        amount_untaxed_mxn = round(inv.amount_untaxed, 2)
-                        amount_residual_mxn = round(inv.amount_residual, 2)
-
-                    # Salesperson: from linked sale order or invoice's user
-                    salesperson_name = None
-                    salesperson_user_id = None
+                except Exception as chunk_exc:
+                    # SP5.5: un chunk que explota NO debe tumbar el sync
+                    # entero — el arrastre a sale_orders/account_balances fue
+                    # la raíz del "connection already closed" cascade en
+                    # 2026-04-21/22.
+                    chunks_failed += 1
+                    elapsed = (datetime.now() - t_chunk_start).total_seconds()
+                    _logger.exception(
+                        'push_invoices chunk %d/%d failed after %.1fs: %s',
+                        chunk_idx, num_chunks, elapsed, chunk_exc,
+                    )
                     try:
-                        # Prefer the invoice's own user_id (commercial responsible)
-                        if inv.invoice_user_id:
-                            salesperson_name = inv.invoice_user_id.name
-                            salesperson_user_id = inv.invoice_user_id.id
-                        elif inv.user_id:
-                            salesperson_name = inv.user_id.name
-                            salesperson_user_id = inv.user_id.id
+                        self.env.cr.rollback()
                     except Exception:
                         pass
+                    try:
+                        client.insert('pipeline_logs', [{
+                            'level': 'error',
+                            'phase': 'odoo_push',
+                            'message': (
+                                f'[invoices] chunk {chunk_idx}/{num_chunks} '
+                                f'FAILED after {elapsed:.1f}s: {str(chunk_exc)[:300]}'
+                            ),
+                            'details': {
+                                'chunk': chunk_idx,
+                                'total_chunks': num_chunks,
+                                'error': str(chunk_exc)[:500],
+                            },
+                        }])
+                    except Exception:
+                        pass
+                    # Continúa con el siguiente chunk.
+                    continue
 
-                    rows.append({
-                        'odoo_invoice_id': inv.id,
-                        'odoo_partner_id': pid,
-                        'name': inv.name,
-                        'move_type': inv.move_type,
-                        'amount_total': round(inv.amount_total, 2),
-                        'amount_residual': round(inv.amount_residual, 2),
-                        'amount_tax': round(inv.amount_tax, 2) if hasattr(inv, 'amount_tax') else None,
-                        'amount_untaxed': round(inv.amount_untaxed, 2) if hasattr(inv, 'amount_untaxed') else None,
-                        'amount_paid': round(inv.amount_total - inv.amount_residual, 2),
-                        'amount_total_mxn': amount_total_mxn,
-                        'amount_untaxed_mxn': amount_untaxed_mxn,
-                        'amount_residual_mxn': amount_residual_mxn,
-                        'currency': inv.currency_id.name if inv.currency_id else 'MXN',
-                        'invoice_date': inv.invoice_date.strftime('%Y-%m-%d') if inv.invoice_date else None,
-                        'due_date': inv.invoice_date_due.strftime('%Y-%m-%d') if inv.invoice_date_due else None,
-                        'state': inv.state,
-                        'payment_state': inv.payment_state,
-                        'days_overdue': days_overdue,
-                        'days_to_pay': days_to_pay,
-                        'payment_date': pay_date_str,
-                        'payment_term': pay_term,
-                        'cfdi_uuid': cfdi_uuid,
-                        'cfdi_sat_state': cfdi_sat,
-                        'salesperson_name': salesperson_name,
-                        'salesperson_user_id': salesperson_user_id,
-                        'ref': inv.ref or '',
-                        'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
-                        'odoo_company_id': inv.company_id.id if inv.company_id else None,
-                        # SP5 §14.3 (2026-04-21): reversed_entry_id for canonical_credit_notes linkage
-                        'reversed_entry_id': inv.reversed_entry_id.id if inv.reversed_entry_id else None,
-                    })
-
-                # Deduplicate within chunk por odoo_invoice_id (el PK natural
-                # de Odoo, único cross-company). Antes usábamos (partner_id,
-                # name) pero con multi-company colisionaba: companies 2/3/4
-                # pueden facturar al mismo partner con el mismo nombre de
-                # factura → 409 Conflict en el upsert → 99% de invoices no
-                # company-1 perdidos. 2026-04-20.
-                seen = {}
-                for row in rows:
-                    seen[row['odoo_invoice_id']] = row
-                rows = list(seen.values())
-
-                ok_batch, failed_batch = client.upsert_with_details(
-                    'odoo_invoices', rows, on_conflict='odoo_invoice_id', batch_size=200
-                )
-                ok += ok_batch
-                total_attempted += len(rows)
-                all_failed.extend(failed_batch)
-                core.report_batch(run_id, attempted=len(rows), succeeded=ok_batch, failed=len(failed_batch))
-                for row, err in failed_batch:
-                    core.report_failure(
-                        run_id=run_id,
-                        entity_id=str(row.get('name') or row.get('odoo_partner_id') or ''),
-                        error_code=err['code'],
-                        error_detail=err['detail'],
-                        payload=row,
-                    )
-                if rows:
-                    batch_watermark = max(
-                        (r.get('write_date') for r in rows if r.get('write_date')),
-                        default=None,
-                    )
-                    if batch_watermark and (final_watermark is None or batch_watermark > final_watermark):
-                        final_watermark = batch_watermark
-
-                # Liberar ORM caches antes del próximo chunk para no
-                # acumular 26k+ records en memoria.
-                invoices.invalidate_recordset()
-                self.env.cr.commit()
-
-            if all_failed:
+            if chunks_failed:
+                status = 'partial'
+            elif all_failed:
                 status = 'partial'
         except Exception as e:
             status = 'failed'
             _logger.exception('push_invoices failed: %s', e)
-            core.complete_run(run_id, status=status, high_watermark=effective_watermark)
+            try:
+                core.complete_run(run_id, status=status, high_watermark=effective_watermark)
+            except Exception as exc:
+                _logger.warning('complete_run (failure path) RPC failed: %s', exc)
             raise
-        core.complete_run(run_id, status=status, high_watermark=final_watermark)
+        try:
+            core.complete_run(run_id, status=status, high_watermark=final_watermark)
+        except Exception as exc:
+            _logger.warning('complete_run RPC failed: %s', exc)
         return ok
 
     # ── Invoice Lines (ALL history) ──────────────────────────────────────

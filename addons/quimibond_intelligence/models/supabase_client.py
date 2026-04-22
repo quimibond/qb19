@@ -88,9 +88,16 @@ class SupabaseClient:
         lost row via IngestionCore.report_failure.
 
         error_dict has keys: code (str), detail (str), status (int).
+
+        SP5.5 (2026-04-22): retries 429/502/503/504 and NetworkError/
+        TimeoutException with exponential backoff (same pattern as upsert()).
+        Previously a single transient 5xx permanently failed all 200 rows in
+        the sub-batch, which for _push_invoices amplified into a 200-row
+        report_failure fan-out and tanked the whole run.
         """
         if not rows:
             return 0, []
+        import time
         ok_count = 0
         failed = []
         url = f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}"
@@ -98,25 +105,51 @@ class SupabaseClient:
 
         for i in range(0, len(rows), batch_size):
             chunk = rows[i:i + batch_size]
-            try:
-                response = self._http.post(url, headers=headers, content=json.dumps(chunk))
-                response.raise_for_status()
-                ok_count += len(chunk)
-            except httpx.HTTPStatusError as e:
-                code = f"http_{e.response.status_code // 100}xx"
-                detail = (e.response.text or '')[:4000]
+            last_err = None  # (code, detail, status)
+            for attempt in range(4):  # 0, 1, 2, 3
+                try:
+                    if attempt > 0:
+                        time.sleep(min(2 ** attempt, 16))
+                        _logger.info('Retry %d/3 upsert_with_details %s chunk %d',
+                                     attempt, table, i)
+                    response = self._http.post(
+                        url, headers=headers,
+                        content=json.dumps(chunk, default=str),
+                    )
+                    if response.status_code in (429, 502, 503, 504) and attempt < 3:
+                        last_err = (
+                            f"http_{response.status_code // 100}xx",
+                            (response.text or '')[:4000],
+                            response.status_code,
+                        )
+                        continue
+                    response.raise_for_status()
+                    ok_count += len(chunk)
+                    last_err = None
+                    break
+                except httpx.HTTPStatusError as e:
+                    # 4xx (or 5xx after retries): fail this batch, continue.
+                    last_err = (
+                        f"http_{e.response.status_code // 100}xx",
+                        (e.response.text or '')[:4000],
+                        e.response.status_code,
+                    )
+                    break
+                except (httpx.NetworkError, httpx.TimeoutException) as e:
+                    last_err = ('network_error', str(e)[:4000], 0)
+                    if attempt >= 3:
+                        break
+                    continue
+                except httpx.RequestError as e:
+                    last_err = ('network_error', str(e)[:4000], 0)
+                    break
+            if last_err:
+                code, detail, status = last_err
                 for row in chunk:
                     failed.append((row, {
                         'code': code,
                         'detail': detail,
-                        'status': e.response.status_code,
-                    }))
-            except httpx.RequestError as e:
-                for row in chunk:
-                    failed.append((row, {
-                        'code': 'network_error',
-                        'detail': str(e)[:4000],
-                        'status': 0,
+                        'status': status,
                     }))
         return ok_count, failed
 
