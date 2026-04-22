@@ -31,7 +31,7 @@ def _get_client(env) -> SupabaseClient | None:
     return SupabaseClient(url, key)
 
 
-def _build_cfdi_map(env, invoice_ids: list) -> dict:
+def _build_cfdi_map(env, invoice_ids: list, seen_uuids: set | None = None) -> dict:
     """Build {invoice_id: {uuid, sat}} from l10n_mx_edi.document via ORM.
 
     The stored field l10n_mx_edi_cfdi_uuid on account.move is stale after
@@ -46,9 +46,21 @@ def _build_cfdi_map(env, invoice_ids: list) -> dict:
     invoice they covered. Now queries by doc.move_id and post-filters to invoice
     move_types only, so payment complement UUIDs never bleed into odoo_invoices.
     See memory: project_cfdi_uuid_bug_2026_04_20.md
+
+    `seen_uuids` (SP5.5 2026-04-22): optional set shared across chunks to
+    guarantee UUID uniqueness globally, not just within a single chunk.
+    ~11 UUIDs in current Odoo data are claimed by 1,700+ moves (pre-SP0
+    migration residue in l10n_mx_edi.document). Without a global set,
+    first-wins within chunk N ≠ first-wins within chunk M, and the chunks
+    collide at the Supabase UNIQUE constraint uq_odoo_invoices_cfdi_uuid
+    with HTTP 409. Caller should init once per push:
+        seen_uuids = set()
+        for chunk ...: cfdi_map = _build_cfdi_map(env, chunk_ids, seen_uuids)
     """
     if not invoice_ids:
         return {}
+    if seen_uuids is None:
+        seen_uuids = set()
 
     result = {}
     try:
@@ -67,12 +79,16 @@ def _build_cfdi_map(env, invoice_ids: list) -> dict:
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund'
             ):
                 continue
+            uuid_val = doc.attachment_uuid
+            if uuid_val in seen_uuids:
+                continue  # SP5.5: another move already claimed this UUID
             mid = doc.move_id.id
             if mid not in result:
                 result[mid] = {
-                    'uuid': doc.attachment_uuid,
+                    'uuid': uuid_val,
                     'sat': doc.sat_state or None,
                 }
+                seen_uuids.add(uuid_val)
     except Exception as exc:
         _logger.warning('CFDI map build failed: %s', exc)
 
@@ -866,6 +882,28 @@ class QuimibondSync(models.TransientModel):
                       and row.get('odoo_partner_id') is not None):
                     dedup_contacts[key] = row
             contacts = list(dedup_contacts.values())
+
+            # Second-pass dedup by odoo_partner_id (2026-04-22): aun después
+            # del dedup por email, múltiples rows pueden compartir
+            # odoo_partner_id (un mismo contacto de Odoo con varios emails).
+            # Supabase tiene UNIQUE(odoo_partner_id) además del on_conflict=
+            # email, así que el upsert con on_conflict=email no detecta el
+            # choque por partner y lanza 23505 → chunk entero perdido (16.2%
+            # failure rate observed). Preferimos la row con email no-null.
+            by_partner: dict[int, dict] = {}
+            passthrough: list[dict] = []
+            for row in contacts:
+                pid = row.get('odoo_partner_id')
+                if not pid:
+                    passthrough.append(row)
+                    continue
+                existing = by_partner.get(pid)
+                if existing is None:
+                    by_partner[pid] = row
+                elif not existing.get('email') and row.get('email'):
+                    by_partner[pid] = row
+            contacts = list(by_partner.values()) + passthrough
+
             synced += client.upsert(
                 'contacts', contacts,
                 on_conflict='email', batch_size=50,
@@ -1202,6 +1240,11 @@ class QuimibondSync(models.TransientModel):
             # 200 rows con 502 disparaba 200 RPCs secuenciales a
             # ingestion_report_failure, amplificando la indisponibilidad.
             REPORT_FAILURE_CAP = 25
+            # SP5.5 (2026-04-22): global cfdi_uuid dedup across chunks.
+            # 11 UUIDs in Odoo's l10n_mx_edi.document are shared across 1,700+
+            # moves (SP0 residue). Without cross-chunk dedup, a UUID could win
+            # in chunk 1 AND again in chunk 5 → Supabase UNIQUE violation.
+            seen_cfdi_uuids: set = set()
             chunk_idx = 0
             for chunk_start in range(0, total, BATCH):
                 chunk_idx += 1
@@ -1212,7 +1255,7 @@ class QuimibondSync(models.TransientModel):
 
                     # CFDI UUID + SAT state: bypasses the stored computed field on
                     # account.move which is stale for post-migration invoices (Jul 2025+).
-                    cfdi_map = _build_cfdi_map(self.env, chunk_ids)
+                    cfdi_map = _build_cfdi_map(self.env, chunk_ids, seen_cfdi_uuids)
 
                     # Payment dates from account.partial.reconcile (real payment date)
                     payment_date_map = _build_payment_date_map(self.env, chunk_ids)
