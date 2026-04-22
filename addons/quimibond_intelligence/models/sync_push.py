@@ -1281,6 +1281,8 @@ class QuimibondSync(models.TransientModel):
                         'ref': inv.ref or '',
                         'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
                         'odoo_company_id': inv.company_id.id if inv.company_id else None,
+                        # SP5 §14.3 (2026-04-21): reversed_entry_id for canonical_credit_notes linkage
+                        'reversed_entry_id': inv.reversed_entry_id.id if inv.reversed_entry_id else None,
                     })
 
                 # Deduplicate within chunk por odoo_invoice_id (el PK natural
@@ -2311,6 +2313,60 @@ class QuimibondSync(models.TransientModel):
                 'credit': round(g.get('credit', 0) or 0, 2),
                 'balance': round(g.get('balance', 0) or 0, 2),
             })
+
+        # ── SP5 §14.2 (2026-04-21): synthetic equity_unaffected rows ─────────
+        # equity_unaffected (utilidad del ejercicio / current year earnings) is
+        # a computed balance in Odoo — no actual account.move.line rows carry
+        # that account_type, so read_group above returns zero rows for it.
+        # Gold layer gold_balance_sheet needs it to reconcile
+        # (unbalanced_amount = assets - liabilities - equity, including
+        # equity_unaffected = net income = sum(income) - sum(expense) per period).
+        # We synthesise one row per (period) as the net income balance and tag
+        # it with the equity_unaffected account from chart_of_accounts (if any),
+        # or use a sentinel odoo_account_id=0 if not found.
+        try:
+            # Find the equity_unaffected account id(s) in our chart
+            eq_acc = self.env['account.account'].sudo().search(
+                [('account_type', '=', 'equity_unaffected')], limit=1
+            )
+            eq_acc_id = eq_acc.id if eq_acc else 0
+            eq_acc_code = eq_acc.code or 'equity_unaffected' if eq_acc else 'equity_unaffected'
+            eq_acc_name = eq_acc.name or 'Current Year Earnings' if eq_acc else 'Current Year Earnings'
+
+            # Aggregate net income per period from existing rows
+            _INCOME_TYPES = {'income', 'income_other'}
+            _EXPENSE_TYPES = {'expense', 'expense_depreciation', 'expense_direct_cost'}
+            net_by_period: dict = {}
+            for r in rows:
+                at = r.get('account_type', '')
+                period = r.get('period', '')
+                if not period:
+                    continue
+                if at in _INCOME_TYPES:
+                    # Income: credit-normal; balance is negative of net income
+                    # read_group balance = debit - credit (negative for income)
+                    net_by_period.setdefault(period, 0.0)
+                    net_by_period[period] -= r.get('balance', 0.0)
+                elif at in _EXPENSE_TYPES:
+                    # Expense: debit-normal; balance positive = cost
+                    net_by_period.setdefault(period, 0.0)
+                    net_by_period[period] -= r.get('balance', 0.0)
+
+            for period, net_income in net_by_period.items():
+                if net_income == 0.0:
+                    continue
+                rows.append({
+                    'odoo_account_id': eq_acc_id,
+                    'account_code': eq_acc_code,
+                    'account_name': eq_acc_name,
+                    'account_type': 'equity_unaffected',
+                    'period': period,
+                    'debit': round(max(net_income, 0), 2),
+                    'credit': round(max(-net_income, 0), 2),
+                    'balance': round(-net_income, 2),
+                })
+        except Exception as exc:
+            _logger.warning('_push_account_balances equity_unaffected synthesis failed: %s', exc)
 
         # Full refresh (balances change as entries are posted)
         if rows:
