@@ -886,28 +886,39 @@ class QuimibondSync(models.TransientModel):
             # Second-pass dedup by odoo_partner_id (2026-04-22): aun después
             # del dedup por email, múltiples rows pueden compartir
             # odoo_partner_id (un mismo contacto de Odoo con varios emails).
-            # Supabase tiene UNIQUE(odoo_partner_id) además del on_conflict=
-            # email, así que el upsert con on_conflict=email no detecta el
-            # choque por partner y lanza 23505 → chunk entero perdido (16.2%
-            # failure rate observed). Preferimos la row con email no-null.
+            # Supabase tiene UNIQUE(odoo_partner_id) además del UNIQUE(email).
             by_partner: dict[int, dict] = {}
-            passthrough: list[dict] = []
+            no_partner: list[dict] = []
             for row in contacts:
                 pid = row.get('odoo_partner_id')
                 if not pid:
-                    passthrough.append(row)
+                    no_partner.append(row)
                     continue
                 existing = by_partner.get(pid)
                 if existing is None:
                     by_partner[pid] = row
                 elif not existing.get('email') and row.get('email'):
                     by_partner[pid] = row
-            contacts = list(by_partner.values()) + passthrough
+            rows_with_pid = list(by_partner.values())
 
-            synced += client.upsert(
-                'contacts', contacts,
-                on_conflict='email', batch_size=50,
-            )
+            # Split upsert 2026-04-22: rows con odoo_partner_id usan
+            # on_conflict=odoo_partner_id (el identificador real del contacto
+            # en Odoo). Esto resuelve el caso crítico "partner ya existe en
+            # Supabase con email distinto": antes con on_conflict=email, el
+            # upsert no matcheaba el row viejo, tiraba INSERT, chocaba con
+            # UNIQUE(odoo_partner_id) → 23505, 16.2% failure rate hourly.
+            # Rows sin pid (raro) siguen con on_conflict=email para no perder
+            # contacts importados manualmente en Supabase.
+            if rows_with_pid:
+                synced += client.upsert(
+                    'contacts', rows_with_pid,
+                    on_conflict='odoo_partner_id', batch_size=50,
+                )
+            if no_partner:
+                synced += client.upsert(
+                    'contacts', no_partner,
+                    on_conflict='email', batch_size=50,
+                )
         return synced
 
     # ── Products ─────────────────────────────────────────────────────────
