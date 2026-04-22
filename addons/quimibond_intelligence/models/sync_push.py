@@ -1000,7 +1000,7 @@ class QuimibondSync(models.TransientModel):
             rows.append({
                 'odoo_product_id': p.id,
                 'name': p.name,
-                'internal_ref': p.default_code or '',
+                'internal_ref': (p.default_code or '').strip() or None,
                 'category': category,
                 'uom': p.uom_id.name if p.uom_id else '',
                 'uom_id': p.uom_id.id if p.uom_id else None,
@@ -1064,7 +1064,7 @@ class QuimibondSync(models.TransientModel):
                     'order_type': 'sale',
                     'order_state': o.state,
                     'product_name': l.product_id.name if l.product_id else '',
-                    'product_ref': l.product_id.default_code or '' if l.product_id else '',
+                    'product_ref': ((l.product_id.default_code or '').strip() or None) if l.product_id else None,
                     'qty': round(l.product_uom_qty, 2),
                     'qty_delivered': round(getattr(l, 'qty_delivered', 0) or 0, 2),
                     'qty_invoiced': round(getattr(l, 'qty_invoiced', 0) or 0, 2),
@@ -1116,7 +1116,7 @@ class QuimibondSync(models.TransientModel):
                     'order_type': 'purchase',
                     'order_state': o.state,
                     'product_name': l.product_id.name if l.product_id else '',
-                    'product_ref': l.product_id.default_code or '' if l.product_id else '',
+                    'product_ref': ((l.product_id.default_code or '').strip() or None) if l.product_id else None,
                     'qty': round(getattr(l, 'product_uom_qty', l.product_qty), 2),
                     'qty_delivered': round(getattr(l, 'qty_received', 0) or 0, 2),
                     'qty_invoiced': round(getattr(l, 'qty_invoiced', 0) or 0, 2),
@@ -1667,7 +1667,7 @@ class QuimibondSync(models.TransientModel):
                     'product_name': (
                         line.product_id.name if line.product_id else (line.name or '')[:200]
                     ),
-                    'product_ref': line.product_id.default_code or '' if line.product_id else '',
+                    'product_ref': ((line.product_id.default_code or '').strip() or None) if line.product_id else None,
                     # price_unit y quantity con 6 decimales — Odoo internamente
                     # usa Product Price precision (6 por default), que al
                     # redondear a 2 en items con cantidad enorme (millones) causa
@@ -2824,7 +2824,7 @@ class QuimibondSync(models.TransientModel):
                 'odoo_product_tmpl_id': tmpl.id if tmpl else None,
                 'odoo_product_id': display_product.id if display_product else None,
                 'product_name': display_product.name if display_product else (tmpl.name if tmpl else ''),
-                'product_ref': (display_product.default_code or '') if display_product else '',
+                'product_ref': ((display_product.default_code or '').strip() or None) if display_product else None,
                 'product_qty': float(bom.product_qty or 1.0),
                 'product_uom': bom.product_uom_id.name if bom.product_uom_id else '',
                 'code': bom.code or '',
@@ -2841,7 +2841,7 @@ class QuimibondSync(models.TransientModel):
                     'odoo_bom_id': bom.id,
                     'odoo_product_id': comp.id if comp else None,
                     'product_name': comp.name if comp else '',
-                    'product_ref': (comp.default_code or '') if comp else '',
+                    'product_ref': ((comp.default_code or '').strip() or None) if comp else None,
                     'product_qty': float(line.product_qty or 0.0),
                     'product_uom': line.product_uom_id.name if line.product_uom_id else '',
                     'synced_at': datetime.now().isoformat(),
