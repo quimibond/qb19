@@ -1281,6 +1281,8 @@ class QuimibondSync(models.TransientModel):
                         'ref': inv.ref or '',
                         'write_date': inv.write_date.strftime('%Y-%m-%dT%H:%M:%S') if inv.write_date else None,
                         'odoo_company_id': inv.company_id.id if inv.company_id else None,
+                        # SP5 §14.3 (2026-04-21): reversed_entry_id for canonical_credit_notes linkage
+                        'reversed_entry_id': inv.reversed_entry_id.id if inv.reversed_entry_id else None,
                     })
 
                 # Deduplicate within chunk por odoo_invoice_id (el PK natural
