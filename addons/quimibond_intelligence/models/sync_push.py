@@ -302,13 +302,16 @@ class QuimibondSync(models.TransientModel):
         # (frontend consumes canonical_payments + relations). The push was
         # returning 404 every hour and losing 76 / 4,333 rows.
         'order_lines',
-        # SP11 (2026-04-22): first-run incremental missed historical rows —
-        # stock.move write_date rarely touched for old done moves, so only
-        # the 3 moves updated in the last hour made it through. Keep full
-        # push: stock.move is bounded by domain cutoff (90d) + limit=20000;
-        # account.move entries bounded by 180d + limit=10000; locations is
-        # a tiny catalog.
-        'stock_locations', 'stock_moves', 'account_entries_stock',
+        # SP11 (2026-04-22): stock_locations es un catalog chico (~68 rows),
+        # siempre full push. stock_moves (1.6M) y account_entries_stock (200k+)
+        # estuvieron aquí durante el bootstrap inicial, pero SP11.9
+        # (2026-04-23) los saca una vez poblados: ya sincronizados full dos
+        # veces, los siguientes ciclos usan write_date incremental. Odoo
+        # actualiza write_date de stock.move y account.move cuando cambia
+        # state / líneas / reconciliación, suficiente para capturar deltas
+        # normales. Si drift se detecta, disparar full push manual vía
+        # shell con last_sync=None.
+        'stock_locations',
     ])
 
     def _run_push(self, client, label, method_fn, last_sync=None):
