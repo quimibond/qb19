@@ -3001,7 +3001,10 @@ class QuimibondSync(models.TransientModel):
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        moves = Move.search(domain, limit=20000)
+        # order date desc: limit=20000 must keep the most recent moves
+        # (invariants run on last 90d window). Default id asc would truncate
+        # recent activity and preserve 2021 backlog.
+        moves = Move.search(domain, limit=20000, order='date desc, id desc')
 
         rows = []
         for m in moves:
@@ -3096,7 +3099,8 @@ class QuimibondSync(models.TransientModel):
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        moves = Move.search(domain, limit=10000)
+        # order date desc: same reasoning as stock_moves — keep recent entries
+        moves = Move.search(domain, limit=10000, order='date desc, id desc')
 
         # Pre-compute account code prefixes for fast classification
         inv_codes = {}  # account_id → code
