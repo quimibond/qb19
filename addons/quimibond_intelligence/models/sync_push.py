@@ -1240,7 +1240,12 @@ class QuimibondSync(models.TransientModel):
             # un chunk falla se loggea y seguimos con el siguiente, en vez de
             # tumbar el sync entero + arrastrar sale_orders/account_balances.
             invoice_ids = Move.search(domain).ids
-            BATCH = 1000
+            # SP9 T6 (2026-04-23): BATCH 1000 -> 500 para acortar la ventana de
+            # upserts HTTP por chunk (antes ~10-14 min secuenciales); chunks mas
+            # cortos reducen la probabilidad de que idle_session_timeout de
+            # Odoo.sh cierre la conexion PG entre el commit local y el siguiente
+            # Move.browse. Combinado con el ping post-upsert (ver mas abajo).
+            BATCH = 500
             today = datetime.now().date()
             total = len(invoice_ids)
             num_chunks = (total + BATCH - 1) // BATCH if total else 0
@@ -1388,6 +1393,19 @@ class QuimibondSync(models.TransientModel):
                     ok_batch, failed_batch = client.upsert_with_details(
                         'odoo_invoices', rows, on_conflict='odoo_invoice_id', batch_size=200
                     )
+                    # SP9 T6 (2026-04-23): ping la conexion PG post-upsert.
+                    # Despues de 200-500s de POSTs HTTP secuenciales la sesion
+                    # queda idle -> Odoo.sh la cierra -> el siguiente chunk
+                    # explota con 'connection already closed' y cascadea a
+                    # _push_invoice_lines/sale_orders/etc. Un SELECT 1 basta
+                    # para que la conexion se re-valide antes de continuar.
+                    try:
+                        self.env.cr.execute('SELECT 1')
+                    except Exception as _ping_exc:
+                        _logger.warning(
+                            'cursor ping failed after invoices chunk %d/%d: %s',
+                            chunk_idx, num_chunks, _ping_exc,
+                        )
                     ok += ok_batch
                     total_attempted += len(rows)
                     all_failed.extend(failed_batch)
