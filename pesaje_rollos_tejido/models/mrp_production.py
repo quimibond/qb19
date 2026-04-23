@@ -242,21 +242,6 @@ class MrpProduction(models.Model):
         self.move_raw_ids._recompute_state()
         self.move_raw_ids._action_assign()
 
-        # --- CIERRE AUTOMÁTICO DE CONTROL DE CALIDAD (Odoo 19) ---
-        # En Odoo 19 el campo es 'quality_state'
-        checks = self.env['quality.check'].search([
-            ('production_id', '=', self.id),
-            ('quality_state', '!=', 'pass')
-        ])
-        for check in checks:
-            # Forzamos el estado a 'pass' y registramos fecha y usuario
-            check.write({
-                'quality_state': 'pass',
-                'user_id': self.env.user.id,
-                'control_date': fields.Datetime.now()
-            })
-        # --- FIN CIERRE AUTOMÁTICO ---
-
         # Punto 3: Impresión de etiqueta de Subproducto
         self._print_subproduct_zpl(sub_move.product_id, weight, lot_name)
         
