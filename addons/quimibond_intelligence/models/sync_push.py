@@ -85,7 +85,13 @@ def _build_cfdi_map(env, invoice_ids: list, seen_uuids: set | None = None) -> di
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund'
             ):
                 continue
-            docs_by_uuid.setdefault(doc.attachment_uuid, []).append(doc)
+            # SP10.6: normalize UUID to lowercase. Odoo stores XML-source UUIDs
+            # as uppercase (in_invoice from supplier XML); SAT/Syntage uses lowercase.
+            # Lowercase at source guarantees case-insensitive match in canonical layer.
+            uuid_lc = (doc.attachment_uuid or '').lower()
+            if not uuid_lc:
+                continue
+            docs_by_uuid.setdefault(uuid_lc, []).append(doc)
 
         # Pick winner per uuid by (sat_valid, posted, move.id) tuple.
         def _score(d):
@@ -407,6 +413,10 @@ class QuimibondSync(models.TransientModel):
                 ('bank_balances', self._push_bank_balances),
                 ('currency_rates', self._push_currency_rates),
                 ('boms', self._push_boms),
+                # SP11: stock vs accounting reconciliation (2026-04-23)
+                ('stock_locations', self._push_stock_locations),
+                ('stock_moves', self._push_stock_moves),
+                ('account_entries_stock', self._push_account_entries_stock),
             ]
             totals = {}
             for label, fn in methods:
@@ -2932,3 +2942,191 @@ class QuimibondSync(models.TransientModel):
             return 0
         return client.upsert('odoo_uoms', rows,
                              on_conflict='odoo_uom_id', batch_size=200)
+
+    # ── SP11: Stock vs Accounting Reconciliation ─────────────────────────
+
+    def _push_stock_locations(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push stock.location → odoo_stock_locations.
+        Catálogo pequeño (~50 rows). Necesario para clasificar moves
+        entrada/salida/transferencia/ajuste por usage."""
+        try:
+            Loc = self.env['stock.location'].sudo()
+        except KeyError:
+            return 0
+        cids = self._get_company_ids()
+        locs = Loc.search([
+            ('active', '=', True),
+            '|', ('company_id', 'in', cids), ('company_id', '=', False),
+        ])
+        rows = []
+        for l in locs:
+            rows.append({
+                'odoo_location_id': l.id,
+                'odoo_company_id': l.company_id.id if l.company_id else None,
+                'name': l.name or '',
+                'complete_name': l.complete_name or l.name or '',
+                'usage': l.usage or 'internal',
+                'warehouse_name': l.warehouse_id.name if hasattr(l, 'warehouse_id') and l.warehouse_id else None,
+                'active': bool(l.active),
+            })
+        if not rows:
+            return 0
+        return client.upsert('odoo_stock_locations', rows,
+                             on_conflict='odoo_location_id', batch_size=500)
+
+    def _push_stock_moves(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push stock.move → odoo_stock_moves.
+        Cada movimiento físico de inventario con su valor monetario y los
+        account.move generados (account_move_ids). Base para invariants
+        inventory.move_without_accounting + valuation_drift."""
+        try:
+            Move = self.env['stock.move'].sudo()
+        except KeyError:
+            return 0
+        cids = self._get_company_ids()
+        cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
+        domain = [
+            ('company_id', 'in', cids),
+            '|',
+                ('state', '=', 'done'),
+                '&', ('state', 'in', ('draft', 'waiting', 'confirmed', 'assigned')),
+                     ('date', '>=', cutoff),
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        moves = Move.search(domain, limit=20000)
+
+        rows = []
+        for m in moves:
+            try:
+                qty_done = getattr(m, 'quantity', None)
+                if qty_done is None:
+                    qty_done = getattr(m, 'quantity_done', None)
+                # value (computed) puede fallar para moves no done
+                val = None
+                price_u = None
+                acct_ids = []
+                try:
+                    val = float(m.value) if hasattr(m, 'value') and m.value is not None else None
+                except Exception:
+                    pass
+                try:
+                    price_u = float(m.price_unit) if hasattr(m, 'price_unit') else None
+                except Exception:
+                    pass
+                try:
+                    acct_ids = [am.id for am in (m.account_move_ids or [])]
+                except Exception:
+                    pass
+
+                rows.append({
+                    'odoo_move_id': m.id,
+                    'odoo_company_id': m.company_id.id if m.company_id else None,
+                    'picking_id': m.picking_id.id if m.picking_id else None,
+                    'picking_name': m.picking_id.name if m.picking_id else None,
+                    'product_id': m.product_id.id if m.product_id else None,
+                    'product_ref': (m.product_id.default_code or None) if m.product_id else None,
+                    'product_uom_qty': float(m.product_uom_qty or 0),
+                    'quantity': float(qty_done or 0),
+                    'state': m.state,
+                    'date': m.date.isoformat() if m.date else None,
+                    'date_deadline': m.date_deadline.isoformat() if getattr(m, 'date_deadline', None) else None,
+                    'location_id': m.location_id.id if m.location_id else None,
+                    'location_dest_id': m.location_dest_id.id if m.location_dest_id else None,
+                    'location_usage': m.location_id.usage if m.location_id else None,
+                    'location_dest_usage': m.location_dest_id.usage if m.location_dest_id else None,
+                    'reference': m.reference or None,
+                    'origin': getattr(m, 'origin', None),
+                    'is_inventory': bool(getattr(m, 'is_inventory', False)),
+                    'value': val,
+                    'price_unit': price_u,
+                    'has_account_move': bool(acct_ids),
+                    'account_move_ids': acct_ids,
+                })
+            except Exception as exc:
+                _logger.warning('stock_move %s: %s', m.id, exc)
+
+        if not rows:
+            return 0
+        return client.upsert('odoo_stock_moves', rows,
+                             on_conflict='odoo_move_id', batch_size=500)
+
+    def _push_account_entries_stock(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push account.move type='entry' con líneas en cuentas inventario (115%) o COGS (501%).
+        Quimibond verified codes (2026-04-23):
+          Inventory: 115% (Inventory, Raw materials, Production in progress, Variación)
+          COGS:      501% (Cost of sales, COSTO PRIMO, VARIACIÓN INVENTARIO, mano de obra)
+        NOTE: 116.003 es Cuenta Transitoria BBVA (bancaria) — NO incluir 116%.
+        """
+        try:
+            Account = self.env['account.account'].sudo()
+            Move = self.env['account.move'].sudo()
+        except KeyError:
+            return 0
+        cids = self._get_company_ids()
+        cutoff = (datetime.now() - timedelta(days=180)).date().strftime('%Y-%m-%d')
+
+        inv_account_ids = Account.search([
+            ('company_id', 'in', cids),
+            '|', ('code', '=like', '115%'), ('code', '=like', '501%'),
+        ]).ids
+        if not inv_account_ids:
+            return 0
+
+        domain = [
+            ('move_type', '=', 'entry'),
+            ('state', '=', 'posted'),
+            ('date', '>=', cutoff),
+            ('line_ids.account_id', 'in', inv_account_ids),
+            ('company_id', 'in', cids),
+        ]
+        if last_sync:
+            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+        moves = Move.search(domain, limit=10000)
+
+        # Pre-compute account code prefixes for fast classification
+        inv_codes = {}  # account_id → code
+        for a in Account.browse(inv_account_ids):
+            inv_codes[a.id] = a.code or ''
+
+        rows = []
+        for m in moves:
+            try:
+                inv_lines_codes = []
+                cogs_lines_codes = []
+                for l in m.line_ids:
+                    code = inv_codes.get(l.account_id.id)
+                    if not code:
+                        continue
+                    if code.startswith('115'):
+                        inv_lines_codes.append(code)
+                    elif code.startswith('501'):
+                        cogs_lines_codes.append(code)
+                stock_ids = []
+                try:
+                    stock_ids = [sm.id for sm in (m.stock_move_ids or [])]
+                except Exception:
+                    pass
+                rows.append({
+                    'odoo_move_id': m.id,
+                    'odoo_company_id': m.company_id.id if m.company_id else None,
+                    'date': m.date.isoformat() if m.date else None,
+                    'name': m.name or None,
+                    'ref': m.ref or None,
+                    'journal_name': m.journal_id.name if m.journal_id else None,
+                    'journal_type': m.journal_id.type if m.journal_id else None,
+                    'amount_total': float(m.amount_total or 0),
+                    'stock_move_ids': stock_ids,
+                    'has_inventory_account': bool(inv_lines_codes),
+                    'has_cogs_account': bool(cogs_lines_codes),
+                    'inventory_account_codes': sorted(set(inv_lines_codes))[:10],
+                    'cogs_account_codes': sorted(set(cogs_lines_codes))[:10],
+                    'state': m.state,
+                })
+            except Exception as exc:
+                _logger.warning('account_entry_stock %s: %s', m.id, exc)
+
+        if not rows:
+            return 0
+        return client.upsert('odoo_account_entries_stock', rows,
+                             on_conflict='odoo_move_id', batch_size=500)
