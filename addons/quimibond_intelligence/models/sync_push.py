@@ -56,6 +56,12 @@ def _build_cfdi_map(env, invoice_ids: list, seen_uuids: set | None = None) -> di
     with HTTP 409. Caller should init once per push:
         seen_uuids = set()
         for chunk ...: cfdi_map = _build_cfdi_map(env, chunk_ids, seen_uuids)
+
+    SP10.4 (2026-04-23): when multiple moves claim the same UUID, group docs
+    by uuid and pick a winner by score: sat_state='valid' > move.state='posted'
+    > highest move.id (recency). Old logic ('id desc' first-wins) gave the UUID
+    to legacy phantom moves and starved the real posted+paid invoices. 22 real
+    Quimibond out_invoice post-2025 paid had NULL uuid for this reason.
     """
     if not invoice_ids:
         return {}
@@ -68,27 +74,34 @@ def _build_cfdi_map(env, invoice_ids: list, seen_uuids: set | None = None) -> di
         docs = Document.search([
             ('move_id', 'in', invoice_ids),
             ('attachment_uuid', '!=', False),
-        ], order='id desc')
+        ])
+
+        # Group invoice-typed docs by uuid (skip payment complements).
+        docs_by_uuid: dict = {}
         for doc in docs:
             if not doc.move_id:
                 continue
-            # Skip payment complements — their UUID belongs in odoo_account_payments,
-            # not odoo_invoices. Invoice move types are out_invoice, out_refund,
-            # in_invoice, in_refund. Payment moves are entry/out_receipt/in_receipt.
             if doc.move_id.move_type not in (
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund'
             ):
                 continue
-            uuid_val = doc.attachment_uuid
+            docs_by_uuid.setdefault(doc.attachment_uuid, []).append(doc)
+
+        # Pick winner per uuid by (sat_valid, posted, move.id) tuple.
+        def _score(d):
+            sat_valid = 1 if d.sat_state == 'valid' else 0
+            posted = 1 if d.move_id.state == 'posted' else 0
+            return (sat_valid, posted, d.move_id.id)
+
+        for uuid_val, group in docs_by_uuid.items():
             if uuid_val in seen_uuids:
-                continue  # SP5.5: another move already claimed this UUID
-            mid = doc.move_id.id
-            if mid not in result:
-                result[mid] = {
-                    'uuid': uuid_val,
-                    'sat': doc.sat_state or None,
-                }
-                seen_uuids.add(uuid_val)
+                continue
+            winner = max(group, key=_score)
+            result[winner.move_id.id] = {
+                'uuid': uuid_val,
+                'sat': winner.sat_state or None,
+            }
+            seen_uuids.add(uuid_val)
     except Exception as exc:
         _logger.warning('CFDI map build failed: %s', exc)
 
