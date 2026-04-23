@@ -85,7 +85,13 @@ def _build_cfdi_map(env, invoice_ids: list, seen_uuids: set | None = None) -> di
                 'out_invoice', 'out_refund', 'in_invoice', 'in_refund'
             ):
                 continue
-            docs_by_uuid.setdefault(doc.attachment_uuid, []).append(doc)
+            # SP10.6: normalize UUID to lowercase. Odoo stores XML-source UUIDs
+            # as uppercase (in_invoice from supplier XML); SAT/Syntage uses lowercase.
+            # Lowercase at source guarantees case-insensitive match in canonical layer.
+            uuid_lc = (doc.attachment_uuid or '').lower()
+            if not uuid_lc:
+                continue
+            docs_by_uuid.setdefault(uuid_lc, []).append(doc)
 
         # Pick winner per uuid by (sat_valid, posted, move.id) tuple.
         def _score(d):
