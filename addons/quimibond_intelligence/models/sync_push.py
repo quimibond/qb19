@@ -3149,29 +3149,38 @@ class QuimibondSync(models.TransientModel):
                                 inv_lines_codes.append(code)
                             elif code.startswith('501'):
                                 cogs_lines_codes.append(code)
-                        # SP11.5 (2026-04-22): same symptom as SP11.4 on
-                        # stock.move.account_move_ids — account.move.stock_move_ids
-                        # comes back empty for ~94% of entries in Quimibond Odoo
-                        # 19. Fall back to stock_valuation_layer_ids.stock_move_id
-                        # which is the continuous-valuation canonical link.
+                        # SP11.7 (2026-04-23): account.move.stock_move_ids es
+                        # one2many stored correct (verified via fields_get). El
+                        # SP11.5 fallback a stock_valuation_layer_ids era
+                        # ficticio — ese campo no existe en account.move.
+                        # Cuando stock_move_ids viene vacío es porque el asiento
+                        # viene de OTRA fuente, no stock.move. Capturamos esas
+                        # fuentes (landed costs, assets, MO WIP) para que el
+                        # invariant B pueda discriminar.
                         stock_ids = []
                         try:
-                            direct = m.stock_move_ids if hasattr(m, 'stock_move_ids') else False
-                            if direct:
-                                stock_ids = [sm.id for sm in direct]
+                            if m.stock_move_ids:
+                                stock_ids = [sm.id for sm in m.stock_move_ids]
                         except Exception:
                             pass
-                        if not stock_ids:
-                            try:
-                                layers = m.stock_valuation_layer_ids if hasattr(m, 'stock_valuation_layer_ids') else False
-                                if layers:
-                                    stock_ids = sorted({
-                                        svl.stock_move_id.id
-                                        for svl in layers
-                                        if getattr(svl, 'stock_move_id', False) and svl.stock_move_id.id
-                                    })
-                            except Exception:
-                                pass
+                        landed_ids = []
+                        try:
+                            if hasattr(m, 'landed_costs_ids') and m.landed_costs_ids:
+                                landed_ids = [lc.id for lc in m.landed_costs_ids]
+                        except Exception:
+                            pass
+                        wip_prod_ids = []
+                        try:
+                            if hasattr(m, 'wip_production_ids') and m.wip_production_ids:
+                                wip_prod_ids = [p.id for p in m.wip_production_ids]
+                        except Exception:
+                            pass
+                        asset_id_val = None
+                        try:
+                            if hasattr(m, 'asset_id') and m.asset_id:
+                                asset_id_val = m.asset_id.id
+                        except Exception:
+                            pass
                         rows.append({
                             'odoo_move_id': m.id,
                             'odoo_company_id': m.company_id.id if m.company_id else None,
@@ -3182,6 +3191,9 @@ class QuimibondSync(models.TransientModel):
                             'journal_type': m.journal_id.type if m.journal_id else None,
                             'amount_total': float(m.amount_total or 0),
                             'stock_move_ids': stock_ids,
+                            'landed_costs_ids': landed_ids,
+                            'wip_production_ids': wip_prod_ids,
+                            'asset_id': asset_id_val,
                             'has_inventory_account': bool(inv_lines_codes),
                             'has_cogs_account': bool(cogs_lines_codes),
                             'inventory_account_codes': sorted(set(inv_lines_codes))[:10],
