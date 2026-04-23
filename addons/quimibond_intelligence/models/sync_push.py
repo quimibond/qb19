@@ -297,6 +297,13 @@ class QuimibondSync(models.TransientModel):
         # (frontend consumes canonical_payments + relations). The push was
         # returning 404 every hour and losing 76 / 4,333 rows.
         'order_lines',
+        # SP11 (2026-04-22): first-run incremental missed historical rows —
+        # stock.move write_date rarely touched for old done moves, so only
+        # the 3 moves updated in the last hour made it through. Keep full
+        # push: stock.move is bounded by domain cutoff (90d) + limit=20000;
+        # account.move entries bounded by 180d + limit=10000; locations is
+        # a tiny catalog.
+        'stock_locations', 'stock_moves', 'account_entries_stock',
     ])
 
     def _run_push(self, client, label, method_fn, last_sync=None):
@@ -3066,10 +3073,17 @@ class QuimibondSync(models.TransientModel):
         cids = self._get_company_ids()
         cutoff = (datetime.now() - timedelta(days=180)).date().strftime('%Y-%m-%d')
 
-        inv_account_ids = Account.search([
-            ('company_id', 'in', cids),
-            '|', ('code', '=like', '115%'), ('code', '=like', '501%'),
-        ]).ids
+        # Odoo 19: account.account uses company_ids (M2M), not company_id.
+        # Try multi-company filter; fall back to no filter (single company).
+        try:
+            inv_account_ids = Account.search([
+                ('company_ids', 'in', cids),
+                '|', ('code', '=like', '115%'), ('code', '=like', '501%'),
+            ]).ids
+        except Exception:
+            inv_account_ids = Account.search([
+                '|', ('code', '=like', '115%'), ('code', '=like', '501%'),
+            ]).ids
         if not inv_account_ids:
             return 0
 
