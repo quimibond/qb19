@@ -9,7 +9,7 @@ import logging
 import re
 from datetime import datetime, timedelta
 
-from odoo import api, models
+from odoo import api, fields, models
 
 from .ingestion_core import IngestionCore
 from .supabase_client import SupabaseClient
@@ -18,6 +18,11 @@ _logger = logging.getLogger(__name__)
 
 # Email validation regex
 _EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+# Posted-without-timbrado grace window. If an invoice is posted but has no
+# l10n_mx_edi CFDI UUID yet, we give it this many minutes to finish timbrado
+# before logging a WARNING (operational signal that timbrado may have failed).
+STALE_UUID_THRESHOLD_MINUTES = 5
 
 
 def _get_client(env) -> SupabaseClient | None:
@@ -1228,6 +1233,123 @@ class QuimibondSync(models.TransientModel):
 
         return client.upsert('odoo_users', rows, on_conflict='odoo_user_id')
 
+    # ── CFDI UUID capture helpers (Task 3 — 2026-04-24) ─────────────────
+    #
+    # Odoo 19 background: `move.l10n_mx_edi_cfdi_uuid` is a stored computed
+    # field that was left stale after the 17→19 migration — `.read()` returns
+    # NULL for moves written before the recompute was triggered. The bulk sync
+    # uses `_build_cfdi_map(env, ids)` (queries `l10n_mx_edi.document` directly,
+    # SAT/posted/id scoring) to bypass that.
+    #
+    # `_read_cfdi_uuid(move, cfdi_map=None)` has TWO trust modes:
+    #
+    # 1) BULK path (cfdi_map is not None): `cfdi_map` is the SP10.4 authority.
+    #    It already picked ONE winner per duplicate UUID across the chunk to
+    #    avoid hitting `uq_odoo_invoices_cfdi_uuid` during upsert. A missing
+    #    entry for move.id means "this move LOST the winner scoring — do not
+    #    claim a UUID." We MUST NOT fall back to the stored field or a fresh
+    #    per-move `_build_cfdi_map` call, because either would let a loser
+    #    re-claim a UUID already assigned to the winner and reopen the
+    #    UNIQUE-violation window SP10.4 closed.
+    #
+    # 2) SINGLE-INVOICE path (cfdi_map is None): used by `_serialize_invoice`
+    #    from ad-hoc callers (tests, debugging, one-off pushes). No contention
+    #    with the chunk-level winner-scoring, so falling back to the stored
+    #    field and then an on-demand `_build_cfdi_map([move.id])` is safe.
+    #
+    # Both paths emit the stale-timbrado WARNING when a posted move older
+    # than STALE_UUID_THRESHOLD_MINUTES comes back without a UUID.
+    def _read_cfdi_uuid(self, move, cfdi_map: dict | None = None) -> str | None:
+        """Resolve the CFDI UUID for a posted account.move.
+
+        Args:
+            move: browse record on `account.move`.
+            cfdi_map: pre-built {move_id: {uuid, sat}} dict from
+                `_build_cfdi_map`. Passed during bulk `_push_invoices` to
+                avoid N+1 queries AND to enforce SP10.4 winner scoring. When
+                provided, it is the EXCLUSIVE source of truth for this move;
+                no stored-field or on-demand fallback runs.
+
+        Returns: lowercase UUID string, or None if not yet timbrado / lost
+        the winner scoring.
+        """
+        # BULK path — cfdi_map is the SP10.4 authority.
+        if cfdi_map is not None:
+            entry = cfdi_map.get(move.id)
+            uuid = (entry.get('uuid') if entry else None)
+            if uuid:
+                # Normalize to lowercase per SP10.6 (Odoo stores supplier XML
+                # UUIDs uppercased; SAT/Syntage uses lowercase).
+                return uuid.lower()
+            self._maybe_warn_stale_uuid(move)
+            return None
+
+        # SINGLE-INVOICE path — no winner-scoring contention.
+        uuid = None
+
+        # a) Stored computed field (Odoo 19 canonical name on account.move).
+        #    May be stale post-migration; only useful as a fallback.
+        try:
+            uuid = getattr(move, 'l10n_mx_edi_cfdi_uuid', None) or None
+        except Exception:
+            uuid = None
+
+        # b) Last resort: query l10n_mx_edi.document directly for this one move.
+        if not uuid:
+            try:
+                fresh = _build_cfdi_map(self.env, [move.id])
+                entry = fresh.get(move.id) if fresh else None
+                if entry:
+                    uuid = entry.get('uuid')
+            except Exception as exc:
+                _logger.debug(
+                    'single-move _build_cfdi_map failed for move id=%s: %s',
+                    move.id, exc,
+                )
+
+        if uuid:
+            return uuid.lower()
+
+        self._maybe_warn_stale_uuid(move)
+        return None
+
+    def _maybe_warn_stale_uuid(self, move) -> None:
+        """Log a WARNING when `move` is posted, older than
+        STALE_UUID_THRESHOLD_MINUTES, and has no CFDI UUID yet. Operational
+        signal that l10n_mx_edi timbrado may have failed.
+        """
+        try:
+            if move.state == 'posted' and move.create_date:
+                age_minutes = (
+                    (fields.Datetime.now() - move.create_date).total_seconds()
+                    / 60.0
+                )
+                if age_minutes > STALE_UUID_THRESHOLD_MINUTES:
+                    _logger.warning(
+                        'account.move id=%s name=%s posted %.1f min ago without '
+                        'cfdi_uuid (l10n_mx_edi timbrado may have failed)',
+                        move.id, move.name, age_minutes,
+                    )
+        except Exception as exc:
+            _logger.debug(
+                'stale-uuid check failed for move id=%s: %s', move.id, exc,
+            )
+
+    def _serialize_invoice(self, move, cfdi_map: dict | None = None) -> dict:
+        """Thin per-move serializer that routes CFDI UUID through
+        `_read_cfdi_uuid` so single-invoice callers (tests, debugging
+        helpers) share the same UUID-capture path as `_push_invoices`.
+
+        The bulk `_push_invoices` loop builds its full payload inline for
+        performance; this helper intentionally returns only the UUID-relevant
+        slice plus identifiers so the test suite can target UUID capture
+        without coupling to the full 40-field payload shape.
+        """
+        return {
+            'odoo_invoice_id': move.id,
+            'cfdi_uuid': self._read_cfdi_uuid(move, cfdi_map=cfdi_map),
+        }
+
     # ── Invoices (ALL history) ──────────────────────────────────────────
 
     def _push_invoices(self, client: SupabaseClient, last_sync=None) -> int:
@@ -1325,9 +1447,14 @@ class QuimibondSync(models.TransientModel):
                         except Exception:
                             pass
 
-                        # CFDI fields from pre-read map
+                        # CFDI fields from pre-read map.
+                        # Task 3 (2026-04-24): route UUID capture through
+                        # `_read_cfdi_uuid` so the stale-timbrado WARNING
+                        # fires here too. The cfdi_map is still the preferred
+                        # source (bulk-built, SP10.4/SP10.6 scoring); the
+                        # helper just adds null-safe fallback + ops logging.
                         cfdi = cfdi_map.get(inv.id, {})
-                        cfdi_uuid = cfdi.get('uuid')
+                        cfdi_uuid = self._read_cfdi_uuid(inv, cfdi_map=cfdi_map)
                         cfdi_sat = cfdi.get('sat')
 
                         # Payment date and days_to_pay from reconciliation
