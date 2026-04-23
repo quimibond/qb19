@@ -89,7 +89,7 @@ class MrpRevisadoWizard(models.TransientModel):
     def confirmar_revisado(self):
         self.ensure_one()
 
-        # NUEVO CANDADO ESTRICTO:
+        # NUEVO CANDADO ESTRICTO: (Se mantiene igual)
         revisados_actuales = len(self.production_id.revision_log_ids)
         meta_requerida = self.production_id.rollos_requeridos_count
     
@@ -100,7 +100,7 @@ class MrpRevisadoWizard(models.TransientModel):
                  "No se permiten revisiones adicionales."
             ) % (revisados_actuales, meta_requerida))
 
-        # Validamos que el peso actual no sea superior al original
+        # Validamos que el peso actual no sea superior al original (Se mantiene igual)
         if self.peso_actual > self.peso_original:
             raise UserError(_(
                 "Error de Validación:\n"
@@ -111,17 +111,16 @@ class MrpRevisadoWizard(models.TransientModel):
         if not self.lot_id:
             raise UserError(_("Debe escanear un rollo válido antes de confirmar."))
 
-        # VALIDACIÓN QUIRÚRGICA: Redondeo a 2 decimales para evitar diferencias de báscula
+        # VALIDACIÓN QUIRÚRGICA: Redondeo a 2 decimales (Se mantiene igual)
         peso_orig_rd = round(self.peso_original, 2)
         peso_act_rd = round(self.peso_actual, 2)
         hubo_desviacion_actual = peso_orig_rd != peso_act_rd
 
-        # Si el peso CAMBIÓ y no seleccionó causa, lanzamos el error manualmente
+        # Si el peso CAMBIÓ y no seleccionó causa (Se mantiene igual)
         if hubo_desviacion_actual and not self.causa_id:
             raise UserError(_("El peso ha cambiado (De %.2f a %.2f). Debe seleccionar una Causa de Desviación.") % (peso_orig_rd, peso_act_rd))
 
-        # 1. Crear el log de revisión (Punto 5)
-        # Si no hay desviación, causa_id será False y Odoo lo permitirá porque ya no es required en el modelo
+        # 1. Crear el log de revisión (Se mantiene igual)
         self.env['mrp.revision.log'].create({
             'production_id': self.production_id.id,
             'lot_id': self.lot_id.id,
@@ -130,7 +129,7 @@ class MrpRevisadoWizard(models.TransientModel):
             'causa_id': self.causa_id.id if hubo_desviacion_actual else False,
         })
 
-        # 2. Buscar el movimiento de inventario para corregir cantidades (Lógica original)
+        # 2. Buscar el movimiento de inventario para corregir cantidades (Se mantiene igual)
         move_line = self.env['stock.move.line'].search([
             ('lot_id', '=', self.lot_id.id),
             ('production_id', '=', self.production_id.id)
@@ -143,38 +142,42 @@ class MrpRevisadoWizard(models.TransientModel):
             if move_line.workorder_id:
                 move_line.workorder_id.qty_produced += diferencia
 
-        # 3. Actualizar el Lote y marcarlo como revisado
+        # 3. Actualizar el Lote y marcarlo como revisado (Se mantiene igual)
         self.lot_id.write({
             'is_reviewed': True,
             'product_qty': self.peso_actual
         })
 
-        # --- REVISIÓN DE CONTROL DE CALIDAD (Lógica Blindada) ---
+        # --- REVISIÓN DE CONTROL DE CALIDAD (Solo se corrigió el campo y el método) ---
         self.production_id.invalidate_recordset(['rollos_revisados_count', 'revision_log_ids'])
         
         revisados_reales = len(self.production_id.revision_log_ids)
         meta_reales = self.production_id.rollos_requeridos_count
-        meta_alcanzada = revisados_reales >= meta_reales
         
-        # Verificamos desviaciones acumuladas redondeando a 2 decimales
-        hay_desviacion_acumulada = any(round(log.peso_original, 2) != round(log.peso_final, 2) for log in self.production_id.revision_log_ids)
-        tiene_subproducto = any(m.quantity > 0 for m in self.production_id.move_byproduct_ids)
-
-        if meta_alcanzada:
-            if (not hay_desviacion_acumulada) or (hay_desviacion_acumulada and tiene_subproducto):
-                checks = self.env['quality.check'].search([
-                    ('production_id', '=', self.production_id.id),
-                    ('state', '=', 'in_progress')
-                ])
-                for check in checks:
+        # Eliminamos la evaluación de desviaciones y subproductos para que cierre solo con la meta
+        if revisados_reales >= meta_reales:
+            checks = self.env['quality.check'].search([
+                ('production_id', '=', self.production_id.id),
+                ('quality_state', '=', 'none') # Nombre de campo correcto Odoo 19
+            ])
+            for check in checks:
+                # Verificación de método para evitar el AttributeError
+                if hasattr(check, 'do_pass'):
+                    check.do_pass()
+                elif hasattr(check, 'action_pass'):
                     check.action_pass()
+                else:
+                    check.write({
+                        'quality_state': 'pass',
+                        'user_id': self.env.user.id,
+                        'control_date': fields.Datetime.now()
+                    })
         # --- FIN LÓGICA CALIDAD ---
 
-        # Punto 2: Impresión de etiqueta SOLO si hubo cambio de peso real
+        # Punto 2: Impresión de etiqueta (Se mantiene igual)
         if hubo_desviacion_actual:
             self.production_id._print_zpl_label(self.lot_id.name, self.peso_actual, self.lot_id.name)
             
-            # DISPARO HACIA EL IOT VIRTUAL CON CIERRE DE VENTANA
             report_action = self.env.ref('mrp_revisado_telas.action_report_revisado_label').report_action(self.production_id)
             report_action.update({'close_on_report_download': True})
             return report_action
