@@ -3031,28 +3031,16 @@ class QuimibondSync(models.TransientModel):
                             price_u = float(m.price_unit) if hasattr(m, 'price_unit') else None
                         except Exception:
                             pass
-                        # SP11.4 (2026-04-22): stock.move.account_move_ids
-                        # returns empty for all moves in Odoo 19 Quimibond (bug
-                        # or schema change). Fall back to stock_valuation_layer_ids
-                        # → account_move_id which is the canonical path since
-                        # Odoo 14+ continuous valuation.
+                        # SP11.6 (2026-04-23): real field per env['stock.move'].fields_get
+                        # is account_move_id (many2one to account.move, singular),
+                        # NOT the plural M2M that SP11.4 assumed. stock.valuation.layer
+                        # does not exist in Odoo 19 Quimibond.
                         try:
-                            direct = m.account_move_ids if hasattr(m, 'account_move_ids') else False
-                            if direct:
-                                acct_ids = [am.id for am in direct]
+                            am = m.account_move_id if hasattr(m, 'account_move_id') else False
+                            if am and am.id:
+                                acct_ids = [am.id]
                         except Exception:
                             pass
-                        if not acct_ids:
-                            try:
-                                layers = m.stock_valuation_layer_ids if hasattr(m, 'stock_valuation_layer_ids') else False
-                                if layers:
-                                    acct_ids = sorted({
-                                        svl.account_move_id.id
-                                        for svl in layers
-                                        if getattr(svl, 'account_move_id', False) and svl.account_move_id.id
-                                    })
-                            except Exception:
-                                pass
                         rows.append({
                             'odoo_move_id': m.id,
                             'odoo_company_id': m.company_id.id if m.company_id else None,
@@ -3072,6 +3060,9 @@ class QuimibondSync(models.TransientModel):
                             'reference': m.reference or None,
                             'origin': getattr(m, 'origin', None),
                             'is_inventory': bool(getattr(m, 'is_inventory', False)),
+                            'is_in': bool(getattr(m, 'is_in', False)),
+                            'is_out': bool(getattr(m, 'is_out', False)),
+                            'is_dropship': bool(getattr(m, 'is_dropship', False)),
                             'value': val,
                             'price_unit': price_u,
                             'has_account_move': bool(acct_ids),
