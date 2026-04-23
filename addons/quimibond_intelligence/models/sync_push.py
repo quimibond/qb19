@@ -3208,15 +3208,23 @@ class QuimibondSync(models.TransientModel):
         return ok
 
     def _push_account_entries_stock(self, client: SupabaseClient, last_sync=None) -> int:
-        """Push account.move type='entry' con líneas en cuentas inventario (115%) o COGS (501%).
+        """Push account.moves con líneas en cuentas inventario (115%), COGS (501%) o compras (504%).
         Quimibond verified codes (2026-04-23):
           Inventory: 115% (Inventory, Raw materials, Production in progress, Variación)
           COGS:      501% (Cost of sales, COSTO PRIMO, VARIACIÓN INVENTARIO, mano de obra)
+          Purchase:  504% (costo compras, vendor bill counterpart)
         NOTE: 116.003 es Cuenta Transitoria BBVA (bancaria) — NO incluir 116%.
 
-        SP11.3 (2026-04-22): removed limit=10000 and 180d cutoff.
-        All history requested, chunked 500/browse/upsert mirroring
-        _push_invoices pattern.
+        SP11.8 (2026-04-23): evidencia empírica (sample 5+5 ene-feb) mostró que
+        el link real stock.move ↔ account.move vive principalmente en:
+          - PURCHASE: journal FACTU, move_type=in_invoice, cuenta 504.01.* (Δ≈+1d)
+          - CUSTOMER: journal C, move_type=out_invoice, cuentas 115.04.*+501.01.* (Δ≈0)
+          - Internal: journal STJ, move_type=entry, cuentas 115.*+501.* (Δ≈0)
+        Ampliamos move_type IN (entry,in_invoice,out_invoice,in_refund,out_refund)
+        y agregamos cuenta 504% para capturar los asientos de compra.
+        Se captura JSONB lines_stock con {account_code, product_id, product_ref,
+        debit, credit, name, partner_id} para matching SQL en Supabase (producto +
+        monto ± 0.01 + fecha window).
         """
         try:
             Account = self.env['account.account'].sudo()
@@ -3230,17 +3238,17 @@ class QuimibondSync(models.TransientModel):
         try:
             inv_account_ids = Account.search([
                 ('company_ids', 'in', cids),
-                '|', ('code', '=like', '115%'), ('code', '=like', '501%'),
+                '|', '|', ('code', '=like', '115%'), ('code', '=like', '501%'), ('code', '=like', '504%'),
             ]).ids
         except Exception:
             inv_account_ids = Account.search([
-                '|', ('code', '=like', '115%'), ('code', '=like', '501%'),
+                '|', '|', ('code', '=like', '115%'), ('code', '=like', '501%'), ('code', '=like', '504%'),
             ]).ids
         if not inv_account_ids:
             return 0
 
         domain = [
-            ('move_type', '=', 'entry'),
+            ('move_type', 'in', ('entry', 'in_invoice', 'out_invoice', 'in_refund', 'out_refund')),
             ('state', '=', 'posted'),
             ('line_ids.account_id', 'in', inv_account_ids),
             ('company_id', 'in', cids),
@@ -3268,6 +3276,8 @@ class QuimibondSync(models.TransientModel):
                     try:
                         inv_lines_codes = []
                         cogs_lines_codes = []
+                        purchase_lines_codes = []
+                        lines_stock = []
                         for l in m.line_ids:
                             code = inv_codes.get(l.account_id.id)
                             if not code:
@@ -3276,14 +3286,17 @@ class QuimibondSync(models.TransientModel):
                                 inv_lines_codes.append(code)
                             elif code.startswith('501'):
                                 cogs_lines_codes.append(code)
-                        # SP11.7 (2026-04-23): account.move.stock_move_ids es
-                        # one2many stored correct (verified via fields_get). El
-                        # SP11.5 fallback a stock_valuation_layer_ids era
-                        # ficticio — ese campo no existe en account.move.
-                        # Cuando stock_move_ids viene vacío es porque el asiento
-                        # viene de OTRA fuente, no stock.move. Capturamos esas
-                        # fuentes (landed costs, assets, MO WIP) para que el
-                        # invariant B pueda discriminar.
+                            elif code.startswith('504'):
+                                purchase_lines_codes.append(code)
+                            lines_stock.append({
+                                'account_code': code,
+                                'product_id': l.product_id.id if l.product_id else None,
+                                'product_ref': (l.product_id.default_code or None) if l.product_id else None,
+                                'debit':  float(l.debit or 0),
+                                'credit': float(l.credit or 0),
+                                'name':   (l.name or '')[:200],
+                                'partner_id': l.partner_id.id if l.partner_id else None,
+                            })
                         stock_ids = []
                         try:
                             if m.stock_move_ids:
@@ -3316,6 +3329,7 @@ class QuimibondSync(models.TransientModel):
                             'ref': m.ref or None,
                             'journal_name': m.journal_id.name if m.journal_id else None,
                             'journal_type': m.journal_id.type if m.journal_id else None,
+                            'move_type': m.move_type,
                             'amount_total': float(m.amount_total or 0),
                             'stock_move_ids': stock_ids,
                             'landed_costs_ids': landed_ids,
@@ -3323,8 +3337,11 @@ class QuimibondSync(models.TransientModel):
                             'asset_id': asset_id_val,
                             'has_inventory_account': bool(inv_lines_codes),
                             'has_cogs_account': bool(cogs_lines_codes),
+                            'has_purchase_account': bool(purchase_lines_codes),
                             'inventory_account_codes': sorted(set(inv_lines_codes))[:10],
                             'cogs_account_codes': sorted(set(cogs_lines_codes))[:10],
+                            'purchase_account_codes': sorted(set(purchase_lines_codes))[:10],
+                            'lines_stock': lines_stock,
                             'state': m.state,
                         })
                     except Exception as exc:
