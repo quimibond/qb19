@@ -2985,81 +2985,91 @@ class QuimibondSync(models.TransientModel):
         """Push stock.move → odoo_stock_moves.
         Cada movimiento físico de inventario con su valor monetario y los
         account.move generados (account_move_ids). Base para invariants
-        inventory.move_without_accounting + valuation_drift."""
+        inventory.move_without_accounting + valuation_drift.
+
+        SP11.3 (2026-04-22): removed limit=20000. All history requested.
+        Chunked per 500 ids with browse + invalidate + try/except, mirroring
+        the _push_invoices pattern, so memory stays bounded and a single
+        chunk failure does not abort the whole push."""
         try:
             Move = self.env['stock.move'].sudo()
         except KeyError:
             return 0
         cids = self._get_company_ids()
-        cutoff = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
         domain = [
             ('company_id', 'in', cids),
-            '|',
-                ('state', '=', 'done'),
-                '&', ('state', 'in', ('draft', 'waiting', 'confirmed', 'assigned')),
-                     ('date', '>=', cutoff),
+            ('state', '=', 'done'),
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        # order date desc: limit=20000 must keep the most recent moves
-        # (invariants run on last 90d window). Default id asc would truncate
-        # recent activity and preserve 2021 backlog.
-        moves = Move.search(domain, limit=20000, order='date desc, id desc')
 
-        rows = []
-        for m in moves:
-            try:
-                qty_done = getattr(m, 'quantity', None)
-                if qty_done is None:
-                    qty_done = getattr(m, 'quantity_done', None)
-                # value (computed) puede fallar para moves no done
-                val = None
-                price_u = None
-                acct_ids = []
-                try:
-                    val = float(m.value) if hasattr(m, 'value') and m.value is not None else None
-                except Exception:
-                    pass
-                try:
-                    price_u = float(m.price_unit) if hasattr(m, 'price_unit') else None
-                except Exception:
-                    pass
-                try:
-                    acct_ids = [am.id for am in (m.account_move_ids or [])]
-                except Exception:
-                    pass
-
-                rows.append({
-                    'odoo_move_id': m.id,
-                    'odoo_company_id': m.company_id.id if m.company_id else None,
-                    'picking_id': m.picking_id.id if m.picking_id else None,
-                    'picking_name': m.picking_id.name if m.picking_id else None,
-                    'product_id': m.product_id.id if m.product_id else None,
-                    'product_ref': (m.product_id.default_code or None) if m.product_id else None,
-                    'product_uom_qty': float(m.product_uom_qty or 0),
-                    'quantity': float(qty_done or 0),
-                    'state': m.state,
-                    'date': m.date.isoformat() if m.date else None,
-                    'date_deadline': m.date_deadline.isoformat() if getattr(m, 'date_deadline', None) else None,
-                    'location_id': m.location_id.id if m.location_id else None,
-                    'location_dest_id': m.location_dest_id.id if m.location_dest_id else None,
-                    'location_usage': m.location_id.usage if m.location_id else None,
-                    'location_dest_usage': m.location_dest_id.usage if m.location_dest_id else None,
-                    'reference': m.reference or None,
-                    'origin': getattr(m, 'origin', None),
-                    'is_inventory': bool(getattr(m, 'is_inventory', False)),
-                    'value': val,
-                    'price_unit': price_u,
-                    'has_account_move': bool(acct_ids),
-                    'account_move_ids': acct_ids,
-                })
-            except Exception as exc:
-                _logger.warning('stock_move %s: %s', m.id, exc)
-
-        if not rows:
+        move_ids = Move.search(domain, order='date desc, id desc').ids
+        total = len(move_ids)
+        if not total:
             return 0
-        return client.upsert('odoo_stock_moves', rows,
-                             on_conflict='odoo_move_id', batch_size=500)
+
+        BATCH = 500
+        ok = 0
+        for chunk_start in range(0, total, BATCH):
+            chunk_ids = move_ids[chunk_start:chunk_start + BATCH]
+            try:
+                moves = Move.browse(chunk_ids)
+                rows = []
+                for m in moves:
+                    try:
+                        qty_done = getattr(m, 'quantity', None)
+                        if qty_done is None:
+                            qty_done = getattr(m, 'quantity_done', None)
+                        val = None
+                        price_u = None
+                        acct_ids = []
+                        try:
+                            val = float(m.value) if hasattr(m, 'value') and m.value is not None else None
+                        except Exception:
+                            pass
+                        try:
+                            price_u = float(m.price_unit) if hasattr(m, 'price_unit') else None
+                        except Exception:
+                            pass
+                        try:
+                            acct_ids = [am.id for am in (m.account_move_ids or [])]
+                        except Exception:
+                            pass
+                        rows.append({
+                            'odoo_move_id': m.id,
+                            'odoo_company_id': m.company_id.id if m.company_id else None,
+                            'picking_id': m.picking_id.id if m.picking_id else None,
+                            'picking_name': m.picking_id.name if m.picking_id else None,
+                            'product_id': m.product_id.id if m.product_id else None,
+                            'product_ref': (m.product_id.default_code or None) if m.product_id else None,
+                            'product_uom_qty': float(m.product_uom_qty or 0),
+                            'quantity': float(qty_done or 0),
+                            'state': m.state,
+                            'date': m.date.isoformat() if m.date else None,
+                            'date_deadline': m.date_deadline.isoformat() if getattr(m, 'date_deadline', None) else None,
+                            'location_id': m.location_id.id if m.location_id else None,
+                            'location_dest_id': m.location_dest_id.id if m.location_dest_id else None,
+                            'location_usage': m.location_id.usage if m.location_id else None,
+                            'location_dest_usage': m.location_dest_id.usage if m.location_dest_id else None,
+                            'reference': m.reference or None,
+                            'origin': getattr(m, 'origin', None),
+                            'is_inventory': bool(getattr(m, 'is_inventory', False)),
+                            'value': val,
+                            'price_unit': price_u,
+                            'has_account_move': bool(acct_ids),
+                            'account_move_ids': acct_ids,
+                        })
+                    except Exception as exc:
+                        _logger.warning('stock_move %s: %s', m.id, exc)
+
+                if rows:
+                    self.env.cr.commit()
+                    self.env.invalidate_all()
+                    ok += client.upsert('odoo_stock_moves', rows,
+                                        on_conflict='odoo_move_id', batch_size=500) or 0
+            except Exception as exc:
+                _logger.exception('stock_moves chunk %s failed: %s', chunk_start, exc)
+        return ok
 
     def _push_account_entries_stock(self, client: SupabaseClient, last_sync=None) -> int:
         """Push account.move type='entry' con líneas en cuentas inventario (115%) o COGS (501%).
@@ -3067,6 +3077,10 @@ class QuimibondSync(models.TransientModel):
           Inventory: 115% (Inventory, Raw materials, Production in progress, Variación)
           COGS:      501% (Cost of sales, COSTO PRIMO, VARIACIÓN INVENTARIO, mano de obra)
         NOTE: 116.003 es Cuenta Transitoria BBVA (bancaria) — NO incluir 116%.
+
+        SP11.3 (2026-04-22): removed limit=10000 and 180d cutoff.
+        All history requested, chunked 500/browse/upsert mirroring
+        _push_invoices pattern.
         """
         try:
             Account = self.env['account.account'].sudo()
@@ -3074,7 +3088,6 @@ class QuimibondSync(models.TransientModel):
         except KeyError:
             return 0
         cids = self._get_company_ids()
-        cutoff = (datetime.now() - timedelta(days=180)).date().strftime('%Y-%m-%d')
 
         # Odoo 19: account.account uses company_ids (M2M), not company_id.
         # Try multi-company filter; fall back to no filter (single company).
@@ -3093,58 +3106,69 @@ class QuimibondSync(models.TransientModel):
         domain = [
             ('move_type', '=', 'entry'),
             ('state', '=', 'posted'),
-            ('date', '>=', cutoff),
             ('line_ids.account_id', 'in', inv_account_ids),
             ('company_id', 'in', cids),
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        # order date desc: same reasoning as stock_moves — keep recent entries
-        moves = Move.search(domain, limit=10000, order='date desc, id desc')
 
-        # Pre-compute account code prefixes for fast classification
-        inv_codes = {}  # account_id → code
+        entry_ids = Move.search(domain, order='date desc, id desc').ids
+        total = len(entry_ids)
+        if not total:
+            return 0
+
+        inv_codes = {}
         for a in Account.browse(inv_account_ids):
             inv_codes[a.id] = a.code or ''
 
-        rows = []
-        for m in moves:
+        BATCH = 500
+        ok = 0
+        for chunk_start in range(0, total, BATCH):
+            chunk_ids = entry_ids[chunk_start:chunk_start + BATCH]
             try:
-                inv_lines_codes = []
-                cogs_lines_codes = []
-                for l in m.line_ids:
-                    code = inv_codes.get(l.account_id.id)
-                    if not code:
-                        continue
-                    if code.startswith('115'):
-                        inv_lines_codes.append(code)
-                    elif code.startswith('501'):
-                        cogs_lines_codes.append(code)
-                stock_ids = []
-                try:
-                    stock_ids = [sm.id for sm in (m.stock_move_ids or [])]
-                except Exception:
-                    pass
-                rows.append({
-                    'odoo_move_id': m.id,
-                    'odoo_company_id': m.company_id.id if m.company_id else None,
-                    'date': m.date.isoformat() if m.date else None,
-                    'name': m.name or None,
-                    'ref': m.ref or None,
-                    'journal_name': m.journal_id.name if m.journal_id else None,
-                    'journal_type': m.journal_id.type if m.journal_id else None,
-                    'amount_total': float(m.amount_total or 0),
-                    'stock_move_ids': stock_ids,
-                    'has_inventory_account': bool(inv_lines_codes),
-                    'has_cogs_account': bool(cogs_lines_codes),
-                    'inventory_account_codes': sorted(set(inv_lines_codes))[:10],
-                    'cogs_account_codes': sorted(set(cogs_lines_codes))[:10],
-                    'state': m.state,
-                })
-            except Exception as exc:
-                _logger.warning('account_entry_stock %s: %s', m.id, exc)
+                moves = Move.browse(chunk_ids)
+                rows = []
+                for m in moves:
+                    try:
+                        inv_lines_codes = []
+                        cogs_lines_codes = []
+                        for l in m.line_ids:
+                            code = inv_codes.get(l.account_id.id)
+                            if not code:
+                                continue
+                            if code.startswith('115'):
+                                inv_lines_codes.append(code)
+                            elif code.startswith('501'):
+                                cogs_lines_codes.append(code)
+                        stock_ids = []
+                        try:
+                            stock_ids = [sm.id for sm in (m.stock_move_ids or [])]
+                        except Exception:
+                            pass
+                        rows.append({
+                            'odoo_move_id': m.id,
+                            'odoo_company_id': m.company_id.id if m.company_id else None,
+                            'date': m.date.isoformat() if m.date else None,
+                            'name': m.name or None,
+                            'ref': m.ref or None,
+                            'journal_name': m.journal_id.name if m.journal_id else None,
+                            'journal_type': m.journal_id.type if m.journal_id else None,
+                            'amount_total': float(m.amount_total or 0),
+                            'stock_move_ids': stock_ids,
+                            'has_inventory_account': bool(inv_lines_codes),
+                            'has_cogs_account': bool(cogs_lines_codes),
+                            'inventory_account_codes': sorted(set(inv_lines_codes))[:10],
+                            'cogs_account_codes': sorted(set(cogs_lines_codes))[:10],
+                            'state': m.state,
+                        })
+                    except Exception as exc:
+                        _logger.warning('account_entry_stock %s: %s', m.id, exc)
 
-        if not rows:
-            return 0
-        return client.upsert('odoo_account_entries_stock', rows,
-                             on_conflict='odoo_move_id', batch_size=500)
+                if rows:
+                    self.env.cr.commit()
+                    self.env.invalidate_all()
+                    ok += client.upsert('odoo_account_entries_stock', rows,
+                                        on_conflict='odoo_move_id', batch_size=500) or 0
+            except Exception as exc:
+                _logger.exception('account_entries_stock chunk %s failed: %s', chunk_start, exc)
+        return ok
