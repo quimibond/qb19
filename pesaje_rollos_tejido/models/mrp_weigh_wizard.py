@@ -21,6 +21,29 @@ class MrpWeighRollWizard(models.TransientModel):
     
     next_lot_name = fields.Char(string="Número de Lote a Generar", compute="_compute_next_lot_name")
     weight = fields.Float(string="Peso del Rollo Actual (kg)", digits=(12, 3), required=True)
+    
+    # --- NUEVOS CAMPOS ---
+    tara = fields.Float(string="Tara (kg)", compute="_compute_tara_neta", store=True)
+    net_weight = fields.Float(string="Peso Neto (kg)", compute="_compute_tara_neta", store=True)
+
+    @api.depends('product_id', 'workcenter_id', 'weight')
+    def _compute_tara_neta(self):
+        for reg in self:
+            # 1. Buscar tara específica para Producto + Centro de Trabajo
+            tara_obj = self.env['mrp.tara'].search([
+                ('product_id', '=', reg.product_id.id),
+                ('workcenter_id', '=', reg.workcenter_id.id)
+            ], limit=1)
+            
+            # 2. Si no hay específica, buscar la que no tiene centro de trabajo (aplica a todos)
+            if not tara_obj:
+                tara_obj = self.env['mrp.tara'].search([
+                    ('product_id', '=', reg.product_id.id),
+                    ('workcenter_id', '=', False)
+                ], limit=1)
+            
+            reg.tara = tara_obj.tara if tara_obj else 0.0
+            reg.net_weight = reg.weight - reg.tara
 
     @api.depends('workorder_id', 'production_id.roll_count')
     def _compute_next_lot_name(self):
@@ -31,14 +54,13 @@ class MrpWeighRollWizard(models.TransientModel):
             else:
                 reg.next_lot_name = False
 
-    @api.depends('weight', 'qty_produced', 'qty_to_produce')
+    @api.depends('weight', 'qty_produced', 'qty_to_produce', 'net_weight')
     def _compute_production_percentage(self):
         for reg in self:
-            # Sumamos lo ya producido en la OF + el peso que está en la báscula ahorita
-            total_con_este_rollo = reg.qty_produced + reg.weight
+            # Usamos net_weight para que el avance de producción sea real (sin taras)
+            total_con_este_rollo = reg.qty_produced + reg.net_weight
             
             if reg.qty_to_produce > 0:
-                # Calculamos el avance total real incluyendo el rollo actual
                 reg.production_percentage = total_con_este_rollo / reg.qty_to_produce
             else:
                 reg.production_percentage = 0.0
@@ -46,16 +68,15 @@ class MrpWeighRollWizard(models.TransientModel):
     def confirm_weighing(self):
         """ Registro de pesaje, impresión y cierre automático """
         self.ensure_one()
-        # 1. Registra el peso en la MO
-        self.production_id.action_register_roll_with_weight(self.weight)
+        # 1. Registra el PESO NETO en la MO (se cambió self.weight por self.net_weight)
+        self.production_id.action_register_roll_with_weight(self.net_weight)
         
         # 2. Generar datos para la nueva función de impresión
         mo_identifier = self.production_id.name.split('/')[-1]
         lot_name = f"{mo_identifier}-{self.production_id.roll_count:04d}"
         
-        # 3. LLAMADA CRÍTICA: Forzamos el uso de la función de pesaje original
-        # Esto corrige el Centro de Trabajo (evita N/A) y el diseño del código de barras
-        self.production_id._print_zpl_pesaje_original(lot_name, self.weight, lot_name)
+        # 3. LLAMADA CRÍTICA: Se envía el peso NETO para la etiqueta
+        self.production_id._print_zpl_pesaje_original(lot_name, self.net_weight, lot_name)
         
         # 4. Disparo del reporte
         report_action = self.env.ref('pesaje_rollos_tejido.action_report_weigh_roll').report_action(self.production_id)

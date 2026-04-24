@@ -31,10 +31,25 @@
                             </group>
                         </div>
                     </div>
+
                     <div class="text-center mt-4 mb-4 p-4 border rounded bg-light">
-                        <label for="weight" style="font-size: 1.5em; font-weight: bold;"/><br/>
-                        <field name="weight" style="font-size: 4em; font-weight: bold; width: 50%; text-align: center;" class="oe_inline"/>
-                        <span style="font-size: 2em; margin-left: 10px;">KG</span>
+                        <div class="row">
+                            <div class="col-4">
+                                <label for="weight" string="PESO BRUTO" style="font-size: 1.2em; font-weight: bold; color: #666;"/><br/>
+                                <field name="weight" style="font-size: 3em; font-weight: bold; width: 90%; text-align: center;" class="oe_inline"/>
+                            </div>
+                            <div class="col-4">
+                                <label for="tara" string="TARA" style="font-size: 1.2em; font-weight: bold; color: #a24646;"/><br/>
+                                <field name="tara" readonly="1" style="font-size: 3em; font-weight: bold; width: 90%; text-align: center; color: #a24646;" class="oe_inline"/>
+                            </div>
+                            <div class="col-4">
+                                <label for="net_weight" string="PESO NETO" style="font-size: 1.2em; font-weight: bold; color: #008784;"/><br/>
+                                <field name="net_weight" readonly="1" style="font-size: 4em; font-weight: bold; width: 90%; text-align: center; color: #008784;" class="oe_inline"/>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span style="font-size: 2em; font-weight: bold;">KG</span>
+                        </div>
                     </div>
                 </sheet>
                 <footer>
