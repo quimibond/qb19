@@ -8,7 +8,13 @@ class MrpTara(models.Model):
     workcenter_id = fields.Many2one('mrp.workcenter', string="Centro de Trabajo")
     tara = fields.Float(string="Tara (kg)", digits=(12, 3), required=True)
 
-    _sql_constraints = [
-        ('unique_product_wc', 'UNIQUE(product_id, workcenter_id)', 
-         'Ya existe una tara configurada para este producto y centro de trabajo.')
-    ]
+    @api.constrains('product_id', 'workcenter_id')
+    def _check_unique_tara(self):
+        for reg in self:
+            domain = [
+                ('product_id', '=', reg.product_id.id),
+                ('workcenter_id', '=', reg.workcenter_id.id),
+                ('id', '!=', reg.id)
+            ]
+            if self.search_count(domain) > 0:
+                raise ValidationError(_('Ya existe una tara configurada para este producto y centro de trabajo.'))
