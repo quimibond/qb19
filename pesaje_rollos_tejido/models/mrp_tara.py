@@ -9,6 +9,6 @@ class MrpTara(models.Model):
     tara = fields.Float(string="Tara (kg)", digits=(12, 3), required=True)
 
     _sql_constraints = [
-        ('unique_product_wc', 'unique(product_id, workcenter_id)', 
+        ('unique_product_wc', 'UNIQUE(product_id, workcenter_id)', 
          'Ya existe una tara configurada para este producto y centro de trabajo.')
     ]
