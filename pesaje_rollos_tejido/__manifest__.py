@@ -21,6 +21,7 @@
     ],
     'data': [
         'security/ir.model.access.csv',
+        'views/mrp_tara_view.xml',              # Modelo de Taras
         'views/mrp_weigh_wizard_view.xml',      # Vistas de los asistentes
         'views/mrp_subproduct_wizard_view.xml',  # Vista del nuevo asistente de subproductos
         'views/mrp_production_view.xml',        # Pestaña ZPL en la MO
