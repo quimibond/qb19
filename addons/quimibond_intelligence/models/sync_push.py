@@ -283,34 +283,26 @@ class QuimibondSync(models.TransientModel):
     # Se detecto el 13-abr-2026 que chart_of_accounts (5d), orderpoints (8d),
     # employees/departments (12d) y crm_leads (18d) quedaban stale porque
     # el filtro write_date no los tocaba entre runs.
+    #
+    # SP12.2 (2026-04-27): aliviada la lista. Las 9 tablas pesadas
+    # (invoices, invoice_lines, order_lines, sale_orders, purchase_orders,
+    # products, deliveries, manufacturing, account_payments) salieron del
+    # full hourly y volvieron a incremental por write_date. El runtime del
+    # cron baja de ~3:44 → ~50s. Para cubrir el riesgo de write_date no
+    # tocado por recompute (FX, amount_residual, payment_state), se agrega
+    # un cron diario `push_to_supabase_full()` a las 3am que setea
+    # `force_full_sync=1` y resyncroniza TODO sin filtro de last_sync.
+    # Drift máximo: 24h. Si el frontend muestra una factura desfasada,
+    # disparar manual via shell con `force_full_sync=1` antes del nightly.
     FULL_PUSH_METHODS = frozenset([
+        # Catálogos chicos donde write_date no se toca al editar campos
+        # calculados o al toggle del flag active. El costo de re-pushar es
+        # trivial (<1s c/u), el riesgo de stale es alto.
         'employees', 'departments', 'orderpoints', 'chart_of_accounts',
         'crm_leads', 'bank_balances', 'users',
-        # Added 2026-04-13: these tables were stuck at near-zero rows because
-        # incremental write_date filter missed records not recently edited.
-        'products', 'sale_orders', 'purchase_orders', 'invoice_lines',
-        'deliveries', 'manufacturing', 'account_payments',
-        # Force full push for invoices so new fields
-        # (salesperson_name, amount_*_mxn, payment_category) get populated.
-        # Can be removed after first successful full sync.
-        'invoices',
-        # BOMs are a small catalog (~hundreds) and active flag changes
-        # are not always reflected in write_date. Always full push.
+        # BOMs: el flag active no siempre refleja en write_date. Siempre full.
         'boms',
-        # SP5.5 (2026-04-22): uoms + payment_invoice_links dropped from the
-        # list — Silver SP5 dropped those Supabase tables intentionally
-        # (frontend consumes canonical_payments + relations). The push was
-        # returning 404 every hour and losing 76 / 4,333 rows.
-        'order_lines',
-        # SP11 (2026-04-22): stock_locations es un catalog chico (~68 rows),
-        # siempre full push. stock_moves (1.6M) y account_entries_stock (200k+)
-        # estuvieron aquí durante el bootstrap inicial, pero SP11.9
-        # (2026-04-23) los saca una vez poblados: ya sincronizados full dos
-        # veces, los siguientes ciclos usan write_date incremental. Odoo
-        # actualiza write_date de stock.move y account.move cuando cambia
-        # state / líneas / reconciliación, suficiente para capturar deltas
-        # normales. Si drift se detecta, disparar full push manual vía
-        # shell con last_sync=None.
+        # stock_locations: ~68 rows, catálogo chico.
         'stock_locations',
         # SP12 (2026-04-23): workcenters es un catálogo chico (~10-20 rows).
         # workorders se pushea incremental via write_date.
@@ -498,6 +490,30 @@ class QuimibondSync(models.TransientModel):
                 pass
         finally:
             client.close()
+
+    # ── Nightly full sync (SP12.2 — 2026-04-27) ──────────────────────────
+    # El push hourly (push_to_supabase) corre incremental por write_date para
+    # las 9 tablas grandes (invoices, invoice_lines, order_lines, sale_orders,
+    # purchase_orders, products, deliveries, manufacturing, account_payments).
+    # Eso baja el runtime de ~3:44 → ~50s. El riesgo: campos calculados que
+    # Odoo recompute sin tocar write_date (FX rate, amount_residual,
+    # payment_state) quedan stale. Este cron a las 3am setea force_full_sync=1
+    # y dispara push_to_supabase, que ignora last_sync y resyncroniza TODO.
+    # Drift máximo: 24h.
+
+    @api.model
+    def push_to_supabase_full(self):
+        """Force a full push of all tables, ignoring last_sync.
+
+        Wraps push_to_supabase() by setting the force_full_sync config
+        parameter. push_to_supabase() reads the flag, runs full, and clears
+        the flag in the success path.
+        """
+        ICP = self.env['ir.config_parameter'].sudo()
+        ICP.set_param('quimibond_intelligence.force_full_sync', '1')
+        self.env.cr.commit()
+        _logger.info('Nightly full sync triggered (force_full_sync=1)')
+        self.push_to_supabase()
 
     # ── Schema Catalog ────────────────────────────────────────────────────
 
