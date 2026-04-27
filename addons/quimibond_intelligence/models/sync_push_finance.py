@@ -922,18 +922,20 @@ class QuimibondSyncFinance(models.TransientModel):
         # Filter to operating company to avoid mixing P&L from 8 companies
         cids = self._get_company_ids()
         try:
-            groups = Line.read_group(
+            # Odoo 19: read_group is deprecated; use formatted_read_group which
+            # keeps the old dict-shape result. Aggregate keys are the full
+            # 'field:agg' spec ('debit:sum'), not just the field name.
+            groups = Line.formatted_read_group(
                 domain=[
                     ('parent_state', '=', 'posted'),
                     ('display_type', 'not in', ['line_section', 'line_note']),
                     ('company_id', 'in', cids),
                 ],
-                fields=['account_id', 'debit:sum', 'credit:sum', 'balance:sum'],
+                aggregates=['debit:sum', 'credit:sum', 'balance:sum'],
                 groupby=['account_id', 'date:month', 'company_id'],
-                lazy=False,
             )
         except Exception as exc:
-            _logger.warning('read_group account balances failed: %s', exc)
+            _logger.warning('formatted_read_group account balances failed: %s', exc)
             return 0
 
         # Build account cache for names/codes. Mismo patrón multi-company
@@ -1023,9 +1025,9 @@ class QuimibondSyncFinance(models.TransientModel):
                 'account_name': acc_info.get('name', ''),
                 'account_type': acc_info.get('account_type', ''),
                 'period': month_str,
-                'debit': round(g.get('debit', 0) or 0, 2),
-                'credit': round(g.get('credit', 0) or 0, 2),
-                'balance': round(g.get('balance', 0) or 0, 2),
+                'debit': round(g.get('debit:sum', 0) or 0, 2),
+                'credit': round(g.get('credit:sum', 0) or 0, 2),
+                'balance': round(g.get('balance:sum', 0) or 0, 2),
             })
 
         # ── SP5 §14.2 (2026-04-21): synthetic equity_unaffected rows ─────────
@@ -1125,17 +1127,19 @@ class QuimibondSyncFinance(models.TransientModel):
             try:
                 if hasattr(j, 'default_account_id') and j.default_account_id:
                     Line = self.env['account.move.line'].sudo()
-                    result = Line.read_group(
+                    # Odoo 19: read_group → formatted_read_group; aggregate keys
+                    # are the full 'field:agg' spec.
+                    result = Line.formatted_read_group(
                         domain=[
                             ('account_id', '=', j.default_account_id.id),
                             ('parent_state', '=', 'posted'),
                         ],
-                        fields=['balance:sum', 'amount_currency:sum'],
+                        aggregates=['balance:sum', 'amount_currency:sum'],
                         groupby=[],
                     )
                     if result:
-                        balance_mxn = result[0].get('balance', 0) or 0
-                        balance_native = result[0].get('amount_currency', 0) or 0
+                        balance_mxn = result[0].get('balance:sum', 0) or 0
+                        balance_native = result[0].get('amount_currency:sum', 0) or 0
             except Exception as exc:
                 _logger.warning('Bank balance for %s: %s', j.name, exc)
 
