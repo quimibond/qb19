@@ -4,6 +4,7 @@ Mixin that adds partner-domain push methods to the quimibond.sync model.
 Split out of sync_push.py for readability.
 """
 import logging
+import re
 from datetime import datetime, timedelta
 
 from odoo import api, fields, models
