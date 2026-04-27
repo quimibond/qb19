@@ -6,7 +6,7 @@ _compute_invoice_fx_ratio) used only by the invoice push.
 import logging
 from datetime import datetime, timedelta
 
-from odoo import models
+from odoo import api, fields, models
 
 from .ingestion_core import IngestionCore
 from .supabase_client import SupabaseClient

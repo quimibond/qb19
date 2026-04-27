@@ -6,7 +6,7 @@ Split out of sync_push.py for readability.
 import logging
 from datetime import datetime, timedelta
 
-from odoo import models
+from odoo import api, fields, models
 
 from .supabase_client import SupabaseClient
 from .sync_push import _commercial_partner_id, _best_partner_name, _EMAIL_RE

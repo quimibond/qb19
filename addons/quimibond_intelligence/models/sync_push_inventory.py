@@ -3,7 +3,7 @@ orderpoints, BOMs, UoMs."""
 import logging
 from datetime import datetime, timedelta
 
-from odoo import models
+from odoo import api, fields, models
 
 from .supabase_client import SupabaseClient
 
