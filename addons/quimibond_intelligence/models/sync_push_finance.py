@@ -991,10 +991,28 @@ class QuimibondSyncFinance(models.TransientModel):
             'december': '12',
         }
 
-        def _normalize_period(raw: str) -> str:
-            """Convert 'abril 2026' or 'April 2026' → '2026-04'."""
+        def _normalize_period(raw) -> str:
+            """Convert 'abril 2026' / 'April 2026' / tuple → '2026-04'.
+
+            Odoo 19 read_group con lazy=False y múltiples groupby fields
+            (account_id + date:month + company_id) puede retornar date:month
+            como tupla (range_filter, label) en vez de string plano. Antes
+            que se agregara company_id al groupby (commit 56bc603), retornaba
+            string. Defensive: handle tuple, date objects y string.
+            """
             if not raw:
-                return raw
+                return ''
+            # Tuple shape: (filter_domain_or_range, display_label) — usa label
+            if isinstance(raw, tuple):
+                raw = raw[-1] if raw else ''
+            # Date/datetime object: convert to YYYY-MM directly
+            if hasattr(raw, 'strftime'):
+                try:
+                    return raw.strftime('%Y-%m')
+                except Exception:
+                    return ''
+            if not isinstance(raw, str):
+                raw = str(raw or '')
             parts = raw.strip().lower().split()
             if len(parts) == 2:
                 month_name, year = parts
