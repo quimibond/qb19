@@ -17,7 +17,7 @@ class MrpProduction(models.Model):
     last_zpl_label = fields.Text(string="Última Etiqueta ZPL", readonly=True, copy=False)
 
 
-    def action_register_roll_with_weight(self, weight):
+    def action_register_roll_with_weight(self, weight, pesador=False):
         """ 
         Registro de rollos con vinculación de lote y limpieza de movimiento total.
         Punto 1: Modificado para incluir Fecha, Hora y Centro de Trabajo en la etiqueta.
@@ -71,11 +71,11 @@ class MrpProduction(models.Model):
         self.move_raw_ids._action_assign()
 
         # Punto 1: Impresión de etiqueta de Producto (Rollo)
-        self._print_zpl_pesaje_original(lot_name, weight, lot_name)
+        self._print_zpl_pesaje_original(lot_name, weight, lot_name, pesador=pesador)
         
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
-    def action_register_subproduct_manual(self, weight, lot_name=False):
+    def action_register_subproduct_manual(self, weight, lot_name=False, pesador=False):
         """ 
         Registro de subproductos con validación contra el historial de revisión.
         Punto 10 y 11 del documento. Adaptado para Odoo 19.
@@ -243,11 +243,11 @@ class MrpProduction(models.Model):
         self.move_raw_ids._action_assign()
 
         # Punto 3: Impresión de etiqueta de Subproducto
-        self._print_subproduct_zpl(sub_move.product_id, weight, lot_name)
+        self._print_subproduct_zpl(sub_move.product_id, weight, lot_name, pesador=pesador)
         
         return new_lot
 
-    def _print_zpl_pesaje_original(self, lot_name, weight, barcode_data):
+    def _print_zpl_pesaje_original(self, lot_name, weight, barcode_data, pesador=False):
         """ Etiqueta de Pesaje Original Corregida (10x7.5cm) """
         self.ensure_one()
         # --- CAMBIO AQUÍ: Convertir UTC a Hora Local del Usuario ---
@@ -267,7 +267,7 @@ class MrpProduction(models.Model):
         # ^BY2 = Grosor fino | ^FO100 = Inicio a la izquierda
         zpl = f"""^XA^PW812^LL609^CI28
 ^FO50,40^A0N,25,25^FDFECHA : {ahora}^FS
-^FO50,80^A0N,25,25^FDCENTRO DE TRABAJO : {wc_name}^FS
+^FO50,80^A0N,20,20^FDC.T. : {wc_name} / {pesador or ''}^FS
 ^FO50,120^A0N,25,25^FDORDEN DE FABRICACION : {self.name}^FS
 ^FO50,160^A0N,20,20^FDPRODUCTO : {producto_desc[:70]}^FS
 ^FO0,230^FB812,1,0,C^A0N,100,90^FD{weight:.4f} kg^FS
@@ -277,7 +277,7 @@ class MrpProduction(models.Model):
         self.last_zpl_label = zpl
         return True
 
-    def _print_subproduct_zpl(self, product, weight, lot_name):
+    def _print_subproduct_zpl(self, product, weight, lot_name, pesador=False):
         """ Genera etiqueta ZPL para el subproducto corregida (10x7.5cm) """
         self.ensure_one()
         # --- CAMBIO AQUÍ: Convertir UTC a Hora Local del Usuario ---
@@ -291,7 +291,7 @@ class MrpProduction(models.Model):
 ^FO50,40^A0N,40,40^FDSUBPRODUCTO^FS
 ^FO50,100^A0N,25,25^FDFECHA : {ahora}^FS
 ^FO50,140^A0N,25,25^FDPRODUCTO : {product.display_name[:70]}^FS
-^FO50,180^A0N,25,25^FDORIGEN : {self.name}^FS
+^FO50,180^A0N,20,20^FDORIGEN : {self.name} / {pesador or ''}^FS
 ^FO0,250^FB812,1,0,C^A0N,100,90^FD{weight:.4f} kg^FS
 ^BY2,3,110^FO100,380^BCN,110,N,N,N^FD{lot_name}^FS
 ^FO0,520^FB812,1,0,C^A0N,30,30^FDLOTE : {lot_name}^FS

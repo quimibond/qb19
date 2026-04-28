@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Pesaje de Rollos y Subproductos Tejido',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.4.0',
     'category': 'Manufacturing',
     'summary': 'Control de pesaje de rollos, subproductos, lotes automáticos y etiquetas ZPL',
     'description': """
@@ -22,6 +22,7 @@
     'data': [
         'security/ir.model.access.csv',
         'views/mrp_tara_view.xml',              # Modelo de Taras
+        'views/mrp_rollo_estandar_view.xml',
         'views/mrp_weigh_wizard_view.xml',      # Vistas de los asistentes
         'views/mrp_subproduct_wizard_view.xml',  # Vista del nuevo asistente de subproductos
         'views/mrp_production_view.xml',        # Pestaña ZPL en la MO

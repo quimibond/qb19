@@ -19,44 +19,56 @@
 
                 <sheet>
                     <group>
-                        <group string="DATOS DE LA ORDEN">
-                            <field name="production_id" readonly="1" options="{'no_open': True}"/>
-                            <field name="workcenter_id" readonly="1"/>
-                            <field name="product_id" readonly="1"/>
-                        </group>
-                        
-                        <group string="LECTURA Y PESAJE">
-                            <field name="barcode_scan" 
-                                   placeholder="Escanee el rollo..." 
-                                   invisible="lot_id != False"/>
-                            
-                            <field name="lot_id" 
-                                   readonly="1" 
-                                   force_save="1" 
-                                   invisible="not lot_id"
-                                   options="{'no_open': True}"/>
-                            
-                            <field name="peso_original" 
-                                   readonly="1" 
-                                   force_save="1" 
-                                   invisible="not lot_id"/>
-                            
-                            <label for="peso_actual" string="Nuevo Peso (Kg)" invisible="not lot_id"/>
-                            <div class="o_row" invisible="not lot_id">
-                                <field name="peso_actual" 
-                                       style="font-size: 32px; color: #2C3E50; font-weight: bold; width: 150px;" 
-                                       placeholder="0.0000"
-                                       required="lot_id != False"/>
-                                <span class="fw-bold">KG</span>
-                            </div>
-
-                            <field name="causa_id" 
-                                   options="{'no_create': True, 'no_open': True}"
-                                   invisible="not lot_id"
-                                   required="peso_original != peso_actual"
-                                   placeholder="Seleccione causa..."/>
-                        </group>
+                        <field name="employee_number" 
+                               password="True" 
+                               default_focus="1" 
+                               readonly="employee_number != False" 
+                               force_save="1"/>
+                        <field name="employee_name" readonly="1" invisible="not employee_number"/>
                     </group>
+                    <div invisible="not employee_number">
+                        <group>
+                            <group string="DATOS DE LA ORDEN">
+                                <field name="production_id" readonly="1" options="{'no_open': True}"/>
+                                <field name="workcenter_id" readonly="1"/>
+                                <field name="product_id" readonly="1"/>
+                            </group>
+                        
+                            <group string="LECTURA Y PESAJE">
+                                <field name="barcode_scan" 
+                                       placeholder="Escanee el rollo..." 
+                                       invisible="lot_id != False"
+                                       default_focus="1" />
+                                       
+                            
+                                <field name="lot_id" 
+                                        readonly="1" 
+                                        force_save="1" 
+                                        invisible="not lot_id"
+                                        options="{'no_open': True}"/>
+                            
+                                <field name="peso_original" 
+                                       readonly="1" 
+                                       force_save="1" 
+                                       invisible="not lot_id"/>
+                            
+                                <label for="peso_actual" string="Nuevo Peso (Kg)" invisible="not lot_id"/>
+                                <div class="o_row" invisible="not lot_id">
+                                    <field name="peso_actual" 
+                                            style="font-size: 32px; color: #2C3E50; font-weight: bold; width: 150px;" 
+                                            placeholder="0.0000"
+                                            required="lot_id != False"/>
+                                    <span class="fw-bold">KG</span>
+                                </div>
+
+                                <field name="causa_id" 
+                                        options="{'no_create': True, 'no_open': True}"
+                                        invisible="not lot_id"
+                                        required="peso_original != peso_actual"
+                                        placeholder="Seleccione causa..."/>
+                            </group>
+                        </group>
+                    </div>    
                 </sheet>
 
                 <footer>

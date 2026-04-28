@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="mrp_production_view_form_inherit_zpl" model="ir.ui.view">
-        <field name="name">mrp.production.view.form.inherit.zpl</field>
-        <field name="model">mrp.production</field>
-        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//notebook" position="inside">
-                <page string="Última Etiqueta Rollo" name="zpl_label">
-                    <group>
-                        <field name="last_zpl_label" widget="ace" options="{'mode': 'text'}" nolabel="1"/>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
-</odoo>
+    <!--
+        <record id="mrp_production_view_form_inherit_zpl" model="ir.ui.view">
+            <field name="name">mrp.production.view.form.inherit.zpl</field>
+            <field name="model">mrp.production</field>
+            <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Última Etiqueta ZPL" name="zpl_label_debug"
+                            invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'">
+                            <group>
+                                <field  name="last_zpl_label" 
+                                        widget="ace" 
+                                        options="{'language': 'xml'}" 
+                                        readonly="1" 
+                                        nolabel="1"/>
+                            </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    -->
+</odoo> 
