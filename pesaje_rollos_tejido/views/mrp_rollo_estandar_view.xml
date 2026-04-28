@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_rollo_estandar_tree" model="ir.ui.view">
+        <field name="name">mrp.rollo.estandar.list</field>
+        <field name="model">mrp.rollo.estandar</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="product_id"/>
+                <field name="rollo_teorico"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_mrp_rollo_estandar" model="ir.actions.act_window">
+        <field name="name">Tamaño Rollo Estándar</field>
+        <field name="res_model">mrp.rollo.estandar</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <menuitem id="menu_mrp_rollo_estandar" 
+              name="Tamaño Rollo Estándar" 
+              parent="mrp.menu_mrp_configuration" 
+              action="action_mrp_rollo_estandar" 
+              sequence="110"/>
+</odoo>

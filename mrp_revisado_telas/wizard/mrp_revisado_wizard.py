@@ -1,10 +1,47 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 class MrpRevisadoWizard(models.TransientModel):
     _name = 'mrp.revisado.wizard'
     _description = 'Wizard de Revisado de Calidad'
+
+    # 1. Nuevos campos para identificación
+    employee_number = fields.Char(string="Número de Empleado", required=True)
+    employee_name = fields.Char(string="Nombre del Revisor", compute="_compute_employee_name", store=True)
+
+    @api.depends('employee_number')
+    def _compute_employee_name(self):
+        for reg in self:
+            if reg.employee_number:
+                # Validamos que el puesto comience con OPERADOR INSPEC TEJ
+                emp = self.env['hr.employee'].search([
+                    ('x_studio_nmero_de_trabajador', '=', reg.employee_number),
+                    ('job_title', 'ilike', 'OPERADOR INSPEC TEJ')
+                ], limit=1)
+                reg.employee_name = emp.name if emp else "NO AUTORIZADO / NO EXISTE"
+            else:
+                reg.employee_name = False
+
+    @api.onchange('employee_number')
+    def _onchange_employee_number(self):
+        if self.employee_number:
+            emp = self.env['hr.employee'].search([
+                ('x_studio_nmero_de_trabajador', '=', self.employee_number),
+                ('job_title', 'ilike', 'OPERADOR INSPEC TEJ')
+            ], limit=1)
+            
+            if not emp:
+                val_erroneo = self.employee_number
+                self.employee_number = False # Limpia para ocultar la vista
+                self.employee_name = False
+                
+                check_exists = self.env['hr.employee'].search([('x_studio_nmero_de_trabajador', '=', val_erroneo)], limit=1)
+                if check_exists:
+                    puesto = check_exists.job_title or "SIN PUESTO"
+                    raise ValidationError(_("El trabajador %s tiene el puesto '%s'. Solo los de INSPECCIÓN pueden revisar.") % (check_exists.name, puesto))
+                else:
+                    raise ValidationError(_("Acceso Denegado: El número de empleado '%s' no existe.") % val_erroneo)
 
     # Campos de contexto y datos de la MO
     production_id = fields.Many2one('mrp.production', string='Orden de Fabricación', readonly=True)
@@ -127,6 +164,7 @@ class MrpRevisadoWizard(models.TransientModel):
             'peso_original': self.peso_original,
             'peso_final': self.peso_actual,
             'causa_id': self.causa_id.id if hubo_desviacion_actual else False,
+            'inspector': self.employee_name,
         })
 
         # 2. Buscar el movimiento de inventario para corregir cantidades (Se mantiene igual)
@@ -176,7 +214,7 @@ class MrpRevisadoWizard(models.TransientModel):
 
         # Punto 2: Impresión de etiqueta (Se mantiene igual)
         if hubo_desviacion_actual:
-            self.production_id._print_zpl_label(self.lot_id.name, self.peso_actual, self.lot_id.name)
+            self.production_id._print_zpl_label(self.lot_id.name, self.peso_actual, self.lot_id.name,pesador=self.employee_name )
             
             report_action = self.env.ref('mrp_revisado_telas.action_report_revisado_label').report_action(self.production_id)
             report_action.update({'close_on_report_download': True})

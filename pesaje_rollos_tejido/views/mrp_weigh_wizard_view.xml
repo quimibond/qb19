@@ -6,55 +6,95 @@
         <field name="arch" type="xml">
             <form string="Registro de Pesaje">
                 <sheet>
-                    <div class="row">
-                        <div class="col-6">
-                            <strong>Orden de Trabajo: </strong> <field name="workorder_id" readonly="1"/><br/>
-                            <strong>Centro de Trabajo: </strong> <field name="workcenter_id" readonly="1"/>
-                        </div>
-                        <div class="col-6 text-end">
-                            <strong>Artículo: </strong> <field name="product_id" readonly="1"/>
-                        </div>
-                    </div>
-                    <hr/>
-                    <div class="row">
-                        <div class="col-6 border-end">
-                            <group string="PROGRESO DE PRODUCCIÓN">
-                                <field name="qty_to_produce" readonly="1"/>
-                                <field name="qty_produced" readonly="1" decoration-success="1" style="font-weight: bold;"/>
-                                <field name="production_percentage" widget="percentage"/>
-                            </group>
-                        </div>
-                        <div class="col-6">
-                            <group string="IDENTIFICACIÓN DEL ROLLO">
-                                <field name="roll_count" readonly="1" string="Rollos Previos" style="font-weight: bold; color: #008784;"/>
-                                <field name="next_lot_name" readonly="1" style="font-weight: bold; color: #714B67; font-size: 1.1em;"/>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <group>
+                                <field name="employee_number" 
+                                       password="True" 
+                                       default_focus="1" 
+                                       readonly="employee_number != False" 
+                                       force_save="1"/>
+                                <field name="employee_name" readonly="1" force_save="1" invisible="not employee_number"/>
                             </group>
                         </div>
                     </div>
 
-                    <div class="text-center mt-4 mb-4 p-4 border rounded bg-light">
+                    <div invisible="not employee_number">
                         <div class="row">
-                            <div class="col-4">
-                                <label for="weight" string="PESO BRUTO" style="font-size: 1.2em; font-weight: bold; color: #666;"/><br/>
-                                <field name="weight" style="font-size: 3em; font-weight: bold; width: 90%; text-align: center;" class="oe_inline"/>
+                            <div class="col-6">
+                                <strong>Orden de Trabajo: </strong> <field name="workorder_id" readonly="1"/><br/>
+                                <strong>Centro de Trabajo: </strong> <field name="workcenter_id" readonly="1"/>
                             </div>
-                            <div class="col-4">
-                                <label for="tara" string="TARA" style="font-size: 1.2em; font-weight: bold; color: #a24646;"/><br/>
-                                <field name="tara" readonly="1" style="font-size: 3em; font-weight: bold; width: 90%; text-align: center; color: #a24646;" class="oe_inline"/>
-                            </div>
-                            <div class="col-4">
-                                <label for="net_weight" string="PESO NETO" style="font-size: 1.2em; font-weight: bold; color: #008784;"/><br/>
-                                <field name="net_weight" readonly="1" style="font-size: 4em; font-weight: bold; width: 90%; text-align: center; color: #008784;" class="oe_inline"/>
+                            <div class="col-6 text-end">
+                                 <strong>Artículo: </strong> <field name="product_id" readonly="1"/>
                             </div>
                         </div>
-                        <div class="mt-2">
-                            <span style="font-size: 2em; font-weight: bold;">KG</span>
+                        
+                        <hr/>
+                        
+                        <div class="row">
+                            <div class="col-6 border-end">
+                                <group string="PROGRESO DE PRODUCCIÓN">
+                                    <field name="qty_to_produce" readonly="1"/>
+                                    <field name="qty_produced" readonly="1" decoration-success="1" style="font-weight: bold;"/>
+                                    <field name="production_percentage" widget="percentage"/>
+                                </group>
+                            </div>
+                            <div class="col-6">
+                                <group string="IDENTIFICACIÓN DEL ROLLO">
+                                    <field name="roll_count" readonly="1" string="Rollos Previos" style="font-weight: bold; color: #008784;"/>
+                                    <field name="next_lot_name" readonly="1" style="font-weight: bold; color: #714B67; font-size: 1.1em;"/>
+                                </group>
+                            </div>
                         </div>
-                    </div>
+
+                        <div class="text-center mt-4 mb-4 p-4 border rounded bg-light">
+                            <div class="row">
+                                <div class="col-4">
+                                    <label for="weight" string="PESO BRUTO" style="font-size: 1.2em; font-weight: bold; color: #666;"/><br/>
+                                    <field name="weight" 
+                                           default_focus="1"
+                                           style="font-size: 3em; font-weight: bold; width: 90%; text-align: center;" 
+                                           class="oe_inline"/>
+                                </div>
+                                <div class="col-4">
+                                    <label for="tara" string="TARA" style="font-size: 1.2em; font-weight: bold; color: #a24646;"/><br/>
+                                    <field name="tara" readonly="1" style="font-size: 3em; font-weight: bold; width: 90%; text-align: center; color: #a24646;" class="oe_inline"/>
+                                </div>
+                                <div class="col-4">
+                                    <label for="net_weight" string="PESO NETO" style="font-size: 1.2em; font-weight: bold; color: #008784;"/><br/>
+                                    <field name="net_weight" readonly="1" style="font-size: 4em; font-weight: bold; width: 90%; text-align: center; color: #008784;" class="oe_inline"/>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <span style="font-size: 2em; font-weight: bold;">KG</span>
+                            </div>
+                        </div>
+                        <div class="alert alert-danger text-center mt-3" role="alert" invisible="not confirm_threshold">
+                            <h4 class="alert-heading">⚠️ PESO FUERA DE RANGO</h4>
+                            <p>El peso neto registrado varía más de 3kg respecto al estándar configurado.</p>
+                            <hr/>
+                            <p class="mb-0">¿Desea forzar el registro con este peso?</p>
+                        </div>
+                    </div> 
                 </sheet>
                 <footer>
-                    <button name="confirm_weighing" string="REGISTRAR E IMPRIMIR ETIQUETA" type="object" class="btn-primary btn-lg"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button name="confirm_weighing" 
+                            string="REGISTRAR E IMPRIMIR" 
+                            type="object" 
+                            class="btn-primary btn-lg" 
+                            invisible="not employee_number or confirm_threshold"/>
+                    <button name="confirm_weighing" 
+                            string="SÍ, REGISTRAR CON ESTE PESO" 
+                            type="object" 
+                            class="btn-danger btn-lg" 
+                            invisible="not confirm_threshold"/>
+                    <button name="action_reset_threshold" 
+                            string="REINTENTAR / CORREGIR PESO" 
+                            type="object" 
+                            class="btn-warning btn-lg" 
+                            invisible="not confirm_threshold"/>
+                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
                 </footer>
             </form>
         </field>

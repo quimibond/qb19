@@ -66,7 +66,7 @@ class MrpProduction(models.Model):
                 else:
                     reg.rollos_requeridos_count = 0
 
-    def _print_zpl_label(self, lote_name, peso, nombre_producto):
+    def _print_zpl_label(self, lote_name, peso, nombre_producto, pesador=False):
         """ Etiqueta de Revisado Corregida (10x7.5cm) """
         self.ensure_one()
         # --- CAMBIO AQUÍ: Convertir UTC a Hora Local del Usuario ---
@@ -84,7 +84,7 @@ class MrpProduction(models.Model):
         # ^BY2 = Grosor fino | ^FO100 = Inicio a la izquierda
         zpl = f"""^XA^PW812^LL609^CI28
 ^FO50,40^A0N,25,25^FDFECHA REVISADO : {ahora}^FS
-^FO50,80^A0N,25,25^FDCENTRO DE TRABAJO : {wc_name}^FS
+^FO50,80^A0N,25,25^FDC.T. : {wc_name} / {pesador or ''}^FS
 ^FO50,120^A0N,25,25^FDORDEN DE FABRICACION : {self.name}^FS
 ^FO50,160^A0N,20,20^FDPRODUCTO : {producto_desc[:70]}^FS
 ^FO0,230^FB812,1,0,C^A0N,100,90^FD{peso:.4f} kg^FS
@@ -127,8 +127,8 @@ class MrpRevisionLog(models.Model):
 
     production_id = fields.Many2one('mrp.production', string="Orden de Fabricación", ondelete='cascade', index=True)
     lot_id = fields.Many2one('stock.lot', string="Rollo", required=True)
-    user_id = fields.Many2one('res.users', string="Revisor", default=lambda self: self.env.user)
-    
+    user_id = fields.Many2one('res.users', string="Usuario", default=lambda self: self.env.user)
+    inspector = fields.Char(string="Inspector")
     peso_original = fields.Float(string="Peso Inicial", readonly=True)
     peso_final = fields.Float(string="Peso Revisado")
     diferencia = fields.Float(compute="_compute_diff", string="Diferencia", store=True)

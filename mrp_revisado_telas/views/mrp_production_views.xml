@@ -38,6 +38,7 @@
                                 <field name="create_date" string="Fecha"/>
                                 <field name="lot_id"/>
                                 <field name="user_id" widget="many2one_avatar_user"/>
+                                <field name="inspector"/>
                                 <field name="peso_original"/>
                                 <field name="peso_final"/>
                                 <field name="diferencia" string="Dif." sum="Total Diferencia"/>
@@ -49,7 +50,11 @@
                     <page string="Última Etiqueta ZPL" name="zpl_label_debug"
                             invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'">
                         <group>
-                            <field name="last_zpl_label" widget="ace" options="{'mode': 'text'}" nolabel="1"/>
+                            <field  name="last_zpl_label" 
+                                    widget="ace" 
+                                    options="{'language': 'xml'}" 
+                                    readonly="1" 
+                                    nolabel="1"/>
                         </group>
                     </page>
                 </xpath>
