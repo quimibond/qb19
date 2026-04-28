@@ -114,6 +114,14 @@ class QuimibondSyncPull(models.TransientModel):
         if command == 'force_push':
             self.env['quimibond.sync'].push_to_supabase()
             return 'Push completed'
+        elif command == 'force_push_full':
+            # Full re-sync: ignora last_sync, repushea TODAS las tablas. Útil
+            # para recuperar staleness cuando el cron nightly de las 3am no
+            # corrió (account_payments con 0 rows hour-tras-hora porque
+            # write_date no se tocó pero hay cambios en payment_state, FX,
+            # amount_residual). Idempotente; tarda ~3-4 minutos.
+            self.env['quimibond.sync'].push_to_supabase_full()
+            return 'Full push completed'
         elif command == 'sync_contacts':
             client = _get_client(self.env)
             if client:
