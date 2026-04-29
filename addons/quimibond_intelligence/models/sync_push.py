@@ -655,8 +655,16 @@ class QuimibondSync(models.TransientModel):
         if client is None:
             return
         core = IngestionCore(client)
+        # SP14 audit (2026-04-29): on_conflict must match an existing UNIQUE
+        # index. odoo_invoices has UNIQUE on odoo_invoice_id only; the legacy
+        # (partner_id,name) compound was dropped 2026-04-20 because it
+        # collided across multi-company. Retry kept the obsolete tuple, so
+        # every retry batch hit 42P10 ("no unique constraint matching ON
+        # CONFLICT"). 20,610 rows piled up in ingestion.sync_failure with
+        # retry_count up to 98. Aligning retry's on_conflict to the same
+        # column the main push uses (sync_push.py:1560) drains them.
         tables = [
-            ('odoo', 'odoo_invoices', 'odoo_partner_id,name'),
+            ('odoo', 'odoo_invoices', 'odoo_invoice_id'),
         ]
         max_retries = 5
         for source, table, conflict in tables:
