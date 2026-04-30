@@ -15,6 +15,7 @@ class QuimibondSyncOrders(models.TransientModel):
 
     def _push_order_lines(self, client: SupabaseClient, last_sync=None) -> int:
         rows = []
+        cids = self._get_company_ids()
 
         # Sale order lines
         try:
@@ -22,6 +23,7 @@ class QuimibondSyncOrders(models.TransientModel):
             so_domain = [
                 ('order_id.state', 'in', ['sale', 'done']),
                 ('display_type', '=', False),
+                ('company_id', 'in', cids),
             ]
             if last_sync:
                 so_domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
@@ -77,6 +79,7 @@ class QuimibondSyncOrders(models.TransientModel):
             po_domain = [
                 ('order_id.state', 'in', ['purchase', 'done']),
                 ('display_type', '=', False),
+                ('company_id', 'in', cids),
             ]
             if last_sync:
                 po_domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
@@ -136,7 +139,9 @@ class QuimibondSyncOrders(models.TransientModel):
         cutoff = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         # Include BOTH outgoing (to customers) and incoming (from suppliers)
         # for full OTD tracking on both sides of the supply chain.
+        cids = self._get_company_ids()
         domain = [
+            ('company_id', 'in', cids),
             ('picking_type_code', 'in', ['outgoing', 'incoming']),
             '|',
             ('state', 'not in', ['done', 'cancel']),
@@ -218,7 +223,16 @@ class QuimibondSyncOrders(models.TransientModel):
 
     def _push_activities(self, client: SupabaseClient) -> int:
         Activity = self.env['mail.activity'].sudo()
-        activities = Activity.search([])
+        # mail.activity no tiene company_id propio: scopeamos vía la company
+        # del usuario asignado para no traer tareas de personal de las
+        # entidades personales Mizrahi (companies 2,3,4,...). Activities sin
+        # user_id no se pueden atribuir y se incluyen (raras).
+        cids = self._get_company_ids()
+        activities = Activity.search([
+            '|',
+            ('user_id.company_id', 'in', cids),
+            ('user_id', '=', False),
+        ])
         today = datetime.now().date()
 
         rows = []

@@ -754,7 +754,9 @@ class QuimibondSyncBackfill(models.TransientModel):
             cursor = 0
 
         Picking = self.env['stock.picking'].sudo()
+        cid = self._get_company_id()
         base_domain = [
+            ('company_id', '=', cid),
             ('picking_type_code', 'in', ['outgoing', 'incoming']),
         ]
 

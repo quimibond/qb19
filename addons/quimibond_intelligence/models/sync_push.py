@@ -250,32 +250,25 @@ class QuimibondSync(models.TransientModel):
     _name = 'quimibond.sync'
     _description = 'Quimibond Sync Engine'
 
-    # Main operating company. All accounting, bank balances, manufacturing,
-    # and orderpoints are filtered to this company to avoid mixing data from
-    # personal/test companies in the same Odoo instance.
-    # Set via config param quimibond_intelligence.company_id (default: 1).
+    # Quimibond es company_id=1 en este Odoo. El resto (2,3,4,...) son
+    # entidades personales de la familia Mizrahi que comparten el tenant
+    # (papá Jose Daniel, abuelo Jacobo Penhos, etc.). Permitir
+    # configurarlas vía ir.config_parameter abrió la puerta a contaminación
+    # nivel 3 en Supabase: facturas/pagos/deliveries de las companies 2/3/4
+    # entraban a odoo_invoices/odoo_account_payments/odoo_deliveries y
+    # generaban "Quimibond le debe a Quimibond $24M" en /cobranza, contactos
+    # ajenos como clientes, etc. (cleanup retroactivo PR #68 — 2026-04-30).
+    # Hardcoded a [1]: ignoramos los config params para que no haya forma de
+    # re-activar el modo multi-company sin un cambio de código revisado.
+    QUIMIBOND_COMPANY_ID = 1
+
     def _get_company_id(self):
         """Return the operating company ID for filtering multi-company data."""
-        ICP = self.env['ir.config_parameter'].sudo()
-        cid = ICP.get_param('quimibond_intelligence.company_id', '1')
-        return int(cid)
+        return self.QUIMIBOND_COMPANY_ID
 
-    # Multi-company: if quimibond_intelligence.company_ids is set (comma-
-    # separated list), usa esa lista. Si no, cae al single-company legacy
-    # [_get_company_id()] para backward-compat. Esto permite opt-in a
-    # multi-company sin romper el setup existente. Ejemplo:
-    #   env['ir.config_parameter'].sudo().set_param(
-    #     'quimibond_intelligence.company_ids', '1,2,3,4,16')
     def _get_company_ids(self):
         """Return the list of company IDs to include in the push."""
-        ICP = self.env['ir.config_parameter'].sudo()
-        raw = (ICP.get_param('quimibond_intelligence.company_ids') or '').strip()
-        if raw:
-            try:
-                return [int(x.strip()) for x in raw.split(',') if x.strip()]
-            except (ValueError, TypeError):
-                pass
-        return [self._get_company_id()]
+        return [self.QUIMIBOND_COMPANY_ID]
 
     # Tablas que SIEMPRE hacen full push (no incremental), incluso cuando
     # last_sync esta seteado. Son catalogos pequenos donde el riesgo de
