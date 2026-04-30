@@ -278,11 +278,21 @@ class SyncAudit(models.TransientModel):
     # ---------------------------------------------------------------
     def audit_products(self, client, run_id, date_from, date_to,
                        tolerances, dry_run):
-        """Invariantes 1-4: snapshot de productos."""
+        """Invariantes 1-4: snapshot de productos.
+
+        Scope a Quimibond + shared (company_id=False) para alinear con el
+        push de _push_products. Sin esto el conteo Odoo incluye productos
+        exclusivos de las entidades personales y dispara false-positive
+        mismatches contra odoo_products.
+        """
         Product = self.env['product.product']
+        cids = self._get_company_ids()
+        company_scope = ['|', ('company_id', 'in', cids), ('company_id', '=', False)]
 
         # 1. count_active
-        odoo_count = Product.search_count([('active', '=', True)])
+        odoo_count = Product.search_count(
+            company_scope + [('active', '=', True)]
+        )
         supa_count = client.count_exact('odoo_products',
                                         {'active': 'eq.true'})
         self._record_cross(client, run_id, 'products', 'products.count_active',
@@ -290,9 +300,11 @@ class SyncAudit(models.TransientModel):
                           tolerances, date_from, date_to, dry_run=dry_run)
 
         # 2. count_with_default_code
-        odoo_with_code = Product.search_count([
-            ('active', '=', True), ('default_code', '!=', False),
-        ])
+        odoo_with_code = Product.search_count(
+            company_scope + [
+                ('active', '=', True), ('default_code', '!=', False),
+            ]
+        )
         supa_with_code = client.count_exact('odoo_products', {
             'active': 'eq.true',
             'internal_ref': 'not.is.null',
@@ -305,7 +317,9 @@ class SyncAudit(models.TransientModel):
         # 3. sum_standard_price
         # Odoo 17+: standard_price is a company-dependent field stored as
         # jsonb on product.template, so raw SQL SUM fails. Use ORM instead.
-        active_products = Product.search([('active', '=', True)])
+        active_products = Product.search(
+            company_scope + [('active', '=', True)]
+        )
         odoo_sum = float(sum(active_products.mapped('standard_price') or [0]))
         supa_rows = client.fetch_all('odoo_products', {
             'active': 'eq.true', 'select': 'standard_price',
@@ -317,9 +331,11 @@ class SyncAudit(models.TransientModel):
                           tolerances, date_from, date_to, dry_run=dry_run)
 
         # 4. null_uom_count
-        odoo_null_uom = Product.search_count([
-            ('active', '=', True), ('uom_id', '=', False),
-        ])
+        odoo_null_uom = Product.search_count(
+            company_scope + [
+                ('active', '=', True), ('uom_id', '=', False),
+            ]
+        )
         supa_null_uom = client.count_exact('odoo_products', {
             'active': 'eq.true', 'uom_id': 'is.null',
         })

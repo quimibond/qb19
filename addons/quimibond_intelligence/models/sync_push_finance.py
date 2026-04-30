@@ -840,29 +840,29 @@ class QuimibondSyncFinance(models.TransientModel):
 
         try:
             # Odoo 17+: account.account.code es computed per-company via
-            # code_store_ids. Para Quimibond MX con multi-company (12+ orgs
-            # con catálogos SAT propios), iteramos por compañía y resolvemos
-            # el code en el contexto de cada una. Antes se usaba solo
-            # self._get_company_id() (company 1), dejando 1,044 cuentas de
-            # las otras 11 companies con code='' (audit expuso 2026-04-20).
+            # code_store_ids. Iteramos solo Quimibond (company 1) para que
+            # el code se resuelva en su contexto fiscal. El resto de las
+            # companies del tenant son entidades personales Mizrahi y sus
+            # catálogos SAT no deben mezclarse con el de Quimibond.
             Account = Account.with_context(active_test=False)
             Company = self.env['res.company'].sudo()
-            companies = Company.search([])
+            cids = self._get_company_ids()
+            companies = Company.browse(cids)
 
             rows = []
             seen_acc_ids = set()
             for company in companies:
                 company_cid = company.id
-                # Try the direct company_id filter first; if empty (Odoo 17+
-                # shared chart mode) or if it raises, fall back to all.
+                # Odoo 17+: account.account usa company_ids (M2M); el
+                # company_id legacy puede no existir. Probamos M2O directo y
+                # caemos a la M2M, scopeada a Quimibond para no traer cuentas
+                # exclusivas de las otras companies del tenant.
                 try:
                     accounts = Account.search([('company_id', '=', company_cid)])
                     if not accounts:
-                        # Shared chart: todas las cuentas accesibles por esta
-                        # company via company_ids many2many (o all).
-                        accounts = Account.search([])
+                        accounts = Account.search([('company_ids', 'in', [company_cid])])
                 except Exception:
-                    accounts = Account.search([])
+                    accounts = Account.search([('company_ids', 'in', [company_cid])])
 
                 accounts_ctx = accounts.with_company(company_cid)
                 for acc in accounts_ctx:
@@ -938,24 +938,23 @@ class QuimibondSyncFinance(models.TransientModel):
             _logger.warning('formatted_read_group account balances failed: %s', exc)
             return 0
 
-        # Build account cache for names/codes. Mismo patrón multi-company
-        # que _push_chart_of_accounts: iteramos res.company para que el
-        # compute de `code` (Odoo 17+ code_store_ids) se resuelva
-        # correctamente. Antes un solo with_company(cid) dejaba el cache
-        # vacío (si company_id filter raised) o con codes incompletos,
-        # causando account_code='' en 100% de odoo_account_balances.
+        # Build account cache for names/codes. Mismo patrón que
+        # _push_chart_of_accounts: iteramos solo Quimibond (company 1) para
+        # que el compute de `code` (Odoo 17+ code_store_ids) se resuelva
+        # en su contexto fiscal. Las balances ya vienen scopeadas por el
+        # filtro company_id IN cids del read_group anterior.
         account_cache = {}
         try:
             Account = self.env['account.account'].sudo()
             Company = self.env['res.company'].sudo()
-            for company in Company.search([]):
+            for company in Company.browse(cids):
                 company_cid = company.id
                 try:
                     accounts = Account.search([('company_id', '=', company_cid)])
                     if not accounts:
-                        accounts = Account.search([])
+                        accounts = Account.search([('company_ids', 'in', [company_cid])])
                 except Exception:
-                    accounts = Account.search([])
+                    accounts = Account.search([('company_ids', 'in', [company_cid])])
                 for acc in accounts.with_company(company_cid):
                     code = acc.code or ''
                     if not code and hasattr(acc, 'code_store_ids'):

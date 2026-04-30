@@ -22,7 +22,12 @@ class QuimibondSyncInventory(models.TransientModel):
         # 2026-04-20). Con active_test=False + sin filtro active, cada
         # upsert refresca el flag real.
         ProductAll = Product.with_context(active_test=False)
-        domain = []
+        # product.product es per-company (campo company_id). Los catálogos
+        # compartidos tienen company_id=False y aplican a todas. Filtramos a
+        # Quimibond + shared para no traer productos exclusivos de las
+        # entidades personales (companies 2,3,4,...).
+        cids = self._get_company_ids()
+        domain = ['|', ('company_id', 'in', cids), ('company_id', '=', False)]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         products = ProductAll.search(domain)

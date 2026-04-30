@@ -21,12 +21,19 @@ class QuimibondSyncPartners(models.TransientModel):
     def _push_contacts(self, client: SupabaseClient, last_sync=None) -> int:
         """Push res.partner → contacts + companies tables."""
         Partner = self.env['res.partner'].sudo()
+        cids = self._get_company_ids()
 
-        # Base: partners with email that are customers or suppliers
+        # Base: partners with email that are customers or suppliers, scoped a
+        # Quimibond. res.partner es shared entre companies (a diferencia de
+        # account.move): los partners "globales" tienen company_id=False y
+        # aplican a todas las companies del tenant. Sin este filtro entraban
+        # contactos exclusivos de las entidades personales Mizrahi (Alejandra
+        # Altos Ortiz et al — clientes de Jacobo Penhos, no de Quimibond).
         domain = [
             ('email', '!=', False),
             ('email', '!=', ''),
             '|', ('customer_rank', '>', 0), ('supplier_rank', '>', 0),
+            '|', ('company_id', 'in', cids), ('company_id', '=', False),
         ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
@@ -359,7 +366,15 @@ class QuimibondSyncPartners(models.TransientModel):
 
     def _push_users(self, client: SupabaseClient, last_sync=None) -> int:
         User = self.env['res.users'].sudo()
-        domain = [('active', '=', True), ('share', '=', False)]
+        # res.users es multi-company vía company_ids (M2M); company_id es la
+        # default de cada user. Filtramos por la M2M para captar usuarios que
+        # pertenezcan a Quimibond aunque su default sea otra company.
+        cids = self._get_company_ids()
+        domain = [
+            ('active', '=', True),
+            ('share', '=', False),
+            ('company_ids', 'in', cids),
+        ]
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
         users = User.search(domain, limit=200)
