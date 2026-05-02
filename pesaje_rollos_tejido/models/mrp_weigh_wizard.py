@@ -163,6 +163,17 @@ class MrpWeighRollWizard(models.TransientModel):
                     'target': 'new',
                     'context': self.env.context,
                 }
+        solo_numero_mo = self.production_id.name.split('/')[-1]
+        numero_rollo_final = f"{solo_numero_mo}-{(self.production_id.roll_count + 1):04d}"
+        self.env['mrp.weighing.log'].create({
+            'production_id': self.production_id.id,
+            'roll_number': numero_rollo_final,
+            'pesador': self.employee_name,
+            'weight_bruto': self.weight,
+            'tara': self.tara,
+            'weight_neto': self.net_weight,
+            'workcenter_id': self.workorder_id.workcenter_id.id,
+        })
 
         # 1. Registra el PESO NETO en la MO (se cambió self.weight por self.net_weight)
         self.production_id.action_register_roll_with_weight(self.net_weight,pesador=self.employee_name )

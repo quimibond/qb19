@@ -156,6 +156,7 @@ class StockPicking(models.Model):
                     existing_line[0].quantity = existing_line[0].move_id.product_uom_qty or 1.0
                     return {'type': 'ir.actions.client', 'tag': 'reload'}
                 already_processed = True
+                
             else:
                 # Si no está precargado, buscamos existencias reales en la ubicación
                 quant = self.env['stock.quant'].search([
