@@ -17,7 +17,7 @@ class MrpRevisadoWizard(models.TransientModel):
                 # Validamos que el puesto comience con OPERADOR INSPEC TEJ
                 emp = self.env['hr.employee'].search([
                     ('x_studio_nmero_de_trabajador', '=', reg.employee_number),
-                    ('job_title', 'ilike', 'OPERADOR INSPEC TEJ')
+                    ('job_title', 'ilike', 'OPERADOR DE INSPECCION TEJIDO')
                 ], limit=1)
                 reg.employee_name = emp.name if emp else "NO AUTORIZADO / NO EXISTE"
             else:
@@ -28,7 +28,7 @@ class MrpRevisadoWizard(models.TransientModel):
         if self.employee_number:
             emp = self.env['hr.employee'].search([
                 ('x_studio_nmero_de_trabajador', '=', self.employee_number),
-                ('job_title', 'ilike', 'OPERADOR INSPEC TEJ')
+                ('job_title', 'ilike', 'OPERADOR DE INSPECCION TEJIDO')
             ], limit=1)
             
             if not emp:

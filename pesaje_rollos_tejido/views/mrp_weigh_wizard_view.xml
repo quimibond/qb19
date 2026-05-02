@@ -71,10 +71,10 @@
                             </div>
                         </div>
                         <div class="alert alert-danger text-center mt-3" role="status" invisible="not confirm_threshold">
-                            <h4 class="alert-heading">⚠️ PESO FUERA DE RANGO</h4>
-                            <p>El peso neto registrado varía más de 3kg respecto al estándar configurado.</p>
-                            <hr/>
-                            <p class="mb-0">¿Desea forzar el registro con este peso?</p>    
+                            <span style="font-size: 18px; font-weight: bold;">⚠️ PESO FUERA DE RANGO</span>
+                            <br/>
+                            <span>El peso neto registrado varía más de 3kg respecto al estándar configurado.</span>
+                            <div style="border-top: 1px solid #f5c6cb; margin: 10px 0;"/> <span class="mb-0">¿Desea forzar el registro con este peso?</span>
                         </div>
                     </div> 
                 </sheet>

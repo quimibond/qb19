@@ -7,6 +7,9 @@ from odoo.tools import float_round, float_compare
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
+    # Relación con los nuevos logs
+    weighing_log_ids = fields.One2many('mrp.weighing.log', 'production_id', string="Log de Pesaje de Rollos")
+
     product_id_category_name = fields.Char(
         related='product_id.categ_id.display_name', 
         string="Categoría del Producto", 
@@ -347,6 +350,24 @@ class MrpProduction(models.Model):
         # Ejecutamos el cierre estándar de Odoo. Como 'product_qty' ahora es igual
         # a lo producido, cerrará sin generar rollos fantasma.
         return super(MrpProduction, self).button_mark_done()
+
+class MrpWeighingLog(models.Model):
+    _name = 'mrp.weighing.log'
+    _description = 'Log de Pesaje de Rollos'
+    _order = 'roll_number desc'
+
+    production_id = fields.Many2one('mrp.production', string="Orden de Fabricación", ondelete='cascade')
+    date_time = fields.Datetime(string="Fecha y Hora", default=fields.Datetime.now)
+    roll_number = fields.Char(string="Número de Rollo")
+    lot_id = fields.Many2one('stock.lot', string="Lote/Rollo")
+    user_id = fields.Many2one('res.users', string="Usuario Sistema", default=lambda self: self.env.user)
+    pesador = fields.Char(string="Pesador (Empleado)")
+    
+    weight_bruto = fields.Float(string="Peso Bruto (kg)", digits=(12, 3))
+    tara = fields.Float(string="Tara (kg)", digits=(12, 3))
+    weight_neto = fields.Float(string="Peso Neto (kg)", digits=(12, 3))
+    
+    workcenter_id = fields.Many2one('mrp.workcenter', string="Centro de Trabajo")
 
 class StockLot(models.Model):
     _inherit = 'stock.lot'
