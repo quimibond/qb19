@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_mrp_revisado_wizard" model="ir.actions.act_window">
+        <field name="name">Revisado de Calidad</field>
+        <field name="res_model">mrp.revisado.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_mrp_revisado_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.revisado.wizard.form</field>
+        <field name="model">mrp.revisado.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Revisado de Calidad">
+                <div class="alert alert-warning" role="alert" style="font-size: 16px; margin-bottom: 10px;" 
+                     invisible="not rollos_pendientes_text">
+                    <strong>ESTADO DE REVISIÓN:</strong> <field name="rollos_pendientes_text" readonly="1"/>
+                </div>
+
+                <sheet>
+                    <group>
+                        <field name="employee_number" 
+                               password="True" 
+                               default_focus="1" 
+                               readonly="employee_number != False" 
+                               force_save="1"/>
+                        <field name="employee_name" readonly="1" invisible="not employee_number"/>
+                    </group>
+                    <div invisible="not employee_number">
+                        <group>
+                            <group string="DATOS DE LA ORDEN">
+                                <field name="production_id" readonly="1" options="{'no_open': True}"/>
+                                <field name="workcenter_id" readonly="1"/>
+                                <field name="product_id" readonly="1"/>
+                            </group>
+                        
+                            <group string="LECTURA Y PESAJE">
+                                <field name="barcode_scan" 
+                                       placeholder="Escanee el rollo..." 
+                                       invisible="lot_id != False"
+                                       default_focus="1" />
+                                       
+                            
+                                <field name="lot_id" 
+                                        readonly="1" 
+                                        force_save="1" 
+                                        invisible="not lot_id"
+                                        options="{'no_open': True}"/>
+                            
+                                <field name="peso_original" 
+                                       readonly="1" 
+                                       force_save="1" 
+                                       invisible="not lot_id"/>
+                            
+                                <label for="peso_actual" string="Nuevo Peso (Kg)" invisible="not lot_id"/>
+                                <div class="o_row" invisible="not lot_id">
+                                    <field name="peso_actual" 
+                                            style="font-size: 32px; color: #2C3E50; font-weight: bold; width: 150px;" 
+                                            placeholder="0.0000"
+                                            required="lot_id != False"/>
+                                    <span class="fw-bold">KG</span>
+                                </div>
+
+                                <field name="causa_id" 
+                                        options="{'no_create': True, 'no_open': True}"
+                                        invisible="not lot_id"
+                                        required="peso_original != peso_actual"
+                                        placeholder="Seleccione causa..."/>
+                            </group>
+                        </group>
+                    </div>    
+                </sheet>
+
+                <footer>
+                    <button name="confirmar_revisado" 
+                            string="GUARDAR E IMPRIMIR ETIQUETA" 
+                            type="object" 
+                            class="btn-primary btn-lg" 
+                            invisible="not lot_id"
+                            data-hotkey="q"/>
+                    
+                    <button string="CANCELAR / LIMPIAR" 
+                            class="btn-secondary" 
+                            special="cancel" 
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

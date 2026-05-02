@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="product_template_form_view_inherit_revisado" model="ir.ui.view">
+            <field name="name">product.template.form.inherit.revisado</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_only_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='inventory']" position="inside">
+                    <field name="categ_name_static" invisible="1"/>
+                    <group string="Control de Calidad (Tejido)" 
+                           invisible="categ_name_static != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'">
+                        <field name="porcentaje_revision_standard" widget="percentage"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="mrp_production_form_view_inherit_revisado" model="ir.ui.view">
+            <field name="name">mrp.production.form.inherit.revisado</field>
+            <field name="model">mrp.production</field>
+            <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='product_id']" position="after">
+                    <field name="product_id_category_name" invisible="1"/>
+                    
+                    <field name="rollos_revisados_count" string="Rollos Revisados" readonly="1"
+                            invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'"/>
+                    <field name="rollos_requeridos_count" string="Meta de Revisión" readonly="1" decoration-info="1" widget="badge"
+                            invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'"/>
+                </xpath>
+
+                <xpath expr="//notebook" position="inside">
+                    <page string="Log de Revisión" name="revision_log"
+                            invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'">
+                        <field name="revision_log_ids" readonly="1">
+                            <list>
+                                <field name="create_date" string="Fecha"/>
+                                <field name="lot_id"/>
+                                <field name="user_id" widget="many2one_avatar_user"/>
+                                <field name="inspector"/>
+                                <field name="peso_original"/>
+                                <field name="peso_final"/>
+                                <field name="diferencia" string="Dif." sum="Total Diferencia"/>
+                                <field name="causa_id" string="Causa de Desviación" optional="show"/>
+                            </list>
+                        </field>
+                    </page>
+
+                    <page string="Última Etiqueta ZPL" name="zpl_label_debug"
+                            invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'">
+                        <group>
+                            <field  name="last_zpl_label" 
+                                    widget="ace" 
+                                    options="{'language': 'xml'}" 
+                                    readonly="1" 
+                                    nolabel="1"/>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="mrp_workcenter_view_form_inherit_revisado" model="ir.ui.view">
+            <field name="name">mrp.workcenter.form.inherit.revisado</field>
+            <field name="model">mrp.workcenter</field>
+            <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@name='capacity']" position="after">
+                    <group string="Configuración de Calidad">
+                        <field name="numero_rollos_revisar"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="mrp_workorder_view_list_inherit_revisado" model="ir.ui.view">
+            <field name="name">mrp.workorder.list.inherit.revisado</field>
+            <field name="model">mrp.workorder</field>
+            <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='state']" position="after">
+                    <field name="product_id_category_name" column_invisible="1"/>
+                    <button name="%(action_mrp_revisado_wizard)d" 
+                            type="action" 
+                            string="REVISAR CALIDAD" 
+                            class="btn-warning" 
+                            icon="fa-check-square-o"
+                            invisible="state not in ('ready', 'progress') or product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg'"
+                            context="{'default_production_id': production_id}"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

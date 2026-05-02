@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_weigh_roll" model="ir.actions.report">
+        <field name="name">Etiqueta de Rollo</field>
+        <field name="model">mrp.production</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">pesaje_rollos_tejido.report_zpl_label</field>
+        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+    </record>
+
+    <record id="action_report_subproduct_weigh" model="ir.actions.report">
+        <field name="name">Etiqueta de Subproducto</field>
+        <field name="model">mrp.production</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">pesaje_rollos_tejido.report_subproduct_zpl</field>
+        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+    </record>
+</odoo>
