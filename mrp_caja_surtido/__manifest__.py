@@ -1,6 +1,6 @@
 {
     'name': 'Surtido de Componentes por Lote Cerrado (Textil)',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.0.1',
     'category': 'Inventory/Inventory',
     'summary': 'Surtido de hilos por Empaque Completo',
     'author': 'CONSOLTI',
