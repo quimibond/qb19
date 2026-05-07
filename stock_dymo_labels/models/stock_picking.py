@@ -32,7 +32,7 @@ class StockPicking(models.Model):
             ref = line.product_id.default_code or "N/A"
             name = line.product_id.name[:45]
             lot = line.lot_id.name or ""
-            qty = int(line.quantity)
+            qty = ("{:.3f}".format(line.quantity))
             box_no = lot[-4:] if lot else "0000"
 
             zpl_body += f"""
@@ -40,7 +40,7 @@ class StockPicking(models.Model):
 ^CF0,50,50^FO50,50^FDREF: {ref}^FS
 ^CF0,40,40^FO50,110^FB700,2,0,C^FD{name}^FS
 ^CF0,40,40^FO50,210^FDLote: {lot}^FS
-^FO600,210^FDCant: {qty}^FS
+^FO550,210^FDCant: {qty}^FS
 ^FO50,270^FDN. CAJA: {box_no}^FS
 ^FO030,350^BY3^BCN,100,Y,N,N^FD{lot}^FS
 ^XZ"""
