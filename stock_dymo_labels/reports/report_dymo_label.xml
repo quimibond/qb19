@@ -69,7 +69,7 @@
                         <span class="label-data">
                             <strong>Lote:</strong> <t t-esc="line.lot_id.name"/>
                             <span style="margin-left: 15px;">
-                                <strong>Cant:</strong> <t t-esc="int(line.quantity)"/>
+                                <strong>Cant:</strong> <t t-esc="'{:.3f}'.format(line.quantity)"/>
                             </span>
                         </span>
                         
