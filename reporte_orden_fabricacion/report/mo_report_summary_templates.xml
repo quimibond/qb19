@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="mo_report_summary">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <t t-set="res" t-value="calcs.get(o.id, {})"/>
+                    <div class="page" style="font-family: 'Helvetica', sans-serif; font-size: 11px;">
+                        
+                        <div class="row mb-3" style="border: 2px solid #000; padding: 10px;">
+                            <div class="col-6">
+                                <h2 style="font-weight: bold; margin:0;">MO: <span t-field="o.name"/></h2>
+                                <div class="mt-2">
+                                    <strong style="font-size: 14px;">PRODUCTO:</strong><br/>
+                                    <span style="font-size: 14px; font-weight: bold;" t-field="o.product_id"/>
+                                </div>
+                            </div>
+                            <div class="col-6 text-right">
+                                <div><strong style="font-size: 12px;">COSTO TOTAL:</strong><br/>
+                                    <span style="font-size: 18px; font-weight: bold;" t-out="res.get('total_cost')" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                </div>
+                                <div class="mt-1"><strong style="font-size: 12px;">COSTO UNITARIO:</strong><br/>
+                                    <span style="font-size: 16px; font-weight: bold;" t-out="res.get('unit_cost')" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4 text-center" style="background-color: #f9f9f9; padding: 10px; border: 1px solid #ddd;">
+                            <div class="col-4"><strong>CANT. PROGRAMADA:</strong><br/><span style="font-size: 16px; font-weight: bold;" t-field="o.product_qty"/></div>
+                            <div class="col-4"><strong>CANT. PRODUCIDA:</strong><br/><span style="font-size: 16px; font-weight: bold;" t-field="o.qty_producing"/></div>
+                            <div class="col-4"><strong>DIFERENCIA:</strong><br/><span style="font-size: 16px; font-weight: bold;" t-out="o.qty_producing - o.product_qty"/></div>
+                        </div>
+
+                        <h6 style="background-color: #333; color: white; padding: 4px; font-weight: bold;">1. TRAZABILIDAD DE MATERIA PRIMA</h6>
+                        <table class="table table-sm table-bordered mb-3">
+                            <thead class="bg-light">
+                                <tr><th>COMPONENTE</th><th class="text-right">DEMANDA</th><th class="text-right">CONSUMIDO</th><th>LOTES</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.move_raw_ids" t-as="move">
+                                    <td><span t-field="move.product_id"/></td>
+                                    <td class="text-right"><span t-field="move.product_uom_qty"/></td>
+                                    <td class="text-right"><span t-field="move.quantity"/></td>
+                                    <td><t t-foreach="move.move_line_ids" t-as="line"><span t-if="line.lot_id" t-field="line.lot_id.name"/> (<span t-field="line.quantity"/>); </t></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h6 style="background-color: #333; color: white; padding: 4px; font-weight: bold;">2. LOG DE REVISIÓN DE CALIDAD</h6>
+                        <table class="table table-sm table-bordered mb-3">
+                            <thead class="bg-light">
+                                <tr><th>FECHA</th><th>INSPECTOR</th><th>ROLLO</th><th class="text-right">P. INICIAL</th><th class="text-right">P. REVISADO</th><th>CAUSA</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.revision_log_ids" t-as="rev">
+                                    <td><span t-field="rev.create_date" t-options='{"format": "dd/MM HH:mm"}'/></td>
+                                    <td><span t-field="rev.inspector"/></td>
+                                    <td><span t-field="rev.lot_id.name"/></td>
+                                    <td class="text-right"><span t-field="rev.peso_original"/></td>
+                                    <td class="text-right"><strong><span t-field="rev.peso_final"/></strong></td>
+                                    <td><span t-field="rev.causa_id.name"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h6 style="background-color: #333; color: white; padding: 4px; font-weight: bold;">3. HISTORIAL DE PESAJE DE PRODUCCIÓN</h6>
+                        <table class="table table-sm table-bordered mb-3">
+                            <thead class="bg-light text-center">
+                                <tr><th>FECHA/HORA</th><th>LOTE/ROLLO</th><th>OPERADOR</th><th>P. BRUTO</th><th>TARA</th><th>P. NETO</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.weighing_log_ids" t-as="w">
+                                    <td class="text-center"><span t-field="w.date_time" t-options='{"format": "dd/MM HH:mm"}'/></td>
+                                    <td class="text-center"><strong><span t-field="w.roll_number"/></strong></td>
+                                    <td><span t-field="w.pesador"/></td>
+                                    <td class="text-right"><span t-field="w.weight_bruto"/></td>
+                                    <td class="text-right"><span t-field="w.tara"/></td>
+                                    <td class="text-right" style="font-weight: bold;"><span t-field="w.weight_neto"/> kg</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <h6 style="background-color: #555; color: white; padding: 4px; font-weight: bold;">4. SUBPRODUCTOS</h6>
+                                <table class="table table-sm border">
+                                    <tr t-foreach="res.get('subproductos')" t-as="sp">
+                                        <td><span t-field="sp.product_id"/></td>
+                                        <td class="text-right"><strong><span t-field="sp.product_uom_qty"/></strong></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <h6 style="background-color: #555; color: white; padding: 4px; font-weight: bold;">5. MERMAS / SCRAP</h6>
+                                <table class="table table-sm border">
+                                    <tr t-foreach="res.get('scraps')" t-as="s">
+                                        <td><span t-field="s.product_id"/></td>
+                                        <td class="text-right"><strong><span t-field="s.scrap_qty"/></strong></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <h6 style="background-color: #333; color: white; padding: 4px; font-weight: bold;">6. LOG DE TIEMPOS Y OPERARIOS</h6>
+                        <table class="table table-sm table-bordered mb-2 text-center">
+                            <tr class="bg-light">
+                                <td><strong>HORAS ESPERADAS:</strong> <t t-out="res.get('time_exp')" t-options='{"widget": "float_time"}'/></td>
+                                <td><strong>HORAS REALES:</strong> <t t-out="res.get('time_real')" t-options='{"widget": "float_time"}'/></td>
+                                <td><strong>DESVIACIÓN:</strong> <t t-out="res.get('time_diff')" t-options='{"widget": "float_time"}'/></td>
+                            </tr>
+                        </table>
+                        <table class="table table-sm table-bordered">
+                            <thead class="bg-light">
+                                <tr><th>OPERARIO</th><th>CENTRO</th><th>INICIO</th><th>FIN</th><th class="text-right">DURACIÓN</th></tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.workorder_ids" t-as="wo">
+                                    <tr t-foreach="wo.time_ids" t-as="time">
+                                        <td><strong><span t-field="time.user_id.name"/></strong></td>
+                                        <td><span t-field="wo.workcenter_id.name"/></td>
+                                        <td><span t-field="time.date_start" t-options='{"format": "dd/MM HH:mm"}'/></td>
+                                        <td><span t-field="time.date_end" t-options='{"format": "dd/MM HH:mm"}'/></td>
+                                        <td class="text-right"><span t-field="time.duration" t-options='{"widget": "float_time"}'/> h</td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
