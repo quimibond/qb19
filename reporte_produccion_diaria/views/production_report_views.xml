@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_production_report_wizard_view" model="ir.actions.act_window">
+        <field name="name">Reporte de Producción Tejido</field>
+        <field name="res_model">production.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_mrp_production_daily_report"
+              name="Producción Tejido"
+              action="action_production_report_wizard_view"
+              parent="mrp.menu_mrp_reporting"
+              sequence="50"/>
+</odoo>
