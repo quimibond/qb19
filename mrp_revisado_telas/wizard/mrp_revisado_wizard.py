@@ -73,7 +73,7 @@ class MrpRevisadoWizard(models.TransientModel):
                 requeridos = reg.production_id.rollos_requeridos_count
                 
                 if revisados >= requeridos:
-                    reg.rollos_pendientes_text = f"¡META CUMPLIDA! ({revisados} revisados)"
+                    reg.rollos_pendientes_text = f"Mínimo cumplido ({revisados} revisados). Puede continuar revisando rollos adicionales si lo desea."
                 else:
                     faltantes = requeridos - revisados
                     reg.rollos_pendientes_text = f"Faltan {faltantes} rollos por revisar para cumplir el requisito del Centro de Trabajo ({revisados}/{requeridos})."
@@ -130,12 +130,13 @@ class MrpRevisadoWizard(models.TransientModel):
         revisados_actuales = len(self.production_id.revision_log_ids)
         meta_requerida = self.production_id.rollos_requeridos_count
     
-        if revisados_actuales >= meta_requerida:
-            raise UserError(_(
-                 "Meta de revisión completada.\n"
-                 "Ya se han revisado %s rollos de una meta de %s. "
-                 "No se permiten revisiones adicionales."
-            ) % (revisados_actuales, meta_requerida))
+        # NO RESTRINGIR META DE REVISADO, AHORA MINIMO A REVISAR
+        # if revisados_actuales >= meta_requerida:
+        #    raise UserError(_(
+        #         "Meta de revisión completada.\n"
+        #         "Ya se han revisado %s rollos de una meta de %s. "
+        #         "No se permiten revisiones adicionales."
+        #    ) % (revisados_actuales, meta_requerida))
 
         # Validamos que el peso actual no sea superior al original (Se mantiene igual)
         if self.peso_actual > self.peso_original:
