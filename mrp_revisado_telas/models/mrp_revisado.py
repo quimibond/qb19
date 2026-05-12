@@ -110,9 +110,9 @@ class MrpWorkorder(models.Model):
             if prod.product_id.categ_id.complete_name == 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg':
                 if prod.rollos_revisados_count < prod.rollos_requeridos_count:
                     raise UserError(_(
-                        "Control de Calidad Obligatorio:\n"
-                        "Se deben revisar al menos %s rollos en el centro de trabajo %s.\n"
-                        "Progreso: %s de %s rollos.") % (
+                        "Control de Calidad Pendiente:\n"
+                        "Se requiere un MÍNIMO de %s rollos revisados para este centro de trabajo (%s).\n"
+                        "Progreso actual: %s de %s rollos.") % (
                             prod.rollos_requeridos_count, 
                             wo.workcenter_id.name,
                             prod.rollos_revisados_count, 
