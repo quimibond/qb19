@@ -1,5 +1,6 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from odoo.tools import float_compare, float_round
 import re
 
 
@@ -191,15 +192,16 @@ class StockPicking(models.Model):
                 ], limit=1)
 
                 if existing_line:
-                    raise UserError(_("Este lote (%s) ya fue guardado físicamente en la base de datos.") % lot.name)
-
+                    raise UserError(_("Este lote (%s) ya fue guardado físicamente en la base de datos.") % lot_name)
                 # CREACIÓN FÍSICA: Usamos sudo().create para forzar la escritura inmediata en disco
+                precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+                qty_to_save = float_round(qty_done, precision_digits=precision)
                 self.env['stock.move.line'].sudo().create({
                     'picking_id': picking_id,
                     'move_id': move._origin.id if move._origin else move.id,
                     'product_id': lot.product_id.id,
                     'lot_id': lot.id,
-                    'quantity': qty_done,
+                    'quantity': qty_to_save,
                     'location_id': self.location_id.id,
                     'location_dest_id': self.location_dest_id.id,
                     'product_uom_id': lot.product_id.uom_id.id,
@@ -211,20 +213,22 @@ class StockPicking(models.Model):
                 raise UserError(_("El producto %s no es requerido en este documento.") % lot.product_id.display_name)
 
     def button_validate(self):
-        """ VALIDACIÓN POR CANTIDAD TOTAL """
+        """ VALIDACIÓN POR CANTIDAD TOTAL CON PRECISIÓN DECIMAL """
         for rec in self:
             op_name = (rec.picking_type_id.name or '').upper()
             if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO']):
                 
-                # Sumamos la cantidad de todos los rollos leídos físicamente
                 total_scanned_qty = sum(rec.move_line_ids.mapped('quantity'))
-                
-                # Sumamos la cantidad total requerida en la demanda original (move_ids)
-                # Usamos product_uom_qty que es la demanda teórica
                 total_demanded_qty = sum(rec.move_ids.mapped('product_uom_qty'))
 
-                # Comparamos las sumas de cantidades
-                if total_scanned_qty < total_demanded_qty:
+                # Obtenemos la precisión de la unidad de medida (ej. kg)
+                precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+
+                # Comparación: float_compare retorna 0 si son "iguales" según la precisión
+                # Retorna 1 si el primero es mayor, -1 si es menor
+                res = float_compare(total_scanned_qty, total_demanded_qty, precision_digits=precision)
+
+                if res == -1: # total_scanned_qty < total_demanded_qty
                     raise UserError(_(
                         "CANTIDAD INSUFICIENTE:\n"
                         "- Escaneado: %s\n"
@@ -232,7 +236,7 @@ class StockPicking(models.Model):
                         "Debe escanear más rollos hasta completar la cantidad requerida."
                     ) % (total_scanned_qty, total_demanded_qty))
                     
-                if total_scanned_qty > total_demanded_qty:
+                if res == 1: # total_scanned_qty > total_demanded_qty
                     raise UserError(_(
                         "EXCESO DE CANTIDAD:\n"
                         "- Escaneado: %s\n"
