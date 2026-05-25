@@ -85,9 +85,12 @@ class StockPicking(models.Model):
             
             if not quant:
                 raise UserError(_("La caja %s no tiene existencias en %s.") % (lot.name, self.location_id.name))
-            qty_done = quant.quantity
-
-
+            # 1. Tomamos la cantidad real en esa ubicación
+            raw_quantity = quant.quantity 
+            # 2. Obtenemos la Unidad de Medida del producto (kg)
+            uom = lot.product_id.uom_id
+            # 3. Limpiamos el valor usando el redondeo de la UoM (0.01, 0.0001, etc.)
+            qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
         # CASO B: FORMACIÓN DE BAÑOS (Tela 99999-9999)
         elif 'FORMACI' in op_name:
@@ -127,7 +130,12 @@ class StockPicking(models.Model):
                 ], limit=1)
                 if not quant:
                     raise UserError(_("La tela %s no tiene stock en %s.") % (lot.name, self.location_id.name))
-                qty_done = quant.quantity
+                # 1. Tomamos la cantidad real en esa ubicación
+                raw_quantity = quant.quantity 
+                # 2. Obtenemos la Unidad de Medida del producto (kg)
+                uom = lot.product_id.uom_id
+                # 3. Limpiamos el valor usando el redondeo de la UoM (0.01, 0.0001, etc.)
+                qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
         # CASO C: DESPERDICIO TEJIDO (Subproducto SUB-)
         elif 'DESPERDICIO' in op_name:
@@ -167,7 +175,12 @@ class StockPicking(models.Model):
                 ], limit=1)
                 if not quant:
                     raise UserError(_("El lote %s no tiene existencias en la ubicación %s.") % (lot.name, self.location_id.name))
-                qty_done = quant.quantity
+                # 1. Tomamos la cantidad real en esa ubicación
+                raw_quantity = quant.quantity 
+                # 2. Obtenemos la Unidad de Medida del producto (kg)
+                uom = lot.product_id.uom_id
+                # 3. Limpiamos el valor usando el redondeo de la UoM (0.01, 0.0001, etc.)
+                qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
         # ---------------------------------------------------------
         # 3. PROCESAMIENTO TÉCNICO Y PERSISTENCIA
@@ -193,15 +206,13 @@ class StockPicking(models.Model):
 
                 if existing_line:
                     raise UserError(_("Este lote (%s) ya fue guardado físicamente en la base de datos.") % lot_name)
-                # CREACIÓN FÍSICA: Usamos sudo().create para forzar la escritura inmediata en disco
-                precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
-                qty_to_save = float_round(qty_done, precision_digits=precision)
+               
                 self.env['stock.move.line'].sudo().create({
                     'picking_id': picking_id,
                     'move_id': move._origin.id if move._origin else move.id,
                     'product_id': lot.product_id.id,
                     'lot_id': lot.id,
-                    'quantity': qty_to_save,
+                    'quantity': qty_done,
                     'location_id': self.location_id.id,
                     'location_dest_id': self.location_dest_id.id,
                     'product_uom_id': lot.product_id.uom_id.id,
@@ -213,35 +224,29 @@ class StockPicking(models.Model):
                 raise UserError(_("El producto %s no es requerido en este documento.") % lot.product_id.display_name)
 
     def button_validate(self):
-        """ VALIDACIÓN POR CANTIDAD TOTAL CON PRECISIÓN DECIMAL """
+        """ Validación con tolerancia técnica para industria textil """
         for rec in self:
             op_name = (rec.picking_type_id.name or '').upper()
             if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO']):
                 
-                total_scanned_qty = sum(rec.move_line_ids.mapped('quantity'))
-                total_demanded_qty = sum(rec.move_ids.mapped('product_uom_qty'))
+                # Usamos mapped y sum, pero comparamos con float_compare
+                total_scanned = sum(rec.move_line_ids.mapped('quantity'))
+                total_demanded = sum(rec.move_ids.mapped('product_uom_qty'))
+                
+                # Tomamos la precisión de la UoM del primer movimiento (kg)
+                uom = rec.move_ids[0].product_uom if rec.move_ids else False
+                rounding = uom.rounding if uom else 0.01
 
-                # Obtenemos la precisión de la unidad de medida (ej. kg)
-                precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+                # res: 0 si son iguales, 1 si scanned > demanded, -1 si scanned < demanded
+                res = float_compare(total_scanned, total_demanded, precision_rounding=rounding)
 
-                # Comparación: float_compare retorna 0 si son "iguales" según la precisión
-                # Retorna 1 si el primero es mayor, -1 si es menor
-                res = float_compare(total_scanned_qty, total_demanded_qty, precision_digits=precision)
-
-                if res == -1: # total_scanned_qty < total_demanded_qty
+                if res != 0:
+                    status = "INSUFICIENTE" if res == -1 else "EXCESO"
                     raise UserError(_(
-                        "CANTIDAD INSUFICIENTE:\n"
-                        "- Escaneado: %s\n"
-                        "- Demandado: %s\n"
-                        "Debe escanear más rollos hasta completar la cantidad requerida."
-                    ) % (total_scanned_qty, total_demanded_qty))
-                    
-                if res == 1: # total_scanned_qty > total_demanded_qty
-                    raise UserError(_(
-                        "EXCESO DE CANTIDAD:\n"
-                        "- Escaneado: %s\n"
-                        "- Demandado: %s\n"
-                        "No puede validar una cantidad mayor a la demandada."
-                    ) % (total_scanned_qty, total_demanded_qty))
+                        "ERROR DE CANTIDAD (%s):\n"
+                        "- Escaneado total: %s\n"
+                        "- Demandado total: %s\n\n"
+                        "La suma de los lotes no coincide con la demanda dentro de la precisión permitida."
+                    ) % (status, total_scanned, total_demanded))
         
         return super(StockPicking, self).button_validate()
