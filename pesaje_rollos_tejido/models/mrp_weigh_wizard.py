@@ -77,7 +77,7 @@ class MrpWeighRollWizard(models.TransientModel):
     )
     
     next_lot_name = fields.Char(string="Número de Lote a Generar", compute="_compute_next_lot_name")
-    weight = fields.Float(string="Peso Neto (kg)", digits=(12, 4), required=True)
+    weight = fields.Float(string="Peso Bruto (kg)", digits=(12, 4), required=True)
     
     # --- NUEVOS CAMPOS ---
     tara = fields.Float(string="Tara (kg)", compute="_compute_tara_neta", store=True)
