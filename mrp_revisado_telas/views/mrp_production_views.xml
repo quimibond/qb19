@@ -39,9 +39,12 @@
                                 <field name="lot_id"/>
                                 <field name="user_id" widget="many2one_avatar_user"/>
                                 <field name="inspector"/>
-                                <field name="peso_original"/>
-                                <field name="peso_final"/>
-                                <field name="diferencia" string="Dif." sum="Total Diferencia"/>
+                                <field name="peso_original" options="{'digits': [12, 4]}"/>
+                                <field name="peso_final" options="{'digits': [12, 4]}"/>
+                                <field name="diferencia" 
+                                        string="Dif." 
+                                        sum="Total Diferencia" 
+                                        options="{'digits': [12, 4], 'field_digits': True}"/>
                                 <field name="causa_id" string="Causa de Desviación" optional="show"/>
                             </list>
                         </field>
