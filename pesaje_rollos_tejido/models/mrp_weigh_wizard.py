@@ -77,7 +77,7 @@ class MrpWeighRollWizard(models.TransientModel):
     )
     
     next_lot_name = fields.Char(string="Número de Lote a Generar", compute="_compute_next_lot_name")
-    weight = fields.Float(string="Peso del Rollo Actual (kg)", digits=(12, 3), required=True)
+    weight = fields.Float(string="Peso Bruto (kg)", digits=(12, 4), required=True)
     
     # --- NUEVOS CAMPOS ---
     tara = fields.Float(string="Tara (kg)", compute="_compute_tara_neta", store=True)
@@ -255,7 +255,7 @@ class MrpSubproductWizard(models.TransientModel):
     
     product_id = fields.Many2one('product.product', string="Subproducto", compute="_compute_subproduct")
     next_lot_name = fields.Char(string="Lote a Generar", compute="_compute_next_lot_name")
-    weight = fields.Float(string="Peso Subproducto (kg)", digits=(12, 3), required=True)
+    weight = fields.Float(string="Peso Subproducto (kg)", digits=(12, 4), required=True)
     
     @api.depends('production_id')
     def _compute_subproduct(self):
