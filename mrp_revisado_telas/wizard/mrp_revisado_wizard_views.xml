@@ -50,13 +50,15 @@
                                 <field name="peso_original" 
                                        readonly="1" 
                                        force_save="1" 
-                                       invisible="not lot_id"/>
+                                       invisible="not lot_id"
+                                       options="{'digits': [12, 4]}"/>
                             
                                 <label for="peso_actual" string="Nuevo Peso (Kg)" invisible="not lot_id"/>
                                 <div class="o_row" invisible="not lot_id">
                                     <field name="peso_actual" 
                                             style="font-size: 32px; color: #2C3E50; font-weight: bold; width: 150px;" 
                                             placeholder="0.0000"
+                                            options="{'digits': [12, 4]}"
                                             required="lot_id != False"/>
                                     <span class="fw-bold">KG</span>
                                 </div>

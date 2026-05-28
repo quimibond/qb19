@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 
 class MrpRevisadoWizard(models.TransientModel):
     _name = 'mrp.revisado.wizard'
@@ -54,7 +55,7 @@ class MrpRevisadoWizard(models.TransientModel):
     
     # Campos de datos del rollo
     lot_id = fields.Many2one('stock.lot', string='ID Rollo')
-    peso_original = fields.Float(string="Peso Original (Kg)", readonly=True)
+    peso_original = fields.Float(string="Peso Original (Kg)", digits=(12, 4), readonly=True)
     peso_actual = fields.Float(string='Nuevo Peso (Kg)', digits=(12, 4))
 
     # Punto 6: Causa de la desviación (Etiquetas de Calidad filtradas por TEJIDO)
@@ -125,34 +126,35 @@ class MrpRevisadoWizard(models.TransientModel):
 
     def confirmar_revisado(self):
         self.ensure_one()
+        # 1. Obtener la precisión de la UoM (kg)
+        uom = self.lot_id.product_uom_id
+        
 
         # NUEVO CANDADO ESTRICTO: (Se mantiene igual)
         revisados_actuales = len(self.production_id.revision_log_ids)
         meta_requerida = self.production_id.rollos_requeridos_count
     
-        # NO RESTRINGIR META DE REVISADO, AHORA MINIMO A REVISAR
-        # if revisados_actuales >= meta_requerida:
-        #    raise UserError(_(
-        #         "Meta de revisión completada.\n"
-        #         "Ya se han revisado %s rollos de una meta de %s. "
-        #         "No se permiten revisiones adicionales."
-        #    ) % (revisados_actuales, meta_requerida))
 
         # Validamos que el peso actual no sea superior al original (Se mantiene igual)
-        if self.peso_actual > self.peso_original:
+        if float_compare(self.peso_actual, self.peso_original, precision_rounding=uom.rounding) == 1:
             raise UserError(_(
                 "Error de Validación:\n"
                 "El nuevo peso (%.3f kg) no puede ser mayor al peso original "
                 "del rollo (%.3f kg)."
             ) % (self.peso_actual, self.peso_original))
+        
 
         if not self.lot_id:
             raise UserError(_("Debe escanear un rollo válido antes de confirmar."))
 
         # VALIDACIÓN QUIRÚRGICA: Redondeo a 2 decimales (Se mantiene igual)
-        peso_orig_rd = round(self.peso_original, 2)
+        peso_orig_rd = uom.round(self.peso_original)
         peso_act_rd = round(self.peso_actual, 2)
-        hubo_desviacion_actual = peso_orig_rd != peso_act_rd
+        peso_limpio = uom.round(self.peso_actual) if uom else self.peso_actual
+        if float_compare(peso_orig_rd, peso_limpio, precision_rounding=uom.rounding) != 0:
+            hubo_desviacion_actual = True
+        else:
+            hubo_desviacion_actual = False
 
         # Si el peso CAMBIÓ y no seleccionó causa (Se mantiene igual)
         if hubo_desviacion_actual and not self.causa_id:
@@ -163,7 +165,7 @@ class MrpRevisadoWizard(models.TransientModel):
             'production_id': self.production_id.id,
             'lot_id': self.lot_id.id,
             'peso_original': self.peso_original,
-            'peso_final': self.peso_actual,
+            'peso_final': peso_limpio,
             'causa_id': self.causa_id.id if hubo_desviacion_actual else False,
             'inspector': self.employee_name,
         })
@@ -175,8 +177,8 @@ class MrpRevisadoWizard(models.TransientModel):
         ], limit=1)
 
         if move_line:
-            diferencia = self.peso_actual - move_line.quantity
-            move_line.write({'quantity': self.peso_actual})
+            diferencia = peso_limpio - move_line.quantity
+            move_line.write({'quantity': peso_limpio})
             self.production_id.qty_producing += diferencia
             if move_line.workorder_id:
                 move_line.workorder_id.qty_produced += diferencia
@@ -184,7 +186,7 @@ class MrpRevisadoWizard(models.TransientModel):
         # 3. Actualizar el Lote y marcarlo como revisado (Se mantiene igual)
         self.lot_id.write({
             'is_reviewed': True,
-            'product_qty': self.peso_actual
+            'product_qty': peso_limpio
         })
 
         # --- REVISIÓN DE CONTROL DE CALIDAD (Solo se corrigió el campo y el método) ---

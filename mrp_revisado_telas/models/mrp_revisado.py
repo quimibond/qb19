@@ -129,16 +129,24 @@ class MrpRevisionLog(models.Model):
     lot_id = fields.Many2one('stock.lot', string="Rollo", required=True)
     user_id = fields.Many2one('res.users', string="Usuario", default=lambda self: self.env.user)
     inspector = fields.Char(string="Inspector")
-    peso_original = fields.Float(string="Peso Inicial", readonly=True)
-    peso_final = fields.Float(string="Peso Revisado")
-    diferencia = fields.Float(compute="_compute_diff", string="Diferencia", store=True)
+    peso_original = fields.Float(string="Peso Inicial", digits=(12, 4), readonly=True)
+    peso_final = fields.Float(string="Peso Revisado", digits=(12, 4))
+    diferencia = fields.Float(compute="_compute_diff", string="Diferencia", digits=(12, 4), store=True)
     create_date = fields.Datetime(string="Fecha/Hora", default=fields.Datetime.now)
 
     @api.depends('peso_original', 'peso_final')
     def _compute_diff(self):
         for reg in self:
-            # Lógica original: Peso Inicial - Peso Revisado
-            reg.diferencia = reg.peso_original - reg.peso_final
+            # Usamos float_round para evitar residuos binarios en la resta
+            # 1. Obtenemos la precisión de la UoM del lote
+            uom = reg.lot_id.product_uom_id
+            
+            # 2. Realizamos la resta
+            diff = reg.peso_original - reg.peso_final
+            
+            # 3. REDONDEO CRÍTICO: Usamos .round() (sin guion bajo) 
+            # para que 0.55000000001 sea exactamente 0.55
+            reg.diferencia = uom.round(diff) if uom else diff
     
     causa_id = fields.Many2one(
         'quality.tag', 
