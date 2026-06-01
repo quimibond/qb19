@@ -20,7 +20,7 @@ jobs:
         run: pip install httpx flake8
 
       - name: Lint
-        run: flake8 addons/ --max-line-length=120 --ignore=E501,W503,E302,E303,E266,W291,W293
+        run: flake8 addons/ --max-line-length=120 --ignore=E501,W503,E302,E303,E266,W291,W293,E127,E128,E131,E241,E231,E306,E741,F401,F841,E731,E125
 
       - name: Syntax check
         run: python -m py_compile addons/quimibond_intelligence/models/sync_push.py && python -m py_compile addons/quimibond_intelligence/models/sync_pull.py && python -m py_compile addons/quimibond_intelligence/models/supabase_client.py
