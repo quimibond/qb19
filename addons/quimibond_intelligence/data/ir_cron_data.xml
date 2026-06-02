@@ -28,6 +28,23 @@
             <field name="priority">5</field>
         </record>
 
+        <!-- Heavy tables push every 2 hours (2026-06-01)
+             stock_moves (1.65M rows) + account_entries_stock + workorders +
+             workcenters viven aparte del hourly: stock_moves solo tardaba
+             hasta 21 min y hacia que Odoo.sh desactivara el cron hourly
+             completo por timeouts repetidos. -->
+        <record id="cron_push_to_supabase_heavy" model="ir.cron">
+            <field name="name">Quimibond Sync - Heavy Push to Supabase (every 2h)</field>
+            <field name="model_id" ref="model_quimibond_sync"/>
+            <field name="state">code</field>
+            <field name="code">model.push_to_supabase_heavy()</field>
+            <field name="interval_number">2</field>
+            <field name="interval_type">hours</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">6</field>
+        </record>
+
         <!-- Pull intelligence commands from Supabase every 5 minutes -->
         <record id="cron_pull_from_supabase" model="ir.cron">
             <field name="name">Quimibond Sync - Pull from Supabase (every 5min)</field>

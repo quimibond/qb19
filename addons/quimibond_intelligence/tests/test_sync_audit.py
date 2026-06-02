@@ -12,10 +12,14 @@ class TestSyncAuditBase(TransactionCase):
         self.Audit = self.env['quimibond.sync.audit']
 
     def test_model_exists(self):
-        self.assertTrue(self.Audit)
+        # Un recordset vacío es falsy en Odoo — verificar _name, no truthiness
+        self.assertEqual(self.Audit._name, 'quimibond.sync.audit')
 
     def test_run_all_returns_summary(self):
-        with patch.object(self.Audit, '_get_client') as m_client:
+        # Odoo 19: los atributos de un recordset son read-only — hay que
+        # patchear la clase del registry, no la instancia.
+        AuditClass = self.env.registry['quimibond.sync.audit']
+        with patch.object(AuditClass, '_get_client') as m_client:
             m_client.return_value = MagicMock()
             result = self.Audit.run_all(
                 date_from='2026-01-01',
@@ -158,6 +162,10 @@ class TestAuditManufacturing(TransactionCase):
         self.Audit = self.env['quimibond.sync.audit']
 
     def test_manufacturing_smoke(self):
+        # mrp no es dependencia del addon: en la BD de test de Odoo.sh
+        # la tabla mrp_production no existe (en producción sí).
+        if 'mrp.production' not in self.env:
+            self.skipTest('mrp not installed in test DB')
         client = MagicMock()
         client.fetch_all.return_value = []
         captured = []

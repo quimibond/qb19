@@ -404,10 +404,14 @@ class QuimibondSyncInventory(models.TransientModel):
                         _logger.warning('stock_move %s: %s', m.id, exc)
 
                 if rows:
+                    moves.invalidate_recordset()
                     self.env.cr.commit()
-                    self.env.invalidate_all()
                     ok += client.upsert('odoo_stock_moves', rows,
                                         on_conflict='odoo_move_id', batch_size=500) or 0
+                    try:
+                        self.env.cr.execute('SELECT 1')
+                    except Exception:
+                        pass
             except Exception as exc:
                 _logger.exception('stock_moves chunk %s failed: %s', chunk_start, exc)
         return ok
@@ -553,10 +557,14 @@ class QuimibondSyncInventory(models.TransientModel):
                         _logger.warning('account_entry_stock %s: %s', m.id, exc)
 
                 if rows:
+                    moves.invalidate_recordset()
                     self.env.cr.commit()
-                    self.env.invalidate_all()
                     ok += client.upsert('odoo_account_entries_stock', rows,
                                         on_conflict='odoo_move_id', batch_size=500) or 0
+                    try:
+                        self.env.cr.execute('SELECT 1')
+                    except Exception:
+                        pass
             except Exception as exc:
                 _logger.exception('account_entries_stock chunk %s failed: %s', chunk_start, exc)
         return ok
