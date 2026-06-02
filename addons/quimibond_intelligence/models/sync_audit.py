@@ -568,6 +568,10 @@ class SyncAudit(models.TransientModel):
 
         company_id filter — scopea a Quimibond (company 1).
         """
+        # mrp no es dependencia del manifest — si no está instalado
+        # (ej. BD de test de Odoo.sh), no hay tabla mrp_production.
+        if 'mrp.production' not in self.env:
+            return
         cid = self._get_company_id()
         self.env.cr.execute("""
             SELECT to_char(date_start, 'YYYY-MM') AS ym,
