@@ -67,6 +67,10 @@ class TestCfdiUuidPush(TransactionCase):
     def test_push_reads_uuid_from_odoo19_field(self):
         """When the cfdi_uuid is available via l10n_mx_edi, _serialize_invoice
         must include it in the payload (Odoo 19 source of truth)."""
+        # l10n_mx_edi no es dependencia del addon: en la BD de test de
+        # Odoo.sh el modelo no existe (en producción sí está instalado).
+        if 'l10n_mx_edi.document' not in self.env:
+            self.skipTest('l10n_mx_edi not installed in test DB')
         uuid = 'DEADBEEF-CAFE-BABE-0000-000000000001'
         move = self._make_posted_invoice(uuid=uuid)
         payload = self.Sync.sudo()._serialize_invoice(move)

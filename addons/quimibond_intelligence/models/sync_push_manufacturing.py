@@ -162,8 +162,6 @@ class QuimibondSyncManufacturing(models.TransientModel):
                     except Exception as exc:
                         _logger.warning('workorder %s: %s', wo.id, exc)
                 if rows:
-                    self.env.cr.commit()
-                    self.env.invalidate_all()
                     ok += client.upsert('odoo_workorders', rows,
                                         on_conflict='odoo_workorder_id', batch_size=500) or 0
             except Exception as exc:
