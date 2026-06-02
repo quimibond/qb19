@@ -70,6 +70,11 @@ def _build_cfdi_map(env, invoice_ids: list, seen_uuids: set | None = None) -> di
     """
     if not invoice_ids:
         return {}
+    # l10n_mx_edi no es dependencia del manifest — si no está instalado
+    # (ej. BD de test de Odoo.sh) no hay CFDIs que mapear. Silencioso:
+    # no es un error, es una configuración válida.
+    if 'l10n_mx_edi.document' not in env:
+        return {}
     if seen_uuids is None:
         seen_uuids = set()
 
