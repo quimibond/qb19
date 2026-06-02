@@ -391,9 +391,27 @@ class QuimibondSync(models.TransientModel):
                 incremental = False
 
         _start = datetime.now()
+        # ── Time budget (2026-06-01) ─────────────────────────────────────
+        # Odoo.sh mata crons que rebasan limit_time_real_cron (~15 min) y
+        # tras varios timeouts DESACTIVA el cron automáticamente (pasó el
+        # 5-may-2026). Presupuesto default: 480s (8 min). Configurable via
+        # ICP quimibond_intelligence.push_time_budget_s. Los métodos que no
+        # alcancen a correr quedan loggeados y corren en el siguiente ciclo
+        # (el incremental via write_date no pierde datos).
+        try:
+            time_budget_s = int(ICP.get_param(
+                'quimibond_intelligence.push_time_budget_s', '480'))
+        except (ValueError, TypeError):
+            time_budget_s = 480
+
         try:
             # Mapeo label → (metodo). _run_push aisla errores por metodo y
             # loggea cada resultado a Supabase pipeline_logs (phase='odoo_push').
+            #
+            # SP11/SP12 (stock_moves, account_entries_stock, workcenters,
+            # workorders) NO van aquí — viven en push_to_supabase_heavy()
+            # (cron propio cada 2h) porque stock_moves solo puede tardar
+            # >20 min y tumbaba el cron hourly completo.
             methods = [
                 ('contacts', self._push_contacts),
                 ('products', self._push_products),
@@ -423,16 +441,15 @@ class QuimibondSync(models.TransientModel):
                 ('bank_balances', self._push_bank_balances),
                 ('currency_rates', self._push_currency_rates),
                 ('boms', self._push_boms),
-                # SP11: stock vs accounting reconciliation (2026-04-23)
                 ('stock_locations', self._push_stock_locations),
-                ('stock_moves', self._push_stock_moves),
-                ('account_entries_stock', self._push_account_entries_stock),
-                # SP12: manufacturing cost audit (2026-04-23)
-                ('workcenters', self._push_workcenters),
-                ('workorders', self._push_workorders),
             ]
             totals = {}
+            skipped = []
             for label, fn in methods:
+                elapsed_so_far = (datetime.now() - _start).total_seconds()
+                if elapsed_so_far > time_budget_s:
+                    skipped.append(label)
+                    continue
                 totals[label] = self._run_push(client, label, fn, last_sync=last_sync)
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
@@ -440,6 +457,22 @@ class QuimibondSync(models.TransientModel):
             _logger.info('✓ Push to Supabase: %s', summary or 'no changes')
             if failed:
                 _logger.warning('Push methods with 0 rows: %s', ', '.join(failed))
+            if skipped:
+                _logger.warning(
+                    'Time budget (%ss) exhausted — skipped: %s (corren en el '
+                    'siguiente ciclo)', time_budget_s, ', '.join(skipped))
+                try:
+                    client.insert('pipeline_logs', [{
+                        'level': 'warning',
+                        'phase': 'odoo_push',
+                        'message': f'Time budget exhausted, skipped: {", ".join(skipped)}',
+                        'details': {
+                            'skipped_methods': skipped,
+                            'time_budget_s': time_budget_s,
+                        },
+                    }])
+                except Exception:
+                    pass
             elapsed = (datetime.now() - _start).total_seconds()
             self.env['quimibond.sync.log'].sudo().create({
                 'name': 'Push completo',
@@ -514,6 +547,102 @@ class QuimibondSync(models.TransientModel):
         self.env.cr.commit()
         _logger.info('Nightly full sync triggered (force_full_sync=1)')
         self.push_to_supabase()
+
+    # ── Heavy tables push (2026-06-01) ────────────────────────────────────
+    # stock_moves (1.65M rows, avg 352s / max 1,280s) + account_entries_stock
+    # eran parte del cron hourly y lo hacían rebasar limit_time_real_cron de
+    # Odoo.sh (~15 min). Tras timeouts repetidos, Odoo.sh DESACTIVÓ el cron
+    # el 5-may-2026 → todo el pipeline se detuvo.
+    #
+    # Estas 4 tablas ahora corren en su propio cron cada 2h con presupuesto
+    # de tiempo independiente. El resto del sync hourly no depende de ellas.
+
+    @api.model
+    def push_to_supabase_heavy(self):
+        """Push SP11/SP12 heavy tables: stock_moves, account_entries_stock,
+        workcenters, workorders. Cron propio cada 2h."""
+        client = _get_client(self.env)
+        if not client:
+            return
+
+        ICP = self.env['ir.config_parameter'].sudo()
+        last_sync_str = ICP.get_param(
+            'quimibond_intelligence.last_heavy_sync_date', '')
+        last_sync = None
+        if last_sync_str:
+            try:
+                last_sync = datetime.strptime(last_sync_str, '%Y-%m-%d %H:%M:%S')
+                last_sync = last_sync - timedelta(minutes=1)
+            except (ValueError, TypeError):
+                last_sync = None
+
+        # Presupuesto: 720s (12 min) — bajo el límite ~15 min de Odoo.sh.
+        # stock_moves incremental via write_date entra holgado; el primer
+        # full sync tras restaurar puede necesitar 2-3 ciclos (los upserts
+        # son idempotentes, el progreso por chunk no se pierde).
+        try:
+            time_budget_s = int(ICP.get_param(
+                'quimibond_intelligence.heavy_push_time_budget_s', '720'))
+        except (ValueError, TypeError):
+            time_budget_s = 720
+
+        _start = datetime.now()
+        try:
+            methods = [
+                # Catálogos chicos primero (siempre completan)
+                ('workcenters', self._push_workcenters),
+                ('workorders', self._push_workorders),
+                ('account_entries_stock', self._push_account_entries_stock),
+                # El más pesado al final: si rebasa el budget, solo él se
+                # difiere al siguiente ciclo
+                ('stock_moves', self._push_stock_moves),
+            ]
+            totals = {}
+            skipped = []
+            for label, fn in methods:
+                elapsed_so_far = (datetime.now() - _start).total_seconds()
+                if elapsed_so_far > time_budget_s:
+                    skipped.append(label)
+                    continue
+                totals[label] = self._run_push(client, label, fn, last_sync=last_sync)
+
+            summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
+            _logger.info('✓ Heavy push to Supabase: %s', summary or 'no changes')
+            if skipped:
+                _logger.warning(
+                    'Heavy push: time budget (%ss) exhausted — skipped: %s',
+                    time_budget_s, ', '.join(skipped))
+
+            elapsed = (datetime.now() - _start).total_seconds()
+            self.env['quimibond.sync.log'].sudo().create({
+                'name': 'Push pesado (stock/manufactura)',
+                'direction': 'push',
+                'status': 'success',
+                'summary': (summary or 'sin cambios') + (
+                    f' | skipped: {", ".join(skipped)}' if skipped else ''),
+                'duration_seconds': round(elapsed, 1),
+            })
+            # Solo avanza last_heavy_sync si TODO corrió (si algo se saltó,
+            # el siguiente ciclo re-procesa la ventana completa — los
+            # upserts son idempotentes)
+            if not skipped:
+                ICP.set_param('quimibond_intelligence.last_heavy_sync_date',
+                              _start.strftime('%Y-%m-%d %H:%M:%S'))
+            self.env.cr.commit()
+        except Exception as exc:
+            _logger.error('Heavy push to Supabase failed: %s', exc)
+            try:
+                self.env['quimibond.sync.log'].sudo().create({
+                    'name': 'Push pesado fallido',
+                    'direction': 'push',
+                    'status': 'error',
+                    'summary': str(exc)[:500],
+                })
+                self.env.cr.commit()
+            except Exception:
+                pass
+        finally:
+            client.close()
 
     # ── Schema Catalog ────────────────────────────────────────────────────
 
