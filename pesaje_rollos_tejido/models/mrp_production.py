@@ -297,14 +297,17 @@ class MrpProduction(models.Model):
         ahora_local = fields.Datetime.context_timestamp(self, ahora_utc)
         ahora = ahora_local.strftime('%d/%m/%Y %H:%M:%S')
         # -----------------------------------------------------------
-
+        order_number = self.name.split('/')[-1]
+        barcode_weight_content = f"{order_number}-{weight:.4f}"
+        
         # PW812 = 10cm de ancho | LL609 = 7.5cm de alto
         zpl = f"""^XA^PW812^LL609^CI28
 ^FO50,40^A0N,40,40^FDSUBPRODUCTO^FS
 ^FO50,100^A0N,25,25^FDFECHA : {ahora}^FS
 ^FO50,140^A0N,25,25^FDPRODUCTO : {product.display_name[:70]}^FS
 ^FO50,180^A0N,20,20^FDORIGEN : {self.name} / {pesador or ''}^FS
-^FO0,250^FB812,1,0,C^A0N,100,90^FD{weight:.4f} kg^FS
+^FO50,250^A0N,40,40^FDPESO : {weight:.4f} kg^FS
+^BY2,3,70^FO450,230^BCN,70,N,N,N^FD{barcode_weight_content}^FS
 ^BY2,3,110^FO100,380^BCN,110,N,N,N^FD{lot_name}^FS
 ^FO0,520^FB812,1,0,C^A0N,30,30^FDLOTE : {lot_name}^FS
 ^XZ"""
