@@ -49,22 +49,31 @@ class MrpProduction(models.Model):
         CORRECCIÓN: Obtiene la meta del centro de trabajo real desde las órdenes de trabajo,
         permitiendo que el dato cambie si planeación mueve la orden a un centro alterno.
         """
+        # Lógica para detectar si es DNP
+        # Ajusta según si quieres validar por código del producto final o código de la BoM
+            
         for reg in self:
-            # Buscamos la orden de trabajo activa (lista o en proceso)
-            active_wo = reg.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
-            
-            # Si no hay activa, tomamos la primera de la lista como referencia
-            target_wo = active_wo or reg.workorder_ids[:1]
-            
-            if target_wo and target_wo.workcenter_id:
-                # Accedemos al campo 'numero_rollos_revisar' del centro de trabajo vinculado a la WO
-                reg.rollos_requeridos_count = target_wo.workcenter_id.numero_rollos_revisar
+            # 1. Validamos el prefijo de la BoM (usamos 'or' para evitar errores si no tiene BoM)
+            es_dnp = reg.bom_id and reg.bom_id.code and reg.bom_id.code.startswith('DNP')
+            if es_dnp:
+                # Si es DNP, forzamos el valor a 1
+                reg.rollos_requeridos_count = 1
             else:
-                # Respaldo: si no hay WOs, intenta el campo directo del respaldo
-                if reg.workcenter_id:
-                    reg.rollos_requeridos_count = reg.workcenter_id.numero_rollos_revisar
+                # Buscamos la orden de trabajo activa (lista o en proceso)
+                active_wo = reg.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
+            
+                # Si no hay activa, tomamos la primera de la lista como referencia
+                target_wo = active_wo or reg.workorder_ids[:1]
+            
+                if target_wo and target_wo.workcenter_id:
+                     # Accedemos al campo 'numero_rollos_revisar' del centro de trabajo vinculado a la WO
+                    reg.rollos_requeridos_count = target_wo.workcenter_id.numero_rollos_revisar
                 else:
-                    reg.rollos_requeridos_count = 0
+                    # Respaldo: si no hay WOs, intenta el campo directo del respaldo
+                    if reg.workcenter_id:
+                        reg.rollos_requeridos_count = reg.workcenter_id.numero_rollos_revisar
+                    else:
+                        reg.rollos_requeridos_count = 0
 
     def _print_zpl_label(self, lote_name, peso, nombre_producto, pesador=False):
         """ Etiqueta de Revisado Corregida (10x7.5cm) """
@@ -105,9 +114,15 @@ class MrpWorkorder(models.Model):
 
     def button_finish(self):
         """ Validación de cierre de la Orden de Trabajo (Tableta/Lista) """
+        # Definimos la lista de categorías que requieren este control
+        categorias_validas = [
+            'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg',
+            'Producto En Proceso / Tac-Producto en proceso-DNP Tejido Circular-kg'
+        ]
         for wo in self:
             prod = wo.production_id
-            if prod.product_id.categ_id.complete_name == 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg':
+            # Verificamos si la categoría del producto está en nuestra lista permitida
+            if prod.product_id.categ_id.complete_name in categorias_validas:
                 if prod.rollos_revisados_count < prod.rollos_requeridos_count:
                     raise UserError(_(
                         "Control de Calidad Pendiente:\n"
