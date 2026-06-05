@@ -184,3 +184,4 @@ class MrpWorkcenter(models.Model):
         default=1,
         help="Número de rollos que el sistema exigirá pesar en este Centro de Trabajo."
     )
+    consecutivo_maquina = fields.Integer(string="Rollo Circular", default=0)

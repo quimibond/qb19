@@ -163,11 +163,29 @@ class MrpWeighRollWizard(models.TransientModel):
                     'target': 'new',
                     'context': self.env.context,
                 }
+            
+        # --- NUEVA LÓGICA DE CONSECUTIVO ---
+        production = self.production_id
+        workcenter = self.workorder_id.workcenter_id
+        valor_rollo_circular = 0
+        
+        # Validamos que el centro de trabajo exista y tenga un consecutivo mayor a 0
+        if workcenter and workcenter.consecutivo_maquina > 0:
+            # Incrementamos el valor
+            valor_rollo_circular = workcenter.consecutivo_maquina
+            nuevo_valor = workcenter.consecutivo_maquina + 1
+            # Persistimos el cambio en la base de datos
+            workcenter.sudo().write({'consecutivo_maquina': nuevo_valor})
+        else:
+            # Si el consecutivo es 0 o False, no incrementamos nada
+            valor_rollo_circular = 0
+        # -----------------------------------
         solo_numero_mo = self.production_id.name.split('/')[-1]
         numero_rollo_final = f"{solo_numero_mo}-{(self.production_id.roll_count + 1):04d}"
         self.env['mrp.weighing.log'].create({
             'production_id': self.production_id.id,
             'roll_number': numero_rollo_final,
+            'rollo_circular': valor_rollo_circular,
             'pesador': self.employee_name,
             'weight_bruto': self.weight,
             'tara': self.tara,
