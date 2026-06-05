@@ -72,6 +72,7 @@
                 <xpath expr="//group[@name='capacity']" position="after">
                     <group string="Configuración de Calidad">
                         <field name="numero_rollos_revisar"/>
+                        <field name="consecutivo_maquina"/>
                     </group>
                 </xpath>
             </field>

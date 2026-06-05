@@ -5,3 +5,4 @@ access_mrp_tara_user,mrp.tara.user,model_mrp_tara,mrp.group_mrp_user,1,1,1,1
 access_mrp_rollo_estandar,mrp.rollo.estandar,model_mrp_rollo_estandar,mrp.group_mrp_user,1,1,1,1
 access_mrp_weighing_log_user,mrp.weighing.log.user,model_mrp_weighing_log,mrp.group_mrp_user,1,1,1,0
 access_mrp_weighing_log_manager,mrp.weighing.log.manager,model_mrp_weighing_log,mrp.group_mrp_manager,1,1,1,1
+access_corregir_rollo_wizard,corregir.rollo.wizard,model_corregir_rollo_wizard,mrp.group_mrp_manager,1,1,1,1

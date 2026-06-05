@@ -4,3 +4,4 @@ from . import res_config_settings
 from . import mrp_weigh_wizard
 from . import mrp_tara
 from . import mrp_rollo_estandar
+from . import wizard_corregir
