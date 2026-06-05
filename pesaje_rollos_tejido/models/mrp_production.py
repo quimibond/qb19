@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import datetime
 from odoo.tools import float_round, float_compare
 
@@ -386,12 +386,39 @@ class MrpWeighingLog(models.Model):
     lot_id = fields.Many2one('stock.lot', string="Lote/Rollo")
     user_id = fields.Many2one('res.users', string="Usuario Sistema", default=lambda self: self.env.user)
     pesador = fields.Char(string="Pesador (Empleado)")
+    rollo_circular = fields.Integer(string="Rollo Circular")
     
     weight_bruto = fields.Float(string="Peso Bruto (kg)", digits=(12, 4))
     tara = fields.Float(string="Tara (kg)", digits=(12, 4))
     weight_neto = fields.Float(string="Peso Neto (kg)", digits=(12, 4))
     
     workcenter_id = fields.Many2one('mrp.workcenter', string="Centro de Trabajo")
+
+    @api.constrains('rollo_circular', 'workcenter_id')
+    def _check_rollo_circular(self):
+        for log in self:
+            # 1. AJUSTE: Si el valor es 0, permitimos que pase y salimos de la validación
+            if log.rollo_circular == 0:
+                continue
+            # 1. SI ESTÁ VACÍO, NO VALIDAMOS NADA (Permite que el supervisor lo llene después)
+            if not log.rollo_circular:
+                continue
+            
+            # 2. Validación: No puede ser mayor al consecutivo actual del centro de trabajo
+            if log.rollo_circular > log.workcenter_id.consecutivo_maquina:
+                raise ValidationError("El número 'Rollo Circular' no puede ser mayor al consecutivo actual de la máquina.")
+            
+            # 3. Validación: No puede existir en otro registro en esta misma máquina
+            # IMPORTANTE: Agregamos production_id para evitar conflictos entre diferentes órdenes
+            duplicado = self.search([
+                ('id', '!=', log.id),
+                ('rollo_circular', '=', log.rollo_circular),
+                ('workcenter_id', '=', log.workcenter_id.id),
+                ('rollo_circular', '!=', 0) # Solo validamos si tiene un número real
+            ], limit=1)
+            
+            if duplicado:
+                raise ValidationError("Este número de 'Rollo Circular' ya fue asignado en esta máquina.")
 
 class StockLot(models.Model):
     _inherit = 'stock.lot'

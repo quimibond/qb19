@@ -12,6 +12,13 @@
                         <list create="0" edit="0" delete="0">
                             <field name="date_time" string="Fecha/Hora"/>
                             <field name="roll_number" string="Lote / Rollo"/>
+                            <field name="rollo_circular" 
+                                   string="Rollo Circular"/>
+                            <button name="%(action_abrir_wizard)d" 
+                                    type="action" 
+                                    icon="fa-pencil" 
+                                    groups="mrp.group_mrp_manager" 
+                                    title="Corregir Rollo Circular"/>
                             <field name="pesador" string="Operador (Báscula)"/>
                             <field name="weight_bruto" 
                                    string="P. Bruto (kg)" 

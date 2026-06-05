@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_corregir_rollo_wizard" model="ir.ui.view">
+        <field name="name">corregir.rollo.wizard.form</field>
+        <field name="model">corregir.rollo.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="log_id" invisible="1"/>
+                    <field name="nuevo_valor"/>
+                </group>
+                <footer>
+                    <button name="confirmar" string="Confirmar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_abrir_wizard" model="ir.actions.act_window">
+        <field name="name">Corregir Rollo</field>
+        <field name="res_model">corregir.rollo.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_log_id': active_id}</field>
+    </record>
+</odoo>

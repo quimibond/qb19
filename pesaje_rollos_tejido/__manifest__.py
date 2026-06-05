@@ -24,7 +24,8 @@
         'views/mrp_tara_view.xml',              # Modelo de Taras
         'views/mrp_rollo_estandar_view.xml',
         'views/mrp_weigh_wizard_view.xml',      # Vistas de los asistentes
-        'views/mrp_subproduct_wizard_view.xml',  # Vista del nuevo asistente de subproductos
+        'views/mrp_subproduct_wizard_view.xml', # Vista del nuevo asistente de subproductos
+        'views/wizard_corregir_view.xml',       # Vista de boton para corregir numero Rollo Circular
         'views/mrp_production_view.xml',        # Pestaña ZPL en la MO
         'views/mrp_workorder_tablet_view.xml',  # Botones PESAR y SUBPRODUCTO en tableta
         'views/res_config_settings_view.xml',   # Configuraciones adicionales
