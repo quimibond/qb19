@@ -135,6 +135,18 @@ class MrpWeighRollWizard(models.TransientModel):
             'target': 'new',
             'context': self.env.context,
         }
+    
+    # Mostrar el Rollo Circular a asignar al pesaje
+    proximo_rollo_circular = fields.Integer(
+        string="Consecutivo Actual en Máquina", 
+        compute="_compute_proximo_rollo"
+    )
+
+    @api.depends('workcenter_id')
+    def _compute_proximo_rollo(self):
+        for reg in self:
+            # Mostramos el valor actual tal cual está en la máquina
+            reg.proximo_rollo_circular = reg.workcenter_id.consecutivo_maquina if reg.workcenter_id else 0
 
     def confirm_weighing(self):
         """ Registro de pesaje, impresión y cierre automático """

@@ -23,7 +23,15 @@
                         <div class="row">
                             <div class="col-6">
                                 <strong>Orden de Trabajo: </strong> <field name="workorder_id" readonly="1"/><br/>
-                                <strong>Centro de Trabajo: </strong> <field name="workcenter_id" readonly="1"/>
+                                <div style="margin-top: 5px;">
+                                    <strong>Centro de Trabajo: </strong> 
+                                    <field name="workcenter_id" readonly="1"/>
+        
+                                    <strong style="color: #008784; margin-left: 20px;">Consecutivo Máquina: </strong> 
+                                    <field name="proximo_rollo_circular" 
+                                        readonly="1" 
+                                        style="font-size: 1.2em; font-weight: bold; color: #008784;"/>
+                                </div>
                             </div>
                             <div class="col-6 text-end">
                                  <strong>Artículo: </strong> <field name="product_id" readonly="1"/>
