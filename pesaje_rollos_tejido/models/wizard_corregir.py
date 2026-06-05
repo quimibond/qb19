@@ -2,6 +2,7 @@ from odoo import models, fields
 
 class CorregirRolloWizard(models.TransientModel):
     _name = 'corregir.rollo.wizard'
+    _description = 'Wizard para corrección de Rollo Circular'
 
     # Campos que el Administrador verá en la ventanita
     log_id = fields.Many2one('mrp.weighing.log')
