@@ -54,12 +54,12 @@ patch(FormController.prototype, {
                             }
                         };
 
-                        // 🔒 CORRECCIÓN ODOO 19: Pasamos un objeto con las propiedades correctas
-                        this.iotLongpollingService.addListener({
-                            iot_ip: dev.iot_id[1],
-                            identifier: dev.identifier,
-                            callback: this.revisadoScaleListener
-                        });
+                        // 🔒 CORRECCIÓN ODOO 19: Extraemos la IP limpia del campo iot_id y pasamos parámetros sueltos
+                        const iotIp = Array.isArray(dev.iot_id) ? dev.iot_id[1] : dev.iot_id;
+
+                        if (iotIp && dev.identifier) {
+                            this.iotLongpollingService.addListener(iotIp, dev.identifier, this.revisadoScaleListener);
+                        }
                     }
                 });
             }
