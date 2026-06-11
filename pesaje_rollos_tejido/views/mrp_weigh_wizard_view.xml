@@ -37,9 +37,9 @@
                                     <field name="workcenter_id" readonly="1"/>
         
                                     <strong style="color: #008784; margin-left: 20px;">Consecutivo Máquina: </strong> 
-                                    <field name="proximo_rollo_circular" 
-                                        readonly="1" 
-                                        style="font-size: 1.2em; font-weight: bold; color: #008784;"/>
+                                    <span style="font-size: 1.2em; font-weight: bold; color: #008784;">
+                                        <field name="proximo_rollo_circular" readonly="1"/>
+                                    </span>
                                 </div>
                             </div>
                             <div class="col-6 text-end">
