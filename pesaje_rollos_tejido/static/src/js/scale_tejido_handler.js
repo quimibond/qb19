@@ -27,22 +27,30 @@ patch(FormController.prototype, {
     _connectToTejidoScale() {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
-            // 🔒 CORREGIDO: Usamos la sintaxis oficial orm.read de Odoo 19
-            this.ormService.read('iot.device', [root.data.iot_device_id[0]], ['iot_id', 'identifier'])
-            .then((result) => {
-                if (result && result.length > 0) {
-                    const dev = result[0];
-                    this.tejidoScaleListener = (data) => {
-                        if (data.status === 'success' && data.value !== undefined) {
-                            const targetField = root.resModel === 'mrp.weigh.roll.wizard' ? 'weight' : 'weight';
-                            if (root.data[targetField] !== data.value) {
-                                root.update({ [targetField]: parseFloat(data.value) });
+            
+            // 🔒 SOLUCIÓN: Validamos si viene como arreglo [id, name] o como entero directo
+            const iotDeviceId = Array.isArray(root.data.iot_device_id) 
+                ? root.data.iot_device_id[0] 
+                : root.data.iot_device_id;
+
+            if (iotDeviceId) {
+                // Enviamos el ID limpio envuelto correctamente en un array plano para el orm.read
+                this.ormService.read('iot.device', [iotDeviceId], ['iot_id', 'identifier'])
+                .then((result) => {
+                    if (result && result.length > 0) {
+                        const dev = result[0];
+                        this.tejidoScaleListener = (data) => {
+                            if (data.status === 'success' && data.value !== undefined) {
+                                const targetField = root.resModel === 'mrp.weigh.roll.wizard' ? 'weight' : 'weight';
+                                if (root.data[targetField] !== data.value) {
+                                    root.update({ [targetField]: parseFloat(data.value) });
+                                }
                             }
-                        }
-                    };
-                    this.iotLongpolling.addListener(dev.iot_id[1], dev.identifier, this.tejidoScaleListener);
-                }
-            });
+                        };
+                        this.iotLongpolling.addListener(dev.iot_id[1], dev.identifier, this.tejidoScaleListener);
+                    }
+                });
+            }
         }
     }
 });
