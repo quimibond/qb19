@@ -7,6 +7,18 @@ class MrpRevisadoWizard(models.TransientModel):
     _name = 'mrp.revisado.wizard'
     _description = 'Wizard de Revisado de Calidad'
 
+    weighing_mode = fields.Selection([
+        ('iot', 'Báscula Automática IoT'),
+        ('manual', 'Captura Manual (Teclado)')
+    ], string="Modo de Pesaje", default='iot', required=True)
+    
+    iot_device_id = fields.Many2one(
+        'iot.device', 
+        string="Báscula de Inspección", 
+        domain="[('type', '=', 'scale')]",
+        default=lambda self: self.env['iot.device'].search([('type', '=', 'scale')], limit=1).id
+    )
+
     # 1. Nuevos campos para identificación
     employee_number = fields.Char(string="Número de Empleado", required=True)
     employee_name = fields.Char(string="Nombre del Revisor", compute="_compute_employee_name", store=True)

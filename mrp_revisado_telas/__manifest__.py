@@ -10,8 +10,18 @@
         'mrp', 
         'stock',
         'pesaje_rollos_tejido',
-        'quality_control'
+        'quality_control',
+        'iot'
     ],
+    'assets': {
+        'web.assets_backend': [
+            # CONSERVAMOS TU LOGICA ORIGINAL DE IMPRESION DE ETIQUETAS ZEBRA
+            'mrp_revisado_telas/static/src/js/iot_handler.js',
+            
+            # AGREGAMOS EL NUEVO SCRIPT EXCLUSIVO PARA LEER LA BÁSCULA RHINO
+            'mrp_revisado_telas/static/src/js/scale_revisado_handler.js',
+        ],
+    },
     'data': [
         # 1. Seguridad siempre primero
         'security/ir.model.access.csv',

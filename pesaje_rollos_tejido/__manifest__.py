@@ -17,10 +17,19 @@
         'mrp', 
         'stock', 
         'mrp_workorder', 
-        'quality_control'  # Requerido para la lógica de calidad del subproducto
+        'quality_control',  # Requerido para la lógica de calidad del subproducto
+        'iot'
     ],
+    'assets': {
+        'web.assets_backend': [
+            # Conserva aquí tus rutas actuales de impresión si las tienes listadas en este módulo,
+            # y añadimos el nuevo controlador de la báscula:
+            'pesaje_rollos_tejido/static/src/js/scale_tejido_handler.js',
+        ],
+    },
     'data': [
         'security/ir.model.access.csv',
+        'security/security_groups.xml',
         'views/mrp_tara_view.xml',              # Modelo de Taras
         'views/mrp_rollo_estandar_view.xml',
         'views/mrp_weigh_wizard_view.xml',      # Vistas de los asistentes

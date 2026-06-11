@@ -16,8 +16,8 @@
                      invisible="not rollos_pendientes_text">
                     <strong>ESTADO DE REVISIÓN:</strong> <field name="rollos_pendientes_text" readonly="1"/>
                 </div>
-
                 <sheet>
+                    
                     <group>
                         <field name="employee_number" 
                                password="True" 
@@ -26,7 +26,17 @@
                                force_save="1"/>
                         <field name="employee_name" readonly="1" invisible="not employee_number"/>
                     </group>
+
+                   
                     <div invisible="not employee_number">
+                        <div class="alert alert-info d-flex align-items-center justify-content-between p-2 mb-3" 
+                            role="status" 
+                            groups="mrp.group_mrp_manager,pesaje_rollos_tejido.group_mrp_scale_manual_mode">
+                            <group col="4" class="w-100 m-0">
+                                <field name="weighing_mode" widget="radio" options="{'horizontal': true}"/>
+                                <field name="iot_device_id" invisible="weighing_mode != 'iot'" required="weighing_mode == 'iot'"/>
+                            </group>
+                        </div>
                         <group>
                             <group string="DATOS DE LA ORDEN">
                                 <field name="production_id" readonly="1" options="{'no_open': True}"/>
@@ -59,7 +69,9 @@
                                             style="font-size: 32px; color: #2C3E50; font-weight: bold; width: 150px;" 
                                             placeholder="0.0000"
                                             options="{'digits': [12, 4]}"
-                                            required="lot_id != False"/>
+                                            required="lot_id != False"
+                                            readonly="weighing_mode == 'iot'" 
+                                            force_save="1"/>
                                     <span class="fw-bold">KG</span>
                                 </div>
 
