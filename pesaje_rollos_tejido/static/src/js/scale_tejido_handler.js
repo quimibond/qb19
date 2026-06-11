@@ -24,7 +24,7 @@ patch(FormController.prototype, {
         });
     },
 
-    _connectToTejidoScale() {
+   _connectToTejidoScale() {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
@@ -56,12 +56,13 @@ patch(FormController.prototype, {
                             }
                         };
 
-                        // 🔒 CORRECCIÓN ODOO 19: Pasamos un objeto con las propiedades correctas
-                        this.iotLongpolling.addListener({
-                            iot_ip: dev.iot_id[1],
-                            identifier: dev.identifier,
-                            callback: this.tejidoScaleListener
-                        });
+                        // 🔒 CORRECCIÓN ODOO 19: Extraemos la IP limpia del campo iot_id y pasamos parámetros sueltos
+                        // Evaluamos si dev.iot_id viene como relación Many2one [id, name/ip]
+                        const iotIp = Array.isArray(dev.iot_id) ? dev.iot_id[1] : dev.iot_id;
+                        
+                        if (iotIp && dev.identifier) {
+                            this.iotLongpolling.addListener(iotIp, dev.identifier, this.tejidoScaleListener);
+                        }
                     }
                 });
             }
