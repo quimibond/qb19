@@ -6,6 +6,18 @@ class MrpWeighRollWizard(models.TransientModel):
     _name = 'mrp.weigh.roll.wizard'
     _description = 'Asistente de Pesado de Rollos'
 
+    weighing_mode = fields.Selection([
+        ('iot', 'Báscula Automática IoT'),
+        ('manual', 'Captura Manual (Teclado)')
+    ], string="Modo de Pesaje", default='iot', required=True)
+    
+    iot_device_id = fields.Many2one(
+        'iot.device', 
+        string="Báscula IoT", 
+        domain="[('type', '=', 'scale')]",
+        default=lambda self: self.env['iot.device'].search([('type', '=', 'scale')], limit=1).id
+    )
+
     # Campo técnico para manejar el estado de la alerta
     confirm_threshold = fields.Boolean(string="Confirmar fuera de rango", default=False)
 
@@ -226,6 +238,18 @@ class MrpWeighRollWizard(models.TransientModel):
 class MrpSubproductWizard(models.TransientModel):
     _name = 'mrp.subproduct.wizard'
     _description = 'Asistente de Pesado de Subproducto'
+
+    weighing_mode = fields.Selection([
+        ('iot', 'Báscula Automática IoT'),
+        ('manual', 'Captura Manual (Teclado)')
+    ], string="Modo de Pesaje", default='iot', required=True)
+    
+    iot_device_id = fields.Many2one(
+        'iot.device', 
+        string="Báscula IoT", 
+        domain="[('type', '=', 'scale')]",
+        default=lambda self: self.env['iot.device'].search([('type', '=', 'scale')], limit=1).id
+    )
 
     # 1. Añadir los campos de empleado
     employee_number = fields.Char(string="Número de Empleado", required=True)
