@@ -85,44 +85,40 @@ class StockPicking(models.Model):
             
             if not quant:
                 raise UserError(_("La caja %s no tiene existencias en %s.") % (lot.name, self.location_id.name))
-            # 1. Tomamos la cantidad real en esa ubicación
+            
             raw_quantity = quant.quantity 
-            # 2. Obtenemos la Unidad de Medida del producto (kg)
             uom = lot.product_id.uom_id
-            # 3. Limpiamos el valor usando el redondeo de la UoM (0.01, 0.0001, etc.)
             qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
-        # CASO B: FORMACIÓN DE BAÑOS (Tela 99999-9999)
+        # CASO B: FORMACIÓN DE BAÑOS (Tela H99999-9999 o 99999-9999)
         elif 'FORMACI' in op_name:
-            if not re.match(r'^\d{5}-\d+$', barcode):
-                 raise UserError(_("Formato de tela inválido para Baños. Debe ser: 99999-9999."))
+            # CORRECCIÓN DE EXPRESIÓN REGULAR: Soporta prefijo alfabético como 'H'
+            if not re.match(r'^[A-Z]?\d+-\d+$', barcode):
+                 raise UserError(_("Formato de tela inválido para Baños. Debe ser: H99999-9999 o 99999-9999."))
         
             mo_part = barcode.split('-')[0]
             if mo_part not in (self.origin or ''):
                raise UserError(_("La tela %s no pertenece a la Orden de Fabricación %s.") % (barcode, self.origin))
         
             # VALIDACIÓN DE PRECARGADOS
-            #existing_line = self.move_line_ids.filtered(lambda ml: ml.lot_id.id == lot.id)
             existing_line = self.move_line_ids.filtered(lambda ml: ml.lot_id == lot)
             if existing_line:
+                # SE CONSERVA EL CONTROL DE FLUJO ORIGINAL
+                already_processed = True
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Rollo ya registrado',
                         'message': 'Este rollo ya fue registrado',
-                        'sticky': True,  # True para que no desaparezca solo
-                        'type': 'warning', # 'success', 'warning', 'danger', 'info'
-                        'next': {'type': 'ir.actions.client', 'tag': 'reload'}, # Refresca la vista atrás
+                        'sticky': True,
+                        'type': 'warning',
+                        'next': {'type': 'ir.actions.client', 'tag': 'reload'},
                     }
                 }
-                if existing_line[0].quantity <= 0:
-                    existing_line[0].quantity = existing_line[0].move_id.product_uom_qty or 1.0
-                    return {'type': 'ir.actions.client', 'tag': 'reload'}
-                already_processed = True
                
             else:
-                # SI NO ESTÁ PRECARGADO: Buscar stock real para dar de ALTA (Lo que faltaba)
+                # SI NO ESTÁ PRECARGADO: Buscar stock real para dar de ALTA
                 quant = self.env['stock.quant'].search([
                     ('lot_id', '=', lot.id),
                     ('location_id', '=', self.location_id.id),
@@ -130,41 +126,37 @@ class StockPicking(models.Model):
                 ], limit=1)
                 if not quant:
                     raise UserError(_("La tela %s no tiene stock en %s.") % (lot.name, self.location_id.name))
-                # 1. Tomamos la cantidad real en esa ubicación
+                
                 raw_quantity = quant.quantity 
-                # 2. Obtenemos la Unidad de Medida del producto (kg)
                 uom = lot.product_id.uom_id
-                # 3. Limpiamos el valor usando el redondeo de la UoM (0.01, 0.0001, etc.)
                 qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
-        # CASO C: DESPERDICIO TEJIDO (Subproducto SUB-)
+        # CASO C: DESPERDICIO TEJIDO (Subproducto SUB-H99999-AAAA-MM-DD)
         elif 'DESPERDICIO' in op_name:
-            if not barcode.startswith('SUB-') or not re.match(r'^SUB-\d+-\d{4}-\d{2}-\d{2}$', barcode):
-                raise UserError(_("Formato de subproducto inválido para Desperdicio. Debe ser: SUB-MO-AAAA-MM-DD."))
+            # CORRECCIÓN DE EXPRESIÓN REGULAR: Soporta prefijo alfabético como 'H' en la Orden de Fabricación
+            if not barcode.startswith('SUB-') or not re.match(r'^SUB-[A-Z]?\d+-\d{4}-\d{2}-\d{2}$', barcode):
+                raise UserError(_("Formato de subproducto inválido para Desperdicio. Debe ser: SUB-MO-AAAA-MM-DD (Ej. SUB-H99999-2026-06-10)."))
         
             mo_part = barcode.split('-')[1]
             if mo_part not in (self.origin or ''):
                 raise UserError(_("El subproducto %s no pertenece a la Orden de Fabricación %s.") % (barcode, self.origin))
 
             # Verificar si ya está precargado en las líneas de la operación
-            #existing_line = self.move_line_ids.filtered(lambda ml: ml.lot_id.id == lot.id)
             existing_line = self.move_line_ids.filtered(lambda ml: ml.lot_id == lot)
             if existing_line:
+                # SE CONSERVA EL CONTROL DE FLUJO ORIGINAL
+                already_processed = True
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Subproducto ya registrado',
                         'message': 'Este Subproducto ya fue registrado',
-                        'sticky': True,  # True para que no desaparezca solo
-                        'type': 'warning', # 'success', 'warning', 'danger', 'info'
-                        'next': {'type': 'ir.actions.client', 'tag': 'reload'}, # Refresca la vista atrás
+                        'sticky': True,
+                        'type': 'warning',
+                        'next': {'type': 'ir.actions.client', 'tag': 'reload'},
                     }
                 }
-                if existing_line[0].quantity <= 0:
-                    existing_line[0].quantity = existing_line[0].move_id.product_uom_qty or 1.0
-                    return {'type': 'ir.actions.client', 'tag': 'reload'}
-                already_processed = True
                 
             else:
                 # Si no está precargado, buscamos existencias reales en la ubicación
@@ -175,29 +167,20 @@ class StockPicking(models.Model):
                 ], limit=1)
                 if not quant:
                     raise UserError(_("El lote %s no tiene existencias en la ubicación %s.") % (lot.name, self.location_id.name))
-                # 1. Tomamos la cantidad real en esa ubicación
+                
                 raw_quantity = quant.quantity 
-                # 2. Obtenemos la Unidad de Medida del producto (kg)
                 uom = lot.product_id.uom_id
-                # 3. Limpiamos el valor usando el redondeo de la UoM (0.01, 0.0001, etc.)
                 qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
         # ---------------------------------------------------------
         # 3. PROCESAMIENTO TÉCNICO Y PERSISTENCIA
         # ---------------------------------------------------------
-        #if not already_processed and lot:
-        # ---------------------------------------------------------
-        # 3. PROCESAMIENTO TÉCNICO Y PERSISTENCIA (Ajustado)
-        # ---------------------------------------------------------
         if not already_processed and (qty_done > 0 or 'REQUISICI' in op_name):
-            # Identificamos el ID real (origin) para asegurar persistencia en Odoo.sh
             picking_id = self._origin.id if self._origin else self.id
-            
-            # Buscamos el movimiento de demanda
             move = self.move_ids.filtered(lambda m: m.product_id == lot.product_id and m.state not in ['done', 'cancel'])[:1]
             
             if move:
-                # VALIDACIÓN DE DUPLICADOS: Buscamos en la DB si este lote ya se guardó para este picking
+                # VALIDACIÓN DE DUPLICADOS
                 existing_line = self.env['stock.move.line'].sudo().search([
                     ('picking_id', '=', picking_id),
                     ('lot_id', '=', lot.id),
@@ -205,7 +188,7 @@ class StockPicking(models.Model):
                 ], limit=1)
 
                 if existing_line:
-                    raise UserError(_("Este lote (%s) ya fue guardado físicamente en la base de datos.") % lot_name)
+                    raise UserError(_("Este lote (%s) ya fue guardado físicamente en la base de datos.") % lot.name)
                
                 self.env['stock.move.line'].sudo().create({
                     'picking_id': picking_id,
@@ -218,7 +201,6 @@ class StockPicking(models.Model):
                     'product_uom_id': lot.product_id.uom_id.id,
                 })
               
-                # El reload obliga a la interfaz a leer lo que acabamos de escribir en la DB
                 return {'type': 'ir.actions.client', 'tag': 'reload'}
             else:
                 raise UserError(_("El producto %s no es requerido en este documento.") % lot.product_id.display_name)
@@ -229,15 +211,12 @@ class StockPicking(models.Model):
             op_name = (rec.picking_type_id.name or '').upper()
             if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO']):
                 
-                # Usamos mapped y sum, pero comparamos con float_compare
                 total_scanned = sum(rec.move_line_ids.mapped('quantity'))
                 total_demanded = sum(rec.move_ids.mapped('product_uom_qty'))
                 
-                # Tomamos la precisión de la UoM del primer movimiento (kg)
                 uom = rec.move_ids[0].product_uom if rec.move_ids else False
                 rounding = uom.rounding if uom else 0.01
 
-                # res: 0 si son iguales, 1 si scanned > demanded, -1 si scanned < demanded
                 res = float_compare(total_scanned, total_demanded, precision_rounding=rounding)
 
                 if res != 0:
