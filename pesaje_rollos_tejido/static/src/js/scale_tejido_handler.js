@@ -28,14 +28,23 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔒 SOLUCIÓN: Validamos si viene como arreglo [id, name] o como entero directo
-            const iotDeviceId = Array.isArray(root.data.iot_device_id) 
-                ? root.data.iot_device_id[0] 
-                : root.data.iot_device_id;
+            // 🔒 SOLUCIÓN MAESTRA: Extraemos el ID numérico real sin importar el formato de Odoo 19
+            let iotDeviceId = null;
+            const rawData = root.data.iot_device_id;
 
-            if (iotDeviceId) {
-                // Enviamos el ID limpio envuelto correctamente en un array plano para el orm.read
-                this.ormService.read('iot.device', [iotDeviceId], ['iot_id', 'identifier'])
+            if (Array.isArray(rawData)) {
+                iotDeviceId = rawData[0];
+            } else if (rawData && typeof rawData === 'object') {
+                iotDeviceId = rawData.id || (rawData.resIds && rawData.resIds[0]);
+            } else {
+                iotDeviceId = rawData;
+            }
+
+            // Forzamos a que sea un entero plano válido antes de enviarlo al ORM
+            const finalId = parseInt(iotDeviceId, 10);
+
+            if (finalId && !isNaN(finalId)) {
+                this.ormService.read('iot.device', [finalId], ['iot_id', 'identifier'])
                 .then((result) => {
                     if (result && result.length > 0) {
                         const dev = result[0];
