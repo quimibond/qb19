@@ -26,21 +26,28 @@ patch(FormController.prototype, {
     _connectToRevisadoScale() {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
-            // 🔒 CORREGIDO: Usamos la sintaxis oficial orm.read de Odoo 19
-            this.ormService.read('iot.device', [root.data.iot_device_id[0]], ['iot_id', 'identifier'])
-            .then((result) => {
-                if (result && result.length > 0) {
-                    const dev = result[0];
-                    this.revisadoScaleListener = (data) => {
-                        if (data.status === 'success' && data.value !== undefined) {
-                            if (root.data.peso_actual !== data.value) {
-                                root.update({ peso_actual: parseFloat(data.value) });
+            
+            // 🔒 SOLUCIÓN: Validamos si viene como arreglo [id, name] o como entero directo
+            const iotDeviceId = Array.isArray(root.data.iot_device_id) 
+                ? root.data.iot_device_id[0] 
+                : root.data.iot_device_id;
+
+            if (iotDeviceId) {
+                this.ormService.read('iot.device', [iotDeviceId], ['iot_id', 'identifier'])
+                .then((result) => {
+                    if (result && result.length > 0) {
+                        const dev = result[0];
+                        this.revisadoScaleListener = (data) => {
+                            if (data.status === 'success' && data.value !== undefined) {
+                                if (root.data.peso_actual !== data.value) {
+                                    root.update({ peso_actual: parseFloat(data.value) });
+                                }
                             }
-                        }
-                    };
-                    this.iotLongpollingService.addListener(dev.iot_id[1], dev.identifier, this.revisadoScaleListener);
-                }
-            });
+                        };
+                        this.iotLongpollingService.addListener(dev.iot_id[1], dev.identifier, this.revisadoScaleListener);
+                    }
+                });
+            }
         }
     }
 });
