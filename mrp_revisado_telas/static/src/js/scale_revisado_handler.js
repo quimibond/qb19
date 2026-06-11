@@ -2,12 +2,13 @@
 import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
 import { useService } from "@web/core/utils/hooks";
-import { onMounted, onWillDestroy } from "@odoo/owl"; // <-- CORREGIDO AQUÍ
+import { onMounted, onWillDestroy } from "@odoo/owl";
 
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
         this.iotLongpollingService = useService("iot_longpolling");
+        this.ormService = useService("orm"); // 🔒 CORREGIDO: Importamos el servicio ORM de Odoo 19
 
         onMounted(() => {
             if (this.model.root.resModel === 'mrp.revisado.wizard') {
@@ -15,7 +16,7 @@ patch(FormController.prototype, {
             }
         });
 
-        onWillDestroy(() => { // <-- CORREGIDO AQUÍ
+        onWillDestroy(() => {
             if (this.revisadoScaleListener) {
                 this.revisadoScaleListener = null;
             }
@@ -25,12 +26,9 @@ patch(FormController.prototype, {
     _connectToRevisadoScale() {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
-            this.rpc("/web/dataset/call_kw/iot.device/read", {
-                model: 'iot.device',
-                method: 'read',
-                args: [[root.data.iot_device_id[0]], ['iot_id', 'identifier']],
-                kwargs: {},
-            }).then((result) => {
+            // 🔒 CORREGIDO: Usamos la sintaxis oficial orm.read de Odoo 19
+            this.ormService.read('iot.device', [root.data.iot_device_id[0]], ['iot_id', 'identifier'])
+            .then((result) => {
                 if (result && result.length > 0) {
                     const dev = result[0];
                     this.revisadoScaleListener = (data) => {
