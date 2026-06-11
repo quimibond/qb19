@@ -19,7 +19,16 @@
                         </div>
                     </div>
 
+                   
                     <div invisible="not employee_number">
+                        <div class="alert alert-info d-flex align-items-center justify-content-between p-2 mb-3" 
+                            role="status" 
+                            groups="mrp.group_mrp_manager,pesaje_rollos_tejido.group_mrp_scale_manual_mode">
+                            <group col="4" class="w-100 m-0">
+                                <field name="weighing_mode" widget="radio" options="{'horizontal': true}"/>
+                                <field name="iot_device_id" invisible="weighing_mode != 'iot'" required="weighing_mode == 'iot'"/>
+                            </group>
+                        </div>
                         <div class="row">
                             <div class="col-6">
                                 <strong>Orden de Trabajo: </strong> <field name="workorder_id" readonly="1"/><br/>
@@ -64,7 +73,9 @@
                                            default_focus="1"
                                            style="font-size: 3em; font-weight: bold; width: 90%; text-align: center;" 
                                            class="oe_inline"
-                                           options="{'digits': [12, 4]}"/>
+                                           options="{'digits': [12, 4]}"
+                                           readonly="weighing_mode == 'iot'"
+                                           force_save="1"/>
                                 </div>
                                 <div class="col-4">
                                     <label for="tara" string="TARA" style="font-size: 1.2em; font-weight: bold; color: #a24646;"/><br/>
