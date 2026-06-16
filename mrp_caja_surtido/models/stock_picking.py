@@ -92,11 +92,12 @@ class StockPicking(models.Model):
 
         # CASO B: FORMACIÓN DE BAÑOS (Tela H99999-9999 o 99999-9999)
         elif 'FORMACI' in op_name:
-            # CORRECCIÓN DE EXPRESIÓN REGULAR: Soporta prefijo alfabético como 'H'
-            if not re.match(r'^[A-Z]?\d+-\d+$', barcode):
-                 raise UserError(_("Formato de tela inválido para Baños. Debe ser: H99999-9999 o 99999-9999."))
+            # REGEX: Valida que contenga letras, números, guiones intermedios y termine estrictamente en -[dígitos]
+            if not re.match(r'^[A-Z]?[\w-]+-\d+$', barcode):
+                 raise UserError(_("Formato de tela inválido para Baños. Debe terminar en '-[Número de Rollo]' (Ej: 12974-002-0001)."))
         
-            mo_part = barcode.split('-')[0]
+            # Corta desde el ÚLTIMO guion hacia la izquierda: '99999-001-0001' -> '99999-001'
+            mo_part = barcode.rsplit('-', 1)[0]
             if mo_part not in (self.origin or ''):
                raise UserError(_("La tela %s no pertenece a la Orden de Fabricación %s.") % (barcode, self.origin))
         
@@ -133,11 +134,14 @@ class StockPicking(models.Model):
 
         # CASO C: DESPERDICIO TEJIDO (Subproducto SUB-H99999-AAAA-MM-DD)
         elif 'DESPERDICIO' in op_name:
-            # CORRECCIÓN DE EXPRESIÓN REGULAR: Soporta prefijo alfabético como 'H' en la Orden de Fabricación
-            if not barcode.startswith('SUB-') or not re.match(r'^SUB-[A-Z]?\d+-\d{4}-\d{2}-\d{2}$', barcode):
-                raise UserError(_("Formato de subproducto inválido para Desperdicio. Debe ser: SUB-MO-AAAA-MM-DD (Ej. SUB-H99999-2026-06-10)."))
+            # REGEX: Debe iniciar con SUB-, seguido de la estructura alfanumérica/guiones, y terminar con fecha
+            if not barcode.startswith('SUB-') or not re.match(r'^SUB-[A-Z]?[\w-]+-\d{4}-\d{2}-\d{2}$', barcode):
+                raise UserError(_("Formato de subproducto inválido para Desperdicio. Debe ser: SUB-MO-AAAA-MM-DD."))
         
-            mo_part = barcode.split('-')[1]
+            # Removemos el prefijo 'SUB-'
+            clean_sub = barcode[4:]
+            # Removemos los 3 bloques de la fecha de la derecha (AAAA, MM, DD) para aislar la MO con sus guiones
+            mo_part = clean_sub.rsplit('-', 3)[0]
             if mo_part not in (self.origin or ''):
                 raise UserError(_("El subproducto %s no pertenece a la Orden de Fabricación %s.") % (barcode, self.origin))
 
