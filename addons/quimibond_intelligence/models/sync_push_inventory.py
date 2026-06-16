@@ -357,9 +357,24 @@ class QuimibondSyncInventory(models.TransientModel):
         if not total:
             return 0
 
+        # SP11.9 (2026-06-16): corte por deadline. push_to_supabase_heavy pasa
+        # heavy_deadline_ts por contexto; si lo rebasamos a media iteración,
+        # commiteamos lo hecho y salimos limpio (en vez de que el watchdog de
+        # Odoo.sh mate el worker → 'cursor already closed'). Nos anotamos en
+        # heavy_incomplete para que el heavy push NO avance el watermark.
+        deadline_ts = self.env.context.get('heavy_deadline_ts')
         BATCH = 500
         ok = 0
         for chunk_start in range(0, total, BATCH):
+            if deadline_ts and datetime.now().timestamp() >= deadline_ts:
+                inc = self.env.context.get('heavy_incomplete')
+                if inc is not None:
+                    inc.append('stock_moves')
+                _logger.warning(
+                    'stock_moves: deadline alcanzado en chunk %s/%s — %s filas '
+                    'commiteadas, resto diferido al siguiente ciclo',
+                    chunk_start, total, ok)
+                break
             chunk_ids = move_ids[chunk_start:chunk_start + BATCH]
             try:
                 moves = Move.browse(chunk_ids)
@@ -501,9 +516,20 @@ class QuimibondSyncInventory(models.TransientModel):
         for a in Account.browse(inv_account_ids):
             inv_codes[a.id] = a.code or ''
 
+        # SP11.9 (2026-06-16): mismo corte por deadline que _push_stock_moves.
+        deadline_ts = self.env.context.get('heavy_deadline_ts')
         BATCH = 500
         ok = 0
         for chunk_start in range(0, total, BATCH):
+            if deadline_ts and datetime.now().timestamp() >= deadline_ts:
+                inc = self.env.context.get('heavy_incomplete')
+                if inc is not None:
+                    inc.append('account_entries_stock')
+                _logger.warning(
+                    'account_entries_stock: deadline alcanzado en chunk %s/%s — '
+                    '%s filas commiteadas, resto diferido al siguiente ciclo',
+                    chunk_start, total, ok)
+                break
             chunk_ids = entry_ids[chunk_start:chunk_start + BATCH]
             try:
                 moves = Move.browse(chunk_ids)

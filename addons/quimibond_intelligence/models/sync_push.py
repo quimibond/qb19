@@ -592,15 +592,29 @@ class QuimibondSync(models.TransientModel):
             time_budget_s = 720
 
         _start = datetime.now()
+        # Deadline absoluto pasado a las tablas grandes vía contexto. El
+        # chequeo de budget de abajo solo decide si ARRANCAR cada método; una
+        # vez dentro de _push_stock_moves (1.65M filas), el método itera por
+        # chunks y, sin un corte interno, corría >1000s hasta que el watchdog
+        # de Odoo.sh mataba el worker (SIGKILL → 'cursor already closed'). Con
+        # el deadline el método commitea lo hecho y sale limpio antes del kill.
+        # 'incomplete' es una lista mutable compartida por contexto: cada
+        # método que se corta por deadline se anota aquí para NO avanzar el
+        # watermark (la ventana se reintenta el siguiente ciclo, idempotente).
+        incomplete = []
+        runner = self.with_context(
+            heavy_deadline_ts=(_start + timedelta(seconds=time_budget_s)).timestamp(),
+            heavy_incomplete=incomplete,
+        )
         try:
             methods = [
                 # Catálogos chicos primero (siempre completan)
-                ('workcenters', self._push_workcenters),
-                ('workorders', self._push_workorders),
-                ('account_entries_stock', self._push_account_entries_stock),
+                ('workcenters', runner._push_workcenters),
+                ('workorders', runner._push_workorders),
+                ('account_entries_stock', runner._push_account_entries_stock),
                 # El más pesado al final: si rebasa el budget, solo él se
                 # difiere al siguiente ciclo
-                ('stock_moves', self._push_stock_moves),
+                ('stock_moves', runner._push_stock_moves),
             ]
             totals = {}
             skipped = []
@@ -609,7 +623,7 @@ class QuimibondSync(models.TransientModel):
                 if elapsed_so_far > time_budget_s:
                     skipped.append(label)
                     continue
-                totals[label] = self._run_push(client, label, fn, last_sync=last_sync)
+                totals[label] = runner._run_push(client, label, fn, last_sync=last_sync)
 
             summary = ', '.join(f'{k}={v}' for k, v in totals.items() if v)
             _logger.info('✓ Heavy push to Supabase: %s', summary or 'no changes')
@@ -617,20 +631,25 @@ class QuimibondSync(models.TransientModel):
                 _logger.warning(
                     'Heavy push: time budget (%ss) exhausted — skipped: %s',
                     time_budget_s, ', '.join(skipped))
+            if incomplete:
+                _logger.warning(
+                    'Heavy push: time budget (%ss) hit mid-method — truncated: %s',
+                    time_budget_s, ', '.join(incomplete))
 
             elapsed = (datetime.now() - _start).total_seconds()
+            deferred = skipped + incomplete
             self.env['quimibond.sync.log'].sudo().create({
                 'name': 'Push pesado (stock/manufactura)',
                 'direction': 'push',
                 'status': 'success',
                 'summary': (summary or 'sin cambios') + (
-                    f' | skipped: {", ".join(skipped)}' if skipped else ''),
+                    f' | deferred: {", ".join(deferred)}' if deferred else ''),
                 'duration_seconds': round(elapsed, 1),
             })
-            # Solo avanza last_heavy_sync si TODO corrió (si algo se saltó,
-            # el siguiente ciclo re-procesa la ventana completa — los
-            # upserts son idempotentes)
-            if not skipped:
+            # Solo avanza last_heavy_sync si TODO corrió completo (nada saltado
+            # NI truncado a media). Si algo quedó pendiente, el siguiente ciclo
+            # re-procesa la ventana completa — los upserts son idempotentes.
+            if not deferred:
                 ICP.set_param('quimibond_intelligence.last_heavy_sync_date',
                               _start.strftime('%Y-%m-%d %H:%M:%S'))
             self.env.cr.commit()
