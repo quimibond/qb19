@@ -25,14 +25,18 @@ class QuimibondSyncInventory(models.TransientModel):
         domain = []
         if last_sync:
             domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        products = ProductAll.search(domain)
+        product_ids = ProductAll.search(domain).ids
+        total = len(product_ids)
+        if not total:
+            return 0
 
-        # Pre-fetch all reorder rules in one query (avoids N+1)
+        # Pre-fetch all reorder rules in one query (avoids N+1).
+        # El map es pequeño (solo min/max por producto), seguro en memoria.
         orderpoint_map = {}  # product_id -> {min, max}
         try:
             Orderpoint = self.env['stock.warehouse.orderpoint'].sudo()
             all_orderpoints = Orderpoint.search([
-                ('product_id', 'in', products.ids),
+                ('product_id', 'in', product_ids),
             ])
             for op in all_orderpoints:
                 pid = op.product_id.id
@@ -44,72 +48,88 @@ class QuimibondSyncInventory(models.TransientModel):
         except Exception:
             pass
 
-        rows = []
-        for p in products:
-            # Use computed fields from product.product which aggregate stock.quant
-            # These are more reliable than manual quant queries and handle
-            # warehouse contexts correctly.
-            stock_qty = 0.0
-            reserved_qty = 0.0
-            try:
-                # qty_available = on hand, virtual_available = forecasted
-                # outgoing_qty = reserved for outgoing
-                stock_qty = p.qty_available or 0.0
-                reserved_qty = (p.qty_available or 0.0) - (p.free_qty or 0.0)
-            except Exception:
-                # Fallback: try stock.quant directly
+        # SP11.9 (2026-06-16): troceado por 500 con invalidate_all() por lote.
+        # Antes search() + bucle único acumulaba en caché todos los stock.quant
+        # agregados por p.qty_available / p.free_qty más una lista rows gigante,
+        # creciendo sin tope en catálogos grandes (mismo riesgo de OOM que
+        # _push_stock_moves). Ahora la memoria queda acotada por lote.
+        BATCH = 500
+        ok = 0
+        for chunk_start in range(0, total, BATCH):
+            chunk_ids = product_ids[chunk_start:chunk_start + BATCH]
+            products = ProductAll.browse(chunk_ids)
+            rows = []
+            for p in products:
+                # Use computed fields from product.product which aggregate stock.quant
+                # These are more reliable than manual quant queries and handle
+                # warehouse contexts correctly.
+                stock_qty = 0.0
+                reserved_qty = 0.0
                 try:
-                    Quant = self.env['stock.quant'].sudo()
-                    quants = Quant.search([
-                        ('product_id', '=', p.id),
-                        ('location_id.usage', '=', 'internal'),
-                    ])
-                    for q in quants:
-                        stock_qty += q.quantity
-                        reserved_qty += getattr(q, 'reserved_quantity', 0.0)
+                    # qty_available = on hand, virtual_available = forecasted
+                    # outgoing_qty = reserved for outgoing
+                    stock_qty = p.qty_available or 0.0
+                    reserved_qty = (p.qty_available or 0.0) - (p.free_qty or 0.0)
                 except Exception:
-                    pass
+                    # Fallback: try stock.quant directly
+                    try:
+                        Quant = self.env['stock.quant'].sudo()
+                        quants = Quant.search([
+                            ('product_id', '=', p.id),
+                            ('location_id.usage', '=', 'internal'),
+                        ])
+                        for q in quants:
+                            stock_qty += q.quantity
+                            reserved_qty += getattr(q, 'reserved_quantity', 0.0)
+                    except Exception:
+                        pass
 
-            # Determine product type string
-            ptype = getattr(p, 'detailed_type', None) or getattr(p, 'type', 'consu')
+                # Determine product type string
+                ptype = getattr(p, 'detailed_type', None) or getattr(p, 'type', 'consu')
 
-            # Get reorder rules from pre-fetched map
-            reorder_min = reorder_max = 0.0
-            if p.id in orderpoint_map:
-                reorder_min = orderpoint_map[p.id]['min']
-                reorder_max = orderpoint_map[p.id]['max']
+                # Get reorder rules from pre-fetched map
+                reorder_min = reorder_max = 0.0
+                if p.id in orderpoint_map:
+                    reorder_min = orderpoint_map[p.id]['min']
+                    reorder_max = orderpoint_map[p.id]['max']
 
-            # Get full category path for better classification
-            category = ''
-            try:
-                if p.categ_id:
-                    category = p.categ_id.complete_name or p.categ_id.name or ''
-            except Exception:
-                category = p.categ_id.name if p.categ_id else ''
+                # Get full category path for better classification
+                category = ''
+                try:
+                    if p.categ_id:
+                        category = p.categ_id.complete_name or p.categ_id.name or ''
+                except Exception:
+                    category = p.categ_id.name if p.categ_id else ''
 
-            rows.append({
-                'odoo_product_id': p.id,
-                'name': p.name,
-                'internal_ref': (p.default_code or '').strip() or None,
-                'category': category,
-                'uom': p.uom_id.name if p.uom_id else '',
-                'uom_id': p.uom_id.id if p.uom_id else None,
-                'product_type': ptype,
-                'stock_qty': round(stock_qty, 2),
-                'reserved_qty': round(reserved_qty, 2),
-                'available_qty': round(stock_qty - reserved_qty, 2),
-                'reorder_min': round(reorder_min, 2),
-                'reorder_max': round(reorder_max, 2),
-                'standard_price': round(p.standard_price, 2),
-                'list_price': round(p.lst_price, 2),
-                'avg_cost': round(p.avg_cost, 2) if hasattr(p, 'avg_cost') and p.avg_cost else None,
-                'weight': round(p.weight, 4) if hasattr(p, 'weight') and p.weight else None,
-                'active': p.active,
-                'odoo_company_id': p.company_id.id if p.company_id else None,
-                'updated_at': datetime.now().isoformat(),
-            })
+                rows.append({
+                    'odoo_product_id': p.id,
+                    'name': p.name,
+                    'internal_ref': (p.default_code or '').strip() or None,
+                    'category': category,
+                    'uom': p.uom_id.name if p.uom_id else '',
+                    'uom_id': p.uom_id.id if p.uom_id else None,
+                    'product_type': ptype,
+                    'stock_qty': round(stock_qty, 2),
+                    'reserved_qty': round(reserved_qty, 2),
+                    'available_qty': round(stock_qty - reserved_qty, 2),
+                    'reorder_min': round(reorder_min, 2),
+                    'reorder_max': round(reorder_max, 2),
+                    'standard_price': round(p.standard_price, 2),
+                    'list_price': round(p.lst_price, 2),
+                    'avg_cost': round(p.avg_cost, 2) if hasattr(p, 'avg_cost') and p.avg_cost else None,
+                    'weight': round(p.weight, 4) if hasattr(p, 'weight') and p.weight else None,
+                    'active': p.active,
+                    'odoo_company_id': p.company_id.id if p.company_id else None,
+                    'updated_at': datetime.now().isoformat(),
+                })
 
-        return client.upsert('odoo_products', rows, on_conflict='odoo_product_id', batch_size=100)
+            if rows:
+                ok += client.upsert('odoo_products', rows,
+                                    on_conflict='odoo_product_id', batch_size=100) or 0
+            # Vacía la caché (productos + stock.quant agregados) en cada lote.
+            self.env.invalidate_all()
+
+        return ok
 
     # ── Order Lines (Sale + Purchase, ALL history) ────────────────────
 
@@ -404,7 +424,6 @@ class QuimibondSyncInventory(models.TransientModel):
                         _logger.warning('stock_move %s: %s', m.id, exc)
 
                 if rows:
-                    moves.invalidate_recordset()
                     self.env.cr.commit()
                     ok += client.upsert('odoo_stock_moves', rows,
                                         on_conflict='odoo_move_id', batch_size=500) or 0
@@ -412,6 +431,14 @@ class QuimibondSyncInventory(models.TransientModel):
                         self.env.cr.execute('SELECT 1')
                     except Exception:
                         pass
+                # SP11.9 (2026-06-16): invalidate_recordset() solo vaciaba los
+                # 500 stock.move del lote; los registros relacionados accedidos
+                # al construir cada fila (product_id, picking_id, location_*,
+                # company_id, production_id, account_move_id) se acumulaban en
+                # env.cache lote tras lote hasta que el SO mataba el worker
+                # (señal 9 → "cursor already closed"). invalidate_all() vacía
+                # TODA la caché en cada vuelta y acota la memoria de verdad.
+                self.env.invalidate_all()
             except Exception as exc:
                 _logger.exception('stock_moves chunk %s failed: %s', chunk_start, exc)
         return ok
@@ -557,7 +584,6 @@ class QuimibondSyncInventory(models.TransientModel):
                         _logger.warning('account_entry_stock %s: %s', m.id, exc)
 
                 if rows:
-                    moves.invalidate_recordset()
                     self.env.cr.commit()
                     ok += client.upsert('odoo_account_entries_stock', rows,
                                         on_conflict='odoo_move_id', batch_size=500) or 0
@@ -565,6 +591,12 @@ class QuimibondSyncInventory(models.TransientModel):
                         self.env.cr.execute('SELECT 1')
                     except Exception:
                         pass
+                # SP11.9 (2026-06-16): mismo patrón que _push_stock_moves —
+                # las líneas (line_ids), productos y partners accedidos al
+                # construir lines_stock se acumulaban en caché. invalidate_all()
+                # por lote en vez de invalidate_recordset() (que solo vaciaba
+                # los account.move del lote) acota la memoria.
+                self.env.invalidate_all()
             except Exception as exc:
                 _logger.exception('account_entries_stock chunk %s failed: %s', chunk_start, exc)
         return ok
