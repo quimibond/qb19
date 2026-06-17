@@ -18,9 +18,13 @@ patch(FormController.prototype, {
         });
 
         onWillDestroy(() => {
-            // Remoción segura usando la misma estructura de Odoo 19
             if (this.tejidoDeviceWrapper && this.iotLongpolling) {
-                this.iotLongpolling.removeListener(this.tejidoDeviceWrapper);
+                try {
+                    // Pasamos el listener envuelto en un arreglo también para la remoción segura
+                    this.iotLongpolling.removeListener([this.tejidoDeviceWrapper]);
+                } catch (err) {
+                    console.error("Error al remover el listener de pesaje:", err);
+                }
             }
         });
     },
@@ -50,13 +54,13 @@ patch(FormController.prototype, {
                         const iotIp = Array.isArray(dev.iot_id) ? dev.iot_id[1] : dev.iot_id;
 
                         if (iotIp && dev.identifier) {
-                            // 🔒 ESTÁNDAR ODOO 19: El listener debe ser un objeto empaquetado con este formato exacto
+                            
                             this.tejidoDeviceWrapper = {
                                 iot_ip: iotIp,
                                 identifier: dev.identifier,
                                 callback: (data) => {
                                     if (data && data.status === 'success' && data.value !== undefined) {
-                                        const targetField = root.resModel === 'mrp.weigh.roll.wizard' ? 'weight' : 'weight';
+                                        const targetField = 'weight'; // Simplificado ya que ambos modelos usan 'weight'
                                         if (root.data[targetField] !== data.value) {
                                             root.update({ [targetField]: parseFloat(data.value) });
                                         }
@@ -64,8 +68,13 @@ patch(FormController.prototype, {
                                 }
                             };
 
-                            // Odoo 19 ahora recibe el wrapper del dispositivo completo
-                            this.iotLongpolling.addListener(this.tejidoDeviceWrapper);
+                            try {
+                                // 🛠️ CORRECCIÓN CRÍTICA ODOO 19:
+                                // Se envuelve el wrapper en un Array [] para que sea iterable por el Core de Odoo.
+                                this.iotLongpolling.addListener([this.tejidoDeviceWrapper]);
+                            } catch (e) {
+                                console.error("Error crítico al inicializar el listener de la báscula:", e);
+                            }
                         }
                     }
                 });
