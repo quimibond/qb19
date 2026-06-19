@@ -7,7 +7,8 @@ import { onMounted, onWillDestroy } from "@odoo/owl";
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
-        this.ormService = useService("orm"); // Usamos el servicio ORM estándar disponible
+        // Usamos el servicio de red unificado y oficial de Odoo 19
+        this.jsonrpcService = useService("jsonrpc"); 
         this.tejidoScaleInterval = null;
 
         onMounted(() => {
@@ -29,9 +30,9 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔒 COMPATIBLE ODOO 19: Usamos el servicio RPC del entorno global nativo de OWL
+            // 🔒 CONEXIÓN ESTABLE ODOO 19
             this.tejidoScaleInterval = setInterval(() => {
-                this.env.services.rpc("/quimibond/scale/read_weight", {})
+                this.jsonrpcService("/quimibond/scale/read_weight", {})
                 .then(data => {
                     if (data && data.status === 'success' && data.weight !== undefined) {
                         const weightValue = parseFloat(data.weight);
@@ -41,7 +42,7 @@ patch(FormController.prototype, {
                         }
                     }
                 })
-                .catch(err => console.log("Reconectando canal RPC de báscula..."));
+                .catch(err => console.log("Sincronizando peso con Python..."));
             }, 1000);
         }
     }
