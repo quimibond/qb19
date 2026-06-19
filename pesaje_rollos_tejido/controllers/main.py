@@ -9,7 +9,7 @@ _logger = logging.getLogger(__name__)
 
 class IotScaleBridgeController(http.Controller):
 
-    @http.route('/quimibond/scale/read_weight', type='json', auth='user', cors='*')
+    @http.route('/quimibond/scale/read_weight', type='jsonrpc', auth='user', cors='*')
     def read_local_scale_weight(self, **kwargs):
         """
         Puente en Python (Servidor Odoo SH) para consultar el Virtual IoT Box local
