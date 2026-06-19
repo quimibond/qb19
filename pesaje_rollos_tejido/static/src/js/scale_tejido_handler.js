@@ -10,17 +10,6 @@ patch(FormController.prototype, {
         this.ormService = useService("orm");
         this.tejidoScaleInterval = null;
 
-        // Definimos el callback global para recibir el peso de forma segura sin CORS
-        window.onTejidoScaleRead = (data) => {
-            if (data && data.weight !== undefined) {
-                const root = this.model.root;
-                const targetField = 'weight';
-                if (root.data[targetField] !== data.weight) {
-                    root.update({ [targetField]: parseFloat(data.weight) });
-                }
-            }
-        };
-
         onMounted(() => {
             const modelName = this.model.root.resModel;
             if (modelName === 'mrp.weigh.roll.wizard' || modelName === 'mrp.subproduct.wizard') {
@@ -33,23 +22,68 @@ patch(FormController.prototype, {
                 clearInterval(this.tejidoScaleInterval);
                 this.tejidoScaleInterval = null;
             }
-            delete window.onTejidoScaleRead;
         });
     },
 
     _connectToTejidoScale() {
-        if (this.model.root.data.weighing_mode === 'iot' && this.model.root.data.iot_device_id) {
-            // Consulta por inyección de script (Bypass de CORS absoluto)
-            this.tejidoScaleInterval = setInterval(() => {
-                const oldScript = document.getElementById('tejido_scale_jsonp');
-                if (oldScript) oldScript.remove();
+        const root = this.model.root;
+        if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
+            
+            let iotDeviceId = null;
+            const rawData = root.data.iot_device_id;
 
-                const script = document.createElement('script');
-                script.id = 'tejido_scale_jsonp';
-                // Usamos el endpoint nativo del proxy local que acepta callbacks
-                script.src = `http://127.0.0.1:8069/hw_proxy/scale_read?callback=onTejidoScaleRead&_=${new Date().getTime()}`;
-                document.body.appendChild(script);
-            }, 1000);
+            if (Array.isArray(rawData)) {
+                iotDeviceId = rawData[0];
+            } else if (rawData && typeof rawData === 'object') {
+                iotDeviceId = rawData.id || (rawData.resIds && rawData.resIds[0]);
+            } else {
+                iotDeviceId = rawData;
+            }
+
+            const finalId = parseInt(iotDeviceId, 10);
+
+            if (finalId && !isNaN(finalId)) {
+                this.ormService.read('iot.device', [finalId], ['identifier'])
+                .then((result) => {
+                    if (result && result.length > 0) {
+                        const dev = result[0];
+                        const identifier = dev.identifier;
+
+                        if (identifier) {
+                            // 🔒 ESTÁNDAR ODOO 19: JSON-RPC estructurado al ruteador del Proxy
+                            this.tejidoScaleInterval = setInterval(() => {
+                                fetch("http://127.0.0.1:8069/hw_proxy/perform_action", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        jsonrpc: "2.0",
+                                        params: {
+                                            action: "read_scale",
+                                            device_identifier: identifier
+                                        }
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data && data.result) {
+                                        // Validamos las dos posibles respuestas del core de Odoo 19
+                                        const weightValue = data.result.weight !== undefined ? data.result.weight : data.result.value;
+                                        if (weightValue !== undefined && !isNaN(weightValue)) {
+                                            const targetField = 'weight';
+                                            if (root.data[targetField] !== weightValue) {
+                                                root.update({ [targetField]: parseFloat(weightValue) });
+                                            }
+                                        }
+                                    }
+                                })
+                                .catch(err => {
+                                    console.log("Conectando con el Driver de la Rhino...");
+                                });
+                            }, 1000);
+                        }
+                    }
+                });
+            }
         }
     }
 });
