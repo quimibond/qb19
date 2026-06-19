@@ -1,14 +1,11 @@
 /** @odoo-module */
 import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
-import { useService } from "@web/core/utils/hooks";
 import { onMounted, onWillDestroy } from "@odoo/owl";
 
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
-        // Usamos el servicio de red unificado y oficial de Odoo 19
-        this.jsonrpcService = useService("jsonrpc"); 
         this.tejidoScaleInterval = null;
 
         onMounted(() => {
@@ -30,10 +27,16 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔒 CONEXIÓN ESTABLE ODOO 19
+            // 🔒 FETCH PURO: No usa useService ni componentes inestables de Odoo
             this.tejidoScaleInterval = setInterval(() => {
-                this.jsonrpcService("/quimibond/scale/read_weight", {})
-                .then(data => {
+                fetch("/quimibond/scale/read_weight", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ jsonrpc: "2.0", params: {} })
+                })
+                .then(response => response.json())
+                .then(payload => {
+                    const data = payload.result || payload;
                     if (data && data.status === 'success' && data.weight !== undefined) {
                         const weightValue = parseFloat(data.weight);
                         const targetField = 'weight';
@@ -42,7 +45,7 @@ patch(FormController.prototype, {
                         }
                     }
                 })
-                .catch(err => console.log("Sincronizando peso con Python..."));
+                .catch(err => console.log("Sincronizando peso..."));
             }, 1000);
         }
     }
