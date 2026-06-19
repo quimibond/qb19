@@ -42,44 +42,23 @@ patch(FormController.prototype, {
             const finalId = parseInt(iotDeviceId, 10);
 
             if (finalId && !isNaN(finalId)) {
-                this.ormService.read('iot.device', [finalId], ['identifier'])
-                .then((result) => {
-                    if (result && result.length > 0) {
-                        const dev = result[0];
-                        const identifier = dev.identifier;
+                // 🔒 BYPASS DE CORS: Le pedimos al servidor de Odoo SH que traiga el peso por nosotros
+                this.revisadoScaleInterval = setInterval(() => {
+                    this.ormService.call('iot.device', 'action_get_value', [finalId])
+                    .then(result => {
+                        if (result !== undefined && result !== null) {
+                            let weightValue = typeof result === 'object' ? (result.weight || result.value) : result;
+                            weightValue = parseFloat(weightValue);
 
-                        if (identifier) {
-                            // 🔒 ESTÁNDAR ODOO 19: JSON-RPC estructurado al ruteador del Proxy
-                            this.revisadoScaleInterval = setInterval(() => {
-                                fetch("http://127.0.0.1:8069/hw_proxy/perform_action", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                        jsonrpc: "2.0",
-                                        params: {
-                                            action: "read_scale",
-                                            device_identifier: identifier
-                                        }
-                                    })
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data && data.result) {
-                                        const weightValue = data.result.weight !== undefined ? data.result.weight : data.result.value;
-                                        if (weightValue !== undefined && !isNaN(weightValue)) {
-                                            if (root.data.peso_actual !== weightValue) {
-                                                root.update({ peso_actual: parseFloat(weightValue) });
-                                            }
-                                        }
-                                    }
-                                })
-                                .catch(err => {
-                                    console.log("Conectando con el Driver de la Rhino...");
-                                });
-                            }, 1000);
+                            if (!isNaN(weightValue)) {
+                                if (root.data.peso_actual !== weightValue) {
+                                    root.update({ peso_actual: weightValue });
+                                }
+                            }
                         }
-                    }
-                });
+                    })
+                    .catch(err => console.log("Reintentando lectura por canal seguro..."));
+                }, 1200);
             }
         }
     }
