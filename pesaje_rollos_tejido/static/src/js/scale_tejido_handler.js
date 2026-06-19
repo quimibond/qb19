@@ -50,7 +50,7 @@ patch(FormController.prototype, {
                         const dev = result[0];
                         
                         // Obtenemos la IP limpia (ya sea string directo o del array Many2one de Odoo)
-                        this.cleanIotIp = "localhost";
+                        this.cleanIotIp = "127.0.0.1";
                         this.cleanIdentifier = dev.identifier;
 
                         this.tejidoScaleListener = (data) => {

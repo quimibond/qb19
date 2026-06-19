@@ -49,7 +49,7 @@ patch(FormController.prototype, {
                         const dev = result[0];
                         
                         // Formateamos la IP de manera limpia (evitando nombres de texto plano de Odoo)
-                        this.cleanIotIp = "localhost";
+                        this.cleanIotIp = "127.0.0.1";
                         this.cleanIdentifier = dev.identifier;
 
                         this.revisadoScaleListener = (data) => {
