@@ -10,6 +10,15 @@ patch(FormController.prototype, {
         this.ormService = useService("orm");
         this.revisadoScaleInterval = null;
 
+        window.onRevisadoScaleRead = (data) => {
+            if (data && data.weight !== undefined) {
+                const root = this.model.root;
+                if (root.data.peso_actual !== data.weight) {
+                    root.update({ peso_actual: parseFloat(data.weight) });
+                }
+            }
+        };
+
         onMounted(() => {
             if (this.model.root.resModel === 'mrp.revisado.wizard') {
                 this._connectToRevisadoScale();
@@ -21,53 +30,21 @@ patch(FormController.prototype, {
                 clearInterval(this.revisadoScaleInterval);
                 this.revisadoScaleInterval = null;
             }
+            delete window.onRevisadoScaleRead;
         });
     },
 
     _connectToRevisadoScale() {
-        const root = this.model.root;
-        if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
-            
-            let iotDeviceId = null;
-            const rawData = root.data.iot_device_id;
+        if (this.model.root.data.weighing_mode === 'iot' && this.model.root.data.iot_device_id) {
+            this.revisadoScaleInterval = setInterval(() => {
+                const oldScript = document.getElementById('revisado_scale_jsonp');
+                if (oldScript) oldScript.remove();
 
-            if (Array.isArray(rawData)) {
-                iotDeviceId = rawData[0];
-            } else if (rawData && typeof rawData === 'object') {
-                iotDeviceId = rawData.id || (rawData.resIds && rawData.resIds[0]);
-            } else {
-                iotDeviceId = rawData;
-            }
-
-            const finalId = parseInt(iotDeviceId, 10);
-
-            if (finalId && !isNaN(finalId)) {
-                this.ormService.read('iot.device', [finalId], ['identifier'])
-                .then((result) => {
-                    if (result && result.length > 0) {
-                        const dev = result[0];
-                        const identifier = dev.identifier;
-
-                        if (identifier) {
-                            // 🔒 CONSULTA DIRECTA Y PURA: Pregunta al Virtual IoT Box cada 1000ms (1 segundo)
-                            this.revisadoScaleInterval = setInterval(() => {
-                                fetch(`http://127.0.0.1:8069/iot/scale/${identifier}/get_value`)
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data && data.status === 'success' && data.value !== undefined) {
-                                        if (root.data.peso_actual !== data.value) {
-                                            root.update({ peso_actual: parseFloat(data.value) });
-                                        }
-                                    }
-                                })
-                                .catch(err => {
-                                    console.log("Esperando ráfaga de la báscula de Inspección...");
-                                });
-                            }, 1000);
-                        }
-                    }
-                });
-            }
+                const script = document.createElement('script');
+                script.id = 'revisado_scale_jsonp';
+                script.src = `http://127.0.0.1:8069/hw_proxy/scale_read?callback=onRevisadoScaleRead&_=${new Date().getTime()}`;
+                document.body.appendChild(script);
+            }, 1000);
         }
     }
 });
