@@ -7,8 +7,8 @@ import { onMounted, onWillDestroy } from "@odoo/owl";
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
-        this.iotLongpolling = useService("iot_longpolling");
         this.ormService = useService("orm");
+        this.tejidoScaleInterval = null;
 
         onMounted(() => {
             const modelName = this.model.root.resModel;
@@ -18,9 +18,10 @@ patch(FormController.prototype, {
         });
 
         onWillDestroy(() => {
-            // 🔒 REMOCIÓN SEGURA: Usamos la API pública de alto nivel removeDevice
-            if (this.cleanIotIp && this.cleanIdentifier && this.tejidoScaleListener) {
-                this.iotLongpolling.removeDevice(this.cleanIotIp, this.cleanIdentifier, this.tejidoScaleListener);
+            // Detener el reloj de consulta inmediatamente al cerrar la ventana
+            if (this.tejidoScaleInterval) {
+                clearInterval(this.tejidoScaleInterval);
+                this.tejidoScaleInterval = null;
             }
         });
     },
@@ -43,29 +44,30 @@ patch(FormController.prototype, {
             const finalId = parseInt(iotDeviceId, 10);
 
             if (finalId && !isNaN(finalId)) {
-                // 🔒 CORRECCIÓN CRÍTICA: Añadimos 'iot_ip' en la lista de campos a leer por el ORM
-                this.ormService.read('iot.device', [finalId], ['iot_ip', 'identifier'])
+                this.ormService.read('iot.device', [finalId], ['identifier'])
                 .then((result) => {
                     if (result && result.length > 0) {
                         const dev = result[0];
-                        
-                        // Obtenemos la IP limpia (ya sea string directo o del array Many2one de Odoo)
-                        this.cleanIotIp = "127.0.0.1";
-                        this.cleanIdentifier = dev.identifier;
+                        const identifier = dev.identifier;
 
-                        this.tejidoScaleListener = (data) => {
-                            if (data && data.status === 'success' && data.value !== undefined) {
-                                const targetField = 'weight'; // Ambos wizards (mrp.weigh.roll.wizard y mrp.subproduct.wizard) usan 'weight'
-                                if (root.data[targetField] !== data.value) {
-                                    root.update({ [targetField]: parseFloat(data.value) });
-                                }
-                            }
-                        };
-
-                        if (this.cleanIotIp && this.cleanIdentifier) {
-                            // 🔒 SOLUCIÓN DEFINITIVA: Usamos la API pública addDevice. 
-                            // Esta función mapea internamente los callbacks sin causar errores iterables de Owl.
-                            this.iotLongpolling.addDevice(this.cleanIotIp, this.cleanIdentifier, this.tejidoScaleListener);
+                        if (identifier) {
+                            // 🔒 CONSULTA DIRECTA Y PURA: Pregunta al Virtual IoT Box cada 1000ms (1 segundo)
+                            this.tejidoScaleInterval = setInterval(() => {
+                                fetch(`http://127.0.0.1:8069/iot/scale/${identifier}/get_value`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data && data.status === 'success' && data.value !== undefined) {
+                                        const targetField = 'weight';
+                                        if (root.data[targetField] !== data.value) {
+                                            root.update({ [targetField]: parseFloat(data.value) });
+                                        }
+                                    }
+                                })
+                                .catch(err => {
+                                    // Silencioso: Si la báscula parpadea, no truena la pantalla de Odoo
+                                    console.log("Esperando ráfaga de la báscula Rhino...");
+                                });
+                            }, 1000);
                         }
                     }
                 });

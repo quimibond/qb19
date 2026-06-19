@@ -7,8 +7,8 @@ import { onMounted, onWillDestroy } from "@odoo/owl";
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
-        this.iotLongpollingService = useService("iot_longpolling");
         this.ormService = useService("orm");
+        this.revisadoScaleInterval = null;
 
         onMounted(() => {
             if (this.model.root.resModel === 'mrp.revisado.wizard') {
@@ -17,9 +17,9 @@ patch(FormController.prototype, {
         });
 
         onWillDestroy(() => {
-            // 🔒 REMOCIÓN SEGURA: API pública removeDevice para limpiar el canal sin fallos de ciclo de vida
-            if (this.cleanIotIp && this.cleanIdentifier && this.revisadoScaleListener) {
-                this.iotLongpollingService.removeDevice(this.cleanIotIp, this.cleanIdentifier, this.revisadoScaleListener);
+            if (this.revisadoScaleInterval) {
+                clearInterval(this.revisadoScaleInterval);
+                this.revisadoScaleInterval = null;
             }
         });
     },
@@ -42,27 +42,28 @@ patch(FormController.prototype, {
             const finalId = parseInt(iotDeviceId, 10);
 
             if (finalId && !isNaN(finalId)) {
-                // 🔒 CORRECCIÓN CRÍTICA: Añadimos 'iot_ip' explícitamente en el orm.read
-                this.ormService.read('iot.device', [finalId], ['iot_ip', 'identifier'])
+                this.ormService.read('iot.device', [finalId], ['identifier'])
                 .then((result) => {
                     if (result && result.length > 0) {
                         const dev = result[0];
-                        
-                        // Formateamos la IP de manera limpia (evitando nombres de texto plano de Odoo)
-                        this.cleanIotIp = "127.0.0.1";
-                        this.cleanIdentifier = dev.identifier;
+                        const identifier = dev.identifier;
 
-                        this.revisadoScaleListener = (data) => {
-                            if (data && data.status === 'success' && data.value !== undefined) {
-                                if (root.data.peso_actual !== data.value) {
-                                    root.update({ peso_actual: parseFloat(data.value) });
-                                }
-                            }
-                        };
-
-                        if (this.cleanIotIp && this.cleanIdentifier) {
-                            // 🔒 SOLUCIÓN DEFINITIVA: addDevice se encarga de la iteración nativa en Odoo 19
-                            this.iotLongpollingService.addDevice(this.cleanIotIp, this.cleanIdentifier, this.revisadoScaleListener);
+                        if (identifier) {
+                            // 🔒 CONSULTA DIRECTA Y PURA: Pregunta al Virtual IoT Box cada 1000ms (1 segundo)
+                            this.revisadoScaleInterval = setInterval(() => {
+                                fetch(`http://127.0.0.1:8069/iot/scale/${identifier}/get_value`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data && data.status === 'success' && data.value !== undefined) {
+                                        if (root.data.peso_actual !== data.value) {
+                                            root.update({ peso_actual: parseFloat(data.value) });
+                                        }
+                                    }
+                                })
+                                .catch(err => {
+                                    console.log("Esperando ráfaga de la báscula de Inspección...");
+                                });
+                            }, 1000);
                         }
                     }
                 });
