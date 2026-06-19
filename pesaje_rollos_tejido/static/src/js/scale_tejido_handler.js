@@ -7,7 +7,7 @@ import { onMounted, onWillDestroy } from "@odoo/owl";
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
-        this.rpcService = useService("rpc");
+        this.ormService = useService("orm"); // Usamos el servicio ORM estándar disponible
         this.tejidoScaleInterval = null;
 
         onMounted(() => {
@@ -29,9 +29,9 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔒 CONSULTA AL CONTROLADOR SEGURO DE QUIMIBOND
+            // 🔒 COMPATIBLE ODOO 19: Usamos el servicio RPC del entorno global nativo de OWL
             this.tejidoScaleInterval = setInterval(() => {
-                this.rpcService("/quimibond/scale/read_weight", {})
+                this.env.services.rpc("/quimibond/scale/read_weight", {})
                 .then(data => {
                     if (data && data.status === 'success' && data.weight !== undefined) {
                         const weightValue = parseFloat(data.weight);
@@ -41,8 +41,8 @@ patch(FormController.prototype, {
                         }
                     }
                 })
-                .catch(err => console.log("Reconectando canal HTTP de báscula..."));
-            }, 1000); // Sincroniza cada segundo completo
+                .catch(err => console.log("Reconectando canal RPC de báscula..."));
+            }, 1000);
         }
     }
 });
