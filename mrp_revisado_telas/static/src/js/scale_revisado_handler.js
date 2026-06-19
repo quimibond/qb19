@@ -17,8 +17,9 @@ patch(FormController.prototype, {
         });
 
         onWillDestroy(() => {
-            if (this.revisadoDeviceWrapper && this.iotLongpollingService) {
-                this.iotLongpollingService.removeListener(this.revisadoDeviceWrapper);
+            // 🔒 REMOCIÓN SEGURA: API pública removeDevice para limpiar el canal sin fallos de ciclo de vida
+            if (this.cleanIotIp && this.cleanIdentifier && this.revisadoScaleListener) {
+                this.iotLongpollingService.removeDevice(this.cleanIotIp, this.cleanIdentifier, this.revisadoScaleListener);
             }
         });
     },
@@ -41,27 +42,27 @@ patch(FormController.prototype, {
             const finalId = parseInt(iotDeviceId, 10);
 
             if (finalId && !isNaN(finalId)) {
-                this.ormService.read('iot.device', [finalId], ['iot_id', 'identifier'])
+                // 🔒 CORRECCIÓN CRÍTICA: Añadimos 'iot_ip' explícitamente en el orm.read
+                this.ormService.read('iot.device', [finalId], ['iot_ip', 'identifier'])
                 .then((result) => {
                     if (result && result.length > 0) {
                         const dev = result[0];
-                        const iotIp = Array.isArray(dev.iot_id) ? dev.iot_id[1] : dev.iot_id;
+                        
+                        // Formateamos la IP de manera limpia (evitando nombres de texto plano de Odoo)
+                        this.cleanIotIp = "127.0.0.1";
+                        this.cleanIdentifier = dev.identifier;
 
-                        if (iotIp && dev.identifier) {
-                            // 🔒 ESTÁNDAR ODOO 19: El listener debe ser un objeto empaquetado con este formato exacto
-                            this.revisadoDeviceWrapper = {
-                                iot_ip: iotIp,
-                                identifier: dev.identifier,
-                                callback: (data) => {
-                                    if (data && data.status === 'success' && data.value !== undefined) {
-                                        if (root.data.peso_actual !== data.value) {
-                                            root.update({ peso_actual: parseFloat(data.value) });
-                                        }
-                                    }
+                        this.revisadoScaleListener = (data) => {
+                            if (data && data.status === 'success' && data.value !== undefined) {
+                                if (root.data.peso_actual !== data.value) {
+                                    root.update({ peso_actual: parseFloat(data.value) });
                                 }
-                            };
+                            }
+                        };
 
-                            this.iotLongpollingService.addListener(this.revisadoDeviceWrapper);
+                        if (this.cleanIotIp && this.cleanIdentifier) {
+                            // 🔒 SOLUCIÓN DEFINITIVA: addDevice se encarga de la iteración nativa en Odoo 19
+                            this.iotLongpollingService.addDevice(this.cleanIotIp, this.cleanIdentifier, this.revisadoScaleListener);
                         }
                     }
                 });
