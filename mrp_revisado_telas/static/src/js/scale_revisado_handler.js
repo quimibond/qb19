@@ -7,15 +7,14 @@ patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
         this.revisadoScaleInterval = null;
+        this.revisadoAbortController = null;
         this.isFirstRead = true;
 
         onMounted(() => {
-            if (this.model.root.resModel === 'mrp.revisado.wizard') {
-                // 1. Forzamos inicio en 0.0 en la pantalla del revisado
-                if (this.model.root.data.peso_actual !== 0.0) {
-                    this.model.root.update({ peso_actual: 0.0 });
-                }
-                
+            const root = this.model && this.model.root;
+            if (!root) return;
+
+            if (root.resModel === 'mrp.revisado.wizard') {
                 this.isFirstRead = true;
                 this._connectToRevisadoScale();
             }
@@ -26,52 +25,61 @@ patch(FormController.prototype, {
                 clearInterval(this.revisadoScaleInterval);
                 this.revisadoScaleInterval = null;
             }
+            if (this.revisadoAbortController) {
+                this.revisadoAbortController.abort();
+                this.revisadoAbortController = null;
+            }
         });
     },
 
     _connectToRevisadoScale() {
-        const root = this.model.root;
-        if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
+        const root = this.model && this.model.root;
+        if (!root || root.data.weighing_mode !== 'iot' || !root.data.iot_device_id) return;
             
-            const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
+        const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
 
-            this.revisadoScaleInterval = setInterval(() => {
-                if (!this.revisadoScaleInterval) return;
+        this.revisadoScaleInterval = setInterval(() => {
+            if (!this.revisadoScaleInterval) return;
 
-                fetch(iotUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        jsonrpc: "2.0", 
-                        method: "call", 
-                        params: {}, 
-                        id: Math.floor(Math.random() * 1000)
-                    })
+            this.revisadoAbortController = new AbortController();
+
+            fetch(iotUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: this.revisadoAbortController.signal,
+                body: JSON.stringify({ 
+                    jsonrpc: "2.0", 
+                    method: "call", 
+                    params: {}, 
+                    id: Math.floor(Math.random() * 1000)
                 })
-                .then(response => response.json())
-                .then(payload => {
-                    if (!this.revisadoScaleInterval) return;
+            })
+            .then(response => response.json())
+            .then(payload => {
+                if (!this.revisadoScaleInterval || !root) return;
 
-                    const data = payload.result || payload;
-                    if (data) {
-                        let weightValue = data.weight !== undefined ? data.weight : data.value;
-                        weightValue = parseFloat(weightValue);
+                const data = payload.result || payload;
+                if (data) {
+                    let weightValue = data.weight !== undefined ? data.weight : data.value;
+                    weightValue = parseFloat(weightValue);
 
-                        if (!isNaN(weightValue) && weightValue >= 0) {
-                            // 2. Ignoramos residuo del búfer anterior
-                            if (this.isFirstRead) {
-                                this.isFirstRead = false;
-                                return;
-                            }
+                    if (!isNaN(weightValue) && weightValue >= 0) {
+                        if (this.isFirstRead) {
+                            this.isFirstRead = false;
+                            return;
+                        }
 
-                            if (root.data.peso_actual !== weightValue) {
-                                root.update({ peso_actual: weightValue });
-                            }
+                        if (root.data && root.data.peso_actual !== weightValue) {
+                            root.update({ peso_actual: weightValue });
                         }
                     }
-                })
-                .catch(err => console.log("Leyendo peso dinámico (Revisado)..."));
-            }, 1000);
-        }
+                }
+            })
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    console.log("Leyendo peso dinámico (Revisado)...");
+                }
+            });
+        }, 1000);
     }
 });
