@@ -7,9 +7,16 @@ patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
         this.revisadoScaleInterval = null;
+        this.isFirstRead = true;
 
         onMounted(() => {
             if (this.model.root.resModel === 'mrp.revisado.wizard') {
+                // 1. Forzamos inicio en 0.0 en la pantalla del revisado
+                if (this.model.root.data.peso_actual !== 0.0) {
+                    this.model.root.update({ peso_actual: 0.0 });
+                }
+                
+                this.isFirstRead = true;
                 this._connectToRevisadoScale();
             }
         });
@@ -18,12 +25,6 @@ patch(FormController.prototype, {
             if (this.revisadoScaleInterval) {
                 clearInterval(this.revisadoScaleInterval);
                 this.revisadoScaleInterval = null;
-            }
-            // Forzamos limpieza en el modelo de datos al cerrar
-            if (this.model && this.model.root) {
-                if (this.model.root.data.peso_actual !== undefined) {
-                    this.model.root.update({ peso_actual: 0.0 });
-                }
             }
         });
     },
@@ -49,13 +50,20 @@ patch(FormController.prototype, {
                 })
                 .then(response => response.json())
                 .then(payload => {
+                    if (!this.revisadoScaleInterval) return;
+
                     const data = payload.result || payload;
                     if (data) {
                         let weightValue = data.weight !== undefined ? data.weight : data.value;
                         weightValue = parseFloat(weightValue);
 
-                        // Aceptamos explícitamente el 0 para limpiar la pantalla al bajar el rollo
                         if (!isNaN(weightValue) && weightValue >= 0) {
+                            // 2. Ignoramos residuo del búfer anterior
+                            if (this.isFirstRead) {
+                                this.isFirstRead = false;
+                                return;
+                            }
+
                             if (root.data.peso_actual !== weightValue) {
                                 root.update({ peso_actual: weightValue });
                             }
