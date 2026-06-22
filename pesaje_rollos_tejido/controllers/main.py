@@ -15,10 +15,8 @@ class IotScaleBridgeController(http.Controller):
         Puente en Python (Servidor Odoo SH) para consultar el Virtual IoT Box local
         sin restricciones de CORS de Google Chrome.
         """
-        # El servidor de Python corre fuera del navegador, por lo que sí puede hablar con Windows directo
-        # url = "http://192.168.100.30:8069/hw_proxy/perform_action"
         # Reemplazar la IP privada por el subdominio HTTPS que Odoo IoT te asigna:
-        url = "https://192-168-100-30.3991e8c5.odoo-iot.com//hw_proxy/perform_action"
+        url = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/perform_action"
         headers = {'Content-Type': 'application/json'}
         payload = {
             "jsonrpc": "2.0",
