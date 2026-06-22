@@ -16,7 +16,7 @@ class IotScaleBridgeController(http.Controller):
         sin restricciones de CORS de Google Chrome.
         """
         # Reemplazar la IP privada por el subdominio HTTPS que Odoo IoT te asigna:
-        url = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/perform_action"
+        url = "https://192-168-100-30.3991e8c5.odoo-iot.com:8069/hw_proxy/perform_action"
         headers = {'Content-Type': 'application/json'}
         payload = {
             "jsonrpc": "2.0",
