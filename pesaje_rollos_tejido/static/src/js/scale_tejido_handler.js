@@ -20,6 +20,13 @@ patch(FormController.prototype, {
                 clearInterval(this.tejidoScaleInterval);
                 this.tejidoScaleInterval = null;
             }
+            // Forzamos limpieza en el modelo de datos al cerrar
+            if (this.model && this.model.root) {
+                const targetField = 'weight';
+                if (this.model.root.data[targetField] !== undefined) {
+                    this.model.root.update({ [targetField]: 0.0 });
+                }
+            }
         });
     },
 
@@ -27,19 +34,19 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔒 Endpoint nativo exclusivo para lectura de básculas en Odoo IoT
             const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
 
             this.tejidoScaleInterval = setInterval(() => {
+                // Si el componente ya se destruyó durante el intervalo, detenemos la ejecución
+                if (!this.tejidoScaleInterval) return;
+
                 fetch(iotUrl, {
                     method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json" 
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
                         jsonrpc: "2.0", 
                         method: "call", 
-                        params: {}, // El endpoint scale_read no requiere acciones, lee directo el driver activo
+                        params: {}, 
                         id: Math.floor(Math.random() * 1000)
                     })
                 })
@@ -47,10 +54,10 @@ patch(FormController.prototype, {
                 .then(payload => {
                     const data = payload.result || payload;
                     if (data) {
-                        // Formato de respuesta estándar de Odoo IoT para básculas (weight o value)
                         let weightValue = data.weight !== undefined ? data.weight : data.value;
                         weightValue = parseFloat(weightValue);
 
+                        // Aceptamos explícitamente el 0 para limpiar la pantalla al bajar el rollo
                         if (!isNaN(weightValue) && weightValue >= 0) {
                             const targetField = 'weight';
                             if (root.data[targetField] !== weightValue) {
@@ -59,7 +66,7 @@ patch(FormController.prototype, {
                         }
                     }
                 })
-                .catch(err => console.log("Conectando con canal nativo de báscula (Tejido)..."));
+                .catch(err => console.log("Leyendo peso dinámico (Tejido)..."));
             }, 1000);
         }
     }
