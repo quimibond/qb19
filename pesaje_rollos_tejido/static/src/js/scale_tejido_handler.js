@@ -7,10 +7,18 @@ patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
         this.tejidoScaleInterval = null;
+        this.isFirstRead = true; // Bandera para ignorar el búfer viejo del IoT Box
 
         onMounted(() => {
             const modelName = this.model.root.resModel;
             if (modelName === 'mrp.weigh.roll.wizard' || modelName === 'mrp.subproduct.wizard') {
+                // 1. Forzamos de inmediato que la interfaz inicie limpia en 0.0
+                const targetField = 'weight';
+                if (this.model.root.data[targetField] !== 0.0) {
+                    this.model.root.update({ [targetField]: 0.0 });
+                }
+                
+                this.isFirstRead = true; // Reiniciamos bandera de control
                 this._connectToTejidoScale();
             }
         });
@@ -19,13 +27,6 @@ patch(FormController.prototype, {
             if (this.tejidoScaleInterval) {
                 clearInterval(this.tejidoScaleInterval);
                 this.tejidoScaleInterval = null;
-            }
-            // Forzamos limpieza en el modelo de datos al cerrar
-            if (this.model && this.model.root) {
-                const targetField = 'weight';
-                if (this.model.root.data[targetField] !== undefined) {
-                    this.model.root.update({ [targetField]: 0.0 });
-                }
             }
         });
     },
@@ -37,7 +38,6 @@ patch(FormController.prototype, {
             const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
 
             this.tejidoScaleInterval = setInterval(() => {
-                // Si el componente ya se destruyó durante el intervalo, detenemos la ejecución
                 if (!this.tejidoScaleInterval) return;
 
                 fetch(iotUrl, {
@@ -52,13 +52,21 @@ patch(FormController.prototype, {
                 })
                 .then(response => response.json())
                 .then(payload => {
+                    if (!this.tejidoScaleInterval) return;
+
                     const data = payload.result || payload;
                     if (data) {
                         let weightValue = data.weight !== undefined ? data.weight : data.value;
                         weightValue = parseFloat(weightValue);
 
-                        // Aceptamos explícitamente el 0 para limpiar la pantalla al bajar el rollo
                         if (!isNaN(weightValue) && weightValue >= 0) {
+                            // 2. Si es la primera lectura tras abrir el asistente, la ignoramos 
+                            // para dar tiempo a que el IoT Box actualice su búfer real
+                            if (this.isFirstRead) {
+                                this.isFirstRead = false;
+                                return; 
+                            }
+
                             const targetField = 'weight';
                             if (root.data[targetField] !== weightValue) {
                                 root.update({ [targetField]: weightValue });
