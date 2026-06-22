@@ -27,8 +27,8 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // Subdominio HTTPS oficial generado para tu planta (Puerto 443 nativo por SSL)
-            const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/perform_action";
+            // 🔒 Endpoint nativo exclusivo para lectura de básculas en Odoo IoT
+            const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
 
             this.tejidoScaleInterval = setInterval(() => {
                 fetch(iotUrl, {
@@ -38,17 +38,16 @@ patch(FormController.prototype, {
                     },
                     body: JSON.stringify({ 
                         jsonrpc: "2.0", 
-                        method: "call", // Odoo requiere el método "call" para sus controladores web
-                        params: { 
-                            "action": "read_scale" 
-                        },
-                        id: Math.floor(Math.random() * 1000) // ID de transacción obligatorio en JSON-RPC
+                        method: "call", 
+                        params: {}, // El endpoint scale_read no requiere acciones, lee directo el driver activo
+                        id: Math.floor(Math.random() * 1000)
                     })
                 })
                 .then(response => response.json())
                 .then(payload => {
                     const data = payload.result || payload;
                     if (data) {
+                        // Formato de respuesta estándar de Odoo IoT para básculas (weight o value)
                         let weightValue = data.weight !== undefined ? data.weight : data.value;
                         weightValue = parseFloat(weightValue);
 
@@ -60,7 +59,7 @@ patch(FormController.prototype, {
                         }
                     }
                 })
-                .catch(err => console.log("Conectando de forma segura con IoT Box local (Tejido)..."));
+                .catch(err => console.log("Conectando con canal nativo de báscula (Tejido)..."));
             }, 1000);
         }
     }
