@@ -26,9 +26,9 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔄 DIRECTO A LOCALHOST (Usa la extensión instalada en Chrome para saltar el CORS)
+            // 🔒 CONEXIÓN DIRECTA HTTPS LOCAL (Sin extensiones de Chrome ni CORS)
             this.revisadoScaleInterval = setInterval(() => {
-                fetch("http://127.0.0.1:8069/hw_proxy/perform_action", {
+                fetch("https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/perform_action", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
@@ -50,7 +50,7 @@ patch(FormController.prototype, {
                         }
                     }
                 })
-                .catch(err => console.log("Buscando báscula local Rhino..."));
+                .catch(err => console.log("Conectando con IoT Box local..."));
             }, 1000);
         }
     }
