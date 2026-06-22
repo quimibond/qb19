@@ -27,25 +27,33 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔒 FETCH PURO: No usa useService ni componentes inestables de Odoo
+            // 🔄 DIRECTO A LOCALHOST (Usa la extensión instalada en Chrome para saltar el CORS)
             this.tejidoScaleInterval = setInterval(() => {
-                fetch("/quimibond/scale/read_weight", {
+                fetch("http://127.0.0.1:8069/hw_proxy/perform_action", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ jsonrpc: "2.0", params: {} })
+                    body: JSON.stringify({ 
+                        jsonrpc: "2.0", 
+                        params: { "action": "read_scale" } 
+                    })
                 })
                 .then(response => response.json())
                 .then(payload => {
                     const data = payload.result || payload;
-                    if (data && data.status === 'success' && data.weight !== undefined) {
-                        const weightValue = parseFloat(data.weight);
-                        const targetField = 'weight';
-                        if (root.data[targetField] !== weightValue && weightValue >= 0) {
-                            root.update({ [targetField]: weightValue });
+                    // Validamos la estructura nativa del Virtual IoT Box
+                    if (data) {
+                        let weightValue = data.weight !== undefined ? data.weight : data.value;
+                        weightValue = parseFloat(weightValue);
+
+                        if (!isNaN(weightValue) && weightValue >= 0) {
+                            const targetField = 'weight';
+                            if (root.data[targetField] !== weightValue) {
+                                root.update({ [targetField]: weightValue });
+                            }
                         }
                     }
                 })
-                .catch(err => console.log("Sincronizando peso..."));
+                .catch(err => console.log("Buscando báscula local Rhino..."));
             }, 1000);
         }
     }

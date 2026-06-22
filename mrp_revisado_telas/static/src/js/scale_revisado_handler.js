@@ -26,24 +26,31 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // 🔒 FETCH PURO: No usa useService ni componentes inestables de Odoo
+            // 🔄 DIRECTO A LOCALHOST (Usa la extensión instalada en Chrome para saltar el CORS)
             this.revisadoScaleInterval = setInterval(() => {
-                fetch("/quimibond/scale/read_weight", {
+                fetch("http://127.0.0.1:8069/hw_proxy/perform_action", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ jsonrpc: "2.0", params: {} })
+                    body: JSON.stringify({ 
+                        jsonrpc: "2.0", 
+                        params: { "action": "read_scale" } 
+                    })
                 })
                 .then(response => response.json())
                 .then(payload => {
                     const data = payload.result || payload;
-                    if (data && data.status === 'success' && data.weight !== undefined) {
-                        const weightValue = parseFloat(data.weight);
-                        if (root.data.peso_actual !== weightValue && weightValue >= 0) {
-                            root.update({ peso_actual: weightValue });
+                    if (data) {
+                        let weightValue = data.weight !== undefined ? data.weight : data.value;
+                        weightValue = parseFloat(weightValue);
+
+                        if (!isNaN(weightValue) && weightValue >= 0) {
+                            if (root.data.peso_actual !== weightValue) {
+                                root.update({ peso_actual: weightValue });
+                            }
                         }
                     }
                 })
-                .catch(err => console.log("Sincronizando peso..."));
+                .catch(err => console.log("Buscando báscula local Rhino..."));
             }, 1000);
         }
     }
