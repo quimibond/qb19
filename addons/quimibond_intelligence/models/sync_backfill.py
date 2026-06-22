@@ -216,6 +216,11 @@ def _build_invoice_line_rows(invoices):
                 'currency': inv_currency,
                 'price_subtotal_mxn': round(line.price_subtotal * mxn_ratio, 2),
                 'price_total_mxn': round(line.price_total * mxn_ratio, 2),
+                # Cuenta GL de la línea — necesaria para el backfill histórico
+                # (audit refacciones gastadas vs capitalizadas). Igual que en
+                # _push_invoice_lines.
+                'account_code': (line.account_id.code or None) if line.account_id else None,
+                'account_name': (line.account_id.name or None) if line.account_id else None,
                 'odoo_company_id': inv.company_id.id if inv.company_id else None,
             })
     return rows
