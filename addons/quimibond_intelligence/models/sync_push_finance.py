@@ -649,6 +649,13 @@ class QuimibondSyncFinance(models.TransientModel):
                     'price_total_mxn': round(line.price_total * ratio, 2),
                     'line_uom': line_uom_obj.name if line_uom_obj else None,
                     'line_uom_id': line_uom_obj.id if line_uom_obj else None,
+                    # Cuenta contable GL de la línea (account.move.line.account_id).
+                    # Permite trazar a qué cuenta pegó cada línea: en facturas de
+                    # proveedor (in_invoice) de un consumible es la cuenta de GASTO;
+                    # en un almacenable, la cuenta puente de inventario. Sirve para
+                    # auditar refacciones gastadas vs capitalizadas.
+                    'account_code': (line.account_id.code or None) if line.account_id else None,
+                    'account_name': (line.account_id.name or None) if line.account_id else None,
                     'odoo_company_id': ctx['company_id'],
                 })
 
