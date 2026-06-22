@@ -26,8 +26,8 @@ patch(FormController.prototype, {
         const root = this.model.root;
         if (root.data.weighing_mode === 'iot' && root.data.iot_device_id) {
             
-            // Subdominio HTTPS oficial generado para tu planta (Puerto 443 nativo por SSL)
-            const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/perform_action";
+            // 🔒 Endpoint nativo exclusivo para lectura de básculas en Odoo IoT
+            const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
 
             this.revisadoScaleInterval = setInterval(() => {
                 fetch(iotUrl, {
@@ -37,11 +37,9 @@ patch(FormController.prototype, {
                     },
                     body: JSON.stringify({ 
                         jsonrpc: "2.0", 
-                        method: "call", // Odoo requiere el método "call" para sus controladores web
-                        params: { 
-                            "action": "read_scale" 
-                        },
-                        id: Math.floor(Math.random() * 1000) // ID de transacción obligatorio en JSON-RPC
+                        method: "call", 
+                        params: {}, 
+                        id: Math.floor(Math.random() * 1000)
                     })
                 })
                 .then(response => response.json())
@@ -58,7 +56,7 @@ patch(FormController.prototype, {
                         }
                     }
                 })
-                .catch(err => console.log("Conectando de forma segura con IoT Box local (Revisado)..."));
+                .catch(err => console.log("Conectando con canal nativo de báscula (Revisado)..."));
             }, 1000);
         }
     }
