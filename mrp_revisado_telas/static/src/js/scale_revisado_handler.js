@@ -8,14 +8,22 @@ patch(FormController.prototype, {
         super.setup(...arguments);
         this.revisadoScaleInterval = null;
         this.revisadoAbortController = null;
-        this.isFirstRead = true;
+        this.lastRawWeight = null;
+        this.readCounter = 0;
 
         onMounted(() => {
             const root = this.model && this.model.root;
             if (!root) return;
 
             if (root.resModel === 'mrp.revisado.wizard') {
-                this.isFirstRead = true;
+                this.lastRawWeight = null;
+                this.readCounter = 0;
+
+                setTimeout(() => {
+                    const inputWeight = document.querySelector("input[name='peso_actual']");
+                    if (inputWeight) inputWeight.value = "0.00";
+                }, 200);
+
                 this._connectToRevisadoScale();
             }
         });
@@ -64,13 +72,18 @@ patch(FormController.prototype, {
                     weightValue = parseFloat(weightValue);
 
                     if (!isNaN(weightValue) && weightValue >= 0) {
-                        if (this.isFirstRead) {
-                            this.isFirstRead = false;
-                            return;
+                        
+                        if (weightValue === this.lastRawWeight) {
+                            this.readCounter++;
+                        } else {
+                            this.lastRawWeight = weightValue;
+                            this.readCounter = 1;
                         }
 
-                        if (root.data && root.data.peso_actual !== weightValue) {
-                            root.update({ peso_actual: weightValue });
+                        if (this.readCounter >= 2) {
+                            if (root.data && root.data.peso_actual !== weightValue) {
+                                root.update({ peso_actual: weightValue });
+                            }
                         }
                     }
                 }
@@ -80,6 +93,6 @@ patch(FormController.prototype, {
                     console.log("Leyendo peso dinámico (Revisado)...");
                 }
             });
-        }, 1000);
+        }, 800);
     }
 });

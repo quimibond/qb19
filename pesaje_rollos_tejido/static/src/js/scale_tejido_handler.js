@@ -7,8 +7,10 @@ patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
         this.tejidoScaleInterval = null;
-        this.tejidoAbortController = null; // Controlador para abortar peticiones fetch en vuelo
-        this.isFirstRead = true;
+        this.tejidoAbortController = null;
+        // Variables de control para el filtro de estabilidad
+        this.lastRawWeight = null; 
+        this.readCounter = 0;
 
         onMounted(() => {
             const root = this.model && this.model.root;
@@ -16,18 +18,24 @@ patch(FormController.prototype, {
             
             const modelName = root.resModel;
             if (modelName === 'mrp.weigh.roll.wizard' || modelName === 'mrp.subproduct.wizard') {
-                this.isFirstRead = true;
+                this.lastRawWeight = null;
+                this.readCounter = 0;
+
+                // Forzamos la limpieza visual inmediata del input para romper la memoria caché del navegador
+                setTimeout(() => {
+                    const inputWeight = document.querySelector("input[name='weight']");
+                    if (inputWeight) inputWeight.value = "0.00";
+                }, 200);
+
                 this._connectToTejidoScale();
             }
         });
 
         onWillDestroy(() => {
-            // 1. Limpiamos el intervalo inmediatamente
             if (this.tejidoScaleInterval) {
                 clearInterval(this.tejidoScaleInterval);
                 this.tejidoScaleInterval = null;
             }
-            // 2. Abortamos cualquier petición de red que esté a mitad de camino
             if (this.tejidoAbortController) {
                 this.tejidoAbortController.abort();
                 this.tejidoAbortController = null;
@@ -42,16 +50,14 @@ patch(FormController.prototype, {
         const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
 
         this.tejidoScaleInterval = setInterval(() => {
-            // Si ya se inició el proceso de destrucción, abortamos antes de enviar
             if (!this.tejidoScaleInterval) return;
 
-            // Instanciamos un nuevo manejador de aborto para esta petición
             this.tejidoAbortController = new AbortController();
 
             fetch(iotUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                signal: this.tejidoAbortController.signal, // Vinculamos el escudo de aborto
+                signal: this.tejidoAbortController.signal,
                 body: JSON.stringify({ 
                     jsonrpc: "2.0", 
                     method: "call", 
@@ -61,7 +67,6 @@ patch(FormController.prototype, {
             })
             .then(response => response.json())
             .then(payload => {
-                // Doble escudo: si el componente se destruyó mientras respondía la red, salir
                 if (!this.tejidoScaleInterval || !root) return;
 
                 const data = payload.result || payload;
@@ -70,25 +75,32 @@ patch(FormController.prototype, {
                     weightValue = parseFloat(weightValue);
 
                     if (!isNaN(weightValue) && weightValue >= 0) {
-                        if (this.isFirstRead) {
-                            this.isFirstRead = false;
-                            return; 
+                        
+                        // 🔒 FILTRO DE ESTABILIDAD:
+                        // Comparamos la lectura actual con la anterior enviada por el IoT Box
+                        if (weightValue === this.lastRawWeight) {
+                            this.readCounter++;
+                        } else {
+                            this.lastRawWeight = weightValue;
+                            this.readCounter = 1; // Si cambió el peso, reiniciamos conteo
                         }
 
-                        const targetField = 'weight';
-                        // Validamos que el modelo siga vivo y el campo exista antes de actualizar
-                        if (root.data && root.data[targetField] !== weightValue) {
-                            root.update({ [targetField]: weightValue });
+                        // Solo actualizamos Odoo si el peso se mantiene idéntico por al menos 2 lecturas consecutivas
+                        // Esto descarta de inmediato los brincos y el arrastre del búfer viejo
+                        if (this.readCounter >= 2) {
+                            const targetField = 'weight';
+                            if (root.data && root.data[targetField] !== weightValue) {
+                                root.update({ [targetField]: weightValue });
+                            }
                         }
                     }
                 }
             })
             .catch(err => {
-                // Captura silenciosa si la petición fue abortada por el usuario al dar cancelar
                 if (err.name !== 'AbortError') {
                     console.log("Leyendo peso dinámico (Tejido)...");
                 }
             });
-        }, 1000);
+        }, 800); // Bajamos ligeramente a 800ms para que el filtro de dos lecturas responda rápido
     }
 });
