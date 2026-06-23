@@ -9,7 +9,7 @@
                 <xpath expr="//page[@name='inventory']" position="inside">
                     <field name="categ_name_static" invisible="1"/>
                     <group string="Control de Calidad (Tejido)" 
-                           invisible="categ_name_static != 'Producto en Proceso / Tela / Tejido Circular'">
+                           invisible="categ_name_static != 'Producto en Proceso / Tejido Circular'">
                         <field name="porcentaje_revision_standard" widget="percentage"/>
                     </group>
                 </xpath>
@@ -25,14 +25,14 @@
                     <field name="product_id_category_name" invisible="1"/>
                     
                     <field name="rollos_revisados_count" string="Rollos Revisados" readonly="1"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tela / Tejido Circular'"/>
+                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'"/>
                     <field name="rollos_requeridos_count" string="Meta de Revisión" readonly="1" decoration-info="1" widget="badge"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tela / Tejido Circular'"/>
+                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'"/>
                 </xpath>
 
                 <xpath expr="//notebook" position="inside">
                     <page string="Log de Revisión" name="revision_log"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tela / Tejido Circular'">
+                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'">
                         <field name="revision_log_ids" readonly="1">
                             <list>
                                 <field name="create_date" string="Fecha"/>
@@ -51,7 +51,7 @@
                     </page>
 
                     <page string="Última Etiqueta ZPL" name="zpl_label_debug"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tela / Tejido Circular'">
+                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'">
                         <group>
                             <field  name="last_zpl_label" 
                                     widget="ace" 
@@ -90,7 +90,7 @@
                             string="REVISAR CALIDAD" 
                             class="btn-warning" 
                             icon="fa-check-square-o"
-                            invisible="state not in ('ready', 'progress') or (product_id_category_name != 'Producto en Proceso / Tela / Tejido Circular')"
+                            invisible="state not in ('ready', 'progress') or (product_id_category_name != 'Producto en Proceso / Tejido Circular')"
                             context="{'default_production_id': production_id}"/>
                 </xpath>
             </field>
