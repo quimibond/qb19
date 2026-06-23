@@ -26,10 +26,10 @@
                 
                 <button name="%(pesaje_rollos_tejido.action_custom_weighing)d" 
                         type="action" string="PESAR" class="btn-primary" icon="fa-balance-scale"
-                        invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg' and product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-DNP Tejido Circular-kg'"/>
+                        invisible="product_id_category_name != 'Producto en Proceso / Tela / Tejido Circular'"/>
                 <button name="%(pesaje_rollos_tejido.action_mrp_subproduct_wizard)d" 
                         type="action" string="SUBPRODUCTO" class="btn-secondary" icon="fa-recycle"
-                        invisible="product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-Tejido Circular-kg' and product_id_category_name != 'Producto En Proceso / Tac-Producto en proceso-DNP Tejido Circular-kg'"/>
+                        invisible="product_id_category_name != 'Producto en Proceso / Tela / Tejido Circular'"/>
             </xpath>
         </field>
     </record>
