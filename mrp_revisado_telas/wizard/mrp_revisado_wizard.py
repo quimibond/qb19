@@ -236,3 +236,42 @@ class MrpRevisadoWizard(models.TransientModel):
             return report_action
 
         return {'type': 'ir.actions.client', 'tag': 'reload'}
+    
+    # ⚖️ FUNCIÓN PUENTE INTEGRADA PARA MANEJAR EL CLIC DESDE EL JAVASCRIPT
+    def action_trigger_js_read(self):
+        self.ensure_one()
+        import requests
+        
+        iot_url = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read"
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "call",
+            "params": {},
+            "id": 1
+        }
+        
+        try:
+            # El servidor de Odoo hace la petición directa a la báscula (espera un máximo de 3 segundos)
+            response = requests.post(iot_url, json=payload, timeout=3)
+            if response.status_code == 200:
+                res_data = response.json()
+                result = res_data.get('result', {}) or res_data
+                
+                # Extraemos el peso bruto exactamente con la misma estructura que usábamos antes
+                weight_value = result.get('weight', result.get('value', 0.0))
+                self.peso_actual = float(weight_value)
+        except Exception as e:
+            # BLOQUE DE SEGURIDAD LOCAL: Al probarlo en tu casa o entorno local, como la IP de la báscula
+            # no existe en tu red actual, la petición va a fallar por tiempo de espera (timeout).
+            # Capturando el error aquí evitamos que Odoo truene; simplemente asignamos 0.0 para que veas
+            # que el flujo continúa y la pantalla NO hace nada raro ni se cierra.
+            self.peso_actual = 0.0
+
+        # RETORNO DEFINITIVO: Odoo vuelve a renderizar el mismo wizard con el valor actualizado
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
