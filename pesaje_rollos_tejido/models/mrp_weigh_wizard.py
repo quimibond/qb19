@@ -234,6 +234,10 @@ class MrpWeighRollWizard(models.TransientModel):
         report_action.update({'close_on_report_download': True})
         
         return report_action
+    
+    def action_trigger_js_read(self):
+        self.ensure_one()
+        return True
 
 class MrpSubproductWizard(models.TransientModel):
     _name = 'mrp.subproduct.wizard'
@@ -336,5 +340,16 @@ class MrpSubproductWizard(models.TransientModel):
         res = self.env.ref('pesaje_rollos_tejido.action_report_subproduct_weigh').report_action(self.production_id)
         res.update({'close_on_report_download': True})
         return res
+    
+    def action_trigger_js_read(self):
+        self.ensure_one()
+        # Con esto Odoo recarga el mismo asistente en vez de cerrarlo
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
     
    
