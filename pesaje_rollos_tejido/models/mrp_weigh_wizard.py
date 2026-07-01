@@ -343,13 +343,41 @@ class MrpSubproductWizard(models.TransientModel):
     
     def action_trigger_js_read(self):
         self.ensure_one()
-        # Con esto Odoo recarga el mismo asistente en vez de cerrarlo
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': self._name,
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'new',
+        import requests
+        
+        # IP de la báscula Rhino en la planta (idéntica a tejido)
+        iot_url = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read"
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "call",
+            "params": {},
+            "id": 1
         }
+        
+        # Guardamos el peso anterior por si la lectura de red llegara a fallar
+        peso_anterior = self.peso_actual or 0.0
+        
+        try:
+            # Petición directa al hardware proxy en producción (espera máxima de 4 segundos)
+            response = requests.post(iot_url, json=payload, timeout=4)
+            if response.status_code == 200:
+                res_data = response.json()
+                result = res_data.get('result', {})
+                if not isinstance(result, dict):
+                    result = res_data
+                
+                # Extraemos el peso bruto buscando en las claves estándar de Odoo IoT
+                weight_value = result.get('weight', result.get('value', result.get('net', None)))
+                
+                if weight_value is not None:
+                    # Asignamos el peso directamente al campo nativo de revisado
+                    self.peso_actual = float(weight_value)
+        except Exception as e:
+            # Si hay un parpadeo de red o desconexión, conserva el valor que ya tenía
+            self.peso_actual = peso_anterior
+
+        # EL RETORNO DE CLIENTE: Mantiene el wizard de Revisado fijo y estático en la pantalla
+        # inyectando el valor del peso de inmediato sin cerrar el modal.
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
     
    
