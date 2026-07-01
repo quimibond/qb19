@@ -345,8 +345,9 @@ class MrpSubproductWizard(models.TransientModel):
         self.ensure_one()
         import requests
         
-        # IP de la báscula Rhino en la planta (idéntica a tejido)
         iot_url = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read"
+        
+        # CORRECCIÓN DE PAYLOAD: Enviamos los parámetros limpios que requiere el proxy de la báscula
         payload = {
             "jsonrpc": "2.0",
             "method": "call",
@@ -354,30 +355,36 @@ class MrpSubproductWizard(models.TransientModel):
             "id": 1
         }
         
-        # Guardamos el peso anterior por si la lectura de red llegara a fallar
-        peso_anterior = self.peso_actual or 0.0
+        peso_anterior = self.weight or 0.0
         
         try:
-            # Petición directa al hardware proxy en producción (espera máxima de 4 segundos)
+            # Petición directa al hardware proxy en producción
             response = requests.post(iot_url, json=payload, timeout=4)
             if response.status_code == 200:
                 res_data = response.json()
+                
+                # Buscamos la respuesta en 'result' o directamente en el cuerpo
                 result = res_data.get('result', {})
                 if not isinstance(result, dict):
                     result = res_data
                 
-                # Extraemos el peso bruto buscando en las claves estándar de Odoo IoT
+                # Extraemos el valor del peso buscando en las tres variantes físicas de las básculas Rhino
                 weight_value = result.get('weight', result.get('value', result.get('net', None)))
                 
                 if weight_value is not None:
-                    # Asignamos el peso directamente al campo nativo de revisado
-                    self.peso_actual = float(weight_value)
+                    self.weight = float(weight_value)
+                    
+                    # Ejecutamos el onchange nativo de tu modelo si existe para recalcular campos técnicos
+                    if hasattr(self, '_onchange_weight'):
+                        self._onchange_weight()
+                else:
+                    # Si la báscula respondió pero el peso no venía, dejamos el peso que ya tenía
+                    self.weight = peso_anterior
         except Exception as e:
-            # Si hay un parpadeo de red o desconexión, conserva el valor que ya tenía
-            self.peso_actual = peso_anterior
+            # Si hay un error de red o parpadeo, no borramos lo que el operador ya tiene en pantalla
+            self.weight = peso_anterior
 
-        # EL RETORNO DE CLIENTE: Mantiene el wizard de Revisado fijo y estático en la pantalla
-        # inyectando el valor del peso de inmediato sin cerrar el modal.
+        # Mantenemos el wizard de tejido completamente fijo y abierto en la pantalla
         return {'type': 'ir.actions.client', 'tag': 'reload'}
     
    
