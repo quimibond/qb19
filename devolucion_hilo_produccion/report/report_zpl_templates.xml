@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="report_yarn_box_zpl_template">
+            <t t-foreach="docs" t-as="line">
+                <t t-out="line.get_zpl_label()"/>
+            </t>
+        </template>
+    </data>
+</odoo>

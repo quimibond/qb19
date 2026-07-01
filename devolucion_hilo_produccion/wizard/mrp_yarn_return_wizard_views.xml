@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_yarn_return_wizard_line_tree" model="ir.ui.view">
+        <field name="name">mrp.yarn.return.wizard.line.list</field>
+        <field name="model">mrp.yarn.return.wizard.line</field>
+        <field name="arch" type="xml">
+            <list string="Lotes de Hilo en Producción" create="0" delete="0" edit="0">
+                <field name="wizard_id" column_invisible="True" invisible="1"/>
+                <field name="to_return"/>
+                <field name="lot_id"/>
+                <field name="box_no"/>
+                <field name="peso_actual"/>
+                <field name="peso_bruto"/>
+                <field name="tara"/>
+                <field name="peso_neto"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mrp_yarn_return_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.yarn.return.wizard.form</field>
+        <field name="model">mrp.yarn.return.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Devolución de Hilo Sobrante">
+                <sheet>
+                    <group invisible="1">
+                        <field name="id"/>
+                    </group>
+                    <group>
+                        <group string="Ubicaciones de Inventario">
+                            <field name="location_id" readonly="1" force_save="1" options="{'no_open': True}"/>
+                            <field name="location_dest_id" readonly="1" force_save="1" options="{'no_open': True}"/>
+                        </group>
+                        <group string="Configuración de Captura">
+                            <field name="product_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="picking_type_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="iot_device_id" options="{'no_create': True}"/>
+                            
+                            <button name="action_load_yarn_inventory" 
+                                    type="object" 
+                                    string=" Buscar Existencias en Planta" 
+                                    icon="fa-search" 
+                                    class="btn-info w-100 mt-2"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Estación de Pesaje / Captura" class="bg-light p-3 rounded" invisible="not product_id">
+                        <group>
+                            <field name="input_lot_name" placeholder="Escribe o escanea el lote o caja aquí..."/>
+                            <label for="input_peso_bruto"/>
+                            <div class="o_row">
+                                <field name="input_peso_bruto"/>
+                                <button name="action_get_weight_from_scale" 
+                                        type="object" 
+                                        string=" Leer Báscula" 
+                                        icon="fa-balance-scale" 
+                                        class="btn-secondary"/>
+                            </div>
+                            <field name="input_tara"/>
+                        </group>
+                        <group class="justify-content-center align-items-center d-flex flex-column">
+                            <button name="action_update_line_from_input" 
+                                    type="object" 
+                                    string="Registrar y Actualizar Tabla" 
+                                    icon="fa-refresh" 
+                                    class="btn-primary w-100 p-3 mb-2 h3"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Lotes en Ubicación Origen" name="lines">
+                            <field name="line_ids" context="{'tree_view_ref': 'devolucion_hilo_produccion.view_mrp_yarn_return_wizard_line_tree'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_generate_internal_transfer" string="Procesar e Imprimir Selección" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mrp_yarn_return_wizard_view" model="ir.actions.act_window">
+        <field name="name">Devolución de Hilo Tejido</field>
+        <field name="res_model">mrp.yarn.return.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_mrp_yarn_return_wizard_form"/>
+    </record>
+
+    <menuitem id="menu_mrp_yarn_return_production"
+              name="Devolución de Hilo Tejido"
+              action="action_mrp_yarn_return_wizard_view"
+              parent="mrp.menu_mrp_manufacturing"
+              sequence="40"/>
+</odoo>

@@ -65,6 +65,13 @@
                             
                                 <label for="peso_actual" string="Nuevo Peso (Kg)" invisible="not lot_id"/>
                                 <div class="o_row" invisible="not lot_id">
+                                    <button name="action_trigger_js_read" 
+                                            string="⚖️ Capturar" 
+                                            type="object" 
+                                            class="btn-success btn-sm btn_trigger_rhino" 
+                                            invisible="weighing_mode != 'iot'"
+                                            style="font-weight: bold; font-size: 0.85em; padding: 2px 6px; margin-right: 5px;"/>
+
                                     <field name="peso_actual" 
                                             style="font-size: 32px; color: #2C3E50; font-weight: bold; width: 150px;" 
                                             placeholder="0.0000"
