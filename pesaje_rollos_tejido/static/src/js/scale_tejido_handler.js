@@ -32,7 +32,6 @@ patch(FormController.prototype, {
         const btn = ev.target.closest('.btn_trigger_rhino');
         if (!btn) return;
 
-        // Bloqueamos el viaje a Python para evitar que Odoo cierre la ventana modal
         ev.preventDefault();
         ev.stopPropagation();
 
@@ -47,20 +46,17 @@ patch(FormController.prototype, {
 
         fetch(iotUrl, {
             method: "POST",
-            // LAS CABECERAS QUE MATAN LA CACHÉ DE CHROME DE RAÍZ:
+            // VOLVEMOS A LAS CABECERAS LIMPIAS QUE EL IOT SÍ PERMITE
             headers: { 
-                "Content-Type": "application/json",
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
+                "Content-Type": "application/json"
             },
-            cache: "no-store", // Forzar al navegador a no almacenar el resultado
             signal: this.tejidoAbortController.signal,
             body: JSON.stringify({ 
                 jsonrpc: "2.0", 
                 method: "call", 
                 params: {}, 
-                id: Math.floor(Math.random() * 1000) // ID dinámico para romper cachés del servidor
+                // EL ID ALEATORIO EVITA QUE CHROME RECICLE EL PESO SIN ROMPER EL CORS
+                id: Math.floor(Math.random() * 100000)
             })
         })
         .then(response => response.json())
@@ -70,11 +66,9 @@ patch(FormController.prototype, {
             let weightValue = undefined;
 
             if (payload && payload.result !== undefined) {
-                // Si 'result' es directamente un número (formato plano)
                 if (typeof payload.result === 'number' || (!isNaN(parseFloat(payload.result)) && typeof payload.result !== 'object')) {
                     weightValue = parseFloat(payload.result);
                 } 
-                // Si 'result' es un diccionario/objeto con claves internas
                 else if (typeof payload.result === 'object' && payload.result !== null) {
                     const resData = payload.result;
                     weightValue = resData.weight !== undefined ? resData.weight : (resData.value !== undefined ? resData.value : resData.net);
@@ -83,7 +77,6 @@ patch(FormController.prototype, {
 
             weightValue = parseFloat(weightValue);
 
-            // Inyectamos el número final extraído en el recuadro gigante de Odoo
             if (!isNaN(weightValue) && weightValue >= 0) {
                 root.update({ weight: weightValue });
                 console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor:", weightValue);
