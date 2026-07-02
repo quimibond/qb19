@@ -39,11 +39,6 @@ patch(FormController.prototype, {
         console.log("--> [TEJIDO] ¡Clic interceptado con éxito! Bloqueando viaje a Python para evitar cierre.");
 
         const root = this.model && this.model.root;
-        if (!root || root.data.weighing_mode !== 'iot') {
-            console.log("--> Operación cancelada: El modo no es IoT.");
-            return;
-        }
-
         btn.disabled = true;
         btn.innerHTML = '⏳ Leyendo báscula...';
 
@@ -52,13 +47,20 @@ patch(FormController.prototype, {
 
         fetch(iotUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            // LAS CABECERAS QUE MATAN LA CACHÉ DE CHROME DE RAÍZ:
+            headers: { 
+                "Content-Type": "application/json",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            },
+            cache: "no-store", // Forzar al navegador a no almacenar el resultado
             signal: this.tejidoAbortController.signal,
             body: JSON.stringify({ 
                 jsonrpc: "2.0", 
                 method: "call", 
                 params: {}, 
-                id: 1
+                id: Math.floor(Math.random() * 1000) // ID dinámico para romper cachés del servidor
             })
         })
         .then(response => response.json())
@@ -68,8 +70,8 @@ patch(FormController.prototype, {
             let weightValue = undefined;
 
             if (payload && payload.result !== undefined) {
-                // Si 'result' es directamente un número (formato plano de tu función _scale_read_hw_proxy)
-                if (typeof payload.result === 'number' || !isNaN(parseFloat(payload.result)) && typeof payload.result !== 'object') {
+                // Si 'result' es directamente un número (formato plano)
+                if (typeof payload.result === 'number' || (!isNaN(parseFloat(payload.result)) && typeof payload.result !== 'object')) {
                     weightValue = parseFloat(payload.result);
                 } 
                 // Si 'result' es un diccionario/objeto con claves internas
@@ -86,7 +88,7 @@ patch(FormController.prototype, {
                 root.update({ weight: weightValue });
                 console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor:", weightValue);
             } else {
-                console.log("--> [TEJIDO] No se pudo extraer un peso numérico válido. Estructura desconocida.");
+                console.log("--> [TEJIDO] No se pudo extraer un peso numérico válido.");
             }
         })
         .catch(err => {
