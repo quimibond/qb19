@@ -505,7 +505,16 @@ class QuimibondSyncInventory(models.TransientModel):
             ('company_id', 'in', cids),
         ]
         if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
+            # Editar una línea (p.ej. reclasificar la cuenta de un asiento
+            # STJ ya posteado) actualiza el write_date de la LÍNEA pero no
+            # siempre el del move padre, así que el filtro por move.write_date
+            # dejaba lines_stock congelado con las cuentas viejas (detectado
+            # 2026-07-02: los ajustes de conteo de junio se reclasificaron
+            # fuera de 501.01.08 y silver siguió mostrando la versión previa).
+            # Incluimos también moves cuyas líneas cambiaron.
+            ls = last_sync.strftime('%Y-%m-%d %H:%M:%S')
+            domain += ['|', ('write_date', '>=', ls),
+                       ('line_ids.write_date', '>=', ls)]
 
         entry_ids = Move.search(domain, order='date desc, id desc').ids
         total = len(entry_ids)
