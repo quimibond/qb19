@@ -466,8 +466,12 @@ class QuimibondSyncInventory(models.TransientModel):
           Purchase:  504% (costo compras, vendor bill counterpart)
         NOTE: 116.003 es Cuenta Transitoria BBVA (bancaria) — NO incluir 116%.
         2026-07-03: se agrega 999% (Ganancias/pérdidas no distribuidas) para
-        auditar reclasificaciones manuales a equity detectadas en la auditoría
-        de inventario — el war room /contabilidad/cierre-inventario las vigila.
+        vigilar asientos manuales a equity — el war room
+        /contabilidad/cierre-inventario los levanta como issue crítico.
+        OJO: la fila mensual de 999998 en odoo_account_balances es SINTÉTICA
+        (la fabrica _push_account_balances como utilidad neta del período,
+        SP5 §14.2); la evidencia de asientos reales es lines_stock. Verificado
+        2026-07-03 tras re-push completo: 0 líneas reales de 999998 all-time.
 
         SP11.8 (2026-04-23): evidencia empírica (sample 5+5 ene-feb) mostró que
         el link real stock.move ↔ account.move vive principalmente en:
