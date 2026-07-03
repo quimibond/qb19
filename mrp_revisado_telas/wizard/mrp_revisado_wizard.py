@@ -22,7 +22,6 @@ class MrpRevisadoWizard(models.TransientModel):
     # 1. Nuevos campos para identificación
     employee_number = fields.Char(string="Número de Empleado", required=True)
     employee_name = fields.Char(string="Nombre del Revisor", compute="_compute_employee_name", store=True)
-
     @api.depends('employee_number')
     def _compute_employee_name(self):
         for reg in self:
@@ -239,9 +238,5 @@ class MrpRevisadoWizard(models.TransientModel):
     
     # ⚖️ FUNCIÓN PUENTE INTEGRADA PARA MANEJAR EL CLIC DESDE EL JAVASCRIPT
     def action_trigger_js_read(self):
-        """Método puente. El JavaScript intercepta el clic antes de que llegue aquí
-
-        para evitar que Odoo recargue y cierre el wizard.
-        """
         self.ensure_one()
         return True
