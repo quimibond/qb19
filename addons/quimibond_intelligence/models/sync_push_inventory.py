@@ -459,12 +459,15 @@ class QuimibondSyncInventory(models.TransientModel):
         return ok
 
     def _push_account_entries_stock(self, client: SupabaseClient, last_sync=None) -> int:
-        """Push account.moves con líneas en cuentas inventario (115%), COGS (501%) o compras (504%).
+        """Push account.moves con líneas en cuentas inventario (115%), COGS (501%), compras (504%) o equity (999%).
         Quimibond verified codes (2026-04-23):
           Inventory: 115% (Inventory, Raw materials, Production in progress, Variación)
           COGS:      501% (Cost of sales, COSTO PRIMO, VARIACIÓN INVENTARIO, mano de obra)
           Purchase:  504% (costo compras, vendor bill counterpart)
         NOTE: 116.003 es Cuenta Transitoria BBVA (bancaria) — NO incluir 116%.
+        2026-07-03: se agrega 999% (Ganancias/pérdidas no distribuidas) para
+        auditar reclasificaciones manuales a equity detectadas en la auditoría
+        de inventario — el war room /contabilidad/cierre-inventario las vigila.
 
         SP11.8 (2026-04-23): evidencia empírica (sample 5+5 ene-feb) mostró que
         el link real stock.move ↔ account.move vive principalmente en:
@@ -489,11 +492,15 @@ class QuimibondSyncInventory(models.TransientModel):
         try:
             inv_account_ids = Account.search([
                 ('company_ids', 'in', cids),
-                '|', '|', ('code', '=like', '115%'), ('code', '=like', '501%'), ('code', '=like', '504%'),
+                '|', '|', '|',
+                ('code', '=like', '115%'), ('code', '=like', '501%'),
+                ('code', '=like', '504%'), ('code', '=like', '999%'),
             ]).ids
         except Exception:
             inv_account_ids = Account.search([
-                '|', '|', ('code', '=like', '115%'), ('code', '=like', '501%'), ('code', '=like', '504%'),
+                '|', '|', '|',
+                ('code', '=like', '115%'), ('code', '=like', '501%'),
+                ('code', '=like', '504%'), ('code', '=like', '999%'),
             ]).ids
         if not inv_account_ids:
             return 0
