@@ -13,15 +13,6 @@
         'quality_control',
         'iot'
     ],
-    'assets': {
-        'web.assets_backend': [
-            # CONSERVAMOS TU LOGICA ORIGINAL DE IMPRESION DE ETIQUETAS ZEBRA
-            'mrp_revisado_telas/static/src/js/iot_handler.js',
-            
-            # AGREGAMOS EL NUEVO SCRIPT EXCLUSIVO PARA LEER LA BÁSCULA RHINO
-            'mrp_revisado_telas/static/src/js/scale_revisado_handler.js',
-        ],
-    },
     'data': [
         # 1. Seguridad siempre primero
         'security/ir.model.access.csv',
@@ -38,10 +29,20 @@
         'report/ir_actions_report.xml',
         'report/report_revisado_templates.xml',
     ],
+    # OJO: antes existían DOS claves 'assets' en este mismo diccionario.
+    # En Python, un dict literal con claves repetidas simplemente descarta
+    # la primera y se queda con la última -> 'scale_revisado_handler.js'
+    # nunca se estaba cargando en el navegador. Se deja UNA sola clave.
     'assets': {
         'web.assets_backend': [
-            # Mantenemos solo el manejador de la báscula IoT si lo usas
+            # Lógica original de impresión de etiquetas Zebra (IoT printer)
             'mrp_revisado_telas/static/src/js/iot_handler.js',
+
+            # Widget Owl de captura de peso vía báscula IoT (reemplaza al
+            # antiguo scale_revisado_handler.js basado en dispatchEvent,
+            # que rompía la reactividad de Owl en el wizard)
+            'mrp_revisado_telas/static/src/js/scale_capture_field.js',
+            'mrp_revisado_telas/static/src/xml/scale_capture_field.xml',
         ],
     },
     'installable': True,

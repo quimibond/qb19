@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mrp_revisado_telas.ScaleCaptureField">
+        <div class="o_field_scale_capture d-flex align-items-center gap-2">
+            <button t-if="props.record.data.weighing_mode == 'iot'"
+                    type="button"
+                    class="btn btn-success btn-sm fw-bold"
+                    t-on-click="onCapturarClick"
+                    t-att-disabled="state.loading">
+                <t t-if="state.loading">⏳ Leyendo...</t>
+                <t t-else="">⚖️ Capturar</t>
+            </button>
+            <!-- Reutilizamos el render estándar de FloatField (input numérico,
+                 máscara de decimales, readonly, etc.) dentro de nuestro propio
+                 wrapper. El botón vive fuera de ese render y usa this.props.record
+                 directamente, por lo que no depende del estado readonly del campo. -->
+            <t t-call="web.FloatField"/>
+        </div>
+    </t>
+</templates>
