@@ -38,24 +38,28 @@ patch(FormController.prototype, {
         console.log("--> [TEJIDO] ¡Clic interceptado con éxito! Bloqueando viaje a Python para evitar cierre.");
 
         const root = this.model && this.model.root;
+        if (!root) return;
+
         btn.disabled = true;
-        btn.innerHTML = '⏳ Leyendo báscula...';
+        btn.innerHTML = '⏳ Leyendo...';
 
         const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
         this.tejidoAbortController = new AbortController();
 
+        console.log("--> Conectando con la báscula en planta en: " + iotUrl);
+
         fetch(iotUrl, {
             method: "POST",
-            // VOLVEMOS A LAS CABECERAS LIMPIAS QUE EL IOT SÍ PERMITE
             headers: { 
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                // AJUSTE CRUCIAL: Encabezado requerido para que el IoT box acepte la petición JSON-RPC
+                "X-Odoo-Proxy-Method": "jsonrpc" 
             },
             signal: this.tejidoAbortController.signal,
             body: JSON.stringify({ 
                 jsonrpc: "2.0", 
                 method: "call", 
                 params: {}, 
-                // EL ID ALEATORIO EVITA QUE CHROME RECICLE EL PESO SIN ROMPER EL CORS
                 id: Math.floor(Math.random() * 100000)
             })
         })
@@ -65,23 +69,33 @@ patch(FormController.prototype, {
             
             let weightValue = undefined;
 
+            // Extracción detallada del dato
             if (payload && payload.result !== undefined) {
-                if (typeof payload.result === 'number' || (!isNaN(parseFloat(payload.result)) && typeof payload.result !== 'object')) {
-                    weightValue = parseFloat(payload.result);
-                } 
-                else if (typeof payload.result === 'object' && payload.result !== null) {
-                    const resData = payload.result;
-                    weightValue = resData.weight !== undefined ? resData.weight : (resData.value !== undefined ? resData.value : resData.net);
+                const resData = payload.result;
+                
+                if (typeof resData === 'object' && resData !== null) {
+                    if (resData.value !== undefined) {
+                        weightValue = resData.value;
+                    } else if (resData.weight !== undefined) {
+                        weightValue = resData.weight;
+                    } else if (resData.net !== undefined) {
+                        weightValue = resData.net;
+                    }
+                } else if (typeof resData === 'number' || typeof resData === 'string') {
+                    weightValue = resData;
                 }
             }
 
-            weightValue = parseFloat(weightValue);
+            // Conversión estricta a flotante puro
+            const parsedWeight = parseFloat(weightValue);
 
-            if (!isNaN(weightValue) && weightValue >= 0) {
-                root.update({ weight: weightValue });
-                console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor:", weightValue);
+            // Validación de número real (acepta el 0 legítimo)
+            if (!isNaN(parsedWeight)) {
+                // Actualización en el modelo Owl de la pantalla de Tejido
+                root.update({ weight: parsedWeight });
+                console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor real:", parsedWeight);
             } else {
-                console.log("--> [TEJIDO] No se pudo extraer un peso numérico válido.");
+                console.log("--> [TEJIDO] No se pudo parsear el valor extraído:", weightValue);
             }
         })
         .catch(err => {
