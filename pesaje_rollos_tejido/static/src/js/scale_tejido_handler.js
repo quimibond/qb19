@@ -43,10 +43,12 @@ patch(FormController.prototype, {
         btn.disabled = true;
         btn.innerHTML = '⏳ Leyendo...';
 
-        const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
+        // BLINDAJE DE URL: Rompe el caché de Chrome sin alterar headers ni romper el CORS
+        const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read?_=" + new Date().getTime();
         this.tejidoAbortController = new AbortController();
 
-        // Petición estándar idéntica a tu red original para evitar errores de CORS
+        console.log("--> Conectando en vivo con la báscula: " + iotUrl);
+
         fetch(iotUrl, {
             method: "POST",
             headers: { 
@@ -70,7 +72,6 @@ patch(FormController.prototype, {
                 const resData = payload.result;
                 
                 if (typeof resData === 'object' && resData !== null) {
-                    // EXTRACCIÓN EXTRA-SEGURA: Evaluamos las claves una por una de forma independiente
                     if (resData.value !== undefined && resData.value !== null && resData.value !== 0) {
                         weightValue = resData.value;
                     } else if (resData.weight !== undefined && resData.weight !== null) {
@@ -78,7 +79,6 @@ patch(FormController.prototype, {
                     } else if (resData.net !== undefined && resData.net !== null) {
                         weightValue = resData.net;
                     } else {
-                        // Respaldo por si viene en ceros el valor pero la báscula tiene estructura estándar
                         weightValue = resData.value || resData.weight || 0;
                     }
                 } else if (typeof resData === 'number' || typeof resData === 'string') {
@@ -89,7 +89,6 @@ patch(FormController.prototype, {
             const parsedWeight = parseFloat(weightValue);
 
             if (!isNaN(parsedWeight)) {
-                // Actualización directa en la pantalla reactiva de Odoo
                 root.update({ weight: parsedWeight });
                 console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor real:", parsedWeight);
             } else {
