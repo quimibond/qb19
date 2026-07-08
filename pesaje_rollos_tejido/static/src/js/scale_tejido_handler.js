@@ -46,14 +46,11 @@ patch(FormController.prototype, {
         const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
         this.tejidoAbortController = new AbortController();
 
-        console.log("--> Conectando con la báscula en planta en: " + iotUrl);
-
+        // Petición estándar idéntica a tu red original para evitar errores de CORS
         fetch(iotUrl, {
             method: "POST",
             headers: { 
-                "Content-Type": "application/json",
-                // AJUSTE CRUCIAL: Encabezado requerido para que el IoT box acepte la petición JSON-RPC
-                "X-Odoo-Proxy-Method": "jsonrpc" 
+                "Content-Type": "application/json"
             },
             signal: this.tejidoAbortController.signal,
             body: JSON.stringify({ 
@@ -69,29 +66,30 @@ patch(FormController.prototype, {
             
             let weightValue = undefined;
 
-            // Extracción detallada del dato
             if (payload && payload.result !== undefined) {
                 const resData = payload.result;
                 
                 if (typeof resData === 'object' && resData !== null) {
-                    if (resData.value !== undefined) {
+                    // EXTRACCIÓN EXTRA-SEGURA: Evaluamos las claves una por una de forma independiente
+                    if (resData.value !== undefined && resData.value !== null && resData.value !== 0) {
                         weightValue = resData.value;
-                    } else if (resData.weight !== undefined) {
+                    } else if (resData.weight !== undefined && resData.weight !== null) {
                         weightValue = resData.weight;
-                    } else if (resData.net !== undefined) {
+                    } else if (resData.net !== undefined && resData.net !== null) {
                         weightValue = resData.net;
+                    } else {
+                        // Respaldo por si viene en ceros el valor pero la báscula tiene estructura estándar
+                        weightValue = resData.value || resData.weight || 0;
                     }
                 } else if (typeof resData === 'number' || typeof resData === 'string') {
                     weightValue = resData;
                 }
             }
 
-            // Conversión estricta a flotante puro
             const parsedWeight = parseFloat(weightValue);
 
-            // Validación de número real (acepta el 0 legítimo)
             if (!isNaN(parsedWeight)) {
-                // Actualización en el modelo Owl de la pantalla de Tejido
+                // Actualización directa en la pantalla reactiva de Odoo
                 root.update({ weight: parsedWeight });
                 console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor real:", parsedWeight);
             } else {
@@ -99,7 +97,7 @@ patch(FormController.prototype, {
             }
         })
         .catch(err => {
-            console.log("--> Petición finalizada o error de red:", err.name);
+            console.log("--> Error de comunicación:", err.name);
         })
         .finally(() => {
             if (btn) {
