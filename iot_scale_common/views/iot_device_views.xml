@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        OJO: valida que el external id 'iot.iot_device_view_form' exista
+        exactamente así en tu instalación de Odoo 19 (puede variar según
+        el módulo 'iot' instalado). Si el nombre difiere, ajusta el
+        atributo 'ref' abajo; puedes confirmarlo en:
+        Ajustes > Técnico > Vistas, buscando el formulario de "IoT Device".
+    -->
+    <record id="view_iot_device_form_inherit_scale_url" model="ir.ui.view">
+        <field name="name">iot.device.form.inherit.scale.url</field>
+        <field name="model">iot.device</field>
+        <field name="inherit_id" ref="iot.iot_device_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Integración de Báscula" invisible="type != 'scale'">
+                    <field name="scale_read_url"
+                           placeholder="https://.../hw_proxy/scale_read"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

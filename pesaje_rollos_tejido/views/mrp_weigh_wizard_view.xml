@@ -6,6 +6,10 @@
         <field name="arch" type="xml">
             <form string="Registro de Pesaje">
                 <sheet>
+                    <!-- Campo puente para el widget Owl 'peso_bascula'
+                         (ver scale.wizard.mixin en iot_scale_common) -->
+                    <field name="scale_read_url" invisible="1"/>
+
                     <div class="row mb-3">
                         <div class="col-12">
                             <group>
@@ -69,17 +73,18 @@
                             <div class="row">
                                 <!-- COLUMNA 1: PESO BRUTO -->
                                 <div class="col-4">
-                                    <!-- ⚖️ BOTÓN AGREGADO ÚNICAMENTE ARRIBA DEL PESO BRUTO -->
-                                    <div class="mb-2" invisible="weighing_mode != 'iot'">
-                                        <button name="action_trigger_js_read" 
-                                                string="⚖️ Capturar" 
-                                                type="object" 
-                                                class="btn-success btn-sm btn_trigger_rhino" 
-                                                style="width: 100%; font-weight: bold; font-size: 0.85em;"/>
-                                    </div>
-
+                                    <!-- El botón "Capturar" ahora vive DENTRO
+                                         del widget Owl peso_bascula (módulo
+                                         iot_scale_common). Ya no se usa un
+                                         <button type="object"> con clase
+                                         btn_trigger_rhino interceptado por un
+                                         patch global de FormController -
+                                         ese patrón afectaba TODOS los
+                                         formularios del sistema, no solo
+                                         este wizard. -->
                                     <label for="weight" string="PESO BRUTO" style="font-size: 1.2em; font-weight: bold; color: #666;"/><br/>
-                                    <field name="weight" 
+                                    <field name="weight"
+                                            widget="peso_bascula"
                                             default_focus="1"
                                             style="font-size: 3em; font-weight: bold; width: 90%; text-align: center;" 
                                             class="oe_inline"

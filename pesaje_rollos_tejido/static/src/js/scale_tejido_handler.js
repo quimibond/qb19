@@ -38,19 +38,15 @@ patch(FormController.prototype, {
         console.log("--> [TEJIDO] ¡Clic interceptado con éxito! Bloqueando viaje a Python para evitar cierre.");
 
         const root = this.model && this.model.root;
-        if (!root) return;
-
         btn.disabled = true;
-        btn.innerHTML = '⏳ Leyendo...';
+        btn.innerHTML = '⏳ Leyendo báscula...';
 
-        // BLINDAJE DE URL: Rompe el caché de Chrome sin alterar headers ni romper el CORS
-        const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read?_=" + new Date().getTime();
+        const iotUrl = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read";
         this.tejidoAbortController = new AbortController();
-
-        console.log("--> Conectando en vivo con la báscula: " + iotUrl);
 
         fetch(iotUrl, {
             method: "POST",
+            // VOLVEMOS A LAS CABECERAS LIMPIAS QUE EL IOT SÍ PERMITE
             headers: { 
                 "Content-Type": "application/json"
             },
@@ -59,6 +55,7 @@ patch(FormController.prototype, {
                 jsonrpc: "2.0", 
                 method: "call", 
                 params: {}, 
+                // EL ID ALEATORIO EVITA QUE CHROME RECICLE EL PESO SIN ROMPER EL CORS
                 id: Math.floor(Math.random() * 100000)
             })
         })
@@ -69,34 +66,26 @@ patch(FormController.prototype, {
             let weightValue = undefined;
 
             if (payload && payload.result !== undefined) {
-                const resData = payload.result;
-                
-                if (typeof resData === 'object' && resData !== null) {
-                    if (resData.value !== undefined && resData.value !== null && resData.value !== 0) {
-                        weightValue = resData.value;
-                    } else if (resData.weight !== undefined && resData.weight !== null) {
-                        weightValue = resData.weight;
-                    } else if (resData.net !== undefined && resData.net !== null) {
-                        weightValue = resData.net;
-                    } else {
-                        weightValue = resData.value || resData.weight || 0;
-                    }
-                } else if (typeof resData === 'number' || typeof resData === 'string') {
-                    weightValue = resData;
+                if (typeof payload.result === 'number' || (!isNaN(parseFloat(payload.result)) && typeof payload.result !== 'object')) {
+                    weightValue = parseFloat(payload.result);
+                } 
+                else if (typeof payload.result === 'object' && payload.result !== null) {
+                    const resData = payload.result;
+                    weightValue = resData.weight !== undefined ? resData.weight : (resData.value !== undefined ? resData.value : resData.net);
                 }
             }
 
-            const parsedWeight = parseFloat(weightValue);
+            weightValue = parseFloat(weightValue);
 
-            if (!isNaN(parsedWeight)) {
-                root.update({ weight: parsedWeight });
-                console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor real:", parsedWeight);
+            if (!isNaN(weightValue) && weightValue >= 0) {
+                root.update({ weight: weightValue });
+                console.log("--> [TEJIDO] ¡Peso insertado con éxito en Odoo! Valor:", weightValue);
             } else {
-                console.log("--> [TEJIDO] No se pudo parsear el valor extraído:", weightValue);
+                console.log("--> [TEJIDO] No se pudo extraer un peso numérico válido.");
             }
         })
         .catch(err => {
-            console.log("--> Error de comunicación:", err.name);
+            console.log("--> Petición finalizada o error de red:", err.name);
         })
         .finally(() => {
             if (btn) {
