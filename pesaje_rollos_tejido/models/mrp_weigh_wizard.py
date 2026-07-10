@@ -4,19 +4,14 @@ from odoo.exceptions import ValidationError, UserError
 
 class MrpWeighRollWizard(models.TransientModel):
     _name = 'mrp.weigh.roll.wizard'
+    _inherit = ['scale.wizard.mixin']
     _description = 'Asistente de Pesado de Rollos'
 
-    weighing_mode = fields.Selection([
-        ('iot', 'Báscula Automática IoT'),
-        ('manual', 'Captura Manual (Teclado)')
-    ], string="Modo de Pesaje", default='iot', required=True)
-    
-    iot_device_id = fields.Many2one(
-        'iot.device', 
-        string="Báscula IoT", 
-        domain="[('type', '=', 'scale')]",
-        default=lambda self: self.env['iot.device'].search([('type', '=', 'scale')], limit=1).id
-    )
+    # weighing_mode, iot_device_id y scale_read_url vienen del mixin
+    # 'scale.wizard.mixin' (módulo iot_scale_common). Antes estaban
+    # duplicados aquí, en MrpSubproductWizard más abajo, y en
+    # mrp_revisado_wizard.py del otro módulo -- literalmente el mismo
+    # código copiado tres veces.
 
     # Campo técnico para manejar el estado de la alerta
     confirm_threshold = fields.Boolean(string="Confirmar fuera de rango", default=False)
@@ -234,28 +229,15 @@ class MrpWeighRollWizard(models.TransientModel):
         report_action.update({'close_on_report_download': True})
         
         return report_action
-    
-    def action_trigger_js_read(self):
-        self.ensure_one()
-        return True
 
 class MrpSubproductWizard(models.TransientModel):
     _name = 'mrp.subproduct.wizard'
+    _inherit = ['scale.wizard.mixin']
     _description = 'Asistente de Pesado de Subproducto'
 
-    weighing_mode = fields.Selection([
-        ('iot', 'Báscula Automática IoT'),
-        ('manual', 'Captura Manual (Teclado)')
-    ], string="Modo de Pesaje", default='iot', required=True)
-    
-    iot_device_id = fields.Many2one(
-        'iot.device', 
-        string="Báscula IoT", 
-        domain="[('type', '=', 'scale')]",
-        default=lambda self: self.env['iot.device'].search([('type', '=', 'scale')], limit=1).id
-    )
+    # weighing_mode, iot_device_id y scale_read_url vienen del mixin
+    # 'scale.wizard.mixin' (módulo iot_scale_common).
 
-    # 1. Añadir los campos de empleado
     employee_number = fields.Char(string="Número de Empleado", required=True)
     employee_name = fields.Char(string="Nombre del Empleado", compute="_compute_employee_name")
 
@@ -340,51 +322,3 @@ class MrpSubproductWizard(models.TransientModel):
         res = self.env.ref('pesaje_rollos_tejido.action_report_subproduct_weigh').report_action(self.production_id)
         res.update({'close_on_report_download': True})
         return res
-    
-    def action_trigger_js_read(self):
-        self.ensure_one()
-        import requests
-        
-        iot_url = "https://192-168-100-30.3991e8c5.odoo-iot.com/hw_proxy/scale_read"
-        
-        # CORRECCIÓN DE PAYLOAD: Enviamos los parámetros limpios que requiere el proxy de la báscula
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "call",
-            "params": {},
-            "id": 1
-        }
-        
-        peso_anterior = self.weight or 0.0
-        
-        try:
-            # Petición directa al hardware proxy en producción
-            response = requests.post(iot_url, json=payload, timeout=4)
-            if response.status_code == 200:
-                res_data = response.json()
-                
-                # Buscamos la respuesta en 'result' o directamente en el cuerpo
-                result = res_data.get('result', {})
-                if not isinstance(result, dict):
-                    result = res_data
-                
-                # Extraemos el valor del peso buscando en las tres variantes físicas de las básculas Rhino
-                weight_value = result.get('weight', result.get('value', result.get('net', None)))
-                
-                if weight_value is not None:
-                    self.weight = float(weight_value)
-                    
-                    # Ejecutamos el onchange nativo de tu modelo si existe para recalcular campos técnicos
-                    if hasattr(self, '_onchange_weight'):
-                        self._onchange_weight()
-                else:
-                    # Si la báscula respondió pero el peso no venía, dejamos el peso que ya tenía
-                    self.weight = peso_anterior
-        except Exception as e:
-            # Si hay un error de red o parpadeo, no borramos lo que el operador ya tiene en pantalla
-            self.weight = peso_anterior
-
-        # Mantenemos el wizard de tejido completamente fijo y abierto en la pantalla
-        return {'type': 'ir.actions.client', 'tag': 'reload'}
-    
-   

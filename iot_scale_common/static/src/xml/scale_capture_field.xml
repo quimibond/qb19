@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="iot_scale_common.ScaleCaptureField">
+        <div class="o_field_scale_capture d-flex align-items-center gap-2">
+            <button t-if="isIotMode"
+                    type="button"
+                    class="btn btn-success btn-sm fw-bold"
+                    t-on-click="onCapturarClick"
+                    t-att-disabled="state.loading">
+                <t t-if="state.loading">⏳ Leyendo...</t>
+                <t t-else="">⚖️ Capturar</t>
+            </button>
+            <!-- Reutiliza el render estándar de FloatField (input numérico,
+                 decimales, readonly, etc.); el botón vive fuera de ese
+                 render y opera directamente sobre this.props.record. -->
+            <t t-call="web.FloatField"/>
+        </div>
+    </t>
+</templates>

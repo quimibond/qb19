@@ -17,6 +17,12 @@
                     <strong>ESTADO DE REVISIÓN:</strong> <field name="rollos_pendientes_text" readonly="1"/>
                 </div>
                 <sheet>
+                    <!-- Campo puente: necesario para que el widget Owl
+                         'peso_bascula' reciba la URL real de la báscula
+                         seleccionada (ver scale.wizard.mixin). Sin esto
+                         en el arch, el framework no carga el valor en
+                         record.data. -->
+                    <field name="scale_read_url" invisible="1"/>
                     
                     <group>
                         <field name="employee_number" 
