@@ -52,8 +52,14 @@ RhinoIQYProtocol = SerialProtocol(
     parity=serial.PARITY_NONE,
     timeout=1,
     writeTimeout=1,
-    # Trama continua tipo 'P     46.5\r\n'
-    measureRegexp=b"P?\\s*([0-9.]+)\\r\\n",
+    # Trama continua tipo 'P     46.5\r\n'. Se agregó el signo '-' opcional:
+    # con la báscula vacía, el indicador puede transmitir un pequeño drift
+    # negativo de cero (ej. 'P    -0.2\r\n'). Sin el '-' en el regex, esa
+    # línea simplemente NO matcheaba -- y como _read_status() no hace nada
+    # para Rhino, el resultado se quedaba en lo último que sí había
+    # matcheado (el peso del rollo anterior), en vez de reflejar que la
+    # báscula está vacía.
+    measureRegexp=b"P?\\s*(-?[0-9.]+)\\r\\n",
     statusRegexp=None,
     commandDelay=0.2,
     measureDelay=0.5,
@@ -309,6 +315,25 @@ class RhinoScaleDriver(ScaleDriver):
         # El protocolo Rhino no envía trama de estatus/errores separada.
         pass
 
+    def _read_weight(self):
+        """Override: idéntico a ScaleDriver._read_weight(), salvo que
+        clampa lecturas negativas a 0.0. Con la báscula vacía, el drift
+        de cero puede dar un valor levemente negativo (ej. -0.2) que
+        físicamente equivale a "no hay nada sobre la báscula" -- lo
+        tratamos como 0, no como un peso inválido ni como excusa para
+        dejar el dato viejo sin actualizar."""
+        protocol = self._protocol
+        self._connection.write(protocol.measureCommand + protocol.commandTerminator)
+        answer = self._get_raw_response(self._connection)
+        match = re.search(protocol.measureRegexp, answer)
+        if match:
+            weight = float(match.group(1))
+            if weight < 0:
+                weight = 0.0
+            self.data.update({'result': weight, 'status': self._status})
+        else:
+            self._read_status(answer)
+
     def _scale_read_hw_proxy(self):
         """Override específico para Rhino (streaming continuo).
 
@@ -353,5 +378,9 @@ class RhinoScaleDriver(ScaleDriver):
 
             self.data['result'] = None
             self._read_weight()
-
-        return self.data['result']
+            # CORRECCIÓN: el return va DENTRO del lock. Si se hacía fuera,
+            # había una ventana -- aunque angosta -- donde el hilo de
+            # fondo (run()/_take_measure()) podía tomar el lock y
+            # sobreescribir self.data['result'] justo entre que lo
+            # soltábamos aquí y lo leíamos para regresarlo al llamador.
+            return self.data['result']
