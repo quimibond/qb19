@@ -11,7 +11,8 @@
         'stock',
         'pesaje_rollos_tejido',
         'quality_control',
-        'iot'
+        'iot',
+        'iot_scale_common',
     ],
     'data': [
         # 1. Seguridad siempre primero
@@ -29,20 +30,14 @@
         'report/ir_actions_report.xml',
         'report/report_revisado_templates.xml',
     ],
-    # OJO: antes existían DOS claves 'assets' en este mismo diccionario.
-    # En Python, un dict literal con claves repetidas simplemente descarta
-    # la primera y se queda con la última -> 'scale_revisado_handler.js'
-    # nunca se estaba cargando en el navegador. Se deja UNA sola clave.
+    # El widget de báscula (scale_capture_field.js/.xml) ahora vive en el
+    # módulo común 'iot_scale_common' y se carga automáticamente por ser
+    # una dependencia -- ya no se declara aquí. Solo dejamos los assets
+    # que son propios y exclusivos de este módulo.
     'assets': {
         'web.assets_backend': [
             # Lógica original de impresión de etiquetas Zebra (IoT printer)
             'mrp_revisado_telas/static/src/js/iot_handler.js',
-
-            # Widget Owl de captura de peso vía báscula IoT (reemplaza al
-            # antiguo scale_revisado_handler.js basado en dispatchEvent,
-            # que rompía la reactividad de Owl en el wizard)
-            'mrp_revisado_telas/static/src/js/scale_capture_field.js',
-            'mrp_revisado_telas/static/src/xml/scale_capture_field.xml',
         ],
     },
     'installable': True,

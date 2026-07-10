@@ -6,6 +6,10 @@
         <field name="arch" type="xml">
             <form string="Pesaje de Subproducto">
                 <sheet>
+                    <!-- Campo puente para el widget Owl 'peso_bascula'
+                         (ver scale.wizard.mixin en iot_scale_common) -->
+                    <field name="scale_read_url" invisible="1"/>
+
                     <group>
                         <field name="employee_number" 
                             password="True" 
@@ -44,15 +48,13 @@
                             </div>
                         </div>
                         <div class="text-center mt-4 mb-4 p-4 border rounded bg-light shadow-sm">
-                            <div class="mb-2" invisible="weighing_mode != 'iot'">
-                                <button name="action_trigger_js_read" 
-                                        string="⚖️ Capturar" 
-                                        type="object" 
-                                        class="btn-success btn-sm btn_trigger_rhino" 
-                                        style="width: 100%; font-weight: bold; font-size: 0.85em;"/>
-                            </div>
+                            <!-- Botón "Capturar" integrado en el widget Owl
+                                 peso_bascula (módulo iot_scale_common),
+                                 ya no como <button type="object"> suelto
+                                 interceptado por un patch global. -->
                             <label for="weight" string="PESO DEL SUBPRODUCTO" style="font-size: 1.5em; font-weight: bold; color: #333;"/><br/>
                             <field name="weight" 
+                                    widget="peso_bascula"
                                     style="font-size: 4.5em; font-weight: bold; width: 50%; text-align: center;" 
                                     class="oe_inline"
                                     options="{'digits': [12, 4]}"

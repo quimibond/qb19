@@ -18,15 +18,17 @@
         'stock', 
         'mrp_workorder', 
         'quality_control',  # Requerido para la lógica de calidad del subproducto
-        'iot'
+        'iot',
+        'iot_scale_common',
     ],
-    'assets': {
-        'web.assets_backend': [
-            # Conserva aquí tus rutas actuales de impresión si las tienes listadas en este módulo,
-            # y añadimos el nuevo controlador de la báscula:
-            'pesaje_rollos_tejido/static/src/js/scale_tejido_handler.js',
-        ],
-    },
+    # scale_tejido_handler.js queda eliminado: parcheaba FormController.prototype
+    # globalmente (afectando TODOS los formularios de Odoo, no solo estos
+    # wizards) e ignoraba iot_device_id para resolver la URL de la báscula.
+    # El widget 'peso_bascula' del módulo iot_scale_common lo reemplaza,
+    # scoped únicamente a los campos donde se declara explícitamente.
+    # No queda ningún asset propio de este módulo, por eso se retira la
+    # clave 'assets' (si en tu versión real tenías más JS/CSS aquí,
+    # consérvala con esos otros archivos únicamente).
     'data': [
         'security/ir.model.access.csv',
         'security/security_groups.xml',
