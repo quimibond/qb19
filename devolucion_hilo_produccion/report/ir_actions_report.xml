@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="action_report_yarn_box_zpl" model="ir.actions.report">
-        <field name="name">Etiqueta ZPL Devolución de Hilo</field>
-        <field name="model">mrp.yarn.return.wizard.line</field>
+    <record id="action_report_yarn_return_zpl" model="ir.actions.report">
+        <field name="name">Etiqueta de Devolución de Hilo</field>
+        <field name="model">mrp.yarn.return.wizard</field>
         <field name="report_type">qweb-text</field>
-        <field name="report_name">devolucion_hilo_produccion.report_yarn_box_zpl_template</field>
-        <field name="report_file">devolucion_hilo_produccion.report_yarn_box_zpl_template</field>
+        <field name="report_name">devolucion_hilo_produccion.report_yarn_return_zpl</field>
     </record>
 </odoo>

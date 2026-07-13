@@ -32,14 +32,10 @@
     ],
     # El widget de báscula (scale_capture_field.js/.xml) ahora vive en el
     # módulo común 'iot_scale_common' y se carga automáticamente por ser
-    # una dependencia -- ya no se declara aquí. Solo dejamos los assets
-    # que son propios y exclusivos de este módulo.
-    'assets': {
-        'web.assets_backend': [
-            # Lógica original de impresión de etiquetas Zebra (IoT printer)
-            'mrp_revisado_telas/static/src/js/iot_handler.js',
-        ],
-    },
+    # una dependencia -- ya no se declara aquí. iot_handler.js se eliminó
+    # (era código muerto de lectura de báscula, mal etiquetado como
+    # "impresión ZPL"). No queda ningún asset propio de este módulo, por
+    # eso no hay clave 'assets'.
     'installable': True,
     'application': False,
     'license': 'LGPL-3',
