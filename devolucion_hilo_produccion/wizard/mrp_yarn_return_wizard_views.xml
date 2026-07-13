@@ -33,36 +33,32 @@
                         </group>
                         <group string="Configuración de Captura">
                             <field name="product_id" options="{'no_create': True, 'no_open': True}"/>
-                            <field name="picking_type_id" options="{'no_create': True, 'no_open': True}"/>
-                            <field name="iot_device_id" options="{'no_create': True}"/>
-                            
-                            <button name="action_load_yarn_inventory" 
-                                    type="object" 
-                                    string=" Buscar Existencias en Planta" 
-                                    icon="fa-search" 
+                            <field name="picking_type_id" readonly="1" force_save="1" options="{'no_open': True}"/>
+                            <field name="weighing_mode" widget="radio" options="{'horizontal': True}"/>
+                            <field name="iot_device_id" options="{'no_create': True}" invisible="weighing_mode != 'iot'"/>
+                            <!-- Campo puente requerido por el mixin: el widget peso_bascula lee
+                                 scale_read_url desde record.data, no llega si no está en el arch. -->
+                            <field name="scale_read_url" invisible="1"/>
+
+                            <button name="action_load_yarn_inventory"
+                                    type="object"
+                                    string=" Buscar Existencias en Planta"
+                                    icon="fa-search"
                                     class="btn-info w-100 mt-2"/>
                         </group>
                     </group>
-                    
+
                     <group string="Estación de Pesaje / Captura" class="bg-light p-3 rounded" invisible="not product_id">
                         <group>
                             <field name="input_lot_name" placeholder="Escribe o escanea el lote o caja aquí..."/>
-                            <label for="input_peso_bruto"/>
-                            <div class="o_row">
-                                <field name="input_peso_bruto"/>
-                                <button name="action_get_weight_from_scale" 
-                                        type="object" 
-                                        string=" Leer Báscula" 
-                                        icon="fa-balance-scale" 
-                                        class="btn-secondary"/>
-                            </div>
+                            <field name="input_peso_bruto" widget="peso_bascula"/>
                             <field name="input_tara"/>
                         </group>
                         <group class="justify-content-center align-items-center d-flex flex-column">
-                            <button name="action_update_line_from_input" 
-                                    type="object" 
-                                    string="Registrar y Actualizar Tabla" 
-                                    icon="fa-refresh" 
+                            <button name="action_update_line_from_input"
+                                    type="object"
+                                    string="Registrar y Actualizar Tabla"
+                                    icon="fa-refresh"
                                     class="btn-primary w-100 p-3 mb-2 h3"/>
                         </group>
                     </group>
