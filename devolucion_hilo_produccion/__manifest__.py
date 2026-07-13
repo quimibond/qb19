@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Devolución de Hilo Sobrante de Manufactura',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.2',
     'category': 'Manufacturing/Inventory',
     'summary': 'Proceso de re-empaque, pesaje y devolución de hilo a la ubicación de almacenamiento principal.',
     'author': 'Jose Sacramento Ruiz Arizmendi',
-    'depends': ['stock', 'mrp', 'iot'],
+    'depends': ['stock', 'mrp', 'iot_scale_common'],
     'data': [
         'security/ir.model.access.csv',
         'report/ir_actions_report.xml',

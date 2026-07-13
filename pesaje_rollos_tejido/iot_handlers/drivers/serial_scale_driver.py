@@ -292,13 +292,15 @@ class RhinoScaleDriver(ScaleDriver):
     @classmethod
     def supported(cls, device):
         """Detecta la báscula leyendo datos reales y comparándolos contra
-        el regex del protocolo -- reintenta varias veces porque el
-        timeout de sondeo (1s) puede no alinear con el ciclo de
-        transmisión continua de la báscula."""
+        el regex del protocolo. Se amplió de 3 a 10 intentos (~10s en
+        total): con solo 3 segundos, en producción la báscula podía no
+        alcanzar a estabilizarse/transmitir una línea capturable a
+        tiempo, y Odoo la marcaba como no reconocida -- justo el
+        síntoma reportado en planta tras el último reinicio del servicio."""
         protocol = cls._protocol
         try:
             with serial_connection(device['identifier'], protocol, is_probing=True) as connection:
-                for _ in range(3):
+                for _ in range(10):
                     response = connection.read_until(b"\n")
                     if re.search(protocol.measureRegexp, response):
                         return True
