@@ -72,8 +72,8 @@ class MrpYarnReturnWizard(models.TransientModel):
 
     # CAMPOS DE CAPTURA RÁPIDA EN EL ENCABEZADO
     input_lot_name = fields.Char(string='Lote/Caja a Pesar')
-    input_peso_bruto = fields.Float(string='Peso Bruto Captura (kg)', digits=(16, 3))
-    input_tara = fields.Float(string='Tara Captura (kg)', digits=(16, 3))
+    input_peso_bruto = fields.Float(string='Peso Bruto Captura (kg)', digits=(16, 4))
+    input_tara = fields.Float(string='Tara Captura (kg)', digits=(16, 4))
 
     # Igual que mrp.production en pesaje_rollos_tejido: el reporte qweb-text
     # simplemente vuelca este campo. La impresión física la resuelve el
@@ -272,10 +272,10 @@ class MrpYarnReturnWizardLine(models.TransientModel):
     product_id = fields.Many2one('product.product', string='Hilo', related='wizard_id.product_id', store=True)
     lot_id = fields.Many2one('stock.lot', string='Lote / Serie', readonly=True)
     box_no = fields.Char(string='N. Caja', readonly=True)
-    peso_actual = fields.Float(string='Stock Sistema (kg)', readonly=True, digits=(16, 3))
-    peso_bruto = fields.Float(string='Peso Bruto (kg)', digits=(16, 3))
-    tara = fields.Float(string='Tara (kg)', digits=(16, 3))
-    peso_neto = fields.Float(string='Peso Neto (kg)', compute='_compute_peso_neto', store=True, digits=(16, 3))
+    peso_actual = fields.Float(string='Stock Sistema (kg)', readonly=True, digits=(16, 4))
+    peso_bruto = fields.Float(string='Peso Bruto (kg)', digits=(16, 4))
+    tara = fields.Float(string='Tara (kg)', digits=(16, 4))
+    peso_neto = fields.Float(string='Peso Neto (kg)', compute='_compute_peso_neto', store=True, digits=(16, 4))
     to_return = fields.Boolean(string='Devolver', default=False)
 
     @api.depends('peso_bruto', 'tara')
@@ -290,7 +290,7 @@ class MrpYarnReturnWizardLine(models.TransientModel):
         ref = self.product_id.default_code or ''
         name = self.product_id.name or ''
         lot = self.lot_id.name or ''
-        qty = "{:.3f}".format(self.peso_neto)
+        qty = "{:.4f}".format(self.peso_neto)
         box = self.box_no or ''
 
         return f"^XA^CI28\n" \

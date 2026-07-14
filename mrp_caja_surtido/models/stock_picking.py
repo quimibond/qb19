@@ -2,6 +2,16 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_round
 import re
+import unicodedata
+
+
+def _normalize_text(text):
+    """ Quita acentos y pasa a mayúsculas, para comparar nombres de operación
+    de forma robusta sin importar cómo se hayan tecleado los acentos. """
+    if not text:
+        return ''
+    nfkd = unicodedata.normalize('NFKD', text)
+    return ''.join(c for c in nfkd if not unicodedata.combining(c)).upper()
 
 
 class StockPicking(models.Model):
@@ -34,8 +44,8 @@ class StockPicking(models.Model):
     @api.depends('picking_type_id', 'state')
     def _compute_show_barcode_scan(self):
         for rec in self:
-            name = (rec.picking_type_id.name or '').upper()
-            is_valid = any(kw in name for kw in ['REQUISICI', 'FORMACI', 'DESPERDICIO'])
+            name = _normalize_text(rec.picking_type_id.name)
+            is_valid = any(kw in name for kw in ['REQUISICI', 'FORMACI', 'DESPERDICIO']) or 'DEVOLUCION PRODUCCION' in name
             rec.show_barcode_scan = is_valid and rec.state not in ['done', 'cancel']
 
     @api.onchange('barcode_scan_batch')
@@ -45,7 +55,7 @@ class StockPicking(models.Model):
 
         barcode = self.barcode_scan_batch
         self.barcode_scan_batch = False 
-        op_name = (self.picking_type_id.name or '').upper()
+        op_name = _normalize_text(self.picking_type_id.name)
         
         # Variables de control para el flujo
         qty_done = 0.0
@@ -87,6 +97,26 @@ class StockPicking(models.Model):
                 raise UserError(_("La caja %s no tiene existencias en %s.") % (lot.name, self.location_id.name))
             
             raw_quantity = quant.quantity 
+            uom = lot.product_id.uom_id
+            qty_done = uom.round(raw_quantity) if uom else raw_quantity
+
+        # CASO D: DEVOLUCIÓN PRODUCCIÓN (traslado interno de hilo/material sobrante)
+        # Coincidencia exacta de frase para no activarse en otros tipos de devolución
+        # (ej. Devolución de Cliente, Devolución de Proveedor).
+        elif 'DEVOLUCION PRODUCCION' in op_name:
+            if self.move_line_ids.filtered(lambda x: x.lot_id.id == lot.id and x.quantity > 0):
+                raise UserError(_("El lote %s ya ha sido escaneado.") % lot.name)
+
+            quant = self.env['stock.quant'].search([
+                ('lot_id', '=', lot.id),
+                ('location_id', '=', self.location_id.id),
+                ('quantity', '>', 0)
+            ], limit=1)
+
+            if not quant:
+                raise UserError(_("El lote %s no tiene existencias en %s.") % (lot.name, self.location_id.name))
+
+            raw_quantity = quant.quantity
             uom = lot.product_id.uom_id
             qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
@@ -179,7 +209,7 @@ class StockPicking(models.Model):
         # ---------------------------------------------------------
         # 3. PROCESAMIENTO TÉCNICO Y PERSISTENCIA
         # ---------------------------------------------------------
-        if not already_processed and (qty_done > 0 or 'REQUISICI' in op_name):
+        if not already_processed and (qty_done > 0 or 'REQUISICI' in op_name or 'DEVOLUCION PRODUCCION' in op_name):
             picking_id = self._origin.id if self._origin else self.id
             move = self.move_ids.filtered(lambda m: m.product_id == lot.product_id and m.state not in ['done', 'cancel'])[:1]
             
@@ -212,8 +242,8 @@ class StockPicking(models.Model):
     def button_validate(self):
         """ Validación con tolerancia técnica para industria textil """
         for rec in self:
-            op_name = (rec.picking_type_id.name or '').upper()
-            if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO']):
+            op_name = _normalize_text(rec.picking_type_id.name)
+            if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO']) or 'DEVOLUCION PRODUCCION' in op_name:
                 
                 total_scanned = sum(rec.move_line_ids.mapped('quantity'))
                 total_demanded = sum(rec.move_ids.mapped('product_uom_qty'))
