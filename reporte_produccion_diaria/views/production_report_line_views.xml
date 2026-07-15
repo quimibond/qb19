@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_production_report_line_list" model="ir.ui.view">
+        <field name="name">production.report.line.list</field>
+        <field name="model">production.report.line</field>
+        <field name="arch" type="xml">
+            <list string="Producción Tejido" create="false" edit="false" delete="false">
+                <field name="date_finished"/>
+                <field name="production_id"/>
+                <field name="product_id"/>
+                <field name="workcenter_names"/>
+                <field name="qty_planned" sum="Total Planeada"/>
+                <field name="qty_produced" sum="Total Producida"/>
+                <field name="qty_scrap" sum="Total Merma"/>
+                <field name="byproduct_id"/>
+                <field name="qty_byproduct" sum="Total SubProducto"/>
+                <field name="uom_id"/>
+                <field name="cost_components_total" sum="Total Componentes"/>
+                <field name="cost_operations_total" sum="Total Operaciones"/>
+                <field name="cost_production_total" sum="Total Producción"/>
+                <field name="cost_components_avg"/>
+                <field name="cost_operations_avg"/>
+                <field name="cost_total_avg"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_production_report_line_search" model="ir.ui.view">
+        <field name="name">production.report.line.search</field>
+        <field name="model">production.report.line</field>
+        <field name="arch" type="xml">
+            <search string="Buscar en Producción Tejido">
+                <field name="production_id"/>
+                <field name="product_id"/>
+                <field name="byproduct_id"/>
+                <filter string="Fecha de Terminación" name="group_date" context="{'group_by': 'date_finished'}"/>
+                <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
+                <filter string="Centro de Trabajo" name="group_workcenter" context="{'group_by': 'workcenter_names'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_production_report_line_view" model="ir.actions.act_window">
+        <field name="name">Producción Tejido</field>
+        <field name="res_model">production.report.line</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_production_report_line_search"/>
+    </record>
+</odoo>
