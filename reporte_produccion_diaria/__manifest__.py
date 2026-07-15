@@ -4,7 +4,7 @@
     'summary': 'Reporte en vista (lista) de órdenes de fabricación con subproductos, '
                'centros de trabajo y costos, para la operación Tejido Circular.',
     'category': 'Manufacturing',
-    'author': 'Jose Sacramento Ruiz Arizmendi',
+    'author': 'Jose Sacramento Ruiz Arizmendi Consolti',
     'depends': ['mrp'],
     'data': [
         'security/ir.model.access.csv',
