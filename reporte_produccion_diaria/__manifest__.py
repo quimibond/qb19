@@ -1,6 +1,6 @@
 {
     'name': 'Reporte de Producción Diaria',
-    'version': '1.1',
+    'version': '19.0.1.0.0',
     'summary': 'Reporte en vista (lista) de órdenes de fabricación con subproductos, '
                'centros de trabajo y costos, para la operación Tejido Circular.',
     'category': 'Manufacturing',
