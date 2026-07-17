@@ -149,16 +149,23 @@ class QualityAlert(models.Model):
         if not team or not team.sgi_sequence_id:
             raise UserError(
                 "No está configurado el equipo de No Conformidades Internas del SGI.")
+        # Etapa "Abierta" del equipo NC Internas: las etapas de quality.alert son por
+        # equipo, así que al cambiar de equipo hay que moverla a una etapa propia.
+        open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open',
+                                  raise_if_not_found=False)
         for alert in self:
             if alert.sgi_folio:
                 raise UserError(
                     "La alerta «%s» ya es una NC del SGI (%s)." % (
                         alert.name or alert.title, alert.sgi_folio))
-            alert.write({
+            vals = {
                 'team_id': team.id,
                 'sgi_origin_type': 'proceso',
                 'sgi_folio': team.sgi_sequence_id.next_by_id(),
-            })
+            }
+            if open_stage:
+                vals['stage_id'] = open_stage.id
+            alert.write(vals)
             alert.message_post(
                 body="Alerta escalada a No Conformidad del SGI: <b>%s</b>." % alert.sgi_folio)
         return True

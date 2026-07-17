@@ -30,6 +30,9 @@ class TestEscalateNc(TransactionCase):
         self.assertEqual(alert.sgi_origin_type, 'proceso')
         self.assertEqual(alert.product_id, self.product,
                          "Debe conservar el producto ligado.")
+        self.assertEqual(
+            alert.stage_id, self.env.ref('quimibond_sgi.sgi_nc_int_stage_open'),
+            "Debe quedar en la etapa Abierta del equipo NC Internas.")
 
     def test_02_escalate_blocked_if_already_nc(self):
         alert = self.Alert.create({

@@ -1,11 +1,19 @@
 # -*- coding: utf-8 -*-
 from odoo import models
 
-TOLERANCE_KG = 3.0
+# Tolerancia por defecto (kg). El módulo base pesaje_rollos_tejido valida ±3 kg
+# de forma fija; para no divergir en silencio si Producción la ajusta, aquí se
+# lee del parámetro compartido `quimibond_sgi.pesaje_tolerance_kg` (mismo valor
+# por defecto). Ver README.
+DEFAULT_TOLERANCE_KG = 3.0
 
 
 class MrpWeighRollWizard(models.TransientModel):
     _inherit = 'mrp.weigh.roll.wizard'
+
+    def _sgi_tolerance_kg(self):
+        return float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.pesaje_tolerance_kg', DEFAULT_TOLERANCE_KG))
 
     def confirm_weighing(self):
         """Gancho hacia el SGI: si el operador confirma un rollo PESE a estar
@@ -31,8 +39,9 @@ class MrpWeighRollWizard(models.TransientModel):
             [('product_id', '=', self.production_id.product_id.id)], limit=1)
         if not config:
             return False
-        return (self.net_weight < config.rollo_teorico - TOLERANCE_KG
-                or self.net_weight > config.rollo_teorico + TOLERANCE_KG)
+        tolerance = self._sgi_tolerance_kg()
+        return (self.net_weight < config.rollo_teorico - tolerance
+                or self.net_weight > config.rollo_teorico + tolerance)
 
     def _sgi_create_weight_alert(self):
         """Crea (idempotente por rollo) la alerta de calidad del rollo fuera de
@@ -61,7 +70,7 @@ class MrpWeighRollWizard(models.TransientModel):
             'sgi_deviation': (
                 "El rollo %s se registró con peso neto %.3f kg, fuera de la "
                 "tolerancia ±%.0f kg del Tamaño de Rollo Estándar." % (
-                    lot_name, self.net_weight, TOLERANCE_KG)),
+                    lot_name, self.net_weight, self._sgi_tolerance_kg())),
         }
         if self.workorder_id:
             vals['workorder_id'] = self.workorder_id.id

@@ -22,6 +22,9 @@ hacia el SGI. Se instala automáticamente cuando conviven ambos módulos.
         'quimibond_sgi',
         'pesaje_rollos_tejido',
     ],
+    'data': [
+        'data/pesaje_data.xml',
+    ],
     'auto_install': True,
     'installable': True,
 }

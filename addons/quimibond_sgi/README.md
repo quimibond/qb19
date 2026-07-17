@@ -267,7 +267,7 @@ modifica ningún módulo de piso: solo se agregan ganchos hacia el SGI.
 | `desperdicio` | Kilos del subproducto **SALDO TEJIDO D** (categoría `SubProducto`, param `quimibond_sgi.waste_subproduct_category`) / kilos producidos | Validar contra Excel de producción del mes de referencia |
 | `desperdicio_scrap` | `stock.scrap` / kilos producidos (cálculo histórico, conservado) | OK |
 | `calidad_pq` | `mrp.revision.log`: rollos sin causa (defecto = etiqueta TEJIDO-*) / total | Validar con datos reales de revisado |
-| `cumplimiento_programa` | `mrp.production` producido vs planificado (inicio en el periodo) | Validar contra MPS semanal |
+| `cumplimiento_programa` | `mrp.production` producido vs planificado (inicio en el periodo) | **Aproxima el MPS** (usa MOs con inicio programado en el periodo, no el plan maestro literal). Validar contra el Excel de producción un mes **antes** de activar su `nc_on_red` |
 | `inventario_ciclico` | `|ajustes de inventario|` (movimientos `is_inventory`) / existencias en ubicaciones internas | **Requiere conteos cíclicos activos**; existencias «contadas» = proxy de on-hand actual |
 | (otros de Fase 2) | ventas/compras/mantto/RH nativos | Sin cambio |
 
