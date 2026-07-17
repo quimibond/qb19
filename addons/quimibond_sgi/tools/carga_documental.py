@@ -33,6 +33,7 @@ DRY_RUN = True                          # ← poner False para cargar de verdad
 ROOT_FOLDER_NAME = 'SGI'                # carpeta raíz en Documentos
 UNCLASSIFIED_NAME = 'POR CLASIFICAR'
 CSV_PATH = '/tmp/carga_documental_reporte.csv'
+COMMIT_EVERY = 50               # en carga real: commit por lotes (evita OOM/Killed)
 ALLOWED_EXT = {'pdf', 'xlsx', 'xls', 'docx', 'doc', 'pptx'}
 IGNORE_EXT = {'lnk', 'tmp', 'log'}
 SKIP_DIR_TOKENS = ('obsolet', 'baja', 'anterior')
@@ -121,6 +122,7 @@ class Loader:
         self._seen_codes = set()
         self.rows = []
         self.counters = {}
+        self.created = 0
 
     # --- carpetas -----------------------------------------------------------
     def _get_area(self, letter):
@@ -153,6 +155,17 @@ class Loader:
                 self._folder_cache[sub_key] = folder
             parent = folder
         return parent
+
+    def _batch_commit(self):
+        """Carga real: confirma por lotes y libera caché del ORM para que la
+        corrida completa no acumule los adjuntos en memoria (evita el Killed
+        por OOM con miles de archivos). El script es idempotente, por lo que
+        una interrupción a media carga es segura: se re-ejecuta y continúa."""
+        self.created += 1
+        if not DRY_RUN and self.created % COMMIT_EVERY == 0:
+            self.env.cr.commit()
+            self.env.invalidate_all()
+            print('   ... %d documentos confirmados' % self.created)
 
     # --- carga de un archivo ------------------------------------------------
     def _count(self, section, key):
@@ -226,6 +239,7 @@ class Loader:
                 })
             self._report(section, '/'.join(dir_parts), filename, code, dtype, area,
                          revision, 'CREADO')
+            self._batch_commit()
             return
 
         # --- sin clave: POR CLASIFICAR (espejando la carpeta de origen para no
@@ -248,6 +262,7 @@ class Loader:
             })
         self._report(section, carpeta_label, filename, None, None, None, None,
                      'POR_CLASIFICAR', 'el nombre no coincide con la nomenclatura')
+        self._batch_commit()
 
     def run(self):
         with zipfile.ZipFile(ZIP_PATH) as zf:
