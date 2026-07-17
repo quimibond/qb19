@@ -72,6 +72,75 @@ LETTER_PROCESS = {
     'A': 'proc_adm', 'V': 'proc_ventas',
 }
 
+# --- 2.5) Clasificación de migración por familia (prefijo -> clase, destino) ---
+MIGRATION_RULES = [
+    ('F-P-G01-03', 'a', 'Vista de Documentos (lista maestra)'),
+    ('F-P-G01-09', 'a', 'Vista de Documentos (lista maestra externa)'),
+    ('F-P-G01-06', 'a', 'Aprobaciones > Modificación de documento SGI'),
+    ('F-P-G01-16', 'c', 'Reporte NEWS mensual'),
+    ('F-P-G01', 'd', 'Plantilla de elaboración de documentos'),
+    ('F-P-G03-01', 'a', 'SGI > Auditorías > Programa anual'),
+    ('F-P-G03-03', 'c', 'Reporte: plan de auditoría'),
+    ('F-P-G03', 'a', 'SGI > Auditorías'),
+    ('F-P-G04', 'a', 'Alertas de calidad + cuarentena'),
+    ('F-P-G05-01', 'a', 'SGI > No Conformidades'),
+    ('F-P-G05-02', 'a', 'SGI > NC > Concentrado (vista)'),
+    ('F-P-A01-01', 'a', 'Empleados > Puestos (descripción + skills)'),
+    ('F-P-A01-17', 'b', 'Encuesta DNC'),
+    ('F-P-A01', 'a', 'Empleados (RH nativo)'),
+    ('F-P-A02', 'a', 'Compras (requisición/OC nativas)'),
+    ('F-P-A04', 'd', 'Conocimiento (matriz de comunicación)'),
+    ('F-P-A07', 'a', 'Inventario (almacén nativo)'),
+    ('F-P-A10-01', 'a', 'SGI > Revisión por la Dirección'),
+    ('F-P-A10-02', 'a', 'Proyecto > Mejora Continua SGI'),
+    ('F-P-A10-03', 'a', 'SGI > Medición > Indicadores'),
+    ('F-P-A10-04', 'a', 'Helpdesk > Quejas y Sugerencias'),
+    ('F-P-A10-05', 'b', 'Encuesta de consulta y participación'),
+    ('F-P-A12', 'a', 'Fabricación > Plan Maestro (MPS)'),
+    ('F-P-A13', 'a', 'Contabilidad nativa'),
+    ('F-P-A14-02', 'a', 'SGI > Riesgos (patrimonial)'),
+    ('F-P-A14', 'd', 'Documento MAST/SST'),
+    ('F-P-A16', 'a', 'Inventario > Entregas (logística nativa)'),
+    ('F-P-A22', 'a', 'Contabilidad > Seguimientos de cobranza'),
+    ('F-P-A25', 'a', 'Contabilidad'),
+    ('F-P-A26', 'a', 'Nómina (localización MX)'),
+    ('F-P-A28-13', 'a', 'CRM > Pronóstico'),
+    ('F-P-A28-14', 'a', 'Contabilidad > Presupuestos'),
+    ('F-P-A28', 'a', 'Ventas nativas'),
+    ('F-P-C01', 'a', 'Helpdesk > Reclamaciones'),
+    ('F-P-C03', 'a', 'SGI > Metrología > Calibraciones'),
+    ('F-P-C07', 'c', 'Certificado de Calidad del lote (CoA)'),
+    ('F-P-C09', 'a', 'SGI > Riesgos'),
+    ('F-P-C16', 'b', 'Punto de control con hoja de trabajo'),
+    ('F-P-C', 'b', 'Punto de control de Calidad'),
+    ('F-P-P03-01', 'b', 'Punto de control MP (ya configurado)'),
+    ('F-IT-P-P01-08', 'a', 'Módulos de pesaje/revisado (piso)'),
+    ('F-IT-P-P01', 'b', 'Worksheet/bitácora por máquina'),
+    ('F-IT-P-C05', 'b', 'Laboratorio: worksheet'),
+    ('F-IT-P-G03-01-01', 'b', 'Encuesta: evaluación de auditores'),
+    ('F-IT-P', 'b', 'Worksheet según proceso'),
+    ('F-P-P', 'b', 'Registro de producción (worksheet/wizard)'),
+    ('F-P-I01', 'b', 'Inspección/empaque: quality points'),
+    ('F-P-M01', 'a', 'Mantenimiento > Solicitudes (OT)'),
+    ('F-P-S01', 'a', 'SGI > Riesgos (IPER)'),
+    ('F-P-S02', 'a', 'SGI > SST > Incidentes'),
+    ('F-P-S03', 'a', 'Mantenimiento > Equipos (EPP)'),
+    ('F-P-S', 'd', 'Documento SST'),
+    ('F-P-E01', 'a', 'SGI > Riesgos (ambiental)'),
+    ('F-P-E02', 'd', 'Documento externo con revisión (legal)'),
+    ('F-P-E', 'd', 'Documento ambiental'),
+    ('F-P-D', 'a', 'Diseño (proyecto/PLM)'),
+    ('F-P-V01', 'a', 'Ventas nativas'),
+]
+
+
+def migration_of(code):
+    for prefix, cls, target in MIGRATION_RULES:
+        if code.startswith(prefix):
+            return cls, target
+    return 'x', ''
+
+
 # --- 3) Familias clase "B" (candidatas a hoja de trabajo de Calidad) --------
 B_FAMILIES = ('F-P-C16', 'F-P-C04', 'F-P-C02', 'F-P-I01', 'F-IT-P-P01',
               'F-IT-P-C05', 'F-P-P03')
@@ -107,7 +176,7 @@ def _doc_type_of(code):
 def run(env):
     Doc = env['documents.document']
     ref = lambda xmlid: env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
-    done = {'flujos': 0, 'procesos': 0, 'rescatados': 0, 'puestos': 0}
+    done = {'flujos': 0, 'procesos': 0, 'rescatados': 0, 'puestos': 0, 'clasificados': 0}
     pending_commit = [0]
 
     def tick():
@@ -152,6 +221,25 @@ def run(env):
             done['procesos'] += 1
             tick()
     print("   %d documento(s) ligados a su proceso" % done['procesos'])
+
+    # ---- 2.5) Clasificación de migración de formatos ----------------------
+    print("\n2.5) CLASIFICACIÓN DE MIGRACIÓN (formatos sin clase)")
+    formatos = Doc.search([('sgi_is_controlled', '=', True),
+                           ('sgi_doc_type', 'in', ('formato', 'formato_it')),
+                           ('sgi_migration_class', '=', False),
+                           ('sgi_code', '!=', False)])
+    classified = 0
+    for doc in formatos:
+        cls, target = migration_of(doc.sgi_code)
+        vals = {'sgi_migration_class': cls}
+        if target:
+            vals['sgi_migration_target'] = target
+        if not DRY_RUN:
+            doc.write(vals)
+        classified += 1
+        tick()
+    done['clasificados'] = classified
+    print("   %d formato(s) clasificados por familia" % classified)
 
     # ---- 3) Rescate de claves fuera de norma en POR CLASIFICAR ------------
     print("\n3) RESCATE EN 'POR CLASIFICAR'")
@@ -223,7 +311,8 @@ def run(env):
     mode = "DRY-RUN (no se escribió nada)" if DRY_RUN else "APLICADO"
     print("Post-carga SGI — %s" % mode)
     print("Flujos ligados: %(flujos)d | Docs->proceso: %(procesos)d | "
-          "Rescatados: %(rescatados)d | Puestos: %(puestos)d" % done)
+          "Rescatados: %(rescatados)d | Clasificados: %(clasificados)d | "
+          "Puestos: %(puestos)d" % done)
     if not DRY_RUN:
         env.cr.commit()
         print(">>> Cambios CONFIRMADOS en la base de datos (commit).")

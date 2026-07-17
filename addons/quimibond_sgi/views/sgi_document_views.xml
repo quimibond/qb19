@@ -41,6 +41,18 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Migración a Odoo"
+                              invisible="sgi_doc_type not in ('formato', 'formato_it')">
+                            <group>
+                                <group>
+                                    <field name="sgi_migration_class"/>
+                                    <field name="sgi_migration_state"/>
+                                </group>
+                                <group>
+                                    <field name="sgi_migration_target"/>
+                                </group>
+                            </group>
+                        </page>
                         <page string="Puestos que aplican">
                             <field name="sgi_job_ids"/>
                         </page>
@@ -170,5 +182,101 @@ else:
         <field name="name">Acuses de lectura</field>
         <field name="res_model">sgi.document.ack</field>
         <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ============ MIGRACIÓN DE FORMATOS A ODOO ============ -->
+    <record id="sgi_migration_view_list" model="ir.ui.view">
+        <field name="name">sgi.migration.formatos.list</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <list string="Migración de formatos"
+                  decoration-success="sgi_migration_state in ('migrado', 'baja')"
+                  decoration-info="sgi_migration_state == 'en_curso'"
+                  decoration-muted="sgi_migration_state == 'na'">
+                <field name="sgi_code" string="Clave"/>
+                <field name="name" string="Formato"/>
+                <field name="sgi_area_id" optional="show"/>
+                <field name="sgi_process_id" optional="hide"/>
+                <field name="sgi_migration_class"/>
+                <field name="sgi_migration_target"/>
+                <field name="sgi_migration_state" widget="badge"
+                       decoration-success="sgi_migration_state in ('migrado', 'baja')"
+                       decoration-warning="sgi_migration_state == 'pendiente'"
+                       decoration-info="sgi_migration_state == 'en_curso'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_migration_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.migration.formatos.kanban</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="sgi_migration_state" string="Migración de formatos">
+                <field name="sgi_code"/>
+                <field name="sgi_migration_class"/>
+                <field name="sgi_migration_target"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="p-2">
+                            <strong><field name="sgi_code"/></strong>
+                            <div><field name="name"/></div>
+                            <div class="text-muted small">
+                                <field name="sgi_migration_class"/>
+                            </div>
+                            <div class="text-muted small">
+                                <field name="sgi_migration_target"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="sgi_migration_view_search" model="ir.ui.view">
+        <field name="name">sgi.migration.formatos.search</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <search string="Migración de formatos">
+                <field name="sgi_code"/>
+                <field name="name"/>
+                <field name="sgi_migration_target"/>
+                <filter name="mig_pendiente" string="Pendientes"
+                        domain="[('sgi_migration_state', '=', 'pendiente')]"/>
+                <filter name="mig_en_curso" string="En curso"
+                        domain="[('sgi_migration_state', '=', 'en_curso')]"/>
+                <filter name="mig_hechos" string="Migrados / baja"
+                        domain="[('sgi_migration_state', 'in', ('migrado', 'baja'))]"/>
+                <separator/>
+                <filter name="mig_clase_a" string="Clase A" domain="[('sgi_migration_class', '=', 'a')]"/>
+                <filter name="mig_clase_b" string="Clase B" domain="[('sgi_migration_class', '=', 'b')]"/>
+                <filter name="mig_sin_clase" string="Sin clasificar"
+                        domain="[('sgi_migration_class', 'in', (False, 'x'))]"/>
+                <group>
+                    <filter name="group_mig_state" string="Estado" context="{'group_by': 'sgi_migration_state'}"/>
+                    <filter name="group_mig_class" string="Clase" context="{'group_by': 'sgi_migration_class'}"/>
+                    <filter name="group_mig_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_migration_action" model="ir.actions.act_window">
+        <field name="name">Migración de formatos a Odoo</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('sgi_is_controlled', '=', True),
+            ('sgi_doc_type', 'in', ('formato', 'formato_it')),
+            ('sgi_state', '!=', 'obsoleto')]</field>
+        <field name="search_view_id" ref="sgi_migration_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_migration_view_kanban')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_migration_view_list')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin formatos por migrar</p>
+            <p>Aquí se da seguimiento a la migración de cada formato del SGI a su
+            sustituto en Odoo (transacción, hoja de trabajo de Calidad, reporte, o
+            permanece como documento).</p>
+        </field>
     </record>
 </odoo>

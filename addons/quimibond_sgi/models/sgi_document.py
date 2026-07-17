@@ -54,6 +54,27 @@ class DocumentsDocument(models.Model):
     sgi_next_review_date = fields.Date(string="Próxima revisión")
     sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto")
 
+    # --- Seguimiento de migración del formato a Odoo ---
+    sgi_migration_class = fields.Selection([
+        ('a', "A - Transacción Odoo"),
+        ('b', "B - Hoja de trabajo Calidad"),
+        ('c', "C - Salida impresa (reporte)"),
+        ('d', "D - Sigue como documento"),
+        ('x', "Por definir"),
+    ], string="Clase de migración", tracking=True,
+        help="A: el registro de Odoo sustituye al formato. B: se configura como "
+             "punto de control con hoja de trabajo. C: Odoo lo genera como reporte. "
+             "D: permanece como documento controlado.")
+    sgi_migration_state = fields.Selection([
+        ('pendiente', "Pendiente"),
+        ('en_curso', "En curso"),
+        ('migrado', "Migrado a Odoo"),
+        ('baja', "Baja tramitada"),
+        ('na', "No aplica (se queda)"),
+    ], string="Estado de migración", default='pendiente', tracking=True)
+    sgi_migration_target = fields.Char(string="Destino en Odoo",
+        help="Objeto/menú de Odoo que sustituye a este formato (p.ej. 'SGI > No Conformidades').")
+
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats')
     sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats')
