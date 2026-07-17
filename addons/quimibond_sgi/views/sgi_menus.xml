@@ -23,6 +23,10 @@
     <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_root"
               action="sgi_document_action" sequence="40"/>
 
+    <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_root"
+              sequence="46" action="sgi_migration_action"
+              groups="quimibond_sgi.group_sgi_manager"/>
+
     <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_root"
               action="sgi_document_action_my_procedures" sequence="50"/>
 
