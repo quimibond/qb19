@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_sgi_root" name="SGI" sequence="90"
+              groups="quimibond_sgi.group_sgi_user"/>
+
+    <menuitem id="menu_sgi_panel" name="Panel" parent="menu_sgi_root"
+              action="sgi_process_action_panel" sequence="10"/>
+
+    <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
+              action="sgi_process_action" sequence="20"/>
+
+    <menuitem id="menu_sgi_flows" name="Flujos" parent="menu_sgi_root"
+              action="sgi_process_flow_action" sequence="30"/>
+
+    <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_root"
+              action="sgi_document_action" sequence="40"/>
+
+    <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_root"
+              action="sgi_document_action_my_procedures" sequence="50"/>
+
+    <!-- No Conformidades -->
+    <menuitem id="menu_sgi_nc" name="No Conformidades" parent="menu_sgi_root" sequence="60"/>
+    <menuitem id="menu_sgi_nc_kanban" name="Tablero" parent="menu_sgi_nc"
+              action="sgi_nc_action_kanban" sequence="10"/>
+    <menuitem id="menu_sgi_nc_concentrado" name="Concentrado" parent="menu_sgi_nc"
+              action="sgi_nc_action_concentrado" sequence="20"/>
+
+    <menuitem id="menu_sgi_complaints" name="Reclamaciones" parent="menu_sgi_root"
+              action="sgi_complaint_action" sequence="70"/>
+
+    <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_root"
+              action="sgi_improvement_action" sequence="80"/>
+
+    <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_root"
+              action="sgi_doc_change_action" sequence="90"/>
+
+    <!-- Configuración -->
+    <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root"
+              sequence="100" groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_config_areas" name="Áreas" parent="menu_sgi_config"
+              action="sgi_area_action" sequence="10"/>
+    <menuitem id="menu_sgi_config_norms" name="Normas" parent="menu_sgi_config"
+              action="sgi_norm_action" sequence="20"/>
+    <menuitem id="menu_sgi_config_clauses" name="Cláusulas" parent="menu_sgi_config"
+              action="sgi_norm_clause_action" sequence="30"/>
+    <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_config"
+              action="sgi_document_ack_action" sequence="40"/>
+</odoo>

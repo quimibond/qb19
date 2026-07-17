@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- stock.picking -->
+    <record id="sgi_stock_picking_view_form" model="ir.ui.view">
+        <field name="name">sgi.stock.picking.form.inherit</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                    <field name="sgi_nc_count" widget="statinfo" string="NC"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- mrp.production -->
+    <record id="sgi_mrp_production_view_form" model="ir.ui.view">
+        <field name="name">sgi.mrp.production.form.inherit</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                    <field name="sgi_nc_count" widget="statinfo" string="NC"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- hr.employee -->
+    <record id="sgi_hr_employee_view_form" model="ir.ui.view">
+        <field name="name">sgi.hr.employee.form.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_my_procedures" type="object" class="oe_stat_button"
+                        icon="fa-book">
+                    <field name="sgi_procedure_count" widget="statinfo" string="Mis procedimientos"/>
+                </button>
+                <button name="action_sgi_pending_acks" type="object" class="oe_stat_button"
+                        icon="fa-check-square-o">
+                    <field name="sgi_pending_ack_count" widget="statinfo" string="Acuses pendientes"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- hr.job -->
+    <record id="sgi_hr_job_view_form" model="ir.ui.view">
+        <field name="name">sgi.hr.job.form.inherit</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Documentos SGI aplicables">
+                    <field name="sgi_document_ids">
+                        <list>
+                            <field name="sgi_code"/>
+                            <field name="name"/>
+                            <field name="sgi_revision"/>
+                            <field name="sgi_state"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- res.partner -->
+    <record id="sgi_res_partner_view_form" model="ir.ui.view">
+        <field name="name">sgi.res.partner.form.inherit</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_complaints" type="object" class="oe_stat_button"
+                        icon="fa-comments" invisible="sgi_complaint_count == 0">
+                    <field name="sgi_complaint_count" widget="statinfo" string="Reclamaciones"/>
+                </button>
+                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                    <field name="sgi_nc_count" widget="statinfo" string="NC"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>
