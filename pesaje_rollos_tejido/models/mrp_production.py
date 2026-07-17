@@ -319,67 +319,67 @@ class MrpProduction(models.Model):
         Elimina el rollo de ajuste igualando la cantidad planeada de la MO
         al total realmente pesado (rollos + subproducto), justo antes del cierre.
         Esta solución NO toca los movimientos de inventario, por lo que no borra rollos.
+
+        IMPORTANTE: este método puede ser llamado por Odoo (y por sus propios
+        tests estándar) sobre un recordset con VARIOS registros a la vez
+        (cierre en lote desde la vista de lista, tests del core, etc.).
+        Por eso NO debe llevar self.ensure_one(): se itera registro por
+        registro y el super() se invoca una sola vez sobre todo el recordset
+        original, tal como lo hace el método nativo de Odoo.
         """
-        # Iteramos por cada MO para soportar cierres en lote (recordsets con
-        # varias órdenes). Solo aplicamos la lógica a las MO que registraron
-        # rollos con nuestro módulo; el resto pasa directo al cierre estándar.
         for production in self:
-            if production.roll_count <= 0:
-                continue
+            # Solo aplicamos la lógica si hemos registrado rollos con nuestro módulo
+            if production.roll_count > 0:
+                # 1. Calculamos el total real producido (Producto Principal)
+                finished_move = production.move_finished_ids.filtered(
+                    lambda x: x.product_id == production.product_id and x.state not in ('done', 'cancel')
+                )[:1]
 
-            # 1. Calculamos el total real producido (Producto Principal)
-            finished_move = production.move_finished_ids.filtered(
-                lambda x: x.product_id == production.product_id and x.state not in ('done', 'cancel')
-            )[:1]
+                if finished_move:
+                    # Sumamos el peso real de todos tus rollos
+                    uom_main = production.product_id.uom_id
+                    total_rollos = uom_main.round(sum(finished_move.move_line_ids.mapped('quantity')))
 
-            if not finished_move:
-                continue
+                    # Buscamos si hay subproductos pesados
+                    # (Asumiendo que el subproducto se registra en su propio movimiento)
+                    byproduct_moves = production.move_byproduct_ids.filtered(
+                        lambda x: x.state not in ('done', 'cancel')
+                    )
+                    total_subproductos = uom_main.round(sum(byproduct_moves.mapped('quantity')))
 
-            # Sumamos el peso real de todos tus rollos
-            uom_main = production.product_id.uom_id
-            total_rollos = uom_main.round(sum(finished_move.move_line_ids.mapped('quantity')))
+                    # El total producido que Odoo debe considerar es la suma de ambos
+                    total_producido_real = uom_main.round(total_rollos + total_subproductos)
 
-            # Buscamos si hay subproductos pesados
-            # (Asumiendo que el subproducto se registra en su propio movimiento)
-            byproduct_moves = production.move_byproduct_ids.filtered(
-                lambda x: x.state not in ('done', 'cancel')
-            )
-            total_subproductos = uom_main.round(sum(byproduct_moves.mapped('quantity')))
+                    if total_producido_real > 0:
+                        # AJUSTE CRÍTICO: Igualamos la cantidad planeada de la MO al total real.
+                        # Al hacer esto, Odoo 19 ve que se planeó X y se produjo X.
+                        # Diferencia = 0, por lo tanto, NO genera rollo de ajuste.
+                        factor = total_producido_real / production.product_qty if production.product_qty else 0
+                        production.write({
+                            'product_qty': total_producido_real,
+                            'qty_producing': total_rollos,  # El progreso visual es solo sobre el principal
+                        })
 
-            # El total producido que Odoo debe considerar es la suma de ambos
-            total_producido_real = uom_main.round(total_rollos + total_subproductos)
+                        # AJUSTE DE HILOS (Componentes): Evita residuos en el consumo
+                        for raw_move in production.move_raw_ids:
+                            if raw_move.state not in ('done', 'cancel'):
+                                # Calculamos la nueva demanda proporcional y redondeamos por su propia UoM
+                                new_raw_qty = raw_move.product_uom.round(raw_move.product_uom_qty * factor)
 
-            if total_producido_real <= 0:
-                continue
+                                # Solo escribimos si el valor es mayor a cero
+                                if float_compare(new_raw_qty, 0, precision_rounding=raw_move.product_uom.rounding) > 0:
+                                    raw_move.write({'product_uom_qty': new_raw_qty})
 
-            # AJUSTE CRÍTICO: Igualamos la cantidad planeada de la MO al total real.
-            # Al hacer esto, Odoo 19 ve que se planeó X y se produjo X.
-            # Diferencia = 0, por lo tanto, NO genera rollo de ajuste.
-            factor = total_producido_real / production.product_qty if production.product_qty else 0
-            production.write({
-                'product_qty': total_producido_real,
-                'qty_producing': total_rollos, # El progreso visual es solo sobre el principal
-            })
+                        # Opcional: Para el subproducto, aseguramos que su movimiento
+                        # tenga la demanda correcta para que no genere su propio ajuste.
+                        for smove in byproduct_moves:
+                            total_smove = sum(smove.move_line_ids.mapped('quantity'))
+                            if total_smove > 0:
+                                smove.write({'product_uom_qty': smove.product_uom.round(total_smove)})
 
-            # AJUSTE DE HILOS (Componentes): Evita residuos en el consumo
-            for raw_move in production.move_raw_ids:
-                if raw_move.state not in ('done', 'cancel'):
-                    # Calculamos la nueva demanda proporcional y redondeamos por su propia UoM
-                    new_raw_qty = raw_move.product_uom.round(raw_move.product_uom_qty * factor)
-
-                    # Solo escribimos si el valor es mayor a cero
-                    if float_compare(new_raw_qty, 0, precision_rounding=raw_move.product_uom.rounding) > 0:
-                        raw_move.write({'product_uom_qty': new_raw_qty})
-
-            # Opcional: Para el subproducto, aseguramos que su movimiento
-            # tenga la demanda correcta para que no genere su propio ajuste.
-            for smove in byproduct_moves:
-                total_smove = sum(smove.move_line_ids.mapped('quantity'))
-                if total_smove > 0:
-                    smove.write({'product_uom_qty': smove.product_uom.round(total_smove)})
-
-        # Ejecutamos el cierre estándar de Odoo. Como 'product_qty' ahora es igual
-        # a lo producido, cerrará sin generar rollos fantasma.
+        # Ejecutamos el cierre estándar de Odoo sobre TODO el recordset original.
+        # Como 'product_qty' ahora es igual a lo producido en cada MO afectada,
+        # cerrará sin generar rollos fantasma, y sigue soportando cierres en lote.
         return super(MrpProduction, self).button_mark_done()
 
 class MrpWeighingLog(models.Model):
