@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_area_g" model="sgi.area">
+        <field name="code">G</field>
+        <field name="name">SGI</field>
+    </record>
+    <record id="sgi_area_a" model="sgi.area">
+        <field name="code">A</field>
+        <field name="name">Administración</field>
+    </record>
+    <record id="sgi_area_c" model="sgi.area">
+        <field name="code">C</field>
+        <field name="name">Calidad</field>
+    </record>
+    <record id="sgi_area_d" model="sgi.area">
+        <field name="code">D</field>
+        <field name="name">Diseño</field>
+    </record>
+    <record id="sgi_area_e" model="sgi.area">
+        <field name="code">E</field>
+        <field name="name">Ambiental</field>
+    </record>
+    <record id="sgi_area_i" model="sgi.area">
+        <field name="code">I</field>
+        <field name="name">Inspección</field>
+    </record>
+    <record id="sgi_area_m" model="sgi.area">
+        <field name="code">M</field>
+        <field name="name">Mantenimiento</field>
+    </record>
+    <record id="sgi_area_p" model="sgi.area">
+        <field name="code">P</field>
+        <field name="name">Producción</field>
+    </record>
+    <record id="sgi_area_s" model="sgi.area">
+        <field name="code">S</field>
+        <field name="name">SST</field>
+    </record>
+    <record id="sgi_area_v" model="sgi.area">
+        <field name="code">V</field>
+        <field name="name">Ventas</field>
+    </record>
+</odoo>

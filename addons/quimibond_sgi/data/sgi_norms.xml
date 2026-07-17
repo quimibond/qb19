@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= NORMAS ================= -->
+    <record id="sgi_norm_9001" model="sgi.norm">
+        <field name="code">ISO 9001:2015</field>
+        <field name="name">Sistema de Gestión de la Calidad</field>
+    </record>
+    <record id="sgi_norm_14001" model="sgi.norm">
+        <field name="code">ISO 14001:2015</field>
+        <field name="name">Sistema de Gestión Ambiental</field>
+    </record>
+    <record id="sgi_norm_45001" model="sgi.norm">
+        <field name="code">ISO 45001:2018</field>
+        <field name="name">Sistema de Gestión de SST</field>
+    </record>
+
+    <!-- ============ CLÁUSULAS ISO 9001 ============ -->
+    <record id="c_9001_41" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">4.1</field><field name="name">Comprensión de la organización y su contexto</field></record>
+    <record id="c_9001_42" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">4.2</field><field name="name">Comprensión de las necesidades y expectativas de las partes interesadas</field></record>
+    <record id="c_9001_43" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">4.3</field><field name="name">Determinación del alcance del sistema de gestión de la calidad</field></record>
+    <record id="c_9001_44" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">4.4</field><field name="name">Sistema de gestión de la calidad y sus procesos</field></record>
+    <record id="c_9001_51" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">5.1</field><field name="name">Liderazgo y compromiso</field></record>
+    <record id="c_9001_52" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">5.2</field><field name="name">Política</field></record>
+    <record id="c_9001_53" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">5.3</field><field name="name">Roles, responsabilidades y autoridades en la organización</field></record>
+    <record id="c_9001_61" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">6.1</field><field name="name">Acciones para abordar riesgos y oportunidades</field></record>
+    <record id="c_9001_62" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">6.2</field><field name="name">Objetivos de la calidad y planificación para lograrlos</field></record>
+    <record id="c_9001_63" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">6.3</field><field name="name">Planificación de los cambios</field></record>
+    <record id="c_9001_71" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">7.1</field><field name="name">Recursos</field></record>
+    <record id="c_9001_72" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">7.2</field><field name="name">Competencia</field></record>
+    <record id="c_9001_73" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">7.3</field><field name="name">Toma de conciencia</field></record>
+    <record id="c_9001_74" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">7.4</field><field name="name">Comunicación</field></record>
+    <record id="c_9001_75" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">7.5</field><field name="name">Información documentada</field></record>
+    <record id="c_9001_81" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">8.1</field><field name="name">Planificación y control operacional</field></record>
+    <record id="c_9001_82" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">8.2</field><field name="name">Requisitos para los productos y servicios</field></record>
+    <record id="c_9001_83" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">8.3</field><field name="name">Diseño y desarrollo de los productos y servicios</field></record>
+    <record id="c_9001_84" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">8.4</field><field name="name">Control de los procesos, productos y servicios suministrados externamente</field></record>
+    <record id="c_9001_85" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">8.5</field><field name="name">Producción y provisión del servicio</field></record>
+    <record id="c_9001_86" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">8.6</field><field name="name">Liberación de los productos y servicios</field></record>
+    <record id="c_9001_87" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">8.7</field><field name="name">Control de las salidas no conformes</field></record>
+    <record id="c_9001_91" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">9.1</field><field name="name">Seguimiento, medición, análisis y evaluación</field></record>
+    <record id="c_9001_92" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">9.2</field><field name="name">Auditoría interna</field></record>
+    <record id="c_9001_93" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">9.3</field><field name="name">Revisión por la dirección</field></record>
+    <record id="c_9001_101" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">10.1</field><field name="name">Generalidades</field></record>
+    <record id="c_9001_102" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">10.2</field><field name="name">No conformidad y acción correctiva</field></record>
+    <record id="c_9001_103" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">10.3</field><field name="name">Mejora continua</field></record>
+
+    <!-- ============ CLÁUSULAS ISO 14001 ============ -->
+    <record id="c_14001_41" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">4.1</field><field name="name">Comprensión de la organización y su contexto</field></record>
+    <record id="c_14001_42" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">4.2</field><field name="name">Comprensión de las necesidades y expectativas de las partes interesadas</field></record>
+    <record id="c_14001_43" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">4.3</field><field name="name">Determinación del alcance del sistema de gestión ambiental</field></record>
+    <record id="c_14001_44" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">4.4</field><field name="name">Sistema de gestión ambiental</field></record>
+    <record id="c_14001_51" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">5.1</field><field name="name">Liderazgo y compromiso</field></record>
+    <record id="c_14001_52" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">5.2</field><field name="name">Política ambiental</field></record>
+    <record id="c_14001_53" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">5.3</field><field name="name">Roles, responsabilidades y autoridades en la organización</field></record>
+    <record id="c_14001_61" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">6.1</field><field name="name">Acciones para abordar riesgos y oportunidades (aspectos ambientales, requisitos legales)</field></record>
+    <record id="c_14001_62" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">6.2</field><field name="name">Objetivos ambientales y planificación para lograrlos</field></record>
+    <record id="c_14001_71" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">7.1</field><field name="name">Recursos</field></record>
+    <record id="c_14001_72" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">7.2</field><field name="name">Competencia</field></record>
+    <record id="c_14001_73" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">7.3</field><field name="name">Toma de conciencia</field></record>
+    <record id="c_14001_74" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">7.4</field><field name="name">Comunicación</field></record>
+    <record id="c_14001_75" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">7.5</field><field name="name">Información documentada</field></record>
+    <record id="c_14001_81" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">8.1</field><field name="name">Planificación y control operacional</field></record>
+    <record id="c_14001_82" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">8.2</field><field name="name">Preparación y respuesta ante emergencias</field></record>
+    <record id="c_14001_91" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">9.1</field><field name="name">Seguimiento, medición, análisis y evaluación (incluye evaluación del cumplimiento)</field></record>
+    <record id="c_14001_92" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">9.2</field><field name="name">Auditoría interna</field></record>
+    <record id="c_14001_93" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">9.3</field><field name="name">Revisión por la dirección</field></record>
+    <record id="c_14001_101" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">10.1</field><field name="name">Generalidades</field></record>
+    <record id="c_14001_102" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">10.2</field><field name="name">No conformidad y acción correctiva</field></record>
+    <record id="c_14001_103" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">10.3</field><field name="name">Mejora continua</field></record>
+
+    <!-- ============ CLÁUSULAS ISO 45001 ============ -->
+    <record id="c_45001_41" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">4.1</field><field name="name">Comprensión de la organización y su contexto</field></record>
+    <record id="c_45001_42" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">4.2</field><field name="name">Comprensión de las necesidades y expectativas de los trabajadores y otras partes interesadas</field></record>
+    <record id="c_45001_43" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">4.3</field><field name="name">Determinación del alcance del sistema de gestión de la SST</field></record>
+    <record id="c_45001_44" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">4.4</field><field name="name">Sistema de gestión de la SST</field></record>
+    <record id="c_45001_51" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">5.1</field><field name="name">Liderazgo y compromiso</field></record>
+    <record id="c_45001_52" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">5.2</field><field name="name">Política de la SST</field></record>
+    <record id="c_45001_53" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">5.3</field><field name="name">Roles, responsabilidades y autoridades en la organización</field></record>
+    <record id="c_45001_54" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">5.4</field><field name="name">Consulta y participación de los trabajadores</field></record>
+    <record id="c_45001_61" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">6.1</field><field name="name">Acciones para abordar riesgos y oportunidades (identificación de peligros, IPER)</field></record>
+    <record id="c_45001_62" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">6.2</field><field name="name">Objetivos de la SST y planificación para lograrlos</field></record>
+    <record id="c_45001_71" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">7.1</field><field name="name">Recursos</field></record>
+    <record id="c_45001_72" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">7.2</field><field name="name">Competencia</field></record>
+    <record id="c_45001_73" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">7.3</field><field name="name">Toma de conciencia</field></record>
+    <record id="c_45001_74" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">7.4</field><field name="name">Comunicación</field></record>
+    <record id="c_45001_75" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">7.5</field><field name="name">Información documentada</field></record>
+    <record id="c_45001_81" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">8.1</field><field name="name">Planificación y control operacional</field></record>
+    <record id="c_45001_82" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">8.2</field><field name="name">Preparación y respuesta ante emergencias</field></record>
+    <record id="c_45001_91" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">9.1</field><field name="name">Seguimiento, medición, análisis y evaluación del desempeño</field></record>
+    <record id="c_45001_92" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">9.2</field><field name="name">Auditoría interna</field></record>
+    <record id="c_45001_93" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">9.3</field><field name="name">Revisión por la dirección</field></record>
+    <record id="c_45001_101" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">10.1</field><field name="name">Generalidades</field></record>
+    <record id="c_45001_102" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">10.2</field><field name="name">Incidentes, no conformidades y acciones correctivas</field></record>
+    <record id="c_45001_103" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">10.3</field><field name="name">Mejora continua</field></record>
+</odoo>

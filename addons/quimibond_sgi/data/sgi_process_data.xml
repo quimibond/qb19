@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ MACROPROCESOS ============ -->
+    <record id="proc_adm" model="sgi.process">
+        <field name="code">MP-ADM</field>
+        <field name="name">ADMINISTRACIÓN</field>
+        <field name="process_type">soporte</field>
+    </record>
+    <record id="proc_cal" model="sgi.process">
+        <field name="code">MP-CAL</field>
+        <field name="name">CALIDAD</field>
+        <field name="process_type">soporte</field>
+    </record>
+    <record id="proc_mto" model="sgi.process">
+        <field name="code">MP-MTO</field>
+        <field name="name">MANTENIMIENTO</field>
+        <field name="process_type">soporte</field>
+    </record>
+    <record id="proc_dis" model="sgi.process">
+        <field name="code">MP-DIS</field>
+        <field name="name">DISEÑO Y DESARROLLO</field>
+        <field name="process_type">cop</field>
+    </record>
+    <record id="proc_mfg" model="sgi.process">
+        <field name="code">MP-MFG</field>
+        <field name="name">MANUFACTURA</field>
+        <field name="process_type">cop</field>
+    </record>
+
+    <!-- ============ PROCESOS NIVEL 2 ============ -->
+    <record id="proc_ventas" model="sgi.process">
+        <field name="code">P-VEN</field><field name="name">Ventas</field>
+        <field name="process_type">cop</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+    <record id="proc_planeacion" model="sgi.process">
+        <field name="code">P-PLA</field><field name="name">Planeación</field>
+        <field name="process_type">cop</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+    <record id="proc_compras" model="sgi.process">
+        <field name="code">P-COM</field><field name="name">Compras</field>
+        <field name="process_type">soporte</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+    <record id="proc_almacen_mp" model="sgi.process">
+        <field name="code">P-AMP</field><field name="name">Almacén de Materia Prima</field>
+        <field name="process_type">soporte</field><field name="parent_id" ref="proc_mfg"/>
+    </record>
+    <record id="proc_almacen_pt" model="sgi.process">
+        <field name="code">P-APT</field><field name="name">Almacén de Producto Terminado</field>
+        <field name="process_type">soporte</field><field name="parent_id" ref="proc_mfg"/>
+    </record>
+    <record id="proc_prod_tac" model="sgi.process">
+        <field name="code">P-PTAC</field><field name="name">Producción TAC</field>
+        <field name="process_type">cop</field><field name="parent_id" ref="proc_mfg"/>
+    </record>
+    <record id="proc_prod_ent" model="sgi.process">
+        <field name="code">P-PENT</field><field name="name">Producción Entretelas</field>
+        <field name="process_type">cop</field><field name="parent_id" ref="proc_mfg"/>
+    </record>
+    <record id="proc_tintoreria" model="sgi.process">
+        <field name="code">P-TIN</field><field name="name">Tintorería</field>
+        <field name="process_type">cop</field><field name="parent_id" ref="proc_mfg"/>
+    </record>
+    <record id="proc_inspeccion" model="sgi.process">
+        <field name="code">P-INS</field><field name="name">Inspección y Empaque</field>
+        <field name="process_type">cop</field><field name="parent_id" ref="proc_cal"/>
+    </record>
+    <record id="proc_laboratorio" model="sgi.process">
+        <field name="code">P-LAB</field><field name="name">Laboratorio</field>
+        <field name="process_type">soporte</field><field name="parent_id" ref="proc_cal"/>
+    </record>
+    <record id="proc_logistica" model="sgi.process">
+        <field name="code">P-LOG</field><field name="name">Logística</field>
+        <field name="process_type">cop</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+    <record id="proc_facturacion" model="sgi.process">
+        <field name="code">P-FAC</field><field name="name">Facturación</field>
+        <field name="process_type">soporte</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+    <record id="proc_cxc" model="sgi.process">
+        <field name="code">P-CXC</field><field name="name">Crédito y Cobranza</field>
+        <field name="process_type">soporte</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+    <record id="proc_rh" model="sgi.process">
+        <field name="code">P-RH</field><field name="name">Recursos Humanos</field>
+        <field name="process_type">soporte</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+    <record id="proc_sgi" model="sgi.process">
+        <field name="code">P-SGI</field><field name="name">MAST y SGI</field>
+        <field name="process_type">estrategico</field><field name="parent_id" ref="proc_cal"/>
+    </record>
+    <record id="proc_direccion" model="sgi.process">
+        <field name="code">P-DIR</field><field name="name">Dirección de Operaciones</field>
+        <field name="process_type">estrategico</field><field name="parent_id" ref="proc_adm"/>
+    </record>
+
+    <!-- ============ FLUJOS (cadena COP) ============ -->
+    <record id="flow_cxc_ventas" model="sgi.process.flow">
+        <field name="name">Condiciones de crédito</field>
+        <field name="from_process_id" ref="proc_cxc"/><field name="to_process_id" ref="proc_ventas"/>
+    </record>
+    <record id="flow_ventas_plan_pronostico" model="sgi.process.flow">
+        <field name="name">Pronóstico de ventas (F-P-A28-13)</field>
+        <field name="from_process_id" ref="proc_ventas"/><field name="to_process_id" ref="proc_planeacion"/>
+    </record>
+    <record id="flow_ventas_plan_presupuesto" model="sgi.process.flow">
+        <field name="name">Presupuesto anual (F-P-A28-14)</field>
+        <field name="from_process_id" ref="proc_ventas"/><field name="to_process_id" ref="proc_planeacion"/>
+    </record>
+    <record id="flow_ventas_plan_pedido" model="sgi.process.flow">
+        <field name="name">Pedido confirmado</field>
+        <field name="from_process_id" ref="proc_ventas"/><field name="to_process_id" ref="proc_planeacion"/>
+    </record>
+    <record id="flow_plan_prod" model="sgi.process.flow">
+        <field name="name">Programa semanal de producción (F-P-A12-01)</field>
+        <field name="from_process_id" ref="proc_planeacion"/><field name="to_process_id" ref="proc_prod_tac"/>
+    </record>
+    <record id="flow_plan_almacen" model="sgi.process.flow">
+        <field name="name">Solicitud de existencias (F-P-A12-02)</field>
+        <field name="from_process_id" ref="proc_planeacion"/><field name="to_process_id" ref="proc_almacen_mp"/>
+    </record>
+    <record id="flow_plan_ventas" model="sgi.process.flow">
+        <field name="name">Resumen de fechas de entrega (F-P-A12-03)</field>
+        <field name="from_process_id" ref="proc_planeacion"/><field name="to_process_id" ref="proc_ventas"/>
+    </record>
+    <record id="flow_compras_almacen" model="sgi.process.flow">
+        <field name="name">Orden de compra / insumos</field>
+        <field name="from_process_id" ref="proc_compras"/><field name="to_process_id" ref="proc_almacen_mp"/>
+    </record>
+    <record id="flow_almacen_prod" model="sgi.process.flow">
+        <field name="name">Materia prima liberada</field>
+        <field name="from_process_id" ref="proc_almacen_mp"/><field name="to_process_id" ref="proc_prod_tac"/>
+    </record>
+    <record id="flow_prod_inspeccion" model="sgi.process.flow">
+        <field name="name">Lote a liberar</field>
+        <field name="from_process_id" ref="proc_prod_tac"/><field name="to_process_id" ref="proc_inspeccion"/>
+    </record>
+    <record id="flow_inspeccion_almacenpt" model="sgi.process.flow">
+        <field name="name">Rollo clasificado</field>
+        <field name="from_process_id" ref="proc_inspeccion"/><field name="to_process_id" ref="proc_almacen_pt"/>
+    </record>
+    <record id="flow_almacenpt_logistica" model="sgi.process.flow">
+        <field name="name">Lista de embarque</field>
+        <field name="from_process_id" ref="proc_almacen_pt"/><field name="to_process_id" ref="proc_logistica"/>
+    </record>
+    <record id="flow_logistica_facturacion" model="sgi.process.flow">
+        <field name="name">Remisión / entrega</field>
+        <field name="from_process_id" ref="proc_logistica"/><field name="to_process_id" ref="proc_facturacion"/>
+    </record>
+    <record id="flow_facturacion_cxc" model="sgi.process.flow">
+        <field name="name">Factura</field>
+        <field name="from_process_id" ref="proc_facturacion"/><field name="to_process_id" ref="proc_cxc"/>
+    </record>
+</odoo>

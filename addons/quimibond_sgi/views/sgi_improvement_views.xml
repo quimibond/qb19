@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_project_task_view_form" model="ir.ui.view">
+        <field name="name">sgi.project.task.form.inherit</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="sgi_is_improvement" invisible="1"/>
+                <group string="Mejora continua (SGI)" invisible="not sgi_is_improvement">
+                    <group>
+                        <field name="sgi_improvement_type"/>
+                        <field name="sgi_area_id"/>
+                    </group>
+                    <group>
+                        <field name="sgi_process_id"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_improvement_action" model="ir.actions.server">
+        <field name="name">Mejoras</field>
+        <field name="model_id" ref="project.model_project_task"/>
+        <field name="state">code</field>
+        <field name="code">
+project = env.ref('quimibond_sgi.sgi_project_improvement', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Mejora Continua SGI',
+    'res_model': 'project.task',
+    'view_mode': 'kanban,list,form',
+    'domain': [('project_id', '=', project.id)] if project else [('sgi_is_improvement', '=', True)],
+    'context': {'default_project_id': project.id} if project else {},
+}
+        </field>
+    </record>
+</odoo>
