@@ -1,4 +1,4 @@
-# quimibond_sgi — Sistema de Gestión Integral (Fases 1 y 2)
+# quimibond_sgi — Sistema de Gestión Integral (Fases 1, 2 y 3)
 
 Addon de Odoo 19 Enterprise que lleva el SGI documental de PNTQ (ISO 9001:2015 +
 14001:2015, 45001 en preparación) a Odoo **extendiendo apps nativas** (Documentos,
@@ -156,6 +156,66 @@ producción **por indicador**:
    vez: valida uno, observa un ciclo, avanza al siguiente (esto elimina ~60% de las
    NCs que hoy se levantan a mano por indicador incumplido).
 
+## Fase 3 — Herramientas automotrices (v19.0.3.0.0)
+
+Bloques (core tools que exigen clientes como Seiren y Continental):
+
+### Qué instala/configura (automático)
+
+- **Plan de control (P-C11)** — modelo `sgi.control.plan` (folio `PC-AAAA-NN`,
+  estados borrador/vigente/obsoleto). Extiende `quality.point` con característica,
+  criticidad **F/R/S** (tipo Continental), Cpk objetivo, aparece-en-CoA y plan de
+  reacción. Candado: no pasa a vigente sin ≥1 punto; al marcar obsoleto agenda
+  revisión al Jefe MAST (no desactiva los puntos). Botón **CoA (P-C07)** bilingüe
+  ES/EN en `stock.lot` con las inspecciones de puntos marcados para el certificado.
+- **Calibración (P-C03)** — modelo `sgi.calibration` + extensión de
+  `maintenance.equipment` (equipo de medición, magnitud/rango/resolución, intervalo,
+  próxima calibración y estado vigente/por vencer/vencido calculados). Regla IATF
+  7.1.5: resultado *fuera de tolerancia* bloquea el equipo (**No usar**), crea NC
+  interna de evaluación de impacto y agenda al Jefe MAST; una calibración conforme
+  libera el candado.
+- **AMEF (P-C10)** — `sgi.fmea` + `sgi.fmea.line` con **NPR = S×O×D** calculado; una
+  línea con NPR ≥ `quimibond_sgi.fmea_npr_action` (100) exige acción. Candado: no
+  pasa a vigente si hay líneas de NPR alto sin acción. Reporte PDF.
+- **PPAP (P-C15)** — `sgi.ppap` genera automáticamente los **18 elementos AIAG**
+  (idempotente), enlazándolos a registros reales (AMEF, plan de control, documento).
+  Candados: "enviado" sin elementos pendientes; "aprobado" requiere el elemento 18
+  (PSW) en listo/aprobado. Botones inteligentes en cliente y producto.
+- **Puente PLM** (módulo aparte `quimibond_sgi_plm`, `auto_install`) — al aplicar un
+  ECO marcado "Requiere PPAP" crea el expediente PPAP (motivo: cambio de ingeniería)
+  y, si requiere aviso al cliente, agenda actividad a Ventas.
+- **Competencias (P-A01)** — análisis de brechas nativo sobre `hr_skills`: vista SQL
+  `sgi.competence.gap` (pivote por departamento × tipo de competencia), botón de
+  brechas en el empleado y cron de vigencias de certificaciones/formación. Plantilla
+  de encuesta **DNC (F-P-A01-17)**.
+- **Incidentes SST (P-S02, SCAT)** — `sgi.incident` (folio `INC-AAAA-NN`, tipos y
+  severidad leve/moderado/grave/fatal). Candados: no cierra sin las 3 capas SCAT ni
+  con acciones abiertas; graves/fatales avisan de inmediato al Jefe MAST y Dirección.
+  Cualquier usuario SGI puede reportar. **EPP (P-S03)**: `maintenance.equipment`
+  marcado como EPP con fecha de vencimiento; el cron notifica próximos vencimientos.
+- **Pegamento PROT-05/D7** — al cerrar una NC **mayor** se agenda al Jefe MAST
+  actualizar el AMEF y el plan de control (lección aprendida).
+- **XOR de acciones extendido** — `sgi.action.line` acepta exactamente un origen:
+  NC, riesgo, línea de AMEF o incidente.
+- **Crons diarios** (idempotentes): calibraciones + EPP; competencias/certificaciones.
+
+### Configuración de instancia pendiente (Fase 3)
+
+1. **Matriz de habilidades por puesto**: cargar `hr.job.skill` (competencia + nivel
+   esperado) por puesto y las `hr.employee.skill` del personal; la brecha se calcula
+   sola (menú Medición → *Brechas de competencia (DNC)*).
+2. **Coordinador de RH**: fijar `quimibond_sgi.rh_user_id` (destinatario de los avisos
+   de certificaciones/formación por vencer).
+3. **Continental Master Specs**: capturar en cada `quality.point` la característica,
+   criticidad F/R/S y Cpk objetivo (1.33 F / 1.67 R·S) desde la Master Spec.
+4. **Firma del CoA**: si se requiere firma electrónica, enlazar el reporte CoA con la
+   app *Firma* (plantilla sobre el PDF).
+5. **Onboarding / Frontdesk / ESG**: pendientes de decisión de alcance (no incluidos).
+6. **Equipos de medición y EPP**: marcar los `maintenance.equipment` existentes como
+   *equipo de medición* / *EPP* y capturar intervalos y vencimientos.
+7. **Decisión PLM**: activar el flujo de ECO→PPAP requiere instalar *mrp_plm*; el
+   puente `quimibond_sgi_plm` se instala solo cuando ambos módulos coexisten.
+
 ## Instalación / actualización (shell Odoo.sh)
 
 ```bash
@@ -183,3 +243,12 @@ auditor≠dueño de proceso, cierre bloqueado sin disposición y "Generar NC" co
 correcto; score/nivel por instrumento (R&O, IPER, patrimonial), FODA sin score y XOR
 de acciones NC/Riesgo; clase de proveedor por umbrales; y RxD (cargar entradas,
 candado sin acuerdos, acuerdos → tareas). **33 tests, 0 fallos.**
+
+Cubren (Fase 3): calibración fuera de tolerancia que bloquea el equipo + crea NC y su
+posterior liberación con calibración conforme; NPR de AMEF y candado de vigente sin
+acción; PPAP con 18 elementos y candados de enviado/aprobado (PSW); incidente SST que
+no cierra sin las 3 capas SCAT ni con acciones abiertas y aviso de graves; XOR de
+acciones entre NC/Riesgo/AMEF/Incidente; brechas de competencia (DNC) por puesto; y NC
+mayor cerrada → actividad de actualización de AMEF/plan de control. **15 tests, 0 fallos.**
+
+Suite completa del módulo: **50 tests, 0 fallos.**

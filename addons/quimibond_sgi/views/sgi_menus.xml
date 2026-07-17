@@ -63,9 +63,36 @@
               action="sgi_management_review_action" sequence="59"
               groups="quimibond_sgi.group_sgi_manager"/>
 
+    <!-- Herramientas automotrices (core tools) -->
+    <menuitem id="menu_sgi_automotive" name="Automotriz" parent="menu_sgi_root" sequence="61"/>
+    <menuitem id="menu_sgi_control_plans" name="Planes de control" parent="menu_sgi_automotive"
+              action="sgi_control_plan_action" sequence="10"/>
+    <menuitem id="menu_sgi_fmea" name="AMEF" parent="menu_sgi_automotive"
+              action="sgi_fmea_action" sequence="20"/>
+    <menuitem id="menu_sgi_ppap" name="PPAP" parent="menu_sgi_automotive"
+              action="sgi_ppap_action" sequence="30"/>
+
+    <!-- Metrología -->
+    <menuitem id="menu_sgi_metrology" name="Metrología" parent="menu_sgi_root" sequence="62"/>
+    <menuitem id="menu_sgi_measuring_equipment" name="Equipos de medición"
+              parent="menu_sgi_metrology" action="sgi_equipment_action_measuring" sequence="10"/>
+    <menuitem id="menu_sgi_calibrations" name="Calibraciones" parent="menu_sgi_metrology"
+              action="sgi_calibration_action" sequence="20"/>
+
+    <!-- Seguridad y Salud en el Trabajo -->
+    <menuitem id="menu_sgi_sst" name="SST" parent="menu_sgi_root" sequence="63"/>
+    <menuitem id="menu_sgi_incidents" name="Incidentes" parent="menu_sgi_sst"
+              action="sgi_incident_action" sequence="10"/>
+
+    <!-- Competencias -->
+    <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
+              parent="menu_sgi_measurement" action="sgi_competence_gap_action" sequence="40"/>
+
     <!-- Configuración -->
     <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root"
               sequence="100" groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
+              action="sgi_ppap_element_template_action" sequence="60"/>
     <menuitem id="menu_sgi_config_areas" name="Áreas" parent="menu_sgi_config"
               action="sgi_area_action" sequence="10"/>
     <menuitem id="menu_sgi_config_norms" name="Normas" parent="menu_sgi_config"

@@ -95,13 +95,37 @@ class QualityAlert(models.Model):
                         alert.sgi_folio or alert.name, "\n".join(problems)))
 
     def write(self, vals):
+        newly_closed = self.env['quality.alert']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
             if new_stage.sgi_is_closing_stage and not self.env.context.get('sgi_force_close'):
                 for alert in self:
                     if alert.stage_id != new_stage:
                         alert._sgi_check_can_close()
-        return super().write(vals)
+            if new_stage.sgi_is_closing_stage:
+                newly_closed = self.filtered(
+                    lambda a: a.stage_id != new_stage and a.sgi_classification == 'mayor')
+        res = super().write(vals)
+        for alert in newly_closed:
+            alert._sgi_notify_mayor_closed()
+        return res
+
+    def _sgi_notify_mayor_closed(self):
+        """PROT-05/D7: al cerrar una NC mayor, recordar actualizar AMEF y plan de
+        control (lecciones aprendidas)."""
+        self.ensure_one()
+        Cron = self.env['sgi.cron']
+        manager_id = Cron._sgi_manager_user_id()
+        if not manager_id:
+            return
+        Cron._sgi_schedule(
+            self,
+            "NC mayor cerrada: actualizar AMEF y plan de control (%s)" % (
+                self.sgi_folio or self.name),
+            "Se cerró una No Conformidad mayor. Revise si el AMEF y el plan de "
+            "control del proceso/producto deben actualizarse con la lección aprendida.",
+            manager_id)
+        return True
 
     def action_sgi_force_close(self):
         self.ensure_one()
@@ -122,6 +146,9 @@ class SgiActionLine(models.Model):
 
     alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='cascade')
     risk_id = fields.Many2one('sgi.risk', string="Riesgo / Oportunidad", ondelete='cascade')
+    fmea_line_id = fields.Many2one('sgi.fmea.line', string="Modo de falla (AMEF)",
+                                   ondelete='cascade')
+    incident_id = fields.Many2one('sgi.incident', string="Incidente SST", ondelete='cascade')
     action_type = fields.Selection([
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
@@ -142,13 +169,15 @@ class SgiActionLine(models.Model):
         ('terminada', "Terminada"),
     ], string="Estado", compute='_compute_state', store=True)
 
-    @api.constrains('alert_id', 'risk_id', 'name')
+    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'name')
     def _check_parent_xor(self):
         for line in self:
-            if bool(line.alert_id) == bool(line.risk_id):
+            parents = [line.alert_id, line.risk_id, line.fmea_line_id, line.incident_id]
+            if sum(1 for p in parents if p) != 1:
                 raise ValidationError(
-                    "Una acción debe pertenecer exactamente a una No Conformidad "
-                    "o a un Riesgo (no ambos, no ninguno).")
+                    "Una acción debe pertenecer exactamente a un origen: una No "
+                    "Conformidad, un Riesgo, un modo de falla de AMEF o un incidente "
+                    "SST (exactamente uno, no varios ni ninguno).")
 
     @api.depends('date_commit', 'date_done')
     def _compute_state(self):

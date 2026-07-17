@@ -344,3 +344,111 @@ class SgiCron(models.AbstractModel):
     def _sgi_purchase_user_id(self):
         group = self.env.ref('purchase.group_purchase_manager', raise_if_not_found=False)
         return group.all_user_ids[:1].id if group and group.all_user_ids else self._sgi_manager_user_id()
+
+    def _sgi_rh_user_id(self):
+        """Coordinador de RH (parametrizable); fallback al Jefe MAST."""
+        user_id = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.rh_user_id', 0))
+        if user_id and self.env['res.users'].browse(user_id).exists():
+            return user_id
+        return self._sgi_manager_user_id()
+
+    # ------------------------------------------------------------------
+    # 8. Cron diario — Calibraciones (P-C03)
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_calibrations(self):
+        today = fields.Date.context_today(self)
+        Equipment = self.env['maintenance.equipment']
+        manager_id = self._sgi_manager_user_id()
+
+        # Recomputa el estado de calibración (store) antes de evaluar.
+        measuring = Equipment.search([('sgi_is_measuring', '=', True)])
+        measuring._compute_calibration_state()
+
+        # Por vencer (<= 30 días) y vencidos.
+        for eq in measuring:
+            if not eq.sgi_next_calibration_date:
+                continue
+            owner = eq.technician_user_id or eq.owner_user_id
+            user_id = owner.id or manager_id
+            if eq.sgi_calibration_state == 'por_vencer':
+                self._sgi_schedule(
+                    eq,
+                    "Calibración por vencer: %s" % eq.name,
+                    "El equipo vence su calibración el %s. Programe la calibración." % (
+                        eq.sgi_next_calibration_date),
+                    user_id)
+            elif eq.sgi_calibration_state == 'vencido':
+                # Vencido: bloquear y avisar al Jefe MAST.
+                if not eq.sgi_do_not_use:
+                    eq.sgi_do_not_use = True
+                self._sgi_schedule(
+                    eq,
+                    "Calibración VENCIDA: %s" % eq.name,
+                    "El equipo tiene la calibración vencida desde el %s y quedó "
+                    "bloqueado (No usar)." % eq.sgi_next_calibration_date,
+                    manager_id or user_id)
+
+        # EPP por vencer (P-S03).
+        ppe = Equipment.search([
+            ('sgi_is_ppe', '=', True),
+            ('sgi_ppe_expiry_date', '!=', False),
+        ])
+        for eq in ppe:
+            if eq.sgi_ppe_expiry_date <= today + relativedelta(days=30):
+                owner = eq.technician_user_id or eq.owner_user_id
+                user_id = owner.id or manager_id
+                self._sgi_schedule(
+                    eq,
+                    "EPP por vencer/vencido: %s" % eq.name,
+                    "El EPP vence (o venció) el %s. Gestione su reposición." % (
+                        eq.sgi_ppe_expiry_date),
+                    user_id)
+        return True
+
+    # ------------------------------------------------------------------
+    # 9. Cron diario — Competencias, certificaciones y currículos (P-A01)
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_competences(self):
+        today = fields.Date.context_today(self)
+        soon = today + relativedelta(days=30)
+        manager_id = self._sgi_manager_user_id()
+        rh_id = self._sgi_rh_user_id()
+
+        # Certificaciones (hr.employee.skill de tipo certificación) con vigencia.
+        certs = self.env['hr.employee.skill'].search([
+            ('is_certification', '=', True),
+            ('valid_to', '!=', False),
+            ('valid_to', '<=', soon),
+        ])
+        for cert in certs:
+            employee = cert.employee_id
+            emp_user_id = employee.user_id.id
+            label = "%s — %s" % (employee.name, cert.skill_id.name or '')
+            if cert.valid_to < today:
+                summary = "Certificación VENCIDA: %s" % label
+                note = "La certificación venció el %s. Reprograme la recertificación." % cert.valid_to
+                for user_id in {emp_user_id, rh_id, manager_id}:
+                    self._sgi_schedule(employee, summary, note, user_id)
+            else:
+                summary = "Certificación por vencer: %s" % label
+                note = "La certificación vence el %s (≤30 días)." % cert.valid_to
+                for user_id in {emp_user_id, rh_id}:
+                    self._sgi_schedule(employee, summary, note, user_id)
+
+        # Currículos / cursos con fecha de fin próxima (hr.resume.line).
+        resume_lines = self.env['hr.resume.line'].search([
+            ('date_end', '!=', False),
+            ('date_end', '<=', soon),
+            ('date_end', '>=', today),
+        ])
+        for line in resume_lines:
+            employee = line.employee_id
+            self._sgi_schedule(
+                employee,
+                "Formación por concluir: %s (%s)" % (line.name, employee.name),
+                "La formación registrada concluye el %s." % line.date_end,
+                employee.user_id.id or rh_id)
+        return True
