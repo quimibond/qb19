@@ -48,15 +48,15 @@
                         <table class="table table-sm table-bordered">
                             <tr>
                                 <th style="width:30%;">Causas inmediatas</th>
-                                <td t-field="doc.immediate_causes"/>
+                                <td><span t-field="doc.immediate_causes"/></td>
                             </tr>
                             <tr>
                                 <th>Causas básicas</th>
-                                <td t-field="doc.basic_causes"/>
+                                <td><span t-field="doc.basic_causes"/></td>
                             </tr>
                             <tr>
                                 <th>Falta de control</th>
-                                <td t-field="doc.lack_of_control"/>
+                                <td><span t-field="doc.lack_of_control"/></td>
                             </tr>
                         </table>
 
