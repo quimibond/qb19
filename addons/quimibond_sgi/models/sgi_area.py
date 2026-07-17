@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import models, fields, api
 
 
 class SgiArea(models.Model):
@@ -16,6 +16,7 @@ class SgiArea(models.Model):
         ('code_uniq', 'unique(code)', "La clave de área debe ser única."),
     ]
 
+    @api.depends('code', 'name')
     def _compute_display_name(self):
         for area in self:
             area.display_name = "%s - %s" % (area.code, area.name) if area.code else area.name

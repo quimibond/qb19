@@ -21,6 +21,8 @@ class QualityAlert(models.Model):
     _inherit = 'quality.alert'
 
     sgi_folio = fields.Char(string="Folio SGI", readonly=True, copy=False, index=True, tracking=True)
+    sgi_stage_is_closing = fields.Boolean(related='stage_id.sgi_is_closing_stage')
+    sgi_stage_is_cancel = fields.Boolean(related='stage_id.sgi_is_cancel_stage')
     sgi_origin_type = fields.Selection([
         ('proceso', "Proceso"),
         ('auditoria_interna', "Auditoría interna"),

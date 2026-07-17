@@ -25,8 +25,10 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         'documents',
         'approvals',
         'quality_control',
+        'quality_mrp',
         'helpdesk',
         'project',
+        'sale_management',
     ],
     'data': [
         # security

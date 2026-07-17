@@ -51,6 +51,7 @@ class SgiCron(models.AbstractModel):
         self.env['sgi.action.line'].search([('date_done', '=', False)])._compute_state()
 
         open_alerts = self.env['quality.alert'].search([
+            ('team_id.sgi_sequence_id', '!=', False),
             ('stage_id.sgi_is_closing_stage', '=', False),
             ('stage_id.sgi_is_cancel_stage', '=', False),
         ])
@@ -151,20 +152,22 @@ class SgiCron(models.AbstractModel):
 
         report = self.env.ref('quimibond_sgi.action_report_news', raise_if_not_found=False)
         manager_id = self._sgi_manager_user_id()
-        company = self.env.company
-        if report:
+        # La actividad se agenda sobre una approval.request (tiene mail.activity.mixin);
+        # res.company NO hereda el mixin.
+        anchor = requests[:1]
+        if report and anchor:
             pdf_content, _ = self.env['ir.actions.report']._render_qweb_pdf(
                 report.report_name, requests.ids)
             attachment = self.env['ir.attachment'].create({
                 'name': "NEWS_%s.pdf" % first_prev_month.strftime('%Y_%m'),
                 'type': 'binary',
                 'datas': base64.b64encode(pdf_content),
-                'res_model': 'res.company',
-                'res_id': company.id,
+                'res_model': 'approval.request',
+                'res_id': anchor.id,
                 'mimetype': 'application/pdf',
             })
             if manager_id:
-                company.activity_schedule(
+                anchor.activity_schedule(
                     'mail.mail_activity_data_todo',
                     summary="Revisar y difundir NEWS %s" % first_prev_month.strftime('%m/%Y'),
                     note="Boletín de cambios documentales aprobados del mes (adjunto ID %d)." % attachment.id,

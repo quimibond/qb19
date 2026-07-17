@@ -39,11 +39,11 @@
 
                         <h4>Análisis de causa (5 Porqués)</h4>
                         <ol>
-                            <li t-if="doc.sgi_why_1" t-field="doc.sgi_why_1"/>
-                            <li t-if="doc.sgi_why_2" t-field="doc.sgi_why_2"/>
-                            <li t-if="doc.sgi_why_3" t-field="doc.sgi_why_3"/>
-                            <li t-if="doc.sgi_why_4" t-field="doc.sgi_why_4"/>
-                            <li t-if="doc.sgi_why_5" t-field="doc.sgi_why_5"/>
+                            <li t-if="doc.sgi_why_1" t-esc="doc.sgi_why_1"/>
+                            <li t-if="doc.sgi_why_2" t-esc="doc.sgi_why_2"/>
+                            <li t-if="doc.sgi_why_3" t-esc="doc.sgi_why_3"/>
+                            <li t-if="doc.sgi_why_4" t-esc="doc.sgi_why_4"/>
+                            <li t-if="doc.sgi_why_5" t-esc="doc.sgi_why_5"/>
                         </ol>
                         <p><strong>Causa raíz:</strong> <span t-field="doc.sgi_root_cause"/></p>
 
@@ -57,12 +57,12 @@
                             </thead>
                             <tbody>
                                 <tr t-foreach="doc.sgi_action_line_ids" t-as="line">
-                                    <td t-field="line.action_type"/>
-                                    <td t-field="line.name"/>
-                                    <td t-field="line.responsible_id"/>
-                                    <td t-field="line.date_commit"/>
-                                    <td t-field="line.date_done"/>
-                                    <td t-field="line.progress"/>
+                                    <td><span t-field="line.action_type"/></td>
+                                    <td><span t-field="line.name"/></td>
+                                    <td><span t-field="line.responsible_id"/></td>
+                                    <td><span t-field="line.date_commit"/></td>
+                                    <td><span t-field="line.date_done"/></td>
+                                    <td><span t-field="line.progress"/></td>
                                 </tr>
                             </tbody>
                         </table>

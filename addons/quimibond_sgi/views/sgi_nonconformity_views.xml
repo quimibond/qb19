@@ -9,9 +9,12 @@
             <xpath expr="//header" position="inside">
                 <button name="action_sgi_force_close" type="object"
                         string="Cierre forzado (Jefe MAST)"
-                        groups="quimibond_sgi.group_sgi_manager"/>
+                        groups="quimibond_sgi.group_sgi_manager"
+                        invisible="not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
+                <field name="sgi_stage_is_closing" invisible="1"/>
+                <field name="sgi_stage_is_cancel" invisible="1"/>
                 <group>
                     <group string="Datos SGI">
                         <field name="sgi_folio"/>

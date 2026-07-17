@@ -79,7 +79,7 @@
         <field name="name">Primera respuesta ≤ 3 días</field>
         <field name="team_id" ref="sgi_helpdesk_team_complaints"/>
         <field name="stage_id" ref="sgi_hd_stage_containment"/>
-        <field name="time">24.0</field>
+        <field name="time">72.0</field>
         <field name="priority">0</field>
     </record>
 

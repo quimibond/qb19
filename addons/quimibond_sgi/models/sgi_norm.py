@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import models, fields, api
 
 
 class SgiNorm(models.Model):
@@ -26,6 +26,7 @@ class SgiNormClause(models.Model):
     code = fields.Char(string="Numeral", required=True)
     name = fields.Char(string="Requisito", required=True)
 
+    @api.depends('code', 'name')
     def _compute_display_name(self):
         for clause in self:
             clause.display_name = "%s %s" % (clause.code, clause.name) if clause.code else clause.name

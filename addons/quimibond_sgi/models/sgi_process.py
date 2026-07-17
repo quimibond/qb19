@@ -59,6 +59,7 @@ class SgiProcess(models.Model):
                 process.nc_count = 0
                 process.overdue_action_count = 0
 
+    @api.depends('code', 'name')
     def _compute_display_name(self):
         for process in self:
             process.display_name = "%s - %s" % (process.code, process.name) if process.code else process.name
