@@ -6,6 +6,13 @@
     <menuitem id="menu_sgi_panel" name="Panel" parent="menu_sgi_root"
               action="sgi_process_action_panel" sequence="10"/>
 
+    <!-- Tableros (Fase 4) -->
+    <menuitem id="menu_sgi_dashboards" name="Tableros" parent="menu_sgi_root"
+              sequence="12" groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"
+              parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto"
+              sequence="10"/>
+
     <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
               action="sgi_process_action" sequence="20"/>
 

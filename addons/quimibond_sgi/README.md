@@ -1,4 +1,4 @@
-# quimibond_sgi — Sistema de Gestión Integral (Fases 1, 2 y 3)
+# quimibond_sgi — Sistema de Gestión Integral (Fases 1, 2, 3 y 4)
 
 Addon de Odoo 19 Enterprise que lleva el SGI documental de PNTQ (ISO 9001:2015 +
 14001:2015, 45001 en preparación) a Odoo **extendiendo apps nativas** (Documentos,
@@ -226,6 +226,105 @@ Bloques (core tools que exigen clientes como Seiren y Continental):
 - **Commits por bloque**: retomar un commit atómico por bloque funcional (en Fase 3
   el grueso quedó en un solo commit).
 
+## Fase 4 — Conexión con el piso real y tableros (v19.0.4.0.0)
+
+Cierra el círculo dentro de Odoo: el SGI se alimenta de la operación real de piso
+(pesaje, revisado, subproducto de desperdicio) y los resultados llegan a dirección
+(tableros). **Sin Shop Floor y sin tocar `quimibond_intelligence`/Supabase.** No se
+modifica ningún módulo de piso: solo se agregan ganchos hacia el SGI.
+
+### Qué instala/configura (automático)
+
+- **Escalar a NC del SGI** (botón en `quality.alert`, grupo Auditor+, visible solo si
+  la alerta no tiene folio): mueve la alerta a NC Internas, le asigna folio y origen
+  'proceso' conservando producto/orden/picking. Las alertas rutinarias de los equipos
+  de piso siguen su flujo; solo lo sistémico se escala (el concentrado F-P-G05-02 no se
+  contamina).
+- **Planes de control que envuelven los puntos reales** (Recepción de MP F-P-P03-01 y
+  Tejido Circular — Revisado). El enlace de los `quality.point` se hace en el
+  `post_init_hook` por **búsqueda segura por equipo**: si el equipo no existe en la BD
+  (staging≠producción), registra en log y sigue sin romper el update.
+- **Puente de pesaje** (`quimibond_sgi_pesaje`, auto_install): al confirmar un rollo
+  fuera de la tolerancia ±3 kg, crea una alerta ligada a la orden/producto (una sola
+  por rollo).
+- **KPIs recalibrados a las fuentes reales del piso** (ver tabla abajo).
+- **Vistas pivot/graph** para tableros: Pareto de alertas de calidad (`quimibond_sgi`)
+  y Pareto de defectos del revisado por causa TEJIDO-* (`quimibond_sgi_revisado`,
+  auto_install).
+- **Mapa de procesos conectado a los objetos vivos** (4.6): cada flujo apunta a su
+  modelo de Odoo (`odoo_model_id`) con botón **«Ver registros»** (invisible si es un
+  entregable documental); 14 flujos operativos + 5 de soporte ligados.
+- **Smart button «NC del proveedor»** en `purchase.order` (alertas del proveedor).
+- **Botón «Levantar NC»** en solicitudes de mantenimiento correctivas (crea la NC en
+  NC Internas pre-llenada con el equipo y la falla; idempotente).
+- **CoA en el portal del cliente**: botón «Publicar CoA en portal» en el lote que
+  adjunta el PDF a la(s) entrega(s) (visible en el portal). Explícito, sin automatismo.
+
+### KPIs — fuente real y estado de validación (Fase 4.2)
+
+| KPI (`calc_mode`) | Fuente real | Estado |
+|---|---|---|
+| `desperdicio` | Kilos del subproducto **SALDO TEJIDO D** (categoría `SubProducto`, param `quimibond_sgi.waste_subproduct_category`) / kilos producidos | Validar contra Excel de producción del mes de referencia |
+| `desperdicio_scrap` | `stock.scrap` / kilos producidos (cálculo histórico, conservado) | OK |
+| `calidad_pq` | `mrp.revision.log`: rollos sin causa (defecto = etiqueta TEJIDO-*) / total | Validar con datos reales de revisado |
+| `cumplimiento_programa` | `mrp.production` producido vs planificado (inicio en el periodo) | **Aproxima el MPS** (usa MOs con inicio programado en el periodo, no el plan maestro literal). Validar contra el Excel de producción un mes **antes** de activar su `nc_on_red` |
+| `inventario_ciclico` | `|ajustes de inventario|` (movimientos `is_inventory`) / existencias en ubicaciones internas | **Requiere conteos cíclicos activos**; existencias «contadas» = proxy de on-hand actual |
+| (otros de Fase 2) | ventas/compras/mantto/RH nativos | Sin cambio |
+
+Todos degradan a `None` cuando faltan datos o configuración en la instancia.
+
+### Tableros (Fase 4.4 — configuración de instancia)
+
+Se arman con **Hojas de cálculo / Tableros nativos** (sin JS). Fuentes de datos:
+
+1. **Producción por circular y turno** — `mrp.workorder`/`mrp.production` (pivot nativo,
+   fila = centro de trabajo, medida = cantidad/tiempo).
+2. **Pareto de defectos del revisado** — menú *SGI → Tableros → Pareto de defectos
+   (revisado)* (pivot de `mrp.revision.log` por causa TEJIDO-*, filtro «Con defecto»).
+3. **Desperdicio (SALDO TEJIDO D) por tela y circular** — movimientos de subproducto de
+   la categoría `SubProducto` (pivot de `stock.move` byproduct).
+4. **Cumplimiento del programa semanal** — KPI `cumplimiento_programa` (menú Medición).
+5. **Panel SGI ejecutivo** — NCs (concentrado), KPIs (menú Medición), riesgos
+   (mapa de calor), calibraciones (metrología) y *SGI → Tableros → Pareto de alertas*.
+
+### Configuración de instancia pendiente (Fase 4)
+
+1. **Retro-vinculación**: se ejecuta sola al instalar si existen los equipos «CALIDAD
+   Materia Prima» y «Revisado de Tela». Si se agregan/renombran equipos después,
+   reinstalar el módulo o re-ejecutar `post_init_hook` desde el shell.
+2. **Categoría de desperdicio**: confirmar que el subproducto SALDO TEJIDO D vive en la
+   categoría `SubProducto` (o ajustar el parámetro `quimibond_sgi.waste_subproduct_category`).
+3. **Días festivos** en el calendario 24/7 3 Turnos (festivos MX): configurar en
+   *Empleados → Configuración → Tiempo libre → Festivos públicos* (config de instancia).
+4. **Rollout de las 186 telas**: correr el reporte de trabajo
+   `addons/quimibond_sgi/tools/reporte_telas_rollout.py`
+   (`odoo-bin shell --no-http < …`), que lista las telas sin operación TEJIDO/BoM
+   completa agrupadas por familia y exporta `/tmp/telas_rollout.csv`. **No** configura
+   telas: el criterio (capacidades, tiempos) es de Producción.
+5. **Báscula (IoT)**: verificar `iot_scale_common` + drivers del repo; el pesaje ya usa
+   el widget `peso_bascula`. Documentar en sitio qué básculas responden y cuáles faltan.
+6. **Usuarios por centro de trabajo**: asignar responsables/técnicos por circular
+   (config de instancia).
+7. **WhatsApp** (solo si contratan la integración Meta): plantillas para NC asignada,
+   equipo bloqueado y KPI rojo. Si no, actividades + correo ya cubren (no bloqueante).
+8. **Portal del auditor SIDE**: carpetas de Documentos en solo lectura con permiso de
+   fecha de expiración para la auditoría de vigilancia (config de Documentos).
+9. **Buzón QR**: publicar el formulario web del equipo «Quejas y Sugerencias» (si sigue
+   pendiente de Fase 2).
+
+### Configuración de instancia pendiente (Fase 4.6 — mapa de procesos)
+
+Ganchos que este bloque NO configura (los captura el equipo en la instancia):
+
+10. **Quality point «Verificación de embarque»** en salidas (checklist de empaque por
+    cliente) que alimente el KPI «embarques sin error».
+11. **Conteos cíclicos activados** (para que `inventario_ciclico` sea confiable).
+12. **Firma de pedido en portal** para exportación (aceptación en línea del cliente).
+13. **Aprobadores de la requisición de compra SGI** y niveles de seguimiento de cobranza.
+14. **Propiedades custom del lote** (ancho/gramaje/tono) y **motivos de pérdida en CRM**.
+15. **Resto de flujos de soporte** del mapa (además de los 5 ya cargados): ligarlos a su
+    modelo desde *SGI → Flujos* o el formulario del proceso.
+
 ## Instalación / actualización (shell Odoo.sh)
 
 ```bash
@@ -261,4 +360,15 @@ no cierra sin las 3 capas SCAT ni con acciones abiertas y aviso de graves; XOR d
 acciones entre NC/Riesgo/AMEF/Incidente; brechas de competencia (DNC) por puesto; y NC
 mayor cerrada → actividad de actualización de AMEF/plan de control. **15 tests, 0 fallos.**
 
-Suite completa del módulo: **50 tests, 0 fallos.**
+Cubren (Fase 4): escalar una alerta operativa a NC (folio + equipo NC Internas + ligas
+conservadas; bloqueo si ya es NC); `_calc_desperdicio` con el subproducto SALDO TEJIDO D
+(y degradado a None sin categoría); `_calc_calidad_pq` con `mrp.revision.log`;
+retro-vinculación segura (post_init sin equipos no truena; con equipo, liga el punto al
+plan); y el puente de pesaje (rollo fuera de tolerancia → una sola alerta por rollo, en
+`quimibond_sgi_pesaje`). **9 tests, 0 fallos.**
+
+Cubren (Fase 4.6): flujo con modelo → botón abre el act_window del modelo correcto;
+flujo documental → botón bloqueado; «Levantar NC» en mantenimiento correctivo crea la
+NC ligada (idempotente); y CoA publicado adjunta el PDF a la entrega. **4 tests.**
+
+Suite completa (quimibond_sgi + puentes): **64 tests, 0 fallos.**

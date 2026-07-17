@@ -140,6 +140,9 @@
                 <header>
                     <button name="action_sgi_print_coa" type="object"
                             string="Certificado de Calidad (CoA)" class="btn-secondary"/>
+                    <button name="action_sgi_publish_coa" type="object"
+                            string="Publicar CoA en portal" class="btn-secondary"
+                            confirm="Se adjuntará el CoA a la(s) entrega(s) del lote para que el cliente lo vea en su portal. ¿Continuar?"/>
                 </header>
             </xpath>
         </field>

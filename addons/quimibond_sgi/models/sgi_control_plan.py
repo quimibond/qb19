@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import base64
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
@@ -125,3 +127,41 @@ class StockLot(models.Model):
                 "marcados para el Certificado de Calidad. Capture los quality.check "
                 "correspondientes antes de emitir el CoA." % self.name)
         return self.env.ref('quimibond_sgi.action_report_coa').report_action(self)
+
+    def _sgi_delivery_pickings(self):
+        """Entregas (salidas) en las que participó este lote."""
+        self.ensure_one()
+        move_lines = self.env['stock.move.line'].search([
+            ('lot_id', '=', self.id),
+            ('picking_id.picking_type_id.code', '=', 'outgoing'),
+        ])
+        return move_lines.mapped('picking_id')
+
+    def action_sgi_publish_coa(self):
+        """Publica el CoA en el portal del cliente: adjunta el PDF a la(s)
+        entrega(s) del lote (message_post), sin automatismo (botón explícito)."""
+        self.ensure_one()
+        if not self._sgi_coa_checks():
+            raise UserError(
+                "El lote %s no tiene inspecciones para el Certificado de Calidad." % self.name)
+        pickings = self._sgi_delivery_pickings()
+        if not pickings:
+            raise UserError(
+                "El lote %s no está en ninguna entrega; no hay dónde publicar el CoA." % self.name)
+        report = self.env.ref('quimibond_sgi.action_report_coa')
+        pdf_content, _ = self.env['ir.actions.report']._render_qweb_pdf(
+            report.report_name, self.ids)
+        for picking in pickings:
+            attachment = self.env['ir.attachment'].create({
+                'name': "CoA-%s.pdf" % self.name,
+                'type': 'binary',
+                'datas': base64.b64encode(pdf_content),
+                'res_model': 'stock.picking',
+                'res_id': picking.id,
+                'mimetype': 'application/pdf',
+            })
+            picking.message_post(
+                body="Certificado de Calidad (CoA) del lote %s publicado para el "
+                     "cliente." % self.name,
+                attachment_ids=[attachment.id])
+        return True
