@@ -251,5 +251,4 @@ no cierra sin las 3 capas SCAT ni con acciones abiertas y aviso de graves; XOR d
 acciones entre NC/Riesgo/AMEF/Incidente; brechas de competencia (DNC) por puesto; y NC
 mayor cerrada → actividad de actualización de AMEF/plan de control. **15 tests, 0 fallos.**
 
-> Nota: `test_indicators.test_03_cron_idempotent` falla de forma **preexistente**
-> (Fase 2: `sgi.indicator` no hereda `mail.activity.mixin`); es ajeno a la Fase 3.
+Suite completa del módulo: **50 tests, 0 fallos.**

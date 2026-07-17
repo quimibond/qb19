@@ -25,6 +25,7 @@ CALC_MODES = [
 class SgiIndicator(models.Model):
     _name = 'sgi.indicator'
     _description = "Indicador SGI (F-P-A10-03)"
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'code'
 
     code = fields.Char(string="Clave", required=True, index=True)
