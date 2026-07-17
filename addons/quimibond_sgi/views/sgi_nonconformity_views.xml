@@ -7,6 +7,11 @@
         <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
+                <button name="action_sgi_escalate_to_nc" type="object"
+                        string="Escalar a NC del SGI"
+                        class="btn-primary"
+                        groups="quimibond_sgi.group_sgi_auditor"
+                        invisible="sgi_folio"/>
                 <button name="action_sgi_force_close" type="object"
                         string="Cierre forzado (Jefe MAST)"
                         groups="quimibond_sgi.group_sgi_manager"

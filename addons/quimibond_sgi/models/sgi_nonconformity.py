@@ -138,6 +138,31 @@ class QualityAlert(models.Model):
             'context': {'default_alert_id': self.id},
         }
 
+    def action_sgi_escalate_to_nc(self):
+        """Escala una alerta operativa de piso a una No Conformidad sistémica del
+        SGI: la mueve al equipo NC Internas, le asigna folio y origen 'proceso',
+        conservando producto/orden/picking. Las alertas rutinarias de los equipos
+        de piso siguen su flujo normal; solo lo sistémico se escala (así el
+        concentrado F-P-G05-02 no se contamina)."""
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
+                            raise_if_not_found=False)
+        if not team or not team.sgi_sequence_id:
+            raise UserError(
+                "No está configurado el equipo de No Conformidades Internas del SGI.")
+        for alert in self:
+            if alert.sgi_folio:
+                raise UserError(
+                    "La alerta «%s» ya es una NC del SGI (%s)." % (
+                        alert.name or alert.title, alert.sgi_folio))
+            alert.write({
+                'team_id': team.id,
+                'sgi_origin_type': 'proceso',
+                'sgi_folio': team.sgi_sequence_id.next_by_id(),
+            })
+            alert.message_post(
+                body="Alerta escalada a No Conformidad del SGI: <b>%s</b>." % alert.sgi_folio)
+        return True
+
 
 class SgiActionLine(models.Model):
     _name = 'sgi.action.line'

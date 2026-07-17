@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Categoría del subproducto de desperdicio (SALDO TEJIDO D) usada por el
+         KPI de desperdicio. Parametrizable por si cambia el nombre. -->
+    <record id="sgi_param_waste_category" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.waste_subproduct_category</field>
+        <field name="value">SubProducto</field>
+    </record>
+
+    <!-- Planes de control SGI que envuelven los puntos de calidad reales del
+         piso (Recepción de MP y Revisado de Tela). El enlace de los puntos se
+         hace en el post_init_hook por BÚSQUEDA SEGURA por equipo (si el equipo
+         no existe en la BD, no truena: log y sigue). -->
+    <record id="sgi_control_plan_mp" model="sgi.control.plan">
+        <field name="name">Recepción de Materias Primas (F-P-P03-01)</field>
+        <field name="phase">produccion</field>
+        <field name="revision">01</field>
+        <field name="state">vigente</field>
+        <field name="notes">Envuelve los puntos de control de MP tipo Hoja de Cálculo
+            (equipo «CALIDAD Materia Prima»). Ubicación de fallo: 18 Cuarentena MP.</field>
+    </record>
+
+    <record id="sgi_control_plan_revisado" model="sgi.control.plan">
+        <field name="name">Tejido Circular — Revisado</field>
+        <field name="phase">produccion</field>
+        <field name="revision">01</field>
+        <field name="state">vigente</field>
+        <field name="notes">Envuelve el punto «Revisado de Tela» (equipo «Revisado de Tela»),
+            control por operación en Toluca:Tejido Circular.</field>
+    </record>
+</odoo>
