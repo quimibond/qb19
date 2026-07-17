@@ -179,22 +179,46 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_indicators(self):
+        """Cron mensual: mide los indicadores de frecuencia mensual del mes anterior."""
         today = fields.Date.context_today(self)
         first_this = today.replace(day=1)
         first_prev = first_this - relativedelta(months=1)
         last_prev = first_this - relativedelta(days=1)
+        deadline = first_this + relativedelta(days=4)
+        indicators = self.env['sgi.indicator'].search([('frequency', '=', 'monthly')])
+        self._sgi_generate_measures(
+            indicators, first_prev, first_prev, last_prev, deadline,
+            "%s" % first_prev.strftime('%m/%Y'))
+        return True
 
+    @api.model
+    def cron_indicators_weekly(self):
+        """Cron semanal: mide los indicadores de frecuencia semanal de la semana previa."""
+        today = fields.Date.context_today(self)
+        this_monday = today - relativedelta(days=today.weekday())
+        prev_monday = this_monday - relativedelta(days=7)
+        prev_sunday = this_monday - relativedelta(days=1)
+        deadline = this_monday + relativedelta(days=2)
+        indicators = self.env['sgi.indicator'].search([('frequency', '=', 'weekly')])
+        self._sgi_generate_measures(
+            indicators, prev_monday, prev_monday, prev_sunday, deadline,
+            "semana del %s" % prev_monday.strftime('%d/%m/%Y'))
+        return True
+
+    @api.model
+    def _sgi_generate_measures(self, indicators, period_date, date_from, date_to,
+                               deadline, period_label):
+        """Genera (idempotente) las mediciones del periodo y evalúa la NC automática."""
         Measure = self.env['sgi.indicator.measure']
         manager_id = self._sgi_manager_user_id()
-        indicators = self.env['sgi.indicator'].search([])
         for indicator in indicators:
             measure = Measure.search([
                 ('indicator_id', '=', indicator.id),
-                ('period_date', '=', first_prev),
+                ('period_date', '=', period_date),
             ], limit=1)
             if not measure:
-                vals = {'indicator_id': indicator.id, 'period_date': first_prev}
-                value = indicator._sgi_compute_value(first_prev, last_prev)
+                vals = {'indicator_id': indicator.id, 'period_date': period_date}
+                value = indicator._sgi_compute_value(date_from, date_to)
                 if indicator.calc_mode != 'manual' and value is not None:
                     vals['value'] = value
                     vals['state'] = 'capturado'
@@ -203,13 +227,12 @@ class SgiCron(models.AbstractModel):
                 measure = Measure.create(vals)
                 if measure.state == 'pendiente':
                     user_id = indicator.responsible_id.id or manager_id
-                    deadline = first_this + relativedelta(days=4)
                     if user_id:
                         self._sgi_schedule_deadline(
                             indicator, measure,
-                            "Capturar indicador %s (%s)" % (
-                                indicator.code, first_prev.strftime('%m/%Y')),
-                            "Registre el valor del indicador del mes anterior antes del %s." % deadline,
+                            "Capturar indicador %s (%s)" % (indicator.code, period_label),
+                            "Registre el valor del indicador del periodo (%s) antes del %s." % (
+                                period_label, deadline),
                             user_id, deadline)
             # NC automática (solo mediciones rojas validadas con nc_on_red)
             measure._sgi_maybe_create_nc()

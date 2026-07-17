@@ -10,6 +10,16 @@
         <field name="active" eval="True"/>
     </record>
 
+    <record id="sgi_cron_indicators_weekly" model="ir.cron">
+        <field name="name">SGI: Mediciones semanales de indicadores</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_indicators_weekly()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <record id="sgi_cron_audit_program" model="ir.cron">
         <field name="name">SGI: Avisos de programa de auditorías</field>
         <field name="model_id" ref="model_sgi_cron"/>

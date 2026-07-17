@@ -135,8 +135,12 @@ Los que devuelven None caen a captura manual sin bloquear el cron.
    de instancia).
 6. **Aprobadores de "Solicitud de compra SGI"**: definir aprobadores y, si aplica,
    el almacén/ubicación por defecto de las RFQ.
-7. **Umbrales**: `quimibond_sgi.risk_ryo_inmediata/media/intermedia` (16/9/4) y
-   `quimibond_sgi.supplier_weight_otd/quality` (0.7/0.3) son parametrizables.
+7. **Umbrales**: `quimibond_sgi.risk_ryo_inmediata/media/intermedia` (16/9/4),
+   `quimibond_sgi.supplier_weight_otd/quality` (0.7/0.3) y
+   `quimibond_sgi.supplier_nc_penalty` (10 pts por NC) son parametrizables.
+8. **Indicadores semanales**: los KPIs con `frequency=weekly` (p.ej. OTIF LO-01)
+   los mide el cron semanal (lunes, semana previa); los mensuales, el cron mensual.
+   Ambos son idempotentes por (indicador, periodo).
 
 ### Plan de activación gradual de `nc_on_red`
 

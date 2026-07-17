@@ -36,6 +36,9 @@ class TestRisk(TransactionCase):
             self.Risk.create({
                 'name': 'Peligro 2', 'instrument': 'iper',
                 'eval_probability': '5', 'eval_impact': '2'})
+        # Tampoco en la evaluación residual (editar solo residual dispara la validación)
+        with self.assertRaises(ValidationError):
+            risk.write({'residual_probability': '4', 'residual_impact': '2'})
 
     def test_03_patrimonial_scale(self):
         risk = self.Risk.create({

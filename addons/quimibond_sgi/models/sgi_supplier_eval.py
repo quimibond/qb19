@@ -65,6 +65,7 @@ class SgiSupplierEval(models.Model):
         Param = self.env['ir.config_parameter'].sudo()
         w_otd = float(Param.get_param('quimibond_sgi.supplier_weight_otd', 0.7))
         w_quality = float(Param.get_param('quimibond_sgi.supplier_weight_quality', 0.3))
+        nc_penalty = float(Param.get_param('quimibond_sgi.supplier_nc_penalty', 10.0))
         for ev in self:
             if not ev.partner_id or not ev.date_from or not ev.date_to:
                 ev.otd_pct = ev.score = 0.0
@@ -73,7 +74,7 @@ class SgiSupplierEval(models.Model):
                 continue
             ev.otd_pct = ev._sgi_compute_otd()
             ev.nc_count = ev._sgi_count_ncs()
-            quality_score = max(0.0, 100.0 - ev.nc_count * 10.0)
+            quality_score = max(0.0, 100.0 - ev.nc_count * nc_penalty)
             ev.score = round(ev.otd_pct * w_otd + quality_score * w_quality, 2)
             ev.supplier_class = ev._sgi_class_from_score(ev.score)
 

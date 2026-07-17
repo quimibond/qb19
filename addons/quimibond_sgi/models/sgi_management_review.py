@@ -109,21 +109,23 @@ class SgiManagementReview(models.Model):
         dt_from, dt_to = self._sgi_bounds()
         Alert = self.env['quality.alert']
         result = []
-        teams = {
-            'Internas': self.env.ref('quimibond_sgi.sgi_quality_team_internal', raise_if_not_found=False),
-            'Externas': self.env.ref('quimibond_sgi.sgi_quality_team_external', raise_if_not_found=False),
-        }
-        for label, team in teams.items():
+        teams = [
+            ('Internas', 'sgi_quality_team_internal', 'sgi_nc_int_stage_followup'),
+            ('Externas', 'sgi_quality_team_external', 'sgi_nc_ext_stage_followup'),
+        ]
+        for label, team_xmlid, followup_xmlid in teams:
+            team = self.env.ref('quimibond_sgi.%s' % team_xmlid, raise_if_not_found=False)
             if not team:
                 continue
+            followup = self.env.ref('quimibond_sgi.%s' % followup_xmlid, raise_if_not_found=False)
             base = [('team_id', '=', team.id)]
             abiertas = Alert.search_count(base + [
                 ('stage_id.sgi_is_closing_stage', '=', False),
                 ('stage_id.sgi_is_cancel_stage', '=', False),
             ])
             seguimiento = Alert.search_count(base + [
-                ('stage_id.name', '=', 'Seguimiento'),
-            ])
+                ('stage_id', '=', followup.id),
+            ]) if followup else 0
             cerradas = Alert.search_count(base + [
                 ('date_close', '>=', dt_from), ('date_close', '<', dt_to),
             ])

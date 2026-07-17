@@ -228,10 +228,12 @@ class SgiIndicator(models.Model):
         if not budget:
             return None
         moves = self.env['account.move'].search([
-            ('move_type', '=', 'out_invoice'),
+            ('move_type', 'in', ('out_invoice', 'out_refund')),
             ('state', '=', 'posted'),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
+        # amount_untaxed_signed ya trae las notas de crédito (out_refund) en negativo,
+        # por lo que la suma es la facturación neta del periodo.
         invoiced = sum(moves.mapped('amount_untaxed_signed'))
         return round(invoiced / budget * 100.0, 2)
 
@@ -272,10 +274,15 @@ class SgiIndicatorMeasure(models.Model):
         "Ya existe una medición para este indicador y periodo.",
     )
 
-    @api.depends('value', 'indicator_id.direction',
+    @api.depends('value', 'state', 'indicator_id.direction',
                  'indicator_id.target_objective', 'indicator_id.target_acceptable')
     def _compute_semaphore(self):
         for measure in self:
+            # Una medición aún pendiente (sin dato capturado) no tiene semáforo:
+            # evita mostrar rojo con value=0 antes de la captura.
+            if measure.state == 'pendiente':
+                measure.semaphore = False
+                continue
             indicator = measure.indicator_id
             obj = indicator.target_objective
             acc = indicator.target_acceptable
@@ -305,11 +312,23 @@ class SgiIndicatorMeasure(models.Model):
         self.write({'state': 'capturado'})
 
     def action_validate(self):
+        self._sgi_check_validate_access()
         self.write({'state': 'validado'})
         self._sgi_maybe_create_nc()
 
     def action_reset(self):
         self.write({'state': 'pendiente'})
+
+    def _sgi_check_validate_access(self):
+        """Solo el responsable del indicador o el Jefe MAST valida la medición."""
+        if self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            return
+        for measure in self:
+            responsible = measure.indicator_id.responsible_id
+            if not responsible or responsible != self.env.user:
+                raise UserError(
+                    "Solo el responsable del indicador %s o el Jefe MAST y SGI "
+                    "puede validar su medición." % measure.indicator_id.code)
 
     def _sgi_maybe_create_nc(self):
         """Crea la NC de un indicador rojo validado (idempotente)."""

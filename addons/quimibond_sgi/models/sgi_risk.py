@@ -134,7 +134,8 @@ class SgiRisk(models.Model):
             return 'bajo'
         return False
 
-    @api.constrains('instrument', 'eval_probability', 'eval_impact')
+    @api.constrains('instrument', 'eval_probability', 'eval_impact',
+                    'residual_probability', 'residual_impact')
     def _check_iper_scale(self):
         for risk in self:
             if risk.instrument != 'iper':
