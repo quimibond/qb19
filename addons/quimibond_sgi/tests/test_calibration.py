@@ -30,6 +30,20 @@ class TestCalibration(TransactionCase):
                         "Debe generarse una NC de evaluación de impacto (IATF 7.1.5).")
         self.assertEqual(cal.sgi_alert_id.sgi_classification, 'mayor')
 
+    def test_03_lab_date_persists_over_interval(self):
+        # El laboratorio fija una fecha distinta a "última + intervalo": debe persistir.
+        lab_date = date(2027, 3, 15)
+        self.Calibration.create({
+            'equipment_id': self.equipment.id,
+            'date': date(2026, 1, 10),
+            'result': 'conforme',
+            'next_date': lab_date,
+        })
+        self.equipment.invalidate_recordset(['sgi_next_calibration_date'])
+        self.assertEqual(
+            self.equipment.sgi_next_calibration_date, lab_date,
+            "La fecha fijada por el laboratorio debe prevalecer sobre el recálculo.")
+
     def test_02_conforme_clears_lock(self):
         self.Calibration.create({
             'equipment_id': self.equipment.id,

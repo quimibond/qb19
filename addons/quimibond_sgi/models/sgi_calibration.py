@@ -17,7 +17,10 @@ class MaintenanceEquipment(models.Model):
                                                      default=12)
     sgi_last_calibration_date = fields.Date(string="Última calibración")
     sgi_next_calibration_date = fields.Date(string="Próxima calibración",
-                                            compute='_compute_next_calibration_date', store=True)
+                                            compute='_compute_next_calibration_date',
+                                            store=True, readonly=False,
+                                            help="Se calcula como última + intervalo, pero el "
+                                                 "laboratorio puede fijar otra fecha (prevalece).")
     sgi_calibration_state = fields.Selection([
         ('vigente', "Vigente"),
         ('por_vencer', "Por vencer"),
@@ -115,10 +118,14 @@ class SgiCalibration(models.Model):
         """Actualiza el equipo y dispara la NC IATF 7.1.5 si aplica."""
         self.ensure_one()
         eq = self.equipment_id
-        eq.sgi_last_calibration_date = self.date
+        # Se escriben ambos campos en un solo write: al fijar la fecha explícita en
+        # la misma operación que su dependencia (última calibración), el valor
+        # explícito prevalece sobre el recálculo (última + intervalo). Así persiste
+        # la fecha que fije el laboratorio.
+        vals = {'sgi_last_calibration_date': self.date}
         if self.next_date:
-            # Recalcula el intervalo si el laboratorio fija otra fecha.
-            eq.sgi_next_calibration_date = self.next_date
+            vals['sgi_next_calibration_date'] = self.next_date
+        eq.write(vals)
         if self.result == 'conforme':
             if eq.sgi_do_not_use:
                 eq.sgi_do_not_use = False
