@@ -216,6 +216,16 @@ Bloques (core tools que exigen clientes como Seiren y Continental):
 7. **Decisión PLM**: activar el flujo de ECO→PPAP requiere instalar *mrp_plm*; el
    puente `quimibond_sgi_plm` se instala solo cuando ambos módulos coexisten.
 
+### Deuda técnica / mejoras futuras (Fase 4)
+
+- **Endurecer el candado de AMEF** (`sgi.fmea.action_set_vigente`): hoy una línea con
+  NPR alto se da por atendida con **una acción registrada**, aunque no esté terminada
+  (así lo pedía la spec de Fase 3). Para Fase 4, considerar exigir que la acción tenga
+  al menos responsable + fecha de compromiso, o incluso fecha de terminación, antes de
+  permitir el paso a *vigente*.
+- **Commits por bloque**: retomar un commit atómico por bloque funcional (en Fase 3
+  el grueso quedó en un solo commit).
+
 ## Instalación / actualización (shell Odoo.sh)
 
 ```bash

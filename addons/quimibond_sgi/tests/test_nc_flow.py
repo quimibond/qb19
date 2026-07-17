@@ -26,9 +26,14 @@ class TestNcFlow(TransactionCase):
         a1 = self._new_alert(self.team_int)
         a2 = self._new_alert(self.team_int)
         e1 = self._new_alert(self.team_ext)
-        self.assertEqual(a1.sgi_folio, 'NCI-%s-0001' % year)
-        self.assertEqual(a2.sgi_folio, 'NCI-%s-0002' % year)
-        self.assertEqual(e1.sgi_folio, 'NCE-%s-0001' % year)
+        # No se asumen números absolutos (los datos demo consumen la secuencia):
+        # se valida el formato por equipo y el incremento consecutivo.
+        self.assertTrue(a1.sgi_folio.startswith('NCI-%s-' % year))
+        self.assertTrue(e1.sgi_folio.startswith('NCE-%s-' % year))
+        n1 = int(a1.sgi_folio.split('-')[-1])
+        n2 = int(a2.sgi_folio.split('-')[-1])
+        self.assertEqual(n2, n1 + 1)
+        self.assertGreaterEqual(len(a1.sgi_folio.split('-')[-1]), 4)
 
     def test_02_close_lock(self):
         alert = self._new_alert(self.team_int)

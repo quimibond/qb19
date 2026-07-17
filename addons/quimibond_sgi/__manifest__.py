@@ -92,5 +92,8 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         # menus
         'views/sgi_menus.xml',
     ],
+    'demo': [
+        'demo/sgi_demo_fase3.xml',
+    ],
     'installable': True,
 }
