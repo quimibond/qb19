@@ -7,3 +7,9 @@ from . import test_indicators
 from . import test_audit
 from . import test_risk
 from . import test_mgmt_review
+from . import test_calibration
+from . import test_fmea
+from . import test_ppap
+from . import test_incident
+from . import test_competence
+from . import test_pegamento
