@@ -46,6 +46,71 @@ class MrpProduction(models.Model):
         }
 
 
+class PurchaseOrder(models.Model):
+    _inherit = 'purchase.order'
+
+    sgi_nc_count = fields.Integer(string="# NC proveedor", compute='_compute_sgi_nc_count')
+
+    def _compute_sgi_nc_count(self):
+        Alert = self.env['quality.alert']
+        for order in self:
+            partner = order.partner_id.commercial_partner_id
+            order.sgi_nc_count = Alert.search_count(
+                [('partner_id', '=', partner.id)]) if partner else 0
+
+    def action_sgi_open_ncs(self):
+        self.ensure_one()
+        partner = self.partner_id.commercial_partner_id
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "No Conformidades del proveedor",
+            'res_model': 'quality.alert',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', partner.id)],
+            'context': {'default_partner_id': partner.id, 'default_sgi_origin_type': 'proceso'},
+        }
+
+
+class MaintenanceRequest(models.Model):
+    _inherit = 'maintenance.request'
+
+    sgi_alert_id = fields.Many2one('quality.alert', string="NC generada",
+                                   readonly=True, copy=False)
+
+    def action_sgi_raise_nc(self):
+        """Levanta una NC (equipo NC Internas) desde una solicitud correctiva,
+        pre-llenada con el equipo/máquina y la descripción de la falla."""
+        self.ensure_one()
+        if self.sgi_alert_id:
+            return self._sgi_open_alert()
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
+                            raise_if_not_found=False)
+        equipment_name = self.equipment_id.name or ''
+        vals = {
+            'title': "Falla de mantenimiento: %s" % (equipment_name or self.name),
+            'sgi_origin_type': 'proceso',
+            'sgi_deviation': "Solicitud de mantenimiento «%s» sobre el equipo «%s».\n%s" % (
+                self.name or '', equipment_name, self.description or ''),
+        }
+        if team:
+            vals['team_id'] = team.id
+        alert = self.env['quality.alert'].create(vals)
+        self.sgi_alert_id = alert.id
+        self.message_post(body="Se levantó la NC <b>%s</b> por esta falla." % (
+            alert.sgi_folio or alert.name))
+        return self._sgi_open_alert()
+
+    def _sgi_open_alert(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "No Conformidad",
+            'res_model': 'quality.alert',
+            'view_mode': 'form',
+            'res_id': self.sgi_alert_id.id,
+        }
+
+
 class HrJob(models.Model):
     _inherit = 'hr.job'
 

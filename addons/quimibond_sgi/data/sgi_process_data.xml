@@ -97,6 +97,7 @@
     <record id="flow_cxc_ventas" model="sgi.process.flow">
         <field name="name">Condiciones de crédito</field>
         <field name="from_process_id" ref="proc_cxc"/><field name="to_process_id" ref="proc_ventas"/>
+        <field name="odoo_model_id" search="[('model','=','res.partner')]" model="ir.model"/>
     </record>
     <record id="flow_ventas_plan_pronostico" model="sgi.process.flow">
         <field name="name">Pronóstico de ventas (F-P-A28-13)</field>
@@ -109,14 +110,17 @@
     <record id="flow_ventas_plan_pedido" model="sgi.process.flow">
         <field name="name">Pedido confirmado</field>
         <field name="from_process_id" ref="proc_ventas"/><field name="to_process_id" ref="proc_planeacion"/>
+        <field name="odoo_model_id" search="[('model','=','sale.order')]" model="ir.model"/>
     </record>
     <record id="flow_plan_prod" model="sgi.process.flow">
         <field name="name">Programa semanal de producción (F-P-A12-01)</field>
         <field name="from_process_id" ref="proc_planeacion"/><field name="to_process_id" ref="proc_prod_tac"/>
+        <field name="odoo_model_id" search="[('model','=','mrp.production')]" model="ir.model"/>
     </record>
     <record id="flow_plan_almacen" model="sgi.process.flow">
         <field name="name">Solicitud de existencias (F-P-A12-02)</field>
         <field name="from_process_id" ref="proc_planeacion"/><field name="to_process_id" ref="proc_almacen_mp"/>
+        <field name="odoo_model_id" search="[('model','=','stock.picking')]" model="ir.model"/>
     </record>
     <record id="flow_plan_ventas" model="sgi.process.flow">
         <field name="name">Resumen de fechas de entrega (F-P-A12-03)</field>
@@ -125,29 +129,62 @@
     <record id="flow_compras_almacen" model="sgi.process.flow">
         <field name="name">Orden de compra / insumos</field>
         <field name="from_process_id" ref="proc_compras"/><field name="to_process_id" ref="proc_almacen_mp"/>
+        <field name="odoo_model_id" search="[('model','=','purchase.order')]" model="ir.model"/>
     </record>
     <record id="flow_almacen_prod" model="sgi.process.flow">
         <field name="name">Materia prima liberada</field>
         <field name="from_process_id" ref="proc_almacen_mp"/><field name="to_process_id" ref="proc_prod_tac"/>
+        <field name="odoo_model_id" search="[('model','=','stock.picking')]" model="ir.model"/>
     </record>
     <record id="flow_prod_inspeccion" model="sgi.process.flow">
         <field name="name">Lote a liberar</field>
         <field name="from_process_id" ref="proc_prod_tac"/><field name="to_process_id" ref="proc_inspeccion"/>
+        <field name="odoo_model_id" search="[('model','=','mrp.production')]" model="ir.model"/>
     </record>
     <record id="flow_inspeccion_almacenpt" model="sgi.process.flow">
         <field name="name">Rollo clasificado</field>
         <field name="from_process_id" ref="proc_inspeccion"/><field name="to_process_id" ref="proc_almacen_pt"/>
+        <field name="odoo_model_id" search="[('model','=','stock.lot')]" model="ir.model"/>
     </record>
     <record id="flow_almacenpt_logistica" model="sgi.process.flow">
         <field name="name">Lista de embarque</field>
         <field name="from_process_id" ref="proc_almacen_pt"/><field name="to_process_id" ref="proc_logistica"/>
+        <field name="odoo_model_id" search="[('model','=','stock.picking')]" model="ir.model"/>
     </record>
     <record id="flow_logistica_facturacion" model="sgi.process.flow">
         <field name="name">Remisión / entrega</field>
         <field name="from_process_id" ref="proc_logistica"/><field name="to_process_id" ref="proc_facturacion"/>
+        <field name="odoo_model_id" search="[('model','=','stock.picking')]" model="ir.model"/>
     </record>
     <record id="flow_facturacion_cxc" model="sgi.process.flow">
         <field name="name">Factura</field>
         <field name="from_process_id" ref="proc_facturacion"/><field name="to_process_id" ref="proc_cxc"/>
+        <field name="odoo_model_id" search="[('model','=','account.move')]" model="ir.model"/>
+    </record>
+
+    <!-- ============ FLUJOS DE PROCESOS DE SOPORTE (Fase 4.6) ============ -->
+    <record id="flow_mto_prodtac" model="sgi.process.flow">
+        <field name="name">Máquina disponible / OT atendida</field>
+        <field name="from_process_id" ref="proc_mto"/><field name="to_process_id" ref="proc_prod_tac"/>
+        <field name="odoo_model_id" search="[('model','=','maintenance.request')]" model="ir.model"/>
+    </record>
+    <record id="flow_mto_prodent" model="sgi.process.flow">
+        <field name="name">Máquina disponible / OT atendida</field>
+        <field name="from_process_id" ref="proc_mto"/><field name="to_process_id" ref="proc_prod_ent"/>
+        <field name="odoo_model_id" search="[('model','=','maintenance.request')]" model="ir.model"/>
+    </record>
+    <record id="flow_lab_inspeccion" model="sgi.process.flow">
+        <field name="name">Resultados de prueba</field>
+        <field name="from_process_id" ref="proc_laboratorio"/><field name="to_process_id" ref="proc_inspeccion"/>
+        <field name="odoo_model_id" search="[('model','=','quality.check')]" model="ir.model"/>
+    </record>
+    <record id="flow_rh_direccion" model="sgi.process.flow">
+        <field name="name">Personal competente (F-P-A01-01)</field>
+        <field name="from_process_id" ref="proc_rh"/><field name="to_process_id" ref="proc_direccion"/>
+    </record>
+    <record id="flow_sgi_direccion" model="sgi.process.flow">
+        <field name="name">Estado del SGI</field>
+        <field name="from_process_id" ref="proc_sgi"/><field name="to_process_id" ref="proc_direccion"/>
+        <field name="odoo_model_id" search="[('model','=','sgi.management.review')]" model="ir.model"/>
     </record>
 </odoo>

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 
 
 class SgiProcess(models.Model):
@@ -88,9 +88,35 @@ class SgiProcessFlow(models.Model):
     document_id = fields.Many2one('documents.document', string="Formato de entrega")
     acceptance_criteria = fields.Text(string="Criterio de aceptación")
     odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa")
+    odoo_model_name = fields.Char(related='odoo_model_id.model', string="Modelo técnico")
 
     @api.constrains('from_process_id', 'to_process_id')
     def _check_from_to(self):
         for flow in self:
             if flow.from_process_id == flow.to_process_id:
                 raise ValidationError("El proceso origen y destino de un flujo no pueden ser el mismo.")
+
+    def _sgi_records_domain(self):
+        """Domain razonable para navegar los registros vivos del flujo."""
+        self.ensure_one()
+        model = self.odoo_model_id.model
+        if model == 'stock.picking':
+            # Sin acotar por tipo (un flujo puede ser recepción o entrega); el
+            # usuario filtra en la vista. Se deja el domain vacío a propósito.
+            return []
+        return []
+
+    def action_view_records(self):
+        """Abre los registros vivos del modelo Odoo que materializa el flujo."""
+        self.ensure_one()
+        if not self.odoo_model_id:
+            raise UserError(
+                "El flujo «%s» no tiene un modelo de Odoo ligado (es un entregable "
+                "documental)." % self.name)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "%s — registros" % self.name,
+            'res_model': self.odoo_model_id.model,
+            'view_mode': 'list,form',
+            'domain': self._sgi_records_domain(),
+        }

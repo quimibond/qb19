@@ -22,6 +22,7 @@ CALC_MODES = [
     ('plantilla_rh', "Cobertura de plantilla"),
     ('presupuesto_ventas', "Cumplimiento de presupuesto de ventas"),
     ('inventario_diferencia', "Diferencia de inventario físico vs sistema"),
+    ('inventario_ciclico', "Diferencia de inventario cíclico (ajustes)"),
 ]
 
 
@@ -299,6 +300,26 @@ class SgiIndicator(models.Model):
     def _calc_inventario_diferencia(self, date_from, date_to):
         # Requiere conteos físicos registrados; captura manual (README).
         return None
+
+    def _calc_inventario_ciclico(self, date_from, date_to):
+        """Diferencia de inventario cíclico: |cantidad ajustada| en el periodo
+        (movimientos de ajuste de inventario) sobre las existencias contadas.
+        Requiere conteos cíclicos activos; ver README."""
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        adj_lines = self.env['stock.move.line'].search([
+            ('move_id.is_inventory', '=', True),
+            ('state', '=', 'done'),
+            ('date', '>=', dt_from), ('date', '<', dt_to),
+        ])
+        if not adj_lines:
+            return None
+        adjusted = sum(abs(line.quantity) for line in adj_lines)
+        # Existencias contadas: proxy = existencias actuales en ubicaciones internas.
+        quants = self.env['stock.quant'].search([('location_id.usage', '=', 'internal')])
+        on_hand = sum(quants.mapped('quantity'))
+        if not on_hand:
+            return None
+        return round(adjusted / on_hand * 100.0, 2)
 
 
 class SgiIndicatorMeasure(models.Model):

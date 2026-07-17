@@ -251,6 +251,14 @@ modifica ningún módulo de piso: solo se agregan ganchos hacia el SGI.
 - **Vistas pivot/graph** para tableros: Pareto de alertas de calidad (`quimibond_sgi`)
   y Pareto de defectos del revisado por causa TEJIDO-* (`quimibond_sgi_revisado`,
   auto_install).
+- **Mapa de procesos conectado a los objetos vivos** (4.6): cada flujo apunta a su
+  modelo de Odoo (`odoo_model_id`) con botón **«Ver registros»** (invisible si es un
+  entregable documental); 14 flujos operativos + 5 de soporte ligados.
+- **Smart button «NC del proveedor»** en `purchase.order` (alertas del proveedor).
+- **Botón «Levantar NC»** en solicitudes de mantenimiento correctivas (crea la NC en
+  NC Internas pre-llenada con el equipo y la falla; idempotente).
+- **CoA en el portal del cliente**: botón «Publicar CoA en portal» en el lote que
+  adjunta el PDF a la(s) entrega(s) (visible en el portal). Explícito, sin automatismo.
 
 ### KPIs — fuente real y estado de validación (Fase 4.2)
 
@@ -260,6 +268,7 @@ modifica ningún módulo de piso: solo se agregan ganchos hacia el SGI.
 | `desperdicio_scrap` | `stock.scrap` / kilos producidos (cálculo histórico, conservado) | OK |
 | `calidad_pq` | `mrp.revision.log`: rollos sin causa (defecto = etiqueta TEJIDO-*) / total | Validar con datos reales de revisado |
 | `cumplimiento_programa` | `mrp.production` producido vs planificado (inicio en el periodo) | Validar contra MPS semanal |
+| `inventario_ciclico` | `|ajustes de inventario|` (movimientos `is_inventory`) / existencias en ubicaciones internas | **Requiere conteos cíclicos activos**; existencias «contadas» = proxy de on-hand actual |
 | (otros de Fase 2) | ventas/compras/mantto/RH nativos | Sin cambio |
 
 Todos degradan a `None` cuando faltan datos o configuración en la instancia.
@@ -303,6 +312,19 @@ Se arman con **Hojas de cálculo / Tableros nativos** (sin JS). Fuentes de datos
 9. **Buzón QR**: publicar el formulario web del equipo «Quejas y Sugerencias» (si sigue
    pendiente de Fase 2).
 
+### Configuración de instancia pendiente (Fase 4.6 — mapa de procesos)
+
+Ganchos que este bloque NO configura (los captura el equipo en la instancia):
+
+10. **Quality point «Verificación de embarque»** en salidas (checklist de empaque por
+    cliente) que alimente el KPI «embarques sin error».
+11. **Conteos cíclicos activados** (para que `inventario_ciclico` sea confiable).
+12. **Firma de pedido en portal** para exportación (aceptación en línea del cliente).
+13. **Aprobadores de la requisición de compra SGI** y niveles de seguimiento de cobranza.
+14. **Propiedades custom del lote** (ancho/gramaje/tono) y **motivos de pérdida en CRM**.
+15. **Resto de flujos de soporte** del mapa (además de los 5 ya cargados): ligarlos a su
+    modelo desde *SGI → Flujos* o el formulario del proceso.
+
 ## Instalación / actualización (shell Odoo.sh)
 
 ```bash
@@ -345,4 +367,8 @@ retro-vinculación segura (post_init sin equipos no truena; con equipo, liga el 
 plan); y el puente de pesaje (rollo fuera de tolerancia → una sola alerta por rollo, en
 `quimibond_sgi_pesaje`). **9 tests, 0 fallos.**
 
-Suite completa (quimibond_sgi + puentes): **60 tests, 0 fallos.**
+Cubren (Fase 4.6): flujo con modelo → botón abre el act_window del modelo correcto;
+flujo documental → botón bloqueado; «Levantar NC» en mantenimiento correctivo crea la
+NC ligada (idempotente); y CoA publicado adjunta el PDF a la entrega. **4 tests.**
+
+Suite completa (quimibond_sgi + puentes): **64 tests, 0 fallos.**
