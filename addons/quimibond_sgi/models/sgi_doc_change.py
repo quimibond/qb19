@@ -89,7 +89,7 @@ class ApprovalRequest(models.Model):
             doc.message_post(body="Documento dado de baja por solicitud aprobada %s." % self.name)
         elif self.sgi_change_kind == 'alta':
             manager = self.env.ref('quimibond_sgi.group_sgi_manager', raise_if_not_found=False)
-            manager_user = manager and manager.users[:1]
+            manager_user = manager and manager.all_user_ids[:1]
             self.activity_schedule(
                 'mail.mail_activity_data_todo',
                 summary="Crear documento SGI dado de alta (%s)" % (self.name or ''),

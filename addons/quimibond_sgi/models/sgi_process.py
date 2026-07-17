@@ -32,9 +32,10 @@ class SgiProcess(models.Model):
     nc_count = fields.Integer(string="NC abiertas", compute='_compute_health')
     overdue_action_count = fields.Integer(string="Acciones vencidas", compute='_compute_health')
 
-    _sql_constraints = [
-        ('code_uniq', 'unique(code)', "La clave de proceso debe ser única."),
-    ]
+    _code_uniq = models.Constraint(
+        'unique(code)',
+        "La clave de proceso debe ser única.",
+    )
 
     @api.constrains('parent_id')
     def _check_parent_recursion(self):

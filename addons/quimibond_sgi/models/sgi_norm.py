@@ -12,9 +12,10 @@ class SgiNorm(models.Model):
     clause_ids = fields.One2many('sgi.norm.clause', 'norm_id', string="Cláusulas")
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('code_uniq', 'unique(code)', "La clave de norma debe ser única."),
-    ]
+    _code_uniq = models.Constraint(
+        'unique(code)',
+        "La clave de norma debe ser única.",
+    )
 
 
 class SgiNormClause(models.Model):

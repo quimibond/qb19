@@ -34,6 +34,35 @@
     <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_root"
               action="sgi_doc_change_action" sequence="90"/>
 
+    <!-- Medición -->
+    <menuitem id="menu_sgi_measurement" name="Medición" parent="menu_sgi_root" sequence="55"/>
+    <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_measurement"
+              action="sgi_indicator_action" sequence="10"/>
+    <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_measurement"
+              action="sgi_measure_action" sequence="20"/>
+    <menuitem id="menu_sgi_objectives" name="Objetivos Integrales" parent="menu_sgi_measurement"
+              action="sgi_objective_action" sequence="30"/>
+
+    <!-- Auditorías -->
+    <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_root" sequence="56"/>
+    <menuitem id="menu_sgi_audit_programs" name="Programa anual" parent="menu_sgi_audits"
+              action="sgi_audit_program_action" sequence="10"/>
+    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
+              action="sgi_audit_action" sequence="20"/>
+
+    <!-- Riesgos -->
+    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_root"
+              action="sgi_risk_action" sequence="57"/>
+
+    <!-- Proveedores -->
+    <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores" parent="menu_sgi_root"
+              action="sgi_supplier_eval_action" sequence="58"/>
+
+    <!-- Revisión por la Dirección -->
+    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección" parent="menu_sgi_root"
+              action="sgi_management_review_action" sequence="59"
+              groups="quimibond_sgi.group_sgi_manager"/>
+
     <!-- Configuración -->
     <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root"
               sequence="100" groups="quimibond_sgi.group_sgi_manager"/>
@@ -45,4 +74,6 @@
               action="sgi_norm_clause_action" sequence="30"/>
     <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_config"
               action="sgi_document_ack_action" sequence="40"/>
+    <menuitem id="menu_sgi_config_risk_cat" name="Categorías de riesgo" parent="menu_sgi_config"
+              action="sgi_risk_category_action" sequence="50"/>
 </odoo>
