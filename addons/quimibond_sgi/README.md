@@ -325,6 +325,24 @@ Ganchos que este bloque NO configura (los captura el equipo en la instancia):
 15. **Resto de flujos de soporte** del mapa (además de los 5 ya cargados): ligarlos a su
     modelo desde *SGI → Flujos* o el formulario del proceso.
 
+## Herramientas de shell (`tools/`)
+
+Scripts de un solo uso, se corren con `odoo-bin shell --no-http < tools/<script>.py`:
+
+- **`reporte_telas_rollout.py`** — lista de trabajo de telas sin operación TEJIDO/BoM
+  completa (solo lectura, exporta `/tmp/telas_rollout.csv`).
+- **`carga_documental.py`** — carga masiva del SGI documental (ZIP con las carpetas
+  00-23) a la app Documentos. **`DRY_RUN=True` por defecto**: la primera corrida solo
+  imprime el plan y escribe `/tmp/carga_documental_reporte.csv`; para cargar de verdad
+  se pone `DRY_RUN=False` y se re-ejecuta. Crea el árbol de carpetas espejo (con
+  subcarpetas de departamento en 02), y por cada archivo con nombre que cumple la
+  nomenclatura de PNTQ crea el documento controlado (clave, tipo, área, revisión —
+  «Rev NN» o «00»—, vigente, emisión = fecha del archivo, próxima revisión +2 años).
+  Salta carpetas con «obsolet/baja/anterior»; los archivos sin clave van a **POR
+  CLASIFICAR** (no controlados). Idempotente (salta lo ya cargado), reporta duplicados
+  de clave dentro del ZIP, y **no** genera acuses ni asigna puestos (eso es manual).
+  **Correr primero en staging, validar el CSV, y solo con visto bueno en producción.**
+
 ## Instalación / actualización (shell Odoo.sh)
 
 ```bash
