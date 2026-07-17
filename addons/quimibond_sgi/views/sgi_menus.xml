@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_sgi_root" name="SGI" sequence="90"
+              web_icon="quimibond_sgi,static/description/icon.png"
               groups="quimibond_sgi.group_sgi_user"/>
 
     <menuitem id="menu_sgi_panel" name="Panel" parent="menu_sgi_root"
