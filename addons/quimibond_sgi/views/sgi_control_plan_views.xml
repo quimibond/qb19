@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= PLAN DE CONTROL ================= -->
+    <record id="sgi_control_plan_view_form" model="ir.ui.view">
+        <field name="name">sgi.control.plan.form</field>
+        <field name="model">sgi.control.plan</field>
+        <field name="arch" type="xml">
+            <form string="Plan de control">
+                <header>
+                    <button name="action_set_vigente" type="object" string="Marcar vigente"
+                            class="btn-primary" invisible="state == 'vigente'"/>
+                    <button name="action_set_obsoleto" type="object" string="Marcar obsoleto"
+                            invisible="state != 'vigente'"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            invisible="state == 'borrador'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,vigente,obsoleto"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_points" type="object" class="oe_stat_button"
+                                icon="fa-list-ul">
+                            <field name="point_count" widget="statinfo" string="Puntos"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                        <field name="name" placeholder="Nombre del plan de control"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="product_tmpl_ids" widget="many2many_tags"/>
+                            <field name="phase"/>
+                        </group>
+                        <group>
+                            <field name="revision"/>
+                            <field name="document_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Puntos de control">
+                            <field name="point_ids" context="{'default_sgi_control_plan_id': id}">
+                                <list editable="bottom">
+                                    <field name="title"/>
+                                    <field name="sgi_characteristic"/>
+                                    <field name="sgi_criticality"/>
+                                    <field name="sgi_cpk_target"/>
+                                    <field name="sgi_in_coa"/>
+                                    <field name="test_type_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notas">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_control_plan_view_list" model="ir.ui.view">
+        <field name="name">sgi.control.plan.list</field>
+        <field name="model">sgi.control.plan</field>
+        <field name="arch" type="xml">
+            <list string="Planes de control"
+                  decoration-muted="state == 'obsoleto'"
+                  decoration-success="state == 'vigente'">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="phase"/>
+                <field name="revision"/>
+                <field name="point_count"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_control_plan_view_search" model="ir.ui.view">
+        <field name="name">sgi.control.plan.search</field>
+        <field name="model">sgi.control.plan</field>
+        <field name="arch" type="xml">
+            <search string="Planes de control">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <filter name="vigente" string="Vigentes" domain="[('state','=','vigente')]"/>
+                <filter name="borrador" string="Borradores" domain="[('state','=','borrador')]"/>
+                <separator/>
+                <filter name="obsoleto" string="Obsoletos" domain="[('state','=','obsoleto')]"/>
+                <group>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_phase" string="Fase" context="{'group_by': 'phase'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_control_plan_action" model="ir.actions.act_window">
+        <field name="name">Planes de control</field>
+        <field name="res_model">sgi.control.plan</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_control_plan_view_search"/>
+    </record>
+
+    <!-- ================= quality.point: extensión SGI ================= -->
+    <record id="sgi_quality_point_view_form" model="ir.ui.view">
+        <field name="name">quality.point.form.sgi</field>
+        <field name="model">quality.point</field>
+        <field name="inherit_id" ref="quality.quality_point_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="SGI - Plan de control / Master Spec">
+                    <group>
+                        <field name="sgi_control_plan_id"/>
+                        <field name="sgi_characteristic"/>
+                        <field name="sgi_criticality"/>
+                    </group>
+                    <group>
+                        <field name="sgi_cpk_target"/>
+                        <field name="sgi_in_coa"/>
+                    </group>
+                    <field name="sgi_reaction_plan" colspan="2"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ================= stock.lot: botón CoA ================= -->
+    <record id="sgi_stock_lot_view_form" model="ir.ui.view">
+        <field name="name">stock.lot.form.sgi.coa</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_sgi_print_coa" type="object"
+                            string="Certificado de Calidad (CoA)" class="btn-secondary"/>
+                    <button name="action_sgi_publish_coa" type="object"
+                            string="Publicar CoA en portal" class="btn-secondary"
+                            confirm="Se adjuntará el CoA a la(s) entrega(s) del lote para que el cliente lo vea en su portal. ¿Continuar?"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+</odoo>

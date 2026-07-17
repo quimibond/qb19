@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= PROGRAMA ================= -->
+    <record id="sgi_audit_program_view_form" model="ir.ui.view">
+        <field name="name">sgi.audit.program.form</field>
+        <field name="model">sgi.audit.program</field>
+        <field name="arch" type="xml">
+            <form string="Programa de auditorías">
+                <header>
+                    <button name="action_approve" type="object" string="Aprobar"
+                            class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_close" type="object" string="Cerrar"
+                            invisible="state != 'aprobado'"/>
+                    <button name="action_draft" type="object" string="Volver a borrador"
+                            invisible="state == 'borrador'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="year"/></h1>
+                    </div>
+                    <field name="line_ids">
+                        <list editable="bottom">
+                            <field name="process_id"/>
+                            <field name="planned_month"/>
+                            <field name="audit_type"/>
+                            <field name="norm_ids" widget="many2many_tags"/>
+                            <field name="lead_auditor_id"/>
+                            <field name="state"/>
+                            <button name="action_create_audit" type="object"
+                                    string="Crear auditoría" icon="fa-plus"
+                                    invisible="state == 'creada'"/>
+                            <field name="audit_id" readonly="1" optional="hide"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_audit_program_view_list" model="ir.ui.view">
+        <field name="name">sgi.audit.program.list</field>
+        <field name="model">sgi.audit.program</field>
+        <field name="arch" type="xml">
+            <list string="Programas de auditoría">
+                <field name="year"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_audit_program_action" model="ir.actions.act_window">
+        <field name="name">Programa de auditorías</field>
+        <field name="res_model">sgi.audit.program</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ================= AUDITORÍA ================= -->
+    <record id="sgi_audit_view_form" model="ir.ui.view">
+        <field name="name">sgi.audit.form</field>
+        <field name="model">sgi.audit</field>
+        <field name="arch" type="xml">
+            <form string="Auditoría">
+                <header>
+                    <button name="action_plan" type="object" string="Planificar"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_start" type="object" string="Iniciar"
+                            class="btn-primary" invisible="state != 'planificada'"/>
+                    <button name="action_report" type="object" string="Elaborar informe"
+                            invisible="state != 'en_ejecucion'"/>
+                    <button name="action_close" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state != 'informe'"/>
+                    <button name="action_draft" type="object" string="Volver a borrador"
+                            invisible="state in ('borrador','cerrada')"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_findings" type="object"
+                                class="oe_stat_button" icon="fa-search">
+                            <field name="finding_count" widget="statinfo" string="Hallazgos"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Alcance">
+                            <field name="audit_type"/>
+                            <field name="norm_ids" widget="many2many_tags"/>
+                            <field name="process_ids" widget="many2many_tags"/>
+                            <field name="program_line_id" readonly="1"/>
+                        </group>
+                        <group string="Equipo y fechas">
+                            <field name="lead_auditor_id"/>
+                            <field name="auditor_ids" widget="many2many_tags"/>
+                            <field name="auditee_ids" widget="many2many_tags"/>
+                            <field name="date_planned"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                    </group>
+                    <group string="Checklist">
+                        <field name="survey_id"/>
+                        <field name="survey_input_ids" widget="many2many_tags"/>
+                    </group>
+                    <notebook>
+                        <page string="Hallazgos">
+                            <field name="finding_ids" context="{'default_audit_id': id}">
+                                <list editable="bottom">
+                                    <field name="finding_type"/>
+                                    <field name="norm_clause_id"/>
+                                    <field name="process_id"/>
+                                    <field name="description"/>
+                                    <field name="disposition"/>
+                                    <field name="reason_no_action"
+                                           invisible="disposition != 'sin_accion'"/>
+                                    <field name="alert_id" readonly="1"/>
+                                    <button name="action_generate_nc" type="object"
+                                            string="Generar NC" icon="fa-exclamation-triangle"
+                                            invisible="alert_id or finding_type in ('conformidad','oportunidad')"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Conclusión">
+                            <field name="conclusion" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_audit_view_list" model="ir.ui.view">
+        <field name="name">sgi.audit.list</field>
+        <field name="model">sgi.audit</field>
+        <field name="arch" type="xml">
+            <list string="Auditorías">
+                <field name="folio"/>
+                <field name="audit_type"/>
+                <field name="date_planned"/>
+                <field name="lead_auditor_id"/>
+                <field name="finding_count"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_audit_view_search" model="ir.ui.view">
+        <field name="name">sgi.audit.search</field>
+        <field name="model">sgi.audit</field>
+        <field name="arch" type="xml">
+            <search string="Auditorías">
+                <field name="folio"/>
+                <field name="lead_auditor_id"/>
+                <field name="process_ids"/>
+                <filter name="open" string="En curso"
+                        domain="[('state','not in',('cerrada',))]"/>
+                <group>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'audit_type'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_audit_action" model="ir.actions.act_window">
+        <field name="name">Auditorías</field>
+        <field name="res_model">sgi.audit</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_audit_view_search"/>
+    </record>
+
+    <!-- ================= HALLAZGOS ================= -->
+    <record id="sgi_audit_finding_view_list" model="ir.ui.view">
+        <field name="name">sgi.audit.finding.list</field>
+        <field name="model">sgi.audit.finding</field>
+        <field name="arch" type="xml">
+            <list string="Hallazgos">
+                <field name="audit_id"/>
+                <field name="finding_type"/>
+                <field name="norm_clause_id"/>
+                <field name="process_id"/>
+                <field name="description"/>
+                <field name="disposition"/>
+                <field name="alert_id" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_audit_finding_action" model="ir.actions.act_window">
+        <field name="name">Hallazgos</field>
+        <field name="res_model">sgi.audit.finding</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

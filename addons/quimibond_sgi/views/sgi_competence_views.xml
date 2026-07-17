@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= Brechas de competencia (DNC) ================= -->
+    <record id="sgi_competence_gap_view_list" model="ir.ui.view">
+        <field name="name">sgi.competence.gap.list</field>
+        <field name="model">sgi.competence.gap</field>
+        <field name="arch" type="xml">
+            <list string="Brechas de competencia" create="false" edit="false"
+                  decoration-danger="gap >= 50" decoration-warning="gap &lt; 50">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="job_id"/>
+                <field name="skill_type_id"/>
+                <field name="skill_id"/>
+                <field name="required_level_id"/>
+                <field name="current_level_id"/>
+                <field name="gap"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_competence_gap_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.competence.gap.pivot</field>
+        <field name="model">sgi.competence.gap</field>
+        <field name="arch" type="xml">
+            <pivot string="Brechas por departamento">
+                <field name="department_id" type="row"/>
+                <field name="skill_type_id" type="col"/>
+                <field name="gap" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_competence_gap_view_search" model="ir.ui.view">
+        <field name="name">sgi.competence.gap.search</field>
+        <field name="model">sgi.competence.gap</field>
+        <field name="arch" type="xml">
+            <search string="Brechas de competencia">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="skill_id"/>
+                <group>
+                    <filter name="group_department" string="Departamento"
+                            context="{'group_by': 'department_id'}"/>
+                    <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_skill_type" string="Tipo de competencia"
+                            context="{'group_by': 'skill_type_id'}"/>
+                    <filter name="group_employee" string="Empleado"
+                            context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_competence_gap_action" model="ir.actions.act_window">
+        <field name="name">Brechas de competencia (DNC)</field>
+        <field name="res_model">sgi.competence.gap</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_competence_gap_view_search"/>
+        <field name="context">{'search_default_group_department': 1}</field>
+    </record>
+
+    <!-- ================= hr.employee: botón de brechas ================= -->
+    <record id="sgi_employee_view_form_competence" model="ir.ui.view">
+        <field name="name">hr.employee.form.sgi.competence</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_skill_gaps" type="object" class="oe_stat_button"
+                        icon="fa-graduation-cap">
+                    <field name="sgi_skill_gap_count" widget="statinfo" string="Brechas"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

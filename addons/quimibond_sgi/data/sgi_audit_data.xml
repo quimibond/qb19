@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ============================================================= -->
+    <!-- Checklist de auditoría interna ISO 9001 (secciones 4-10).     -->
+    <!-- Plantilla de encuesta reutilizable en sgi.audit.survey_id.    -->
+    <!-- ============================================================= -->
+    <record id="sgi_survey_audit_9001" model="survey.survey">
+        <field name="title">Checklist Auditoría Interna ISO 9001:2015</field>
+        <field name="survey_type">custom</field>
+        <field name="description"><![CDATA[<p>Lista de verificación por cláusula. Marque Conforme / No conforme / Observación y registre la evidencia.</p>]]></field>
+    </record>
+
+    <!-- Cláusula 4 -->
+    <record id="sgi_survey_page_4" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="is_page" eval="True"/>
+        <field name="sequence">10</field>
+        <field name="title">4. Contexto de la organización</field>
+    </record>
+    <record id="sgi_survey_q_4" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="sequence">11</field>
+        <field name="title">¿La organización determina su contexto, partes interesadas y el alcance del SGC (4.1-4.4)?</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_survey_a_4_c" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_4"/><field name="value">Conforme</field><field name="sequence">1</field>
+    </record>
+    <record id="sgi_survey_a_4_nc" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_4"/><field name="value">No conforme</field><field name="sequence">2</field>
+    </record>
+    <record id="sgi_survey_a_4_o" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_4"/><field name="value">Observación</field><field name="sequence">3</field>
+    </record>
+
+    <!-- Cláusula 5 -->
+    <record id="sgi_survey_page_5" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="is_page" eval="True"/>
+        <field name="sequence">20</field>
+        <field name="title">5. Liderazgo</field>
+    </record>
+    <record id="sgi_survey_q_5" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="sequence">21</field>
+        <field name="title">¿La alta dirección demuestra liderazgo, política y asignación de roles (5.1-5.3)?</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_survey_a_5_c" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_5"/><field name="value">Conforme</field><field name="sequence">1</field>
+    </record>
+    <record id="sgi_survey_a_5_nc" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_5"/><field name="value">No conforme</field><field name="sequence">2</field>
+    </record>
+    <record id="sgi_survey_a_5_o" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_5"/><field name="value">Observación</field><field name="sequence">3</field>
+    </record>
+
+    <!-- Cláusula 6 -->
+    <record id="sgi_survey_page_6" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="is_page" eval="True"/>
+        <field name="sequence">30</field>
+        <field name="title">6. Planificación</field>
+    </record>
+    <record id="sgi_survey_q_6" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="sequence">31</field>
+        <field name="title">¿Se abordan riesgos y oportunidades, objetivos y planificación de cambios (6.1-6.3)?</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_survey_a_6_c" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_6"/><field name="value">Conforme</field><field name="sequence">1</field>
+    </record>
+    <record id="sgi_survey_a_6_nc" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_6"/><field name="value">No conforme</field><field name="sequence">2</field>
+    </record>
+    <record id="sgi_survey_a_6_o" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_6"/><field name="value">Observación</field><field name="sequence">3</field>
+    </record>
+
+    <!-- Cláusula 7 -->
+    <record id="sgi_survey_page_7" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="is_page" eval="True"/>
+        <field name="sequence">40</field>
+        <field name="title">7. Apoyo</field>
+    </record>
+    <record id="sgi_survey_q_7" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="sequence">41</field>
+        <field name="title">¿Se gestionan recursos, competencia, toma de conciencia, comunicación e información documentada (7.1-7.5)?</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_survey_a_7_c" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_7"/><field name="value">Conforme</field><field name="sequence">1</field>
+    </record>
+    <record id="sgi_survey_a_7_nc" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_7"/><field name="value">No conforme</field><field name="sequence">2</field>
+    </record>
+    <record id="sgi_survey_a_7_o" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_7"/><field name="value">Observación</field><field name="sequence">3</field>
+    </record>
+
+    <!-- Cláusula 8 -->
+    <record id="sgi_survey_page_8" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="is_page" eval="True"/>
+        <field name="sequence">50</field>
+        <field name="title">8. Operación</field>
+    </record>
+    <record id="sgi_survey_q_8" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="sequence">51</field>
+        <field name="title">¿Se controla la operación, diseño, proveedores externos, producción y salidas no conformes (8.1-8.7)?</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_survey_a_8_c" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_8"/><field name="value">Conforme</field><field name="sequence">1</field>
+    </record>
+    <record id="sgi_survey_a_8_nc" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_8"/><field name="value">No conforme</field><field name="sequence">2</field>
+    </record>
+    <record id="sgi_survey_a_8_o" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_8"/><field name="value">Observación</field><field name="sequence">3</field>
+    </record>
+
+    <!-- Cláusula 9 -->
+    <record id="sgi_survey_page_9" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="is_page" eval="True"/>
+        <field name="sequence">60</field>
+        <field name="title">9. Evaluación del desempeño</field>
+    </record>
+    <record id="sgi_survey_q_9" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="sequence">61</field>
+        <field name="title">¿Se realiza seguimiento/medición, auditoría interna y revisión por la dirección (9.1-9.3)?</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_survey_a_9_c" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_9"/><field name="value">Conforme</field><field name="sequence">1</field>
+    </record>
+    <record id="sgi_survey_a_9_nc" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_9"/><field name="value">No conforme</field><field name="sequence">2</field>
+    </record>
+    <record id="sgi_survey_a_9_o" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_9"/><field name="value">Observación</field><field name="sequence">3</field>
+    </record>
+
+    <!-- Cláusula 10 -->
+    <record id="sgi_survey_page_10" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="is_page" eval="True"/>
+        <field name="sequence">70</field>
+        <field name="title">10. Mejora</field>
+    </record>
+    <record id="sgi_survey_q_10" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_audit_9001"/>
+        <field name="sequence">71</field>
+        <field name="title">¿Se gestionan no conformidades, acciones correctivas y mejora continua (10.1-10.3)?</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_survey_a_10_c" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_10"/><field name="value">Conforme</field><field name="sequence">1</field>
+    </record>
+    <record id="sgi_survey_a_10_nc" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_10"/><field name="value">No conforme</field><field name="sequence">2</field>
+    </record>
+    <record id="sgi_survey_a_10_o" model="survey.question.answer">
+        <field name="question_id" ref="sgi_survey_q_10"/><field name="value">Observación</field><field name="sequence">3</field>
+    </record>
+</odoo>

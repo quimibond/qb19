@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_ppap_view_form" model="ir.ui.view">
+        <field name="name">sgi.ppap.form</field>
+        <field name="model">sgi.ppap</field>
+        <field name="arch" type="xml">
+            <form string="PPAP">
+                <header>
+                    <button name="action_mark_enviado" type="object" string="Marcar enviado"
+                            class="btn-primary" invisible="state != 'preparacion'"/>
+                    <button name="action_approve" type="object" string="Aprobar"
+                            class="btn-primary" invisible="state != 'enviado'"/>
+                    <button name="action_set_interino" type="object" string="Interino"
+                            invisible="state != 'enviado'"/>
+                    <button name="action_reject" type="object" string="Rechazar"
+                            invisible="state not in ('enviado', 'interino')"/>
+                    <button name="action_reset" type="object" string="Regresar a preparación"
+                            invisible="state == 'preparacion'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="preparacion,enviado,aprobado"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="product_tmpl_id"/>
+                            <field name="level"/>
+                        </group>
+                        <group>
+                            <field name="reason"/>
+                            <field name="date_submitted"/>
+                            <field name="date_decision"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Elementos (18)">
+                            <field name="element_ids">
+                                <list editable="bottom" default_order="sequence">
+                                    <field name="sequence"/>
+                                    <field name="name"/>
+                                    <field name="state"/>
+                                    <field name="fmea_id"/>
+                                    <field name="control_plan_id"/>
+                                    <field name="document_id"/>
+                                    <field name="notes"/>
+                                    <field name="template_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notas">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_ppap_view_list" model="ir.ui.view">
+        <field name="name">sgi.ppap.list</field>
+        <field name="model">sgi.ppap</field>
+        <field name="arch" type="xml">
+            <list string="PPAP"
+                  decoration-success="state == 'aprobado'"
+                  decoration-warning="state == 'interino'"
+                  decoration-danger="state == 'rechazado'">
+                <field name="folio"/>
+                <field name="partner_id"/>
+                <field name="product_tmpl_id"/>
+                <field name="level"/>
+                <field name="reason"/>
+                <field name="date_submitted"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_ppap_view_search" model="ir.ui.view">
+        <field name="name">sgi.ppap.search</field>
+        <field name="model">sgi.ppap</field>
+        <field name="arch" type="xml">
+            <search string="PPAP">
+                <field name="folio"/>
+                <field name="partner_id"/>
+                <field name="product_tmpl_id"/>
+                <filter name="aprobado" string="Aprobados" domain="[('state','=','aprobado')]"/>
+                <filter name="en_proceso" string="En proceso"
+                        domain="[('state','in',('preparacion','enviado','interino'))]"/>
+                <group>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_reason" string="Motivo" context="{'group_by': 'reason'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_ppap_action" model="ir.actions.act_window">
+        <field name="name">PPAP</field>
+        <field name="res_model">sgi.ppap</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_ppap_view_search"/>
+    </record>
+
+    <!-- ================= Catálogo de elementos ================= -->
+    <record id="sgi_ppap_element_template_view_list" model="ir.ui.view">
+        <field name="name">sgi.ppap.element.template.list</field>
+        <field name="model">sgi.ppap.element.template</field>
+        <field name="arch" type="xml">
+            <list string="Elementos PPAP (catálogo)" editable="bottom" default_order="sequence">
+                <field name="sequence"/>
+                <field name="name"/>
+                <field name="is_psw"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_ppap_element_template_action" model="ir.actions.act_window">
+        <field name="name">Catálogo de elementos PPAP</field>
+        <field name="res_model">sgi.ppap.element.template</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- ================= Smart buttons en cliente y producto ================= -->
+    <record id="sgi_ppap_res_partner_form" model="ir.ui.view">
+        <field name="name">res.partner.form.sgi.ppap</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_sgi_ppap" type="object" class="oe_stat_button"
+                        icon="fa-check-circle-o" invisible="not is_company">
+                    <field name="sgi_ppap_count" widget="statinfo" string="PPAP"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_ppap_product_template_form" model="ir.ui.view">
+        <field name="name">product.template.form.sgi.ppap</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_sgi_ppap" type="object" class="oe_stat_button"
+                        icon="fa-check-circle-o">
+                    <field name="sgi_ppap_count" widget="statinfo" string="PPAP"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

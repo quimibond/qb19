@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Los 18 elementos del PPAP (AIAG 4th edition) -->
+    <record id="sgi_ppap_el_01" model="sgi.ppap.element.template">
+        <field name="sequence">1</field>
+        <field name="name">Registros de diseño</field>
+    </record>
+    <record id="sgi_ppap_el_02" model="sgi.ppap.element.template">
+        <field name="sequence">2</field>
+        <field name="name">Documentos de cambio de ingeniería</field>
+    </record>
+    <record id="sgi_ppap_el_03" model="sgi.ppap.element.template">
+        <field name="sequence">3</field>
+        <field name="name">Aprobación de ingeniería del cliente</field>
+    </record>
+    <record id="sgi_ppap_el_04" model="sgi.ppap.element.template">
+        <field name="sequence">4</field>
+        <field name="name">AMEF de diseño (DFMEA)</field>
+    </record>
+    <record id="sgi_ppap_el_05" model="sgi.ppap.element.template">
+        <field name="sequence">5</field>
+        <field name="name">Diagrama de flujo del proceso</field>
+    </record>
+    <record id="sgi_ppap_el_06" model="sgi.ppap.element.template">
+        <field name="sequence">6</field>
+        <field name="name">AMEF de proceso (PFMEA)</field>
+    </record>
+    <record id="sgi_ppap_el_07" model="sgi.ppap.element.template">
+        <field name="sequence">7</field>
+        <field name="name">Plan de control</field>
+    </record>
+    <record id="sgi_ppap_el_08" model="sgi.ppap.element.template">
+        <field name="sequence">8</field>
+        <field name="name">Estudios de análisis de sistemas de medición (MSA)</field>
+    </record>
+    <record id="sgi_ppap_el_09" model="sgi.ppap.element.template">
+        <field name="sequence">9</field>
+        <field name="name">Resultados dimensionales</field>
+    </record>
+    <record id="sgi_ppap_el_10" model="sgi.ppap.element.template">
+        <field name="sequence">10</field>
+        <field name="name">Resultados de pruebas de material y desempeño</field>
+    </record>
+    <record id="sgi_ppap_el_11" model="sgi.ppap.element.template">
+        <field name="sequence">11</field>
+        <field name="name">Estudios iniciales del proceso (SPC / Cpk)</field>
+    </record>
+    <record id="sgi_ppap_el_12" model="sgi.ppap.element.template">
+        <field name="sequence">12</field>
+        <field name="name">Documentación del laboratorio calificado</field>
+    </record>
+    <record id="sgi_ppap_el_13" model="sgi.ppap.element.template">
+        <field name="sequence">13</field>
+        <field name="name">Reporte de aprobación de apariencia (AAR)</field>
+    </record>
+    <record id="sgi_ppap_el_14" model="sgi.ppap.element.template">
+        <field name="sequence">14</field>
+        <field name="name">Muestras de producto / partes de producción</field>
+    </record>
+    <record id="sgi_ppap_el_15" model="sgi.ppap.element.template">
+        <field name="sequence">15</field>
+        <field name="name">Muestra maestra</field>
+    </record>
+    <record id="sgi_ppap_el_16" model="sgi.ppap.element.template">
+        <field name="sequence">16</field>
+        <field name="name">Ayudas de verificación (check aids)</field>
+    </record>
+    <record id="sgi_ppap_el_17" model="sgi.ppap.element.template">
+        <field name="sequence">17</field>
+        <field name="name">Requisitos específicos del cliente</field>
+    </record>
+    <record id="sgi_ppap_el_18" model="sgi.ppap.element.template">
+        <field name="sequence">18</field>
+        <field name="name">Garantía de presentación de la parte (PSW)</field>
+        <field name="is_psw" eval="True"/>
+    </record>
+</odoo>

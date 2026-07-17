@@ -937,6 +937,18 @@ class QuimibondSyncFinance(models.TransientModel):
                     ('parent_state', '=', 'posted'),
                     ('display_type', 'not in', ['line_section', 'line_note']),
                     ('company_id', 'in', cids),
+                    # 2026-07-03: excluir la PÓLIZA DE CIERRE ANUAL (asiento
+                    # manual del 31-dic que acredita todo el P&L y netea el
+                    # año dentro del período diciembre — Dr/2024/12/41 y
+                    # Dr/2025/12/32). Sin esto, cualquier rango que cruce un
+                    # diciembre cerrado (y:2025, ltm, 3y, 5y, all) colapsa a
+                    # ~$0 en la UI ("Sin datos de P&L") y diciembre pierde su
+                    # operación real. El resultado del ejercicio lo sigue
+                    # cubriendo la fila SINTÉTICA equity_unaffected (§14.2),
+                    # que con esta exclusión refleja la utilidad real de cada
+                    # mes, diciembre incluido. Odoo incluye refs NULL en
+                    # 'not ilike' (agrega OR ref IS NULL).
+                    ('move_id.ref', 'not ilike', 'POLIZA DE CIERRE ANUAL'),
                 ],
                 aggregates=['debit:sum', 'credit:sum', 'balance:sum'],
                 groupby=['account_id', 'date:month', 'company_id'],

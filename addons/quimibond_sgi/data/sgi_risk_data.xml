@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Umbrales de nivel de atención R&O (parametrizables) -->
+    <record id="sgi_param_risk_inmediata" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.risk_ryo_inmediata</field>
+        <field name="value">16</field>
+    </record>
+    <record id="sgi_param_risk_media" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.risk_ryo_media</field>
+        <field name="value">9</field>
+    </record>
+    <record id="sgi_param_risk_intermedia" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.risk_ryo_intermedia</field>
+        <field name="value">4</field>
+    </record>
+
+    <!-- Catálogo de categorías de riesgo/oportunidad -->
+    <record id="sgi_risk_cat_operativo" model="sgi.risk.category">
+        <field name="name">Operativo</field>
+    </record>
+    <record id="sgi_risk_cat_financiero" model="sgi.risk.category">
+        <field name="name">Financiero</field>
+    </record>
+    <record id="sgi_risk_cat_legal" model="sgi.risk.category">
+        <field name="name">Legal</field>
+    </record>
+    <record id="sgi_risk_cat_ambiental" model="sgi.risk.category">
+        <field name="name">Ambiental</field>
+    </record>
+    <record id="sgi_risk_cat_sst" model="sgi.risk.category">
+        <field name="name">SST (Seguridad y Salud)</field>
+    </record>
+    <record id="sgi_risk_cat_tecnologico" model="sgi.risk.category">
+        <field name="name">Tecnológico</field>
+    </record>
+    <record id="sgi_risk_cat_patrimonial" model="sgi.risk.category">
+        <field name="name">Patrimonial</field>
+    </record>
+    <record id="sgi_risk_cat_imagen" model="sgi.risk.category">
+        <field name="name">Imagen / Reputación</field>
+    </record>
+    <record id="sgi_risk_cat_proveedores" model="sgi.risk.category">
+        <field name="name">Proveedores</field>
+    </record>
+    <record id="sgi_risk_cat_rh" model="sgi.risk.category">
+        <field name="name">Recursos Humanos</field>
+    </record>
+</odoo>

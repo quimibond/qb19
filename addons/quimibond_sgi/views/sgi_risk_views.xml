@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= CATEGORÍAS ================= -->
+    <record id="sgi_risk_category_view_list" model="ir.ui.view">
+        <field name="name">sgi.risk.category.list</field>
+        <field name="model">sgi.risk.category</field>
+        <field name="arch" type="xml">
+            <list string="Categorías de riesgo" editable="bottom">
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_risk_category_action" model="ir.actions.act_window">
+        <field name="name">Categorías de riesgo</field>
+        <field name="res_model">sgi.risk.category</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- ================= RIESGO — FORM ================= -->
+    <record id="sgi_risk_view_form" model="ir.ui.view">
+        <field name="name">sgi.risk.form</field>
+        <field name="model">sgi.risk</field>
+        <field name="arch" type="xml">
+            <form string="Riesgo / Oportunidad">
+                <header>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="identificado,en_tratamiento,controlado,cerrado"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                        <field name="name" placeholder="Aspecto / peligro / situación"/>
+                    </div>
+                    <group>
+                        <group string="Clasificación">
+                            <field name="instrument"/>
+                            <field name="kind"/>
+                            <field name="category_id"/>
+                            <field name="source"/>
+                            <field name="foda_type" invisible="instrument != 'foda'"
+                                   required="instrument == 'foda'"/>
+                            <field name="condition" invisible="instrument != 'iper'"/>
+                            <field name="active" invisible="1"/>
+                            <field name="has_finished_actions" invisible="1"/>
+                        </group>
+                        <group string="Ubicación">
+                            <field name="process_id"/>
+                            <field name="sgi_area_id"/>
+                            <field name="job_id"/>
+                            <field name="next_review_date"/>
+                            <field name="operational_control_id"
+                                   invisible="instrument != 'ambiental'"/>
+                        </group>
+                    </group>
+                    <group string="Descripción">
+                        <field name="consequence" placeholder="Consecuencia..."/>
+                        <field name="existing_controls" placeholder="Controles existentes..."/>
+                    </group>
+                    <group string="Evaluación" invisible="instrument == 'foda'">
+                        <group string="Inicial">
+                            <field name="eval_probability"/>
+                            <field name="eval_impact"/>
+                            <field name="score"/>
+                            <field name="attention_level" widget="badge"
+                                   decoration-danger="attention_level in ('inmediata','alto')"
+                                   decoration-warning="attention_level in ('media','medio')"
+                                   decoration-info="attention_level in ('intermedia','bajo','baja')"/>
+                        </group>
+                        <group string="Residual" invisible="not has_finished_actions">
+                            <field name="residual_probability"/>
+                            <field name="residual_impact"/>
+                            <field name="residual_score"/>
+                            <field name="residual_level" widget="badge"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Acciones">
+                            <field name="action_line_ids" context="{'default_risk_id': id}">
+                                <list editable="bottom"
+                                      decoration-danger="state == 'vencida'"
+                                      decoration-success="state == 'terminada'">
+                                    <field name="action_type"/>
+                                    <field name="name"/>
+                                    <field name="responsible_id"/>
+                                    <field name="date_commit"/>
+                                    <field name="date_done"/>
+                                    <field name="progress"/>
+                                    <field name="state"/>
+                                    <field name="alert_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================= RIESGO — KANBAN por nivel ================= -->
+    <record id="sgi_risk_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.risk.kanban</field>
+        <field name="model">sgi.risk</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="attention_level" class="o_kanban_small_column">
+                <field name="folio"/>
+                <field name="attention_level"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_title">
+                                <strong><field name="folio"/></strong>
+                            </div>
+                            <div><field name="name"/></div>
+                            <div class="text-muted">
+                                <field name="instrument"/> — <field name="process_id"/>
+                            </div>
+                            <div>Nivel: <field name="score"/></div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ================= RIESGO — LIST ================= -->
+    <record id="sgi_risk_view_list" model="ir.ui.view">
+        <field name="name">sgi.risk.list</field>
+        <field name="model">sgi.risk</field>
+        <field name="arch" type="xml">
+            <list string="Riesgos y oportunidades"
+                  decoration-danger="attention_level in ('inmediata','alto')"
+                  decoration-warning="attention_level in ('media','medio')">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="instrument"/>
+                <field name="kind"/>
+                <field name="process_id"/>
+                <field name="score"/>
+                <field name="attention_level" widget="badge"/>
+                <field name="next_review_date"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ================= RIESGO — PIVOT proceso × nivel ================= -->
+    <record id="sgi_risk_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.risk.pivot</field>
+        <field name="model">sgi.risk</field>
+        <field name="arch" type="xml">
+            <pivot string="Mapa de calor">
+                <field name="process_id" type="row"/>
+                <field name="attention_level" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_risk_view_search" model="ir.ui.view">
+        <field name="name">sgi.risk.search</field>
+        <field name="model">sgi.risk</field>
+        <field name="arch" type="xml">
+            <search string="Riesgos">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="process_id"/>
+                <field name="category_id"/>
+                <filter name="ryo" string="R&amp;O" domain="[('instrument','=','ryo')]"/>
+                <filter name="iper" string="IPER" domain="[('instrument','=','iper')]"/>
+                <filter name="ambiental" string="Ambiental" domain="[('instrument','=','ambiental')]"/>
+                <filter name="patrimonial" string="Patrimonial" domain="[('instrument','=','patrimonial')]"/>
+                <filter name="foda" string="FODA" domain="[('instrument','=','foda')]"/>
+                <separator/>
+                <filter name="high" string="Atención alta/inmediata"
+                        domain="[('attention_level','in',('inmediata','alto'))]"/>
+                <group>
+                    <filter name="group_instrument" string="Instrumento" context="{'group_by': 'instrument'}"/>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_level" string="Nivel" context="{'group_by': 'attention_level'}"/>
+                    <filter name="group_category" string="Categoría" context="{'group_by': 'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_risk_action" model="ir.actions.act_window">
+        <field name="name">Riesgos y oportunidades</field>
+        <field name="res_model">sgi.risk</field>
+        <field name="view_mode">kanban,list,pivot,form</field>
+        <field name="search_view_id" ref="sgi_risk_view_search"/>
+    </record>
+</odoo>

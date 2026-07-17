@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ FLUJOS ============ -->
+    <record id="sgi_process_flow_view_list" model="ir.ui.view">
+        <field name="name">sgi.process.flow.list</field>
+        <field name="model">sgi.process.flow</field>
+        <field name="arch" type="xml">
+            <list string="Flujos" editable="bottom">
+                <field name="from_process_id"/>
+                <field name="name"/>
+                <field name="to_process_id"/>
+                <field name="document_id"/>
+                <field name="odoo_model_id"/>
+                <button name="action_view_records" type="object" string="Ver registros"
+                        icon="fa-external-link" invisible="not odoo_model_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_process_flow_view_form" model="ir.ui.view">
+        <field name="name">sgi.process.flow.form</field>
+        <field name="model">sgi.process.flow</field>
+        <field name="arch" type="xml">
+            <form string="Flujo">
+                <header>
+                    <button name="action_view_records" type="object"
+                            string="Ver registros" class="btn-primary"
+                            invisible="not odoo_model_id"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="from_process_id"/>
+                            <field name="to_process_id"/>
+                            <field name="name"/>
+                        </group>
+                        <group>
+                            <field name="document_id"/>
+                            <field name="odoo_model_id"/>
+                        </group>
+                    </group>
+                    <group string="Criterio de aceptación">
+                        <field name="acceptance_criteria" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_process_flow_action" model="ir.actions.act_window">
+        <field name="name">Flujos entre procesos</field>
+        <field name="res_model">sgi.process.flow</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ============ PROCESOS ============ -->
+    <record id="sgi_process_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.process.kanban</field>
+        <field name="model">sgi.process</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="parent_id" class="o_kanban_small_column">
+                <field name="nc_count"/>
+                <field name="overdue_action_count"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_title">
+                                <strong><field name="code"/> — <field name="name"/></strong>
+                            </div>
+                            <div class="o_kanban_record_subtitle">
+                                <field name="process_type"/>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <span class="text-danger" t-if="record.nc_count.raw_value">
+                                    NC abiertas: <field name="nc_count"/>
+                                </span>
+                                <span class="text-warning" t-if="record.overdue_action_count.raw_value">
+                                    Acciones vencidas: <field name="overdue_action_count"/>
+                                </span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="sgi_process_view_list" model="ir.ui.view">
+        <field name="name">sgi.process.list</field>
+        <field name="model">sgi.process</field>
+        <field name="arch" type="xml">
+            <list string="Procesos">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="process_type"/>
+                <field name="parent_id"/>
+                <field name="owner_id"/>
+                <field name="nc_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_process_view_form" model="ir.ui.view">
+        <field name="name">sgi.process.form</field>
+        <field name="model">sgi.process</field>
+        <field name="arch" type="xml">
+            <form string="Proceso">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_ncs" type="object" class="oe_stat_button" icon="fa-exclamation-triangle">
+                            <field name="nc_count" widget="statinfo" string="NC abiertas"/>
+                        </button>
+                        <button name="action_open_ncs" type="object" class="oe_stat_button" icon="fa-clock-o">
+                            <field name="overdue_action_count" widget="statinfo" string="Acc. vencidas"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nombre del proceso"/></h1>
+                        <h3><field name="code" placeholder="Clave"/></h3>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="process_type"/>
+                            <field name="parent_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="owner_id"/>
+                            <field name="department_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Entradas">
+                            <field name="in_flow_ids">
+                                <list editable="bottom">
+                                    <field name="from_process_id"/>
+                                    <field name="name"/>
+                                    <field name="document_id"/>
+                                    <field name="acceptance_criteria"/>
+                                    <field name="odoo_model_id" optional="show"/>
+                                    <button name="action_view_records" type="object"
+                                            string="Ver registros" icon="fa-external-link"
+                                            invisible="not odoo_model_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Salidas">
+                            <field name="out_flow_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="to_process_id"/>
+                                    <field name="document_id"/>
+                                    <field name="acceptance_criteria"/>
+                                    <field name="odoo_model_id" optional="show"/>
+                                    <button name="action_view_records" type="object"
+                                            string="Ver registros" icon="fa-external-link"
+                                            invisible="not odoo_model_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Documentos">
+                            <field name="document_ids"/>
+                        </page>
+                        <page string="Puestos">
+                            <field name="job_ids"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_process_action" model="ir.actions.act_window">
+        <field name="name">Procesos</field>
+        <field name="res_model">sgi.process</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+    <record id="sgi_process_action_panel" model="ir.actions.act_window">
+        <field name="name">Panel de procesos</field>
+        <field name="res_model">sgi.process</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+</odoo>

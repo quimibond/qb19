@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_mgmt_review" model="ir.actions.report">
+        <field name="name">Acta de Revisión por la Dirección (F-IT-P-A10-01-01)</field>
+        <field name="model">sgi.management.review</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_mgmt_review_document</field>
+        <field name="report_file">quimibond_sgi.report_mgmt_review_document</field>
+        <field name="binding_model_id" ref="model_sgi_management_review"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_mgmt_review_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Acta de Revisión por la Dirección</h2>
+                        <h5 class="text-center text-muted">F-IT-P-A10-01-01</h5>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tr>
+                                <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
+                                <td><strong>Fecha:</strong> <span t-field="doc.date"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Periodo:</strong>
+                                    <span t-field="doc.period_from"/> — <span t-field="doc.period_to"/></td>
+                                <td><strong>Estado:</strong> <span t-field="doc.state"/></td>
+                            </tr>
+                        </table>
+
+                        <h4>Asistentes</h4>
+                        <p t-esc="', '.join(doc.attendee_ids.mapped('name'))"/>
+
+                        <h4>Entradas (9.3.2)</h4>
+                        <p><strong>1. Acuerdos previos:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.prev_agreements_summary"/></p>
+                        <p><strong>2. No conformidades:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.nc_summary"/></p>
+                        <p><strong>3. Reclamaciones:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.complaints_summary"/></p>
+                        <p><strong>4. Auditorías:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.audit_summary"/></p>
+                        <p><strong>5. Indicadores en rojo:</strong></p>
+                        <ul>
+                            <li t-foreach="doc.kpi_red_measure_ids" t-as="m">
+                                <span t-field="m.indicator_id"/> — <span t-field="m.period_date"/>:
+                                <span t-field="m.value"/>
+                            </li>
+                        </ul>
+                        <p><strong>6. Proveedores:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.supplier_summary"/></p>
+                        <p><strong>7. Riesgos de atención inmediata/alta:</strong></p>
+                        <ul>
+                            <li t-foreach="doc.risk_high_ids" t-as="r">
+                                <span t-field="r.folio"/> — <span t-field="r.name"/>
+                                (<span t-field="r.attention_level"/>)
+                            </li>
+                        </ul>
+                        <p><strong>8. Desempeño ambiental:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.env_summary"/></p>
+                        <p><strong>9. Recursos:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.resources_note"/></p>
+                        <p><strong>10. Cambios documentales:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.doc_changes_summary"/></p>
+
+                        <h4>Acuerdos (salidas)</h4>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr><th>Acuerdo</th><th>Responsable</th><th>Fecha límite</th><th>Tarea</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.agreement_ids" t-as="agr">
+                                    <td><span t-field="agr.name"/></td>
+                                    <td><span t-field="agr.responsible_id"/></td>
+                                    <td><span t-field="agr.deadline"/></td>
+                                    <td><span t-field="agr.task_id"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
