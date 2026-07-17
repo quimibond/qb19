@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_norm_view_form" model="ir.ui.view">
+        <field name="name">sgi.norm.form</field>
+        <field name="model">sgi.norm</field>
+        <field name="arch" type="xml">
+            <form string="Norma">
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="active"/>
+                    </group>
+                    <notebook>
+                        <page string="Cláusulas">
+                            <field name="clause_ids">
+                                <list editable="bottom">
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_norm_view_list" model="ir.ui.view">
+        <field name="name">sgi.norm.list</field>
+        <field name="model">sgi.norm</field>
+        <field name="arch" type="xml">
+            <list string="Normas">
+                <field name="code"/>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_norm_action" model="ir.actions.act_window">
+        <field name="name">Normas ISO</field>
+        <field name="res_model">sgi.norm</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="sgi_norm_clause_view_list" model="ir.ui.view">
+        <field name="name">sgi.norm.clause.list</field>
+        <field name="model">sgi.norm.clause</field>
+        <field name="arch" type="xml">
+            <list string="Cláusulas">
+                <field name="norm_id"/>
+                <field name="code"/>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_norm_clause_action" model="ir.actions.act_window">
+        <field name="name">Cláusulas</field>
+        <field name="res_model">sgi.norm.clause</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

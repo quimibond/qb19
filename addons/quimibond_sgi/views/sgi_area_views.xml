@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_area_view_list" model="ir.ui.view">
+        <field name="name">sgi.area.list</field>
+        <field name="model">sgi.area</field>
+        <field name="arch" type="xml">
+            <list string="Áreas SGI">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="department_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_area_view_form" model="ir.ui.view">
+        <field name="name">sgi.area.form</field>
+        <field name="model">sgi.area</field>
+        <field name="arch" type="xml">
+            <form string="Área SGI">
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="department_id"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_area_action" model="ir.actions.act_window">
+        <field name="name">Áreas SGI</field>
+        <field name="res_model">sgi.area</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
