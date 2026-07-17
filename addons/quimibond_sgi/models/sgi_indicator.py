@@ -10,7 +10,10 @@ CALC_MODES = [
     ('otd_compras', "OTD compras (recepciones a tiempo)"),
     ('produccion_vs_programado', "Producido vs programado"),
     ('reproceso', "Reproceso"),
-    ('desperdicio', "Desperdicio"),
+    ('desperdicio', "Desperdicio (subproducto SALDO TEJIDO D)"),
+    ('desperdicio_scrap', "Desperdicio (por desechos / scrap)"),
+    ('calidad_pq', "Calidad PQ (rollos revisados sin defecto)"),
+    ('cumplimiento_programa', "Cumplimiento del programa (MPS)"),
     ('cierre_nc', "Cierre de No Conformidades"),
     ('reclamos_cliente', "Reclamos de cliente"),
     ('disponibilidad_mantto', "Disponibilidad de mantenimiento"),
@@ -149,7 +152,32 @@ class SgiIndicator(models.Model):
         produced = sum(productions.mapped('qty_produced'))
         return round(produced / programmed * 100.0, 2)
 
+    def _sgi_waste_category_ids(self):
+        """Categoría de subproducto de desperdicio (SALDO TEJIDO D) y sus hijas."""
+        name = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.waste_subproduct_category', 'SubProducto')
+        categ = self.env['product.category'].search([('name', '=', name)], limit=1)
+        if not categ:
+            return self.env['product.category']
+        return self.env['product.category'].search([('id', 'child_of', categ.id)])
+
     def _calc_desperdicio(self, date_from, date_to):
+        """Desperdicio real = kilos producidos del subproducto SALDO TEJIDO D
+        (categoría SubProducto) sobre los kilos producidos del periodo."""
+        productions = self._sgi_production_done(date_from, date_to)
+        produced = sum(productions.mapped('qty_produced'))
+        if not produced:
+            return None
+        categ_ids = self._sgi_waste_category_ids()
+        if not categ_ids:
+            return None
+        waste_moves = productions.move_byproduct_ids.filtered(
+            lambda m: m.state == 'done' and m.product_id.categ_id.id in categ_ids.ids)
+        waste = sum(waste_moves.mapped('quantity'))
+        return round(waste / produced * 100.0, 2)
+
+    def _calc_desperdicio_scrap(self, date_from, date_to):
+        """Cálculo histórico por desechos (stock.scrap), conservado como modo aparte."""
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
         scraps = self.env['stock.scrap'].search([
             ('state', '=', 'done'),
@@ -160,6 +188,36 @@ class SgiIndicator(models.Model):
         if not produced:
             return None
         return round(scrap_qty / produced * 100.0, 2)
+
+    def _calc_calidad_pq(self, date_from, date_to):
+        """% de rollos revisados SIN defecto, según el registro de revisado de
+        tela (mrp.revision.log): un defecto se marca con una causa (etiqueta
+        TEJIDO-*). Si el módulo de revisado no está instalado, devuelve None."""
+        if 'mrp.revision.log' not in self.env:
+            return None
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        logs = self.env['mrp.revision.log'].search([
+            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
+        ])
+        total = len(logs)
+        if not total:
+            return None
+        con_defecto = len(logs.filtered(lambda l: l.causa_id))
+        return round((total - con_defecto) / total * 100.0, 2)
+
+    def _calc_cumplimiento_programa(self, date_from, date_to):
+        """Cumplimiento del programa (MPS semanal): kilos producidos vs kilos
+        planificados de las órdenes cuyo inicio programado cae en el periodo."""
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        scheduled = self.env['mrp.production'].search([
+            ('state', '!=', 'cancel'),
+            ('date_start', '>=', dt_from), ('date_start', '<', dt_to),
+        ])
+        planned = sum(scheduled.mapped('product_qty'))
+        if not planned:
+            return None
+        done_qty = sum(scheduled.filtered(lambda m: m.state == 'done').mapped('qty_produced'))
+        return round(done_qty / planned * 100.0, 2)
 
     def _calc_reproceso(self, date_from, date_to):
         # Sin fuente confiable todavía (ver README). Captura manual.
