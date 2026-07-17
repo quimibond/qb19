@@ -16,3 +16,4 @@ from . import test_pegamento
 from . import test_escalate_nc
 from . import test_kpi_fase4
 from . import test_retro_vinculacion
+from . import test_process_map_46
