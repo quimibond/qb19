@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_fmea" model="ir.actions.report">
+        <field name="name">AMEF (P-C10)</field>
+        <field name="model">sgi.fmea</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_fmea_document</field>
+        <field name="report_file">quimibond_sgi.report_fmea_document</field>
+        <field name="binding_model_id" ref="model_sgi_fmea"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="base.paperformat_euro"/>
+    </record>
+
+    <template id="report_fmea_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">AMEF — P-C10</h2>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tr>
+                                <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
+                                <td><strong>Nombre:</strong> <span t-field="doc.name"/></td>
+                                <td><strong>Tipo:</strong> <span t-field="doc.fmea_type"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Producto:</strong> <span t-field="doc.product_tmpl_id"/></td>
+                                <td><strong>Proceso:</strong> <span t-field="doc.process_id"/></td>
+                                <td><strong>Revisión:</strong> <span t-field="doc.revision"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered" style="font-size:9px;">
+                            <thead>
+                                <tr>
+                                    <th>Paso/Función</th>
+                                    <th>Modo de falla</th>
+                                    <th>Efecto</th>
+                                    <th>S</th>
+                                    <th>Causa</th>
+                                    <th>O</th>
+                                    <th>Controles</th>
+                                    <th>D</th>
+                                    <th>NPR</th>
+                                    <th>Acción</th>
+                                    <th>NPR post</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="line">
+                                    <td><span t-field="line.step"/></td>
+                                    <td><span t-field="line.failure_mode"/></td>
+                                    <td><span t-field="line.effect"/></td>
+                                    <td><span t-field="line.severity"/></td>
+                                    <td><span t-field="line.cause"/></td>
+                                    <td><span t-field="line.occurrence"/></td>
+                                    <td><span t-field="line.current_controls"/></td>
+                                    <td><span t-field="line.detection"/></td>
+                                    <td>
+                                        <strong t-att-style="'color:red;' if line.requires_action else ''"
+                                                t-esc="line.npr"/>
+                                    </td>
+                                    <td>
+                                        <span t-foreach="line.action_line_ids" t-as="act">
+                                            <span t-field="act.name"/><br/>
+                                        </span>
+                                    </td>
+                                    <td><span t-field="line.npr_post"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

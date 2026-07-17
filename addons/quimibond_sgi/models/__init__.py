@@ -14,4 +14,10 @@ from . import sgi_audit
 from . import sgi_risk
 from . import sgi_supplier_eval
 from . import sgi_management_review
+from . import sgi_control_plan
+from . import sgi_calibration
+from . import sgi_fmea
+from . import sgi_ppap
+from . import sgi_incident
+from . import sgi_competence
 from . import sgi_cron

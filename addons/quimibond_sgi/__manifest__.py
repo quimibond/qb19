@@ -14,7 +14,7 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.2.0.0',
+    'version': '19.0.3.0.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -33,6 +33,7 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         'sale_management',
         'maintenance',
         'survey',
+        'hr_skills',
     ],
     'data': [
         # security
@@ -53,6 +54,10 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         'data/sgi_mgmt_review_data.xml',
         'data/sgi_cron.xml',
         'data/sgi_cron_fase2.xml',
+        'data/sgi_sequences_fase3.xml',
+        'data/sgi_ppap_elements.xml',
+        'data/sgi_cron_fase3.xml',
+        'data/sgi_dnc_survey.xml',
         # views
         'views/sgi_area_views.xml',
         'views/sgi_norm_views.xml',
@@ -70,11 +75,20 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         'views/sgi_supplier_eval_views.xml',
         'views/sgi_res_partner_views.xml',
         'views/sgi_management_review_views.xml',
+        'views/sgi_control_plan_views.xml',
+        'views/sgi_calibration_views.xml',
+        'views/sgi_fmea_views.xml',
+        'views/sgi_ppap_views.xml',
+        'views/sgi_incident_views.xml',
+        'views/sgi_competence_views.xml',
         # reports
         'report/report_nc.xml',
         'report/report_news.xml',
         'report/report_audit.xml',
         'report/report_mgmt_review.xml',
+        'report/report_coa.xml',
+        'report/report_fmea.xml',
+        'report/report_incident.xml',
         # menus
         'views/sgi_menus.xml',
     ],
