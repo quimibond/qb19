@@ -174,10 +174,10 @@ class SgiDocumentAck(models.Model):
     ], string="Estado", default='pendiente', required=True)
     ack_date = fields.Datetime(string="Fecha de acuse", readonly=True)
 
-    _sql_constraints = [
-        ('doc_employee_uniq', 'unique(document_id, employee_id)',
-         "Ya existe un acuse para este empleado y documento."),
-    ]
+    _doc_employee_uniq = models.Constraint(
+        'unique(document_id, employee_id)',
+        "Ya existe un acuse para este empleado y documento.",
+    )
 
     def action_mark_read(self):
         for ack in self:

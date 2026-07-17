@@ -12,9 +12,10 @@ class SgiArea(models.Model):
     department_id = fields.Many2one('hr.department', string="Departamento")
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('code_uniq', 'unique(code)', "La clave de área debe ser única."),
-    ]
+    _code_uniq = models.Constraint(
+        'unique(code)',
+        "La clave de área debe ser única.",
+    )
 
     @api.depends('code', 'name')
     def _compute_display_name(self):
