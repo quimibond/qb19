@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ============================================================= -->
+    <!-- KPIs reales F-P-A10-03. calc_mode=manual salvo indicación.    -->
+    <!-- nc_on_red arranca en False: se activa tras validar 1 mes vs   -->
+    <!-- el Excel (ver README, plan de activación gradual).            -->
+    <!-- Responsables y procesos se asignan en la instancia.           -->
+    <!-- ============================================================= -->
+
+    <!-- ===================== Transversales ===================== -->
+    <record id="sgi_ind_cierre_nc" model="sgi.indicator">
+        <field name="code">TR-01</field>
+        <field name="name">Cierre de No Conformidades (NCA/NCD)</field>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">85</field>
+        <field name="target_acceptable">75</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">cierre_nc</field>
+    </record>
+    <record id="sgi_ind_consumo_papel" model="sgi.indicator">
+        <field name="code">TR-02</field>
+        <field name="name">Consumo de papel 100−(NF/DL×100)</field>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">80</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+    <record id="sgi_ind_consumo_energia" model="sgi.indicator">
+        <field name="code">TR-03</field>
+        <field name="name">Consumo de energía</field>
+        <field name="uom">kWh</field>
+        <field name="direction">lower_better</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+    <record id="sgi_ind_separacion_residuos" model="sgi.indicator">
+        <field name="code">TR-04</field>
+        <field name="name">Separación de residuos</field>
+        <field name="sgi_area_id" ref="sgi_area_e"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">80</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+
+    <!-- ===================== Ventas ===================== -->
+    <record id="sgi_ind_crecimiento_ventas" model="sgi.indicator">
+        <field name="code">VE-01</field>
+        <field name="name">Crecimiento anual de ventas</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_ingresos"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">20</field>
+        <field name="target_acceptable">15</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+    <record id="sgi_ind_presupuesto_ventas" model="sgi.indicator">
+        <field name="code">VE-02</field>
+        <field name="name">Cumplimiento de presupuesto de ventas</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_ingresos"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">80</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">presupuesto_ventas</field>
+    </record>
+
+    <!-- ===================== Compras ===================== -->
+    <record id="sgi_ind_otd_proveedores" model="sgi.indicator">
+        <field name="code">CO-01</field>
+        <field name="name">Entregas a tiempo de proveedores</field>
+        <field name="sgi_area_id" ref="sgi_area_a"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">85</field>
+        <field name="target_acceptable">75</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">otd_compras</field>
+    </record>
+    <record id="sgi_ind_requisiciones" model="sgi.indicator">
+        <field name="code">CO-02</field>
+        <field name="name">Requisiciones atendidas</field>
+        <field name="sgi_area_id" ref="sgi_area_a"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">95</field>
+        <field name="target_acceptable">85</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+    <record id="sgi_ind_errores_oc" model="sgi.indicator">
+        <field name="code">CO-03</field>
+        <field name="name">Errores en órdenes de compra</field>
+        <field name="sgi_area_id" ref="sgi_area_a"/>
+        <field name="uom">unidades</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">0</field>
+        <field name="target_acceptable">2</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+
+    <!-- ===================== Almacén ===================== -->
+    <record id="sgi_ind_diferencia_inventario" model="sgi.indicator">
+        <field name="code">AL-01</field>
+        <field name="name">Diferencia inventario físico vs sistema</field>
+        <field name="sgi_area_id" ref="sgi_area_p"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">5</field>
+        <field name="target_acceptable">8</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">inventario_diferencia</field>
+    </record>
+    <record id="sgi_ind_embarques_sin_error" model="sgi.indicator">
+        <field name="code">AL-02</field>
+        <field name="name">Embarques sin error</field>
+        <field name="sgi_area_id" ref="sgi_area_p"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">100</field>
+        <field name="target_acceptable">98</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+
+    <!-- ===================== Logística ===================== -->
+    <record id="sgi_ind_otif" model="sgi.indicator">
+        <field name="code">LO-01</field>
+        <field name="name">OTIF (On Time In Full)</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">80</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">otif_ventas</field>
+    </record>
+    <record id="sgi_ind_doc_exportaciones" model="sgi.indicator">
+        <field name="code">LO-02</field>
+        <field name="name">Documentación de exportaciones</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_exportaciones"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">80</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+
+    <!-- ===================== Manufactura ===================== -->
+    <record id="sgi_ind_producido_programado" model="sgi.indicator">
+        <field name="code">MA-01</field>
+        <field name="name">Producido vs programado</field>
+        <field name="sgi_area_id" ref="sgi_area_p"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">96.5</field>
+        <field name="target_acceptable">90</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">produccion_vs_programado</field>
+    </record>
+    <record id="sgi_ind_producido_capacidad" model="sgi.indicator">
+        <field name="code">MA-02</field>
+        <field name="name">Producido vs capacidad</field>
+        <field name="sgi_area_id" ref="sgi_area_p"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">95</field>
+        <field name="target_acceptable">88</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+    <record id="sgi_ind_calidad_pq" model="sgi.indicator">
+        <field name="code">MA-03</field>
+        <field name="name">Calidad PQ</field>
+        <field name="sgi_area_id" ref="sgi_area_c"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">92.5</field>
+        <field name="target_acceptable">85</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+    <record id="sgi_ind_reproceso" model="sgi.indicator">
+        <field name="code">MA-04</field>
+        <field name="name">Reproceso</field>
+        <field name="sgi_area_id" ref="sgi_area_p"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">5</field>
+        <field name="target_acceptable">7</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">reproceso</field>
+    </record>
+    <record id="sgi_ind_desperdicio" model="sgi.indicator">
+        <field name="code">MA-05</field>
+        <field name="name">Desperdicio</field>
+        <field name="sgi_area_id" ref="sgi_area_p"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">0.8</field>
+        <field name="target_acceptable">1.2</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">desperdicio</field>
+    </record>
+
+    <!-- ===================== Calidad ===================== -->
+    <record id="sgi_ind_reclamos_cliente" model="sgi.indicator">
+        <field name="code">CA-01</field>
+        <field name="name">Reclamos de cliente</field>
+        <field name="sgi_area_id" ref="sgi_area_c"/>
+        <field name="uom">unidades</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">3</field>
+        <field name="target_acceptable">5</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">reclamos_cliente</field>
+    </record>
+
+    <!-- ===================== Mantenimiento ===================== -->
+    <record id="sgi_ind_disponibilidad" model="sgi.indicator">
+        <field name="code">MT-01</field>
+        <field name="name">Disponibilidad de equipos</field>
+        <field name="sgi_area_id" ref="sgi_area_m"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">94</field>
+        <field name="target_acceptable">90</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">disponibilidad_mantto</field>
+    </record>
+    <record id="sgi_ind_preventivo" model="sgi.indicator">
+        <field name="code">MT-02</field>
+        <field name="name">Mantenimiento preventivo cumplido</field>
+        <field name="sgi_area_id" ref="sgi_area_m"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">95</field>
+        <field name="target_acceptable">90</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">preventivo_cumplido</field>
+    </record>
+    <record id="sgi_ind_ots_atendidas" model="sgi.indicator">
+        <field name="code">MT-03</field>
+        <field name="name">Órdenes de trabajo atendidas</field>
+        <field name="sgi_area_id" ref="sgi_area_m"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">93</field>
+        <field name="target_acceptable">88</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+
+    <!-- ===================== Recursos Humanos ===================== -->
+    <record id="sgi_ind_cobertura_plantilla" model="sgi.indicator">
+        <field name="code">RH-01</field>
+        <field name="name">Cobertura de plantilla</field>
+        <field name="sgi_area_id" ref="sgi_area_a"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">91</field>
+        <field name="target_acceptable">85</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">plantilla_rh</field>
+    </record>
+    <record id="sgi_ind_capacitacion" model="sgi.indicator">
+        <field name="code">RH-02</field>
+        <field name="name">Capacitación</field>
+        <field name="sgi_area_id" ref="sgi_area_a"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">85</field>
+        <field name="target_acceptable">75</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+    <record id="sgi_ind_rotacion" model="sgi.indicator">
+        <field name="code">RH-03</field>
+        <field name="name">Rotación de personal</field>
+        <field name="sgi_area_id" ref="sgi_area_a"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">5</field>
+        <field name="target_acceptable">8</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">rotacion_rh</field>
+    </record>
+
+    <!-- ===================== TI ===================== -->
+    <record id="sgi_ind_disponibilidad_odoo" model="sgi.indicator">
+        <field name="code">TI-01</field>
+        <field name="name">Disponibilidad de Odoo</field>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">100</field>
+        <field name="target_acceptable">99</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">manual</field>
+    </record>
+</odoo>

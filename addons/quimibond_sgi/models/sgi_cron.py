@@ -36,7 +36,7 @@ class SgiCron(models.AbstractModel):
 
     def _sgi_manager_user_id(self):
         group = self.env.ref('quimibond_sgi.group_sgi_manager', raise_if_not_found=False)
-        return group.users[:1].id if group and group.users else False
+        return group.all_user_ids[:1].id if group and group.all_user_ids else False
 
     # ------------------------------------------------------------------
     # 1. Cron diario — No Conformidades
@@ -173,3 +173,151 @@ class SgiCron(models.AbstractModel):
                     note="Boletín de cambios documentales aprobados del mes (adjunto ID %d)." % attachment.id,
                     user_id=manager_id)
         return True
+
+    # ------------------------------------------------------------------
+    # 4. Cron mensual — Indicadores (F-P-A10-03)
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_indicators(self):
+        today = fields.Date.context_today(self)
+        first_this = today.replace(day=1)
+        first_prev = first_this - relativedelta(months=1)
+        last_prev = first_this - relativedelta(days=1)
+
+        Measure = self.env['sgi.indicator.measure']
+        manager_id = self._sgi_manager_user_id()
+        indicators = self.env['sgi.indicator'].search([])
+        for indicator in indicators:
+            measure = Measure.search([
+                ('indicator_id', '=', indicator.id),
+                ('period_date', '=', first_prev),
+            ], limit=1)
+            if not measure:
+                vals = {'indicator_id': indicator.id, 'period_date': first_prev}
+                value = indicator._sgi_compute_value(first_prev, last_prev)
+                if indicator.calc_mode != 'manual' and value is not None:
+                    vals['value'] = value
+                    vals['state'] = 'capturado'
+                else:
+                    vals['state'] = 'pendiente'
+                measure = Measure.create(vals)
+                if measure.state == 'pendiente':
+                    user_id = indicator.responsible_id.id or manager_id
+                    deadline = first_this + relativedelta(days=4)
+                    if user_id:
+                        self._sgi_schedule_deadline(
+                            indicator, measure,
+                            "Capturar indicador %s (%s)" % (
+                                indicator.code, first_prev.strftime('%m/%Y')),
+                            "Registre el valor del indicador del mes anterior antes del %s." % deadline,
+                            user_id, deadline)
+            # NC automática (solo mediciones rojas validadas con nc_on_red)
+            measure._sgi_maybe_create_nc()
+        return True
+
+    @api.model
+    def _sgi_schedule_deadline(self, anchor, measure, summary, note, user_id, deadline):
+        """Agenda una actividad con fecha límite, evitando duplicados por medición."""
+        if self._sgi_activity_exists(anchor, summary, user_id):
+            return
+        anchor.activity_schedule(
+            'mail.mail_activity_data_todo',
+            date_deadline=deadline,
+            summary=summary, note=note or '', user_id=user_id)
+
+    # ------------------------------------------------------------------
+    # 5. Cron diario — Programa de auditorías
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_audit_program(self):
+        today = fields.Date.context_today(self)
+        lines = self.env['sgi.audit.program.line'].search([
+            ('state', '=', 'pendiente'),
+            ('program_id.state', '=', 'aprobado'),
+        ])
+        manager_id = self._sgi_manager_user_id()
+        for line in lines:
+            month_start = fields.Date.to_date(
+                '%s-%02d-01' % (line.program_id.year, int(line.planned_month)))
+            notice_date = month_start - relativedelta(days=15)
+            if notice_date <= today < month_start:
+                user_id = line.lead_auditor_id.id or manager_id
+                self._sgi_schedule(
+                    line.program_id,
+                    "Preparar auditoría de %s (%s/%s)" % (
+                        line.process_id.name or 'proceso',
+                        line.planned_month, line.program_id.year),
+                    "La auditoría planificada inicia el mes próximo; cree la auditoría.",
+                    user_id)
+        return True
+
+    # ------------------------------------------------------------------
+    # 6. Cron diario — Revisión de riesgos vencidos
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_risk_review(self):
+        today = fields.Date.context_today(self)
+        risks = self.env['sgi.risk'].search([
+            ('next_review_date', '!=', False),
+            ('next_review_date', '<=', today),
+            ('state', '!=', 'cerrado'),
+        ])
+        manager_id = self._sgi_manager_user_id()
+        for risk in risks:
+            owner = risk.process_id.owner_id.user_id
+            user_id = owner.id or manager_id
+            self._sgi_schedule(
+                risk,
+                "Revisar riesgo %s" % (risk.folio or risk.name),
+                "La revisión del riesgo/oportunidad venció el %s." % risk.next_review_date,
+                user_id)
+        return True
+
+    # ------------------------------------------------------------------
+    # 7. Cron trimestral — Evaluación de proveedores
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_supplier_eval(self):
+        today = fields.Date.context_today(self)
+        # Trimestre anterior
+        current_q_start_month = ((today.month - 1) // 3) * 3 + 1
+        current_q_start = today.replace(month=current_q_start_month, day=1)
+        prev_q_end = current_q_start - relativedelta(days=1)
+        prev_q_start = prev_q_end.replace(day=1) - relativedelta(months=2)
+        dt_from = fields.Datetime.to_datetime(prev_q_start)
+        dt_to = fields.Datetime.to_datetime(prev_q_end) + relativedelta(days=1)
+
+        Eval = self.env['sgi.supplier.eval']
+        pickings = self.env['stock.picking'].search([
+            ('picking_type_id.code', '=', 'incoming'),
+            ('state', '=', 'done'),
+            ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
+            ('partner_id', '!=', False),
+        ])
+        partners = pickings.mapped('partner_id.commercial_partner_id')
+        purchase_user_id = self._sgi_purchase_user_id()
+        for partner in partners:
+            existing = Eval.search([
+                ('partner_id', '=', partner.id),
+                ('date_from', '=', prev_q_start),
+                ('date_to', '=', prev_q_end),
+            ], limit=1)
+            if not existing:
+                existing = Eval.create({
+                    'partner_id': partner.id,
+                    'date_from': prev_q_start,
+                    'date_to': prev_q_end,
+                })
+            existing.action_apply_to_partner()
+            if existing.supplier_class in ('condicionado', 'baja') and purchase_user_id:
+                self._sgi_schedule(
+                    existing.partner_id,
+                    "Proveedor %s: %s" % (partner.name, existing.supplier_class),
+                    "La evaluación trimestral dejó al proveedor como %s (calif. %s)." % (
+                        existing.supplier_class, existing.score),
+                    purchase_user_id)
+        return True
+
+    def _sgi_purchase_user_id(self):
+        group = self.env.ref('purchase.group_purchase_manager', raise_if_not_found=False)
+        return group.all_user_ids[:1].id if group and group.all_user_ids else self._sgi_manager_user_id()
