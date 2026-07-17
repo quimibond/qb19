@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ DOCUMENTO CONTROLADO ============ -->
+    <record id="sgi_document_view_form" model="ir.ui.view">
+        <field name="name">sgi.documents.document.form</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <form string="Documento controlado SGI">
+                <header>
+                    <button name="action_generate_acks" type="object" string="Generar acuses"
+                            class="btn-primary" invisible="sgi_state not in ('piloto','vigente')"/>
+                    <field name="sgi_state" widget="statusbar"
+                           statusbar_visible="borrador,piloto,vigente,obsoleto"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_acks" type="object" class="oe_stat_button" icon="fa-check-square-o">
+                            <div class="o_stat_info">
+                                <field name="sgi_ack_read_pct" widget="statinfo" string="% Difusión"/>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="sgi_code" placeholder="Clave (p.ej. P-G01)"/></h1>
+                        <h2><field name="name" placeholder="Nombre del documento"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sgi_is_controlled"/>
+                            <field name="sgi_doc_type"/>
+                            <field name="sgi_area_id"/>
+                            <field name="sgi_process_id"/>
+                            <field name="type" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="sgi_revision"/>
+                            <field name="sgi_issue_date"/>
+                            <field name="sgi_next_review_date"/>
+                            <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
+                            <field name="sgi_owner_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Puestos que aplican">
+                            <field name="sgi_job_ids"/>
+                        </page>
+                        <page string="Acuses de lectura">
+                            <field name="sgi_ack_ids">
+                                <list>
+                                    <field name="employee_id"/>
+                                    <field name="state"/>
+                                    <field name="ack_date"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                    <field name="attachment_id" widget="many2one"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_document_view_list" model="ir.ui.view">
+        <field name="name">sgi.documents.document.list</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <list string="Documentos SGI">
+                <field name="sgi_code"/>
+                <field name="name"/>
+                <field name="sgi_doc_type"/>
+                <field name="sgi_area_id"/>
+                <field name="sgi_revision"/>
+                <field name="sgi_state"/>
+                <field name="sgi_next_review_date"/>
+                <field name="sgi_ack_read_pct" widget="percentage"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_document_view_search" model="ir.ui.view">
+        <field name="name">sgi.documents.document.search</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <search string="Documentos SGI">
+                <field name="sgi_code"/>
+                <field name="name"/>
+                <field name="sgi_area_id"/>
+                <field name="sgi_process_id"/>
+                <filter name="sgi_vigente" string="Vigentes" domain="[('sgi_state','=','vigente')]"/>
+                <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
+                <filter name="sgi_por_revisar" string="Por revisar"
+                        domain="[('sgi_next_review_date','&lt;', (context_today() + relativedelta(days=60)).strftime('%Y-%m-%d'))]"/>
+                <group>
+                    <filter name="group_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'sgi_doc_type'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'sgi_state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_document_action" model="ir.actions.act_window">
+        <field name="name">Documentos SGI</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sgi_is_controlled','=',True)]</field>
+        <field name="context">{'default_sgi_is_controlled': True, 'search_default_sgi_vigente': 1}</field>
+        <field name="search_view_id" ref="sgi_document_view_search"/>
+    </record>
+
+    <record id="sgi_document_action_my_procedures" model="ir.actions.server">
+        <field name="name">Mis procedimientos</field>
+        <field name="model_id" ref="documents.model_documents_document"/>
+        <field name="state">code</field>
+        <field name="code">
+employee = env.user.employee_id
+if employee:
+    action = employee.action_sgi_my_procedures()
+else:
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Mis procedimientos',
+        'res_model': 'documents.document',
+        'view_mode': 'list,form',
+        'domain': [('id', '=', False)],
+    }
+        </field>
+    </record>
+
+    <!-- ============ ACUSES DE LECTURA ============ -->
+    <record id="sgi_document_ack_view_list" model="ir.ui.view">
+        <field name="name">sgi.document.ack.list</field>
+        <field name="model">sgi.document.ack</field>
+        <field name="arch" type="xml">
+            <list string="Acuses de lectura">
+                <field name="sgi_code"/>
+                <field name="document_id"/>
+                <field name="employee_id"/>
+                <field name="state"/>
+                <field name="ack_date"/>
+                <button name="action_mark_read" type="object" string="Marcar leído y entendido"
+                        icon="fa-check" invisible="state == 'leido'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_document_ack_view_form" model="ir.ui.view">
+        <field name="name">sgi.document.ack.form</field>
+        <field name="model">sgi.document.ack</field>
+        <field name="arch" type="xml">
+            <form string="Acuse de lectura">
+                <header>
+                    <button name="action_mark_read" type="object" string="Marcar leído y entendido"
+                            class="btn-primary" invisible="state == 'leido'"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="document_id"/>
+                        <field name="employee_id"/>
+                        <field name="state"/>
+                        <field name="ack_date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_document_ack_action" model="ir.actions.act_window">
+        <field name="name">Acuses de lectura</field>
+        <field name="res_model">sgi.document.ack</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
