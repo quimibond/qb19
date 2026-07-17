@@ -40,13 +40,16 @@ SKIP_DIR_TOKENS = ('obsolet', 'baja', 'anterior')
 
 # Prefijo de clave al inicio del nombre (más específico primero). Reusa la misma
 # nomenclatura que el módulo; la validación final es contra SGI_CODE_REGEX.
+# Nota DAT: las claves reales son «DAT P-G01-02», «DAT-P-A14-02», etc. — DAT +
+# espacio/guion opcional + la estructura P-Xnn-nn(-nn). Un «DAT» suelto sin esa
+# estructura NO es clave válida → va a POR CLASIFICAR.
 CODE_PREFIX = re.compile(
     r'^(MIID'
     r'|F-IT-P-[AGCDEIMPSV]\d{2}-\d{2}-\d{2}'
     r'|IT-P-[AGCDEIMPSV]\d{2}-\d{2}'
     r'|F-P-[AGCDEIMPSV]\d{2}-\d{2}'
     r'|P-[AGCDEIMPSV]\d{2}'
-    r'|DAT[\w.\-]*'
+    r'|DAT[ \-]?P-[AGCDEIMPSV]\d{2}-\d{2}(?:-\d{2})?'
     r'|PROT-\d{2}'
     r'|DF-[\w.\-]*'
     r'|R-[\w.\-]*'
@@ -93,6 +96,19 @@ def _zip_date(info):
         return datetime(*info.date_time).date()
     except Exception:
         return date.today()
+
+
+def _fix_name(info):
+    """Corrige mojibake: zipfile decodifica en cp437 cuando el ZIP no marca UTF-8
+    (0x800). Si es el caso, re-decodifica cp437→utf-8 (así «COMUNICACIÓN» no llega
+    roto de un ZIP hecho en Windows/Dropbox)."""
+    name = info.filename
+    if not (info.flag_bits & 0x800):
+        try:
+            name = name.encode('cp437').decode('utf-8')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            pass
+    return name
 
 
 class Loader:
@@ -153,7 +169,7 @@ class Loader:
         self._count(section, status)
 
     def process(self, zf, info, root_strip):
-        raw_path = info.filename
+        raw_path = _fix_name(info)
         parts = [p for p in raw_path.split('/') if p]
         if root_strip and parts and parts[0] == root_strip:
             parts = parts[1:]
@@ -198,7 +214,7 @@ class Loader:
                     'name': filename,
                     'type': 'binary',
                     'folder_id': folder.id,
-                    'datas': base64.b64encode(zf.read(info.filename)),
+                    'datas': base64.b64encode(zf.read(info)),
                     'sgi_is_controlled': True,
                     'sgi_code': code,
                     'sgi_doc_type': dtype,
@@ -212,32 +228,34 @@ class Loader:
                          revision, 'CREADO')
             return
 
-        # --- sin clave: POR CLASIFICAR ---
-        unclassified_path = [ROOT_FOLDER_NAME, UNCLASSIFIED_NAME]
-        existing = self.Doc.search([
+        # --- sin clave: POR CLASIFICAR (espejando la carpeta de origen para no
+        #     colisionar homónimos de distintas carpetas) ---
+        unclassified_path = [ROOT_FOLDER_NAME, UNCLASSIFIED_NAME] + dir_parts
+        carpeta_label = '/'.join([UNCLASSIFIED_NAME] + dir_parts)
+        folder = self._get_folder(unclassified_path)  # vacío en dry-run
+        existing = folder and self.Doc.search([
             ('name', '=', filename), ('sgi_is_controlled', '=', False),
-            ('folder_id.name', '=', UNCLASSIFIED_NAME)], limit=1)
+            ('folder_id', '=', folder.id)], limit=1)
         if existing:
-            self._report(section, UNCLASSIFIED_NAME, filename, None, None, None,
+            self._report(section, carpeta_label, filename, None, None, None,
                          None, 'SALTADO', 'ya existe sin clasificar')
             return
         if not DRY_RUN:
-            folder = self._get_folder(unclassified_path)
             self.Doc.create({
                 'name': filename, 'type': 'binary', 'folder_id': folder.id,
-                'datas': base64.b64encode(zf.read(info.filename)),
+                'datas': base64.b64encode(zf.read(info)),
                 'sgi_is_controlled': False,
             })
-        self._report(section, UNCLASSIFIED_NAME, filename, None, None, None, None,
+        self._report(section, carpeta_label, filename, None, None, None, None,
                      'POR_CLASIFICAR', 'el nombre no coincide con la nomenclatura')
 
     def run(self):
         with zipfile.ZipFile(ZIP_PATH) as zf:
             members = [i for i in zf.infolist() if not i.is_dir()]
             # Detecta y quita una posible carpeta raíz común (envoltorio del ZIP).
-            tops = {i.filename.split('/')[0] for i in members if '/' in i.filename}
+            tops = {_fix_name(i).split('/')[0] for i in members if '/' in _fix_name(i)}
             root_strip = tops.pop() if len(tops) == 1 else None
-            for info in sorted(members, key=lambda i: i.filename):
+            for info in sorted(members, key=lambda i: _fix_name(i)):
                 self.process(zf, info, root_strip)
 
         with open(CSV_PATH, 'w', newline='') as fh:
