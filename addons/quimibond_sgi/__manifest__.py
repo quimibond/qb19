@@ -82,6 +82,7 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         'views/sgi_ppap_views.xml',
         'views/sgi_incident_views.xml',
         'views/sgi_competence_views.xml',
+        'views/sgi_dashboard_views.xml',
         # reports
         'report/report_nc.xml',
         'report/report_news.xml',
