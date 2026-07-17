@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class QualityAlertStage(models.Model):
@@ -120,7 +120,8 @@ class SgiActionLine(models.Model):
     _description = "Acción / corrección de No Conformidad"
     _order = 'date_commit, id'
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True, ondelete='cascade')
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='cascade')
+    risk_id = fields.Many2one('sgi.risk', string="Riesgo / Oportunidad", ondelete='cascade')
     action_type = fields.Selection([
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
@@ -140,6 +141,14 @@ class SgiActionLine(models.Model):
         ('vencida', "Vencida"),
         ('terminada', "Terminada"),
     ], string="Estado", compute='_compute_state', store=True)
+
+    @api.constrains('alert_id', 'risk_id', 'name')
+    def _check_parent_xor(self):
+        for line in self:
+            if bool(line.alert_id) == bool(line.risk_id):
+                raise ValidationError(
+                    "Una acción debe pertenecer exactamente a una No Conformidad "
+                    "o a un Riesgo (no ambos, no ninguno).")
 
     @api.depends('date_commit', 'date_done')
     def _compute_state(self):
