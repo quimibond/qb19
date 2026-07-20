@@ -88,3 +88,38 @@ class TestFlows48(TransactionCase):
         self.assertEqual(fmt.sgi_parent_document_id, proc)
         self.assertEqual(it.sgi_parent_document_id, proc)
         self.assertFalse(proc.sgi_parent_document_id)
+
+    def test_07_nc_no_cierra_sin_acciones(self):
+        """H1 de la auditoría ISO: cero acciones ya no pasa el candado."""
+        from odoo.exceptions import UserError
+        from datetime import date
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal')
+        stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
+        alert = self.env['quality.alert'].create({
+            'title': 'NC sin acciones', 'team_id': team.id,
+            'sgi_root_cause': 'Causa identificada',
+            'sgi_effectiveness_note': 'Eficaz',
+            'sgi_effectiveness_date': date.today(),
+        })
+        with self.assertRaises(UserError):
+            alert.write({'stage_id': stage.id})
+
+    def test_08_medicion_validada_inmutable(self):
+        """H6: el valor de una medición validada no se edita sin privilegio."""
+        from odoo.exceptions import UserError
+        from datetime import date
+        indicator = self.env['sgi.indicator'].create({
+            'code': 'TST-LOCK', 'name': 'KPI candado', 'calc_mode': 'manual',
+        })
+        measure = self.env['sgi.indicator.measure'].create({
+            'indicator_id': indicator.id,
+            'period_date': date.today().replace(day=1), 'value': 90.0,
+        })
+        measure.action_validate()
+        user = self.env['res.users'].create({
+            'name': 'Usuario SGI Raso', 'login': 'raso_sgi_test',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_user').id,
+                                  self.env.ref('base.group_user').id])],
+        })
+        with self.assertRaises(UserError):
+            measure.with_user(user).write({'value': 95.0})
