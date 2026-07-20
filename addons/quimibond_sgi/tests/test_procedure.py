@@ -2,6 +2,7 @@
 """Mini-fase Procedimiento vivo — paso 1: modelo y ficha; paso 2: reporte."""
 from datetime import date
 
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -199,3 +200,104 @@ class TestProcedureVentasSeed(TransactionCase):
         self.env['sgi.config'].seed_procedure_ventas()
         self.assertEqual(self.process.activity_count, first,
                          "Re-ejecutar la semilla no duplica actividades.")
+
+    def test_05_seed_maps_odoo_menus(self):
+        self.env['sgi.config'].seed_procedure_ventas()
+        menu = self.env.ref('sale.menu_sale_order', raise_if_not_found=False)
+        if not menu:
+            self.skipTest("El menú nativo de Ventas no está en esta base.")
+        act = self.process.activity_ids.filtered(lambda a: a.number == '4.1.2')
+        self.assertEqual(act.odoo_menu_id, menu,
+                         "La actividad de pedidos apunta al menú de Ventas.")
+
+
+@tagged('post_install', '-at_install')
+class TestProcedureOdooMenu(TransactionCase):
+    """Un solo paso: liga la actividad a un menú real de Odoo."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        cls.process = cls.env['sgi.process'].create({
+            'code': 'MENU-01', 'name': 'Proceso menú', 'process_type': 'cop'})
+        cls.menu = cls.env.ref('sale.menu_sale_order', raise_if_not_found=False)
+
+    def test_01_onchange_fills_odoo_ref(self):
+        if not self.menu:
+            self.skipTest("El menú nativo de Ventas no está en esta base.")
+        act = self.env['sgi.process.activity'].new({
+            'process_id': self.process.id, 'number': '4.1.2',
+            'odoo_menu_id': self.menu.id})
+        act._onchange_odoo_menu_id()
+        self.assertEqual(act.odoo_ref, self.menu.complete_name)
+        # No pisa un texto ya escrito.
+        act2 = self.env['sgi.process.activity'].new({
+            'process_id': self.process.id, 'number': '4.1.3',
+            'odoo_menu_id': self.menu.id, 'odoo_ref': 'Ventas > Pedidos'})
+        act2._onchange_odoo_menu_id()
+        self.assertEqual(act2.odoo_ref, 'Ventas > Pedidos')
+
+    def test_02_action_open_odoo_returns_menu_action(self):
+        if not self.menu or not self.menu.action \
+                or self.menu.action._name != 'ir.actions.act_window':
+            self.skipTest("El menú de Ventas no tiene acción act_window en esta base.")
+        act = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'number': '4.1.2',
+            'odoo_menu_id': self.menu.id})
+        result = act.action_open_odoo()
+        self.assertEqual(result['type'], 'ir.actions.act_window')
+        self.assertEqual(result['id'], self.menu.action.id)
+
+    def test_03_action_open_odoo_without_menu_raises(self):
+        act = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'number': '4.1.1',
+            'name': 'Sin menú'})
+        with self.assertRaises(UserError):
+            act.action_open_odoo()
+
+
+@tagged('post_install', '-at_install')
+class TestProcedureActivityMenu(TransactionCase):
+    """Adición: menú global de actividades y filtro 'Mis actividades' tolerante."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.process = cls.env['sgi.process'].create({
+            'code': 'GLB-01', 'name': 'Proceso global', 'process_type': 'cop'})
+        cls.env['sgi.process.activity'].create({
+            'process_id': cls.process.id, 'number': '1.1', 'name': 'Act global'})
+
+    def test_01_action_opens_grouped(self):
+        action = self.env.ref('quimibond_sgi.sgi_process_activity_action').read()[0]
+        self.assertEqual(action['res_model'], 'sgi.process.activity')
+        self.assertIn('search_default_group_process', action['context'])
+
+    def test_02_mine_filter_safe_without_employee(self):
+        # Usuario SIN empleado: el filtro no debe truncar ni reventar.
+        user = self.env['res.users'].create({
+            'name': 'Sin empleado', 'login': 'sgi_no_emp',
+            'group_ids': [(4, self.env.ref('quimibond_sgi.group_sgi_user').id)]})
+        self.assertFalse(user.employee_id)
+        Activity = self.env['sgi.process.activity'].with_user(user)
+        # El mismo dominio del filtro "Mis actividades".
+        result = Activity.search(
+            [('responsible_job_ids.employee_ids.user_id', '=', user.id)])
+        self.assertEqual(len(result), 0)
+
+    def test_03_mine_filter_matches_user_job(self):
+        # Usuario CON empleado y puesto: ve su actividad.
+        job = self.env['hr.job'].create({'name': 'Puesto mío'})
+        user = self.env['res.users'].create({
+            'name': 'Con empleado', 'login': 'sgi_emp',
+            'group_ids': [(4, self.env.ref('quimibond_sgi.group_sgi_user').id)]})
+        self.env['hr.employee'].create({
+            'name': 'Empleado', 'user_id': user.id, 'job_id': job.id})
+        act = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'number': '2.1', 'name': 'Mía',
+            'responsible_job_ids': [(6, 0, job.ids)]})
+        result = self.env['sgi.process.activity'].search(
+            [('responsible_job_ids.employee_ids.user_id', '=', user.id)])
+        self.assertIn(act, result)
