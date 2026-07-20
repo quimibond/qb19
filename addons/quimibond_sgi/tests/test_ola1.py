@@ -210,6 +210,16 @@ class TestOla1Recurrence(TransactionCase):
         other = self._nc(sgi_process_id=self.proc2.id)
         self.assertEqual(other.sgi_recurrence_count, 0)
 
+    def test_04b_cancelled_prior_not_recurrent(self):
+        cancel_stage = self.env['quality.alert.stage'].search(
+            [('sgi_is_cancel_stage', '=', True)], limit=1)
+        self.assertTrue(cancel_stage, "Debe existir una etapa de cancelación.")
+        nc1 = self._nc()
+        nc1.with_context(sgi_force_close=True).write({'stage_id': cancel_stage.id})
+        nc2 = self._nc()
+        self.assertEqual(nc2.sgi_recurrence_count, 0,
+                         "Una NC cancelada no cuenta como reincidencia previa.")
+
     def test_05_recurrent_close_requires_corrective(self):
         self._nc()
         nc2 = self._nc(sgi_root_cause='c', sgi_effectiveness_note='e',

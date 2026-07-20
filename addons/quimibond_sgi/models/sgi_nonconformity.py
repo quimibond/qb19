@@ -127,12 +127,16 @@ class QualityAlert(models.Model):
             ref_date = alert.create_date or fields.Datetime.now()
             since = ref_date - relativedelta(months=months)
             # "Previa" = id menor (monotónico y determinista, también cuando dos
-            # NCs comparten create_date por caer en la misma transacción).
-            prior = self.search([
+            # NCs comparten create_date por caer en la misma transacción). Se usa
+            # sudo() porque la reincidencia es un hecho del sistema, no depende de
+            # las reglas de registro del usuario en turno; y se excluyen las NCs
+            # canceladas (una falsa alarma cancelada no marca a la siguiente).
+            prior = self.sudo().search([
                 ('id', '<', alert.id),
                 ('sgi_folio', '!=', False),
                 ('sgi_process_id', '=', alert.sgi_process_id.id),
                 ('create_date', '>=', since),
+                ('stage_id.sgi_is_cancel_stage', '=', False),
             ])
             count = 0
             for other in prior:
