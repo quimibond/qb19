@@ -45,7 +45,9 @@
         <field name="arch" type="xml">
             <list string="Programas de auditoría" decoration-muted="state == 'borrador'" decoration-success="state == 'cerrado'">
                 <field name="year"/>
-                <field name="state"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'cerrado'"
+                       decoration-info="state == 'aprobado'"/>
             </list>
         </field>
     </record>
