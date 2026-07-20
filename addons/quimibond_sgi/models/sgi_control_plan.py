@@ -29,10 +29,15 @@ class QualityPoint(models.Model):
 class SgiControlPlan(models.Model):
     _name = 'sgi.control.plan'
     _description = "Plan de control (P-C11)"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
+    _sgi_sequence_code = 'sgi.control.plan'
 
-    folio = fields.Char(string="Folio", readonly=True, copy=False, index=True, tracking=True)
+    _folio_uniq = models.Constraint(
+        'unique(folio)',
+        "Ya existe un plan de control con ese folio.",
+    )
+
     name = fields.Char(string="Nombre", required=True, tracking=True)
     partner_id = fields.Many2one('res.partner', string="Cliente",
                                  domain="[('is_company', '=', True)]")
@@ -54,13 +59,6 @@ class SgiControlPlan(models.Model):
     document_id = fields.Many2one('documents.document', string="Especificación del cliente")
     notes = fields.Text(string="Notas")
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        seq = self.env['ir.sequence']
-        for vals in vals_list:
-            if not vals.get('folio'):
-                vals['folio'] = seq.next_by_code('sgi.control.plan') or '/'
-        return super().create(vals_list)
 
     @api.depends('point_ids')
     def _compute_point_count(self):

@@ -203,6 +203,9 @@ class SgiActionLine(models.Model):
         ('vencida', "Vencida"),
         ('terminada', "Terminada"),
     ], string="Estado", compute='_compute_state', store=True)
+    # Actividad nativa que hace accionable la acción en el registro origen.
+    activity_id = fields.Many2one('mail.activity', string="Actividad",
+                                  readonly=True, copy=False, index=True)
 
     @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'name')
     def _check_parent_xor(self):
@@ -224,6 +227,85 @@ class SgiActionLine(models.Model):
                 line.state = 'vencida'
             else:
                 line.state = 'abierta'
+
+    # ------------------------------------------------------------------
+    # Acciones como actividades nativas (corazón accionable del SGI)
+    # ------------------------------------------------------------------
+    def _sgi_origin(self):
+        """Registro origen (con chatter) al que se cuelga la actividad."""
+        self.ensure_one()
+        if self.alert_id:
+            return self.alert_id
+        if self.risk_id:
+            return self.risk_id
+        if self.incident_id:
+            return self.incident_id
+        if self.fmea_line_id:
+            return self.fmea_line_id.fmea_id
+        return self.env['sgi.action.line'].browse()
+
+    def _sgi_activity_note(self):
+        self.ensure_one()
+        label = dict(self._fields['action_type'].selection).get(
+            self.action_type, self.action_type)
+        return "%s del SGI. Responsable: %s. Compromiso: %s." % (
+            label, self.responsible_id.display_name or '-',
+            self.date_commit or '-')
+
+    def _sgi_sync_activity(self):
+        """Crea/actualiza la actividad ligada a la acción (idempotente)."""
+        Todo = 'mail.mail_activity_data_todo'
+        for line in self:
+            if line.date_done or not line.responsible_id or not line.date_commit:
+                continue
+            origin = line._sgi_origin()
+            if not origin:
+                continue
+            if line.activity_id:
+                line.activity_id.write({
+                    'user_id': line.responsible_id.id,
+                    'date_deadline': line.date_commit,
+                    'summary': line.name,
+                })
+            else:
+                act = origin.activity_schedule(
+                    Todo,
+                    summary=line.name,
+                    note=line._sgi_activity_note(),
+                    user_id=line.responsible_id.id,
+                    date_deadline=line.date_commit)
+                line.activity_id = act.id
+
+    def _sgi_close_activity(self):
+        """Marca hecha la actividad cuando la acción se termina.
+
+        En Odoo 19 action_feedback archiva la actividad (conserva historia en
+        el chatter). Soltamos el enlace para que, si se reabre la acción, se
+        genere una actividad nueva en lugar de reactivar una archivada.
+        """
+        for line in self:
+            if line.activity_id:
+                line.activity_id.action_feedback(
+                    feedback="Acción terminada el %s." % (line.date_done or ''))
+                line.activity_id = False
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines._sgi_sync_activity()
+        return lines
+
+    def write(self, vals):
+        res = super().write(vals)
+        resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
+        if 'date_done' in vals:
+            self.filtered('date_done')._sgi_close_activity()
+            # Reabrir una acción (borrar la fecha de terminación) vuelve a
+            # agendar la actividad en el responsable.
+            resync = True
+        if resync:
+            self.filtered(lambda l: not l.date_done)._sgi_sync_activity()
+        return res
 
 
 class SgiNcForceClose(models.TransientModel):

@@ -8,10 +8,16 @@ from odoo.exceptions import UserError
 class SgiManagementReview(models.Model):
     _name = 'sgi.management.review'
     _description = "Revisión por la Dirección (IT-P-A10-01)"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['sgi.base.mixin']
     _order = 'date desc, folio desc'
+    _sgi_sequence_code = 'sgi.management.review'
+    _sgi_locked_states = ('cerrada',)
 
-    folio = fields.Char(string="Folio", readonly=True, copy=False, index=True, tracking=True)
+    _folio_uniq = models.Constraint(
+        'unique(folio)',
+        "Ya existe una revisión por la dirección con ese folio.",
+    )
+
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
     date = fields.Date(string="Fecha", default=fields.Date.context_today, required=True)
     period_from = fields.Date(string="Periodo desde", required=True)
@@ -44,13 +50,6 @@ class SgiManagementReview(models.Model):
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',
                                     string="Acuerdos")
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        seq = self.env['ir.sequence']
-        for vals in vals_list:
-            if not vals.get('folio'):
-                vals['folio'] = seq.next_by_code('sgi.management.review') or '/'
-        return super().create(vals_list)
 
     @api.depends('folio', 'date')
     def _compute_name(self):

@@ -76,6 +76,8 @@
                             <field name="residual_impact"/>
                             <field name="residual_score"/>
                             <field name="residual_level" widget="badge"/>
+                            <field name="residual_note"
+                                   placeholder="Justificación cuando el riesgo residual no baja (obligatoria para cerrar un riesgo de atención máxima)."/>
                         </group>
                     </group>
                     <notebook>
