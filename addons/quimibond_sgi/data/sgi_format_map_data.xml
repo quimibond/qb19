@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <!-- Mapeo formato SGI ↔ documento de Odoo. noupdate=0: si MAST corrige una
-         clave aquí, el odoo-update la aplica. La revisión NO se captura: se lee
-         del documento vigente en Documentos al mostrar/imprimir. -->
+<odoo noupdate="1">
+    <!-- Mapeo formato SGI ↔ documento de Odoo. noupdate=1: estos registros son
+         solo la semilla inicial; lo que MAST edite en SGI > Configuración >
+         Formatos en documentos de Odoo SOBREVIVE a los odoo-update. La revisión
+         NO se captura: se lee del documento vigente al mostrar/imprimir. -->
 
     <record id="format_map_sale_order" model="sgi.format.map">
         <field name="model_id" ref="sale.model_sale_order"/>

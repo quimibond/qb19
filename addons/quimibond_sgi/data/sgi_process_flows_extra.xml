@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Flujos entrada/salida faltantes del mapa de procesos (mini-fase 4.8).
+         Fuente: SIPOC reales del SGI — Compras (may-2026), Planeación (abr-2026),
+         Ventas (oct-2025), Auditoría de Calidad (abr-2026), ANEXO 3 (modelo de
+         interacción COP) y ANEXO 13 (flujo transversal). Cada flujo liga el
+         modelo de Odoo que lo materializa para que «Ver registros» abra lo vivo. -->
+
+    <!-- === Cadena de abasto (SIPOC Compras) === -->
+    <record id="flow_almacenmp_compras_req" model="sgi.process.flow">
+        <field name="name">Requisición de compra / alerta de stock</field>
+        <field name="from_process_id" ref="proc_almacen_mp"/><field name="to_process_id" ref="proc_compras"/>
+        <field name="odoo_model_id" search="[('model','=','approval.request')]" model="ir.model"/>
+        <field name="acceptance_criteria">Requisición aprobada por el flujo de Aprobaciones antes de generar OC.</field>
+    </record>
+
+    <!-- === Planeación → áreas de producción (SIPOC Planeación) === -->
+    <record id="flow_plan_prodent" model="sgi.process.flow">
+        <field name="name">Programa semanal de producción (F-P-A12-01)</field>
+        <field name="from_process_id" ref="proc_planeacion"/><field name="to_process_id" ref="proc_prod_ent"/>
+        <field name="odoo_model_id" search="[('model','=','mrp.production')]" model="ir.model"/>
+    </record>
+    <record id="flow_almacenmp_prodent" model="sgi.process.flow">
+        <field name="name">Materia prima liberada (entretelas)</field>
+        <field name="from_process_id" ref="proc_almacen_mp"/><field name="to_process_id" ref="proc_prod_ent"/>
+        <field name="odoo_model_id" search="[('model','=','stock.picking')]" model="ir.model"/>
+    </record>
+    <record id="flow_direccion_plan_te" model="sgi.process.flow">
+        <field name="name">Autorización de tiempo extra</field>
+        <field name="from_process_id" ref="proc_direccion"/><field name="to_process_id" ref="proc_planeacion"/>
+        <field name="odoo_model_id" search="[('model','=','approval.request')]" model="ir.model"/>
+    </record>
+
+    <!-- === Cadena interna de manufactura (Tejido → Tintorería → Acabado; Entretelas) === -->
+    <record id="flow_prodtac_tintoreria" model="sgi.process.flow">
+        <field name="name">Tela cruda tejida para teñido</field>
+        <field name="from_process_id" ref="proc_prod_tac"/><field name="to_process_id" ref="proc_tintoreria"/>
+        <field name="odoo_model_id" search="[('model','=','mrp.production')]" model="ir.model"/>
+    </record>
+    <record id="flow_tintoreria_prodtac" model="sgi.process.flow">
+        <field name="name">Tela teñida para acabado (rama)</field>
+        <field name="from_process_id" ref="proc_tintoreria"/><field name="to_process_id" ref="proc_prod_tac"/>
+        <field name="odoo_model_id" search="[('model','=','mrp.production')]" model="ir.model"/>
+    </record>
+    <record id="flow_prodent_inspeccion" model="sgi.process.flow">
+        <field name="name">Entretela a liberar</field>
+        <field name="from_process_id" ref="proc_prod_ent"/><field name="to_process_id" ref="proc_inspeccion"/>
+        <field name="odoo_model_id" search="[('model','=','mrp.production')]" model="ir.model"/>
+    </record>
+
+    <!-- === Liberación de materia prima (P-C04, SIPOC Calidad) === -->
+    <record id="flow_almacenmp_lab" model="sgi.process.flow">
+        <field name="name">Muestra de MP para liberación (P-C04)</field>
+        <field name="from_process_id" ref="proc_almacen_mp"/><field name="to_process_id" ref="proc_laboratorio"/>
+        <field name="odoo_model_id" search="[('model','=','quality.check')]" model="ir.model"/>
+    </record>
+    <record id="flow_lab_almacenmp" model="sgi.process.flow">
+        <field name="name">Liberación de materia prima</field>
+        <field name="from_process_id" ref="proc_laboratorio"/><field name="to_process_id" ref="proc_almacen_mp"/>
+        <field name="odoo_model_id" search="[('model','=','quality.check')]" model="ir.model"/>
+        <field name="acceptance_criteria">MP sin liberar no se surte a producción (devolución al proveedor si no pasa).</field>
+    </record>
+
+    <!-- === Soporte: mantenimiento (solicitudes de piso) === -->
+    <record id="flow_prodtac_mto" model="sgi.process.flow">
+        <field name="name">Solicitud de mantenimiento (F-P-M01-01)</field>
+        <field name="from_process_id" ref="proc_prod_tac"/><field name="to_process_id" ref="proc_mto"/>
+        <field name="odoo_model_id" search="[('model','=','maintenance.request')]" model="ir.model"/>
+    </record>
+    <record id="flow_prodent_mto" model="sgi.process.flow">
+        <field name="name">Solicitud de mantenimiento (F-P-M01-01)</field>
+        <field name="from_process_id" ref="proc_prod_ent"/><field name="to_process_id" ref="proc_mto"/>
+        <field name="odoo_model_id" search="[('model','=','maintenance.request')]" model="ir.model"/>
+    </record>
+
+    <!-- === Calidad y mejora (retroalimentación) === -->
+    <record id="flow_inspeccion_sgi_nc" model="sgi.process.flow">
+        <field name="name">No Conformidad levantada (F-P-G05-01)</field>
+        <field name="from_process_id" ref="proc_inspeccion"/><field name="to_process_id" ref="proc_sgi"/>
+        <field name="odoo_model_id" search="[('model','=','quality.alert')]" model="ir.model"/>
+    </record>
+    <record id="flow_ventas_cal_reclamo" model="sgi.process.flow">
+        <field name="name">Reclamación del cliente (P-C01)</field>
+        <field name="from_process_id" ref="proc_ventas"/><field name="to_process_id" ref="proc_cal"/>
+        <field name="odoo_model_id" search="[('model','=','helpdesk.ticket')]" model="ir.model"/>
+        <field name="acceptance_criteria">Primera respuesta al cliente en ≤ 3 días (SLA del ticket).</field>
+    </record>
+    <record id="flow_sgi_compras_prov" model="sgi.process.flow">
+        <field name="name">Evaluación trimestral de proveedores</field>
+        <field name="from_process_id" ref="proc_sgi"/><field name="to_process_id" ref="proc_compras"/>
+        <field name="odoo_model_id" search="[('model','=','sgi.supplier.eval')]" model="ir.model"/>
+        <field name="acceptance_criteria">Proveedor Condicionado o Baja requiere acción de Compras.</field>
+    </record>
+    <record id="flow_direccion_sgi_acuerdos" model="sgi.process.flow">
+        <field name="name">Acuerdos y recursos de la Revisión por la Dirección</field>
+        <field name="from_process_id" ref="proc_direccion"/><field name="to_process_id" ref="proc_sgi"/>
+        <field name="odoo_model_id" search="[('model','=','sgi.management.review')]" model="ir.model"/>
+    </record>
+    <record id="flow_mfg_sgi_incidente" model="sgi.process.flow">
+        <field name="name">Reporte de incidente SST (INC-)</field>
+        <field name="from_process_id" ref="proc_mfg"/><field name="to_process_id" ref="proc_sgi"/>
+        <field name="odoo_model_id" search="[('model','=','sgi.incident')]" model="ir.model"/>
+    </record>
+
+    <!-- === Diseño y desarrollo (P-D01) === -->
+    <record id="flow_ventas_diseno" model="sgi.process.flow">
+        <field name="name">Solicitud de desarrollo / muestra (P-D01)</field>
+        <field name="from_process_id" ref="proc_ventas"/><field name="to_process_id" ref="proc_dis"/>
+    </record>
+    <record id="flow_diseno_mfg" model="sgi.process.flow">
+        <field name="name">Especificación / ficha técnica aprobada</field>
+        <field name="from_process_id" ref="proc_dis"/><field name="to_process_id" ref="proc_mfg"/>
+        <field name="odoo_model_id" search="[('model','=','mrp.bom')]" model="ir.model"/>
+        <field name="acceptance_criteria">Salidas de diseño aprobadas por el Administrador de Ventas y Marketing antes de producir.</field>
+    </record>
+</odoo>

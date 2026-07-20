@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Parámetros operativos del SGI, sembrados para que sean VISIBLES y
+         editables en Ajustes > Técnico > Parámetros del sistema (buscar
+         "quimibond_sgi."). noupdate=1: lo que se edite ahí sobrevive a los
+         odoo-update. El código usa estos mismos valores como default. -->
+
+    <record id="param_nc_escalation_days" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.nc_escalation_days</field>
+        <field name="value">5</field>
+    </record>
+    <record id="param_fmea_npr_action" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.fmea_npr_action</field>
+        <field name="value">100</field>
+    </record>
+    <record id="param_risk_ryo_inmediata" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.risk_ryo_inmediata</field>
+        <field name="value">16</field>
+    </record>
+    <record id="param_risk_ryo_media" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.risk_ryo_media</field>
+        <field name="value">9</field>
+    </record>
+    <record id="param_risk_ryo_intermedia" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.risk_ryo_intermedia</field>
+        <field name="value">4</field>
+    </record>
+    <record id="param_supplier_weight_otd" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.supplier_weight_otd</field>
+        <field name="value">0.7</field>
+    </record>
+    <record id="param_supplier_weight_quality" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.supplier_weight_quality</field>
+        <field name="value">0.3</field>
+    </record>
+    <record id="param_supplier_nc_penalty" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.supplier_nc_penalty</field>
+        <field name="value">10.0</field>
+    </record>
+    <record id="param_pesaje_tolerance_kg" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.pesaje_tolerance_kg</field>
+        <field name="value">3.0</field>
+    </record>
+    <record id="param_waste_subproduct_category" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.waste_subproduct_category</field>
+        <field name="value">SubProducto</field>
+    </record>
+    <!-- Los siguientes se capturan cuando aplique (0 = sin configurar): -->
+    <record id="param_monthly_sales_budget" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.monthly_sales_budget</field>
+        <field name="value">0</field>
+    </record>
+    <record id="param_rh_user_id" model="ir.config_parameter">
+        <field name="key">quimibond_sgi.rh_user_id</field>
+        <field name="value">0</field>
+    </record>
+</odoo>
