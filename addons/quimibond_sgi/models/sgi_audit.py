@@ -253,6 +253,19 @@ class SgiAuditFinding(models.Model):
     alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True)
     reason_no_action = fields.Text(string="Justificación sin acción")
 
+    def unlink(self):
+        # Los hallazgos de una auditoría cerrada son evidencia: no se borran
+        # (salvo MAST). Mientras la auditoría sigue abierta el auditor los edita.
+        if not self.env.su and not self.env.user.has_group(
+                'quimibond_sgi.group_sgi_manager'):
+            locked = self.filtered(lambda f: f.audit_id.state == 'cerrada')
+            if locked:
+                raise UserError(
+                    "No se puede borrar un hallazgo de una auditoría cerrada (es "
+                    "evidencia). Pide al Jefe de MAST reabrir la auditoría.\n\n"
+                    "Auditoría: %s" % ", ".join(locked.mapped('audit_id.display_name')))
+        return super().unlink()
+
     def action_generate_nc(self):
         self.ensure_one()
         if self.alert_id:

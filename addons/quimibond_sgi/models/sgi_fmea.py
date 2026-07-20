@@ -131,3 +131,19 @@ class SgiFmeaLine(models.Model):
                     int(line.detection_post)
             else:
                 line.npr_post = 0
+
+    # Un AMEF vigente/obsoleto es evidencia: sus líneas no se borran (salvo MAST).
+    # En borrador el equipo edita/elimina libremente; el candado protege lo publicado.
+    _SGI_LOCKED_PARENT_STATES = ('vigente', 'obsoleto')
+
+    def unlink(self):
+        if not self.env.su and not self.env.user.has_group(
+                'quimibond_sgi.group_sgi_manager'):
+            locked = self.filtered(
+                lambda l: l.fmea_id.state in self._SGI_LOCKED_PARENT_STATES)
+            if locked:
+                raise UserError(
+                    "No se puede borrar una línea de un AMEF vigente u obsoleto "
+                    "(es evidencia). Pide al Jefe de MAST regresarlo a borrador.\n\n"
+                    "AMEF: %s" % ", ".join(locked.mapped('fmea_id.display_name')))
+        return super().unlink()

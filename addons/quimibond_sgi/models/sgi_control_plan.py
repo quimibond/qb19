@@ -24,6 +24,11 @@ class QualityPoint(models.Model):
     sgi_cpk_target = fields.Float(string="Cpk objetivo", digits=(4, 2),
                                   help="Cpk objetivo sugerido: 1.33 para F, 1.67 para R/S.")
     sgi_reaction_plan = fields.Text(string="Plan de reacción")
+    sgi_equipment_id = fields.Many2one(
+        'maintenance.equipment', string="Equipo de medición",
+        domain=[('sgi_is_measuring', '=', True)],
+        help="Instrumento con el que se mide esta característica. Su calibración "
+             "se verifica al registrar la inspección (IATF 7.1.5.2.1).")
 
 
 class SgiControlPlan(models.Model):
