@@ -9,6 +9,8 @@ class SgiObjective(models.Model):
 
     name = fields.Char(string="Objetivo", required=True, translate=False)
     description = fields.Text(string="Descripción")
+    policy_id = fields.Many2one('sgi.policy', string="Política integral",
+                                help="Política de la que se despliega este objetivo (cascada ISO).")
     target_year = fields.Integer(string="Año meta")
     indicator_ids = fields.One2many('sgi.indicator', 'objective_id', string="Indicadores")
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_indicator_count')

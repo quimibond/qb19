@@ -9,6 +9,7 @@ from . import sgi_nonconformity
 from . import sgi_complaint
 from . import sgi_improvement
 from . import sgi_integration
+from . import sgi_policy
 from . import sgi_objective
 from . import sgi_indicator
 from . import sgi_audit
