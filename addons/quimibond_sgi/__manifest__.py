@@ -5,16 +5,22 @@
     'description': """
 Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ).
 
-Fase 1 — Núcleo documental, no conformidades, reclamaciones, mejora y mapa de procesos.
+SGI completo de PNTQ: mapa de procesos con flujos navegables (el output de un
+proceso es el input del siguiente), control documental con familias y acuses,
+NC con candados, reclamaciones con SLA, mejoras, KPIs automáticos con NC en
+rojo, auditorías, riesgos (5 instrumentos), proveedores, Revisión por la
+Dirección, planes de control, CoA, calibraciones IATF, AMEF, PPAP, incidentes
+SCAT, competencias, claves de formato vivas en pantalla/PDF y migración de
+formatos rastreable.
 
-Extiende apps nativas (Documentos, Aprobaciones, Calidad, Helpdesk, Proyecto) sin
-duplicarlas y agrega los modelos que Odoo no tiene (mapa de procesos, acuses,
-catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
+Extiende apps nativas (Documentos, Aprobaciones, Calidad, Helpdesk, Proyecto,
+Mantenimiento, Encuestas) sin duplicarlas y agrega solo los modelos que Odoo
+no tiene. Toda la lógica vive en este módulo (cero Studio).
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.4.4.8',
+    'version': '19.0.4.4.9',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
