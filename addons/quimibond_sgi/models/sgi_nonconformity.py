@@ -3,6 +3,22 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 
+class MailActivity(models.Model):
+    _inherit = 'mail.activity'
+
+    def _action_done(self, feedback=False, attachment_ids=None):
+        """Cierre bidireccional: completar desde el chatter la actividad espejo
+        de una acción del SGI marca terminada la acción (date_done)."""
+        lines = self.env['sgi.action.line'].search([
+            ('activity_id', 'in', self.ids), ('date_done', '=', False),
+        ])
+        res = super()._action_done(feedback=feedback, attachment_ids=attachment_ids)
+        if lines:
+            lines.with_context(sgi_activity_done=True).write(
+                {'date_done': fields.Date.context_today(self)})
+        return res
+
+
 class QualityAlertStage(models.Model):
     _inherit = 'quality.alert.stage'
 
@@ -70,6 +86,15 @@ class QualityAlert(models.Model):
 
     sgi_action_line_ids = fields.One2many('sgi.action.line', 'alert_id', string="Correcciones y acciones")
 
+    # Ligas reales del SGI (H7): trazabilidad NC <-> riesgo <-> AMEF <-> documento.
+    sgi_risk_ids = fields.Many2many(
+        'sgi.risk', 'sgi_alert_risk_rel', 'alert_id', 'risk_id',
+        string="Riesgos ligados")
+    sgi_fmea_id = fields.Many2one('sgi.fmea', string="AMEF ligado")
+    sgi_document_id = fields.Many2one(
+        'documents.document', string="Documento ligado",
+        domain=[('sgi_is_controlled', '=', True)])
+
     @api.model_create_multi
     def create(self, vals_list):
         alerts = super().create(vals_list)
@@ -129,19 +154,25 @@ class QualityAlert(models.Model):
 
     def _sgi_notify_mayor_closed(self):
         """PROT-05/D7: al cerrar una NC mayor, recordar actualizar AMEF y plan de
-        control (lecciones aprendidas)."""
+        control (lecciones aprendidas).
+
+        H7: si la NC tiene un AMEF ligado, la actividad se agenda sobre ese AMEF
+        concreto (no genérica al Jefe MAST) usando el helper del cimiento.
+        """
         self.ensure_one()
         Cron = self.env['sgi.cron']
         manager_id = Cron._sgi_manager_user_id()
         if not manager_id:
             return
-        Cron._sgi_schedule(
-            self,
-            "NC mayor cerrada: actualizar AMEF y plan de control (%s)" % (
-                self.sgi_folio or self.name),
-            "Se cerró una No Conformidad mayor. Revise si el AMEF y el plan de "
-            "control del proceso/producto deben actualizarse con la lección aprendida.",
-            manager_id)
+        summary = "NC mayor cerrada: actualizar AMEF y plan de control (%s)" % (
+            self.sgi_folio or self.name)
+        note = ("Se cerró una No Conformidad mayor. Revise si el AMEF y el plan "
+                "de control del proceso/producto deben actualizarse con la "
+                "lección aprendida.")
+        if self.sgi_fmea_id:
+            self.sgi_fmea_id._sgi_schedule_activity(manager_id, summary, note)
+        else:
+            Cron._sgi_schedule(self, summary, note, manager_id)
         return True
 
     def action_sgi_force_close(self):
@@ -333,7 +364,14 @@ class SgiActionLine(models.Model):
         res = super().write(vals)
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:
-            self.filtered('date_done')._sgi_close_activity()
+            done = self.filtered('date_done')
+            if self.env.context.get('sgi_activity_done'):
+                # El cierre vino de completar la actividad espejo en el chatter:
+                # la actividad ya se marcó hecha, sólo soltamos el enlace para no
+                # volver a cerrarla (evita recursión).
+                done.activity_id = False
+            else:
+                done._sgi_close_activity()
             # Reabrir una acción (borrar la fecha de terminación) vuelve a
             # agendar la actividad en el responsable.
             resync = True

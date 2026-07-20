@@ -74,6 +74,12 @@ class SgiRisk(models.Model):
     ], string="Tipo FODA")
 
     action_line_ids = fields.One2many('sgi.action.line', 'risk_id', string="Acciones")
+    # Ligas inversas (H7): NCs del SGI que apuntan a este riesgo.
+    sgi_nc_ids = fields.Many2many(
+        'quality.alert', 'sgi_alert_risk_rel', 'risk_id', 'alert_id',
+        string="NCs ligadas")
+    sgi_nc_count = fields.Integer(string="# NCs ligadas",
+                                  compute='_compute_sgi_nc_count')
     next_review_date = fields.Date(string="Próxima revisión")
     state = fields.Selection([
         ('identificado', "Identificado"),
@@ -186,6 +192,21 @@ class SgiRisk(models.Model):
         for risk in self:
             risk.display_name = "%s - %s" % (risk.folio, risk.name) \
                 if risk.folio else risk.name
+
+    @api.depends('sgi_nc_ids')
+    def _compute_sgi_nc_count(self):
+        for risk in self:
+            risk.sgi_nc_count = len(risk.sgi_nc_ids)
+
+    def action_view_sgi_ncs(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "NCs ligadas",
+            'res_model': 'quality.alert',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', self.sgi_nc_ids.ids)],
+        }
 
     # ------------------------------------------------------------------
     # Candado de riesgo alto (H11)

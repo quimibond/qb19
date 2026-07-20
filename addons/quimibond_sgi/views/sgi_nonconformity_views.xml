@@ -70,6 +70,18 @@
                             </list>
                         </field>
                     </page>
+                    <page string="Ligas SGI" invisible="not sgi_folio">
+                        <group>
+                            <group string="Trazabilidad">
+                                <field name="sgi_fmea_id"/>
+                                <field name="sgi_document_id"/>
+                            </group>
+                            <group string="Riesgos ligados">
+                                <field name="sgi_risk_ids" nolabel="1"
+                                       widget="many2many_tags"/>
+                            </group>
+                        </group>
+                    </page>
                     <page string="Verificación y cierre">
                         <group>
                             <group string="Eficacia">

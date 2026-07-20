@@ -94,3 +94,73 @@ class TestOla1RootCause(TransactionCase):
         self._line(alert, action_type='correctiva', date_done=date.today())
         alert.write({'stage_id': self.stage_closed.id})
         self.assertEqual(alert.stage_id, self.stage_closed)
+
+
+@tagged('post_install', '-at_install')
+class TestOla1Links(TransactionCase):
+    """H7: ligas reales NC <-> riesgo <-> AMEF <-> documento + cierre bidireccional."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
+        cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
+
+    def _mayor(self, **vals):
+        base = {'title': 'NC', 'team_id': self.team.id,
+                'sgi_classification': 'mayor', 'sgi_root_cause': 'c',
+                'sgi_why_1': '1', 'sgi_why_2': '2', 'sgi_why_3': '3',
+                'sgi_why_4': '4', 'sgi_why_5': '5',
+                'sgi_effectiveness_note': 'e',
+                'sgi_effectiveness_date': date.today()}
+        base.update(vals)
+        alert = self.env['quality.alert'].create(base)
+        self.env['sgi.action.line'].create({
+            'alert_id': alert.id, 'action_type': 'correctiva', 'name': 'a',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(), 'date_done': date.today()})
+        return alert
+
+    def test_01_link_fields_and_inverse_counts(self):
+        fmea = self.env['sgi.fmea'].create({'name': 'A', 'fmea_type': 'proceso'})
+        risk = self.env['sgi.risk'].create({'name': 'R', 'instrument': 'ryo'})
+        alert = self._mayor(sgi_fmea_id=fmea.id, sgi_risk_ids=[(6, 0, [risk.id])])
+        self.assertEqual(fmea.sgi_nc_count, 1)
+        self.assertEqual(risk.sgi_nc_count, 1)
+        self.assertIn(alert, fmea.sgi_nc_ids)
+        self.assertIn(alert, risk.sgi_nc_ids)
+
+    def test_02_mayor_close_schedules_on_linked_fmea(self):
+        fmea = self.env['sgi.fmea'].create({'name': 'A', 'fmea_type': 'proceso'})
+        alert = self._mayor(sgi_fmea_id=fmea.id)
+        before = self.env['mail.activity'].search_count(
+            [('res_model', '=', 'sgi.fmea'), ('res_id', '=', fmea.id)])
+        alert.write({'stage_id': self.stage_closed.id})
+        after = self.env['mail.activity'].search_count(
+            [('res_model', '=', 'sgi.fmea'), ('res_id', '=', fmea.id)])
+        self.assertEqual(after, before + 1,
+                         "La actividad de actualizar AMEF va sobre el AMEF ligado.")
+        # No debe quedar la genérica sobre la NC.
+        self.assertFalse(self.env['mail.activity'].search_count([
+            ('res_model', '=', 'quality.alert'), ('res_id', '=', alert.id),
+            ('summary', 'ilike', 'actualizar AMEF')]))
+
+    def test_03_mayor_close_generic_without_fmea(self):
+        alert = self._mayor()
+        alert.write({'stage_id': self.stage_closed.id})
+        self.assertTrue(self.env['mail.activity'].search_count([
+            ('res_model', '=', 'quality.alert'), ('res_id', '=', alert.id),
+            ('summary', 'ilike', 'actualizar AMEF')]))
+
+    def test_04_bidirectional_close_from_chatter(self):
+        risk = self.env['sgi.risk'].create({'name': 'R', 'instrument': 'ryo'})
+        line = self.env['sgi.action.line'].create({
+            'risk_id': risk.id, 'name': 'a', 'responsible_id': self.env.user.id,
+            'date_commit': date.today()})
+        self.assertTrue(line.activity_id)
+        line.activity_id.action_feedback(feedback="hecho desde el chatter")
+        line.invalidate_recordset()
+        self.assertTrue(line.date_done, "Completar la actividad termina la acción.")
+        self.assertEqual(line.state, 'terminada')
