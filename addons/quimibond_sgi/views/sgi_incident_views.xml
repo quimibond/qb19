@@ -52,6 +52,8 @@
                                 <field name="lack_of_control"
                                        placeholder="Deficiencias del sistema de gestión..."/>
                                 <field name="risk_id"/>
+                                <field name="sgi_alert_id" readonly="1"
+                                       invisible="not sgi_alert_id"/>
                             </group>
                         </page>
                         <page string="Acciones">

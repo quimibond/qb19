@@ -70,7 +70,8 @@ class TestOla1RootCause(TransactionCase):
     def _mayor_ready(self):
         alert = self._nc(sgi_classification='mayor', sgi_root_cause='Causa',
                          sgi_effectiveness_note='Eficaz',
-                         sgi_effectiveness_date=date.today())
+                         sgi_effectiveness_date=date.today(),
+                         sgi_lesson_captured=True)
         return alert
 
     def test_06_mayor_needs_five_whys(self):
@@ -116,7 +117,8 @@ class TestOla1Links(TransactionCase):
                 'sgi_why_1': '1', 'sgi_why_2': '2', 'sgi_why_3': '3',
                 'sgi_why_4': '4', 'sgi_why_5': '5',
                 'sgi_effectiveness_note': 'e',
-                'sgi_effectiveness_date': date.today()}
+                'sgi_effectiveness_date': date.today(),
+                'sgi_lesson_captured': True}
         base.update(vals)
         alert = self.env['quality.alert'].create(base)
         self.env['sgi.action.line'].create({

@@ -96,6 +96,8 @@
                                 <field name="sgi_effectiveness_note"/>
                                 <field name="sgi_effectiveness_date"/>
                                 <field name="sgi_effectiveness_by"/>
+                                <field name="sgi_lesson_captured"
+                                       invisible="sgi_classification != 'mayor'"/>
                             </group>
                             <group string="Seguimiento">
                                 <field name="sgi_required_capa"/>

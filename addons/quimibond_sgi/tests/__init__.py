@@ -25,3 +25,4 @@ from . import test_ola2
 from . import test_procedure
 from . import test_ola_a_security
 from . import test_ola_a_procedure
+from . import test_ola_b

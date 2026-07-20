@@ -3,6 +3,13 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 
+class QualityAlert(models.Model):
+    _inherit = 'quality.alert'
+
+    sgi_incident_id = fields.Many2one(
+        'sgi.incident', string="Incidente SST de origen", readonly=True, copy=False)
+
+
 class SgiIncident(models.Model):
     _name = 'sgi.incident'
     _description = "Incidente / Accidente SST (P-S02, SCAT)"
@@ -49,6 +56,8 @@ class SgiIncident(models.Model):
     risk_id = fields.Many2one('sgi.risk', string="Riesgo / IPER relacionado",
                               domain="[('instrument', '=', 'iper')]")
     action_line_ids = fields.One2many('sgi.action.line', 'incident_id', string="Acciones")
+    sgi_alert_id = fields.Many2one('quality.alert', string="No Conformidad generada",
+                                   readonly=True, copy=False)
 
     state = fields.Selection([
         ('reportado', "Reportado"),
@@ -62,7 +71,42 @@ class SgiIncident(models.Model):
         incidents = super().create(vals_list)
         for incident in incidents:
             incident._sgi_notify_if_serious()
+            incident._sgi_create_alert()
         return incidents
+
+    def _sgi_create_alert(self):
+        """Un incidente grave/fatal FUERZA una No Conformidad del SGI (45001 10.2):
+        la investigación SCAT y las acciones correctivas viven en la NC, ligada al
+        incidente en ambos sentidos. Idempotente."""
+        self.ensure_one()
+        if self.severity not in ('grave', 'fatal') or self.sgi_alert_id:
+            return
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
+                            raise_if_not_found=False)
+        Cron = self.env['sgi.cron']
+        manager_id = Cron._sgi_manager_user_id()
+        label = dict(self._fields['severity'].selection).get(self.severity)
+        vals = {
+            'title': "Incidente %s: %s" % (label, self.name),
+            'sgi_origin_type': 'proceso',
+            'sgi_classification': 'mayor',
+            'sgi_process_id': self.process_id.id,
+            'sgi_deviation': "Incidente SST %s (%s). Realice la investigación SCAT y "
+                             "las acciones correctivas." % (self.folio or self.name, label),
+            'sgi_incident_id': self.id,
+        }
+        if team:
+            vals['team_id'] = team.id
+        alert = self.env['quality.alert'].create(vals)
+        self.sgi_alert_id = alert.id
+        if manager_id:
+            Cron._sgi_schedule(
+                alert,
+                "Investigar incidente %s: %s" % (label, self.folio or self.name),
+                "Un incidente SST grave/fatal generó esta NC. Complete la "
+                "investigación SCAT y las acciones correctivas.",
+                manager_id)
+        return alert
 
     def _sgi_notify_if_serious(self):
         """Incidentes graves/fatales: aviso inmediato a Jefe MAST y Dirección."""
@@ -101,6 +145,12 @@ class SgiIncident(models.Model):
             if pending:
                 problems.append(
                     "• Hay %d acción(es) sin fecha de terminación." % len(pending))
+            # Un incidente grave/fatal debe cerrar la cadena SST: el peligro que lo
+            # originó tiene que estar en la matriz IPER (45001 6.1.2 / 10.2).
+            if incident.severity in ('grave', 'fatal') and not incident.risk_id:
+                problems.append(
+                    "• Incidente grave/fatal: falta ligar el riesgo IPER del que "
+                    "surge (actualice la matriz IPER y enlácelo).")
             if problems:
                 raise UserError(
                     "No se puede cerrar el incidente %s:\n%s" % (

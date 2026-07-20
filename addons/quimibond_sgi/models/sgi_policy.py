@@ -41,6 +41,7 @@ class SgiPolicy(models.Model):
     ], string="Salud agregada", compute='_compute_health',
         help="Peor color entre los objetivos de la política (cascada abajo→arriba).")
 
+    @api.depends('objective_ids', 'objective_ids.health')
     def _compute_health(self):
         for policy in self:
             policy.health = sgi_worst_health(policy.objective_ids.mapped('health'))
