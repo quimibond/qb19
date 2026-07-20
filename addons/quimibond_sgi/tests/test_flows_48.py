@@ -110,6 +110,7 @@ class TestFlows48(TransactionCase):
         from datetime import date
         indicator = self.env['sgi.indicator'].create({
             'code': 'TST-LOCK', 'name': 'KPI candado', 'calc_mode': 'manual',
+            'responsible_id': self.env.user.id,
         })
         measure = self.env['sgi.indicator.measure'].create({
             'indicator_id': indicator.id,

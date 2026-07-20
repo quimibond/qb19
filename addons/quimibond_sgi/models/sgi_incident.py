@@ -6,10 +6,16 @@ from odoo.exceptions import UserError
 class SgiIncident(models.Model):
     _name = 'sgi.incident'
     _description = "Incidente / Accidente SST (P-S02, SCAT)"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
+    _sgi_sequence_code = 'sgi.incident'
+    _sgi_locked_states = ('cerrado',)
 
-    folio = fields.Char(string="Folio", readonly=True, copy=False, index=True, tracking=True)
+    _folio_uniq = models.Constraint(
+        'unique(folio)',
+        "Ya existe un incidente con ese folio.",
+    )
+
     name = fields.Char(string="Título", required=True, tracking=True)
     date = fields.Datetime(string="Fecha y hora", required=True,
                            default=fields.Datetime.now, tracking=True)
@@ -53,10 +59,6 @@ class SgiIncident(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        seq = self.env['ir.sequence']
-        for vals in vals_list:
-            if not vals.get('folio'):
-                vals['folio'] = seq.next_by_code('sgi.incident') or '/'
         incidents = super().create(vals_list)
         for incident in incidents:
             incident._sgi_notify_if_serious()

@@ -22,11 +22,18 @@ class TestPegamentoNcMayor(TransactionCase):
             'team_id': self.team_int.id,
             'sgi_classification': 'mayor',
         })
-        # Completa candados de cierre.
+        # Completa candados de cierre (H5: causa raíz, acción terminada y
+        # verificación de eficacia).
         alert.write({
             'sgi_root_cause': 'Causa raíz',
             'sgi_effectiveness_note': 'Eficaz',
             'sgi_effectiveness_date': date.today(),
+        })
+        self.env['sgi.action.line'].create({
+            'alert_id': alert.id, 'action_type': 'correctiva',
+            'name': 'Corrección de la NC mayor',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(), 'date_done': date.today(),
         })
         alert.write({'stage_id': self.stage_closed.id})
         activities = self.env['mail.activity'].search([

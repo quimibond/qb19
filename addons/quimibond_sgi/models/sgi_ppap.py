@@ -17,10 +17,16 @@ class SgiPpapElementTemplate(models.Model):
 class SgiPpap(models.Model):
     _name = 'sgi.ppap'
     _description = "PPAP - Proceso de Aprobación de Partes de Producción (P-C15)"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
+    _sgi_sequence_code = 'sgi.ppap'
+    _sgi_locked_states = ('aprobado',)
 
-    folio = fields.Char(string="Folio", readonly=True, copy=False, index=True, tracking=True)
+    _folio_uniq = models.Constraint(
+        'unique(folio)',
+        "Ya existe un PPAP con ese folio.",
+    )
+
     partner_id = fields.Many2one('res.partner', string="Cliente", required=True, tracking=True,
                                  domain="[('is_company', '=', True)]")
     product_tmpl_id = fields.Many2one('product.template', string="Producto", required=True,
@@ -53,10 +59,6 @@ class SgiPpap(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        seq = self.env['ir.sequence']
-        for vals in vals_list:
-            if not vals.get('folio'):
-                vals['folio'] = seq.next_by_code('sgi.ppap') or '/'
         ppaps = super().create(vals_list)
         for ppap in ppaps:
             ppap._sgi_generate_elements()

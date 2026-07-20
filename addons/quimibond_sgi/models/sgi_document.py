@@ -179,6 +179,11 @@ class DocumentsDocument(models.Model):
         previous = self.search(domain)
         if previous:
             previous.write({'sgi_state': 'obsoleto'})
+            # Vuelca el cambio a la BD ANTES de insertar la nueva versión: el
+            # índice único parcial (vigente + controlado) mira la tabla, no la
+            # caché, así que sin este flush el INSERT de la nueva vigente choca
+            # con la anterior aún marcada como vigente en la BD.
+            previous.flush_recordset(['sgi_state'])
             for prev in previous:
                 prev.message_post(
                     body="Obsoletado automáticamente: entró en vigor una nueva "
