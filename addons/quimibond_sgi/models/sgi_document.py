@@ -79,6 +79,44 @@ class DocumentsDocument(models.Model):
     sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats')
     sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats')
 
+    # --- Relación documental por nomenclatura (P-A28 -> IT/F/F-IT/DAT P-A28-*) ---
+    sgi_parent_document_id = fields.Many2one(
+        'documents.document', string="Procedimiento padre",
+        compute='_compute_sgi_family',
+        help="El procedimiento vigente de la familia de la clave (P-Xnn).")
+    sgi_family_document_ids = fields.Many2many(
+        'documents.document', string="Documentos de la familia",
+        compute='_compute_sgi_family',
+        help="Instructivos, formatos y DATs de la misma familia de clave.")
+    sgi_reference_ids = fields.Many2many(
+        'documents.document', 'sgi_doc_reference_rel', 'doc_id', 'ref_id',
+        string="Referencias cruzadas",
+        help="Documentos de OTRAS familias que este documento menciona "
+             "(ej. P-A28 referencia P-A22, P-C01, P-D01). Captura de MAST.")
+
+    def _compute_sgi_family(self):
+        Doc = self.env['documents.document']
+        family_re = re.compile(r'(P-[AGCDEIMPSV]\d{2})')
+        for doc in self:
+            family = Doc
+            parent = Doc
+            code = (doc.sgi_code or '').strip().upper()
+            match = family_re.search(code)
+            if doc.sgi_is_controlled and match and doc.id:
+                base = match.group(1)
+                family = Doc.search([
+                    ('sgi_is_controlled', '=', True),
+                    ('sgi_code', 'like', base + '-'),
+                    ('id', '!=', doc.id),
+                ], order='sgi_code')
+                if code != base:
+                    parent = Doc.search([
+                        ('sgi_code', '=', base),
+                        ('sgi_state', '=', 'vigente'),
+                    ], limit=1)
+            doc.sgi_family_document_ids = family
+            doc.sgi_parent_document_id = parent[:1]
+
     @api.depends('sgi_ack_ids', 'sgi_ack_ids.state')
     def _compute_sgi_ack_stats(self):
         for doc in self:

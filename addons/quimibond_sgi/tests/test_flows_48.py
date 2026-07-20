@@ -49,3 +49,42 @@ class TestFlows48(TransactionCase):
         tint = self.env.ref('quimibond_sgi.proc_tintoreria')
         self.assertTrue(tint.in_flow_ids)
         self.assertTrue(tint.out_flow_ids)
+
+    def test_05_ficha_de_proceso(self):
+        """La ficha muestra lo ligado: documentos, indicadores, riesgos, modelos."""
+        proc = self.env.ref('quimibond_sgi.proc_ventas')
+        doc = self.env['documents.document'].create({
+            'name': 'F-P-A28-12 COTIZACION.xlsx', 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': 'formato',
+            'sgi_code': 'F-P-A28-12', 'sgi_state': 'vigente',
+            'sgi_process_id': proc.id,
+        })
+        self.assertIn(doc, proc.linked_document_ids)
+        self.assertGreaterEqual(proc.document_count, 1)
+        self.assertTrue(proc.odoo_model_ids, "Ventas debe mostrar módulos conectados")
+        action = proc.action_open_documents()
+        self.assertEqual(action['res_model'], 'documents.document')
+
+    def test_06_familia_documental_por_clave(self):
+        """P-A28 ve a sus hijos; el formato ve a su procedimiento padre."""
+        Doc = self.env['documents.document']
+        proc = Doc.create({
+            'name': 'P-A28 VENTAS.pdf', 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': 'procedimiento',
+            'sgi_code': 'P-A28', 'sgi_state': 'vigente',
+        })
+        fmt = Doc.create({
+            'name': 'F-P-A28-12 COTIZACION.xlsx', 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': 'formato',
+            'sgi_code': 'F-P-A28-12', 'sgi_state': 'vigente',
+        })
+        it = Doc.create({
+            'name': 'IT-P-A28-01 PEDIDOS ODOO.pdf', 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': 'instructivo',
+            'sgi_code': 'IT-P-A28-01', 'sgi_state': 'vigente',
+        })
+        self.assertIn(fmt, proc.sgi_family_document_ids)
+        self.assertIn(it, proc.sgi_family_document_ids)
+        self.assertEqual(fmt.sgi_parent_document_id, proc)
+        self.assertEqual(it.sgi_parent_document_id, proc)
+        self.assertFalse(proc.sgi_parent_document_id)
