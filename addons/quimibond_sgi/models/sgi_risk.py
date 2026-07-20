@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 SCALE_1_5 = [('1', "1"), ('2', "2"), ('3', "3"), ('4', "4"), ('5', "5")]
 
@@ -96,6 +96,10 @@ class SgiRisk(models.Model):
     residual_score = fields.Integer(string="Riesgo residual", compute='_compute_residual', store=True)
     residual_level = fields.Selection(ATTENTION_LEVELS, string="Nivel residual",
                                       compute='_compute_residual', store=True)
+    residual_note = fields.Text(
+        string="Justificación del riesgo residual",
+        help="Obligatoria para controlar/cerrar un riesgo de atención máxima si "
+             "el riesgo residual no baja respecto al inicial.")
     has_finished_actions = fields.Boolean(string="Acciones terminadas",
                                           compute='_compute_has_finished_actions')
 
@@ -182,3 +186,43 @@ class SgiRisk(models.Model):
         for risk in self:
             risk.display_name = "%s - %s" % (risk.folio, risk.name) \
                 if risk.folio else risk.name
+
+    # ------------------------------------------------------------------
+    # Candado de riesgo alto (H11)
+    # ------------------------------------------------------------------
+    # Nivel más alto de cada instrumento (ryo/ambiental -> inmediata,
+    # iper/patrimonial -> alto).
+    _SGI_HIGH_ATTENTION = ('inmediata', 'alto')
+    _SGI_CLOSING_STATES = ('controlado', 'cerrado')
+
+    def _sgi_check_can_close(self):
+        """Un riesgo de atención máxima no se controla/cierra sin evidencia."""
+        for risk in self:
+            if risk.attention_level not in self._SGI_HIGH_ATTENTION:
+                continue
+            problems = []
+            if not any(line.date_done for line in risk.action_line_ids):
+                problems.append(
+                    "• No hay ninguna acción de tratamiento TERMINADA.")
+            residual_lower = (risk.residual_score and risk.score
+                              and risk.residual_score < risk.score)
+            if not (residual_lower or risk.residual_note):
+                problems.append(
+                    "• Falta re-evaluar el riesgo residual (que baje respecto "
+                    "al inicial) o justificarlo en «Justificación del riesgo "
+                    "residual».")
+            if problems:
+                level = dict(self._fields['attention_level'].selection).get(
+                    risk.attention_level, risk.attention_level)
+                raise UserError(
+                    "No se puede controlar/cerrar el riesgo de atención %s "
+                    "%s:\n%s" % (level, risk.folio or risk.name,
+                                 "\n".join(problems)))
+
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('state') in self._SGI_CLOSING_STATES:
+            self.filtered(
+                lambda r: r.state in self._SGI_CLOSING_STATES
+            )._sgi_check_can_close()
+        return res

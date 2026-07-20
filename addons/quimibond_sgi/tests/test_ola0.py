@@ -162,12 +162,71 @@ class TestOla0Lock(TransactionCase):
     def test_05_lock_does_not_block_related_recompute(self):
         # Cerrar una acción de un riesgo cerrado (recompute indirecto) no debe
         # dispararse contra el candado del riesgo.
+        # Riesgo de atención baja (H11 no aplica) para aislar el candado del
+        # cimiento del candado H11.
         risk = self.env['sgi.risk'].create({
             'name': 'R', 'instrument': 'ryo',
-            'eval_probability': '4', 'eval_impact': '4'})
+            'eval_probability': '1', 'eval_impact': '1'})
         line = self.env['sgi.action.line'].create({
             'risk_id': risk.id, 'name': 'a', 'responsible_id': self.mast.id,
             'date_commit': fields.Date.today()})
         risk.write({'state': 'cerrado'})
         line.with_user(self.raso).write({'date_done': fields.Date.today()})
         self.assertEqual(line.state, 'terminada')
+
+
+@tagged('post_install', '-at_install')
+class TestOla0RiskHigh(TransactionCase):
+    """H11: un riesgo de atención máxima no se cierra sin acción + residual."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = cls.env.ref('base.user_admin')
+
+    def _high_risk(self):
+        risk = self.env['sgi.risk'].create({
+            'name': 'Riesgo inmediato', 'instrument': 'ryo',
+            'eval_probability': '5', 'eval_impact': '5'})
+        self.assertEqual(risk.attention_level, 'inmediata')
+        return risk
+
+    def _finish_action(self, risk):
+        self.env['sgi.action.line'].create({
+            'risk_id': risk.id, 'name': 'tratamiento',
+            'responsible_id': self.user.id,
+            'date_commit': fields.Date.today(),
+            'date_done': fields.Date.today()})
+
+    def test_01_block_without_action_or_residual(self):
+        risk = self._high_risk()
+        with self.assertRaises(UserError):
+            risk.write({'state': 'controlado'})
+
+    def test_02_block_with_action_but_no_residual(self):
+        risk = self._high_risk()
+        self._finish_action(risk)
+        with self.assertRaises(UserError):
+            risk.write({'state': 'controlado'})
+
+    def test_03_allow_with_action_and_residual_note(self):
+        risk = self._high_risk()
+        self._finish_action(risk)
+        risk.write({'state': 'controlado',
+                    'residual_note': 'Se acepta por control operacional.'})
+        self.assertEqual(risk.state, 'controlado')
+
+    def test_04_allow_with_residual_drop(self):
+        risk = self._high_risk()
+        self._finish_action(risk)
+        risk.write({'state': 'cerrado',
+                    'residual_probability': '2', 'residual_impact': '2'})
+        self.assertEqual(risk.state, 'cerrado')
+        self.assertLess(risk.residual_score, risk.score)
+
+    def test_05_low_risk_closes_freely(self):
+        risk = self.env['sgi.risk'].create({
+            'name': 'Riesgo bajo', 'instrument': 'ryo',
+            'eval_probability': '1', 'eval_impact': '1'})
+        risk.write({'state': 'cerrado'})
+        self.assertEqual(risk.state, 'cerrado')
