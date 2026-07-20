@@ -26,11 +26,32 @@ class SgiProcess(models.Model):
     document_ids = fields.Many2many('documents.document', string="Documentos aplicables")
     active = fields.Boolean(default=True)
 
+    purpose = fields.Text(
+        string="Objetivo del proceso",
+        help="Para qué existe el proceso (de la caracterización/SIPOC).")
+
     in_flow_ids = fields.One2many('sgi.process.flow', 'to_process_id', string="Entradas")
     out_flow_ids = fields.One2many('sgi.process.flow', 'from_process_id', string="Salidas")
 
+    # Ficha del proceso: todo lo ligado, navegable desde un solo lugar.
+    linked_document_ids = fields.One2many(
+        'documents.document', 'sgi_process_id', string="Documentos del proceso")
+    procedure_ids = fields.One2many(
+        'documents.document', 'sgi_process_id', string="Procedimientos e instructivos",
+        domain=[('sgi_doc_type', 'in', ('procedimiento', 'instructivo')),
+                ('sgi_state', '=', 'vigente')])
+    indicator_ids = fields.One2many('sgi.indicator', 'process_id', string="Indicadores")
+    risk_ids = fields.One2many('sgi.risk', 'process_id', string="Riesgos y oportunidades")
+    odoo_model_ids = fields.Many2many(
+        'ir.model', string="Módulos de Odoo conectados",
+        compute='_compute_odoo_models',
+        help="Modelos donde viven los registros reales de las entradas/salidas.")
+
     nc_count = fields.Integer(string="NC abiertas", compute='_compute_health')
     overdue_action_count = fields.Integer(string="Acciones vencidas", compute='_compute_health')
+    document_count = fields.Integer(string="Documentos", compute='_compute_counts')
+    indicator_count = fields.Integer(string="Indicadores", compute='_compute_counts')
+    risk_count = fields.Integer(string="Riesgos", compute='_compute_counts')
 
     _code_uniq = models.Constraint(
         'unique(code)',
@@ -64,6 +85,56 @@ class SgiProcess(models.Model):
     def _compute_display_name(self):
         for process in self:
             process.display_name = "%s - %s" % (process.code, process.name) if process.code else process.name
+
+    def _compute_odoo_models(self):
+        for process in self:
+            flows = process.in_flow_ids | process.out_flow_ids
+            process.odoo_model_ids = flows.mapped('odoo_model_id')
+
+    def _compute_counts(self):
+        Doc = self.env['documents.document']
+        Indicator = self.env['sgi.indicator']
+        Risk = self.env['sgi.risk']
+        for process in self:
+            if process.id:
+                process.document_count = Doc.search_count([('sgi_process_id', '=', process.id)])
+                process.indicator_count = Indicator.search_count([('process_id', '=', process.id)])
+                process.risk_count = Risk.search_count([('process_id', '=', process.id)])
+            else:
+                process.document_count = process.indicator_count = process.risk_count = 0
+
+    def action_open_documents(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Documentos — %s" % self.name,
+            'res_model': 'documents.document',
+            'view_mode': 'list,kanban,form',
+            'domain': [('sgi_process_id', '=', self.id)],
+            'context': {'default_sgi_process_id': self.id},
+        }
+
+    def action_open_indicators(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Indicadores — %s" % self.name,
+            'res_model': 'sgi.indicator',
+            'view_mode': 'list,form',
+            'domain': [('process_id', '=', self.id)],
+            'context': {'default_process_id': self.id},
+        }
+
+    def action_open_risks(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Riesgos — %s" % self.name,
+            'res_model': 'sgi.risk',
+            'view_mode': 'list,form',
+            'domain': [('process_id', '=', self.id)],
+            'context': {'default_process_id': self.id},
+        }
 
     def action_open_ncs(self):
         self.ensure_one()

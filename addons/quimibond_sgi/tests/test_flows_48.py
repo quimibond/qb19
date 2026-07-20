@@ -49,3 +49,18 @@ class TestFlows48(TransactionCase):
         tint = self.env.ref('quimibond_sgi.proc_tintoreria')
         self.assertTrue(tint.in_flow_ids)
         self.assertTrue(tint.out_flow_ids)
+
+    def test_05_ficha_de_proceso(self):
+        """La ficha muestra lo ligado: documentos, indicadores, riesgos, modelos."""
+        proc = self.env.ref('quimibond_sgi.proc_ventas')
+        doc = self.env['documents.document'].create({
+            'name': 'F-P-A28-12 COTIZACION.xlsx', 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': 'formato',
+            'sgi_code': 'F-P-A28-12', 'sgi_state': 'vigente',
+            'sgi_process_id': proc.id,
+        })
+        self.assertIn(doc, proc.linked_document_ids)
+        self.assertGreaterEqual(proc.document_count, 1)
+        self.assertTrue(proc.odoo_model_ids, "Ventas debe mostrar módulos conectados")
+        action = proc.action_open_documents()
+        self.assertEqual(action['res_model'], 'documents.document')
