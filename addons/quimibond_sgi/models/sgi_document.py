@@ -199,20 +199,46 @@ class DocumentsDocument(models.Model):
                     body="Obsoletado automáticamente: entró en vigor una nueva "
                          "revisión del documento %s." % code)
 
+    def _sgi_reparent_family(self):
+        """H21: al entrar en vigor una nueva revisión de un procedimiento, sus
+        hijos (que colgaban de la revisión anterior, ahora obsoleta) se re-apuntan
+        al registro vigente. El ciclo documental crea un REGISTRO NUEVO por
+        revisión, así que sin esto la familia del procedimiento nuevo se vería
+        vacía y los hijos quedarían colgados de un documento obsoleto."""
+        for doc in self:
+            if doc.sgi_state != 'vigente' or not doc.sgi_code:
+                continue
+            prior_revisions = self.search([
+                ('sgi_code', '=', doc.sgi_code),
+                ('id', '!=', doc.id),
+            ])
+            if not prior_revisions:
+                continue
+            orphans = self.search([
+                ('sgi_parent_document_id', 'in', prior_revisions.ids)])
+            if orphans:
+                orphans.write({'sgi_parent_document_id': doc.id})
+
     @api.model_create_multi
     def create(self, vals_list):
         # Obsoleta versiones previas ANTES de crear la nueva vigente (evita el candado de unicidad)
         for vals in vals_list:
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
-        return super().create(vals_list)
+        docs = super().create(vals_list)
+        docs.filtered(
+            lambda d: d.sgi_state == 'vigente' and d.sgi_code)._sgi_reparent_family()
+        return docs
 
     def write(self, vals):
         if vals.get('sgi_state') == 'vigente':
             for doc in self:
                 code = vals.get('sgi_code', doc.sgi_code)
                 self._obsolete_code(code, exclude=doc)
-        return super().write(vals)
+        res = super().write(vals)
+        if vals.get('sgi_state') == 'vigente':
+            self._sgi_reparent_family()
+        return res
 
     def action_generate_acks(self):
         """Crea acuses pendientes para los empleados de los puestos aplicables (idempotente)."""

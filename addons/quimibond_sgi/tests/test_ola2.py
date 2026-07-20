@@ -176,6 +176,28 @@ class TestOla2DocFamily(TransactionCase):
         self.env['sgi.config'].migrate_document_families()
         self.assertFalse(miid.sgi_parent_document_id)
 
+    def test_05_new_revision_reparents_children(self):
+        # Padre vigente con un hijo ligado.
+        parent_r1 = self.Doc.create({
+            'name': 'P-C95 R01.pdf', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-C95',
+            'sgi_revision': '01', 'sgi_state': 'vigente'})
+        child = self.Doc.create({
+            'name': 'F.xlsx', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'formato', 'sgi_code': 'F-P-C95-01',
+            'sgi_state': 'vigente', 'sgi_parent_document_id': parent_r1.id})
+        self.assertEqual(child.sgi_parent_document_id, parent_r1)
+        # Nueva revisión (registro NUEVO, misma clave) entra en vigor.
+        parent_r2 = self.Doc.create({
+            'name': 'P-C95 R02.pdf', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-C95',
+            'sgi_revision': '02', 'sgi_state': 'vigente'})
+        self.assertEqual(parent_r1.sgi_state, 'obsoleto')
+        # El hijo sigue al procedimiento vigente, no al obsoleto.
+        self.assertEqual(child.sgi_parent_document_id, parent_r2)
+        self.assertIn(child, parent_r2.sgi_family_document_ids)
+        self.assertFalse(parent_r1.sgi_family_document_ids)
+
 
 @tagged('post_install', '-at_install')
 class TestOla2ExternalEscalation(TransactionCase):
