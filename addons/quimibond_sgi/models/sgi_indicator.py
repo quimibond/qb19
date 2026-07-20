@@ -505,6 +505,19 @@ class SgiIndicatorMeasure(models.Model):
             'domain': domain,
         }
 
+    # Una medición VALIDADA es evidencia: su valor no se toca sin privilegio.
+    _SGI_LOCKED_FIELDS = {'value', 'period_date', 'indicator_id'}
+
+    def write(self, vals):
+        if self._SGI_LOCKED_FIELDS & set(vals.keys()):
+            locked = self.filtered(lambda m: m.state == 'validado')
+            if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+                raise UserError(
+                    "La medición validada de %s es evidencia del SGI y no puede "
+                    "modificarse. Pide al Jefe de MAST regresarla a borrador si "
+                    "hay un error real." % ', '.join(locked.mapped('indicator_id.name')))
+        return super().write(vals)
+
     def action_capture(self):
         self.write({'state': 'capturado'})
 
