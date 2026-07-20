@@ -38,7 +38,7 @@ documento trae su **clave** (P-A02, IT-P-P01-08, F-P-G05-01…), revisión, esta
 (**Vigente**, Prueba piloto, Obsoleto) y a qué proceso pertenece.
 
 ### 2.2 Mis procedimientos
-Menú **SGI → Mis procedimientos**: SOLO los documentos vigentes que aplican a TU
+Menú **SGI → Mi trabajo → Mis procedimientos**: SOLO los documentos vigentes que aplican a TU
 puesto. Es tu biblioteca personal de trabajo.
 
 ### 2.3 Acuse de lectura
@@ -61,7 +61,7 @@ solo). Nada de correos ni Excel de solicitudes.
 ### 3.1 Levantar una NC
 - Desde la operación (lo ideal): en la **recepción** o la **orden de fabricación**
   donde viste el problema → botón de alerta de calidad / "Levantar NC".
-- O directo: **SGI → No Conformidades → Tablero → Nuevo**.
+- O directo: **SGI → Mejora continua → No Conformidades → Tablero → Nuevo**.
 
 Llena: qué se desvió (descripción), proceso donde se detectó, clasificación
 (Mayor/Menor/Observación), responsables de contestar. El **folio** (NCI-2026-0001) se
@@ -85,7 +85,7 @@ NC sin acciones a los 5 días (3 si es externa o de cliente) → actividad autom
 responsable y aviso a MAST.
 
 ### 3.5 El concentrado
-**SGI → No Conformidades → Concentrado**: la vista tipo F-P-G05-02 (folio, hallazgo,
+**SGI → Mejora continua → No Conformidades → Concentrado**: la vista tipo F-P-G05-02 (folio, hallazgo,
 responsables, estatus, cierre) con filtros por año y equipo. Se arma sola; exportable
 para el auditor.
 
@@ -109,7 +109,7 @@ auditoría, resueltos por diseño.
 ## 6. Mapa de procesos
 
 **SGI → Procesos**: los 5 macroprocesos y sus procesos, cada uno con su ficha (dueño,
-puestos, documentos, y su salud: NCs abiertas, acciones vencidas). **SGI → Flujos**:
+puestos, documentos, y su salud: NCs abiertas, acciones vencidas). **SGI → Procesos → Flujos**:
 cada flecha del mapa es un entregable real — "Programa semanal (F-P-A12-01)" va de
 Planeación a Producción — y el botón **"Ver registros"** te abre las órdenes/pedidos
 reales que fluyen por ella. El output de un proceso ES el input del siguiente, y ahora
@@ -129,7 +129,7 @@ por indicador que MAST levantaba a mano, ya no se levanta: nace sola.
 
 ## 8. Auditorías internas
 
-**SGI → Auditorías**: programa anual → auditoría (con su folio AUD-) → checklist en
+**SGI → Auditorías y riesgos**: programa anual → auditoría (con su folio AUD-) → checklist en
 **Encuesta** (contestable en tableta, como siempre trabajó el auditor) → **hallazgos**.
 Un clic convierte el hallazgo en NC. La auditoría no cierra hasta que todo hallazgo
 tenga disposición. El sistema avisa al auditor líder 15 días antes de cada auditoría
@@ -137,7 +137,7 @@ del programa. Regla dura: nadie audita su propio proceso (el sistema lo impide).
 
 ## 9. Riesgos y oportunidades
 
-**SGI → Riesgos**: los 5 instrumentos en un solo lugar — **RyO** (5×5, niveles
+**SGI → Auditorías y riesgos → Riesgos**: los 5 instrumentos en un solo lugar — **RyO** (5×5, niveles
 Inmediata/Media/Intermedia/Baja), **IPER** de SST (3×3), **aspectos ambientales**,
 **patrimonial** y **FODA**. Con acciones de mitigación, riesgo residual y revisión
 programada (adiós a las "matrices desactualizadas" de cada auditoría: el sistema te
@@ -181,14 +181,14 @@ también se calculará solo. El acta se imprime con un clic.
 
 ## 13. Incidentes de seguridad (SST)
 
-**SGI → SST → Incidentes**: cualquier empleado puede reportar (lesión, casi-accidente,
+**SGI → Auditorías y riesgos → SST → Incidentes**: cualquier empleado puede reportar (lesión, casi-accidente,
 daño, ambiental). La investigación usa la metodología **SCAT** de siempre (causas
 inmediatas → básicas → falta de control) y el cierre exige las 3 capas + acciones
 terminadas. Un incidente grave avisa de inmediato a MAST y Dirección.
 
 ## 14. Migración de formatos (para MAST)
 
-**SGI → Migración de formatos**: el tablero que dice exactamente **qué formatos ya
+**SGI → Documental → Migración de formatos**: el tablero que dice exactamente **qué formatos ya
 viven en Odoo y cuáles faltan**. Cada formato trae su clase (A: lo sustituye una
 transacción de Odoo · B: se vuelve hoja de trabajo de Calidad · C: Odoo lo imprime ·
 D: sigue como documento), su **destino** y su estado — arrastra la tarjeta conforme
