@@ -131,3 +131,71 @@ class TestProcedureReport(TransactionCase):
     def test_03_header_reads_live_procedure(self):
         self.assertEqual(self.process._sgi_procedure_document(), self.proc_doc)
         self.assertEqual(self.process._sgi_procedure_document().sgi_revision, '15')
+
+
+@tagged('post_install', '-at_install')
+class TestProcedureVentasSeed(TransactionCase):
+    """Paso 3: el piloto P-A28 VENTAS Rev.15 cargado como datos."""
+
+    # Claves de formato del P-A28 (se crean como documentos vigentes para que la
+    # semilla los enlace y la sección 8 los liste).
+    FORMAT_CODES = [
+        'IT-P-A28-01', 'IT-P-A28-02', 'F-P-A28-21', 'F-P-A28-13', 'F-P-A31-01',
+        'F-P-A28-17', 'F-P-A31-02', 'F-P-A28-18', 'F-P-A28-12', 'F-P-A28-04',
+        'F-P-A28-16', 'F-P-A28-15', 'F-P-A28-20', 'F-P-D01-09', 'F-P-D01-11',
+        'F-P-A28-03', 'F-P-A28-19', 'F-P-A28-01', 'F-P-A28-11',
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        cls.process = cls.env.ref('quimibond_sgi.proc_ventas')
+        Doc = cls.env['documents.document']
+        # Procedimiento que encabeza (clave/fecha/rev en vivo).
+        cls.proc_doc = Doc.create({
+            'name': 'P-A28 Ventas.pdf', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A28',
+            'sgi_revision': '15', 'sgi_state': 'vigente',
+            'sgi_process_id': cls.process.id})
+        # Formatos referenciados, vigentes.
+        for i, code in enumerate(cls.FORMAT_CODES):
+            doc_type = 'instructivo' if code.startswith('IT-') else 'formato'
+            Doc.create({
+                'name': 'Doc %s' % code, 'type': 'binary',
+                'sgi_is_controlled': True, 'sgi_doc_type': doc_type,
+                'sgi_code': code, 'sgi_state': 'vigente'})
+
+    def test_01_seed_loads_ventas(self):
+        self.env['sgi.config'].seed_procedure_ventas()
+        # Actividades ≥ 25 y 7 responsabilidades.
+        self.assertGreaterEqual(self.process.activity_count, 25)
+        self.assertEqual(len(self.process.job_responsibility_ids), 7)
+        self.assertTrue(self.process.scope)
+        self.assertEqual(len(self.process.norm_ids), 4)
+
+    def test_02_documented_info_has_15_plus(self):
+        self.env['sgi.config'].seed_procedure_ventas()
+        documented = self.process._sgi_documented_info()
+        codes = [c for c in documented.mapped('sgi_code') if c]
+        self.assertGreaterEqual(len(codes), 15,
+                                "La sección 8 debe listar ≥15 claves.")
+        self.assertEqual(len(codes), len(set(codes)), "Sin duplicados.")
+
+    def test_03_report_renders_for_ventas(self):
+        self.env['sgi.config'].seed_procedure_ventas()
+        report = self.env.ref('quimibond_sgi.action_report_procedure')
+        html, _ = report._render_qweb_html(
+            'quimibond_sgi.report_procedure_document', self.process.ids)
+        text = html.decode() if isinstance(html, bytes) else html
+        self.assertIn('4.2.3.1', text)
+        self.assertIn('F-P-A28-12', text)
+        self.assertIn('copia no controlada', text)
+
+    def test_04_seed_is_idempotent(self):
+        self.env['sgi.config'].seed_procedure_ventas()
+        first = self.process.activity_count
+        self.env['sgi.config'].seed_procedure_ventas()
+        self.assertEqual(self.process.activity_count, first,
+                         "Re-ejecutar la semilla no duplica actividades.")
