@@ -17,11 +17,11 @@ class TestSgiFormatMap(TransactionCase):
         })
         # Documento vigente para la clave de cotización (rev viva en Documentos)
         cls.doc_quote = cls.env['documents.document'].create({
-            'name': 'F-P-A28-04 COTIZACION.xlsx',
+            'name': 'F-P-A28-12 COTIZACION.xlsx',
             'type': 'binary',
             'sgi_is_controlled': True,
             'sgi_doc_type': 'formato',
-            'sgi_code': 'F-P-A28-04',
+            'sgi_code': 'F-P-A28-12',
             'sgi_revision': '03',
             'sgi_state': 'vigente',
         })
@@ -34,20 +34,20 @@ class TestSgiFormatMap(TransactionCase):
 
     def test_01_revision_viva_desde_documentos(self):
         order = self._new_sale()
-        self.assertEqual(order.sgi_format_info(), "F-P-A28-04 · Rev. 03")
+        self.assertEqual(order.sgi_format_info(), "F-P-A28-12 · Rev. 03")
         # Sube la revisión en Documentos -> el registro la refleja sin tocar nada
         self.doc_quote.sgi_state = 'obsoleto'
         self.env['documents.document'].create({
-            'name': 'F-P-A28-04 COTIZACION.xlsx',
+            'name': 'F-P-A28-12 COTIZACION.xlsx',
             'type': 'binary',
             'sgi_is_controlled': True,
             'sgi_doc_type': 'formato',
-            'sgi_code': 'F-P-A28-04',
+            'sgi_code': 'F-P-A28-12',
             'sgi_revision': '04',
             'sgi_state': 'vigente',
         })
         order.invalidate_recordset()
-        self.assertEqual(order.sgi_format_info(), "F-P-A28-04 · Rev. 04")
+        self.assertEqual(order.sgi_format_info(), "F-P-A28-12 · Rev. 04")
 
     def test_02_clave_sin_documento_vigente(self):
         # La OC está mapeada (F-P-A02-01) pero no cargamos su documento en el
@@ -57,10 +57,10 @@ class TestSgiFormatMap(TransactionCase):
 
     def test_03_venta_clave_por_estado(self):
         order = self._new_sale()
-        self.assertTrue(order.sgi_format_banner.startswith("F-P-A28-04"))
+        self.assertTrue(order.sgi_format_banner.startswith("F-P-A28-12"))
         order.action_confirm()
         order.invalidate_recordset()
-        self.assertTrue(order.sgi_format_banner.startswith("F-P-A28-03"))
+        self.assertTrue(order.sgi_format_banner.startswith("F-P-A28-06"))
 
     def test_04_picking_solo_salidas(self):
         wh = self.env['stock.warehouse'].search([], limit=1)
@@ -86,7 +86,7 @@ class TestSgiFormatMap(TransactionCase):
         model = self.env['ir.model']._get('sale.order')
         with self.assertRaises(Exception), self.cr.savepoint(), \
                 mute_logger('odoo.sql_db'):
-            self.Map.create({'model_id': model.id, 'sgi_code': 'F-P-A28-04'})
+            self.Map.create({'model_id': model.id, 'sgi_code': 'F-P-A28-12'})
             self.env.flush_all()
 
     def test_07_clave_invalida(self):
@@ -98,7 +98,7 @@ class TestSgiFormatMap(TransactionCase):
         order = self._new_sale()
         html = str(self.env['ir.qweb']._render(
             'quimibond_sgi.sgi_format_footer', {'sgi_rec': order}))
-        self.assertIn('F-P-A28-04', html)
+        self.assertIn('F-P-A28-12', html)
         self.assertIn('Rev. 03', html)
         # Sin registro -> el pie no pinta nada
         empty = str(self.env['ir.qweb']._render(
