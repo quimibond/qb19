@@ -7,9 +7,12 @@
         <field name="arch" type="xml">
             <form string="Calibración">
                 <sheet>
+                    <div class="oe_title">
+                        <label for="equipment_id" string="Equipo"/>
+                        <h1><field name="equipment_id" placeholder="Equipo de medición"/></h1>
+                    </div>
                     <group>
                         <group>
-                            <field name="equipment_id"/>
                             <field name="date"/>
                             <field name="calibration_type"/>
                             <field name="provider_id"/>

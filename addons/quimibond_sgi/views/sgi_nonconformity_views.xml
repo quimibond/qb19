@@ -104,7 +104,8 @@
         <field name="name">sgi.nc.concentrado.list</field>
         <field name="model">quality.alert</field>
         <field name="arch" type="xml">
-            <list string="Concentrado de No Conformidades">
+            <list string="Concentrado de No Conformidades"
+                  decoration-success="date_close != False">
                 <field name="create_date" string="Fecha"/>
                 <field name="sgi_folio" string="Folio"/>
                 <field name="sgi_deviation" string="Desviación"/>
