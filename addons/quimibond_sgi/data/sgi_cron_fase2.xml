@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo>
+<odoo noupdate="1">
     <record id="sgi_cron_indicators" model="ir.cron">
         <field name="name">SGI: Mediciones de indicadores y NC automáticas</field>
         <field name="model_id" ref="model_sgi_cron"/>

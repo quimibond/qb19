@@ -246,3 +246,51 @@ plans. Detalle completo en el README del módulo.
 | 19.0.3.0.0 | Fase 3: plan de control+CoA, calibración IATF, AMEF, PPAP, incidentes SCAT, competencias, puente PLM |
 | 19.0.4.0.0 | Fase 4: conexión al piso real (pesaje/revisado/cuarentena), KPIs recalibrados, mapa navegable, dashboards, puentes pesaje/revisado |
 | 19.0.4.1.0 | Menú de migración de formatos + scripts de carga/post-carga documental |
+
+---
+
+## Apéndice: Configuración y operación sin código (v19.0.4.4.0)
+
+### Regla general: qué sobrevive a un `odoo-update`
+
+| Tipo de dato | Regla | Ejemplos |
+|---|---|---|
+| **Operativo** (`noupdate=1`) — lo que edita el usuario MANDA y sobrevive updates | Editar libre en la interfaz | Indicadores (metas/responsables), etapas de NC, objetivos, catálogo de riesgos, equipos Helpdesk, secuencias de folios, **crons** (pausar/cambiar frecuencia), **mapeo de claves de formato**, parámetros del sistema |
+| **Estructural** (`noupdate=0`) — el código MANDA y se re-aplica en cada update | Cambios se piden por desarrollo | Mapa de procesos y flujos (nombres/estructura), áreas, normas y cláusulas, vistas, reportes, seguridad |
+
+Nota: en procesos y flujos, los campos que se llenan en la interfaz y NO vienen
+en el código (dueño del proceso, documento ligado al flujo) **sí sobreviven**;
+solo nombre/estructura se re-aplican.
+
+### Parámetros del sistema (Ajustes → Técnico → Parámetros del sistema, buscar `quimibond_sgi.`)
+
+| Parámetro | Default | Qué controla |
+|---|---|---|
+| `nc_escalation_days` | 5 | Días sin acciones antes de escalar una NC (externas: 3, fijo en código) |
+| `fmea_npr_action` | 100 | NPR a partir del cual el AMEF exige acción |
+| `risk_ryo_inmediata` / `_media` / `_intermedia` | 16 / 9 / 4 | Cortes de la matriz RyO 5×5 |
+| `supplier_weight_otd` / `_quality` | 0.7 / 0.3 | Pesos de la evaluación de proveedores |
+| `supplier_nc_penalty` | 10.0 | Puntos que descuenta cada NC al proveedor |
+| `pesaje_tolerance_kg` | 3.0 | Tolerancia de peso de rollo (báscula de piso) |
+| `waste_subproduct_category` | SubProducto | Categoría del byproduct de desperdicio (SALDO) |
+| `monthly_sales_budget` | 0 | Presupuesto mensual de ventas para el KPI (capturar) |
+| `rh_user_id` | 0 | Usuario de RH que recibe actividades automáticas (capturar) |
+
+### Dónde se administra cada cosa (menús, sin código)
+
+| Qué | Dónde |
+|---|---|
+| Claves de formato en documentos de Odoo | SGI → Configuración → Formatos en documentos de Odoo |
+| Migración de formatos (clase A/B/C/D, destino, estado) | SGI → Migración de formatos |
+| Áreas, normas, cláusulas, categorías de riesgo, elementos PPAP | SGI → Configuración |
+| Folios (NCI-, AUD-, RSG-…) | Ajustes → Técnico → Secuencias |
+| Crons (frecuencia, pausar) | Ajustes → Técnico → Acciones planificadas |
+| Etapas de NC, equipos de calidad | Desde el tablero (kanban) / app Calidad |
+| Hojas de trabajo de calidad (clase B) | App Calidad → Puntos de control |
+
+### Qué SÍ requiere desarrollo (pedirlo, no improvisarlo con Studio)
+
+- Agregar un **modelo nuevo** al mapeo de claves (banner + pie de PDF)
+- Nuevos **KPIs automáticos** (modos de cálculo), nuevos candados o crons
+- Cambios a la **estructura** del mapa de procesos
+- **Regla de la casa: cero Odoo Studio en el SGI** — todo cambio va por el módulo

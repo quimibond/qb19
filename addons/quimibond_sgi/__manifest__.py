@@ -61,6 +61,7 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         'data/sgi_control_plans_fase4.xml',
         'data/sgi_format_map_data.xml',
         'data/sgi_process_flows_extra.xml',
+        'data/sgi_parameters.xml',
         # views
         'views/sgi_area_views.xml',
         'views/sgi_norm_views.xml',
