@@ -2,7 +2,49 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
+
+
+class QualityCheck(models.Model):
+    _inherit = 'quality.check'
+
+    sgi_equipment_id = fields.Many2one(
+        'maintenance.equipment', string="Equipo de medición",
+        domain=[('sgi_is_measuring', '=', True)],
+        compute='_compute_sgi_equipment_id', store=True, readonly=False,
+        help="Instrumento con el que se toma la medición. Un equipo con "
+             "calibración vencida o fuera de tolerancia no puede usarse "
+             "para dictaminar la inspección (IATF 7.1.5.2.1).")
+
+    @api.depends('point_id')
+    def _compute_sgi_equipment_id(self):
+        """Hereda el equipo configurado en el punto de control (editable)."""
+        for check in self:
+            if not check.sgi_equipment_id and check.point_id.sgi_equipment_id:
+                check.sgi_equipment_id = check.point_id.sgi_equipment_id
+
+    @api.constrains('quality_state', 'sgi_equipment_id')
+    def _sgi_check_equipment_calibrated(self):
+        """Bloqueo real de metrología: no se puede dictaminar (pasa/falla) una
+        inspección con un equipo bloqueado (fuera de tolerancia) o con la
+        calibración vencida. El vencimiento se evalúa EN LÍNEA contra la fecha
+        de hoy, así que aplica aunque el cron de calibraciones no haya corrido.
+        """
+        today = fields.Date.context_today(self)
+        for check in self:
+            eq = check.sgi_equipment_id
+            if not eq or check.quality_state not in ('pass', 'fail'):
+                continue
+            expired = eq.sgi_next_calibration_date and eq.sgi_next_calibration_date < today
+            if eq.sgi_do_not_use or expired:
+                motivo = ("está bloqueado (fuera de tolerancia / No usar)"
+                          if eq.sgi_do_not_use else
+                          "tiene la calibración vencida desde el %s"
+                          % eq.sgi_next_calibration_date)
+                raise ValidationError(
+                    "El equipo de medición «%s» %s: no puede usarse para "
+                    "dictaminar esta inspección. Calíbrelo o seleccione otro "
+                    "instrumento vigente (IATF 7.1.5.2.1)." % (eq.name, motivo))
 
 
 class MaintenanceEquipment(models.Model):

@@ -54,6 +54,22 @@ class DocumentsDocument(models.Model):
     sgi_next_review_date = fields.Date(string="Próxima revisión")
     sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto")
 
+    # --- Detección de divergencia "Procedimiento vivo" vs PDF controlado (G14) ---
+    # Los datos vivos del procedimiento (sgi.process.activity/responsibility y el
+    # cuerpo del proceso) pueden editarse fuera del flujo de cambio documental.
+    # Cuando eso pasa sobre un procedimiento con revisión VIGENTE, el documento
+    # queda "pendiente de revisión": el PDF impreso ya no coincide con la revisión
+    # aprobada. La bandera se limpia al aprobar una nueva revisión.
+    sgi_procedure_dirty = fields.Boolean(
+        string="Procedimiento vivo pendiente de revisión", readonly=True, copy=False,
+        help="Las actividades/responsabilidades del procedimiento vivo cambiaron "
+             "después de esta revisión vigente. Genere una nueva revisión "
+             "controlada o confirme que el cambio no la amerita.")
+    sgi_procedure_dirty_since = fields.Datetime(
+        string="Divergencia desde", readonly=True, copy=False)
+    sgi_procedure_dirty_by = fields.Many2one(
+        'res.users', string="Divergencia registrada por", readonly=True, copy=False)
+
     # --- Seguimiento de migración del formato a Odoo ---
     sgi_migration_class = fields.Selection([
         ('a', "A - Transacción Odoo"),
@@ -238,6 +254,16 @@ class DocumentsDocument(models.Model):
         res = super().write(vals)
         if vals.get('sgi_state') == 'vigente':
             self._sgi_reparent_family()
+        # Una nueva revisión aprobada (bump de revisión o entrada en vigor)
+        # realinea el documento con el procedimiento vivo: limpia la divergencia.
+        if 'sgi_revision' in vals or vals.get('sgi_state') == 'vigente':
+            dirty = self.filtered('sgi_procedure_dirty')
+            if dirty:
+                dirty.write({
+                    'sgi_procedure_dirty': False,
+                    'sgi_procedure_dirty_since': False,
+                    'sgi_procedure_dirty_by': False,
+                })
         return res
 
     def action_generate_acks(self):

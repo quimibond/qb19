@@ -72,6 +72,15 @@ class QualityAlert(models.Model):
     sgi_effectiveness_note = fields.Text(string="Verificación de eficacia")
     sgi_effectiveness_date = fields.Date(string="Fecha de eficacia")
     sgi_effectiveness_by = fields.Many2one('res.users', string="Eficacia verificada por")
+    # Último eslabón de la línea dorada (IATF 10.2.3): la lección de una NC mayor
+    # se lleva al AMEF / plan de control / documento. Se atestigua explícitamente
+    # (queda en el chatter por tracking) y es requisito para cerrar la NC mayor.
+    sgi_lesson_captured = fields.Boolean(
+        string="Lección aplicada a AMEF / plan de control / documento",
+        tracking=True,
+        help="Confírmelo cuando la lección aprendida de esta NC mayor ya se "
+             "reflejó en el AMEF, el plan de control y/o el documento controlado "
+             "correspondiente.")
     sgi_followup_comments = fields.Text(string="Comentarios de seguimiento")
     sgi_required_capa = fields.Boolean(string="¿Requirió acción correctiva?")
     sgi_followup_action = fields.Selection([
@@ -190,6 +199,12 @@ class QualityAlert(models.Model):
                     problems.append(
                         "• NC mayor: falta completar los 5 porqués del análisis "
                         "de causa.")
+                # Último eslabón (IATF 10.2.3): la lección debe llevarse al AMEF /
+                # plan de control / documento y atestiguarse antes de cerrar.
+                if not alert.sgi_lesson_captured:
+                    problems.append(
+                        "• NC mayor: confirme que la lección se aplicó al AMEF / "
+                        "plan de control / documento («Lección aplicada...»).")
             # Acción CORRECTIVA real terminada (no basta una corrección/contención)
             # cuando la NC es mayor (H1) o reincidente (H2: lo puntual se vuelve
             # sistémico).
