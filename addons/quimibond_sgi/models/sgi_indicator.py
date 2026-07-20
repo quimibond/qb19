@@ -51,6 +51,40 @@ class SgiIndicator(models.Model):
     ], string="Frecuencia", default='monthly', required=True)
     calc_mode = fields.Selection(CALC_MODES, string="Modo de cálculo",
                                  default='manual', required=True)
+    source_type = fields.Selection([
+        ('auto', "Automático"),
+        ('manual', "Manual"),
+    ], string="Origen del dato", compute='_compute_source', store=True)
+    source_info = fields.Char(string="Fuente del dato", compute='_compute_source', store=True)
+
+    # De dónde sale el valor de cada modo, en lenguaje humano (para el usuario).
+    _SOURCE_INFO = {
+        'manual': "El responsable lo captura cada periodo (aún no sale de Odoo).",
+        'otif_ventas': "Inventario → entregas a clientes: embarques a tiempo vs total.",
+        'otd_compras': "Inventario → recepciones de compras: recibidas a tiempo vs total.",
+        'produccion_vs_programado': "Fabricación → órdenes de producción: producido vs programado.",
+        'reproceso': "Fabricación → órdenes de reproceso del periodo.",
+        'desperdicio': "Fabricación → byproduct SALDO (categoría de desperdicio) vs producción.",
+        'desperdicio_scrap': "Inventario → desechos (scrap) del periodo.",
+        'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
+        'cumplimiento_programa': "Fabricación → cumplimiento del plan maestro (MPS).",
+        'cierre_nc': "SGI → No Conformidades: cerradas a tiempo vs abiertas.",
+        'reclamos_cliente': "Helpdesk → tickets de reclamación de clientes del periodo.",
+        'disponibilidad_mantto': "Mantenimiento → tiempo de paro vs disponible.",
+        'preventivo_cumplido': "Mantenimiento → OTs preventivas cumplidas a tiempo.",
+        'rotacion_rh': "Empleados → bajas del periodo vs plantilla.",
+        'plantilla_rh': "Empleados → puestos cubiertos vs plantilla autorizada.",
+        'presupuesto_ventas': "Ventas → facturación real vs presupuesto configurado en Ajustes.",
+        'inventario_diferencia': "Inventario → ajustes de inventario físico vs sistema.",
+        'inventario_ciclico': "Inventario → ajustes de conteos cíclicos.",
+    }
+
+    @api.depends('calc_mode')
+    def _compute_source(self):
+        for indicator in self:
+            indicator.source_type = 'manual' if indicator.calc_mode == 'manual' else 'auto'
+            indicator.source_info = self._SOURCE_INFO.get(
+                indicator.calc_mode, "Cálculo automático desde datos de Odoo.")
     monthly_budget = fields.Float(string="Presupuesto mensual",
                                   help="Meta mensual para el cálculo de presupuesto de ventas.")
     nc_on_red = fields.Boolean(
@@ -329,6 +363,10 @@ class SgiIndicatorMeasure(models.Model):
 
     indicator_id = fields.Many2one('sgi.indicator', string="Indicador",
                                    required=True, ondelete='cascade', index=True)
+    source_type = fields.Selection(related='indicator_id.source_type',
+                                   string="Origen del dato")
+    source_info = fields.Char(related='indicator_id.source_info',
+                              string="Fuente del dato")
     period_date = fields.Date(string="Periodo", required=True,
                               help="Día 1 del mes medido.")
     value = fields.Float(string="Valor")
