@@ -6,4 +6,5 @@
          sobre valores ya capturados. -->
     <function model="sgi.config" name="seed_parameters"/>
     <function model="sgi.config" name="harden_noupdate"/>
+    <function model="sgi.config" name="seed_process_purposes"/>
 </odoo>

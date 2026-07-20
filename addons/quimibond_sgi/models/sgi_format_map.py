@@ -87,6 +87,40 @@ class SgiConfig(models.AbstractModel):
                 Param.set_param(key, value)
         return True
 
+    # Objetivo de cada proceso, tomado de las caracterizaciones/SIPOC reales del
+    # SGI (ANEXO 2/3, mapeos por área). Solo se siembra donde está vacío.
+    _SGI_PROCESS_PURPOSES = {
+        'proc_adm': "Gestionar los recursos humanos, financieros, materiales y de información para que los procesos operativos cumplan los requisitos del cliente y la normatividad.",
+        'proc_cal': "Asegurar la conformidad del producto y del proceso: liberación de materia prima, inspección y prueba, auditorías de calidad y certificados.",
+        'proc_mto': "Mantener la infraestructura y la maquinaria disponibles y confiables (preventivo y correctivo) para la eficiencia productiva y la disminución de tiempos muertos.",
+        'proc_dis': "Diseñar y desarrollar productos y procesos que cumplan los requisitos y expectativas del cliente, entregando muestras y especificaciones aprobadas.",
+        'proc_mfg': "Transformar la materia prima en producto terminado conforme a especificaciones (tejido, acabado, entretelas y tintorería), cumpliendo el programa de producción.",
+        'proc_ventas': "Convertir los requerimientos del cliente en pedidos confirmados: prospección, cotización, pedido, entrega y postventa; alimentar el pronóstico y el presupuesto.",
+        'proc_planeacion': "Traducir el presupuesto y el pronóstico en el programa semanal de producción, validando inventarios y capacidades, y comunicar las fechas de entrega.",
+        'proc_compras': "Abastecer insumos y materiales conformes y a tiempo: requisición, evaluación de cotizaciones, orden de compra, recepción y pago a proveedores.",
+        'proc_almacen_mp': "Recibir, resguardar y surtir materia prima liberada a producción, con inventarios exactos y trazables.",
+        'proc_almacen_pt': "Resguardar el producto terminado clasificado y preparar los embarques conforme a la lista de embarque.",
+        'proc_prod_tac': "Tejer y acabar la tela conforme al programa y las especificaciones (tejido circular, teñido y rama), registrando producción y desperdicio.",
+        'proc_prod_ent': "Producir entretelas conforme al programa y especificaciones (carda, cocina, punteado y termofijado, espolvoreo, corte).",
+        'proc_tintoreria': "Teñir la tela cruda conforme a receta y estándares de color, entregando tela teñida para acabado.",
+        'proc_inspeccion': "Inspeccionar, clasificar, enrollar y empacar el producto, liberando solo producto conforme al siguiente proceso.",
+        'proc_laboratorio': "Realizar las pruebas de laboratorio de materia prima y producto que sustentan la liberación y los certificados de calidad.",
+        'proc_logistica': "Entregar el producto al cliente en tiempo y forma: citas, transporte, evidencias de entrega, importaciones y exportaciones.",
+        'proc_facturacion': "Facturar las entregas correcta y oportunamente (CFDI) y registrar los cobros.",
+        'proc_cxc': "Administrar el crédito y la cobranza: condiciones de crédito, seguimiento de cartera y aplicación de pagos.",
+        'proc_rh': "Proveer personal competente: reclutamiento, inducción, detección de necesidades (DNC), capacitación y evaluación de habilidades.",
+        'proc_sgi': "Mantener y mejorar el SGI tri-norma: información documentada, no conformidades, auditorías, riesgos, indicadores y cumplimiento legal.",
+        'proc_direccion': "Dirigir el sistema: planeación estratégica, asignación de recursos, revisión mensual de indicadores y Revisión por la Dirección.",
+    }
+
+    @api.model
+    def seed_process_purposes(self):
+        for xmlid, text in self._SGI_PROCESS_PURPOSES.items():
+            process = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
+            if process and not process.purpose:
+                process.purpose = text
+        return True
+
     @api.model
     def harden_noupdate(self):
         """Marca noupdate=True en registros que ya existían ANTES de que su
