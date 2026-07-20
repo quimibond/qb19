@@ -15,6 +15,10 @@
         <field name="name">Categorías de riesgo</field>
         <field name="res_model">sgi.risk.category</field>
         <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Catálogo de categorías de riesgo</p>
+            <p>Las categorías del F-P-C09 ya vienen sembradas.</p>
+        </field>
     </record>
 
     <!-- ================= RIESGO — FORM ================= -->
@@ -189,5 +193,9 @@
         <field name="res_model">sgi.risk</field>
         <field name="view_mode">kanban,list,pivot,form</field>
         <field name="search_view_id" ref="sgi_risk_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Captura el primer riesgo u oportunidad</p>
+            <p>Los 5 instrumentos en un solo lugar: RyO 5×5, IPER de SST, aspectos ambientales, patrimonial y FODA — con revisión programada.</p>
+        </field>
     </record>
 </odoo>

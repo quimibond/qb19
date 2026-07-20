@@ -51,6 +51,10 @@
         <field name="name">Flujos entre procesos</field>
         <field name="res_model">sgi.process.flow</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Cada flecha del mapa es un entregable real</p>
+            <p>Liga el formato con que se entrega y el modelo de Odoo donde vive: el botón Ver registros abre los registros reales que fluyen por ella.</p>
+        </field>
     </record>
 
     <!-- ============ PROCESOS ============ -->

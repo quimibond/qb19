@@ -43,7 +43,7 @@
         <field name="name">sgi.audit.program.list</field>
         <field name="model">sgi.audit.program</field>
         <field name="arch" type="xml">
-            <list string="Programas de auditoría">
+            <list string="Programas de auditoría" decoration-muted="state == 'borrador'" decoration-success="state == 'cerrado'">
                 <field name="year"/>
                 <field name="state"/>
             </list>
@@ -54,6 +54,10 @@
         <field name="name">Programa de auditorías</field>
         <field name="res_model">sgi.audit.program</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el programa anual de auditorías</p>
+            <p>El sistema avisa al auditor líder 15 días antes de cada auditoría programada.</p>
+        </field>
     </record>
 
     <!-- ================= AUDITORÍA ================= -->
@@ -137,7 +141,7 @@
         <field name="name">sgi.audit.list</field>
         <field name="model">sgi.audit</field>
         <field name="arch" type="xml">
-            <list string="Auditorías">
+            <list string="Auditorías" decoration-muted="state == 'borrador'" decoration-info="state in ('planificada', 'en_ejecucion', 'informe')" decoration-success="state == 'cerrada'">
                 <field name="folio"/>
                 <field name="audit_type"/>
                 <field name="date_planned"/>
@@ -171,6 +175,10 @@
         <field name="res_model">sgi.audit</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_audit_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Programa la primera auditoría</p>
+            <p>Folio AUD- automático, checklist contestable en Encuestas y hallazgos convertibles en NC con un clic. Nadie puede auditar su propio proceso.</p>
+        </field>
     </record>
 
     <!-- ================= HALLAZGOS ================= -->
@@ -194,5 +202,9 @@
         <field name="name">Hallazgos</field>
         <field name="res_model">sgi.audit.finding</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin hallazgos de auditoría</p>
+            <p>Los hallazgos se capturan dentro de cada auditoría; la auditoría no cierra hasta que todos tengan disposición.</p>
+        </field>
     </record>
 </odoo>

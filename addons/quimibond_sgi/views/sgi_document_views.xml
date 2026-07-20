@@ -147,6 +147,10 @@
         <field name="domain">[('sgi_is_controlled','=',True)]</field>
         <field name="context">{'default_sgi_is_controlled': True, 'search_default_sgi_vigente': 1}</field>
         <field name="search_view_id" ref="sgi_document_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sube el primer documento controlado</p>
+            <p>Con su clave en el nombre (P-A28, F-P-G05-01...). La revisión, vigencia y difusión se controlan desde aquí.</p>
+        </field>
     </record>
 
     <record id="sgi_document_action_my_procedures" model="ir.actions.server">
@@ -173,7 +177,7 @@ else:
         <field name="name">sgi.document.ack.list</field>
         <field name="model">sgi.document.ack</field>
         <field name="arch" type="xml">
-            <list string="Acuses de lectura">
+            <list string="Acuses de lectura" decoration-warning="state == 'pendiente'" decoration-success="state == 'leido'">
                 <field name="sgi_code"/>
                 <field name="document_id"/>
                 <field name="employee_id"/>
@@ -210,6 +214,10 @@ else:
         <field name="name">Acuses de lectura</field>
         <field name="res_model">sgi.document.ack</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin acuses de lectura pendientes</p>
+            <p>Se generan al publicar un documento con puestos asignados; cada acuse es la firma de difusión que pide el auditor.</p>
+        </field>
     </record>
 
     <!-- ============ MIGRACIÓN DE FORMATOS A ODOO ============ -->

@@ -58,6 +58,10 @@
         <field name="view_mode">pivot,list</field>
         <field name="search_view_id" ref="sgi_competence_gap_view_search"/>
         <field name="context">{'search_default_group_department': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin brechas de competencia</p>
+            <p>Se calculan comparando las habilidades esperadas del puesto contra las del empleado.</p>
+        </field>
     </record>
 
     <!-- ================= hr.employee: botón de brechas ================= -->
