@@ -92,6 +92,20 @@ class QualityAlert(models.Model):
                 problems.append("• Hay %d acción(es) sin fecha de terminación." % len(pending))
             if not alert.sgi_effectiveness_note or not alert.sgi_effectiveness_date:
                 problems.append("• Falta la verificación de eficacia (nota y fecha).")
+            # NC mayor (refinamiento H1): además de lo anterior, exige el análisis
+            # de causa completo (5 porqués) y una acción CORRECTIVA real terminada
+            # —no basta una corrección/contención—.
+            if alert.sgi_classification == 'mayor':
+                if not all((alert.sgi_why_1, alert.sgi_why_2, alert.sgi_why_3,
+                            alert.sgi_why_4, alert.sgi_why_5)):
+                    problems.append(
+                        "• NC mayor: falta completar los 5 porqués del análisis "
+                        "de causa.")
+                if not alert.sgi_action_line_ids.filtered(
+                        lambda l: l.action_type == 'correctiva' and l.date_done):
+                    problems.append(
+                        "• NC mayor: se requiere al menos una ACCIÓN CORRECTIVA "
+                        "terminada (una corrección inmediata no basta).")
             if problems:
                 raise UserError(
                     "No se puede cerrar la NC %s:\n%s" % (
@@ -216,6 +230,26 @@ class SgiActionLine(models.Model):
                     "Una acción debe pertenecer exactamente a un origen: una No "
                     "Conformidad, un Riesgo, un modo de falla de AMEF o un incidente "
                     "SST (exactamente uno, no varios ni ninguno).")
+
+    @api.constrains('action_type', 'alert_id')
+    def _sgi_check_root_cause_before_capa(self):
+        """H8: sin causa raíz no hay acción correctiva/preventiva.
+
+        ISO 10.2 distingue la corrección/contención inmediata (permitida antes de
+        conocer la causa) de la acción correctiva/preventiva, que ataca la causa y
+        por tanto exige haberla identificado primero.
+        """
+        for line in self:
+            alert = line.alert_id
+            if (alert and alert.sgi_folio
+                    and line.action_type in ('correctiva', 'preventiva')
+                    and not alert.sgi_root_cause):
+                raise ValidationError(
+                    "No se puede registrar una acción %s en la NC %s sin la causa "
+                    "raíz. Primero investiga y captura la causa raíz; la corrección "
+                    "(contención inmediata) sí puede registrarse antes." % (
+                        dict(self._fields['action_type'].selection)[line.action_type],
+                        alert.sgi_folio or alert.name))
 
     @api.depends('date_commit', 'date_done')
     def _compute_state(self):
