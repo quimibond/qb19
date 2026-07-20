@@ -62,3 +62,5 @@ access_sgi_incident_user,sgi.incident.user,model_sgi_incident,group_sgi_user,1,1
 access_sgi_incident_manager,sgi.incident.manager,model_sgi_incident,group_sgi_manager,1,1,1,1
 access_sgi_competence_gap_user,sgi.competence.gap.user,model_sgi_competence_gap,group_sgi_user,1,0,0,0
 access_sgi_competence_gap_manager,sgi.competence.gap.manager,model_sgi_competence_gap,group_sgi_manager,1,0,0,0
+access_sgi_format_map_user,sgi.format.map.user,model_sgi_format_map,group_sgi_user,1,0,0,0
+access_sgi_format_map_manager,sgi.format.map.manager,model_sgi_format_map,group_sgi_manager,1,1,1,1

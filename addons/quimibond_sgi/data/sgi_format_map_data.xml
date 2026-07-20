@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mapeo formato SGI ↔ documento de Odoo. noupdate=0: si MAST corrige una
+         clave aquí, el odoo-update la aplica. La revisión NO se captura: se lee
+         del documento vigente en Documentos al mostrar/imprimir. -->
+
+    <record id="format_map_sale_order" model="sgi.format.map">
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="sgi_code">F-P-A28-04</field>
+        <field name="sgi_code_alt">F-P-A28-03</field>
+        <field name="note">Cotización (borrador/enviada) / Pedido de venta (confirmado)</field>
+    </record>
+
+    <record id="format_map_purchase_order" model="sgi.format.map">
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="sgi_code">F-P-A02-01</field>
+        <field name="note">Orden de compra</field>
+    </record>
+
+    <record id="format_map_stock_picking" model="sgi.format.map">
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="sgi_code">F-P-A16-01</field>
+        <field name="note">Remisión / lista de embarque (solo entregas de salida)</field>
+    </record>
+
+    <record id="format_map_mrp_production" model="sgi.format.map">
+        <field name="model_id" ref="mrp.model_mrp_production"/>
+        <field name="sgi_code">F-IT-P-P01-08-01</field>
+        <field name="note">Orden de fabricación / tarjeta viajera</field>
+    </record>
+
+    <record id="format_map_maintenance_request" model="sgi.format.map">
+        <field name="model_id" ref="maintenance.model_maintenance_request"/>
+        <field name="sgi_code">F-P-M01-01</field>
+        <field name="note">Orden de trabajo de mantenimiento</field>
+    </record>
+
+    <record id="format_map_quality_alert" model="sgi.format.map">
+        <field name="model_id" ref="quality.model_quality_alert"/>
+        <field name="sgi_code">F-P-G05-01</field>
+        <field name="note">Reporte de No Conformidad</field>
+    </record>
+
+    <record id="format_map_stock_lot" model="sgi.format.map">
+        <field name="model_id" ref="stock.model_stock_lot"/>
+        <field name="sgi_code">F-P-C07-01</field>
+        <field name="note">Certificado de Calidad (CoA) del lote</field>
+    </record>
+
+    <record id="format_map_mgmt_review" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_management_review"/>
+        <field name="sgi_code">F-P-A10-01</field>
+        <field name="note">Acta de Revisión por la Dirección</field>
+    </record>
+</odoo>
