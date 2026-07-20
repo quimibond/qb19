@@ -41,5 +41,9 @@
         <field name="name">Objetivos Integrales</field>
         <field name="res_model">sgi.objective</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registra los objetivos integrales</p>
+            <p>Los del ANEXO 6 (Planeación Estratégica). Cada indicador del SGI se liga a uno de estos objetivos.</p>
+        </field>
     </record>
 </odoo>

@@ -115,6 +115,10 @@
         <field name="res_model">sgi.indicator</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_indicator_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Da de alta un indicador</p>
+            <p>Los automáticos se calculan solos de los datos reales de Odoo; captura responsable, objetivo y aceptable, y el semáforo sale solo.</p>
+        </field>
     </record>
 
     <!-- ================= MEDICIONES ================= -->
@@ -223,5 +227,9 @@
         <field name="res_model">sgi.indicator.measure</field>
         <field name="view_mode">list,graph,pivot,form</field>
         <field name="search_view_id" ref="sgi_measure_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>
+            <p>El cron mensual las crea automáticamente; las manuales llegan como actividad a su responsable antes del día 5.</p>
+        </field>
     </record>
 </odoo>
