@@ -68,10 +68,13 @@
             <kanban default_group_by="parent_id" class="o_kanban_small_column">
                 <field name="nc_count"/>
                 <field name="overdue_action_count"/>
+                <field name="health"/>
                 <templates>
                     <t t-name="card">
                         <div class="oe_kanban_global_click">
                             <div class="o_kanban_record_title">
+                                <span t-attf-class="badge me-1 #{record.health.raw_value == 'verde' ? 'text-bg-success' : (record.health.raw_value == 'rojo' ? 'text-bg-danger' : 'text-bg-warning')}"
+                                      t-attf-title="Salud del proceso: #{record.health.value}">●</span>
                                 <strong><field name="code"/> — <field name="name"/></strong>
                             </div>
                             <div class="o_kanban_record_subtitle">
@@ -117,8 +120,16 @@
                         <button name="action_open_ncs" type="object" class="oe_stat_button" icon="fa-exclamation-triangle">
                             <field name="nc_count" widget="statinfo" string="NC abiertas"/>
                         </button>
-                        <button name="action_open_ncs" type="object" class="oe_stat_button" icon="fa-clock-o">
+                        <button name="action_open_overdue_actions" type="object" class="oe_stat_button" icon="fa-clock-o">
                             <field name="overdue_action_count" widget="statinfo" string="Acc. vencidas"/>
+                        </button>
+                        <button name="action_open_red_kpis" type="object" class="oe_stat_button" icon="fa-thermometer-full"
+                                invisible="red_kpi_count == 0">
+                            <field name="red_kpi_count" widget="statinfo" string="KPIs en rojo"/>
+                        </button>
+                        <button name="action_open_high_risks" type="object" class="oe_stat_button" icon="fa-fire"
+                                invisible="open_high_risk_count == 0">
+                            <field name="open_high_risk_count" widget="statinfo" string="Riesgos altos"/>
                         </button>
                         <button name="action_open_documents" type="object" class="oe_stat_button" icon="fa-file-text-o">
                             <field name="document_count" widget="statinfo" string="Documentos"/>
@@ -133,6 +144,10 @@
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nombre del proceso"/></h1>
                         <h3><field name="code" placeholder="Clave"/></h3>
+                        <field name="health" widget="badge"
+                               decoration-success="health == 'verde'"
+                               decoration-warning="health == 'amarillo'"
+                               decoration-danger="health == 'rojo'"/>
                     </div>
                     <group>
                         <group>

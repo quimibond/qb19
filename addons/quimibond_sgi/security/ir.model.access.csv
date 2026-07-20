@@ -17,6 +17,8 @@ access_sgi_action_line_manager,sgi.action.line.manager,model_sgi_action_line,gro
 access_sgi_nc_force_close_manager,sgi.nc.force.close.manager,model_sgi_nc_force_close,group_sgi_manager,1,1,1,1
 access_sgi_objective_user,sgi.objective.user,model_sgi_objective,group_sgi_user,1,0,0,0
 access_sgi_objective_manager,sgi.objective.manager,model_sgi_objective,group_sgi_manager,1,1,1,1
+access_sgi_policy_user,sgi.policy.user,model_sgi_policy,group_sgi_user,1,0,0,0
+access_sgi_policy_manager,sgi.policy.manager,model_sgi_policy,group_sgi_manager,1,1,1,1
 access_sgi_indicator_user,sgi.indicator.user,model_sgi_indicator,group_sgi_user,1,0,0,0
 access_sgi_indicator_manager,sgi.indicator.manager,model_sgi_indicator,group_sgi_manager,1,1,1,1
 access_sgi_indicator_measure_user,sgi.indicator.measure.user,model_sgi_indicator_measure,group_sgi_user,1,1,1,0

@@ -79,43 +79,53 @@ class DocumentsDocument(models.Model):
     sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats')
     sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats')
 
-    # --- Relación documental por nomenclatura (P-A28 -> IT/F/F-IT/DAT P-A28-*) ---
+    # --- Relación documental por FK real (P-A28 -> IT/F/F-IT/DAT P-A28-*) ---
+    # H21: la familia se define por un enlace explícito y editable, no por regex.
+    # La nomenclatura queda solo como SUGERENCIA (onchange) y como semilla de la
+    # migración idempotente (sgi.config.migrate_document_families).
     sgi_parent_document_id = fields.Many2one(
         'documents.document', string="Procedimiento padre",
-        compute='_compute_sgi_family',
-        help="El procedimiento vigente de la familia de la clave (P-Xnn).")
+        domain=[('sgi_is_controlled', '=', True)], index=True, ondelete='set null',
+        help="Procedimiento del que depende este documento (familia documental).")
+    sgi_child_document_ids = fields.One2many(
+        'documents.document', 'sgi_parent_document_id', string="Documentos hijos")
     sgi_family_document_ids = fields.Many2many(
         'documents.document', string="Documentos de la familia",
         compute='_compute_sgi_family',
-        help="Instructivos, formatos y DATs de la misma familia de clave.")
+        help="Hermanos (hijos del mismo padre) más los hijos propios.")
     sgi_reference_ids = fields.Many2many(
         'documents.document', 'sgi_doc_reference_rel', 'doc_id', 'ref_id',
         string="Referencias cruzadas",
         help="Documentos de OTRAS familias que este documento menciona "
              "(ej. P-A28 referencia P-A22, P-C01, P-D01). Captura de MAST.")
 
+    @api.depends('sgi_parent_document_id',
+                 'sgi_parent_document_id.sgi_child_document_ids',
+                 'sgi_child_document_ids')
     def _compute_sgi_family(self):
-        Doc = self.env['documents.document']
-        family_re = re.compile(r'(P-[AGCDEIMPSV]\d{2})')
         for doc in self:
-            family = Doc
-            parent = Doc
-            code = (doc.sgi_code or '').strip().upper()
-            match = family_re.search(code)
-            if doc.sgi_is_controlled and match and doc.id:
-                base = match.group(1)
-                family = Doc.search([
-                    ('sgi_is_controlled', '=', True),
-                    ('sgi_code', 'like', base + '-'),
-                    ('id', '!=', doc.id),
-                ], order='sgi_code')
-                if code != base:
-                    parent = Doc.search([
-                        ('sgi_code', '=', base),
-                        ('sgi_state', '=', 'vigente'),
-                    ], limit=1)
-            doc.sgi_family_document_ids = family
-            doc.sgi_parent_document_id = parent[:1]
+            own_children = doc.sgi_child_document_ids
+            if doc.sgi_parent_document_id:
+                siblings = doc.sgi_parent_document_id.sgi_child_document_ids - doc
+                doc.sgi_family_document_ids = siblings | own_children
+            else:
+                doc.sgi_family_document_ids = own_children
+
+    @api.onchange('sgi_code')
+    def _onchange_sgi_code_parent(self):
+        """Sugerencia (no obliga): propone el procedimiento padre P-Xnn vigente
+        por la nomenclatura, solo si el enlace está vacío."""
+        if self.sgi_parent_document_id or not self.sgi_is_controlled:
+            return
+        code = (self.sgi_code or '').strip().upper()
+        match = re.compile(r'(P-[AGCDEIMPSV]\d{2})').search(code)
+        if not match or code == match.group(1):
+            return
+        parent = self.env['documents.document'].search([
+            ('sgi_code', '=', match.group(1)), ('sgi_state', '=', 'vigente'),
+        ], limit=1)
+        if parent:
+            self.sgi_parent_document_id = parent
 
     @api.depends('sgi_ack_ids', 'sgi_ack_ids.state')
     def _compute_sgi_ack_stats(self):
@@ -189,20 +199,46 @@ class DocumentsDocument(models.Model):
                     body="Obsoletado automáticamente: entró en vigor una nueva "
                          "revisión del documento %s." % code)
 
+    def _sgi_reparent_family(self):
+        """H21: al entrar en vigor una nueva revisión de un procedimiento, sus
+        hijos (que colgaban de la revisión anterior, ahora obsoleta) se re-apuntan
+        al registro vigente. El ciclo documental crea un REGISTRO NUEVO por
+        revisión, así que sin esto la familia del procedimiento nuevo se vería
+        vacía y los hijos quedarían colgados de un documento obsoleto."""
+        for doc in self:
+            if doc.sgi_state != 'vigente' or not doc.sgi_code:
+                continue
+            prior_revisions = self.search([
+                ('sgi_code', '=', doc.sgi_code),
+                ('id', '!=', doc.id),
+            ])
+            if not prior_revisions:
+                continue
+            orphans = self.search([
+                ('sgi_parent_document_id', 'in', prior_revisions.ids)])
+            if orphans:
+                orphans.write({'sgi_parent_document_id': doc.id})
+
     @api.model_create_multi
     def create(self, vals_list):
         # Obsoleta versiones previas ANTES de crear la nueva vigente (evita el candado de unicidad)
         for vals in vals_list:
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
-        return super().create(vals_list)
+        docs = super().create(vals_list)
+        docs.filtered(
+            lambda d: d.sgi_state == 'vigente' and d.sgi_code)._sgi_reparent_family()
+        return docs
 
     def write(self, vals):
         if vals.get('sgi_state') == 'vigente':
             for doc in self:
                 code = vals.get('sgi_code', doc.sgi_code)
                 self._obsolete_code(code, exclude=doc)
-        return super().write(vals)
+        res = super().write(vals)
+        if vals.get('sgi_state') == 'vigente':
+            self._sgi_reparent_family()
+        return res
 
     def action_generate_acks(self):
         """Crea acuses pendientes para los empleados de los puestos aplicables (idempotente)."""

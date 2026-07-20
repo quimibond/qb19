@@ -15,7 +15,24 @@ class ResConfigSettings(models.TransientModel):
         string="Días para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',
         help="NC interna sin acciones tras estos días → actividad al responsable "
-             "y aviso a MAST (las externas/cliente escalan a 3 días, fijo).")
+             "y aviso a MAST.")
+    sgi_nc_escalation_days_external = fields.Integer(
+        string="Días para escalar una NC externa/cliente",
+        config_parameter='quimibond_sgi.nc_escalation_days_external',
+        help="Las NC de auditoría externa y reclamaciones de cliente escalan más "
+             "rápido que las internas.")
+    sgi_doc_review_notice_days = fields.Integer(
+        string="Primer aviso de revisión documental (días)",
+        config_parameter='quimibond_sgi.doc_review_notice_days')
+    sgi_doc_review_notice_days_final = fields.Integer(
+        string="Segundo aviso de revisión documental (días)",
+        config_parameter='quimibond_sgi.doc_review_notice_days_final')
+    sgi_doc_pilot_notice_days = fields.Integer(
+        string="Aviso de piloto por vencer (días)",
+        config_parameter='quimibond_sgi.doc_pilot_notice_days')
+    sgi_doc_ack_pending_days = fields.Integer(
+        string="Días para reclamar un acuse pendiente",
+        config_parameter='quimibond_sgi.doc_ack_pending_days')
     sgi_nc_recurrence_months = fields.Integer(
         string="Ventana de reincidencia de NC (meses)",
         config_parameter='quimibond_sgi.nc_recurrence_months',
