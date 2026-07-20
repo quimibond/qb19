@@ -5,4 +5,5 @@
          la clave y rompería el update). Corre en cada odoo-update sin efectos
          sobre valores ya capturados. -->
     <function model="sgi.config" name="seed_parameters"/>
+    <function model="sgi.config" name="harden_noupdate"/>
 </odoo>
