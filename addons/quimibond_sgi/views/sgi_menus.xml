@@ -29,9 +29,14 @@
 
     <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_root"
               action="sgi_document_action_my_procedures" sequence="50"/>
+    <menuitem id="menu_sgi_my_actions" name="Mis acciones" parent="menu_sgi_root"
+              action="sgi_action_line_action_mine" sequence="52"/>
 
     <!-- No Conformidades -->
     <menuitem id="menu_sgi_nc" name="No Conformidades" parent="menu_sgi_root" sequence="60"/>
+    <menuitem id="menu_sgi_nc_all_actions" name="Todas las acciones" parent="menu_sgi_nc"
+              action="sgi_action_line_action_all" sequence="35"
+              groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_nc_kanban" name="Tablero" parent="menu_sgi_nc"
               action="sgi_nc_action_kanban" sequence="10"/>
     <menuitem id="menu_sgi_nc_concentrado" name="Concentrado" parent="menu_sgi_nc"
