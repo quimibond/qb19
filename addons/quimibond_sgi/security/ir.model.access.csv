@@ -4,6 +4,8 @@ access_sgi_norm_user,sgi.norm.user,model_sgi_norm,group_sgi_user,1,0,0,0
 access_sgi_norm_clause_user,sgi.norm.clause.user,model_sgi_norm_clause,group_sgi_user,1,0,0,0
 access_sgi_process_user,sgi.process.user,model_sgi_process,group_sgi_user,1,0,0,0
 access_sgi_process_flow_user,sgi.process.flow.user,model_sgi_process_flow,group_sgi_user,1,0,0,0
+access_sgi_process_responsibility_user,sgi.process.responsibility.user,model_sgi_process_responsibility,group_sgi_user,1,0,0,0
+access_sgi_process_activity_user,sgi.process.activity.user,model_sgi_process_activity,group_sgi_user,1,0,0,0
 access_sgi_document_ack_user,sgi.document.ack.user,model_sgi_document_ack,group_sgi_user,1,1,1,0
 access_sgi_action_line_user,sgi.action.line.user,model_sgi_action_line,group_sgi_user,1,1,1,0
 access_sgi_nc_force_close_user,sgi.nc.force.close.user,model_sgi_nc_force_close,group_sgi_user,1,1,1,0
@@ -12,6 +14,8 @@ access_sgi_norm_manager,sgi.norm.manager,model_sgi_norm,group_sgi_manager,1,1,1,
 access_sgi_norm_clause_manager,sgi.norm.clause.manager,model_sgi_norm_clause,group_sgi_manager,1,1,1,1
 access_sgi_process_manager,sgi.process.manager,model_sgi_process,group_sgi_manager,1,1,1,1
 access_sgi_process_flow_manager,sgi.process.flow.manager,model_sgi_process_flow,group_sgi_manager,1,1,1,1
+access_sgi_process_responsibility_manager,sgi.process.responsibility.manager,model_sgi_process_responsibility,group_sgi_manager,1,1,1,1
+access_sgi_process_activity_manager,sgi.process.activity.manager,model_sgi_process_activity,group_sgi_manager,1,1,1,1
 access_sgi_document_ack_manager,sgi.document.ack.manager,model_sgi_document_ack,group_sgi_manager,1,1,1,1
 access_sgi_action_line_manager,sgi.action.line.manager,model_sgi_action_line,group_sgi_manager,1,1,1,1
 access_sgi_nc_force_close_manager,sgi.nc.force.close.manager,model_sgi_nc_force_close,group_sgi_manager,1,1,1,1

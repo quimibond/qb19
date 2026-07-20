@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_procedure" model="ir.actions.report">
+        <field name="name">Imprimir procedimiento (F-P-G01-02)</field>
+        <field name="model">sgi.process</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_procedure_document</field>
+        <field name="report_file">quimibond_sgi.report_procedure_document</field>
+        <field name="print_report_name">'Procedimiento - %s' % (object.code or object.name)</field>
+    </record>
+
+    <!-- ====== Encabezado ISO (caja de control, se repite en cada página) ====== -->
+    <template id="report_procedure_header">
+        <t t-set="company" t-value="doc.env.company"/>
+        <div class="header">
+            <table style="width:100%; border-collapse:collapse; font-size:10px;"
+                   border="1">
+                <tr>
+                    <td rowspan="4" style="width:22%; text-align:center; vertical-align:middle; padding:4px; border:1px solid #000;">
+                        <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
+                             style="max-height:48px; max-width:100%;" alt="Logo"/>
+                    </td>
+                    <td rowspan="4" style="width:48%; text-align:center; vertical-align:middle; padding:4px; border:1px solid #000;">
+                        <strong>PRODUCTORA DE NO TEJIDOS QUIMIBOND S.A. DE C.V</strong>
+                        <div style="font-size:12px; margin-top:4px;">
+                            <strong t-out="doc.name"/>
+                        </div>
+                    </td>
+                    <td style="width:15%; padding:3px; border:1px solid #000;"><strong>Clave:</strong></td>
+                    <td style="width:15%; padding:3px; border:1px solid #000;"
+                        t-out="proc_doc.sgi_code or doc.code or ''"/>
+                </tr>
+                <tr>
+                    <td style="padding:3px; border:1px solid #000;"><strong>Fecha de emisión:</strong></td>
+                    <td style="padding:3px; border:1px solid #000;"
+                        t-out="proc_doc.sgi_issue_date" t-options="{'widget': 'date'}"/>
+                </tr>
+                <tr>
+                    <td style="padding:3px; border:1px solid #000;"><strong>Área:</strong></td>
+                    <td style="padding:3px; border:1px solid #000;"
+                        t-out="proc_doc.sgi_area_id.name or doc.department_id.name or ''"/>
+                </tr>
+                <tr>
+                    <td style="padding:3px; border:1px solid #000;"><strong>Rev.:</strong></td>
+                    <td style="padding:3px; border:1px solid #000;"
+                        t-out="proc_doc.sgi_revision or ''"/>
+                </tr>
+            </table>
+        </div>
+    </template>
+
+    <!-- ====== Pie F-P-G01-02 (se repite en cada página) ====== -->
+    <template id="report_procedure_footer">
+        <div class="footer">
+            <div style="border-top:1px solid #000; padding-top:3px; font-size:9px;">
+                <span class="float-start">
+                    <strong>F-P-G01-02</strong>
+                    <t t-if="g0102_rev"> Rev. <span t-out="g0102_rev"/></t>
+                    · ISO 9001:2015 / ISO 14001:2015
+                </span>
+                <span class="float-end">
+                    Página <span class="page"/> de <span class="topage"/>
+                </span>
+            </div>
+        </div>
+    </template>
+
+    <!-- ====== Cuerpo del procedimiento ====== -->
+    <template id="report_procedure_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="proc_doc" t-value="doc._sgi_procedure_document()"/>
+                <t t-set="g0102_rev" t-value="doc._sgi_format_revision('F-P-G01-02')"/>
+                <t t-set="documented" t-value="doc._sgi_documented_info()"/>
+                <t t-set="env_risks" t-value="doc._sgi_env_risks()"/>
+                <t t-set="iper_risks" t-value="doc._sgi_iper_risks()"/>
+                <t t-set="iper_matrix" t-value="doc._sgi_document_by_code('F-P-S01-01')"/>
+
+                <t t-call="quimibond_sgi.report_procedure_header"/>
+                <t t-call="quimibond_sgi.report_procedure_footer"/>
+
+                <div class="article" t-att-data-oe-model="'sgi.process'"
+                     t-att-data-oe-id="doc.id" style="font-size:11px;">
+
+                    <!-- 1. Propósito -->
+                    <h4 class="mt-2">1. Propósito</h4>
+                    <p t-out="doc.purpose"/>
+
+                    <!-- 2. Alcance -->
+                    <h4>2. Alcance</h4>
+                    <p t-out="doc.scope"/>
+
+                    <!-- 3. Responsabilidades de las áreas -->
+                    <h4>3. Responsabilidades de las áreas</h4>
+                    <table style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
+                        <thead>
+                            <tr style="background-color:#f0f0f0;">
+                                <th style="width:28%; padding:4px; border:1px solid #000;">Rol / Área</th>
+                                <th style="padding:4px; border:1px solid #000;">Responsabilidades</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="doc.job_responsibility_ids" t-as="resp">
+                                <td style="padding:4px; border:1px solid #000; vertical-align:top;">
+                                    <strong t-out="resp.name"/>
+                                </td>
+                                <td style="padding:4px; border:1px solid #000; white-space:pre-line;"
+                                    t-out="resp.responsibilities"/>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- 4. Desarrollo -->
+                    <h4 class="mt-3">4. Desarrollo</h4>
+                    <t t-foreach="[('inicial', '4.1 Actividades iniciales'), ('desarrollo', '4.2 Desarrollo'), ('final', '4.3 Actividades finales')]"
+                       t-as="blk">
+                        <t t-set="acts"
+                           t-value="doc.activity_ids.filtered(lambda a: a.block == blk[0])"/>
+                        <t t-if="acts">
+                            <h5 style="background-color:#e8e8e8; padding:3px;" t-out="blk[1]"/>
+                            <t t-set="current_section" t-value="None"/>
+                            <t t-foreach="acts" t-as="act">
+                                <t t-if="act.section and act.section != current_section">
+                                    <div style="font-weight:bold; margin-top:6px;" t-out="act.section"/>
+                                    <t t-set="current_section" t-value="act.section"/>
+                                </t>
+                                <div style="margin:3px 0 3px 10px;">
+                                    <span style="font-weight:bold;" t-if="act.number">
+                                        <t t-out="act.number"/>.
+                                    </span>
+                                    <span t-if="act.responsible_role"
+                                          style="font-weight:bold;">
+                                        [<t t-out="act.responsible_role"/>]
+                                    </span>
+                                    <span t-out="act.description or act.name"/>
+                                    <span t-if="act.odoo_ref" class="text-muted">
+                                        (Odoo: <t t-out="act.odoo_ref"/>)
+                                    </span>
+                                    <div t-if="act.format_document_ids" style="margin-left:12px;">
+                                        <t t-foreach="act.format_document_ids" t-as="fmt">
+                                            <span style="color:#c00000; font-weight:bold;"
+                                                  t-out="fmt.sgi_code"/>
+                                            <span t-if="fmt.name">
+                                                — <span t-out="fmt.name"/>
+                                            </span>
+                                            <t t-if="not fmt_last">; </t>
+                                        </t>
+                                    </div>
+                                    <div t-if="act.note" style="margin-left:12px; font-style:italic;">
+                                        Nota: <t t-out="act.note"/>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                    </t>
+
+                    <!-- 5. Información ambiental -->
+                    <h4 class="mt-3">5. Información ambiental</h4>
+                    <p t-out="doc.env_aspects"/>
+                    <table t-if="env_risks" style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
+                        <thead>
+                            <tr style="background-color:#f0f0f0;">
+                                <th style="padding:4px; border:1px solid #000;">Aspecto ambiental</th>
+                                <th style="padding:4px; border:1px solid #000;">Control</th>
+                                <th style="width:15%; padding:4px; border:1px solid #000;">Atención</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="env_risks" t-as="risk">
+                                <td style="padding:4px; border:1px solid #000;" t-out="risk.name"/>
+                                <td style="padding:4px; border:1px solid #000;"
+                                    t-out="risk.existing_controls or risk.operational_control_id.name or ''"/>
+                                <td style="padding:4px; border:1px solid #000;" t-out="risk.attention_level"/>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- 6. IPER -->
+                    <h4 class="mt-3">6. Identificación de peligros y evaluación de riesgos (IPER)</h4>
+                    <p>
+                        Los peligros y riesgos de SST del proceso se administran en la matriz
+                        IPER
+                        <strong>F-P-S01-01</strong><t t-if="iper_matrix"> Rev. <span t-out="iper_matrix.sgi_revision"/></t>.
+                    </p>
+                    <table t-if="iper_risks" style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
+                        <thead>
+                            <tr style="background-color:#f0f0f0;">
+                                <th style="padding:4px; border:1px solid #000;">Peligro / Situación</th>
+                                <th style="width:20%; padding:4px; border:1px solid #000;">Condición</th>
+                                <th style="width:15%; padding:4px; border:1px solid #000;">Atención</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="iper_risks" t-as="risk">
+                                <td style="padding:4px; border:1px solid #000;" t-out="risk.name"/>
+                                <td style="padding:4px; border:1px solid #000;" t-out="risk.condition"/>
+                                <td style="padding:4px; border:1px solid #000;" t-out="risk.attention_level"/>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- 7. Marco normativo -->
+                    <h4 class="mt-3">7. Marco normativo</h4>
+                    <ul>
+                        <li t-foreach="doc.norm_ids" t-as="norm">
+                            <span t-out="norm.code"/> — <span t-out="norm.name"/>
+                        </li>
+                    </ul>
+
+                    <!-- 8. Información documentada (GENERADA) -->
+                    <h4 class="mt-3">8. Información documentada</h4>
+                    <table style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
+                        <thead>
+                            <tr style="background-color:#f0f0f0;">
+                                <th style="width:25%; padding:4px; border:1px solid #000;">Clave</th>
+                                <th style="padding:4px; border:1px solid #000;">Título</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="documented" t-as="di">
+                                <td style="padding:4px; border:1px solid #000;">
+                                    <span style="color:#c00000; font-weight:bold;" t-out="di.sgi_code"/>
+                                </td>
+                                <td style="padding:4px; border:1px solid #000;" t-out="di.name"/>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Firmas (bloque del F-P-G01-02) -->
+                    <table style="width:100%; border-collapse:collapse; font-size:10px; margin-top:16px;" border="1">
+                        <thead>
+                            <tr style="background-color:#f0f0f0;">
+                                <th style="width:33%; padding:6px; border:1px solid #000;">Responsable del documento</th>
+                                <th style="width:34%; padding:6px; border:1px solid #000;">Aprueba</th>
+                                <th style="width:33%; padding:6px; border:1px solid #000;">Vo.Bo.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding:6px; border:1px solid #000; height:48px; vertical-align:bottom; text-align:center;">
+                                    <strong t-out="doc.doc_owner_id.name"/>
+                                    <div class="text-muted" t-out="doc.doc_owner_id.employee_id.job_id.name or doc.doc_owner_id.employee_id.job_title"/>
+                                </td>
+                                <td style="padding:6px; border:1px solid #000; vertical-align:bottom; text-align:center;">
+                                    <strong t-out="doc.doc_approver_id.name"/>
+                                    <div class="text-muted" t-out="doc.doc_approver_id.employee_id.job_id.name or doc.doc_approver_id.employee_id.job_title"/>
+                                </td>
+                                <td style="padding:6px; border:1px solid #000; vertical-align:bottom; text-align:center;">
+                                    <strong t-out="doc.doc_vobo_id.name"/>
+                                    <div class="text-muted" t-out="doc.doc_vobo_id.employee_id.job_id.name or doc.doc_vobo_id.employee_id.job_title"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-muted mt-2" style="font-size:9px; font-style:italic;">
+                        Documento generado desde Odoo — copia no controlada si está impreso.
+                    </p>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
