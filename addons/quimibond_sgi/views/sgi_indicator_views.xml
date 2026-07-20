@@ -159,9 +159,12 @@
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <div class="oe_title">
+                        <label for="indicator_id" string="Indicador"/>
+                        <h1><field name="indicator_id"/></h1>
+                    </div>
                     <group>
                         <group>
-                            <field name="indicator_id"/>
                             <field name="period_date"/>
                             <field name="value"/>
                             <field name="uom"/>

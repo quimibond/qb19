@@ -28,11 +28,14 @@
                             invisible="not odoo_model_id"/>
                 </header>
                 <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Entregable"/>
+                        <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal F-P-A12-01)"/></h1>
+                    </div>
                     <group>
                         <group>
                             <field name="from_process_id"/>
                             <field name="to_process_id"/>
-                            <field name="name"/>
                         </group>
                         <group>
                             <field name="document_id"/>
@@ -93,7 +96,7 @@
         <field name="name">sgi.process.list</field>
         <field name="model">sgi.process</field>
         <field name="arch" type="xml">
-            <list string="Procesos">
+            <list string="Procesos" decoration-warning="nc_count &gt; 0">
                 <field name="code"/>
                 <field name="name"/>
                 <field name="process_type"/>
