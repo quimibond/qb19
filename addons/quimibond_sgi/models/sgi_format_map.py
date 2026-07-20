@@ -87,6 +87,18 @@ class SgiConfig(models.AbstractModel):
                 Param.set_param(key, value)
         return True
 
+    @api.model
+    def harden_noupdate(self):
+        """Marca noupdate=True en registros que ya existían ANTES de que su
+        archivo pasara a noupdate=1 (crons, mapeo de claves): sin esto, el
+        odoo-update seguiría revirtiendo lo que el usuario edite ahí."""
+        self.env['ir.model.data'].sudo().search([
+            ('module', '=', 'quimibond_sgi'),
+            ('model', 'in', ('ir.cron', 'sgi.format.map')),
+            ('noupdate', '=', False),
+        ]).write({'noupdate': True})
+        return True
+
 
 class SgiFormatMixin(models.AbstractModel):
     """Agrega al modelo la clave del formato SGI que sustituye (pantalla y PDF)."""
