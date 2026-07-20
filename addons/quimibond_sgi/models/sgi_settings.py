@@ -21,6 +21,16 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.nc_recurrence_months',
         help="Una NC del SGI cuenta como reincidente si en este número de meses "
              "hubo otra NC del mismo proceso (misma cláusula pesa doble).")
+    sgi_action_escalation_manager_days = fields.Integer(
+        string="Días para escalar una acción vencida al jefe",
+        config_parameter='quimibond_sgi.action_escalation_manager_days',
+        help="Acción vencida por más de estos días → además del responsable, "
+             "se avisa a su jefe directo (fallback Jefe MAST).")
+    sgi_action_escalation_director_days = fields.Integer(
+        string="Días para escalar una acción vencida a Dirección",
+        config_parameter='quimibond_sgi.action_escalation_director_days',
+        help="Acción vencida por más de estos días → además, se avisa a "
+             "Dirección.")
     sgi_fmea_npr_action = fields.Integer(
         string="NPR que exige acción en el AMEF",
         config_parameter='quimibond_sgi.fmea_npr_action')

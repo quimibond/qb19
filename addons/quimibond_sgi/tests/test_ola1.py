@@ -6,6 +6,8 @@ NC mayor (5 porqués + acción correctiva terminada, refinamiento H1).
 """
 from datetime import date
 
+from dateutil.relativedelta import relativedelta
+
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
@@ -248,3 +250,98 @@ class TestOla1Recurrence(TransactionCase):
         self.assertFalse(self.env['mail.activity'].search_count([
             ('res_model', '=', 'sgi.fmea'), ('res_id', '=', fmea_a.id),
             ('summary', 'ilike', 'read-across')]))
+
+
+@tagged('post_install', '-at_install')
+class TestOla1Escalation(TransactionCase):
+    """H12: escalamiento en 3 niveles de acciones vencidas."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id),
+            (4, cls.env.ref('quimibond_sgi.group_sgi_director').id)]
+        cls.boss = cls.env['res.users'].create(
+            {'name': 'Jefe', 'login': 'ola1_jefe'})
+        boss_emp = cls.env['hr.employee'].create(
+            {'name': 'Jefe emp', 'user_id': cls.boss.id})
+        cls.resp = cls.env['res.users'].create(
+            {'name': 'Resp', 'login': 'ola1_resp'})
+        cls.env['hr.employee'].create(
+            {'name': 'Resp emp', 'user_id': cls.resp.id, 'parent_id': boss_emp.id})
+        cls.risk = cls.env['sgi.risk'].create({'name': 'R', 'instrument': 'ryo'})
+
+    def _overdue_line(self, days):
+        return self.env['sgi.action.line'].create({
+            'risk_id': self.risk.id, 'name': 'Acción %d' % days,
+            'responsible_id': self.resp.id,
+            'date_commit': date.today() - relativedelta(days=days)})
+
+    def _acts(self):
+        return self.env['mail.activity'].search(
+            [('res_model', '=', 'sgi.risk'), ('res_id', '=', self.risk.id)])
+
+    def test_01_between_7_and_15_escalates_to_boss_only(self):
+        self._overdue_line(10)
+        self.env['sgi.cron'].cron_overdue_actions()
+        summ = self._acts().mapped('summary')
+        self.assertTrue(any('escalada al jefe' in s for s in summ))
+        self.assertFalse(any('Dirección' in s for s in summ))
+        boss_act = self._acts().filtered(lambda a: 'escalada al jefe' in a.summary)
+        self.assertEqual(boss_act.user_id, self.boss)
+
+    def test_02_over_15_escalates_to_director_too(self):
+        self._overdue_line(20)
+        self.env['sgi.cron'].cron_overdue_actions()
+        summ = self._acts().mapped('summary')
+        self.assertTrue(any('escalada al jefe' in s for s in summ))
+        self.assertTrue(any('Dirección' in s for s in summ))
+
+    def test_03_idempotent(self):
+        self._overdue_line(20)
+        self.env['sgi.cron'].cron_overdue_actions()
+        n1 = len(self._acts())
+        self.env['sgi.cron'].cron_overdue_actions()
+        self.assertEqual(len(self._acts()), n1)
+
+    def test_04_not_yet_due_no_escalation(self):
+        self._overdue_line(3)
+        self.env['sgi.cron'].cron_overdue_actions()
+        summ = self._acts().mapped('summary')
+        self.assertFalse(any('escalada' in s for s in summ))
+
+
+@tagged('post_install', '-at_install')
+class TestOla1AuditFinding(TransactionCase):
+    """Un hallazgo mayor obliga NC ligada para cerrar la auditoría."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        cls.proc = cls.env['sgi.process'].search([], limit=1)
+        cls.clause = cls.env['sgi.norm.clause'].search([], limit=1)
+
+    def test_01_major_finding_blocks_close_without_nc(self):
+        audit = self.env['sgi.audit'].create({'audit_type': 'interna'})
+        self.env['sgi.audit.finding'].create({
+            'audit_id': audit.id, 'finding_type': 'nc_mayor',
+            'description': 'Hallazgo grave', 'process_id': self.proc.id})
+        with self.assertRaises(UserError):
+            audit.action_close()
+
+    def test_02_generate_nc_prefills_and_unblocks(self):
+        audit = self.env['sgi.audit'].create({'audit_type': 'interna'})
+        finding = self.env['sgi.audit.finding'].create({
+            'audit_id': audit.id, 'finding_type': 'nc_mayor',
+            'description': 'Hallazgo grave', 'process_id': self.proc.id,
+            'norm_clause_id': self.clause.id})
+        finding.action_generate_nc()
+        self.assertTrue(finding.alert_id)
+        self.assertEqual(finding.alert_id.sgi_origin_type, 'auditoria_interna')
+        self.assertEqual(finding.alert_id.sgi_process_id, self.proc)
+        self.assertEqual(finding.alert_id.sgi_norm_clause_id, self.clause)
+        audit.action_close()
+        self.assertEqual(audit.state, 'cerrada')

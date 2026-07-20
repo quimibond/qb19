@@ -17,6 +17,16 @@
         <field name="active" eval="True"/>
     </record>
 
+    <record id="sgi_cron_overdue_actions" model="ir.cron">
+        <field name="name">SGI: Escalamiento de acciones vencidas</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_overdue_actions()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <record id="sgi_cron_documents" model="ir.cron">
         <field name="name">SGI: Vencimientos documentales</field>
         <field name="model_id" ref="model_sgi_cron"/>

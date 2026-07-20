@@ -67,6 +67,8 @@ class SgiConfig(models.AbstractModel):
     _SGI_DEFAULT_PARAMS = {
         'quimibond_sgi.nc_escalation_days': '5',
         'quimibond_sgi.nc_recurrence_months': '12',
+        'quimibond_sgi.action_escalation_manager_days': '7',
+        'quimibond_sgi.action_escalation_director_days': '15',
         'quimibond_sgi.fmea_npr_action': '100',
         'quimibond_sgi.risk_ryo_inmediata': '16',
         'quimibond_sgi.risk_ryo_media': '9',
