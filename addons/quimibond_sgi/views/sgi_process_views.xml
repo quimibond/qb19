@@ -113,6 +113,15 @@
                         <button name="action_open_ncs" type="object" class="oe_stat_button" icon="fa-clock-o">
                             <field name="overdue_action_count" widget="statinfo" string="Acc. vencidas"/>
                         </button>
+                        <button name="action_open_documents" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                            <field name="document_count" widget="statinfo" string="Documentos"/>
+                        </button>
+                        <button name="action_open_indicators" type="object" class="oe_stat_button" icon="fa-line-chart">
+                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
+                        </button>
+                        <button name="action_open_risks" type="object" class="oe_stat_button" icon="fa-shield">
+                            <field name="risk_count" widget="statinfo" string="Riesgos"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nombre del proceso"/></h1>
@@ -128,6 +137,13 @@
                             <field name="owner_id"/>
                             <field name="department_id"/>
                         </group>
+                    </group>
+                    <group string="Objetivo del proceso">
+                        <field name="purpose" nolabel="1"
+                               placeholder="Para qué existe este proceso (de su caracterización/SIPOC)…"/>
+                    </group>
+                    <group string="Se opera en Odoo con">
+                        <field name="odoo_model_ids" nolabel="1" widget="many2many_tags" readonly="1"/>
                     </group>
                     <notebook>
                         <page string="Entradas">
@@ -158,11 +174,65 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Documentos">
-                            <field name="document_ids"/>
+                        <page string="Cómo se opera">
+                            <group string="Procedimientos e instructivos vigentes">
+                                <field name="procedure_ids" nolabel="1" readonly="1">
+                                    <list>
+                                        <field name="sgi_code"/>
+                                        <field name="name"/>
+                                        <field name="sgi_doc_type"/>
+                                        <field name="sgi_revision"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Todos los documentos del proceso (formatos, DATs…)">
+                                <field name="linked_document_ids" nolabel="1" readonly="1">
+                                    <list default_order="sgi_doc_type, sgi_code">
+                                        <field name="sgi_code"/>
+                                        <field name="name"/>
+                                        <field name="sgi_doc_type"/>
+                                        <field name="sgi_revision"/>
+                                        <field name="sgi_state" widget="badge"
+                                               decoration-success="sgi_state == 'vigente'"
+                                               decoration-warning="sgi_state == 'piloto'"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+                        <page string="Indicadores">
+                            <field name="indicator_ids" readonly="1">
+                                <list>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="responsible_id"/>
+                                    <field name="target_objective"/>
+                                    <field name="target_acceptable"/>
+                                    <field name="last_value"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Riesgos y oportunidades">
+                            <field name="risk_ids" readonly="1">
+                                <list>
+                                    <field name="instrument"/>
+                                    <field name="name"/>
+                                    <field name="state"/>
+                                    <field name="next_review_date"/>
+                                </list>
+                            </field>
                         </page>
                         <page string="Puestos">
                             <field name="job_ids"/>
+                        </page>
+                        <page string="Subprocesos" invisible="not child_ids">
+                            <field name="child_ids" readonly="1">
+                                <list>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="owner_id"/>
+                                    <field name="nc_count"/>
+                                </list>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>
