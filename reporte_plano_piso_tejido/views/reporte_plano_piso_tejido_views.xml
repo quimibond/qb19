@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Lista -->
+    <record id="view_reporte_plano_piso_tejido_list" model="ir.ui.view">
+        <field name="name">reporte.plano.piso.tejido.list</field>
+        <field name="model">reporte.plano.piso.tejido</field>
+        <field name="arch" type="xml">
+            <list string="Plano de Piso Tejido" create="false" edit="false"
+                  delete="false" import="false" export_xlsx="true">
+                <field name="fecha_hora"/>
+                <field name="production_id"/>
+                <field name="product_id"/>
+                <field name="name" string="Operación"/>
+                <field name="workcenter_id"/>
+                <field name="product_qty" string="Cant. a Producir (OF)"/>
+                <field name="qty_produced"/>
+                <field name="qty_remaining"/>
+                <field name="product_uom_id" string="Unidad"/>
+                <field name="duration_expected"/>
+                <field name="duration"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista Búsqueda: permite filtrar/agrupar por producto y centro de trabajo -->
+    <record id="view_reporte_plano_piso_tejido_search" model="ir.ui.view">
+        <field name="name">reporte.plano.piso.tejido.search</field>
+        <field name="model">reporte.plano.piso.tejido</field>
+        <field name="arch" type="xml">
+            <search string="Plano de Piso Tejido">
+                <field name="production_id"/>
+                <field name="product_id"/>
+                <field name="workcenter_id"/>
+                <filter string="Producto" name="group_product"
+                        context="{'group_by': 'product_id'}"/>
+                <filter string="Centro de Trabajo" name="group_workcenter"
+                        context="{'group_by': 'workcenter_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción de servidor: regenera el snapshot y abre la vista lista -->
+    <record id="action_reporte_plano_piso_tejido" model="ir.actions.server">
+        <field name="name">Plano de Piso Tejido</field>
+        <field name="model_id" ref="model_reporte_plano_piso_tejido"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_generar_reporte()</field>
+    </record>
+
+    <!-- Menú: Manufactura > Reportes > Plano de Piso Tejido -->
+    <menuitem id="menu_reporte_plano_piso_tejido"
+              name="Plano de Piso Tejido"
+              parent="mrp.menu_mrp_reporting"
+              action="action_reporte_plano_piso_tejido"
+              sequence="50"/>
+
+</odoo>

@@ -29,6 +29,7 @@
         'views/stock_lot_views.xml',
         'report/ir_actions_report.xml',
         'report/report_revisado_templates.xml',
+        'report/mrp_revision_report_views.xml',
     ],
     # El widget de báscula (scale_capture_field.js/.xml) ahora vive en el
     # módulo común 'iot_scale_common' y se carga automáticamente por ser
