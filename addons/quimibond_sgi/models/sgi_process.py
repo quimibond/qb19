@@ -23,7 +23,6 @@ class SgiProcess(models.Model):
     owner_id = fields.Many2one('hr.employee', string="Dueño del proceso")
     department_id = fields.Many2one('hr.department', string="Departamento")
     job_ids = fields.Many2many('hr.job', string="Puestos")
-    document_ids = fields.Many2many('documents.document', string="Documentos aplicables")
     active = fields.Boolean(default=True)
 
     purpose = fields.Text(
@@ -49,9 +48,9 @@ class SgiProcess(models.Model):
 
     nc_count = fields.Integer(string="NC abiertas", compute='_compute_health')
     overdue_action_count = fields.Integer(string="Acciones vencidas", compute='_compute_health')
-    document_count = fields.Integer(string="Documentos", compute='_compute_counts')
-    indicator_count = fields.Integer(string="Indicadores", compute='_compute_counts')
-    risk_count = fields.Integer(string="Riesgos", compute='_compute_counts')
+    document_count = fields.Integer(string="# Documentos", compute='_compute_counts')
+    indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
+    risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
 
     _code_uniq = models.Constraint(
         'unique(code)',
