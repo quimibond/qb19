@@ -8,10 +8,15 @@ SCALE_1_10 = [(str(i), str(i)) for i in range(1, 11)]
 class SgiFmea(models.Model):
     _name = 'sgi.fmea'
     _description = "AMEF - Análisis de Modo y Efecto de Falla (P-C10)"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
+    _sgi_sequence_code = 'sgi.fmea'
 
-    folio = fields.Char(string="Folio", readonly=True, copy=False, index=True, tracking=True)
+    _folio_uniq = models.Constraint(
+        'unique(folio)',
+        "Ya existe un AMEF con ese folio.",
+    )
+
     name = fields.Char(string="Nombre", required=True, tracking=True)
     fmea_type = fields.Selection([
         ('proceso', "Proceso (PFMEA)"),
@@ -30,13 +35,6 @@ class SgiFmea(models.Model):
     line_ids = fields.One2many('sgi.fmea.line', 'fmea_id', string="Modos de falla")
     max_npr = fields.Integer(string="NPR máximo", compute='_compute_max_npr', store=True)
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        seq = self.env['ir.sequence']
-        for vals in vals_list:
-            if not vals.get('folio'):
-                vals['folio'] = seq.next_by_code('sgi.fmea') or '/'
-        return super().create(vals_list)
 
     @api.depends('line_ids.npr')
     def _compute_max_npr(self):

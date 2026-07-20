@@ -103,10 +103,15 @@ class SgiAuditProgramLine(models.Model):
 class SgiAudit(models.Model):
     _name = 'sgi.audit'
     _description = "Auditoría interna (P-G03)"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['sgi.base.mixin']
     _order = 'date_planned desc, folio desc'
+    _sgi_sequence_code = 'sgi.audit'
 
-    folio = fields.Char(string="Folio", readonly=True, copy=False, index=True, tracking=True)
+    _folio_uniq = models.Constraint(
+        'unique(folio)',
+        "Ya existe una auditoría con ese folio.",
+    )
+
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
     program_line_id = fields.Many2one('sgi.audit.program.line', string="Línea de programa")
     audit_type = fields.Selection([
@@ -146,14 +151,6 @@ class SgiAudit(models.Model):
     def _compute_finding_count(self):
         for audit in self:
             audit.finding_count = len(audit.finding_ids)
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        seq = self.env['ir.sequence']
-        for vals in vals_list:
-            if not vals.get('folio'):
-                vals['folio'] = seq.next_by_code('sgi.audit') or '/'
-        return super().create(vals_list)
 
     @api.constrains('process_ids', 'lead_auditor_id', 'auditor_ids')
     def _check_auditor_independence(self):

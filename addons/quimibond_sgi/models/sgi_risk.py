@@ -27,10 +27,15 @@ class SgiRiskCategory(models.Model):
 class SgiRisk(models.Model):
     _name = 'sgi.risk'
     _description = "Riesgo / Oportunidad SGI"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
+    _sgi_sequence_code = 'sgi.risk'
 
-    folio = fields.Char(string="Folio", readonly=True, copy=False, index=True, tracking=True)
+    _folio_uniq = models.Constraint(
+        'unique(folio)',
+        "Ya existe un riesgo/oportunidad con ese folio.",
+    )
+
     name = fields.Char(string="Aspecto / Peligro / Situación", required=True, tracking=True)
     consequence = fields.Text(string="Consecuencia")
     instrument = fields.Selection([
@@ -92,14 +97,6 @@ class SgiRisk(models.Model):
                                       compute='_compute_residual', store=True)
     has_finished_actions = fields.Boolean(string="Acciones terminadas",
                                           compute='_compute_has_finished_actions')
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        seq = self.env['ir.sequence']
-        for vals in vals_list:
-            if not vals.get('folio'):
-                vals['folio'] = seq.next_by_code('sgi.risk') or '/'
-        return super().create(vals_list)
 
     # ------------------------------------------------------------------
     # Escalas por instrumento
