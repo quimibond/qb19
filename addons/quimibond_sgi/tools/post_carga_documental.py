@@ -47,6 +47,7 @@ FLOW_DOCUMENT = {
     'flow_prodtac_mto': 'F-P-M01-01',
     'flow_prodent_mto': 'F-P-M01-01',
     'flow_inspeccion_sgi_nc': 'F-P-G05-01',
+    'flow_ventas_diseno': 'F-P-A28-03',
 }
 
 # --- 2) Familia de clave -> xmlid del proceso -------------------------------

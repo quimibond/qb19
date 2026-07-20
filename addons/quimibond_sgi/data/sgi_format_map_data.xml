@@ -7,9 +7,9 @@
 
     <record id="format_map_sale_order" model="sgi.format.map">
         <field name="model_id" ref="sale.model_sale_order"/>
-        <field name="sgi_code">F-P-A28-04</field>
-        <field name="sgi_code_alt">F-P-A28-03</field>
-        <field name="note">Cotización (borrador/enviada) / Pedido de venta (confirmado)</field>
+        <field name="sgi_code">F-P-A28-12</field>
+        <field name="sgi_code_alt">F-P-A28-06</field>
+        <field name="note">Cotización F-P-A28-12 / Pedido F-P-A28-06 (P-A28 Rev.15; la 04 es Reporte de visita y la 03 Solicitud de muestras)</field>
     </record>
 
     <record id="format_map_purchase_order" model="sgi.format.map">
