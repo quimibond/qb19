@@ -106,6 +106,9 @@
     <!-- 10. Configuración (solo MAST) -->
     <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root"
               sequence="100" groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_config_settings" name="Ajustes" parent="menu_sgi_config"
+              action="sgi_config_settings_action" sequence="5"
+              groups="base.group_system"/>
     <menuitem id="menu_sgi_config_areas" name="Áreas" parent="menu_sgi_config"
               action="sgi_area_action" sequence="10"/>
     <menuitem id="menu_sgi_config_norms" name="Normas" parent="menu_sgi_config"

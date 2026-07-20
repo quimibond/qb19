@@ -21,4 +21,5 @@ from . import sgi_ppap
 from . import sgi_incident
 from . import sgi_competence
 from . import sgi_format_map
+from . import sgi_settings
 from . import sgi_cron
