@@ -31,6 +31,7 @@ class TestPegamentoNcMayor(TransactionCase):
             'sgi_why_5': 'Porqué 5',
             'sgi_effectiveness_note': 'Eficaz',
             'sgi_effectiveness_date': date.today(),
+            'sgi_lesson_captured': True,
         })
         self.env['sgi.action.line'].create({
             'alert_id': alert.id, 'action_type': 'correctiva',

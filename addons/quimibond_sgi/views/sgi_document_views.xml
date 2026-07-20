@@ -20,6 +20,15 @@
                             </div>
                         </button>
                     </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not sgi_procedure_dirty">
+                        <field name="sgi_procedure_dirty" invisible="1"/>
+                        <strong>Procedimiento vivo modificado tras esta revisión.</strong>
+                        El PDF impreso ya no coincide con la revisión aprobada
+                        (<field name="sgi_procedure_dirty_since" nolabel="1" class="oe_inline"/>,
+                        por <field name="sgi_procedure_dirty_by" nolabel="1" class="oe_inline"/>).
+                        Genere una nueva revisión controlada o confírmelo.
+                    </div>
                     <div class="oe_title">
                         <h1><field name="sgi_code" placeholder="Clave (p.ej. P-G01)"/></h1>
                         <h2><field name="name" placeholder="Nombre del documento"/></h2>

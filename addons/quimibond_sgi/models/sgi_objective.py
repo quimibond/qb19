@@ -22,6 +22,8 @@ class SgiObjective(models.Model):
     name = fields.Char(string="Objetivo", required=True, translate=False)
     description = fields.Text(string="Descripción")
     policy_id = fields.Many2one('sgi.policy', string="Política integral",
+                                default=lambda self: self.env['sgi.policy'].search(
+                                    [('state', '=', 'vigente')], limit=1),
                                 help="Política de la que se despliega este objetivo (cascada ISO).")
     target_year = fields.Integer(string="Año meta")
     indicator_ids = fields.One2many('sgi.indicator', 'objective_id', string="Indicadores")
@@ -34,6 +36,7 @@ class SgiObjective(models.Model):
         help="Peor color entre los procesos de sus indicadores.")
     active = fields.Boolean(default=True)
 
+    @api.depends('indicator_ids', 'indicator_ids.process_id')
     def _compute_health(self):
         for objective in self:
             processes = objective.indicator_ids.mapped('process_id')

@@ -44,10 +44,55 @@ class SgiProcessProcedure(models.Model):
     doc_vobo_id = fields.Many2one(
         'res.users', string="Vo.Bo.")
 
+    # Campos del cuerpo del procedimiento cuya edición diverge del PDF controlado.
+    _SGI_PROCEDURE_BODY_FIELDS = {
+        'scope', 'env_aspects', 'norm_ids',
+        'doc_owner_id', 'doc_approver_id', 'doc_vobo_id'}
+
     @api.depends('activity_ids')
     def _compute_activity_count(self):
         for process in self:
             process.activity_count = len(process.activity_ids)
+
+    def _sgi_flag_procedure_dirty(self):
+        """Marca el procedimiento controlado VIGENTE como 'pendiente de revisión'
+        cuando su procedimiento vivo cambió tras la revisión aprobada (G14).
+
+        Idempotente: sólo actúa en la transición limpio→divergente, así el aviso
+        al dueño se agenda una vez por ciclo de revisión. Se omite durante la
+        carga de módulo (semillas), cuando el registro aún no está listo.
+        """
+        if not self.env.registry.ready:
+            return
+        for process in self:
+            doc = process._sgi_procedure_document()
+            if not doc or doc.sgi_procedure_dirty:
+                continue
+            doc.sudo().write({
+                'sgi_procedure_dirty': True,
+                'sgi_procedure_dirty_since': fields.Datetime.now(),
+                'sgi_procedure_dirty_by': self.env.uid,
+            })
+            doc.message_post(
+                body="⚠ El procedimiento vivo se modificó después de la revisión "
+                     "vigente %s. Queda <b>pendiente de revisión documental</b>: "
+                     "el PDF impreso ya no coincide con la revisión aprobada." % (
+                         doc.sgi_revision or ''))
+            user_id = doc.sgi_owner_id.id or self.env['sgi.cron']._sgi_manager_user_id()
+            if user_id:
+                doc.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    summary="Procedimiento vivo cambió: revisar %s" % (
+                        doc.sgi_code or doc.name),
+                    note="Genere una nueva revisión controlada del procedimiento o "
+                         "confirme que el cambio no la amerita.",
+                    user_id=user_id)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if self._SGI_PROCEDURE_BODY_FIELDS & set(vals):
+            self._sgi_flag_procedure_dirty()
+        return res
 
     # --- Helpers del reporte "Imprimir procedimiento (F-P-G01-02)" -----------
     def _sgi_procedure_document(self):
@@ -122,6 +167,23 @@ class SgiProcessResponsibility(models.Model):
         if self.job_id and not self.name:
             self.name = self.job_id.name
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.process_id._sgi_flag_procedure_dirty()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        self.process_id._sgi_flag_procedure_dirty()
+        return res
+
+    def unlink(self):
+        processes = self.process_id
+        res = super().unlink()
+        processes._sgi_flag_procedure_dirty()
+        return res
+
 
 class SgiProcessActivity(models.Model):
     """Actividad (numeral) del Desarrollo del procedimiento (sección 4)."""
@@ -191,3 +253,20 @@ class SgiProcessActivity(models.Model):
         if not action or action._name != 'ir.actions.act_window':
             raise UserError("Esta actividad no tiene menú de Odoo ligado.")
         return action.read()[0]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.process_id._sgi_flag_procedure_dirty()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        self.process_id._sgi_flag_procedure_dirty()
+        return res
+
+    def unlink(self):
+        processes = self.process_id
+        res = super().unlink()
+        processes._sgi_flag_procedure_dirty()
+        return res

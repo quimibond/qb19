@@ -210,3 +210,17 @@ class SgiPpapElement(models.Model):
     control_plan_id = fields.Many2one('sgi.control.plan', string="Plan de control")
     document_id = fields.Many2one('documents.document', string="Documento")
     notes = fields.Text(string="Notas")
+
+    def unlink(self):
+        # Un PPAP aprobado es evidencia presentada al cliente: sus elementos no
+        # se borran (salvo MAST). En preparación se editan libremente.
+        if not self.env.su and not self.env.user.has_group(
+                'quimibond_sgi.group_sgi_manager'):
+            locked = self.filtered(lambda e: e.ppap_id.state == 'aprobado')
+            if locked:
+                raise UserError(
+                    "No se puede borrar un elemento de un PPAP aprobado (es "
+                    "evidencia presentada al cliente). Pide al Jefe de MAST "
+                    "reabrirlo.\n\nPPAP: %s" % ", ".join(
+                        locked.mapped('ppap_id.display_name')))
+        return super().unlink()

@@ -47,6 +47,7 @@
                                     <field name="sgi_criticality"/>
                                     <field name="sgi_cpk_target"/>
                                     <field name="sgi_in_coa"/>
+                                    <field name="sgi_equipment_id"/>
                                     <field name="test_type_id"/>
                                 </list>
                             </field>
@@ -127,6 +128,7 @@
                     <group>
                         <field name="sgi_cpk_target"/>
                         <field name="sgi_in_coa"/>
+                        <field name="sgi_equipment_id"/>
                     </group>
                     <field name="sgi_reaction_plan" colspan="2"/>
                 </group>
