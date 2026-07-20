@@ -50,14 +50,13 @@
                         domain="[('fmea_line_id', '!=', False)]"/>
                 <filter name="from_incident" string="De Incidentes SST"
                         domain="[('incident_id', '!=', False)]"/>
-                <group expand="0" string="Agrupar por">
-                    <filter name="group_responsible" string="Responsable"
-                            context="{'group_by': 'responsible_id'}"/>
-                    <filter name="group_state" string="Estado"
-                            context="{'group_by': 'state'}"/>
-                    <filter name="group_commit" string="Fecha compromiso"
-                            context="{'group_by': 'date_commit'}"/>
-                </group>
+                <separator/>
+                <filter name="group_responsible" string="Agrupar por responsable"
+                        context="{'group_by': 'responsible_id'}"/>
+                <filter name="group_state" string="Agrupar por estado"
+                        context="{'group_by': 'state'}"/>
+                <filter name="group_commit" string="Agrupar por fecha compromiso"
+                        context="{'group_by': 'date_commit'}"/>
             </search>
         </field>
     </record>
