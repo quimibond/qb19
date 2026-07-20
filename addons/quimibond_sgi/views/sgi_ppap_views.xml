@@ -104,6 +104,10 @@
         <field name="res_model">sgi.ppap</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_ppap_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el primer PPAP</p>
+            <p>Los 18 elementos AIAG se generan solos. No se puede marcar Enviado con elementos pendientes ni Aprobado sin el PSW.</p>
+        </field>
     </record>
 
     <!-- ================= Catálogo de elementos ================= -->
@@ -123,6 +127,10 @@
         <field name="name">Catálogo de elementos PPAP</field>
         <field name="res_model">sgi.ppap.element.template</field>
         <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Catálogo de elementos PPAP</p>
+            <p>Los 18 elementos AIAG ya vienen sembrados.</p>
+        </field>
     </record>
 
     <!-- ================= Smart buttons en cliente y producto ================= -->

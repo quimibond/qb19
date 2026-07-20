@@ -45,5 +45,9 @@
         <field name="res_model">approval.request</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('sgi_is_doc_change','=',True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin solicitudes de cambio documental</p>
+            <p>Se crean en la app Aprobaciones (Modificación de documento SGI). Al aprobarse, el documento se versiona automáticamente y sale en el NEWS del mes.</p>
+        </field>
     </record>
 </odoo>

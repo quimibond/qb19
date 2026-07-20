@@ -145,6 +145,10 @@
         <field name="view_mode">kanban,list,form</field>
         <field name="search_view_id" ref="sgi_nc_view_search"/>
         <field name="context">{'default_sgi_origin_type': 'proceso'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Levanta la primera No Conformidad</p>
+            <p>El folio (NCI-/NCE-) se asigna solo. El sistema no permite cerrar sin causa raíz, acciones terminadas y eficacia verificada — es el candado, no un error.</p>
+        </field>
     </record>
 
     <record id="sgi_nc_action_concentrado" model="ir.actions.act_window">
@@ -154,6 +158,10 @@
         <field name="view_id" ref="sgi_nc_concentrado_view_list"/>
         <field name="search_view_id" ref="sgi_nc_view_search"/>
         <field name="context">{'search_default_group_stage': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El concentrado se arma solo</p>
+            <p>Todas las NC del año con folio, hallazgo, responsables y estatus — la vista del F-P-G05-02, exportable para el auditor.</p>
+        </field>
     </record>
 
     <!-- ============ WIZARD CIERRE FORZADO ============ -->

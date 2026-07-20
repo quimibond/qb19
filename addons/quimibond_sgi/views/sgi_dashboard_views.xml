@@ -31,5 +31,9 @@
         <field name="name">Pareto de alertas de calidad</field>
         <field name="res_model">quality.alert</field>
         <field name="view_mode">pivot,graph,list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin datos para el pareto</p>
+            <p>Se alimenta de las alertas de calidad del piso (defectos TEJIDO-*).</p>
+        </field>
     </record>
 </odoo>
