@@ -23,6 +23,10 @@
                                  help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST (externas: 3 días, fijo).">
                             <field name="sgi_nc_escalation_days"/>
                         </setting>
+                        <setting string="Ventana de reincidencia de NC (meses)"
+                                 help="Una NC reincide si en estos meses hubo otra del mismo proceso (misma cláusula pesa doble). Al cerrarla se exige acción correctiva.">
+                            <field name="sgi_nc_recurrence_months"/>
+                        </setting>
                         <setting string="NPR que exige acción en el AMEF"
                                  help="Modos de falla con NPR igual o mayor requieren acción antes de que el AMEF sea vigente.">
                             <field name="sgi_fmea_npr_action"/>

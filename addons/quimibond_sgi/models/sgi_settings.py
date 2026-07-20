@@ -16,6 +16,11 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.nc_escalation_days',
         help="NC interna sin acciones tras estos días → actividad al responsable "
              "y aviso a MAST (las externas/cliente escalan a 3 días, fijo).")
+    sgi_nc_recurrence_months = fields.Integer(
+        string="Ventana de reincidencia de NC (meses)",
+        config_parameter='quimibond_sgi.nc_recurrence_months',
+        help="Una NC del SGI cuenta como reincidente si en este número de meses "
+             "hubo otra NC del mismo proceso (misma cláusula pesa doble).")
     sgi_fmea_npr_action = fields.Integer(
         string="NPR que exige acción en el AMEF",
         config_parameter='quimibond_sgi.fmea_npr_action')

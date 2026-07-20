@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
@@ -95,6 +97,16 @@ class QualityAlert(models.Model):
         'documents.document', string="Documento ligado",
         domain=[('sgi_is_controlled', '=', True)])
 
+    # Detector de reincidencia (H2): NCs previas del mismo proceso en la ventana
+    # de reincidencia; una misma cláusula pesa doble. Se congela al crear/
+    # clasificar (snapshot), no se recalcula por el paso del tiempo.
+    sgi_recurrence_count = fields.Integer(
+        string="Reincidencias", compute='_compute_sgi_recurrence', store=True,
+        help="Casos previos del mismo proceso en la ventana de reincidencia "
+             "(misma cláusula cuenta doble).")
+    sgi_is_recurrent = fields.Boolean(
+        string="Reincidente", compute='_compute_sgi_recurrence', store=True)
+
     @api.model_create_multi
     def create(self, vals_list):
         alerts = super().create(vals_list)
@@ -102,6 +114,56 @@ class QualityAlert(models.Model):
             if not alert.sgi_folio and alert.team_id.sgi_sequence_id:
                 alert.sgi_folio = alert.team_id.sgi_sequence_id.next_by_id()
         return alerts
+
+    @api.depends('sgi_process_id', 'sgi_norm_clause_id', 'sgi_folio')
+    def _compute_sgi_recurrence(self):
+        months = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.nc_recurrence_months', 12))
+        for alert in self:
+            if not alert.sgi_folio or not alert.sgi_process_id:
+                alert.sgi_recurrence_count = 0
+                alert.sgi_is_recurrent = False
+                continue
+            ref_date = alert.create_date or fields.Datetime.now()
+            since = ref_date - relativedelta(months=months)
+            # "Previa" = id menor (monotónico y determinista, también cuando dos
+            # NCs comparten create_date por caer en la misma transacción).
+            prior = self.search([
+                ('id', '<', alert.id),
+                ('sgi_folio', '!=', False),
+                ('sgi_process_id', '=', alert.sgi_process_id.id),
+                ('create_date', '>=', since),
+            ])
+            count = 0
+            for other in prior:
+                count += 2 if (alert.sgi_norm_clause_id
+                               and other.sgi_norm_clause_id == alert.sgi_norm_clause_id) else 1
+            alert.sgi_recurrence_count = count
+            alert.sgi_is_recurrent = count >= 1
+
+    def _sgi_read_across(self):
+        """H2: al cerrar una NC reincidente ligada a un AMEF, agenda revisión en
+        los AMEF del mismo proceso (posible modo de falla análogo)."""
+        self.ensure_one()
+        if not self.sgi_is_recurrent or not self.sgi_fmea_id:
+            return
+        process = self.sgi_fmea_id.process_id
+        if not process:
+            return
+        manager_id = self.env['sgi.cron']._sgi_manager_user_id()
+        if not manager_id:
+            return
+        peers = self.env['sgi.fmea'].search([
+            ('process_id', '=', process.id),
+            ('id', '!=', self.sgi_fmea_id.id),
+            ('state', '!=', 'obsoleto'),
+        ])
+        summary = "Read-across NC reincidente %s: revisar AMEF del mismo proceso" % (
+            self.sgi_folio or self.name)
+        note = ("Una NC reincidente cerrada afecta un AMEF de este proceso. "
+                "Revise si aplica el mismo modo de falla en este AMEF.")
+        for fmea in peers:
+            fmea._sgi_schedule_activity(manager_id, summary, note)
 
     def _sgi_check_can_close(self):
         """Valida los candados de cierre de una NC."""
@@ -117,20 +179,24 @@ class QualityAlert(models.Model):
                 problems.append("• Hay %d acción(es) sin fecha de terminación." % len(pending))
             if not alert.sgi_effectiveness_note or not alert.sgi_effectiveness_date:
                 problems.append("• Falta la verificación de eficacia (nota y fecha).")
-            # NC mayor (refinamiento H1): además de lo anterior, exige el análisis
-            # de causa completo (5 porqués) y una acción CORRECTIVA real terminada
-            # —no basta una corrección/contención—.
+            # NC mayor (refinamiento H1): exige el análisis de causa completo.
             if alert.sgi_classification == 'mayor':
                 if not all((alert.sgi_why_1, alert.sgi_why_2, alert.sgi_why_3,
                             alert.sgi_why_4, alert.sgi_why_5)):
                     problems.append(
                         "• NC mayor: falta completar los 5 porqués del análisis "
                         "de causa.")
+            # Acción CORRECTIVA real terminada (no basta una corrección/contención)
+            # cuando la NC es mayor (H1) o reincidente (H2: lo puntual se vuelve
+            # sistémico).
+            if alert.sgi_classification == 'mayor' or alert.sgi_is_recurrent:
                 if not alert.sgi_action_line_ids.filtered(
                         lambda l: l.action_type == 'correctiva' and l.date_done):
+                    reason = "NC mayor" if alert.sgi_classification == 'mayor' \
+                        else "NC reincidente"
                     problems.append(
-                        "• NC mayor: se requiere al menos una ACCIÓN CORRECTIVA "
-                        "terminada (una corrección inmediata no basta).")
+                        "• %s: se requiere al menos una ACCIÓN CORRECTIVA "
+                        "terminada (una corrección inmediata no basta)." % reason)
             if problems:
                 raise UserError(
                     "No se puede cerrar la NC %s:\n%s" % (
@@ -146,10 +212,12 @@ class QualityAlert(models.Model):
                         alert._sgi_check_can_close()
             if new_stage.sgi_is_closing_stage:
                 newly_closed = self.filtered(
-                    lambda a: a.stage_id != new_stage and a.sgi_classification == 'mayor')
+                    lambda a: a.stage_id != new_stage and a.sgi_folio)
         res = super().write(vals)
         for alert in newly_closed:
-            alert._sgi_notify_mayor_closed()
+            if alert.sgi_classification == 'mayor':
+                alert._sgi_notify_mayor_closed()
+            alert._sgi_read_across()
         return res
 
     def _sgi_notify_mayor_closed(self):

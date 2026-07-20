@@ -164,3 +164,87 @@ class TestOla1Links(TransactionCase):
         line.invalidate_recordset()
         self.assertTrue(line.date_done, "Completar la actividad termina la acción.")
         self.assertEqual(line.state, 'terminada')
+
+
+@tagged('post_install', '-at_install')
+class TestOla1Recurrence(TransactionCase):
+    """H2: detector de reincidencia + read-across."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
+        cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
+        cls.proc = cls.env['sgi.process'].search([], limit=1)
+        cls.proc2 = cls.env['sgi.process'].search([('id', '!=', cls.proc.id)], limit=1)
+        cls.clause = cls.env['sgi.norm.clause'].search([], limit=1)
+
+    def _nc(self, **vals):
+        base = {'title': 'NC', 'team_id': self.team.id,
+                'sgi_process_id': self.proc.id, 'sgi_classification': 'menor'}
+        base.update(vals)
+        return self.env['quality.alert'].create(base)
+
+    def test_01_first_nc_not_recurrent(self):
+        nc = self._nc()
+        self.assertEqual(nc.sgi_recurrence_count, 0)
+        self.assertFalse(nc.sgi_is_recurrent)
+
+    def test_02_second_same_process_recurrent(self):
+        self._nc()
+        nc2 = self._nc()
+        self.assertEqual(nc2.sgi_recurrence_count, 1)
+        self.assertTrue(nc2.sgi_is_recurrent)
+
+    def test_03_same_clause_weighs_double(self):
+        self._nc(sgi_norm_clause_id=self.clause.id)
+        nc2 = self._nc(sgi_norm_clause_id=self.clause.id)
+        self.assertEqual(nc2.sgi_recurrence_count, 2)
+
+    def test_04_other_process_not_recurrent(self):
+        self._nc()
+        other = self._nc(sgi_process_id=self.proc2.id)
+        self.assertEqual(other.sgi_recurrence_count, 0)
+
+    def test_05_recurrent_close_requires_corrective(self):
+        self._nc()
+        nc2 = self._nc(sgi_root_cause='c', sgi_effectiveness_note='e',
+                       sgi_effectiveness_date=date.today())
+        self.env['sgi.action.line'].create({
+            'alert_id': nc2.id, 'action_type': 'correccion', 'name': 'x',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(), 'date_done': date.today()})
+        with self.assertRaises(UserError):
+            nc2.write({'stage_id': self.stage_closed.id})
+        self.env['sgi.action.line'].create({
+            'alert_id': nc2.id, 'action_type': 'correctiva', 'name': 'cap',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(), 'date_done': date.today()})
+        nc2.write({'stage_id': self.stage_closed.id})
+        self.assertEqual(nc2.stage_id, self.stage_closed)
+
+    def test_06_read_across_schedules_on_peer_fmeas(self):
+        fmea_a = self.env['sgi.fmea'].create({
+            'name': 'A', 'fmea_type': 'proceso', 'process_id': self.proc.id})
+        fmea_b = self.env['sgi.fmea'].create({
+            'name': 'B', 'fmea_type': 'proceso', 'process_id': self.proc.id})
+        self._nc()  # primera del proceso
+        nc2 = self._nc(sgi_root_cause='c', sgi_effectiveness_note='e',
+                       sgi_effectiveness_date=date.today(), sgi_fmea_id=fmea_a.id)
+        self.env['sgi.action.line'].create({
+            'alert_id': nc2.id, 'action_type': 'correctiva', 'name': 'cap',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(), 'date_done': date.today()})
+        before = self.env['mail.activity'].search_count(
+            [('res_model', '=', 'sgi.fmea'), ('res_id', '=', fmea_b.id)])
+        nc2.write({'stage_id': self.stage_closed.id})
+        after = self.env['mail.activity'].search_count(
+            [('res_model', '=', 'sgi.fmea'), ('res_id', '=', fmea_b.id)])
+        self.assertEqual(after, before + 1,
+                         "El read-across agenda revisión en el AMEF par del mismo proceso.")
+        # No en el AMEF ligado (origen).
+        self.assertFalse(self.env['mail.activity'].search_count([
+            ('res_model', '=', 'sgi.fmea'), ('res_id', '=', fmea_a.id),
+            ('summary', 'ilike', 'read-across')]))
