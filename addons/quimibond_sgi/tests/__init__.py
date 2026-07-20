@@ -22,3 +22,4 @@ from . import test_flows_48
 from . import test_ola0
 from . import test_ola1
 from . import test_ola2
+from . import test_procedure
