@@ -106,6 +106,7 @@ class SgiAudit(models.Model):
     _inherit = ['sgi.base.mixin']
     _order = 'date_planned desc, folio desc'
     _sgi_sequence_code = 'sgi.audit'
+    _sgi_locked_states = ('cerrada',)
 
     _folio_uniq = models.Constraint(
         'unique(folio)',

@@ -22,9 +22,6 @@ class SgiBaseMixin(models.AbstractModel):
     _sgi_sequence_code = None
     # Estados en los que el registro queda cerrado: sólo MAST puede editarlo.
     _sgi_locked_states = ()
-    # Campos siempre editables aunque el registro esté cerrado (estado + chatter).
-    _SGI_STATE_FIELDS = ('state', 'stage_id', 'stage', 'kanban_state', 'active')
-
     folio = fields.Char(string="Folio", readonly=True, copy=False,
                         index=True, tracking=True)
 
@@ -72,11 +69,16 @@ class SgiBaseMixin(models.AbstractModel):
         return self.filtered(lambda r: r.state in states)
 
     def _sgi_vals_touch_locked(self, vals):
-        """Campos de vals que NO son estado ni chatter (edición real)."""
-        ignore = set(self._SGI_STATE_FIELDS)
+        """Campos de vals que cuentan como edición real.
+
+        Se exceptúan sólo los del chatter/actividades (que se mueven solos al
+        publicar mensajes o agendar tareas). El estado NO se exceptúa: reabrir
+        un registro cerrado es justo lo que se reserva a MAST. Como el candado
+        evalúa el estado ANTERIOR del registro, las transiciones que ENTRAN al
+        estado cerrado no se bloquean.
+        """
         return {k for k in vals
-                if k not in ignore
-                and not k.startswith('message_')
+                if not k.startswith('message_')
                 and not k.startswith('activity_')
                 and not k.startswith('website_message')
                 and not k.startswith('rating_')}
@@ -89,7 +91,8 @@ class SgiBaseMixin(models.AbstractModel):
             if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
                 raise UserError(
                     "Este registro del SGI está cerrado y es evidencia: no puede "
-                    "modificarse. Pide al Jefe de MAST reabrirlo (cambiar su "
-                    "estado) si hay un error real.\n\nRegistros bloqueados: %s"
+                    "modificarse ni reabrirse. Pide al Jefe de MAST reabrirlo "
+                    "(cambiar su estado) si hay un error real.\n\n"
+                    "Registros bloqueados: %s"
                     % ", ".join(locked.mapped('display_name')))
         return super().write(vals)

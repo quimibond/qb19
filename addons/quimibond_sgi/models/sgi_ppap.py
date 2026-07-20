@@ -20,6 +20,7 @@ class SgiPpap(models.Model):
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.ppap'
+    _sgi_locked_states = ('aprobado',)
 
     _folio_uniq = models.Constraint(
         'unique(folio)',

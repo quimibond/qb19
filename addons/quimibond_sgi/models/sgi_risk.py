@@ -30,6 +30,7 @@ class SgiRisk(models.Model):
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.risk'
+    _sgi_locked_states = ('cerrado',)
 
     _folio_uniq = models.Constraint(
         'unique(folio)',

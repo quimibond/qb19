@@ -7,6 +7,7 @@ nativas, inmutabilidad de registros cerrados y candado de riesgo alto (H11).
 from psycopg2 import IntegrityError
 
 from odoo import fields
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
@@ -104,3 +105,69 @@ class TestOla0Activities(TransactionCase):
         before = self._count()
         lines._sgi_sync_activity()
         self.assertEqual(self._count(), before, "La sincronización es idempotente.")
+
+
+@tagged('post_install', '-at_install')
+class TestOla0Lock(TransactionCase):
+    """Inmutabilidad de registros cerrados: sólo MAST reabre/edita."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        base = cls.env.ref('base.group_user').id
+        sgiu = cls.env.ref('quimibond_sgi.group_sgi_user').id
+        mgr = cls.env.ref('quimibond_sgi.group_sgi_manager').id
+        cls.raso = cls.env['res.users'].create(
+            {'name': 'SGI raso', 'login': 'ola0_raso', 'group_ids': [(6, 0, [base, sgiu])]})
+        cls.mast = cls.env['res.users'].create(
+            {'name': 'SGI MAST', 'login': 'ola0_mast', 'group_ids': [(6, 0, [base, sgiu, mgr])]})
+
+    def _closed_incident(self):
+        inc = self.env['sgi.incident'].create({
+            'name': 'Incidente cerrado', 'severity': 'leve',
+            'incident_type': 'casi_accidente', 'immediate_causes': 'a',
+            'basic_causes': 'b', 'lack_of_control': 'c'})
+        self.env['sgi.action.line'].create({
+            'incident_id': inc.id, 'name': 'acc', 'responsible_id': self.mast.id,
+            'date_commit': fields.Date.today(), 'date_done': fields.Date.today()})
+        inc.action_set_investigacion()
+        inc.action_set_cerrado()
+        return inc
+
+    def test_01_raso_cannot_edit_closed(self):
+        inc = self._closed_incident()
+        self.assertEqual(inc.state, 'cerrado')
+        with self.assertRaises(UserError):
+            inc.with_user(self.raso).write({'name': 'modificado'})
+
+    def test_02_raso_cannot_reopen_closed(self):
+        inc = self._closed_incident()
+        with self.assertRaises(UserError):
+            inc.with_user(self.raso).action_set_reportado()
+
+    def test_03_mast_can_reopen_and_edit(self):
+        inc = self._closed_incident()
+        inc.with_user(self.mast).action_set_reportado()
+        self.assertEqual(inc.state, 'reportado')
+        inc.with_user(self.mast).write({'name': 'corregido por MAST'})
+        self.assertEqual(inc.name, 'corregido por MAST')
+
+    def test_04_locked_states_declared(self):
+        self.assertEqual(self.env['sgi.ppap']._sgi_locked_states, ('aprobado',))
+        self.assertEqual(self.env['sgi.audit']._sgi_locked_states, ('cerrada',))
+        self.assertEqual(self.env['sgi.management.review']._sgi_locked_states, ('cerrada',))
+        self.assertEqual(self.env['sgi.risk']._sgi_locked_states, ('cerrado',))
+        self.assertEqual(self.env['sgi.incident']._sgi_locked_states, ('cerrado',))
+
+    def test_05_lock_does_not_block_related_recompute(self):
+        # Cerrar una acción de un riesgo cerrado (recompute indirecto) no debe
+        # dispararse contra el candado del riesgo.
+        risk = self.env['sgi.risk'].create({
+            'name': 'R', 'instrument': 'ryo',
+            'eval_probability': '4', 'eval_impact': '4'})
+        line = self.env['sgi.action.line'].create({
+            'risk_id': risk.id, 'name': 'a', 'responsible_id': self.mast.id,
+            'date_commit': fields.Date.today()})
+        risk.write({'state': 'cerrado'})
+        line.with_user(self.raso).write({'date_done': fields.Date.today()})
+        self.assertEqual(line.state, 'terminada')

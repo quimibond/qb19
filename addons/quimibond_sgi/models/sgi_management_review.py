@@ -11,6 +11,7 @@ class SgiManagementReview(models.Model):
     _inherit = ['sgi.base.mixin']
     _order = 'date desc, folio desc'
     _sgi_sequence_code = 'sgi.management.review'
+    _sgi_locked_states = ('cerrada',)
 
     _folio_uniq = models.Constraint(
         'unique(folio)',
