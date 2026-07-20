@@ -132,6 +132,17 @@ class DocumentsDocument(models.Model):
             if doc.sgi_issue_date and not doc.sgi_next_review_date:
                 doc.sgi_next_review_date = doc.sgi_issue_date + relativedelta(years=2)
 
+    def init(self):
+        """Un solo VIGENTE por clave, garantizado en BD (la validación Python
+        sola permite condición de carrera)."""
+        super().init()
+        self.env.cr.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS documents_document_sgi_unique_vigente
+            ON documents_document (sgi_code)
+            WHERE sgi_state = 'vigente' AND sgi_is_controlled IS TRUE
+                  AND sgi_code IS NOT NULL
+        """)
+
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type')
     def _check_sgi_code(self):
         for doc in self:

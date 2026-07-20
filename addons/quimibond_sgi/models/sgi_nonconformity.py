@@ -84,6 +84,9 @@ class QualityAlert(models.Model):
             problems = []
             if not alert.sgi_root_cause:
                 problems.append("• Falta la causa raíz.")
+            if not alert.sgi_action_line_ids:
+                problems.append("• La NC no tiene NINGUNA corrección/acción registrada "
+                                "(ISO 10.2: sin acción no hay tratamiento).")
             pending = alert.sgi_action_line_ids.filtered(lambda l: not l.date_done)
             if pending:
                 problems.append("• Hay %d acción(es) sin fecha de terminación." % len(pending))
