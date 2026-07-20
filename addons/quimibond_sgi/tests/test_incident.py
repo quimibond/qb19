@@ -30,6 +30,14 @@ class TestIncident(TransactionCase):
             'basic_causes': 'Falta de procedimiento de limpieza',
             'lack_of_control': 'No hay inspección planeada de orden y limpieza',
         })
+        # El candado ISO (H1, v4.4.17) exige al menos una acción terminada.
+        self.env['sgi.action.line'].create({
+            'incident_id': incident.id,
+            'name': 'Señalizar y establecer inspección de orden y limpieza',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(),
+            'date_done': date.today(),
+        })
         incident.action_set_cerrado()
         self.assertEqual(incident.state, 'cerrado')
 
