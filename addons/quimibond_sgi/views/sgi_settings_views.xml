@@ -20,8 +20,12 @@
                     </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Días para escalar una NC sin acciones"
-                                 help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST (externas: 3 días, fijo).">
+                                 help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST.">
                             <field name="sgi_nc_escalation_days"/>
+                        </setting>
+                        <setting string="Días para escalar una NC externa/cliente"
+                                 help="Auditoría externa y reclamaciones de cliente escalan más rápido que las internas.">
+                            <field name="sgi_nc_escalation_days_external"/>
                         </setting>
                         <setting string="Ventana de reincidencia de NC (meses)"
                                  help="Una NC reincide si en estos meses hubo otra del mismo proceso (misma cláusula pesa doble). Al cerrarla se exige acción correctiva.">
@@ -60,6 +64,24 @@
                         </setting>
                         <setting string="Puntos que descuenta cada NC">
                             <field name="sgi_supplier_nc_penalty"/>
+                        </setting>
+                    </block>
+                    <block title="Documental (avisos)">
+                        <setting string="Primer aviso de revisión documental (días)"
+                                 help="Días de anticipación del primer recordatorio de revisión bienal.">
+                            <field name="sgi_doc_review_notice_days"/>
+                        </setting>
+                        <setting string="Segundo aviso de revisión documental (días)"
+                                 help="Días de anticipación del segundo (último) recordatorio de revisión.">
+                            <field name="sgi_doc_review_notice_days_final"/>
+                        </setting>
+                        <setting string="Aviso de piloto por vencer (días)"
+                                 help="Días de anticipación del aviso de vencimiento de una prueba piloto.">
+                            <field name="sgi_doc_pilot_notice_days"/>
+                        </setting>
+                        <setting string="Días para reclamar un acuse pendiente"
+                                 help="Un acuse de lectura sin firmar tras estos días genera recordatorio.">
+                            <field name="sgi_doc_ack_pending_days"/>
                         </setting>
                     </block>
                     <block title="Piso">

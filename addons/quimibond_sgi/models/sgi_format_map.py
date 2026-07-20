@@ -71,9 +71,14 @@ class SgiConfig(models.AbstractModel):
     # lo editado en Ajustes > Técnico > Parámetros del sistema nunca se pisa.
     _SGI_DEFAULT_PARAMS = {
         'quimibond_sgi.nc_escalation_days': '5',
+        'quimibond_sgi.nc_escalation_days_external': '3',
         'quimibond_sgi.nc_recurrence_months': '12',
         'quimibond_sgi.action_escalation_manager_days': '7',
         'quimibond_sgi.action_escalation_director_days': '15',
+        'quimibond_sgi.doc_review_notice_days': '60',
+        'quimibond_sgi.doc_review_notice_days_final': '30',
+        'quimibond_sgi.doc_ack_pending_days': '7',
+        'quimibond_sgi.doc_pilot_notice_days': '7',
         'quimibond_sgi.fmea_npr_action': '100',
         'quimibond_sgi.risk_ryo_inmediata': '16',
         'quimibond_sgi.risk_ryo_media': '9',

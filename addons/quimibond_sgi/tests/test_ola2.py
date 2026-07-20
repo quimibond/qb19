@@ -175,3 +175,47 @@ class TestOla2DocFamily(TransactionCase):
         miid = self._doc('MIID', 'procedimiento')
         self.env['sgi.config'].migrate_document_families()
         self.assertFalse(miid.sgi_parent_document_id)
+
+
+@tagged('post_install', '-at_install')
+class TestOla2ExternalEscalation(TransactionCase):
+    """H22: el escalamiento de NC externas/cliente es configurable (ya no fijo)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
+
+    def _nc(self, origin, days_ago):
+        from datetime import datetime, timedelta
+        alert = self.env['quality.alert'].create({
+            'title': 'NC %s' % origin, 'team_id': self.team.id,
+            'sgi_origin_type': origin})
+        # create_date lo fija el ORM a "ahora"; para probar el umbral lo
+        # retrasamos por SQL.
+        old = datetime.now() - timedelta(days=days_ago)
+        self.env.cr.execute(
+            "UPDATE quality_alert SET create_date = %s WHERE id = %s",
+            (old, alert.id))
+        alert.invalidate_recordset()
+        return alert
+
+    def _escalated(self, alert):
+        return bool(self.env['mail.activity'].search_count([
+            ('res_model', '=', 'quality.alert'), ('res_id', '=', alert.id),
+            ('summary', 'ilike', 'sin acción')]))
+
+    def test_01_param_seeded(self):
+        self.assertEqual(int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.nc_escalation_days_external')), 3)
+
+    def test_02_external_escalates_faster_than_internal(self):
+        # Ambas con 4 días de antigüedad, sin acciones:
+        # externa (umbral 3) escala; interna (umbral 5) todavía no.
+        ext = self._nc('reclamacion', 4)
+        internal = self._nc('proceso', 4)
+        self.env['sgi.cron'].cron_nonconformities()
+        self.assertTrue(self._escalated(ext), "La NC externa/cliente escala a los 3 días.")
+        self.assertFalse(self._escalated(internal), "La interna aún no (umbral 5).")

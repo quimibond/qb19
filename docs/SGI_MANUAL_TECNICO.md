@@ -227,7 +227,7 @@ plans. Detalle completo en el README del módulo.
 
 | Clave | Default | Uso |
 |---|---|---|
-| `quimibond_sgi.nc_escalation_days` | 5 | días sin acción antes de escalar NC |
+| `quimibond_sgi.nc_escalation_days` | 5 | días sin acción antes de escalar NC interna |
 | `quimibond_sgi.fmea_npr_action` | 100 | umbral de NPR que exige acción |
 | `quimibond_sgi.risk_ryo_inmediata/media/intermedia` | 16/9/4 | umbrales matriz RyO |
 | `quimibond_sgi.supplier_weight_otd/quality` | 0.7/0.3 | ponderación del score |
@@ -236,6 +236,30 @@ plans. Detalle completo en el README del módulo.
 | `quimibond_sgi.pesaje_tolerance_kg` | 3.0 | tolerancia del puente de pesaje |
 | `quimibond_sgi.monthly_sales_budget` | — | presupuesto si el indicador no lo define |
 | `quimibond_sgi.rh_user_id` | — | copia de avisos de vigencias de RH |
+
+### Parámetros añadidos en Ola 1 (Motor de Mejora, ISO 10)
+
+| Clave | Default | Uso |
+|---|---|---|
+| `quimibond_sgi.nc_recurrence_months` | 12 | ventana para contar reincidencia de NC del mismo proceso (misma cláusula pesa doble) |
+| `quimibond_sgi.action_escalation_manager_days` | 7 | días de acción vencida para escalar al jefe directo |
+| `quimibond_sgi.action_escalation_director_days` | 15 | días de acción vencida para escalar a Dirección |
+
+### Parámetros añadidos en Ola 2 (Línea Dorada, cascada ISO)
+
+| Clave | Default | Uso |
+|---|---|---|
+| `quimibond_sgi.nc_escalation_days_external` | 3 | días para escalar NC de auditoría externa / reclamación de cliente (antes fijo en código) |
+| `quimibond_sgi.doc_review_notice_days` | 60 | primer aviso de revisión bienal documental |
+| `quimibond_sgi.doc_review_notice_days_final` | 30 | segundo (último) aviso de revisión bienal |
+| `quimibond_sgi.doc_pilot_notice_days` | 7 | aviso de vencimiento de una prueba piloto |
+| `quimibond_sgi.doc_ack_pending_days` | 7 | días para reclamar un acuse de lectura pendiente |
+
+**Umbrales que se dejaron fijos a propósito** (no son política que Calidad afine, sino cadencia operativa o estructura de calendario):
+- Deadlines de captura de indicadores (mensual +4 días, semanal +2 días): atados al ciclo de reporte.
+- Aviso de preparación de auditoría (15 días antes del mes planificado): lead time estándar del programa.
+- Horizontes de 30 días para calibración/EPP/certificaciones por vencer: norma de planeación (30 días) ligada a la realidad operativa; cambiarla no es decisión de Calidad.
+- Fronteras trimestrales de la evaluación de proveedores: son aritmética de calendario (trimestre natural), no un umbral.
 
 ## 12. Historial de fases
 
