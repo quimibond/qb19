@@ -25,6 +25,9 @@
               action="sgi_action_line_action_mine" sequence="10"/>
     <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_mywork"
               action="sgi_document_action_my_procedures" sequence="20"/>
+    <menuitem id="menu_sgi_my_activities" name="Mis actividades de procedimiento"
+              parent="menu_sgi_mywork" action="sgi_process_activity_action_mine"
+              sequence="30"/>
 
     <!-- 3. Mejora continua: NC, reclamaciones y mejoras (el corazón operativo) -->
     <menuitem id="menu_sgi_improvement_group" name="Mejora continua" parent="menu_sgi_root"
@@ -71,6 +74,9 @@
               action="sgi_process_action" sequence="60"/>
     <menuitem id="menu_sgi_flows" name="Flujos" parent="menu_sgi_processes"
               action="sgi_process_flow_action" sequence="10"/>
+    <menuitem id="menu_sgi_activities" name="Actividades de procedimiento"
+              parent="menu_sgi_processes" action="sgi_process_activity_action"
+              sequence="20"/>
 
     <!-- 7. Auditorías y riesgos: la vigilancia del sistema -->
     <menuitem id="menu_sgi_audits" name="Auditorías y riesgos" parent="menu_sgi_root"

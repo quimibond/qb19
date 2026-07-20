@@ -256,3 +256,48 @@ class TestProcedureOdooMenu(TransactionCase):
             'name': 'Sin menú'})
         with self.assertRaises(UserError):
             act.action_open_odoo()
+
+
+@tagged('post_install', '-at_install')
+class TestProcedureActivityMenu(TransactionCase):
+    """Adición: menú global de actividades y filtro 'Mis actividades' tolerante."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.process = cls.env['sgi.process'].create({
+            'code': 'GLB-01', 'name': 'Proceso global', 'process_type': 'cop'})
+        cls.env['sgi.process.activity'].create({
+            'process_id': cls.process.id, 'number': '1.1', 'name': 'Act global'})
+
+    def test_01_action_opens_grouped(self):
+        action = self.env.ref('quimibond_sgi.sgi_process_activity_action').read()[0]
+        self.assertEqual(action['res_model'], 'sgi.process.activity')
+        self.assertIn('search_default_group_process', action['context'])
+
+    def test_02_mine_filter_safe_without_employee(self):
+        # Usuario SIN empleado: el filtro no debe truncar ni reventar.
+        user = self.env['res.users'].create({
+            'name': 'Sin empleado', 'login': 'sgi_no_emp',
+            'group_ids': [(4, self.env.ref('quimibond_sgi.group_sgi_user').id)]})
+        self.assertFalse(user.employee_id)
+        Activity = self.env['sgi.process.activity'].with_user(user)
+        # El mismo dominio del filtro "Mis actividades".
+        result = Activity.search(
+            [('responsible_job_ids.employee_ids.user_id', '=', user.id)])
+        self.assertEqual(len(result), 0)
+
+    def test_03_mine_filter_matches_user_job(self):
+        # Usuario CON empleado y puesto: ve su actividad.
+        job = self.env['hr.job'].create({'name': 'Puesto mío'})
+        user = self.env['res.users'].create({
+            'name': 'Con empleado', 'login': 'sgi_emp',
+            'group_ids': [(4, self.env.ref('quimibond_sgi.group_sgi_user').id)]})
+        self.env['hr.employee'].create({
+            'name': 'Empleado', 'user_id': user.id, 'job_id': job.id})
+        act = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'number': '2.1', 'name': 'Mía',
+            'responsible_job_ids': [(6, 0, job.ids)]})
+        result = self.env['sgi.process.activity'].search(
+            [('responsible_job_ids.employee_ids.user_id', '=', user.id)])
+        self.assertIn(act, result)
