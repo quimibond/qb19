@@ -32,6 +32,10 @@
                             string="Aplicar al proveedor" class="btn-primary"/>
                 </header>
                 <sheet>
+                    <div class="oe_title">
+                        <label for="partner_id" string="Proveedor"/>
+                        <h1><field name="partner_id"/></h1>
+                    </div>
                     <group>
                         <group string="Proveedor y periodo">
                             <field name="partner_id"/>

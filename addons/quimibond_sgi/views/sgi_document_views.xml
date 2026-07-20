@@ -105,15 +105,24 @@
         <field name="name">sgi.documents.document.list</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <list string="Documentos SGI">
+            <list string="Documentos SGI"
+                  decoration-muted="sgi_state == 'obsoleto'"
+                  decoration-warning="sgi_state == 'piloto'"
+                  decoration-info="sgi_state == 'borrador'">
                 <field name="sgi_code"/>
                 <field name="name"/>
                 <field name="sgi_doc_type"/>
-                <field name="sgi_area_id"/>
+                <field name="sgi_area_id" optional="show"/>
+                <field name="sgi_process_id" optional="show"/>
                 <field name="sgi_revision"/>
-                <field name="sgi_state"/>
-                <field name="sgi_next_review_date"/>
-                <field name="sgi_ack_read_pct" widget="percentage"/>
+                <field name="sgi_state" widget="badge"
+                       decoration-success="sgi_state == 'vigente'"
+                       decoration-warning="sgi_state == 'piloto'"
+                       decoration-info="sgi_state == 'borrador'"/>
+                <field name="sgi_next_review_date" optional="show"/>
+                <field name="sgi_ack_read_pct" widget="percentage" optional="show"/>
+                <field name="sgi_owner_id" optional="hide"/>
+                <field name="sgi_issue_date" optional="hide"/>
             </list>
         </field>
     </record>
@@ -197,12 +206,15 @@ else:
                 <header>
                     <button name="action_mark_read" type="object" string="Marcar leído y entendido"
                             class="btn-primary" invisible="state == 'leido'"/>
+                    <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <div class="oe_title">
+                        <label for="document_id" string="Documento a leer"/>
+                        <h1><field name="document_id"/></h1>
+                    </div>
                     <group>
-                        <field name="document_id"/>
                         <field name="employee_id"/>
-                        <field name="state"/>
                         <field name="ack_date"/>
                     </group>
                 </sheet>
