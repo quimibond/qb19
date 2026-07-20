@@ -170,15 +170,47 @@
         </field>
     </record>
 
+
+    <record id="sgi_process_view_search" model="ir.ui.view">
+        <field name="name">sgi.process.search</field>
+        <field name="model">sgi.process</field>
+        <field name="arch" type="xml">
+            <search string="Procesos">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="owner_id"/>
+                <filter name="con_nc" string="Con NC abiertas" domain="[('id', '!=', False)]"
+                        invisible="1"/>
+                <filter name="tipo_cop" string="COP (operativos)" domain="[('process_type', '=', 'cop')]"/>
+                <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>
+                <filter name="macros" string="Solo macroprocesos" domain="[('parent_id', '=', False)]"/>
+                <group>
+                    <filter name="group_parent" string="Macroproceso" context="{'group_by': 'parent_id'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'process_type'}"/>
+                    <filter name="group_owner" string="Dueño" context="{'group_by': 'owner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_process_action" model="ir.actions.act_window">
         <field name="name">Procesos</field>
         <field name="res_model">sgi.process</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="sgi_process_view_search"/>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Administración del mapa de procesos</p>
+            <p>Edite fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
     </record>
 
     <record id="sgi_process_action_panel" model="ir.actions.act_window">
         <field name="name">Panel de procesos</field>
         <field name="res_model">sgi.process</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="domain">[('parent_id', '!=', False)]</field>
+        <field name="context">{'search_default_group_parent': 1}</field>
+        <field name="search_view_id" ref="sgi_process_view_search"/>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Panel de salud de procesos</p>
+            <p>Los procesos agrupados por macroproceso, con sus NC abiertas y
+            acciones vencidas a la vista.</p></field>
     </record>
 </odoo>
