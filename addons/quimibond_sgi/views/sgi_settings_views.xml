@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_sgi" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sgi</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="SGI" string="SGI" name="quimibond_sgi"
+                     logo="/quimibond_sgi/static/description/icon.png">
+                    <block title="Datos de arranque">
+                        <setting string="Presupuesto mensual de ventas (MXN)"
+                                 help="Alimenta los KPIs de cumplimiento y eficiencia del presupuesto (mientras llega el presupuesto por segmento).">
+                            <field name="sgi_monthly_sales_budget"/>
+                        </setting>
+                        <setting string="Usuario de RH"
+                                 help="Recibe las actividades automáticas de RH: competencias por vencer, DNC.">
+                            <field name="sgi_rh_user_id"/>
+                        </setting>
+                    </block>
+                    <block title="No Conformidades y AMEF">
+                        <setting string="Días para escalar una NC sin acciones"
+                                 help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST (externas: 3 días, fijo).">
+                            <field name="sgi_nc_escalation_days"/>
+                        </setting>
+                        <setting string="NPR que exige acción en el AMEF"
+                                 help="Modos de falla con NPR igual o mayor requieren acción antes de que el AMEF sea vigente.">
+                            <field name="sgi_fmea_npr_action"/>
+                        </setting>
+                    </block>
+                    <block title="Matriz de riesgos (RyO 5×5)">
+                        <setting string="Puntaje para atención Inmediata">
+                            <field name="sgi_risk_ryo_inmediata"/>
+                        </setting>
+                        <setting string="Puntaje para atención Media">
+                            <field name="sgi_risk_ryo_media"/>
+                        </setting>
+                        <setting string="Puntaje para atención Intermedia">
+                            <field name="sgi_risk_ryo_intermedia"/>
+                        </setting>
+                    </block>
+                    <block title="Evaluación de proveedores">
+                        <setting string="Peso de entregas a tiempo (0-1)">
+                            <field name="sgi_supplier_weight_otd"/>
+                        </setting>
+                        <setting string="Peso de calidad (0-1)">
+                            <field name="sgi_supplier_weight_quality"/>
+                        </setting>
+                        <setting string="Puntos que descuenta cada NC">
+                            <field name="sgi_supplier_nc_penalty"/>
+                        </setting>
+                    </block>
+                    <block title="Piso">
+                        <setting string="Tolerancia de peso de rollo (kg)"
+                                 help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.">
+                            <field name="sgi_pesaje_tolerance_kg"/>
+                        </setting>
+                        <setting string="Categoría del byproduct de desperdicio"
+                                 help="Categoría del SALDO para el KPI automático de desperdicio.">
+                            <field name="sgi_waste_categ_id"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_config_settings_action" model="ir.actions.act_window">
+        <field name="name">Ajustes del SGI</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'quimibond_sgi'}</field>
+    </record>
+</odoo>

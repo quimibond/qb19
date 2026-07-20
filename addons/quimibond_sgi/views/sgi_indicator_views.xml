@@ -21,7 +21,11 @@
                        decoration-success="last_semaphore == 'verde'"
                        decoration-warning="last_semaphore == 'amarillo'"
                        decoration-danger="last_semaphore == 'rojo'"/>
-                <field name="calc_mode"/>
+                <field name="source_type" widget="badge"
+                       decoration-success="source_type == 'auto'"
+                       decoration-warning="source_type == 'manual'"/>
+                <field name="source_info" optional="show"/>
+                <field name="calc_mode" optional="hide"/>
                 <field name="nc_on_red" widget="boolean_toggle"/>
             </list>
         </field>
@@ -58,6 +62,15 @@
                             <field name="nc_on_red"/>
                         </group>
                     </group>
+                    <field name="source_type" invisible="1"/>
+                    <div class="alert alert-success mb-0" role="alert"
+                         invisible="source_type != 'auto'">
+                        ⚙️ <b>Automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-warning mb-0" role="alert"
+                         invisible="source_type != 'manual'">
+                        ✍️ <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                    </div>
                     <notebook>
                         <page string="Mediciones">
                             <field name="measure_ids" context="{'default_indicator_id': id}">
@@ -134,11 +147,16 @@
                 <field name="indicator_id"/>
                 <field name="value"/>
                 <field name="target_objective"/>
+                <field name="source_type" widget="badge"
+                       decoration-success="source_type == 'auto'"
+                       decoration-warning="source_type == 'manual'"/>
                 <field name="semaphore" widget="badge"
                        decoration-success="semaphore == 'verde'"
                        decoration-warning="semaphore == 'amarillo'"
                        decoration-danger="semaphore == 'rojo'"/>
                 <field name="state"/>
+                <button name="action_view_evidence" type="object" icon="fa-search-plus"
+                        title="Ver evidencia" invisible="source_type == 'manual'"/>
                 <field name="alert_id" readonly="1"/>
                 <button name="action_validate" type="object" string="Validar"
                         icon="fa-check" invisible="state == 'validado'"/>
@@ -156,12 +174,24 @@
                             invisible="state != 'pendiente'"/>
                     <button name="action_validate" type="object" string="Validar"
                             class="btn-primary" invisible="state == 'validado'"/>
+                    <button name="action_view_evidence" type="object"
+                            string="Ver evidencia" icon="fa-search-plus"
+                            invisible="source_type == 'manual'"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <label for="indicator_id" string="Indicador"/>
                         <h1><field name="indicator_id"/></h1>
+                    </div>
+                    <field name="source_type" invisible="1"/>
+                    <div class="alert alert-success mb-0" role="alert"
+                         invisible="source_type != 'auto'">
+                        ⚙️ <b>Valor automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-warning mb-0" role="alert"
+                         invisible="source_type != 'manual'">
+                        ✍️ <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
                     </div>
                     <group>
                         <group>

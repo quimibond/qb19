@@ -51,6 +51,40 @@ class SgiIndicator(models.Model):
     ], string="Frecuencia", default='monthly', required=True)
     calc_mode = fields.Selection(CALC_MODES, string="Modo de cálculo",
                                  default='manual', required=True)
+    source_type = fields.Selection([
+        ('auto', "Automático"),
+        ('manual', "Manual"),
+    ], string="Origen del dato", compute='_compute_source', store=True)
+    source_info = fields.Char(string="Fuente del dato", compute='_compute_source', store=True)
+
+    # De dónde sale el valor de cada modo, en lenguaje humano (para el usuario).
+    _SOURCE_INFO = {
+        'manual': "El responsable lo captura cada periodo (aún no sale de Odoo).",
+        'otif_ventas': "Inventario → entregas a clientes: embarques a tiempo vs total.",
+        'otd_compras': "Inventario → recepciones de compras: recibidas a tiempo vs total.",
+        'produccion_vs_programado': "Fabricación → órdenes de producción: producido vs programado.",
+        'reproceso': "Fabricación → órdenes de reproceso del periodo.",
+        'desperdicio': "Fabricación → byproduct SALDO (categoría de desperdicio) vs producción.",
+        'desperdicio_scrap': "Inventario → desechos (scrap) del periodo.",
+        'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
+        'cumplimiento_programa': "Fabricación → cumplimiento del plan maestro (MPS).",
+        'cierre_nc': "SGI → No Conformidades: cerradas a tiempo vs abiertas.",
+        'reclamos_cliente': "Helpdesk → tickets de reclamación de clientes del periodo.",
+        'disponibilidad_mantto': "Mantenimiento → tiempo de paro vs disponible.",
+        'preventivo_cumplido': "Mantenimiento → OTs preventivas cumplidas a tiempo.",
+        'rotacion_rh': "Empleados → bajas del periodo vs plantilla.",
+        'plantilla_rh': "Empleados → puestos cubiertos vs plantilla autorizada.",
+        'presupuesto_ventas': "Ventas → facturación real vs presupuesto configurado en Ajustes.",
+        'inventario_diferencia': "Inventario → ajustes de inventario físico vs sistema.",
+        'inventario_ciclico': "Inventario → ajustes de conteos cíclicos.",
+    }
+
+    @api.depends('calc_mode')
+    def _compute_source(self):
+        for indicator in self:
+            indicator.source_type = 'manual' if indicator.calc_mode == 'manual' else 'auto'
+            indicator.source_info = self._SOURCE_INFO.get(
+                indicator.calc_mode, "Cálculo automático desde datos de Odoo.")
     monthly_budget = fields.Float(string="Presupuesto mensual",
                                   help="Meta mensual para el cálculo de presupuesto de ventas.")
     nc_on_red = fields.Boolean(
@@ -100,6 +134,13 @@ class SgiIndicator(models.Model):
         if not method:
             return None
         return method(date_from, date_to)
+
+    def _sgi_period_bounds(self, period_date):
+        """(desde, hasta-INCLUSIVO) del periodo — misma semántica que el cron."""
+        self.ensure_one()
+        if self.frequency == 'weekly':
+            return period_date, period_date + relativedelta(days=6)
+        return period_date, period_date + relativedelta(months=1, days=-1)
 
     def _sgi_dt_bounds(self, date_from, date_to):
         return (fields.Datetime.to_datetime(date_from),
@@ -329,6 +370,10 @@ class SgiIndicatorMeasure(models.Model):
 
     indicator_id = fields.Many2one('sgi.indicator', string="Indicador",
                                    required=True, ondelete='cascade', index=True)
+    source_type = fields.Selection(related='indicator_id.source_type',
+                                   string="Origen del dato")
+    source_info = fields.Char(related='indicator_id.source_info',
+                              string="Fuente del dato")
     period_date = fields.Date(string="Periodo", required=True,
                               help="Día 1 del mes medido.")
     value = fields.Float(string="Valor")
@@ -387,6 +432,78 @@ class SgiIndicatorMeasure(models.Model):
         for measure in self:
             period = measure.period_date and measure.period_date.strftime('%m/%Y') or ''
             measure.display_name = "%s — %s" % (measure.indicator_id.code or '', period)
+
+    # Evidencia por modo: (modelo, dominio base, campo fecha, es_datetime).
+    # Mismo universo de registros que usa el cálculo correspondiente.
+    _EVIDENCE = {
+        'otif_ventas': ('stock.picking', [('picking_type_id.code', '=', 'outgoing'), ('state', '=', 'done')], 'date_done', True),
+        'otd_compras': ('stock.picking', [('picking_type_id.code', '=', 'incoming'), ('state', '=', 'done')], 'date_done', True),
+        'produccion_vs_programado': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
+        'reproceso': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
+        'desperdicio': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
+        'desperdicio_scrap': ('stock.scrap', [('state', '=', 'done')], 'date_done', True),
+        'calidad_pq': ('mrp.revision.log', [], 'create_date', True),
+        'cumplimiento_programa': ('mrp.production', [('state', '!=', 'cancel')], 'date_finished', True),
+        'cierre_nc': ('quality.alert', [], 'create_date', True),
+        'disponibilidad_mantto': ('maintenance.request', [], 'create_date', True),
+        'preventivo_cumplido': ('maintenance.request', [('maintenance_type', '=', 'preventive')], 'create_date', True),
+        'presupuesto_ventas': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
+        'inventario_diferencia': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
+        'inventario_ciclico': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
+    }
+
+    def action_view_evidence(self):
+        """Abre los registros reales del periodo que explican el valor."""
+        self.ensure_one()
+        indicator = self.indicator_id
+        mode = indicator.calc_mode
+        date_from, date_to = indicator._sgi_period_bounds(self.period_date)
+        if mode == 'manual':
+            raise UserError(
+                "Este indicador es de captura manual: la evidencia la aporta el "
+                "responsable (%s). Cuando se automatice, aquí verás los registros."
+                % (indicator.responsible_id.name or 'sin asignar'))
+        if mode == 'reclamos_cliente':
+            team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
+                                raise_if_not_found=False)
+            domain = [('team_id', '=', team.id)] if team else []
+            model, date_field, is_dt = 'helpdesk.ticket', 'create_date', True
+        elif mode == 'rotacion_rh':
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Bajas del periodo — evidencia",
+                'res_model': 'hr.employee',
+                'view_mode': 'list,form',
+                'domain': [('active', '=', False),
+                           ('departure_date', '>=', date_from),
+                           ('departure_date', '<=', date_to)],
+                'context': {'active_test': False},
+            }
+        elif mode == 'plantilla_rh':
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Plantilla — evidencia",
+                'res_model': 'hr.job',
+                'view_mode': 'list,form',
+                'domain': [],
+            }
+        elif mode in self._EVIDENCE:
+            model, domain, date_field, is_dt = self._EVIDENCE[mode]
+            domain = list(domain)
+        else:
+            raise UserError("Este modo de cálculo aún no tiene vista de evidencia.")
+        if is_dt:
+            dt_from, dt_to = indicator._sgi_dt_bounds(date_from, date_to)
+            domain += [(date_field, '>=', dt_from), (date_field, '<', dt_to)]
+        else:
+            domain += [(date_field, '>=', date_from), (date_field, '<=', date_to)]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "%s — evidencia de %s" % (indicator.name, self.period_date),
+            'res_model': model,
+            'view_mode': 'list,form',
+            'domain': domain,
+        }
 
     def action_capture(self):
         self.write({'state': 'capturado'})

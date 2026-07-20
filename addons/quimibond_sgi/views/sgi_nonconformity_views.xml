@@ -152,10 +152,32 @@
         </field>
     </record>
 
+    <record id="sgi_nc_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.nc.pivot</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis de NC">
+                <field name="sgi_process_id" type="row"/>
+                <field name="create_date" interval="month" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_nc_view_graph" model="ir.ui.view">
+        <field name="name">sgi.nc.graph</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <graph string="NC por mes" type="bar">
+                <field name="create_date" interval="month"/>
+                <field name="sgi_classification"/>
+            </graph>
+        </field>
+    </record>
+
     <record id="sgi_nc_action_concentrado" model="ir.actions.act_window">
         <field name="name">Concentrado de NC</field>
         <field name="res_model">quality.alert</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,pivot,graph,form</field>
         <field name="view_id" ref="sgi_nc_concentrado_view_list"/>
         <field name="search_view_id" ref="sgi_nc_view_search"/>
         <field name="context">{'search_default_group_stage': 1}</field>
