@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
+import logging
+import re
+
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
 from .sgi_document import SGI_CODE_REGEX
+
+_logger = logging.getLogger(__name__)
 
 
 class SgiFormatMap(models.Model):
@@ -115,6 +120,39 @@ class SgiConfig(models.AbstractModel):
         'proc_sgi': "Mantener y mejorar el SGI tri-norma: información documentada, no conformidades, auditorías, riesgos, indicadores y cumplimiento legal.",
         'proc_direccion': "Dirigir el sistema: planeación estratégica, asignación de recursos, revisión mensual de indicadores y Revisión por la Dirección.",
     }
+
+    @api.model
+    def migrate_document_families(self):
+        """H21: llena sgi_parent_document_id (FK) donde esté vacío, infiriendo el
+        procedimiento padre P-Xnn vigente por la nomenclatura. Idempotente: solo
+        toca los documentos sin padre. Los que no matcheen quedan vacíos y se
+        reporta el conteo en el log (carga manual posterior de MAST)."""
+        Doc = self.env['documents.document']
+        family_re = re.compile(r'(P-[AGCDEIMPSV]\d{2})')
+        docs = Doc.search([
+            ('sgi_is_controlled', '=', True),
+            ('sgi_parent_document_id', '=', False),
+        ])
+        filled = unmatched = 0
+        for doc in docs:
+            code = (doc.sgi_code or '').strip().upper()
+            match = family_re.search(code)
+            if not match or code == match.group(1):
+                continue  # sin clave de familia, o es el propio padre P-Xnn
+            parent = Doc.search([
+                ('sgi_code', '=', match.group(1)),
+                ('sgi_state', '=', 'vigente'),
+            ], limit=1)
+            if parent and parent.id != doc.id:
+                doc.sgi_parent_document_id = parent.id
+                filled += 1
+            else:
+                unmatched += 1
+        _logger.info(
+            "SGI familia documental (H21): %d FK llenados por nomenclatura, "
+            "%d sin procedimiento padre vigente (quedan para captura de MAST).",
+            filled, unmatched)
+        return True
 
     @api.model
     def seed_process_purposes(self):

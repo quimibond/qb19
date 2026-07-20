@@ -7,4 +7,7 @@
     <function model="sgi.config" name="seed_parameters"/>
     <function model="sgi.config" name="harden_noupdate"/>
     <function model="sgi.config" name="seed_process_purposes"/>
+    <!-- H21: siembra el FK de familia documental donde esté vacío, por la
+         nomenclatura (idempotente; no pisa enlaces ya capturados a mano). -->
+    <function model="sgi.config" name="migrate_document_families"/>
 </odoo>

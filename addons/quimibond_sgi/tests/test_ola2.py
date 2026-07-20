@@ -123,3 +123,55 @@ class TestOla2Health(TransactionCase):
         policy.invalidate_recordset()
         self.assertEqual(obj.health, 'rojo')
         self.assertEqual(policy.health, 'rojo')
+
+
+@tagged('post_install', '-at_install')
+class TestOla2DocFamily(TransactionCase):
+    """H21: familia documental por FK real, no por regex."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Doc = cls.env['documents.document']
+
+    def _doc(self, code, doc_type):
+        return self.Doc.create({
+            'name': '%s.pdf' % code, 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': doc_type,
+            'sgi_code': code, 'sgi_state': 'vigente'})
+
+    def test_01_fk_is_stored_and_editable(self):
+        parent = self._doc('P-C99', 'procedimiento')
+        child = self._doc('F-P-C99-01', 'formato')
+        # Editable directamente (sin regex).
+        child.sgi_parent_document_id = parent
+        self.assertEqual(child.sgi_parent_document_id, parent)
+        self.assertIn(child, parent.sgi_family_document_ids)
+
+    def test_02_family_from_fk(self):
+        parent = self._doc('P-C98', 'procedimiento')
+        f1 = self._doc('F-P-C98-01', 'formato')
+        f2 = self._doc('IT-P-C98-01', 'instructivo')
+        (f1 | f2).write({'sgi_parent_document_id': parent.id})
+        self.assertEqual(set(parent.sgi_family_document_ids.ids), {f1.id, f2.id})
+        # Un hijo ve a su hermano.
+        self.assertIn(f2, f1.sgi_family_document_ids)
+        self.assertFalse(parent.sgi_parent_document_id)
+
+    def test_03_migration_fills_empty_only(self):
+        parent = self._doc('P-C97', 'procedimiento')
+        child = self._doc('F-P-C97-01', 'formato')
+        self.env['sgi.config'].migrate_document_families()
+        self.assertEqual(child.sgi_parent_document_id, parent)
+        # Respeta un enlace manual a otro padre: no lo pisa.
+        other = self._doc('P-C96', 'procedimiento')
+        child.sgi_parent_document_id = other
+        self.env['sgi.config'].migrate_document_families()
+        self.assertEqual(child.sgi_parent_document_id, other,
+                         "La migración solo llena vacíos, no pisa enlaces.")
+
+    def test_04_unmatched_stays_empty(self):
+        # MIID no pertenece a una familia P-Xnn: queda sin padre.
+        miid = self._doc('MIID', 'procedimiento')
+        self.env['sgi.config'].migrate_document_families()
+        self.assertFalse(miid.sgi_parent_document_id)
