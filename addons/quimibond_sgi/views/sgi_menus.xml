@@ -115,4 +115,6 @@
               action="sgi_document_ack_action" sequence="40"/>
     <menuitem id="menu_sgi_config_risk_cat" name="Categorías de riesgo" parent="menu_sgi_config"
               action="sgi_risk_category_action" sequence="50"/>
+    <menuitem id="menu_sgi_config_format_map" name="Formatos en documentos de Odoo" parent="menu_sgi_config"
+              action="sgi_format_map_action" sequence="70"/>
 </odoo>
