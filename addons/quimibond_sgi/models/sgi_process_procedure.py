@@ -8,6 +8,7 @@ desde Odoo con el layout del F-P-G01-02 (ver report/report_procedure.xml).
 Son LÍNEAS (no evidencia), así que NO usan el mixin de folio/inmutabilidad.
 """
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 
 class SgiProcessProcedure(models.Model):
@@ -162,6 +163,10 @@ class SgiProcessActivity(models.Model):
     odoo_ref = fields.Char(
         string="Dónde se ejecuta en Odoo",
         help="Ej. 'Ventas > Pedidos', 'Helpdesk Servicio Técnico'.")
+    odoo_menu_id = fields.Many2one(
+        'ir.ui.menu', string="Menú de Odoo",
+        help="Menú real donde se ejecuta la actividad; el texto impreso se toma "
+             "de la ruta.")
     note = fields.Text(
         string="Nota", help="Notas resaltadas del procedimiento.")
 
@@ -171,3 +176,18 @@ class SgiProcessActivity(models.Model):
             label = activity.name or activity.section or ''
             activity.display_name = (
                 "%s %s" % (activity.number, label)).strip() if activity.number else label
+
+    @api.onchange('odoo_menu_id')
+    def _onchange_odoo_menu_id(self):
+        """Si hay menú y el texto está vacío, toma la ruta legible del menú."""
+        if self.odoo_menu_id and not self.odoo_ref:
+            self.odoo_ref = self.odoo_menu_id.complete_name
+
+    def action_open_odoo(self):
+        """Abre el menú real de Odoo donde se ejecuta la actividad, respetando el
+        dominio/contexto/vistas de su acción original."""
+        self.ensure_one()
+        action = self.odoo_menu_id.action if self.odoo_menu_id else False
+        if not action or action._name != 'ir.actions.act_window':
+            raise UserError("Esta actividad no tiene menú de Odoo ligado.")
+        return action.read()[0]
