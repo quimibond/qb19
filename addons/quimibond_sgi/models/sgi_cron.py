@@ -38,6 +38,11 @@ class SgiCron(models.AbstractModel):
         group = self.env.ref('quimibond_sgi.group_sgi_manager', raise_if_not_found=False)
         return group.all_user_ids[:1].id if group and group.all_user_ids else False
 
+    def _sgi_director_user_id(self):
+        group = self.env.ref('quimibond_sgi.group_sgi_director', raise_if_not_found=False)
+        return group.all_user_ids[:1].id if group and group.all_user_ids \
+            else self._sgi_manager_user_id()
+
     # ------------------------------------------------------------------
     # 1. Cron diario — No Conformidades
     # ------------------------------------------------------------------
@@ -78,6 +83,50 @@ class SgiCron(models.AbstractModel):
                     "Verificar eficacia: %s" % (alert.sgi_folio or alert.name),
                     "Todas las acciones terminaron; falta registrar la verificación de eficacia.",
                     user_id)
+        return True
+
+    # ------------------------------------------------------------------
+    # 1b. Cron diario — Escalamiento de acciones vencidas (H12)
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_overdue_actions(self):
+        """Escalamiento en 3 niveles de acciones vencidas:
+        - nivel 1 (responsable): ya lo recuerda la actividad espejo (Ola 0);
+        - > N días: además su jefe directo (employee_id.parent_id.user_id,
+          fallback Jefe MAST);
+        - > M días: además Dirección (group_sgi_director).
+        Idempotente por nivel: el resumen difiere por nivel, así que no duplica
+        actividades ya agendadas del mismo nivel."""
+        today = fields.Date.context_today(self)
+        Param = self.env['ir.config_parameter'].sudo()
+        d_mgr = int(Param.get_param('quimibond_sgi.action_escalation_manager_days', 7))
+        d_dir = int(Param.get_param('quimibond_sgi.action_escalation_director_days', 15))
+        Line = self.env['sgi.action.line']
+        overdue = Line.search([('date_done', '=', False), ('date_commit', '<', today)])
+        overdue._compute_state()  # asegura el estado 'vencida'
+        manager_fallback = self._sgi_manager_user_id()
+        director_id = self._sgi_director_user_id()
+        for line in overdue:
+            origin = line._sgi_origin()
+            if not origin:
+                continue
+            days = (today - line.date_commit).days
+            who = line.responsible_id.display_name or '-'
+            if days > d_mgr:
+                boss = line.responsible_id.employee_id.parent_id.user_id
+                self._sgi_schedule(
+                    origin,
+                    "Acción vencida (+%dd) escalada al jefe: %s" % (d_mgr, line.name),
+                    "La acción de %s lleva %d días vencida (compromiso %s); se "
+                    "escala a su jefe directo." % (who, days, line.date_commit),
+                    boss.id or manager_fallback)
+            if days > d_dir:
+                self._sgi_schedule(
+                    origin,
+                    "Acción vencida (+%dd) escalada a Dirección: %s" % (d_dir, line.name),
+                    "La acción de %s lleva %d días vencida (compromiso %s); se "
+                    "escala a Dirección." % (who, days, line.date_commit),
+                    director_id)
         return True
 
     # ------------------------------------------------------------------

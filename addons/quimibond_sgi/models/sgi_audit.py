@@ -196,15 +196,20 @@ class SgiAudit(models.Model):
         self.ensure_one()
         problems = []
         for finding in self.finding_ids:
+            label = finding.description or finding.finding_type
+            # Un hallazgo MAYOR obliga NC ligada, sin importar la disposición.
+            if finding.finding_type == 'nc_mayor' and not finding.alert_id:
+                problems.append(
+                    "• El hallazgo mayor '%s' debe tener una NC ligada "
+                    "(usa «Crear NC desde hallazgo»)." % label)
+                continue
             if not finding.disposition:
-                problems.append("• El hallazgo '%s' no tiene disposición." % (
-                    finding.description or finding.finding_type))
+                problems.append("• El hallazgo '%s' no tiene disposición." % label)
             elif finding.disposition == 'genera_nc' and not finding.alert_id:
-                problems.append("• El hallazgo '%s' debe generar su NC." % (
-                    finding.description or finding.finding_type))
+                problems.append("• El hallazgo '%s' debe generar su NC." % label)
             elif finding.disposition == 'sin_accion' and not finding.reason_no_action:
-                problems.append("• El hallazgo '%s' requiere justificar 'sin acción'." % (
-                    finding.description or finding.finding_type))
+                problems.append(
+                    "• El hallazgo '%s' requiere justificar 'sin acción'." % label)
         if problems:
             raise UserError(
                 "No se puede cerrar la auditoría %s:\n%s" % (

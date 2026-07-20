@@ -20,6 +20,14 @@
             <xpath expr="//sheet" position="inside">
                 <field name="sgi_stage_is_closing" invisible="1"/>
                 <field name="sgi_stage_is_cancel" invisible="1"/>
+                <field name="sgi_is_recurrent" invisible="1"/>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not sgi_is_recurrent">
+                    <strong>⚠ Reincidente:</strong>
+                    <field name="sgi_recurrence_count" class="oe_inline"/>
+                    caso(s) previo(s) en este proceso. La recurrencia la vuelve
+                    sistémica: al cerrarla se exige una acción correctiva.
+                </div>
                 <group>
                     <group string="Datos SGI">
                         <field name="sgi_folio"/>
@@ -69,6 +77,18 @@
                                 <field name="state"/>
                             </list>
                         </field>
+                    </page>
+                    <page string="Ligas SGI" invisible="not sgi_folio">
+                        <group>
+                            <group string="Trazabilidad">
+                                <field name="sgi_fmea_id"/>
+                                <field name="sgi_document_id"/>
+                            </group>
+                            <group string="Riesgos ligados">
+                                <field name="sgi_risk_ids" nolabel="1"
+                                       widget="many2many_tags"/>
+                            </group>
+                        </group>
                     </page>
                     <page string="Verificación y cierre">
                         <group>

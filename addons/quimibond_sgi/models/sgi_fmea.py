@@ -34,12 +34,30 @@ class SgiFmea(models.Model):
     ], string="Estado", default='borrador', required=True, tracking=True)
     line_ids = fields.One2many('sgi.fmea.line', 'fmea_id', string="Modos de falla")
     max_npr = fields.Integer(string="NPR máximo", compute='_compute_max_npr', store=True)
-
+    # Ligas inversas (H7): NCs del SGI que apuntan a este AMEF.
+    sgi_nc_ids = fields.One2many('quality.alert', 'sgi_fmea_id', string="NCs ligadas")
+    sgi_nc_count = fields.Integer(string="# NCs ligadas",
+                                  compute='_compute_sgi_nc_count')
 
     @api.depends('line_ids.npr')
     def _compute_max_npr(self):
         for fmea in self:
             fmea.max_npr = max(fmea.line_ids.mapped('npr') or [0])
+
+    @api.depends('sgi_nc_ids')
+    def _compute_sgi_nc_count(self):
+        for fmea in self:
+            fmea.sgi_nc_count = len(fmea.sgi_nc_ids)
+
+    def action_view_sgi_ncs(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "NCs ligadas",
+            'res_model': 'quality.alert',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', self.sgi_nc_ids.ids)],
+        }
 
     def action_set_vigente(self):
         for fmea in self:
