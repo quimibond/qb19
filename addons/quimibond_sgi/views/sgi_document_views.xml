@@ -54,10 +54,11 @@
                             </group>
                         </page>
                         <page string="Documentos relacionados" invisible="not sgi_is_controlled">
-                            <group invisible="not sgi_parent_document_id">
-                                <field name="sgi_parent_document_id" readonly="1"/>
+                            <group string="Familia documental">
+                                <field name="sgi_parent_document_id"
+                                       help="Enlázalo al procedimiento padre (la nomenclatura solo lo sugiere)."/>
                             </group>
-                            <group string="Familia de la clave (automático)">
+                            <group string="Familia de la clave">
                                 <field name="sgi_family_document_ids" nolabel="1" readonly="1">
                                     <list>
                                         <field name="sgi_code"/>

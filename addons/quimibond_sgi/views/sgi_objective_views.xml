@@ -26,7 +26,12 @@
                     </div>
                     <group>
                         <field name="name"/>
+                        <field name="policy_id"/>
                         <field name="target_year"/>
+                        <field name="health" widget="badge"
+                               decoration-success="health == 'verde'"
+                               decoration-warning="health == 'amarillo'"
+                               decoration-danger="health == 'rojo'"/>
                         <field name="active" invisible="1"/>
                     </group>
                     <group string="Descripción">

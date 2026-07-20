@@ -48,6 +48,14 @@ class SgiProcess(models.Model):
 
     nc_count = fields.Integer(string="NC abiertas", compute='_compute_health')
     overdue_action_count = fields.Integer(string="Acciones vencidas", compute='_compute_health')
+    red_kpi_count = fields.Integer(string="KPIs en rojo", compute='_compute_health')
+    open_high_risk_count = fields.Integer(string="Riesgos altos abiertos",
+                                          compute='_compute_health')
+    health = fields.Selection([
+        ('verde', "Verde"),
+        ('amarillo', "Amarillo"),
+        ('rojo', "Rojo"),
+    ], string="Salud del proceso", compute='_compute_health')
     document_count = fields.Integer(string="# Documentos", compute='_compute_counts')
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
     risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
@@ -63,22 +71,59 @@ class SgiProcess(models.Model):
             raise ValidationError("No puede crear una recursión de macroprocesos.")
 
     def _compute_health(self):
+        """Salud del proceso por agregación (semáforo), sin datos nuevos:
+
+        - verde: nada abierto (0 NC del SGI, 0 acciones vencidas de sus
+          orígenes, 0 KPI en rojo, 0 riesgo de atención máxima abierto);
+        - rojo: hay un riesgo de atención máxima abierto, o coinciden NC abierta
+          y KPI en rojo (síntoma sistémico: falla + evidencia de que no baja);
+        - amarillo: hay algo abierto pero no alcanza el umbral rojo.
+        """
         Alert = self.env['quality.alert']
         ActionLine = self.env['sgi.action.line']
+        Risk = self.env['sgi.risk']
         for process in self:
-            if process.id:
-                process.nc_count = Alert.search_count([
-                    ('sgi_process_id', '=', process.id),
-                    ('stage_id.sgi_is_closing_stage', '=', False),
-                    ('stage_id.sgi_is_cancel_stage', '=', False),
-                ])
-                process.overdue_action_count = ActionLine.search_count([
-                    ('alert_id.sgi_process_id', '=', process.id),
-                    ('state', '=', 'vencida'),
-                ])
+            if not process.id:
+                process.nc_count = process.overdue_action_count = 0
+                process.red_kpi_count = process.open_high_risk_count = 0
+                process.health = 'verde'
+                continue
+            process.nc_count = Alert.search_count([
+                ('sgi_process_id', '=', process.id),
+                ('stage_id.sgi_is_closing_stage', '=', False),
+                ('stage_id.sgi_is_cancel_stage', '=', False),
+            ])
+            # Acciones vencidas cuyos orígenes (NC/riesgo/incidente/AMEF) apuntan
+            # al proceso.
+            process.overdue_action_count = ActionLine.search_count([
+                ('state', '=', 'vencida'),
+                '|', '|', '|',
+                ('alert_id.sgi_process_id', '=', process.id),
+                ('risk_id.process_id', '=', process.id),
+                ('incident_id.process_id', '=', process.id),
+                ('fmea_line_id.fmea_id.process_id', '=', process.id),
+            ])
+            # KPIs en rojo: indicadores del proceso cuya última medición VALIDADA
+            # está en rojo.
+            red = 0
+            for indicator in process.indicator_ids:
+                last_val = indicator.measure_ids.filtered(
+                    lambda m: m.state == 'validado').sorted(
+                        'period_date', reverse=True)[:1]
+                if last_val and last_val.semaphore == 'rojo':
+                    red += 1
+            process.red_kpi_count = red
+            process.open_high_risk_count = Risk.search_count([
+                ('process_id', '=', process.id),
+                ('attention_level', 'in', ('inmediata', 'alto')),
+                ('state', '!=', 'cerrado'),
+            ])
+            if process.open_high_risk_count or (process.nc_count and process.red_kpi_count):
+                process.health = 'rojo'
+            elif process.nc_count or process.overdue_action_count or process.red_kpi_count:
+                process.health = 'amarillo'
             else:
-                process.nc_count = 0
-                process.overdue_action_count = 0
+                process.health = 'verde'
 
     @api.depends('code', 'name')
     def _compute_display_name(self):
@@ -144,6 +189,52 @@ class SgiProcess(models.Model):
             'view_mode': 'list,form',
             'domain': [('sgi_process_id', '=', self.id)],
             'context': {'default_sgi_process_id': self.id},
+        }
+
+    def action_open_overdue_actions(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Acciones vencidas — %s" % self.name,
+            'res_model': 'sgi.action.line',
+            'view_mode': 'list,form',
+            'domain': [
+                ('state', '=', 'vencida'),
+                '|', '|', '|',
+                ('alert_id.sgi_process_id', '=', self.id),
+                ('risk_id.process_id', '=', self.id),
+                ('incident_id.process_id', '=', self.id),
+                ('fmea_line_id.fmea_id.process_id', '=', self.id),
+            ],
+        }
+
+    def action_open_red_kpis(self):
+        self.ensure_one()
+        red_ids = [
+            indicator.id for indicator in self.indicator_ids
+            if indicator.measure_ids.filtered(lambda m: m.state == 'validado')
+            .sorted('period_date', reverse=True)[:1].semaphore == 'rojo'
+        ]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "KPIs en rojo — %s" % self.name,
+            'res_model': 'sgi.indicator',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', red_ids)],
+        }
+
+    def action_open_high_risks(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Riesgos de atención máxima — %s" % self.name,
+            'res_model': 'sgi.risk',
+            'view_mode': 'list,form',
+            'domain': [
+                ('process_id', '=', self.id),
+                ('attention_level', 'in', ('inmediata', 'alto')),
+                ('state', '!=', 'cerrado'),
+            ],
         }
 
 

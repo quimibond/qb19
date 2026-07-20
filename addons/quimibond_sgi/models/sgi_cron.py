@@ -51,6 +51,7 @@ class SgiCron(models.AbstractModel):
         today = fields.Date.context_today(self)
         Param = self.env['ir.config_parameter'].sudo()
         default_days = int(Param.get_param('quimibond_sgi.nc_escalation_days', 5))
+        external_days = int(Param.get_param('quimibond_sgi.nc_escalation_days_external', 3))
 
         # Marca acciones vencidas (recomputo del store)
         self.env['sgi.action.line'].search([('date_done', '=', False)])._compute_state()
@@ -61,7 +62,7 @@ class SgiCron(models.AbstractModel):
             ('stage_id.sgi_is_cancel_stage', '=', False),
         ])
         for alert in open_alerts:
-            days = 3 if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
+            days = external_days if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
             deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')
 
@@ -136,9 +137,14 @@ class SgiCron(models.AbstractModel):
     def cron_documents(self):
         today = fields.Date.context_today(self)
         Doc = self.env['documents.document']
+        Param = self.env['ir.config_parameter'].sudo()
+        notice_days = int(Param.get_param('quimibond_sgi.doc_review_notice_days', 60))
+        notice_final = int(Param.get_param('quimibond_sgi.doc_review_notice_days_final', 30))
+        pilot_days = int(Param.get_param('quimibond_sgi.doc_pilot_notice_days', 7))
+        ack_days = int(Param.get_param('quimibond_sgi.doc_ack_pending_days', 7))
 
-        # Revisión bienal: avisos a 60 y 30 días
-        for offset in (60, 30):
+        # Revisión bienal: dos avisos configurables (por defecto 60 y 30 días).
+        for offset in {notice_days, notice_final}:
             target = today + relativedelta(days=offset)
             docs = Doc.search([
                 ('sgi_state', '=', 'vigente'),
@@ -151,8 +157,8 @@ class SgiCron(models.AbstractModel):
                     "El documento requiere revisión antes de %s." % doc.sgi_next_review_date,
                     doc.sgi_owner_id.id or self._sgi_manager_user_id())
 
-        # Pilotos que vencen en 7 días
-        pilot_target = today + relativedelta(days=7)
+        # Pilotos que vencen (aviso configurable, por defecto 7 días).
+        pilot_target = today + relativedelta(days=pilot_days)
         pilots = Doc.search([
             ('sgi_state', '=', 'piloto'),
             ('sgi_pilot_end_date', '=', pilot_target),
@@ -164,8 +170,8 @@ class SgiCron(models.AbstractModel):
                 "La prueba piloto vence el %s." % doc.sgi_pilot_end_date,
                 doc.sgi_owner_id.id or self._sgi_manager_user_id())
 
-        # Acuses pendientes > 7 días
-        limit_date = fields.Datetime.now() - relativedelta(days=7)
+        # Acuses pendientes (umbral configurable, por defecto 7 días).
+        limit_date = fields.Datetime.now() - relativedelta(days=ack_days)
         acks = self.env['sgi.document.ack'].search([
             ('state', '=', 'pendiente'),
             ('create_date', '<=', limit_date),

@@ -83,6 +83,9 @@ class TestFlows48(TransactionCase):
             'sgi_is_controlled': True, 'sgi_doc_type': 'instructivo',
             'sgi_code': 'IT-P-A28-01', 'sgi_state': 'vigente',
         })
+        # H21: la familia es por FK; la migración por nomenclatura llena el
+        # enlace (equivalente a lo que antes hacía la regex en cada lectura).
+        self.env['sgi.config'].migrate_document_families()
         self.assertIn(fmt, proc.sgi_family_document_ids)
         self.assertIn(it, proc.sgi_family_document_ids)
         self.assertEqual(fmt.sgi_parent_document_id, proc)
