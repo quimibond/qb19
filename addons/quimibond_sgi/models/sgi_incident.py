@@ -74,6 +74,22 @@ class SgiIncident(models.Model):
             incident._sgi_create_alert()
         return incidents
 
+    def write(self, vals):
+        """Reclasificar la severidad a grave/fatal FUERZA la NC y el aviso, igual
+        que en el alta: un incidente que entró leve/moderado y la investigación
+        eleva a grave/fatal no puede quedarse sin su NC. Se apoya en la
+        idempotencia de ambos métodos y sólo dispara para los registros cuya
+        severidad ANTES del write no era grave/fatal (sin duplicar avisos)."""
+        escalating = self.browse()
+        if vals.get('severity') in ('grave', 'fatal'):
+            escalating = self.filtered(
+                lambda i: i.severity not in ('grave', 'fatal'))
+        res = super().write(vals)
+        for incident in escalating:
+            incident._sgi_notify_if_serious()
+            incident._sgi_create_alert()
+        return res
+
     def _sgi_create_alert(self):
         """Un incidente grave/fatal FUERZA una No Conformidad del SGI (45001 10.2):
         la investigación SCAT y las acciones correctivas viven en la NC, ligada al

@@ -365,11 +365,21 @@ class SgiConfig(models.AbstractModel):
         contenido en cada update). Es idempotente: reconstruye el alcance, las
         responsabilidades y las actividades del proceso Ventas. Los formatos se
         enlazan por clave a los documentos controlados vigentes existentes; los
-        que no existan quedan sin enlace pero conservados en el texto."""
+        que no existan quedan sin enlace pero conservados en el texto.
+
+        Toda la carga corre bajo el contexto sgi_bypass_dirty=True: esta semilla
+        ES la Rev.15 vigente, no una divergencia, así que NO debe marcar el
+        procedimiento como pendiente de revisión (G14). Cualquier otra función de
+        semilla que capture el contenido de OTROS procedimientos vigentes debe
+        usar el mismo contexto para no disparar el falso positivo."""
         process = self.env.ref('quimibond_sgi.proc_ventas', raise_if_not_found=False)
         if not process:
             _logger.warning("SGI piloto P-A28: no existe el proceso 'proc_ventas'.")
             return False
+
+        # La semilla es la revisión vigente, no una divergencia: se salta G14.
+        process = process.with_context(sgi_bypass_dirty=True)
+        self = self.with_context(sgi_bypass_dirty=True)
 
         process.write({
             'purpose': "Establecer la metodología que guíe a las áreas "

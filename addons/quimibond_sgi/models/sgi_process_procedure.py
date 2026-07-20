@@ -60,9 +60,12 @@ class SgiProcessProcedure(models.Model):
 
         Idempotente: sólo actúa en la transición limpio→divergente, así el aviso
         al dueño se agenda una vez por ciclo de revisión. Se omite durante la
-        carga de módulo (semillas), cuando el registro aún no está listo.
+        carga de módulo (semillas), cuando el registro aún no está listo, y
+        cuando el contexto pide saltarlo (sgi_bypass_dirty): las capturas de
+        contenido que SON la revisión vigente (seed_procedure_ventas y similares)
+        no son una divergencia y no deben disparar G14.
         """
-        if not self.env.registry.ready:
+        if not self.env.registry.ready or self.env.context.get('sgi_bypass_dirty'):
             return
         for process in self:
             doc = process._sgi_procedure_document()
