@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Mini-fase Procedimiento vivo — paso 1: modelo y ficha."""
+"""Mini-fase Procedimiento vivo — paso 1: modelo y ficha; paso 2: reporte."""
+from datetime import date
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -54,3 +56,78 @@ class TestProcedureModel(TransactionCase):
             'format_document_ids': [(6, 0, doc.ids)]})
         self.assertIn(doc, act.format_document_ids)
         self.assertTrue(act.display_name.startswith('4.3.3.1'))
+
+
+@tagged('post_install', '-at_install')
+class TestProcedureReport(TransactionCase):
+    """Paso 2: el reporte F-P-G01-02 rinde y arma la sección 8 sin duplicados."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        cls.Doc = cls.env['documents.document']
+        cls.process = cls.env['sgi.process'].create({
+            'code': 'RPT-01', 'name': 'Proceso reporte',
+            'process_type': 'cop', 'purpose': 'Propósito.',
+            'scope': 'Alcance.', 'env_aspects': 'Residuos.'})
+        # Procedimiento vigente que encabeza el proceso (clave/fecha/rev en vivo).
+        cls.proc_doc = cls.Doc.create({
+            'name': 'P-RPT.pdf', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A28',
+            'sgi_revision': '15', 'sgi_issue_date': date(2022, 11, 1),
+            'sgi_state': 'vigente', 'sgi_process_id': cls.process.id})
+        # Familia FK del procedimiento (para sección 8).
+        cls.fam = cls.Doc.create({
+            'name': 'Alta de cliente', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'formato', 'sgi_code': 'F-P-A28-21',
+            'sgi_state': 'vigente', 'sgi_parent_document_id': cls.proc_doc.id})
+        # Referencia cruzada (otra familia).
+        cls.ref = cls.Doc.create({
+            'name': 'Crédito y cobranza', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A22',
+            'sgi_state': 'vigente'})
+        cls.proc_doc.sgi_reference_ids = [(6, 0, cls.ref.ids)]
+        # Formato usado en una actividad (para sección 8, sin duplicar).
+        cls.fmt = cls.Doc.create({
+            'name': 'Cotización de producto', 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': 'formato',
+            'sgi_code': 'F-P-A28-12', 'sgi_state': 'vigente'})
+        cls.env['sgi.process.activity'].create([
+            {'process_id': cls.process.id, 'sequence': 1, 'number': '4.1.1',
+             'block': 'inicial', 'section': '4.1 Actividades iniciales',
+             'name': 'Retro de crédito', 'responsible_role': 'Vendedor'},
+            {'process_id': cls.process.id, 'sequence': 2, 'number': '4.2.3.1',
+             'block': 'desarrollo', 'section': '4.2.3 Cotización',
+             'name': 'Cotización', 'format_document_ids': [(6, 0, cls.fmt.ids)]},
+            {'process_id': cls.process.id, 'sequence': 3, 'number': '4.3.1',
+             'block': 'final', 'section': '4.3.1 Entrega', 'name': 'Entrega'},
+        ])
+
+    def test_01_report_renders_html(self):
+        report = self.env.ref('quimibond_sgi.action_report_procedure')
+        html, _ = report._render_qweb_html(
+            'quimibond_sgi.report_procedure_document', self.process.ids)
+        text = html.decode() if isinstance(html, bytes) else html
+        # Encabezado en vivo del documento controlado.
+        self.assertIn('P-A28', text)
+        self.assertIn('PRODUCTORA DE NO TEJIDOS QUIMIBOND', text)
+        # Las 8 secciones y la leyenda de copia no controlada.
+        self.assertIn('8. Información documentada', text)
+        self.assertIn('copia no controlada', text)
+
+    def test_02_documented_info_dedup_and_union(self):
+        docs = self.process._sgi_documented_info()
+        codes = docs.mapped('sgi_code')
+        # Unión: formato de actividad + familia FK + referencia cruzada.
+        self.assertIn('F-P-A28-12', codes)
+        self.assertIn('F-P-A28-21', codes)
+        self.assertIn('P-A22', codes)
+        # Sin duplicados y ordenado por clave.
+        self.assertEqual(len(codes), len(set(codes)))
+        self.assertEqual(codes, sorted(codes))
+
+    def test_03_header_reads_live_procedure(self):
+        self.assertEqual(self.process._sgi_procedure_document(), self.proc_doc)
+        self.assertEqual(self.process._sgi_procedure_document().sgi_revision, '15')

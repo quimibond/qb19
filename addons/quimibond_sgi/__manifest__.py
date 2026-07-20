@@ -107,6 +107,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_coa.xml',
         'report/report_fmea.xml',
         'report/report_incident.xml',
+        'report/report_procedure.xml',
         'report/sgi_format_footer.xml',
         # menus
         'views/sgi_menus.xml',

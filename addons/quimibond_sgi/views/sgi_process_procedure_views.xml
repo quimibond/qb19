@@ -71,6 +71,13 @@
         <field name="model">sgi.process</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_print_procedure" type="object"
+                        class="oe_stat_button" icon="fa-print"
+                        invisible="activity_count == 0">
+                    <field name="activity_count" widget="statinfo" string="Actividades"/>
+                </button>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Procedimiento" name="procedimiento">
                     <group string="Alcance">

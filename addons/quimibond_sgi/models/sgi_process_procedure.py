@@ -33,10 +33,68 @@ class SgiProcessProcedure(models.Model):
     activity_count = fields.Integer(
         string="# Actividades", compute='_compute_activity_count')
 
+    # Firmas del procedimiento (bloque del F-P-G01-02). Se imprimen como
+    # nombre + cargo; el PDF generado es copia NO controlada, sin imagen de firma.
+    doc_owner_id = fields.Many2one(
+        'res.users', string="Responsable del documento",
+        help="Elabora / es dueño del procedimiento (bloque de firmas).")
+    doc_approver_id = fields.Many2one(
+        'res.users', string="Aprueba")
+    doc_vobo_id = fields.Many2one(
+        'res.users', string="Vo.Bo.")
+
     @api.depends('activity_ids')
     def _compute_activity_count(self):
         for process in self:
             process.activity_count = len(process.activity_ids)
+
+    # --- Helpers del reporte "Imprimir procedimiento (F-P-G01-02)" -----------
+    def _sgi_procedure_document(self):
+        """Documento controlado vigente (P-Xnn) que encabeza el procedimiento.
+        La clave, fecha de emisión, área y revisión del encabezado se leen EN
+        VIVO de aquí (única fuente de verdad)."""
+        self.ensure_one()
+        docs = self.procedure_ids.filtered(
+            lambda d: d.sgi_doc_type == 'procedimiento' and d.sgi_state == 'vigente')
+        return docs[:1]
+
+    def _sgi_format_revision(self, code):
+        """Revisión viva del documento controlado vigente con esa clave (para el
+        pie F-P-G01-02), o False."""
+        return self.env['sgi.format.map'].sudo()._revision_of(code)
+
+    def _sgi_document_by_code(self, code):
+        """Documento vigente con esa clave (ref. a F-P-S01-01, etc.)."""
+        return self.env['documents.document'].sudo().search([
+            ('sgi_code', '=', code), ('sgi_state', '=', 'vigente'),
+        ], limit=1)
+
+    def _sgi_env_risks(self):
+        """Riesgos ambientales ligados al proceso (sección 5)."""
+        self.ensure_one()
+        return self.risk_ids.filtered(lambda r: r.instrument == 'ambiental')
+
+    def _sgi_iper_risks(self):
+        """Riesgos IPER (SST) ligados al proceso (sección 6)."""
+        self.ensure_one()
+        return self.risk_ids.filtered(lambda r: r.instrument == 'iper')
+
+    def _sgi_documented_info(self):
+        """Sección 8, GENERADA: unión sin duplicados de los formatos referenciados
+        en las actividades + la familia FK del procedimiento + las referencias
+        cruzadas, ordenada por clave."""
+        self.ensure_one()
+        docs = self.activity_ids.mapped('format_document_ids')
+        proc = self._sgi_procedure_document()
+        if proc:
+            docs |= proc.sgi_family_document_ids
+            docs |= proc.sgi_reference_ids
+        return docs.sorted(lambda d: (d.sgi_code or '￿', d.name or ''))
+
+    def action_print_procedure(self):
+        self.ensure_one()
+        return self.env.ref(
+            'quimibond_sgi.action_report_procedure').report_action(self)
 
 
 class SgiProcessResponsibility(models.Model):
