@@ -14,7 +14,7 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.4.4.5',
+    'version': '19.0.4.4.6',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -88,6 +88,7 @@ catálogos SGI). Toda la lógica de negocio vive en este módulo (cero Studio).
         'views/sgi_dashboard_views.xml',
         'views/sgi_map_hooks_views.xml',
         'views/sgi_format_map_views.xml',
+        'views/sgi_action_line_views.xml',
         # reports
         'report/report_nc.xml',
         'report/report_news.xml',
