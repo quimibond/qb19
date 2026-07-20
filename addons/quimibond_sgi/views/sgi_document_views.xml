@@ -53,6 +53,34 @@
                                 </group>
                             </group>
                         </page>
+                        <page string="Documentos relacionados" invisible="not sgi_is_controlled">
+                            <group invisible="not sgi_parent_document_id">
+                                <field name="sgi_parent_document_id" readonly="1"/>
+                            </group>
+                            <group string="Familia de la clave (automático)">
+                                <field name="sgi_family_document_ids" nolabel="1" readonly="1">
+                                    <list>
+                                        <field name="sgi_code"/>
+                                        <field name="name"/>
+                                        <field name="sgi_doc_type"/>
+                                        <field name="sgi_revision"/>
+                                        <field name="sgi_state" widget="badge"
+                                               decoration-success="sgi_state == 'vigente'"
+                                               decoration-warning="sgi_state == 'piloto'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Referencias a otras familias (P-A22, P-C01… — captura MAST)">
+                                <field name="sgi_reference_ids" nolabel="1"
+                                       domain="[('sgi_is_controlled', '=', True)]">
+                                    <list>
+                                        <field name="sgi_code"/>
+                                        <field name="name"/>
+                                        <field name="sgi_state"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
                         <page string="Puestos que aplican">
                             <field name="sgi_job_ids"/>
                         </page>
