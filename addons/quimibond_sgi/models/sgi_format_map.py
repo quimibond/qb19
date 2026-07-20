@@ -57,6 +57,37 @@ class SgiFormatMap(models.Model):
         return doc.sgi_revision or False
 
 
+class SgiConfig(models.AbstractModel):
+    """Utilidades de configuración del SGI (siembra idempotente)."""
+    _name = 'sgi.config'
+    _description = "Configuración SGI"
+
+    # Parámetros operativos: default de arranque. Solo se crean si NO existen;
+    # lo editado en Ajustes > Técnico > Parámetros del sistema nunca se pisa.
+    _SGI_DEFAULT_PARAMS = {
+        'quimibond_sgi.nc_escalation_days': '5',
+        'quimibond_sgi.fmea_npr_action': '100',
+        'quimibond_sgi.risk_ryo_inmediata': '16',
+        'quimibond_sgi.risk_ryo_media': '9',
+        'quimibond_sgi.risk_ryo_intermedia': '4',
+        'quimibond_sgi.supplier_weight_otd': '0.7',
+        'quimibond_sgi.supplier_weight_quality': '0.3',
+        'quimibond_sgi.supplier_nc_penalty': '10.0',
+        'quimibond_sgi.pesaje_tolerance_kg': '3.0',
+        'quimibond_sgi.waste_subproduct_category': 'SubProducto',
+        'quimibond_sgi.monthly_sales_budget': '0',
+        'quimibond_sgi.rh_user_id': '0',
+    }
+
+    @api.model
+    def seed_parameters(self):
+        Param = self.env['ir.config_parameter'].sudo()
+        for key, value in self._SGI_DEFAULT_PARAMS.items():
+            if Param.get_param(key) is False:
+                Param.set_param(key, value)
+        return True
+
+
 class SgiFormatMixin(models.AbstractModel):
     """Agrega al modelo la clave del formato SGI que sustituye (pantalla y PDF)."""
     _name = 'sgi.format.mixin'
