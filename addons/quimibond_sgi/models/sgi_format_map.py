@@ -320,6 +320,25 @@ class SgiConfig(models.AbstractModel):
          "incumplimiento se levanta una acción.", [], "", "", ""),
     ]
 
+    # Menú nativo de Odoo donde se ejecuta la actividad (por numeral). Se resuelve
+    # por xmlid con raise_if_not_found=False; si ninguno existe, queda solo texto.
+    _SGI_VENTAS_ODOO_MENUS = {
+        '4.1.2': ['sale.menu_sale_order'],              # pedidos → Ventas
+        '4.3.4': ['sale.menu_sale_order'],              # pedidos → Ventas
+        '4.2.2.7': ['stock.menu_stock_root'],           # consulta de stock → Inventario
+        '4.2.4.2': ['helpdesk.menu_helpdesk_root'],     # visitas → Helpdesk Servicio Técnico
+        '4.3.1.1': ['sale.menu_sale_order'],            # pedidos con fecha → Ventas
+        '4.3.5': ['survey.menu_surveys'],               # encuesta → Encuestas
+    }
+
+    def _sgi_resolve_menu(self, number):
+        """Primer menú nativo que resuelva para el numeral, o el menú vacío."""
+        for xmlid in self._SGI_VENTAS_ODOO_MENUS.get(number, ()):
+            menu = self.env.ref(xmlid, raise_if_not_found=False)
+            if menu:
+                return menu
+        return self.env['ir.ui.menu']
+
     _SGI_VENTAS_NORMS = [
         ("ISO 9001:2015", "Sistema de Gestión de la Calidad"),
         ("ISO 14001:2015", "Sistema de Gestión Ambiental"),
@@ -402,13 +421,18 @@ class SgiConfig(models.AbstractModel):
                 ('sgi_code', '=', related), ('sgi_state', '=', 'vigente'),
                 ('sgi_doc_type', '=', 'procedimiento'),
             ], limit=1) if related else self.env['documents.document']
+            menu = self._sgi_resolve_menu(number)
+            # El texto impreso (odoo_ref) sigue mandando; si está vacío y hay
+            # menú, se toma la ruta legible (igual que el onchange en pantalla).
+            ref = odoo_ref or (menu.complete_name if menu else False)
             act_vals.append({
                 'process_id': process.id, 'sequence': seq * 10, 'block': block,
                 'section': section, 'number': number, 'name': desc[:80],
                 'description': desc, 'responsible_role': role,
                 'format_document_ids': [(6, 0, fmt_docs.ids)],
                 'related_procedure_id': related_doc.id or False,
-                'odoo_ref': odoo_ref or False, 'note': note or False,
+                'odoo_ref': ref or False, 'note': note or False,
+                'odoo_menu_id': menu.id or False,
             })
         self.env['sgi.process.activity'].create(act_vals)
 
