@@ -93,6 +93,8 @@ class SgiIncident(models.Model):
                 problems.append(
                     "• Falta completar las 3 capas del análisis SCAT "
                     "(causas inmediatas, básicas y falta de control).")
+            if not incident.action_line_ids:
+                problems.append("• El incidente no tiene NINGUNA acción registrada.")
             pending = incident.action_line_ids.filtered(lambda l: not l.date_done)
             if pending:
                 problems.append(
