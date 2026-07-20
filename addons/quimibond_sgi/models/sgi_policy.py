@@ -7,6 +7,8 @@ Política → Objetivo integral → Indicador → Proceso. La política es el en
 """
 from odoo import models, fields, api
 
+from odoo.addons.quimibond_sgi.models.sgi_objective import sgi_worst_health
+
 
 class SgiPolicy(models.Model):
     _name = 'sgi.policy'
@@ -32,6 +34,16 @@ class SgiPolicy(models.Model):
                                     string="Objetivos integrales")
     objective_count = fields.Integer(string="# Objetivos",
                                      compute='_compute_objective_count')
+    health = fields.Selection([
+        ('verde', "Verde"),
+        ('amarillo', "Amarillo"),
+        ('rojo', "Rojo"),
+    ], string="Salud agregada", compute='_compute_health',
+        help="Peor color entre los objetivos de la política (cascada abajo→arriba).")
+
+    def _compute_health(self):
+        for policy in self:
+            policy.health = sgi_worst_health(policy.objective_ids.mapped('health'))
 
     def init(self):
         """A lo sumo UNA política vigente, garantizado en BD (la validación

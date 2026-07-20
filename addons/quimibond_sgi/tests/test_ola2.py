@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """OLA 2 — La Línea Dorada (cascada ISO, general → particular)."""
+from datetime import date
+
 from psycopg2 import IntegrityError
 
 from odoo.tests import TransactionCase, tagged
@@ -52,3 +54,72 @@ class TestOla2Policy(TransactionCase):
         # Política -> Objetivo -> Indicador -> Proceso
         self.assertEqual(ind.objective_id.policy_id, policy)
         self.assertEqual(ind.process_id, proc)
+
+
+@tagged('post_install', '-at_install')
+class TestOla2Health(TransactionCase):
+    """H13: salud por proceso por agregación + cascada de color."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.user.group_ids = [
+            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        # Proceso limpio y aislado para no arrastrar datos de demo.
+        cls.proc = cls.env['sgi.process'].create(
+            {'code': 'HLTH-01', 'name': 'Proceso salud', 'process_type': 'soporte'})
+        cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
+
+    def _red_kpi(self):
+        ind = self.env['sgi.indicator'].create({
+            'code': 'RED-01', 'name': 'KPI rojo', 'calc_mode': 'manual',
+            'direction': 'higher_better', 'target_objective': 100,
+            'target_acceptable': 80, 'process_id': self.proc.id})
+        measure = self.env['sgi.indicator.measure'].create({
+            'indicator_id': ind.id, 'period_date': date.today().replace(day=1),
+            'value': 40.0})
+        measure.action_validate()
+        self.assertEqual(measure.semaphore, 'rojo')
+        return ind
+
+    def test_01_clean_process_is_green(self):
+        self.assertEqual(self.proc.health, 'verde')
+
+    def test_02_open_nc_only_is_yellow(self):
+        self.env['quality.alert'].create({
+            'title': 'NC', 'team_id': self.team.id,
+            'sgi_process_id': self.proc.id})
+        self.proc.invalidate_recordset()
+        self.assertEqual(self.proc.health, 'amarillo')
+
+    def test_03_high_risk_is_red(self):
+        self.env['sgi.risk'].create({
+            'name': 'Alto', 'instrument': 'ryo', 'eval_probability': '5',
+            'eval_impact': '5', 'process_id': self.proc.id})
+        self.proc.invalidate_recordset()
+        self.assertEqual(self.proc.open_high_risk_count, 1)
+        self.assertEqual(self.proc.health, 'rojo')
+
+    def test_04_nc_plus_red_kpi_is_red(self):
+        self._red_kpi()
+        self.env['quality.alert'].create({
+            'title': 'NC', 'team_id': self.team.id,
+            'sgi_process_id': self.proc.id})
+        self.proc.invalidate_recordset()
+        self.assertEqual(self.proc.red_kpi_count, 1)
+        self.assertEqual(self.proc.health, 'rojo')
+
+    def test_05_cascade_worst_color_wins(self):
+        self.env['sgi.risk'].create({
+            'name': 'Alto', 'instrument': 'ryo', 'eval_probability': '5',
+            'eval_impact': '5', 'process_id': self.proc.id})
+        policy = self.env['sgi.policy'].create({'name': 'Pol'})
+        obj = self.env['sgi.objective'].create(
+            {'name': 'Obj', 'policy_id': policy.id})
+        self.env['sgi.indicator'].create({
+            'code': 'AGG-1', 'name': 'k', 'calc_mode': 'manual',
+            'objective_id': obj.id, 'process_id': self.proc.id})
+        obj.invalidate_recordset()
+        policy.invalidate_recordset()
+        self.assertEqual(obj.health, 'rojo')
+        self.assertEqual(policy.health, 'rojo')
