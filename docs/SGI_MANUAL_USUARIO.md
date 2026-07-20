@@ -195,6 +195,15 @@ D: sigue como documento), su **destino** y su estado — arrastra la tarjeta con
 avanza (Pendiente → En curso → Migrado / Baja tramitada). Viene pre-clasificado; MAST
 solo valida y ejecuta por tandas.
 
+**¿Y la clave del formato?** Cuando una transacción de Odoo sustituye a un
+formato (la cotización es el F-P-A28-04, la remisión el F-P-A16-01…), el
+registro lo dice él mismo: una franja azul arriba del formulario muestra
+**"Formato controlado del SGI: F-P-A28-04 · Rev. 03"**, y el PDF impreso lleva
+la misma clave y revisión en el pie de página. La revisión se lee en vivo del
+documento vigente en Documentos: si sube de revisión por el flujo de cambio,
+pantalla y PDF se actualizan solos. El mapeo se administra en SGI →
+Configuración → *Formatos en documentos de Odoo* (solo Jefe de MAST).
+
 ## 15. Preguntas frecuentes
 
 **"No me deja cerrar la NC"** → te falta causa raíz, una acción sin terminar o la

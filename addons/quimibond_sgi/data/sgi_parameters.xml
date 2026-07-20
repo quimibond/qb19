@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Siembra idempotente de parámetros: crea SOLO los que no existen (los
+         parámetros pueden pre-existir creados a mano — un <record> duplicaría
+         la clave y rompería el update). Corre en cada odoo-update sin efectos
+         sobre valores ya capturados. -->
+    <function model="sgi.config" name="seed_parameters"/>
+</odoo>

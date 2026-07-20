@@ -43,6 +43,10 @@ FLOW_DOCUMENT = {
     'flow_plan_almacen': 'F-P-A12-02',
     'flow_plan_ventas': 'F-P-A12-03',
     'flow_rh_direccion': 'F-P-A01-01',
+    # Flujos de la mini-fase 4.8 (sgi_process_flows_extra.xml)
+    'flow_prodtac_mto': 'F-P-M01-01',
+    'flow_prodent_mto': 'F-P-M01-01',
+    'flow_inspeccion_sgi_nc': 'F-P-G05-01',
 }
 
 # --- 2) Familia de clave -> xmlid del proceso -------------------------------
