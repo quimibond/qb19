@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mis acciones: la lista de pendientes SGI de cada persona, sin importar
+         si la acción nació en una NC, un riesgo, un AMEF o un incidente. -->
+
+    <record id="sgi_action_line_view_list" model="ir.ui.view">
+        <field name="name">sgi.action.line.list.global</field>
+        <field name="model">sgi.action.line</field>
+        <field name="arch" type="xml">
+            <list string="Acciones" decoration-danger="state == 'vencida'"
+                  decoration-muted="state == 'terminada'">
+                <field name="name"/>
+                <field name="action_type" optional="show"/>
+                <field name="alert_id" optional="show"/>
+                <field name="risk_id" optional="hide"/>
+                <field name="incident_id" optional="hide"/>
+                <field name="responsible_id" widget="many2one_avatar_user"/>
+                <field name="date_commit"/>
+                <field name="progress" optional="show"/>
+                <field name="date_done" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'terminada'"
+                       decoration-danger="state == 'vencida'"
+                       decoration-info="state == 'abierta'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_action_line_view_search" model="ir.ui.view">
+        <field name="name">sgi.action.line.search</field>
+        <field name="model">sgi.action.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="responsible_id"/>
+                <filter name="mine" string="Mis acciones"
+                        domain="[('responsible_id', '=', uid)]"/>
+                <filter name="open" string="Abiertas"
+                        domain="[('state', '=', 'abierta')]"/>
+                <filter name="overdue" string="Vencidas"
+                        domain="[('state', '=', 'vencida')]"/>
+                <filter name="done" string="Terminadas"
+                        domain="[('state', '=', 'terminada')]"/>
+                <separator/>
+                <filter name="from_nc" string="De No Conformidades"
+                        domain="[('alert_id', '!=', False)]"/>
+                <filter name="from_risk" string="De Riesgos"
+                        domain="[('risk_id', '!=', False)]"/>
+                <filter name="from_fmea" string="De AMEF"
+                        domain="[('fmea_line_id', '!=', False)]"/>
+                <filter name="from_incident" string="De Incidentes SST"
+                        domain="[('incident_id', '!=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_responsible" string="Responsable"
+                            context="{'group_by': 'responsible_id'}"/>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_commit" string="Fecha compromiso"
+                            context="{'group_by': 'date_commit'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_action_line_action_mine" model="ir.actions.act_window">
+        <field name="name">Mis acciones</field>
+        <field name="res_model">sgi.action.line</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="sgi_action_line_view_search"/>
+        <field name="context">{'search_default_mine': 1, 'search_default_open': 1, 'search_default_overdue': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin acciones pendientes 🎉</p>
+            <p>Aquí aparecen TODAS tus acciones del SGI — vengan de una No
+               Conformidad, un riesgo, un AMEF o un incidente — con su fecha
+               compromiso. Quita el filtro "Mis acciones" para ver las de todos.</p>
+        </field>
+    </record>
+
+    <record id="sgi_action_line_action_all" model="ir.actions.act_window">
+        <field name="name">Todas las acciones</field>
+        <field name="res_model">sgi.action.line</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="sgi_action_line_view_search"/>
+        <field name="context">{'search_default_open': 1, 'search_default_overdue': 1, 'search_default_group_responsible': 1}</field>
+    </record>
+</odoo>
