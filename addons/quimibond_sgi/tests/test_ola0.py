@@ -25,7 +25,8 @@ class TestOla0Base(TransactionCase):
     def test_02_folio_unique_per_model(self):
         self.env['sgi.risk'].create(
             {'name': 'R1', 'instrument': 'ryo', 'folio': 'OLA0-DUP-1'})
-        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
+        with self.assertRaises(IntegrityError), self.cr.savepoint(), \
+                mute_logger('odoo.sql_db'):
             self.env['sgi.risk'].create(
                 {'name': 'R2', 'instrument': 'ryo', 'folio': 'OLA0-DUP-1'})
             self.env.flush_all()
@@ -93,6 +94,17 @@ class TestOla0Activities(TransactionCase):
             self.env['mail.activity'].search_count([('id', '=', aid)]), 0,
             "La actividad deja de estar pendiente (archivada).")
         self.assertEqual(line.state, 'terminada')
+
+    def test_05_reopen_reschedules_activity(self):
+        line = self._make_line()
+        line.write({'date_done': fields.Date.today()})
+        self.assertFalse(line.activity_id, "Al terminar se suelta la actividad.")
+        # Reabrir (borrar la fecha de terminación) re-agenda una actividad.
+        line.write({'date_done': False})
+        self.assertTrue(line.activity_id,
+                        "Reabrir la acción debe volver a agendar la actividad.")
+        self.assertEqual(line.activity_id.user_id, self.user)
+        self.assertEqual(line.state, 'abierta')
 
     def test_04_bulk_import_idempotent(self):
         lines = self.env['sgi.action.line'].create([

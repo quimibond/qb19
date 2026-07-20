@@ -297,10 +297,13 @@ class SgiActionLine(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
+        resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:
-            done = self.filtered('date_done')
-            done._sgi_close_activity()
-        if {'responsible_id', 'date_commit', 'name'} & set(vals):
+            self.filtered('date_done')._sgi_close_activity()
+            # Reabrir una acción (borrar la fecha de terminación) vuelve a
+            # agendar la actividad en el responsable.
+            resync = True
+        if resync:
             self.filtered(lambda l: not l.date_done)._sgi_sync_activity()
         return res
 
