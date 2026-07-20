@@ -172,6 +172,23 @@ class ProductTemplatePpap(models.Model):
         }
 
 
+class ProductProductPpap(models.Model):
+    """El formulario de variante hereda la vista de la plantilla, así que el
+    smart button de PPAP también debe resolver en product.product (sin esto,
+    Odoo invalida las vistas de variante que lo incluyen)."""
+    _inherit = 'product.product'
+
+    sgi_ppap_count = fields.Integer(string="PPAP", compute='_compute_sgi_ppap_count')
+
+    def _compute_sgi_ppap_count(self):
+        for product in self:
+            product.sgi_ppap_count = product.product_tmpl_id.sgi_ppap_count
+
+    def action_view_sgi_ppap(self):
+        self.ensure_one()
+        return self.product_tmpl_id.action_view_sgi_ppap()
+
+
 class SgiPpapElement(models.Model):
     _name = 'sgi.ppap.element'
     _description = "Elemento de un PPAP"
