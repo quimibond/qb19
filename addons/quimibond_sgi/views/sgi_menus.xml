@@ -1,115 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Navegación SGI: máx. 9 grupos de primer nivel, ordenados por frecuencia
+         de uso (persona -> operación diaria -> gestión -> dirección -> config).
+         Los xmlids NO cambian: solo padres, secuencias y agrupación. -->
+
     <menuitem id="menu_sgi_root" name="SGI" sequence="90"
               web_icon="quimibond_sgi,static/description/icon.png"
               groups="quimibond_sgi.group_sgi_user"/>
 
+    <!-- 1. Panel: la salud del sistema de un vistazo -->
     <menuitem id="menu_sgi_panel" name="Panel" parent="menu_sgi_root"
               action="sgi_process_action_panel" sequence="10"/>
-
-    <!-- Tableros (Fase 4) -->
-    <menuitem id="menu_sgi_dashboards" name="Tableros" parent="menu_sgi_root"
-              sequence="12" groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_dashboards" name="Tableros" parent="menu_sgi_panel"
+              sequence="10" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"
               parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto"
               sequence="10"/>
 
-    <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
-              action="sgi_process_action" sequence="20"/>
+    <!-- 2. Mi trabajo: lo que le toca a cada persona -->
+    <menuitem id="menu_sgi_mywork" name="Mi trabajo" parent="menu_sgi_root" sequence="20"/>
+    <menuitem id="menu_sgi_my_actions" name="Mis acciones" parent="menu_sgi_mywork"
+              action="sgi_action_line_action_mine" sequence="10"/>
+    <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_mywork"
+              action="sgi_document_action_my_procedures" sequence="20"/>
 
-    <menuitem id="menu_sgi_flows" name="Flujos" parent="menu_sgi_root"
-              action="sgi_process_flow_action" sequence="30"/>
-
-    <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_root"
-              action="sgi_document_action" sequence="40"/>
-
-    <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_root"
-              sequence="46" action="sgi_migration_action"
-              groups="quimibond_sgi.group_sgi_manager"/>
-
-    <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_root"
-              action="sgi_document_action_my_procedures" sequence="50"/>
-    <menuitem id="menu_sgi_my_actions" name="Mis acciones" parent="menu_sgi_root"
-              action="sgi_action_line_action_mine" sequence="52"/>
-
-    <!-- No Conformidades -->
-    <menuitem id="menu_sgi_nc" name="No Conformidades" parent="menu_sgi_root" sequence="60"/>
-    <menuitem id="menu_sgi_nc_all_actions" name="Todas las acciones" parent="menu_sgi_nc"
-              action="sgi_action_line_action_all" sequence="35"
-              groups="quimibond_sgi.group_sgi_manager"/>
+    <!-- 3. Mejora continua: NC, reclamaciones y mejoras (el corazón operativo) -->
+    <menuitem id="menu_sgi_improvement_group" name="Mejora continua" parent="menu_sgi_root"
+              sequence="30"/>
+    <menuitem id="menu_sgi_nc" name="No Conformidades" parent="menu_sgi_improvement_group"
+              sequence="10"/>
     <menuitem id="menu_sgi_nc_kanban" name="Tablero" parent="menu_sgi_nc"
               action="sgi_nc_action_kanban" sequence="10"/>
     <menuitem id="menu_sgi_nc_concentrado" name="Concentrado" parent="menu_sgi_nc"
               action="sgi_nc_action_concentrado" sequence="20"/>
+    <menuitem id="menu_sgi_nc_all_actions" name="Todas las acciones" parent="menu_sgi_nc"
+              action="sgi_action_line_action_all" sequence="30"
+              groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_complaints" name="Reclamaciones" parent="menu_sgi_improvement_group"
+              action="sgi_complaint_action" sequence="20"/>
+    <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_improvement_group"
+              action="sgi_improvement_action" sequence="30"/>
 
-    <menuitem id="menu_sgi_complaints" name="Reclamaciones" parent="menu_sgi_root"
-              action="sgi_complaint_action" sequence="70"/>
+    <!-- 4. Documental: la biblioteca controlada y su ciclo de vida -->
+    <menuitem id="menu_sgi_documental" name="Documental" parent="menu_sgi_root" sequence="40"/>
+    <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
+              action="sgi_document_action" sequence="10"/>
+    <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_documental"
+              action="sgi_doc_change_action" sequence="20"/>
+    <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_documental"
+              action="sgi_migration_action" sequence="30"
+              groups="quimibond_sgi.group_sgi_manager"/>
 
-    <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_root"
-              action="sgi_improvement_action" sequence="80"/>
-
-    <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_root"
-              action="sgi_doc_change_action" sequence="90"/>
-
-    <!-- Medición -->
-    <menuitem id="menu_sgi_measurement" name="Medición" parent="menu_sgi_root" sequence="55"/>
+    <!-- 5. Medición: KPIs, objetivos, proveedores y competencias -->
+    <menuitem id="menu_sgi_measurement" name="Medición" parent="menu_sgi_root" sequence="50"/>
     <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_measurement"
               action="sgi_indicator_action" sequence="10"/>
     <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_measurement"
               action="sgi_measure_action" sequence="20"/>
     <menuitem id="menu_sgi_objectives" name="Objetivos Integrales" parent="menu_sgi_measurement"
               action="sgi_objective_action" sequence="30"/>
+    <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores" parent="menu_sgi_measurement"
+              action="sgi_supplier_eval_action" sequence="40"/>
+    <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
+              parent="menu_sgi_measurement" action="sgi_competence_gap_action" sequence="50"/>
 
-    <!-- Auditorías -->
-    <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_root" sequence="56"/>
+    <!-- 6. Procesos: el mapa y sus flujos -->
+    <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
+              action="sgi_process_action" sequence="60"/>
+    <menuitem id="menu_sgi_flows" name="Flujos" parent="menu_sgi_processes"
+              action="sgi_process_flow_action" sequence="10"/>
+
+    <!-- 7. Auditorías y riesgos: la vigilancia del sistema -->
+    <menuitem id="menu_sgi_audits" name="Auditorías y riesgos" parent="menu_sgi_root"
+              sequence="70"/>
     <menuitem id="menu_sgi_audit_programs" name="Programa anual" parent="menu_sgi_audits"
               action="sgi_audit_program_action" sequence="10"/>
     <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
+    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_audits"
+              action="sgi_risk_action" sequence="30"/>
+    <menuitem id="menu_sgi_sst" name="SST" parent="menu_sgi_audits" sequence="40"/>
+    <menuitem id="menu_sgi_incidents" name="Incidentes" parent="menu_sgi_sst"
+              action="sgi_incident_action" sequence="10"/>
 
-    <!-- Riesgos -->
-    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_root"
-              action="sgi_risk_action" sequence="57"/>
-
-    <!-- Proveedores -->
-    <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores" parent="menu_sgi_root"
-              action="sgi_supplier_eval_action" sequence="58"/>
-
-    <!-- Revisión por la Dirección -->
-    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección" parent="menu_sgi_root"
-              action="sgi_management_review_action" sequence="59"
-              groups="quimibond_sgi.group_sgi_manager"/>
-
-    <!-- Herramientas automotrices (core tools) -->
-    <menuitem id="menu_sgi_automotive" name="Automotriz" parent="menu_sgi_root" sequence="61"/>
+    <!-- 8. Calidad automotriz: herramientas IATF + metrología -->
+    <menuitem id="menu_sgi_automotive" name="Automotriz" parent="menu_sgi_root" sequence="80"/>
     <menuitem id="menu_sgi_control_plans" name="Planes de control" parent="menu_sgi_automotive"
               action="sgi_control_plan_action" sequence="10"/>
     <menuitem id="menu_sgi_fmea" name="AMEF" parent="menu_sgi_automotive"
               action="sgi_fmea_action" sequence="20"/>
     <menuitem id="menu_sgi_ppap" name="PPAP" parent="menu_sgi_automotive"
               action="sgi_ppap_action" sequence="30"/>
-
-    <!-- Metrología -->
-    <menuitem id="menu_sgi_metrology" name="Metrología" parent="menu_sgi_root" sequence="62"/>
+    <menuitem id="menu_sgi_metrology" name="Metrología" parent="menu_sgi_automotive"
+              sequence="40"/>
     <menuitem id="menu_sgi_measuring_equipment" name="Equipos de medición"
               parent="menu_sgi_metrology" action="sgi_equipment_action_measuring" sequence="10"/>
     <menuitem id="menu_sgi_calibrations" name="Calibraciones" parent="menu_sgi_metrology"
               action="sgi_calibration_action" sequence="20"/>
 
-    <!-- Seguridad y Salud en el Trabajo -->
-    <menuitem id="menu_sgi_sst" name="SST" parent="menu_sgi_root" sequence="63"/>
-    <menuitem id="menu_sgi_incidents" name="Incidentes" parent="menu_sgi_sst"
-              action="sgi_incident_action" sequence="10"/>
+    <!-- 9. Revisión por la Dirección (solo MAST/Dirección) -->
+    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección" parent="menu_sgi_root"
+              action="sgi_management_review_action" sequence="90"
+              groups="quimibond_sgi.group_sgi_manager"/>
 
-    <!-- Competencias -->
-    <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
-              parent="menu_sgi_measurement" action="sgi_competence_gap_action" sequence="40"/>
-
-    <!-- Configuración -->
+    <!-- 10. Configuración (solo MAST) -->
     <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root"
               sequence="100" groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
-              action="sgi_ppap_element_template_action" sequence="60"/>
     <menuitem id="menu_sgi_config_areas" name="Áreas" parent="menu_sgi_config"
               action="sgi_area_action" sequence="10"/>
     <menuitem id="menu_sgi_config_norms" name="Normas" parent="menu_sgi_config"
@@ -120,6 +116,8 @@
               action="sgi_document_ack_action" sequence="40"/>
     <menuitem id="menu_sgi_config_risk_cat" name="Categorías de riesgo" parent="menu_sgi_config"
               action="sgi_risk_category_action" sequence="50"/>
+    <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
+              action="sgi_ppap_element_template_action" sequence="60"/>
     <menuitem id="menu_sgi_config_format_map" name="Formatos en documentos de Odoo" parent="menu_sgi_config"
               action="sgi_format_map_action" sequence="70"/>
 </odoo>
