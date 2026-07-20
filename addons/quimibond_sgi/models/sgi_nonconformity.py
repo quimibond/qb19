@@ -1,6 +1,24 @@
 # -*- coding: utf-8 -*-
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
+
+
+class MailActivity(models.Model):
+    _inherit = 'mail.activity'
+
+    def _action_done(self, feedback=False, attachment_ids=None):
+        """Cierre bidireccional: completar desde el chatter la actividad espejo
+        de una acción del SGI marca terminada la acción (date_done)."""
+        lines = self.env['sgi.action.line'].search([
+            ('activity_id', 'in', self.ids), ('date_done', '=', False),
+        ])
+        res = super()._action_done(feedback=feedback, attachment_ids=attachment_ids)
+        if lines:
+            lines.with_context(sgi_activity_done=True).write(
+                {'date_done': fields.Date.context_today(self)})
+        return res
 
 
 class QualityAlertStage(models.Model):
@@ -70,6 +88,25 @@ class QualityAlert(models.Model):
 
     sgi_action_line_ids = fields.One2many('sgi.action.line', 'alert_id', string="Correcciones y acciones")
 
+    # Ligas reales del SGI (H7): trazabilidad NC <-> riesgo <-> AMEF <-> documento.
+    sgi_risk_ids = fields.Many2many(
+        'sgi.risk', 'sgi_alert_risk_rel', 'alert_id', 'risk_id',
+        string="Riesgos ligados")
+    sgi_fmea_id = fields.Many2one('sgi.fmea', string="AMEF ligado")
+    sgi_document_id = fields.Many2one(
+        'documents.document', string="Documento ligado",
+        domain=[('sgi_is_controlled', '=', True)])
+
+    # Detector de reincidencia (H2): NCs previas del mismo proceso en la ventana
+    # de reincidencia; una misma cláusula pesa doble. Se congela al crear/
+    # clasificar (snapshot), no se recalcula por el paso del tiempo.
+    sgi_recurrence_count = fields.Integer(
+        string="Reincidencias", compute='_compute_sgi_recurrence', store=True,
+        help="Casos previos del mismo proceso en la ventana de reincidencia "
+             "(misma cláusula cuenta doble).")
+    sgi_is_recurrent = fields.Boolean(
+        string="Reincidente", compute='_compute_sgi_recurrence', store=True)
+
     @api.model_create_multi
     def create(self, vals_list):
         alerts = super().create(vals_list)
@@ -77,6 +114,60 @@ class QualityAlert(models.Model):
             if not alert.sgi_folio and alert.team_id.sgi_sequence_id:
                 alert.sgi_folio = alert.team_id.sgi_sequence_id.next_by_id()
         return alerts
+
+    @api.depends('sgi_process_id', 'sgi_norm_clause_id', 'sgi_folio')
+    def _compute_sgi_recurrence(self):
+        months = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.nc_recurrence_months', 12))
+        for alert in self:
+            if not alert.sgi_folio or not alert.sgi_process_id:
+                alert.sgi_recurrence_count = 0
+                alert.sgi_is_recurrent = False
+                continue
+            ref_date = alert.create_date or fields.Datetime.now()
+            since = ref_date - relativedelta(months=months)
+            # "Previa" = id menor (monotónico y determinista, también cuando dos
+            # NCs comparten create_date por caer en la misma transacción). Se usa
+            # sudo() porque la reincidencia es un hecho del sistema, no depende de
+            # las reglas de registro del usuario en turno; y se excluyen las NCs
+            # canceladas (una falsa alarma cancelada no marca a la siguiente).
+            prior = self.sudo().search([
+                ('id', '<', alert.id),
+                ('sgi_folio', '!=', False),
+                ('sgi_process_id', '=', alert.sgi_process_id.id),
+                ('create_date', '>=', since),
+                ('stage_id.sgi_is_cancel_stage', '=', False),
+            ])
+            count = 0
+            for other in prior:
+                count += 2 if (alert.sgi_norm_clause_id
+                               and other.sgi_norm_clause_id == alert.sgi_norm_clause_id) else 1
+            alert.sgi_recurrence_count = count
+            alert.sgi_is_recurrent = count >= 1
+
+    def _sgi_read_across(self):
+        """H2: al cerrar una NC reincidente ligada a un AMEF, agenda revisión en
+        los AMEF del mismo proceso (posible modo de falla análogo)."""
+        self.ensure_one()
+        if not self.sgi_is_recurrent or not self.sgi_fmea_id:
+            return
+        process = self.sgi_fmea_id.process_id
+        if not process:
+            return
+        manager_id = self.env['sgi.cron']._sgi_manager_user_id()
+        if not manager_id:
+            return
+        peers = self.env['sgi.fmea'].search([
+            ('process_id', '=', process.id),
+            ('id', '!=', self.sgi_fmea_id.id),
+            ('state', '!=', 'obsoleto'),
+        ])
+        summary = "Read-across NC reincidente %s: revisar AMEF del mismo proceso" % (
+            self.sgi_folio or self.name)
+        note = ("Una NC reincidente cerrada afecta un AMEF de este proceso. "
+                "Revise si aplica el mismo modo de falla en este AMEF.")
+        for fmea in peers:
+            fmea._sgi_schedule_activity(manager_id, summary, note)
 
     def _sgi_check_can_close(self):
         """Valida los candados de cierre de una NC."""
@@ -92,6 +183,24 @@ class QualityAlert(models.Model):
                 problems.append("• Hay %d acción(es) sin fecha de terminación." % len(pending))
             if not alert.sgi_effectiveness_note or not alert.sgi_effectiveness_date:
                 problems.append("• Falta la verificación de eficacia (nota y fecha).")
+            # NC mayor (refinamiento H1): exige el análisis de causa completo.
+            if alert.sgi_classification == 'mayor':
+                if not all((alert.sgi_why_1, alert.sgi_why_2, alert.sgi_why_3,
+                            alert.sgi_why_4, alert.sgi_why_5)):
+                    problems.append(
+                        "• NC mayor: falta completar los 5 porqués del análisis "
+                        "de causa.")
+            # Acción CORRECTIVA real terminada (no basta una corrección/contención)
+            # cuando la NC es mayor (H1) o reincidente (H2: lo puntual se vuelve
+            # sistémico).
+            if alert.sgi_classification == 'mayor' or alert.sgi_is_recurrent:
+                if not alert.sgi_action_line_ids.filtered(
+                        lambda l: l.action_type == 'correctiva' and l.date_done):
+                    reason = "NC mayor" if alert.sgi_classification == 'mayor' \
+                        else "NC reincidente"
+                    problems.append(
+                        "• %s: se requiere al menos una ACCIÓN CORRECTIVA "
+                        "terminada (una corrección inmediata no basta)." % reason)
             if problems:
                 raise UserError(
                     "No se puede cerrar la NC %s:\n%s" % (
@@ -107,27 +216,35 @@ class QualityAlert(models.Model):
                         alert._sgi_check_can_close()
             if new_stage.sgi_is_closing_stage:
                 newly_closed = self.filtered(
-                    lambda a: a.stage_id != new_stage and a.sgi_classification == 'mayor')
+                    lambda a: a.stage_id != new_stage and a.sgi_folio)
         res = super().write(vals)
         for alert in newly_closed:
-            alert._sgi_notify_mayor_closed()
+            if alert.sgi_classification == 'mayor':
+                alert._sgi_notify_mayor_closed()
+            alert._sgi_read_across()
         return res
 
     def _sgi_notify_mayor_closed(self):
         """PROT-05/D7: al cerrar una NC mayor, recordar actualizar AMEF y plan de
-        control (lecciones aprendidas)."""
+        control (lecciones aprendidas).
+
+        H7: si la NC tiene un AMEF ligado, la actividad se agenda sobre ese AMEF
+        concreto (no genérica al Jefe MAST) usando el helper del cimiento.
+        """
         self.ensure_one()
         Cron = self.env['sgi.cron']
         manager_id = Cron._sgi_manager_user_id()
         if not manager_id:
             return
-        Cron._sgi_schedule(
-            self,
-            "NC mayor cerrada: actualizar AMEF y plan de control (%s)" % (
-                self.sgi_folio or self.name),
-            "Se cerró una No Conformidad mayor. Revise si el AMEF y el plan de "
-            "control del proceso/producto deben actualizarse con la lección aprendida.",
-            manager_id)
+        summary = "NC mayor cerrada: actualizar AMEF y plan de control (%s)" % (
+            self.sgi_folio or self.name)
+        note = ("Se cerró una No Conformidad mayor. Revise si el AMEF y el plan "
+                "de control del proceso/producto deben actualizarse con la "
+                "lección aprendida.")
+        if self.sgi_fmea_id:
+            self.sgi_fmea_id._sgi_schedule_activity(manager_id, summary, note)
+        else:
+            Cron._sgi_schedule(self, summary, note, manager_id)
         return True
 
     def action_sgi_force_close(self):
@@ -217,6 +334,26 @@ class SgiActionLine(models.Model):
                     "Conformidad, un Riesgo, un modo de falla de AMEF o un incidente "
                     "SST (exactamente uno, no varios ni ninguno).")
 
+    @api.constrains('action_type', 'alert_id')
+    def _sgi_check_root_cause_before_capa(self):
+        """H8: sin causa raíz no hay acción correctiva/preventiva.
+
+        ISO 10.2 distingue la corrección/contención inmediata (permitida antes de
+        conocer la causa) de la acción correctiva/preventiva, que ataca la causa y
+        por tanto exige haberla identificado primero.
+        """
+        for line in self:
+            alert = line.alert_id
+            if (alert and alert.sgi_folio
+                    and line.action_type in ('correctiva', 'preventiva')
+                    and not alert.sgi_root_cause):
+                raise ValidationError(
+                    "No se puede registrar una acción %s en la NC %s sin la causa "
+                    "raíz. Primero investiga y captura la causa raíz; la corrección "
+                    "(contención inmediata) sí puede registrarse antes." % (
+                        dict(self._fields['action_type'].selection)[line.action_type],
+                        alert.sgi_folio or alert.name))
+
     @api.depends('date_commit', 'date_done')
     def _compute_state(self):
         today = fields.Date.context_today(self)
@@ -299,7 +436,14 @@ class SgiActionLine(models.Model):
         res = super().write(vals)
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:
-            self.filtered('date_done')._sgi_close_activity()
+            done = self.filtered('date_done')
+            if self.env.context.get('sgi_activity_done'):
+                # El cierre vino de completar la actividad espejo en el chatter:
+                # la actividad ya se marcó hecha, sólo soltamos el enlace para no
+                # volver a cerrarla (evita recursión).
+                done.activity_id = False
+            else:
+                done._sgi_close_activity()
             # Reabrir una acción (borrar la fecha de terminación) vuelve a
             # agendar la actividad en el responsable.
             resync = True

@@ -22,10 +22,13 @@ class TestPegamentoNcMayor(TransactionCase):
             'team_id': self.team_int.id,
             'sgi_classification': 'mayor',
         })
-        # Completa candados de cierre (H5: causa raíz, acción terminada y
-        # verificación de eficacia).
+        # Completa candados de cierre (H5 + refinamiento H1 para NC mayor: causa
+        # raíz, 5 porqués, acción correctiva terminada y verificación de eficacia).
         alert.write({
             'sgi_root_cause': 'Causa raíz',
+            'sgi_why_1': 'Porqué 1', 'sgi_why_2': 'Porqué 2',
+            'sgi_why_3': 'Porqué 3', 'sgi_why_4': 'Porqué 4',
+            'sgi_why_5': 'Porqué 5',
             'sgi_effectiveness_note': 'Eficaz',
             'sgi_effectiveness_date': date.today(),
         })
