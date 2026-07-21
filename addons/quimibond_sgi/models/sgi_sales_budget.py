@@ -237,6 +237,14 @@ class SgiSalesBudget(models.Model):
                     "Un pronóstico semanal necesita un cliente (cada hoja del "
                     "forecast es un cliente-año).")
 
+    def unlink(self):
+        # Borra las líneas por ORM antes del DELETE en cascada de BD: así se
+        # descartan sus cómputos pendientes (los Monetary con currency_field
+        # calculado, p.ej. amount_currency/list_currency_id) y no se intenta hacer
+        # flush sobre registros ya eliminados (evita MissingError al borrar).
+        self.with_context(sgi_bypass_lock=True).mapped('line_ids').unlink()
+        return super().unlink()
+
     # --- Flujo de estados -----------------------------------------------------
     def action_approve(self):
         """Aprueba el presupuesto (solo MAST). A partir de aquí es evidencia."""
@@ -457,23 +465,37 @@ class SgiSalesBudget(models.Model):
         'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
 
     def _sgi_historical_products(self):
-        """Productos que este equipo vendió (o que se vendieron a ESTE cliente,
-        en pronóstico) en los últimos 24 meses — para pre-llenar las filas."""
+        """Productos vendidos a ESTE cliente en 24 meses (pronóstico) — para
+        pre-llenar las filas del forecast."""
         self.ensure_one()
         from dateutil.relativedelta import relativedelta as _rd
         date_from = fields.Date.context_today(self) - _rd(months=24)
-        domain = [('order_id.state', 'in', ('sale', 'done')),
-                  ('order_id.date_order', '>=', date_from)]
-        if self.kind == 'pronostico':
-            partner = self.partner_id.commercial_partner_id
-            if not partner:
-                return self.env['product.product']
-            domain.append(
-                ('order_id.partner_id.commercial_partner_id', '=', partner.id))
-        else:
-            domain.append(('order_id.team_id', '=', self.team_id.id))
-        products = self.env['sale.order.line'].search(domain).mapped('product_id')
+        partner = self.partner_id.commercial_partner_id
+        if not partner:
+            return self.env['product.product']
+        products = self.env['sale.order.line'].search([
+            ('order_id.state', 'in', ('sale', 'done')),
+            ('order_id.date_order', '>=', date_from),
+            ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+        ]).mapped('product_id')
         return products.sorted(lambda p: p.default_code or p.name or '')
+
+    def _sgi_historical_pairs(self):
+        """[(cliente comercial, producto)] FACTURADOS por el equipo en los últimos
+        24 meses, ordenado por cliente y luego producto — filas del presupuesto."""
+        self.ensure_one()
+        from dateutil.relativedelta import relativedelta as _rd
+        date_from = fields.Date.context_today(self) - _rd(months=24)
+        amls = self.env['account.move.line'].search([
+            ('parent_state', '=', 'posted'),
+            ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
+            ('move_id.team_id', '=', self.team_id.id),
+            ('move_id.invoice_date', '>=', date_from),
+            ('product_id', '!=', False),
+        ])
+        pairs = {(aml.move_id.commercial_partner_id, aml.product_id) for aml in amls}
+        return sorted(pairs, key=lambda cp: (
+            cp[0].name or '', cp[1].default_code or cp[1].name or ''))
 
     def action_download_template(self):
         """Genera con openpyxl el Excel VACÍO con las FILAS ya puestas (productos
@@ -484,22 +506,30 @@ class SgiSalesBudget(models.Model):
         import base64
         import io
         import openpyxl
-        products = self._sgi_historical_products()
         wb = openpyxl.Workbook()
         ws = wb.active
         if self.kind == 'pronostico':
             ws.title = (self.partner_id.name or 'Pronostico')[:31]
             ws.append(['PRODUCTO', 'CODIGO CLIENTE', 'SEMANA']
                       + list(range(1, 53)))
-            for product in products:
+            for product in self._sgi_historical_products():
                 ws.append([product.default_code or product.name, '', ''] + [''] * 52)
         else:
             ws.title = (self.team_id.name or 'Presupuesto')[:31]
-            ws.append(['PRODUCTO', 'UNIDAD', 'CLIENTE']
-                      + ['%s m' % m for m in self._SGI_TEMPLATE_MONTHS])
-            for product in products:
-                ws.append([product.default_code or product.name,
-                           product.uom_id.name, ''] + [''] * 12)
+            months = ['%s m' % m for m in self._SGI_TEMPLATE_MONTHS]
+            # Instrucción discreta (fila sin producto: el importador la ignora).
+            ws.append(['', "Instrucciones: deja CLIENTE vacío para presupuestar "
+                       "global; un mismo material no puede ir con cliente y global "
+                       "a la vez."])
+            ws.append(['PRODUCTO', 'CLIENTE', 'UNIDAD'] + months)
+            for partner, product in self._sgi_historical_pairs():
+                ws.append([product.default_code or product.name, partner.name,
+                           product.uom_id.name] + [''] * 12)
+            # Bloque de filas libres para clientes/productos nuevos (producto vacío
+            # → el importador las ignora si quedan sin llenar).
+            ws.append(['', '— Filas libres para clientes/productos nuevos —'])
+            for _dummy in range(10):
+                ws.append([''])
         buf = io.BytesIO()
         wb.save(buf)
         attachment = self.env['ir.attachment'].create({
