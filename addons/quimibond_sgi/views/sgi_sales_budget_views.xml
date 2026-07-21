@@ -7,7 +7,9 @@
         <field name="arch" type="xml">
             <list string="Líneas de presupuesto" editable="bottom">
                 <field name="budget_id" column_invisible="context.get('default_budget_id')"/>
+                <field name="kind" column_invisible="1"/>
                 <field name="product_id"/>
+                <field name="customer_code" optional="hide"/>
                 <field name="partner_id" optional="show"/>
                 <field name="date"/>
                 <field name="uom_id"/>
@@ -23,6 +25,9 @@
                 <field name="avg_price_real" readonly="1" optional="hide"/>
                 <field name="unconverted_count" readonly="1" optional="hide"/>
                 <field name="currency_id" column_invisible="1"/>
+                <button name="action_view_week_orders" type="object" icon="fa-shopping-cart"
+                        string="Ver pedidos de la semana" title="Ver pedidos de la semana"
+                        invisible="kind != 'pronostico'"/>
             </list>
         </field>
     </record>
@@ -32,12 +37,19 @@
         <field name="model">sgi.sales.budget.line</field>
         <field name="arch" type="xml">
             <form string="Línea de presupuesto">
+                <header>
+                    <field name="kind" invisible="1"/>
+                    <button name="action_view_week_orders" type="object"
+                            string="Ver pedidos de la semana" icon="fa-shopping-cart"
+                            invisible="kind != 'pronostico'"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
                             <field name="budget_id"/>
                             <field name="product_id"/>
-                            <field name="partner_id"/>
+                            <field name="customer_code"/>
+                            <field name="partner_id" readonly="kind == 'pronostico'"/>
                             <field name="date"/>
                             <field name="uom_id"/>
                         </group>
@@ -219,8 +231,12 @@
                     </div>
                     <group>
                         <group>
+                            <field name="kind"/>
                             <field name="year"/>
                             <field name="team_id"/>
+                            <field name="partner_id"
+                                   required="kind == 'pronostico'"
+                                   invisible="kind != 'pronostico'"/>
                             <field name="revision"/>
                         </group>
                         <group>

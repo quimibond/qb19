@@ -210,6 +210,122 @@ class TestSalesBudget(TransactionCase):
         self.assertEqual(len(new.line_ids), 1, "Copia las líneas.")
         self.assertEqual(new.line_ids.qty_budget, 10.0)
 
+    def test_15_locked_price_and_partner_fields(self):
+        # Fix del candado: price_unit_budget/partner_id/customer_code también se
+        # bloquean en un presupuesto aprobado para no-MAST.
+        raso = self.env['res.users'].create({
+            'name': 'Raso PPV precio', 'login': 'ppv_raso_price',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_user').id])]})
+        budget = self._budget()
+        line = self._line(budget, date(2040, 6, 1), qty=10.0)
+        budget.state = 'aprobado'
+        for vals in ({'price_unit_budget': 3.0}, {'partner_id': self.env.company.partner_id.id},
+                     {'customer_code': 'X'}):
+            with self.assertRaises(UserError):
+                line.with_user(raso).write(vals)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetForecast(TransactionCase):
+    """Extensión 5.2b — Paso 1: pronóstico semanal por cliente (F-P-A28-13)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado forecast'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.uom_cm = cls.env.ref('uom.product_uom_cm')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Material forecast', 'default_code': 'SCR31', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente forecast', 'is_company': True})
+
+    def _forecast(self, partner=None):
+        return self.Budget.create({
+            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico',
+            'partner_id': (partner or self.client).id})
+
+    def _monday(self, ref):
+        from datetime import timedelta
+        return ref - timedelta(days=ref.weekday())
+
+    def test_01_forecast_line_must_be_monday(self):
+        fc = self._forecast()
+        # 2040-06-06 no necesariamente es lunes → error si no lo es.
+        bad = date(2040, 6, 3)
+        monday = self._monday(bad)
+        if bad != monday:
+            with self.assertRaises(ValidationError):
+                self.Line.create({
+                    'budget_id': fc.id, 'product_id': self.product.id,
+                    'date': bad, 'uom_id': self.uom_m.id})
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id,
+            'date': monday, 'uom_id': self.uom_m.id, 'customer_code': 'SCR31'})
+        self.assertEqual(line.date.weekday(), 0)
+        self.assertEqual(line.partner_id, self.client, "Cliente heredado de la cabecera.")
+
+    def test_02_forecast_requires_partner(self):
+        with self.assertRaises(ValidationError):
+            self.Budget.create({
+                'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico'})
+
+    def test_03_unique_per_client_and_kind(self):
+        self._forecast()
+        with self.assertRaises(ValidationError):
+            self._forecast()  # mismo cliente-año-equipo-kind
+        # Otro cliente sí.
+        other = self.env['res.partner'].create(
+            {'name': 'Cliente forecast 2', 'is_company': True})
+        self._forecast(other)
+        # Un presupuesto mensual del mismo equipo/año coexiste (kind distinto).
+        self.Budget.create({'year': 2040, 'team_id': self.team.id})
+
+    def test_04_real_weekly_by_commitment_with_conversion(self):
+        monday = self._monday(date(2040, 6, 3))
+        # Pedido confirmado del cliente, comprometido a un día de esa semana, en cm.
+        from datetime import datetime, timedelta
+        commit = datetime.combine(monday + timedelta(days=2), datetime.min.time())
+        so = self.env['sale.order'].create({
+            'partner_id': self.client.id, 'team_id': self.team.id,
+            'commitment_date': commit,
+            'order_line': [(0, 0, {
+                'product_id': self.product.id, 'product_uom_qty': 500.0,
+                'product_uom_id': self.uom_cm.id, 'price_unit': 1.0})]})
+        so.action_confirm()
+        fc = self._forecast()
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id,
+            'date': monday, 'uom_id': self.uom_m.id, 'qty_budget': 4.0})
+        # 500 cm comprometidos → 5 m (conversión); es la semana de la línea.
+        self.assertEqual(line.qty_real, 5.0)
+        # Drill-down: la orden aparece.
+        action = line.action_view_week_orders()
+        self.assertIn(so.id, action['domain'][0][2])
+
+    def test_05_presupuesto_mode_unchanged_regression(self):
+        # Regresión: un presupuesto mensual sigue midiendo FACTURADO, no pedidos.
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        income = self.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id,
+            'invoice_date': date(2040, 6, 10), 'team_id': self.team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': 7.0,
+                'product_uom_id': self.uom_m.id, 'price_unit': 10.0,
+                'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        line = self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 5.0})
+        self.assertEqual(line.kind, 'presupuesto')
+        self.assertEqual(line.qty_real, 7.0, "Sigue siendo facturado, primer día de mes.")
+        self.assertEqual(line.date.day, 1)
+
 
 @tagged('post_install', '-at_install')
 class TestSalesBudgetStep2(TransactionCase):
