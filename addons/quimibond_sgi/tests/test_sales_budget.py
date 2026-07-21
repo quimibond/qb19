@@ -277,3 +277,112 @@ class TestSalesBudgetStep2(TransactionCase):
         self.assertEqual(ttype, 'html')
         self.assertIn('Presupuesto de Ventas', html.decode())
         self.assertIn('F-P-A28-18', html.decode())
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetStep3(TransactionCase):
+    """Paso 3: conexión al SGI — KPI VE-02 y aviso de cierre de mes."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Indicator = cls.env['sgi.indicator']
+        cls.Cron = cls.env['sgi.cron']
+        cls.company = cls.env.company
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Producto VE02', 'type': 'consu', 'uom_id': cls.uom_m.id})
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        cls.partner = cls.env['res.partner'].create({'name': 'Cliente VE02'})
+
+    def _team(self, name):
+        return self.env['crm.team'].create({'name': name})
+
+    def _approved_budget(self, team, when, amount):
+        budget = self.Budget.create({'year': when.year, 'team_id': team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': when, 'uom_id': self.uom_m.id, 'qty_budget': 100.0,
+            'amount_budget': amount})
+        budget.state = 'aprobado'
+        return budget
+
+    def _invoice(self, team, when, amount, refund=False):
+        move = self.env['account.move'].create({
+            'move_type': 'out_refund' if refund else 'out_invoice',
+            'partner_id': self.partner.id, 'invoice_date': when,
+            'team_id': team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': 1,
+                'product_uom_id': self.uom_m.id, 'price_unit': amount,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def test_01_ve02_lee_presupuesto_aprobado(self):
+        team = self._team('Mercado VE02 A')
+        self._approved_budget(team, date(2040, 6, 1), 1000.0)
+        # Facturación neta junio 2040 = 1000 - 200 = 800 → 80% del presupuesto.
+        self._invoice(team, date(2040, 6, 10), 1000.0)
+        self._invoice(team, date(2040, 6, 12), 200.0, refund=True)
+        ind = self.Indicator.create({
+            'code': 'VE02-T', 'name': 'Cumpl. presupuesto',
+            'calc_mode': 'presupuesto_ventas', 'direction': 'higher_better'})
+        value = ind._calc_presupuesto_ventas(date(2040, 6, 1), date(2040, 6, 30))
+        self.assertEqual(value, 80.0)
+        # Sin nota: hay presupuesto aprobado.
+        self.assertFalse(ind._note_presupuesto_ventas(date(2040, 6, 1), date(2040, 6, 30)))
+
+    def test_02_ve02_fallback_al_parametro_con_nota(self):
+        # Sin presupuesto aprobado del año → usa el parámetro de Ajustes + nota.
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.monthly_sales_budget', '1000')
+        team = self._team('Mercado VE02 B')
+        self._invoice(team, date(2040, 6, 10), 800.0)
+        ind = self.Indicator.create({
+            'code': 'VE02-F', 'name': 'Cumpl. presupuesto fb',
+            'calc_mode': 'presupuesto_ventas', 'direction': 'higher_better'})
+        value = ind._calc_presupuesto_ventas(date(2040, 6, 1), date(2040, 6, 30))
+        self.assertEqual(value, 80.0)
+        self.assertIn('Ajustes',
+                      ind._note_presupuesto_ventas(date(2040, 6, 1), date(2040, 6, 30)))
+
+    def test_03_ve02_evidencia_son_las_lineas(self):
+        team = self._team('Mercado VE02 C')
+        budget = self._approved_budget(team, date(2040, 6, 1), 1000.0)
+        ind = self.Indicator.create({
+            'code': 'VE02-E', 'name': 'Cumpl. presupuesto ev',
+            'calc_mode': 'presupuesto_ventas', 'direction': 'higher_better'})
+        measure = self.env['sgi.indicator.measure'].create({
+            'indicator_id': ind.id, 'period_date': date(2040, 6, 1),
+            'value': 80.0, 'state': 'capturado'})
+        action = measure.action_view_evidence()
+        self.assertEqual(action['res_model'], 'sgi.sales.budget.line')
+        records = self.Line.search(action['domain'])
+        self.assertEqual(records, budget.line_ids)
+
+    def test_04_cierre_de_mes_avisa_bajo_umbral(self):
+        team = self._team('Mercado cierre bajo')
+        team.user_id = self.env.user.id
+        self._approved_budget(team, date(2040, 6, 1), 1000.0)
+        self._invoice(team, date(2040, 6, 10), 500.0)  # 50% < 80%
+        self.Cron._sgi_sales_budget_month_close(date(2040, 6, 1), date(2040, 6, 30))
+        acts = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'),
+            ('user_id', '=', self.env.user.id)])
+        self.assertTrue(acts, "Equipo bajo umbral debe recibir aviso de cierre.")
+
+    def test_05_cierre_de_mes_no_avisa_si_cumple(self):
+        team = self._team('Mercado cierre ok')
+        team.user_id = self.env.user.id
+        self._approved_budget(team, date(2040, 6, 1), 1000.0)
+        self._invoice(team, date(2040, 6, 10), 950.0)  # 95% >= 80%
+        before = self.env['mail.activity'].search_count([
+            ('res_model', '=', 'sgi.sales.budget')])
+        self.Cron._sgi_sales_budget_month_close(date(2040, 6, 1), date(2040, 6, 30))
+        after = self.env['mail.activity'].search_count([
+            ('res_model', '=', 'sgi.sales.budget')])
+        self.assertEqual(before, after, "Equipo que cumple no genera aviso.")

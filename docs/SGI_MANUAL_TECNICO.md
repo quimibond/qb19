@@ -161,8 +161,22 @@ TEJIDO D**, categoría param `waste_subproduct_category`; NO stock.scrap) ·
 `desperdicio_scrap` (histórico) · `calidad_pq` (mrp.revision.log sin causa) ·
 `cumplimiento_programa` (MOs con inicio en periodo — aproxima el MPS; validar antes de
 `nc_on_red`) · `cierre_nc` · `reclamos_cliente` · `preventivo_cumplido` · `rotacion_rh` ·
-`presupuesto_ventas` (incluye out_refund) · `inventario_ciclico` (requiere conteos) ·
+`presupuesto_ventas` (VE-02: facturación neta vs **presupuesto de ventas aprobado**
+del periodo — `sgi.sales.budget` líneas del mes, todos los equipos; SIEMPRE sobre
+importe en moneda compañía, nunca cantidades mezcladas; fallback al parámetro de
+Ajustes con nota) · `inventario_ciclico` (requiere conteos) ·
 stubs documentados que devuelven None → captura manual.
+
+**Presupuesto maestro de ventas (`sgi.sales.budget`, v19.0.11):** matriz tipo MPS
+del F-P-A28-18 por mercado (crm.team) y año, producto × mes en cantidad y pesos.
+El real sale solo de lo facturado (`account.move.line.balance`, ya en moneda
+compañía — no se reconvierte) y, complementario, de lo pedido (sale.order.line
+confirmadas, importe con `currency._convert`). Unidades por línea (`uom_id`,
+categoría vía `_has_common_reference`): las cantidades NUNCA se suman entre
+unidades; el único total global es el de dinero. Captura en grid de Enterprise
+(`web_grid`, `grid_update_cell` propio) e importación `base_import`. VE-02 lee el
+presupuesto aprobado; el cierre de mes (cron mensual) avisa al responsable del
+equipo por debajo de `sales_budget_alert_pct`.
 
 **KPIs 2.0 (v19.0.10):** `crecimiento_ventas` (VE-01, facturación neta timbrada del
 periodo vs mismo periodo año anterior, variación %) · `ots_atendidas` (MT-03,
@@ -263,6 +277,7 @@ plans. Detalle completo en el README del módulo.
 | `quimibond_sgi.purchase_approval_category_id` | 0 | KPI CO-02: categoría de aprobación que cuenta como requisición de compra. 0 = autodetectar las de `approval_type='purchase'`; fíjalo solo si hay varias |
 | `quimibond_sgi.production_monthly_capacity` | 0 | KPI MA-02: capacidad instalada mensual de producción (misma unidad que la producción, p.ej. kg). Se prorratea por días en periodos no mensuales. 0 = captura manual |
 | `quimibond_sgi.energy_partner_id` | 0 | KPI TR-03: proveedor de energía (res.partner) cuyas facturas del periodo suman el consumo. 0 = sin configurar → medición en 0 con nota |
+| `quimibond_sgi.sales_budget_alert_pct` | 80 | Cierre de mes: umbral (%) de cumplimiento acumulado del presupuesto de ventas bajo el cual se avisa al responsable del equipo |
 
 ### Parámetros añadidos en Ola 1 (Motor de Mejora, ISO 10)
 

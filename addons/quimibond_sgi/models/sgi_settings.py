@@ -99,6 +99,12 @@ class ResConfigSettings(models.TransientModel):
         'res.partner', string="Proveedor de energía",
         help="KPI TR-03 (Consumo de energía): proveedor cuyas facturas del periodo "
              "suman el consumo. Sin configurar, la medición queda en 0 con nota.")
+    sgi_sales_budget_alert_pct = fields.Integer(
+        string="Umbral de aviso de presupuesto de ventas (%)",
+        config_parameter='quimibond_sgi.sales_budget_alert_pct',
+        help="Al cierre de mes, si un equipo con presupuesto aprobado lleva "
+             "acumulado por debajo de este % del presupuesto del año, se avisa a "
+             "su responsable.")
 
     @api.model
     def get_values(self):

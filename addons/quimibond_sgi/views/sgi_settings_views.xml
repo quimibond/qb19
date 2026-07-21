@@ -31,6 +31,10 @@
                                  help="KPI TR-03: proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
                             <field name="sgi_energy_partner_id"/>
                         </setting>
+                        <setting string="Umbral de aviso de presupuesto de ventas (%)"
+                                 help="Al cierre de mes, un equipo con presupuesto aprobado por debajo de este % del acumulado del año avisa a su responsable.">
+                            <field name="sgi_sales_budget_alert_pct"/>
+                        </setting>
                     </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Días para escalar una NC sin acciones"
