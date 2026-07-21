@@ -8,4 +8,12 @@
         <field name="use_date_range" eval="True"/>
         <field name="number_increment">1</field>
     </record>
+    <record id="sgi_seq_sales_budget" model="ir.sequence">
+        <field name="name">Presupuesto de ventas SGI</field>
+        <field name="code">sgi.sales.budget</field>
+        <field name="prefix">PPV-%(range_year)s-</field>
+        <field name="padding">3</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
 </odoo>
