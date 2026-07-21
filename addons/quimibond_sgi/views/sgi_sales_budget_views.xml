@@ -168,12 +168,31 @@
                 <field name="product_id"/>
                 <field name="budget_id"/>
                 <field name="team_id"/>
+                <field name="partner_id"/>
+                <filter name="vigente" string="Vigente"
+                        domain="[('budget_id.state', '=', 'aprobado')]"/>
+                <separator/>
+                <filter name="presupuesto" string="Presupuesto"
+                        domain="[('kind', '=', 'presupuesto')]"/>
+                <filter name="pronostico" string="Pronóstico"
+                        domain="[('kind', '=', 'pronostico')]"/>
+                <separator/>
+                <filter name="year_current" string="Año actual"
+                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d')),
+                                 ('date', '&lt;', (context_today().replace(month=1, day=1) + relativedelta(years=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="year_next" string="Año siguiente"
+                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1) + relativedelta(years=1)).strftime('%Y-%m-%d')),
+                                 ('date', '&lt;', (context_today().replace(month=1, day=1) + relativedelta(years=2)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="con_facturacion" string="Con facturación"
+                        domain="[('amount_real', '!=', 0)]"/>
                 <group>
-                    <filter name="group_uom" string="Unidad" context="{'group_by': 'uom_id'}"/>
-                    <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
-                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
-                    <filter name="group_month" string="Mes" context="{'group_by': 'date:month'}"/>
                     <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_budget" string="Presupuesto" context="{'group_by': 'budget_id'}"/>
+                    <filter name="group_uom" string="Unidad" context="{'group_by': 'uom_id'}"/>
                 </group>
             </search>
         </field>
@@ -238,6 +257,8 @@
                     <field name="sgi_mps_available" invisible="1"/>
                     <button name="action_open_comparison" type="object"
                             string="Comparación" icon="fa-bar-chart"/>
+                    <button name="action_open_analysis" type="object"
+                            string="Análisis" icon="fa-table"/>
                     <button name="action_open_cumulative" type="object"
                             string="Curva (Dirección)" icon="fa-line-chart"/>
                     <button name="action_print_budget" type="object"
@@ -512,19 +533,120 @@
         </field>
     </record>
 
-    <!-- ============ ANÁLISIS (panel comercial) ============ -->
-    <record id="sgi_sales_analysis_action" model="ir.actions.act_window">
-        <field name="name">Análisis de ventas (presupuesto vs real)</field>
+    <!-- ============ ANÁLISIS (4 vistas preconfiguradas) ============ -->
+    <!-- Anti-doble conteo: el default es 'Vigente' (aprobado) + 'Presupuesto' vía
+         search_default (NO domain duro), para poder quitar el filtro y comparar
+         revisiones si hace falta. -->
+    <record id="sgi_sales_analysis_pivot_mercado" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.pivot.mercado</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Por mercado">
+                <field name="team_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_pivot_cliente" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.pivot.cliente</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Por cliente">
+                <field name="partner_id" type="row"/>
+                <field name="team_id" type="row"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_pivot_producto" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.pivot.producto</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Por producto">
+                <field name="product_id" type="row"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="qty_budget" type="measure"/>
+                <field name="qty_real" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_graph_global" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.graph.global</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Global (Dirección)" type="bar" stacked="1">
+                <field name="date" interval="month"/>
+                <field name="team_id"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_mercado_action" model="ir.actions.act_window">
+        <field name="name">Por mercado</field>
         <field name="res_model">sgi.sales.budget.line</field>
-        <field name="view_mode">pivot,graph,list</field>
+        <field name="view_mode">pivot,list</field>
         <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
-        <field name="domain">[('budget_id.state', '!=', 'obsoleto')]</field>
-        <field name="context">{'search_default_group_team': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_mercado')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
+    </record>
+
+    <record id="sgi_sales_analysis_cliente_action" model="ir.actions.act_window">
+        <field name="name">Por cliente</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_cliente')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Panel comercial</p>
-            <p>Cumplimiento por equipo/cliente/producto/mes: presupuestado,
-            comprometido, facturado y demanda neta. Cada celda navega a sus líneas
-            y de la línea a sus documentos.</p>
+            <p class="o_view_nocontent_smiling_face">Presupuesto por cliente</p>
+            <p>Las líneas sin cliente (esquema global por producto) se agrupan como
+            «Sin cliente» — no desaparecen.</p>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_producto_action" model="ir.actions.act_window">
+        <field name="name">Por producto</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_producto')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
+    </record>
+
+    <record id="sgi_sales_analysis_global_action" model="ir.actions.act_window">
+        <field name="name">Global (Dirección)</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">graph</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('sgi_sales_analysis_graph_global')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Panel de Dirección</p>
+            <p>Presupuesto vs facturado por mes, apilado por mercado (solo importes:
+            no se mezclan m y kg). La curva acumulada está en el botón «Curva
+            (Dirección)» de la ficha.</p>
         </field>
     </record>
 

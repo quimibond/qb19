@@ -336,6 +336,24 @@ class SgiSalesBudget(models.Model):
                         'search_default_group_uom': 1},
         }
 
+    def action_open_analysis(self):
+        """Botón inteligente: abre el análisis por cliente filtrado a ESTE
+        presupuesto (sin el filtro de vigente: ya estás en una revisión concreta)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Análisis por cliente — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'pivot,list',
+            'views': [
+                (self.env.ref(
+                    'quimibond_sgi.sgi_sales_analysis_pivot_cliente').id, 'pivot'),
+                (self.env.ref(
+                    'quimibond_sgi.sgi_sales_budget_line_view_list').id, 'list')],
+            'domain': [('budget_id', '=', self.id)],
+            'context': {'search_default_group_partner': 1},
+        }
+
     def action_open_cumulative(self):
         """Curva acumulada mes a mes (presupuesto vs facturado YTD) — la gráfica
         de la Revisión por la Dirección."""

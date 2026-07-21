@@ -76,8 +76,17 @@
               parent="menu_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
     <menuitem id="menu_sgi_sales_forecast" name="Pronósticos"
               parent="menu_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
+    <!-- "Análisis" ahora es un submenú con 4 vistas preconfiguradas. -->
     <menuitem id="menu_sgi_sales_analysis" name="Análisis"
-              parent="menu_sgi_planning" action="sgi_sales_analysis_action" sequence="30"/>
+              parent="menu_sgi_planning" sequence="30"/>
+    <menuitem id="menu_sgi_analysis_mercado" name="Por mercado"
+              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_mercado_action" sequence="10"/>
+    <menuitem id="menu_sgi_analysis_cliente" name="Por cliente"
+              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_cliente_action" sequence="20"/>
+    <menuitem id="menu_sgi_analysis_producto" name="Por producto"
+              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_producto_action" sequence="30"/>
+    <menuitem id="menu_sgi_analysis_global" name="Global (Dirección)"
+              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_global_action" sequence="40"/>
 
     <!-- Espejo en la app Ventas, tras Pedidos: mismo padre con los 3 hijos
          (se reutilizan los xmlids de los hijos de Ventas ya existentes). -->
@@ -89,7 +98,15 @@
     <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
               parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
     <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
-              parent="menu_sale_sgi_planning" action="sgi_sales_analysis_action" sequence="30"/>
+              parent="menu_sale_sgi_planning" sequence="30"/>
+    <menuitem id="menu_sale_sgi_analysis_mercado" name="Por mercado"
+              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_mercado_action" sequence="10"/>
+    <menuitem id="menu_sale_sgi_analysis_cliente" name="Por cliente"
+              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_cliente_action" sequence="20"/>
+    <menuitem id="menu_sale_sgi_analysis_producto" name="Por producto"
+              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_producto_action" sequence="30"/>
+    <menuitem id="menu_sale_sgi_analysis_global" name="Global (Dirección)"
+              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_global_action" sequence="40"/>
 
     <!-- 6. Procesos: el mapa y sus flujos -->
     <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
