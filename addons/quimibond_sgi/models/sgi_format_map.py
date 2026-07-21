@@ -90,6 +90,12 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.waste_subproduct_category': 'SubProducto',
         'quimibond_sgi.monthly_sales_budget': '0',
         'quimibond_sgi.rh_user_id': '0',
+        'quimibond_sgi.purchase_approval_category_id': '0',
+        # Capacidad instalada mensual de producción (misma unidad que la
+        # producción, p.ej. kg) para el KPI MA-02. 0 = captura manual.
+        'quimibond_sgi.production_monthly_capacity': '0',
+        # Proveedor de energía (res.partner) para el KPI TR-03. 0 = sin configurar.
+        'quimibond_sgi.energy_partner_id': '0',
     }
 
     @api.model
@@ -98,6 +104,31 @@ class SgiConfig(models.AbstractModel):
         for key, value in self._SGI_DEFAULT_PARAMS.items():
             if Param.get_param(key) is False:
                 Param.set_param(key, value)
+        return True
+
+    # Indicadores cuyo cálculo automático ya es confiable: al actualizar el
+    # módulo se les fija el calc_mode SOLO si siguen en 'manual', para NO pisar
+    # una decisión de MAST (si MAST lo regresó a manual o lo puso en otro modo,
+    # se respeta). No incluye CO-03 (compras_sin_devolucion): es un PROXY que
+    # MAST debe validar y activar a mano en la ficha del indicador.
+    _SGI_AUTO_INDICATORS = {
+        'quimibond_sgi.sgi_ind_crecimiento_ventas': 'crecimiento_ventas',
+        'quimibond_sgi.sgi_ind_ots_atendidas': 'ots_atendidas',
+        'quimibond_sgi.sgi_ind_requisiciones': 'requisiciones',
+        'quimibond_sgi.sgi_ind_embarques_sin_error': 'embarques_sin_error',
+        'quimibond_sgi.sgi_ind_producido_capacidad': 'produccion_vs_capacidad',
+        'quimibond_sgi.sgi_ind_consumo_energia': 'consumo_energia',
+        'quimibond_sgi.sgi_ind_capacitacion': 'capacitacion',
+    }
+
+    @api.model
+    def activate_auto_indicators(self):
+        """Siembra idempotente del calc_mode automático (ver _SGI_AUTO_INDICATORS).
+        Solo actúa donde el indicador sigue en 'manual'."""
+        for xmlid, mode in self._SGI_AUTO_INDICATORS.items():
+            indicator = self.env.ref(xmlid, raise_if_not_found=False)
+            if indicator and indicator.calc_mode == 'manual':
+                indicator.calc_mode = mode
         return True
 
     # Objetivo de cada proceso, tomado de las caracterizaciones/SIPOC reales del
