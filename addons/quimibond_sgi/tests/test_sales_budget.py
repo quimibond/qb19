@@ -1369,3 +1369,170 @@ class TestSalesBudgetAnalysisViews(TransactionCase):
         lines = self.Line.search(action['domain'])
         self.assertIn(appr_line, lines)
         self.assertNotIn(other_line, lines)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetPriceControl(TransactionCase):
+    """5.4: control de precios (lista vs facturado) y cobertura de listas."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Param = cls.env['ir.config_parameter'].sudo()
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado precio 54'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.usd = cls.env.ref('base.USD')  # moneda de la compañía
+        cls.mxn = cls.env.ref('base.MXN')
+        cls.mxn.active = True
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        cls.product = cls.env['product.product'].create({
+            'name': 'Tela precio 54', 'type': 'consu', 'uom_id': cls.uom_m.id,
+            'list_price': 100.0})
+
+    def _pricelist(self, currency, price):
+        pl = self.env['product.pricelist'].create(
+            {'name': 'PL %s 54' % currency.name, 'currency_id': currency.id})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pl.id, 'applied_on': '1_product',
+            'product_tmpl_id': self.product.product_tmpl_id.id,
+            'compute_price': 'fixed', 'fixed_price': price})
+        return pl
+
+    def _client(self, pricelist):
+        p = self.env['res.partner'].create(
+            {'name': 'Cliente 54', 'is_company': True})
+        p.property_product_pricelist = pricelist
+        return p
+
+    def _invoice(self, client, qty, price, currency, when=None):
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': client.id,
+            'invoice_date': when or date(2040, 6, 10), 'team_id': self.team.id,
+            'currency_id': currency.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': qty,
+                'product_uom_id': self.uom_m.id, 'price_unit': price,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def _line(self, budget, client):
+        return self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'partner_id': client.id, 'qty_budget': 10.0})
+
+    def test_01_gap_usd_list_usd_invoice(self):
+        # Lista USD 100; factura USD a 110 → gap +10% en USD, sin cruce de divisas.
+        client = self._client(self._pricelist(self.usd, 100.0))
+        self._invoice(client, 5.0, 110.0, self.usd)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
+        self.assertAlmostEqual(line.price_real_unit_currency, 110.0, places=2)
+        self.assertAlmostEqual(line.price_gap_pct, 10.0, places=2)
+        self.assertFalse(line.price_gap_fx)
+
+    def test_02_gap_crosses_fx_with_planning_rate(self):
+        # Lista MXN (≠ USD compañía) 2000; factura en USD (compañía). El real
+        # contable (USD) se convierte a MXN con el tipo presupuestal 20.
+        self.Param.set_param('quimibond_sgi.budget_planning_rate', '20')
+        client = self._client(self._pricelist(self.mxn, 2000.0))
+        # 5 m a 110 USD c/u (moneda compañía) → 110 × 20 = 2200 MXN por unidad.
+        self._invoice(client, 5.0, 110.0, self.usd)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        self.assertEqual(line.list_currency_id, self.mxn)
+        self.assertTrue(line.price_gap_fx, "Factura en otra moneda: cruza divisas.")
+        self.assertAlmostEqual(line.price_real_unit_currency, 2200.0, places=1)
+        self.assertAlmostEqual(line.price_gap_pct, 10.0, places=1)
+
+    def test_03_thresholds_from_settings(self):
+        client = self._client(self._pricelist(self.usd, 100.0))
+        self._invoice(client, 5.0, 105.0, self.usd)  # +5%
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        # Default tol 3 / grave 10 → 5% = leve.
+        self.assertEqual(line.price_gap_alert, 'leve')
+        # Sube la tolerancia a 8 → 5% pasa a OK (tras refresh).
+        self.Param.set_param('quimibond_sgi.price_gap_tolerance_pct', '8.0')
+        budget.action_refresh_actuals()
+        self.assertEqual(line.price_gap_alert, 'ok')
+        # Baja el grave a 4 → 5% pasa a grave.
+        self.Param.set_param('quimibond_sgi.price_gap_tolerance_pct', '3.0')
+        self.Param.set_param('quimibond_sgi.price_gap_grave_pct', '4.0')
+        budget.action_refresh_actuals()
+        self.assertEqual(line.price_gap_alert, 'grave')
+
+    def test_04_approve_blocked_without_price_coverage(self):
+        # Producto sin precio en la lista aplicable → no_price_count > 0.
+        prod0 = self.env['product.product'].create(
+            {'name': 'Sin precio 54', 'type': 'consu', 'uom_id': self.uom_m.id,
+             'list_price': 0.0})
+        client = self.env['res.partner'].create(
+            {'name': 'Cli sin precio', 'is_company': True})
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': prod0.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'partner_id': client.id, 'qty_budget': 5.0})
+        self.assertTrue(budget.no_price_count > 0)
+        # Administrador de ventas (no gerente SGI) → bloqueado.
+        sale_mgr = self.env['res.users'].create({
+            'name': 'Vendedor 54', 'login': 'vend54',
+            'group_ids': [(6, 0, [self.env.ref('sales_team.group_sale_manager').id])]})
+        with self.assertRaises(UserError):
+            budget.with_user(sale_mgr).action_approve()
+        # Con contexto de excepción → aprueba y deja constancia.
+        msgs_before = len(budget.message_ids)
+        budget.with_user(sale_mgr).with_context(
+            sgi_bypass_price_check=True).action_approve()
+        self.assertEqual(budget.state, 'aprobado')
+        self.assertTrue(len(budget.message_ids) > msgs_before,
+                        "El bypass deja constancia en el chatter.")
+
+    def test_04b_manager_approves_with_exception(self):
+        prod0 = self.env['product.product'].create(
+            {'name': 'Sin precio 54b', 'type': 'consu', 'uom_id': self.uom_m.id,
+             'list_price': 0.0})
+        client = self.env['res.partner'].create(
+            {'name': 'Cli sp b', 'is_company': True})
+        manager = self.env['res.users'].create({
+            'name': 'MAST 54', 'login': 'mast54',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_manager').id])]})
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': prod0.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'partner_id': client.id, 'qty_budget': 5.0})
+        budget.with_user(manager).action_approve()  # gerente SGI bypassa
+        self.assertEqual(budget.state, 'aprobado')
+
+    def test_05_refresh_does_not_change_frozen_price(self):
+        client = self._client(self._pricelist(self.usd, 100.0))
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
+        budget.state = 'aprobado'
+        # Cambia la lista y refresca: el precio congelado NO se toca (la referencia).
+        client.property_product_pricelist.item_ids.fixed_price = 200.0
+        self._invoice(client, 5.0, 130.0, self.usd)
+        budget.action_refresh_actuals()
+        self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2,
+                               msg="Precio de lista congelado en aprobado.")
+        # Pero el real y el gap sí se actualizan.
+        self.assertAlmostEqual(line.price_real_unit_currency, 130.0, places=2)
+
+    def test_06_coverage_report_and_deviation_count(self):
+        client = self._client(self._pricelist(self.usd, 100.0))
+        self._invoice(client, 5.0, 130.0, self.usd)  # +30% → grave
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self._line(budget, client)
+        self.assertEqual(budget.price_deviation_count, 1)
+        act = budget.action_view_price_deviations()
+        self.assertEqual(act['res_model'], 'sgi.sales.budget.line')
+        cov = budget.action_price_coverage_report()
+        self.assertIn(('has_list_price', '=', False), cov['domain'])

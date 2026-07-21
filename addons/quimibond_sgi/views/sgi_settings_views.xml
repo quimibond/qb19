@@ -39,6 +39,13 @@
                                  help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
                             <field name="sgi_budget_planning_rate"/>
                         </setting>
+                        <setting string="Tolerancia de desviación de precio (%)"
+                                 help="Control de precios: gap facturado vs lista dentro de este % = OK; entre este y el grave = leve.">
+                            <field name="sgi_price_gap_tolerance_pct"/>
+                        </setting>
+                        <setting string="Desviación de precio grave (%)">
+                            <field name="sgi_price_gap_grave_pct"/>
+                        </setting>
                     </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Días para escalar una NC sin acciones"

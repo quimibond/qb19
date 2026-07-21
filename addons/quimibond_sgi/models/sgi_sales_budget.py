@@ -101,6 +101,9 @@ class SgiSalesBudget(models.Model):
         string="Productos sin precio de lista", compute='_compute_no_price_count',
         help="Líneas cuyo producto no tiene precio en la lista aplicable. Corrige "
              "LA LISTA de precios (no el presupuesto).")
+    price_deviation_count = fields.Integer(
+        string="Desviaciones de precio", compute='_compute_price_deviation_count',
+        help="Líneas con desviación de precio leve o grave (facturado vs lista).")
 
     @api.depends('team_id', 'year', 'revision', 'kind', 'partner_id')
     def _compute_name(self):
@@ -186,6 +189,35 @@ class SgiSalesBudget(models.Model):
             'domain': [('budget_id', '=', self.id), ('has_list_price', '=', False)],
         }
 
+    @api.depends('line_ids.price_gap_alert')
+    def _compute_price_deviation_count(self):
+        for budget in self:
+            budget.price_deviation_count = len(budget.line_ids.filtered(
+                lambda l: l.price_gap_alert in ('leve', 'grave')))
+
+    def action_view_price_deviations(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Desviaciones de precio — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'list,form',
+            'domain': [('budget_id', '=', self.id),
+                       ('price_gap_alert', 'in', ('leve', 'grave'))],
+        }
+
+    def action_price_coverage_report(self):
+        """Auditoría de cobertura (en cualquier estado): las líneas sin precio de
+        lista, para revisar ANTES de intentar aprobar."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Cobertura de precios — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'list,form',
+            'domain': [('budget_id', '=', self.id), ('has_list_price', '=', False)],
+        }
+
     def _sgi_team_year_real(self):
         """Facturación neta del equipo en todo el año del presupuesto (moneda
         compañía). Base para detectar lo vendido sin presupuestar."""
@@ -246,16 +278,47 @@ class SgiSalesBudget(models.Model):
         return super().unlink()
 
     # --- Flujo de estados -----------------------------------------------------
+    def _sgi_no_price_pairs(self, limit=10):
+        """(texto de hasta `limit` pares 'producto — cliente' sin precio, total)."""
+        self.ensure_one()
+        lines = self.line_ids.filtered(lambda l: not l.has_list_price)
+        pairs = []
+        for line in lines[:limit]:
+            product = line.product_id.default_code or line.product_id.name or ''
+            client = line.partner_id.name or "Sin cliente"
+            pairs.append("%s — %s" % (product, client))
+        return pairs, len(lines)
+
     def action_approve(self):
-        """Aprueba el presupuesto (solo MAST). A partir de aquí es evidencia."""
+        """Aprueba el presupuesto. Bloquea si hay productos sin precio de lista
+        (cobertura), salvo Jefe de MAST/SGI o contexto sgi_bypass_price_check; el
+        bypass deja constancia en el chatter."""
+        is_manager = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        can_approve = is_manager or self.env.user.has_group(
+            'sales_team.group_sale_manager')
+        bypass_price = is_manager or self.env.context.get('sgi_bypass_price_check')
         for budget in self:
-            if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            if not can_approve:
                 raise UserError(
-                    "Solo el Jefe de MAST y SGI puede aprobar un presupuesto de ventas.")
+                    "Solo el Jefe de MAST/SGI o el administrador de ventas puede "
+                    "aprobar un presupuesto de ventas.")
             if not budget.line_ids:
                 raise UserError(
                     "El presupuesto %s no tiene líneas: captura la matriz antes de "
                     "aprobarlo." % (budget.folio or budget.name))
+            if budget.no_price_count > 0:
+                pairs, total = budget._sgi_no_price_pairs()
+                if not bypass_price:
+                    more = "\n…y %d más." % (total - len(pairs)) if total > len(pairs) else ""
+                    raise UserError(
+                        "No se puede aprobar %s: %d producto(s) sin precio en la "
+                        "lista.\n\n- %s%s\n\nDa de alta el precio en la lista del "
+                        "cliente o pide al gerente SGI aprobar con excepción." % (
+                            budget.name, total, "\n- ".join(pairs), more))
+                budget.message_post(
+                    body="Aprobado con EXCEPCIÓN de cobertura de precios: %d "
+                         "producto(s) sin precio en la lista.<br/>- %s" % (
+                             total, "<br/>- ".join(pairs)))
             budget.state = 'aprobado'
         return True
 
@@ -805,6 +868,29 @@ class SgiSalesBudgetLine(models.Model):
     avg_price_real = fields.Monetary(string="Precio prom. real",
                                      compute='_compute_avg_prices')
 
+    # Control de precios (lista vs facturado): informativo, parte de la FOTO del
+    # real (se recalcula solo en el refresh; el precio de lista congelado del
+    # aprobado es la referencia contra la que se mide la desviación).
+    price_real_unit_currency = fields.Monetary(
+        string="Precio real (divisa)", currency_field='list_currency_id',
+        compute='_compute_real', store=True,
+        help="Precio unitario facturado promedio, en la moneda de la lista. Si la "
+             "factura está en otra moneda, se convierte el promedio contable con "
+             "el tipo presupuestal (ver Desviación cruza divisas).")
+    price_gap_fx = fields.Boolean(
+        string="Desviación cruza divisas", compute='_compute_real', store=True,
+        help="La comparación de precio usó conversión (la factura no estaba en la "
+             "moneda de la lista); tómala como referencia.")
+    price_gap = fields.Monetary(
+        string="Desviación de precio (divisa)", currency_field='list_currency_id',
+        compute='_compute_real', store=True)
+    price_gap_pct = fields.Float(
+        string="Desviación de precio (%)", compute='_compute_real', store=True)
+    price_gap_alert = fields.Selection([
+        ('ok', "OK"), ('leve', "Leve"), ('grave', "Grave"),
+    ], string="Alerta de precio", default='ok',
+        compute='_compute_real', store=True)
+
     # Unicidad producto+mes+cliente. NULLS NOT DISTINCT (PG15+): un cliente nulo
     # cuenta como su propio valor, así que solo hay una línea global por prod+mes.
     _product_month_partner_uniq = models.Constraint(
@@ -1022,11 +1108,20 @@ class SgiSalesBudgetLine(models.Model):
 
     def _sgi_compute_real_invoiced(self):
         AML = self.env['account.move.line']
+        Param = self.env['ir.config_parameter'].sudo()
+        tol = float(Param.get_param('quimibond_sgi.price_gap_tolerance_pct', 3.0) or 0)
+        grave = float(Param.get_param('quimibond_sgi.price_gap_grave_pct', 10.0) or 0)
+        day = fields.Date.context_today(self)
         by_team = defaultdict(lambda: self.browse())
         for line in self:
             line.qty_real = 0.0
             line.amount_real = 0.0
             line.unconverted_count = 0
+            line.price_real_unit_currency = 0.0
+            line.price_gap_fx = False
+            line.price_gap = 0.0
+            line.price_gap_pct = 0.0
+            line.price_gap_alert = 'ok'
             if line.team_id and line.product_id and line.date:
                 by_team[line.team_id.id] |= line
         for team_id, lines in by_team.items():
@@ -1052,7 +1147,10 @@ class SgiSalesBudgetLine(models.Model):
                 key = (line.product_id.id, (line.date.year, line.date.month))
                 qty = amount = 0.0
                 unconverted = 0
+                amt_list = qty_list = 0.0  # importe/cantidad en la divisa de la lista
+                any_non_list = False
                 partner = line.partner_id.commercial_partner_id
+                list_ccy = line.list_currency_id
                 for aml in bucket.get(key, self.env['account.move.line']):
                     # Línea por cliente: solo la empresa comercial del documento.
                     if partner and aml.move_id.commercial_partner_id != partner:
@@ -1061,13 +1159,67 @@ class SgiSalesBudgetLine(models.Model):
                     amount += -aml.balance  # balance ya en moneda compañía
                     row_uom = aml.product_uom_id
                     if row_uom and line.uom_id and row_uom._has_common_reference(line.uom_id):
-                        qty += sign * row_uom._compute_quantity(
+                        conv = sign * row_uom._compute_quantity(
                             aml.quantity, line.uom_id, round=False)
+                        qty += conv
+                        if list_ccy and aml.currency_id == list_ccy:
+                            amt_list += -aml.amount_currency  # en la divisa de la lista
+                            qty_list += conv
+                        elif list_ccy:
+                            any_non_list = True
                     else:
                         unconverted += 1
                 line.qty_real = qty
                 line.amount_real = amount
                 line.unconverted_count = unconverted
+                line._sgi_set_price_gap(qty, amount, amt_list, qty_list,
+                                        any_non_list, day, tol, grave)
+
+    def _sgi_set_price_gap(self, qty, amount, amt_list, qty_list, any_non_list,
+                           day, tol, grave):
+        """Desviación de precio facturado vs lista (en la divisa de la lista)."""
+        self.ensure_one()
+        list_ccy = self.list_currency_id
+        if not list_ccy or qty <= 0 or not self.has_list_price:
+            return  # ya está en 0/ok
+        if qty_list and not any_non_list:
+            # Todas las facturas en la divisa de la lista: precio directo.
+            price_real = amt_list / qty_list
+            self.price_gap_fx = False
+        else:
+            # Convierte el promedio contable (MXN) a la divisa de la lista.
+            price_real = self._sgi_company_to_list_price(amount / qty, list_ccy, day)
+            self.price_gap_fx = True
+        self.price_real_unit_currency = price_real
+        gap = price_real - self.price_unit_currency
+        self.price_gap = gap
+        pct = (gap / self.price_unit_currency * 100.0) if self.price_unit_currency else 0.0
+        self.price_gap_pct = pct
+        magnitude = abs(pct)
+        if magnitude <= tol:
+            self.price_gap_alert = 'ok'
+        elif magnitude <= grave:
+            self.price_gap_alert = 'leve'
+        else:
+            self.price_gap_alert = 'grave'
+
+    def _sgi_company_to_list_price(self, price, list_currency, day):
+        """Convierte un precio en moneda de la compañía a la moneda de la lista con
+        el tipo presupuestal (inverso de _sgi_to_company_price)."""
+        company = self.company_id or self.env.company
+        company_currency = self.currency_id or company.currency_id
+        if not list_currency or list_currency == company_currency:
+            return price
+        rate = float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.budget_planning_rate', 0) or 0)
+        usd = self.env.ref('base.USD', raise_if_not_found=False)
+        mxn = self.env.ref('base.MXN', raise_if_not_found=False)
+        if rate > 0 and usd and mxn:
+            if list_currency == usd and company_currency == mxn:
+                return price / rate
+            if list_currency == mxn and company_currency == usd:
+                return price * rate
+        return company_currency._convert(price, list_currency, company, day)
 
     def _sgi_effective_monday(self, order):
         """Lunes de la semana comprometida de un pedido: commitment_date, o
@@ -1101,6 +1253,12 @@ class SgiSalesBudgetLine(models.Model):
             line.qty_real = 0.0
             line.amount_real = 0.0
             line.unconverted_count = 0
+            # El control de precios es sobre lo facturado; el pronóstico no lo usa.
+            line.price_real_unit_currency = 0.0
+            line.price_gap_fx = False
+            line.price_gap = 0.0
+            line.price_gap_pct = 0.0
+            line.price_gap_alert = 'ok'
             if line.partner_id and line.product_id and line.date:
                 by_partner[line.partner_id.commercial_partner_id.id] |= line
         for partner_id, lines in by_partner.items():
