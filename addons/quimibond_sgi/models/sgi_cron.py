@@ -244,6 +244,53 @@ class SgiCron(models.AbstractModel):
         self._sgi_generate_measures(
             indicators, first_prev, first_prev, last_prev, deadline,
             "%s" % first_prev.strftime('%m/%Y'))
+        self._sgi_sales_budget_month_close(first_prev, last_prev)
+        return True
+
+    @api.model
+    def _sgi_team_net_invoiced(self, team, date_from, date_to):
+        """Facturación neta (out_invoice − out_refund, sin impuestos, moneda
+        compañía) de un equipo en el rango de fechas de factura."""
+        moves = self.env['account.move'].search([
+            ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ('state', '=', 'posted'),
+            ('team_id', '=', team.id),
+            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
+        ])
+        return sum(moves.mapped('amount_untaxed_signed'))
+
+    @api.model
+    def _sgi_sales_budget_month_close(self, first_prev, last_prev):
+        """Aviso de cierre de mes: por cada equipo con presupuesto aprobado del
+        año, si el acumulado facturado del año va por debajo del umbral del
+        presupuesto acumulado (sales_budget_alert_pct), agenda una actividad al
+        responsable del equipo. Idempotente (dedup por resumen)."""
+        pct = float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.sales_budget_alert_pct', 80) or 0)
+        year = first_prev.year
+        year_start = first_prev.replace(month=1, day=1)
+        budgets = self.env['sgi.sales.budget'].search([
+            ('state', '=', 'aprobado'), ('year', '=', year)])
+        for budget in budgets:
+            budgeted = sum(budget.line_ids.filtered(
+                lambda l: l.date and l.date <= last_prev).mapped('amount_budget'))
+            if not budgeted:
+                continue
+            real = self._sgi_team_net_invoiced(budget.team_id, year_start, last_prev)
+            achieved = real / budgeted * 100.0
+            if achieved >= pct:
+                continue
+            user = budget.team_id.user_id
+            if not user:
+                continue
+            self._sgi_schedule(
+                budget,
+                "Presupuesto %s por debajo del %.0f%% al cierre de %s" % (
+                    budget.team_id.name, pct, first_prev.strftime('%m/%Y')),
+                "El acumulado facturado del equipo va en %.1f%% del presupuesto "
+                "aprobado del año. Revisa el pipeline y las acciones comerciales." % (
+                    achieved),
+                user.id)
         return True
 
     @api.model

@@ -96,6 +96,9 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.production_monthly_capacity': '0',
         # Proveedor de energía (res.partner) para el KPI TR-03. 0 = sin configurar.
         'quimibond_sgi.energy_partner_id': '0',
+        # Umbral (%) de cumplimiento acumulado del presupuesto de ventas bajo el
+        # cual el cierre de mes avisa al responsable del equipo.
+        'quimibond_sgi.sales_budget_alert_pct': '80',
     }
 
     @api.model

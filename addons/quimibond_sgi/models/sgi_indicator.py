@@ -93,7 +93,7 @@ class SgiIndicator(models.Model):
         'preventivo_cumplido': "Mantenimiento → OTs preventivas cumplidas a tiempo.",
         'rotacion_rh': "Empleados → bajas del periodo vs plantilla.",
         'plantilla_rh': "Empleados → puestos cubiertos vs plantilla autorizada.",
-        'presupuesto_ventas': "Ventas → facturación real vs presupuesto configurado en Ajustes.",
+        'presupuesto_ventas': "Ventas → facturación real vs presupuesto de ventas APROBADO del periodo (importe en moneda de la compañía; nunca cantidades mezcladas). Sin presupuesto aprobado, cae al parámetro de Ajustes.",
         'crecimiento_ventas': "Contabilidad → facturación neta timbrada del periodo vs el mismo periodo del año anterior (variación %).",
         'inventario_diferencia': "Inventario → ajustes de inventario físico vs sistema.",
         'inventario_ciclico': "Inventario → ajustes de conteos cíclicos.",
@@ -347,23 +347,36 @@ class SgiIndicator(models.Model):
         # Requiere plantilla presupuestada por puesto; captura manual (README).
         return None
 
+    def _sgi_year_budget_amount(self, date_from, date_to):
+        """Importe presupuestado del periodo: suma de amount_budget de las líneas
+        de presupuesto APROBADO (todos los equipos/mercados) cuyo mes cae en el
+        periodo. Prorrateo mensual = las líneas de ese mes. Siempre en importe y
+        moneda de la compañía (nunca cantidades mezcladas)."""
+        lines = self.env['sgi.sales.budget.line'].sudo().search([
+            ('budget_id.state', '=', 'aprobado'),
+            ('date', '>=', date_from), ('date', '<=', date_to),
+        ])
+        return sum(lines.mapped('amount_budget'))
+
     def _calc_presupuesto_ventas(self, date_from, date_to):
-        budget = self.monthly_budget
+        """Cumplimiento SIEMPRE sobre importe en moneda de la compañía: facturación
+        neta del periodo / presupuesto aprobado del periodo. Si no hay presupuesto
+        aprobado, cae al parámetro de Ajustes (con nota)."""
+        budget = self._sgi_year_budget_amount(date_from, date_to)
         if not budget:
-            param = self.env['ir.config_parameter'].sudo().get_param(
-                'quimibond_sgi.monthly_sales_budget', 0)
-            budget = float(param or 0)
+            budget = self.monthly_budget or float(
+                self.env['ir.config_parameter'].sudo().get_param(
+                    'quimibond_sgi.monthly_sales_budget', 0) or 0)
         if not budget:
             return None
-        moves = self.env['account.move'].search([
-            ('move_type', 'in', ('out_invoice', 'out_refund')),
-            ('state', '=', 'posted'),
-            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
-        ])
-        # amount_untaxed_signed ya trae las notas de crédito (out_refund) en negativo,
-        # por lo que la suma es la facturación neta del periodo.
-        invoiced = sum(moves.mapped('amount_untaxed_signed'))
+        invoiced = self._sgi_net_invoiced(date_from, date_to)
         return round(invoiced / budget * 100.0, 2)
+
+    def _note_presupuesto_ventas(self, date_from, date_to):
+        if not self._sgi_year_budget_amount(date_from, date_to):
+            return ("Sin presupuesto de ventas aprobado del periodo: se usó el "
+                    "presupuesto configurado en Ajustes.")
+        return ''
 
     def _sgi_net_invoiced(self, date_from, date_to):
         """Facturación neta timbrada del periodo: ventas timbradas (out_invoice)
@@ -665,7 +678,6 @@ class SgiIndicatorMeasure(models.Model):
         'cierre_nc': ('quality.alert', [], 'create_date', True),
         'disponibilidad_mantto': ('maintenance.request', [], 'create_date', True),
         'preventivo_cumplido': ('maintenance.request', [('maintenance_type', '=', 'preventive')], 'create_date', True),
-        'presupuesto_ventas': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
         'crecimiento_ventas': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'inventario_diferencia': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
         'inventario_ciclico': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
@@ -716,6 +728,16 @@ class SgiIndicatorMeasure(models.Model):
                 'res_model': 'purchase.order',
                 'view_mode': 'list,form',
                 'domain': [('id', 'in', errors.ids)],
+            }
+        if mode == 'presupuesto_ventas':
+            # Evidencia = las líneas del presupuesto aprobado del periodo.
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Presupuesto del periodo — evidencia de %s" % self.period_date,
+                'res_model': 'sgi.sales.budget.line',
+                'view_mode': 'list,form',
+                'domain': [('budget_id.state', '=', 'aprobado'),
+                           ('date', '>=', date_from), ('date', '<=', date_to)],
             }
         if mode == 'capacitacion':
             # Evidencia = las brechas de competencia (foto a hoy; sin cota de periodo).

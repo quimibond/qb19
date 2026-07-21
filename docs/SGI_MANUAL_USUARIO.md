@@ -127,6 +127,38 @@ medición; el semáforo (verde/amarillo/rojo) sale solo.
 en rojo" activo crea la No Conformidad **automáticamente** — la tanda mensual de NCs
 por indicador que MAST levantaba a mano, ya no se levanta: nace sola.
 
+### 7.1 Presupuesto maestro de ventas (F-P-A28-18/17)
+
+**Ventas → Presupuesto de ventas** (o **SGI → Medición → Presupuesto de ventas**):
+un presupuesto por **mercado** (equipo: industrial, confección, especiales) y **año**.
+
+- **Capturar la matriz.** Abre el presupuesto y usa **Capturar cantidades** y
+  **Capturar importes**: una cuadrícula producto (filas) × meses (columnas), como
+  el Excel. Cada celda se edita directo. También puedes capturar en la lista de la
+  pestaña *Matriz*.
+- **Importar el año desde Excel.** En la lista de líneas, **Favoritos → Importar
+  registros**. Columnas: presupuesto, producto, unidad (opcional — por defecto la
+  de venta del producto), mes (día 1), cantidad e importe.
+- **Aprobar.** Cuando la matriz está lista, MAST la **aprueba**: a partir de ahí es
+  evidencia y no se edita.
+- **Revisar en junio.** La reprogramación de mitad de año se hace con **Revisar
+  (nueva Rev.)**: crea la Rev. siguiente en borrador copiando las líneas y deja la
+  anterior como obsoleta. **La historia se conserva; nunca se pisa lo aprobado.**
+- **El real se calcula solo** desde lo facturado (la cifra dura) y, como apoyo, lo
+  pedido. La comparación (ppto vs facturado vs pedido) está en **Comparación**.
+
+📏 **Por qué los totales de cantidad son por unidad.** Vendemos en metros, kg,
+rollos y piezas. Sumar "12,500 m + 3,200 kg" no significa nada, así que las
+cantidades se totalizan **por unidad** ("12,500 m · 3,200 kg"). El **único total
+global es el de dinero** (en la moneda de la compañía; contabilidad ya convirtió
+cada factura a su tipo de cambio, no se reconvierte). Si una factura viene en una
+unidad de otra categoría, cuenta en el importe pero no en la cantidad, y el aviso
+aparece en la ficha para corregir la unidad.
+
+El KPI **VE-02 (Cumplimiento de presupuesto)** lee este presupuesto aprobado, y al
+cierre de mes el sistema **avisa al responsable del equipo** si el acumulado va por
+debajo del umbral configurado en Ajustes.
+
 ## 8. Auditorías internas
 
 **SGI → Auditorías y riesgos**: programa anual → auditoría (con su folio AUD-) → checklist en
