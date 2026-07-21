@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_report_sales_budget" model="ir.actions.report">
-        <field name="name">Presupuesto de ventas (F-P-A28-18)</field>
+        <field name="name">Presupuesto de ventas (F-P-A28-17/18)</field>
         <field name="model">sgi.sales.budget</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_sales_budget_document</field>
@@ -22,7 +22,7 @@
                     <t t-set="matrix" t-value="doc._report_matrix()"/>
                     <div class="page">
                         <h2 class="text-center">
-                            Presupuesto de Ventas<br/>
+                            Presupuesto de Ventas (F-P-A28-17/18)<br/>
                             <small t-out="doc.name"/>
                         </h2>
                         <p class="text-muted text-center" style="font-size:11px;">

@@ -110,6 +110,21 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.budget_planning_rate',
         help="Para sugerir precios de listas en otra moneda al presupuestar. "
              "0 = usar el tipo de cambio vigente del día de captura.")
+    sgi_price_gap_tolerance_pct = fields.Float(
+        string="Tolerancia de desviación de precio (%)",
+        config_parameter='quimibond_sgi.price_gap_tolerance_pct',
+        help="Control de precios: gap facturado vs lista dentro de este % = OK.")
+    sgi_price_gap_grave_pct = fields.Float(
+        string="Desviación de precio grave (%)",
+        config_parameter='quimibond_sgi.price_gap_grave_pct',
+        help="Gap por encima de este % = grave (entre la tolerancia y este umbral "
+             "= leve).")
+    sgi_budget_fulfillment_min = fields.Integer(
+        string="Cumplimiento mínimo del presupuesto (%)",
+        config_parameter='quimibond_sgi.budget_fulfillment_min',
+        help="P-A28 4.3.6.1: si un presupuesto aprobado va por debajo de este % de "
+             "cumplimiento, se pide justificación (banner rojo y actividad al Admin "
+             "de ventas). No bloquea nada.")
 
     @api.model
     def get_values(self):

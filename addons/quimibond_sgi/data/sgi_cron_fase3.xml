@@ -26,4 +26,17 @@
         <field name="interval_type">days</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- P-A28 Nota 1: revaluación del S2 (el método se protege con guarda de mes
+         == junio, así que correr mensual es idempotente y robusto ante el drift
+         de nextcall). -->
+    <record id="sgi_cron_budget_revaluation" model="ir.cron">
+        <field name="name">SGI: Revaluación del S2 del presupuesto (junio, P-A28 Nota 1)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_budget_revaluation()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

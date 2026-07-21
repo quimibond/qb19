@@ -102,6 +102,13 @@ class SgiConfig(models.AbstractModel):
         # Tipo de cambio presupuestal USD→MXN para sugerir precios de listas en
         # otra moneda. 0 = usar el tipo de cambio vigente del día de captura.
         'quimibond_sgi.budget_planning_rate': '0',
+        # Control de precios (lista vs facturado): tolerancia % del gap para
+        # 'leve' y umbral 'grave'.
+        'quimibond_sgi.price_gap_tolerance_pct': '3.0',
+        'quimibond_sgi.price_gap_grave_pct': '10.0',
+        # Cumplimiento mínimo (%) del presupuesto por debajo del cual se pide
+        # justificación del incumplimiento (P-A28 4.3.6.1). No bloquea nada.
+        'quimibond_sgi.budget_fulfillment_min': '80',
     }
 
     @api.model

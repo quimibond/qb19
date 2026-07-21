@@ -24,7 +24,7 @@ _REAL_MOVE_TYPES = ('out_invoice', 'out_refund')
 
 class SgiSalesBudget(models.Model):
     _name = 'sgi.sales.budget'
-    _description = "Presupuesto de ventas (F-P-A28-18)"
+    _description = "Presupuesto de ventas (F-P-A28-17/18)"
     _inherit = ['sgi.base.mixin', 'sgi.format.mixin']
     _order = 'year desc, team_id, revision desc'
     _sgi_sequence_code = 'sgi.sales.budget'
@@ -58,8 +58,15 @@ class SgiSalesBudget(models.Model):
                                  default=lambda self: self.env.company, required=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id',
                                   string="Moneda", readonly=True)
+    # Ciclo de vida diferenciado por kind (P-A28 Rev.15, 4.2.1 / 4.2.2):
+    #   · presupuesto: borrador → revisado (Admin de ventas, 4.2.2.3) →
+    #     aprobado (alta dirección, 4.2.2.4). Se congela en 'aprobado'.
+    #   · pronóstico: borrador → revisado (Admin de ventas). Documento VIVO:
+    #     nunca llega a 'aprobado', sin candado de líneas; editar una línea de un
+    #     pronóstico 'revisado' lo regresa a borrador (4.2.2.7).
     state = fields.Selection([
         ('borrador', "Borrador"),
+        ('revisado', "Revisado"),
         ('aprobado', "Aprobado"),
         ('obsoleto', "Obsoleto"),
     ], string="Estado", default='borrador', required=True, tracking=True)
@@ -101,6 +108,32 @@ class SgiSalesBudget(models.Model):
         string="Productos sin precio de lista", compute='_compute_no_price_count',
         help="Líneas cuyo producto no tiene precio en la lista aplicable. Corrige "
              "LA LISTA de precios (no el presupuesto).")
+    price_deviation_count = fields.Integer(
+        string="Desviaciones de precio", compute='_compute_price_deviation_count',
+        help="Líneas con desviación de precio leve o grave (facturado vs lista).")
+    # KPI y justificación (P-A28 4.3.6.1): no bloquea nada; es evidencia del
+    # análisis del incumplimiento, no un candado.
+    nonfulfillment_note = fields.Text(
+        string="Justificación de incumplimiento (F-P-A28 4.3.6.1)",
+        help="Análisis del porqué del incumplimiento del presupuesto (bajo el "
+             "umbral de cumplimiento). No bloquea: es justificación, no candado.")
+    needs_justification = fields.Boolean(
+        string="Requiere justificación", compute='_compute_needs_justification',
+        help="El presupuesto aprobado va por debajo del umbral de cumplimiento "
+             "(Ajustes → 'Cumplimiento mínimo del presupuesto') y aún no tiene "
+             "justificación capturada.")
+
+    @api.depends('fulfillment_pct', 'state', 'kind', 'amount_budget_total',
+                 'nonfulfillment_note')
+    def _compute_needs_justification(self):
+        threshold = float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.budget_fulfillment_min', 80) or 0)
+        for budget in self:
+            budget.needs_justification = bool(
+                budget.kind == 'presupuesto' and budget.state == 'aprobado'
+                and budget.amount_budget_total > 0
+                and budget.fulfillment_pct < threshold
+                and not (budget.nonfulfillment_note or '').strip())
 
     @api.depends('team_id', 'year', 'revision', 'kind', 'partner_id')
     def _compute_name(self):
@@ -186,6 +219,35 @@ class SgiSalesBudget(models.Model):
             'domain': [('budget_id', '=', self.id), ('has_list_price', '=', False)],
         }
 
+    @api.depends('line_ids.price_gap_alert')
+    def _compute_price_deviation_count(self):
+        for budget in self:
+            budget.price_deviation_count = len(budget.line_ids.filtered(
+                lambda l: l.price_gap_alert in ('leve', 'grave')))
+
+    def action_view_price_deviations(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Desviaciones de precio — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'list,form',
+            'domain': [('budget_id', '=', self.id),
+                       ('price_gap_alert', 'in', ('leve', 'grave'))],
+        }
+
+    def action_price_coverage_report(self):
+        """Auditoría de cobertura (en cualquier estado): las líneas sin precio de
+        lista, para revisar ANTES de intentar aprobar."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Cobertura de precios — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'list,form',
+            'domain': [('budget_id', '=', self.id), ('has_list_price', '=', False)],
+        }
+
     def _sgi_team_year_real(self):
         """Facturación neta del equipo en todo el año del presupuesto (moneda
         compañía). Base para detectar lo vendido sin presupuestar."""
@@ -245,17 +307,102 @@ class SgiSalesBudget(models.Model):
         self.with_context(sgi_bypass_lock=True).mapped('line_ids').unlink()
         return super().unlink()
 
+    def _sgi_locked_records(self):
+        """El candado de inmutabilidad (estado 'aprobado') aplica SOLO al
+        presupuesto: el pronóstico es un documento vivo (P-A28 4.2.2.7) y nunca
+        se congela, así que se excluye aunque hubiera quedado en 'aprobado'
+        (pre-migración)."""
+        return super()._sgi_locked_records().filtered(
+            lambda b: b.kind != 'pronostico')
+
     # --- Flujo de estados -----------------------------------------------------
-    def action_approve(self):
-        """Aprueba el presupuesto (solo MAST). A partir de aquí es evidencia."""
+    def _sgi_no_price_pairs(self, limit=10):
+        """(texto de hasta `limit` pares 'producto — cliente' sin precio, total)."""
+        self.ensure_one()
+        lines = self.line_ids.filtered(lambda l: not l.has_list_price)
+        pairs = []
+        for line in lines[:limit]:
+            product = line.product_id.default_code or line.product_id.name or ''
+            client = line.partner_id.name or "Sin cliente"
+            pairs.append("%s — %s" % (product, client))
+        return pairs, len(lines)
+
+    def _sgi_can_review(self):
+        """Admin de ventas (o Jefe MAST/SGI como fallback de sistema): manda a
+        revisión el presupuesto y marca revisado el pronóstico (P-A28 4.2.2.3)."""
+        return (self.env.user.has_group('sales_team.group_sale_manager')
+                or self.env.user.has_group('quimibond_sgi.group_sgi_manager'))
+
+    def action_send_to_review(self):
+        """borrador → revisado. Presupuesto: 'Enviar a revisión' (Admin de ventas,
+        4.2.2.3). Pronóstico: 'Marcar revisado' (mismo permiso). El gate de precios
+        de la 5.4 corre aquí como AVISO (no bloquea): el bloqueo es al aprobar."""
+        if not self._sgi_can_review():
+            raise UserError(
+                "Solo el Administrador de ventas (o el Jefe de MAST/SGI) puede "
+                "enviar a revisión.")
         for budget in self:
-            if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            if budget.state != 'borrador':
                 raise UserError(
-                    "Solo el Jefe de MAST y SGI puede aprobar un presupuesto de ventas.")
+                    "Solo se envía a revisión desde borrador. El %s está en '%s'." % (
+                        budget.folio or budget.name,
+                        dict(self._fields['state'].selection)[budget.state]))
+            if not budget.line_ids:
+                raise UserError(
+                    "El %s no tiene líneas: captura la matriz antes de enviarlo a "
+                    "revisión." % (budget.folio or budget.name))
+            # Aviso (no bloqueo) de cobertura de precios en el presupuesto.
+            if budget.kind == 'presupuesto' and budget.no_price_count > 0:
+                pairs, total = budget._sgi_no_price_pairs()
+                budget.message_post(
+                    body="AVISO de cobertura de precios al enviar a revisión: %d "
+                         "producto(s) sin precio en la lista. Corrígelos ANTES de "
+                         "aprobar (ahí sí bloquea).<br/>- %s" % (
+                             total, "<br/>- ".join(pairs)))
+            budget.state = 'revisado'
+        return True
+
+    def action_approve(self):
+        """revisado → aprobado (solo presupuesto). Aprueba la ALTA DIRECCIÓN
+        (P-A28 4.2.2.4): grupo Dirección o Jefe MAST/SGI (fallback de sistema).
+        Exige haber pasado por 'revisado'. Bloquea si hay productos sin precio de
+        lista (gate 5.4), salvo contexto sgi_bypass_price_check, que deja constancia
+        en el chatter."""
+        can_approve = self.env.user.has_group('quimibond_sgi.group_sgi_director') \
+            or self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        bypass_price = self.env.context.get('sgi_bypass_price_check')
+        for budget in self:
+            if budget.kind != 'presupuesto':
+                raise UserError(
+                    "El pronóstico es un documento vivo: no se aprueba (P-A28 "
+                    "4.2.2.7). Solo se marca revisado.")
+            if not can_approve:
+                raise UserError(
+                    "Solo la alta dirección (grupo Dirección) o el Jefe de MAST/SGI "
+                    "puede aprobar un presupuesto de ventas.")
+            if budget.state != 'revisado':
+                raise UserError(
+                    "Un presupuesto debe estar REVISADO antes de aprobarse "
+                    "(P-A28 4.2.2.3 → 4.2.2.4). El %s está en '%s'." % (
+                        budget.folio or budget.name,
+                        dict(self._fields['state'].selection)[budget.state]))
             if not budget.line_ids:
                 raise UserError(
                     "El presupuesto %s no tiene líneas: captura la matriz antes de "
                     "aprobarlo." % (budget.folio or budget.name))
+            if budget.no_price_count > 0:
+                pairs, total = budget._sgi_no_price_pairs()
+                if not bypass_price:
+                    more = "\n…y %d más." % (total - len(pairs)) if total > len(pairs) else ""
+                    raise UserError(
+                        "No se puede aprobar %s: %d producto(s) sin precio en la "
+                        "lista.\n\n- %s%s\n\nDa de alta el precio en la lista del "
+                        "cliente o aprueba con excepción (constancia en chatter)." % (
+                            budget.name, total, "\n- ".join(pairs), more))
+                budget.message_post(
+                    body="Aprobado con EXCEPCIÓN de cobertura de precios: %d "
+                         "producto(s) sin precio en la lista.<br/>- %s" % (
+                             total, "<br/>- ".join(pairs)))
             budget.state = 'aprobado'
         return True
 
@@ -272,6 +419,11 @@ class SgiSalesBudget(models.Model):
         copiando las líneas y obsoleta la anterior. La historia se conserva:
         NUNCA se pisa lo aprobado. Solo MAST."""
         self.ensure_one()
+        if self.kind == 'pronostico':
+            raise UserError(
+                "El pronóstico es un documento vivo (P-A28 4.2.2.7): no se generan "
+                "revisiones congeladas. Edita sus líneas directamente; un pronóstico "
+                "revisado vuelve a borrador al tocarlo.")
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
             raise UserError("Solo el Jefe de MAST y SGI puede revisar un presupuesto.")
         if self.state != 'aprobado':
@@ -609,14 +761,25 @@ class SgiSalesBudget(models.Model):
         return result
 
     def action_preload_from_orders(self):
-        """Precarga las semanas del horizonte que ya tienen pedidos confirmados y
-        NO tienen celda de pronóstico, con qty_budget = lo comprometido.
-        Idempotente: no toca celdas ya capturadas."""
+        """Precarga propuesta (solo borrador), diferenciada por kind (P-A28 4.2.2.1):
+          · pronóstico → semanas con pedidos confirmados y sin celda, con lo
+            comprometido (el vendedor solo captura el futuro);
+          · presupuesto → qty por producto(+cliente) por mes combinando los
+            pronósticos vigentes del año (semana→mes) y el facturado real de los
+            últimos 12 meses.
+        Idempotente: nunca pisa celdas ya capturadas."""
         self.ensure_one()
-        if self.kind != 'pronostico':
-            raise UserError("La precarga desde pedidos es solo para pronósticos.")
         if self.state != 'borrador':
-            raise UserError("Solo se precarga un pronóstico en borrador.")
+            raise UserError("Solo se precarga un %s en borrador." % (
+                dict(self._fields['kind'].selection)[self.kind]))
+        if self.kind == 'pronostico':
+            return self._preload_forecast_from_orders()
+        return self._preload_budget_from_forecast_and_real()
+
+    def _preload_forecast_from_orders(self):
+        """Pronóstico: crea las semanas con pedidos confirmados y sin celda de
+        pronóstico, con qty_budget = lo comprometido. No toca lo ya capturado."""
+        self.ensure_one()
         Line = self.env['sgi.sales.budget.line']
         existing = {(l.product_id.id, l.date) for l in self.line_ids}
         created = 0
@@ -634,23 +797,164 @@ class SgiSalesBudget(models.Model):
                  "comprometido (el vendedor solo captura el futuro)." % created)
         return True
 
-    def action_send_to_mps(self):
-        """Vuelca la DEMANDA NETA (no el pronóstico bruto) por producto/semana al
-        forecast del Programa Maestro (mrp_mps). Crea el schedule si falta;
-        re-envío tras revisión actualiza sin duplicar. No crea pedidos de venta."""
+    def _preload_budget_proposals(self):
+        """{(product, commercial_partner, month): qty en la unidad de venta del
+        producto} propuesta para el presupuesto, combinando (a) los pronósticos
+        vigentes del año (agregando semana→mes) y (b) el facturado real de los
+        últimos 12 meses. Combinación = max(pronóstico, real) por celda: no
+        planear por debajo de lo pronosticado ni de lo que la historia demuestra."""
         self.ensure_one()
-        if 'mrp.production.schedule' not in self.env:
-            raise UserError("El módulo Programa Maestro (mrp_mps) no está instalado.")
-        if self.kind != 'pronostico':
-            raise UserError("Solo se envía la demanda de un pronóstico.")
-        if self.state != 'aprobado':
-            raise UserError("Solo se envía la demanda de un pronóstico aprobado.")
+        from dateutil.relativedelta import relativedelta as _rd
+
+        def _to_sale_uom(product, uom, qty):
+            if uom and product.uom_id and uom._has_common_reference(product.uom_id):
+                return uom._compute_quantity(qty, product.uom_id, round=False)
+            return qty
+
+        forecast_qty = defaultdict(float)
+        forecasts = self.env['sgi.sales.budget'].search([
+            ('kind', '=', 'pronostico'), ('year', '=', self.year),
+            ('state', '!=', 'obsoleto'), ('company_id', '=', self.company_id.id)])
+        for line in forecasts.mapped('line_ids'):
+            if not line.product_id or not line.date or line.qty_budget <= 0:
+                continue
+            partner = line.partner_id.commercial_partner_id
+            key = (line.product_id, partner, line.date.month)
+            forecast_qty[key] += _to_sale_uom(
+                line.product_id, line.uom_id, line.qty_budget)
+
+        real_qty = defaultdict(float)
+        date_from = fields.Date.context_today(self) - _rd(months=12)
+        amls = self.env['account.move.line'].sudo().search([
+            ('parent_state', '=', 'posted'),
+            ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
+            ('move_id.team_id', '=', self.team_id.id),
+            ('move_id.invoice_date', '>=', date_from),
+            ('product_id', '!=', False),
+        ])
+        for aml in amls:
+            product = aml.product_id
+            month = aml.move_id.invoice_date.month
+            partner = aml.move_id.commercial_partner_id
+            sign = 1.0 if aml.move_id.move_type == 'out_invoice' else -1.0
+            real_qty[(product, partner, month)] += _to_sale_uom(
+                product, aml.product_uom_id, sign * aml.quantity)
+
+        proposals = {}
+        for key in set(forecast_qty) | set(real_qty):
+            qty = max(forecast_qty.get(key, 0.0), real_qty.get(key, 0.0))
+            if qty > 0:
+                proposals[key] = qty
+        return proposals
+
+    def _preload_budget_from_forecast_and_real(self):
+        """Presupuesto: crea líneas por producto+cliente+mes con la cantidad
+        propuesta (ver _preload_budget_proposals). Respeta el anti-doble-conteo
+        (omite productos que ya están capturados como global) y nunca pisa celdas
+        existentes."""
+        self.ensure_one()
+        Line = self.env['sgi.sales.budget.line']
+        existing = {(l.product_id.id, (l.partner_id.commercial_partner_id.id
+                                       if l.partner_id else False), l.date)
+                    for l in self.line_ids}
+        # Producto ya presente como GLOBAL (sin cliente): no se puede mezclar con
+        # líneas por cliente (constraint anti-doble-conteo) → se omite.
+        global_products = {l.product_id.id for l in self.line_ids if not l.partner_id}
+        created = skipped_scheme = 0
+        for (product, partner, month), qty in sorted(
+                self._preload_budget_proposals().items(),
+                key=lambda kv: (kv[0][0].id, (kv[0][1].id if kv[0][1] else 0), kv[0][2])):
+            when = date(self.year, month, 1)
+            partner_id = partner.id if partner else False
+            if (product.id, partner_id, when) in existing:
+                continue
+            if product.id in global_products:
+                skipped_scheme += 1
+                continue
+            Line.create({
+                'budget_id': self.id, 'product_id': product.id, 'date': when,
+                'uom_id': product.uom_id.id, 'partner_id': partner_id,
+                'qty_budget': qty,
+            })
+            existing.add((product.id, partner_id, when))
+            created += 1
+        note = ("Precarga (pronóstico vigente + facturado 12 m): %d línea(s) "
+                "propuesta(s) por producto/cliente/mes (combinación = máximo de "
+                "pronosticado y real; el comercial ajusta)." % created)
+        if skipped_scheme:
+            note += (" %d omitida(s): el producto ya está capturado como global "
+                     "(no se mezcla con líneas por cliente)." % skipped_scheme)
+        self.message_post(body=note)
+        return True
+
+    def _sgi_forecast_covered_products(self):
+        """IDs de productos cubiertos por un pronóstico VIGENTE (no obsoleto) del
+        mismo año y compañía. Esos productos los manda el pronóstico al MPS con su
+        demanda neta; el presupuesto NO debe volverlos a enviar (anti-doble conteo,
+        P-A28 4.2.1 + 4.2.2.5)."""
+        self.ensure_one()
+        forecasts = self.env['sgi.sales.budget'].search([
+            ('kind', '=', 'pronostico'), ('year', '=', self.year),
+            ('state', '!=', 'obsoleto'), ('company_id', '=', self.company_id.id)])
+        return set(forecasts.mapped('line_ids.product_id').ids)
+
+    def _sgi_mps_warehouse(self):
+        self.ensure_one()
         warehouse = self.env['stock.warehouse'].search(
             [('company_id', '=', self.company_id.id)], limit=1)
         if not warehouse:
             raise UserError("No hay almacén configurado para la compañía.")
+        return warehouse
+
+    def _sgi_push_forecast_cells(self, warehouse, demand):
+        """Vuelca {(product, date): qty en unidad de venta} al forecast del MPS.
+        Crea el schedule si falta; re-envío actualiza sin duplicar. Devuelve el
+        detalle por celda (texto)."""
         Schedule = self.env['mrp.production.schedule']
         Forecast = self.env['mrp.product.forecast']
+        details = []
+        for (product, when), qty in sorted(
+                demand.items(), key=lambda kv: (kv[0][0].id, kv[0][1])):
+            sched = Schedule.search([
+                ('product_id', '=', product.id),
+                ('warehouse_id', '=', warehouse.id)], limit=1)
+            if not sched:
+                sched = Schedule.create(
+                    {'product_id': product.id, 'warehouse_id': warehouse.id})
+            forecast = sched.forecast_ids.filtered(lambda f: f.date == when)[:1]
+            if forecast:
+                forecast.forecast_qty = qty  # re-envío: actualiza sin duplicar
+            else:
+                Forecast.create({
+                    'production_schedule_id': sched.id, 'date': when,
+                    'forecast_qty': qty})
+            details.append("%s · %s: %s %s" % (
+                product.default_code or product.name, when,
+                round(qty, 2), product.uom_id.name))
+        return details
+
+    def action_send_to_mps(self):
+        """Vuelca la demanda al forecast del Programa Maestro (mrp_mps),
+        diferenciada por kind:
+          · pronóstico → DEMANDA NETA por producto/semana (no el bruto);
+          · presupuesto → qty presupuestada por producto/mes, EXCLUYENDO los
+            productos cubiertos por un pronóstico vigente del mismo periodo (esos
+            los manda el pronóstico) — anti-doble conteo P-A28 4.2.1 / 4.2.2.5.
+        No crea pedidos de venta; el re-envío actualiza sin duplicar."""
+        self.ensure_one()
+        if 'mrp.production.schedule' not in self.env:
+            raise UserError("El módulo Programa Maestro (mrp_mps) no está instalado.")
+        if self.kind == 'pronostico':
+            return self._send_forecast_to_mps()
+        return self._send_budget_to_mps()
+
+    def _send_forecast_to_mps(self):
+        self.ensure_one()
+        if self.state != 'revisado':
+            raise UserError(
+                "Solo se envía la demanda de un pronóstico revisado (P-A28 "
+                "4.2.2.3): el pronóstico no se aprueba, se marca revisado.")
+        warehouse = self._sgi_mps_warehouse()
         demand = defaultdict(float)
         for line in self.line_ids:
             if line.qty_net_demand <= 0:
@@ -661,28 +965,41 @@ class SgiSalesBudget(models.Model):
                 qty = line.uom_id._compute_quantity(
                     qty, line.product_id.uom_id, round=False)
             demand[(line.product_id, line.date)] += qty
-        details = []
-        for (product, monday), qty in sorted(
-                demand.items(), key=lambda kv: (kv[0][0].id, kv[0][1])):
-            sched = Schedule.search([
-                ('product_id', '=', product.id),
-                ('warehouse_id', '=', warehouse.id)], limit=1)
-            if not sched:
-                sched = Schedule.create(
-                    {'product_id': product.id, 'warehouse_id': warehouse.id})
-            forecast = sched.forecast_ids.filtered(lambda f: f.date == monday)[:1]
-            if forecast:
-                forecast.forecast_qty = qty  # re-envío: actualiza sin duplicar
-            else:
-                Forecast.create({
-                    'production_schedule_id': sched.id, 'date': monday,
-                    'forecast_qty': qty})
-            details.append("%s · %s: %s %s" % (
-                product.default_code or product.name, monday,
-                round(qty, 2), product.uom_id.name))
+        details = self._sgi_push_forecast_cells(warehouse, demand)
         self.message_post(
             body="Demanda neta enviada al Programa Maestro (%d celdas):<br/>%s" % (
                 len(details), "<br/>".join(details) or "sin demanda"))
+        return True
+
+    def _send_budget_to_mps(self):
+        self.ensure_one()
+        if self.state != 'aprobado':
+            raise UserError("Solo se envía la demanda de un presupuesto aprobado.")
+        warehouse = self._sgi_mps_warehouse()
+        covered = self._sgi_forecast_covered_products()
+        demand = defaultdict(float)
+        omitted = self.env['product.product']
+        for line in self.line_ids:
+            if line.qty_budget <= 0:
+                continue
+            if line.product_id.id in covered:
+                omitted |= line.product_id  # lo manda el pronóstico vigente
+                continue
+            qty = line.qty_budget
+            if line.uom_id and line.product_id.uom_id and \
+                    line.uom_id._has_common_reference(line.product_id.uom_id):
+                qty = line.uom_id._compute_quantity(
+                    qty, line.product_id.uom_id, round=False)
+            demand[(line.product_id, line.date)] += qty
+        details = self._sgi_push_forecast_cells(warehouse, demand)
+        omitted_txt = ", ".join(
+            p.default_code or p.name for p in omitted) or "ninguno"
+        self.message_post(
+            body="Presupuesto → Programa Maestro: enviados %d celda(s); omitidos "
+                 "%d producto(s) por pronóstico vigente (los manda el pronóstico "
+                 "con su demanda neta): %s.<br/>%s" % (
+                     len(details), len(omitted), omitted_txt,
+                     "<br/>".join(details) or "sin demanda propia del presupuesto"))
         return True
 
     def action_open_import(self):
@@ -804,6 +1121,38 @@ class SgiSalesBudgetLine(models.Model):
                                        compute='_compute_avg_prices')
     avg_price_real = fields.Monetary(string="Precio prom. real",
                                      compute='_compute_avg_prices')
+    # Informativo (P-A28 4.2.2.1): lo PRONOSTICADO del mismo producto/cliente/mes
+    # por los pronósticos vigentes del año. Compute NO almacenado (referencia viva
+    # para el comercial); se muestra en la lista y la ficha del presupuesto.
+    qty_forecast = fields.Float(
+        string="Pronosticado (info)", digits='Product Unit',
+        compute='_compute_qty_forecast',
+        help="Cantidad pronosticada de este producto/cliente en el mes por los "
+             "pronósticos vigentes del año (agregando semanas). Referencia: no "
+             "entra en el importe ni en la demanda; solo compara.")
+
+    # Control de precios (lista vs facturado): informativo, parte de la FOTO del
+    # real (se recalcula solo en el refresh; el precio de lista congelado del
+    # aprobado es la referencia contra la que se mide la desviación).
+    price_real_unit_currency = fields.Monetary(
+        string="Precio real (divisa)", currency_field='list_currency_id',
+        compute='_compute_real', store=True,
+        help="Precio unitario facturado promedio, en la moneda de la lista. Si la "
+             "factura está en otra moneda, se convierte el promedio contable con "
+             "el tipo presupuestal (ver Desviación cruza divisas).")
+    price_gap_fx = fields.Boolean(
+        string="Desviación cruza divisas", compute='_compute_real', store=True,
+        help="La comparación de precio usó conversión (la factura no estaba en la "
+             "moneda de la lista); tómala como referencia.")
+    price_gap = fields.Monetary(
+        string="Desviación de precio (divisa)", currency_field='list_currency_id',
+        compute='_compute_real', store=True)
+    price_gap_pct = fields.Float(
+        string="Desviación de precio (%)", compute='_compute_real', store=True)
+    price_gap_alert = fields.Selection([
+        ('ok', "OK"), ('leve', "Leve"), ('grave', "Grave"),
+    ], string="Alerta de precio", default='ok',
+        compute='_compute_real', store=True)
 
     # Unicidad producto+mes+cliente. NULLS NOT DISTINCT (PG15+): un cliente nulo
     # cuenta como su propio valor, así que solo hay una línea global por prod+mes.
@@ -1022,11 +1371,20 @@ class SgiSalesBudgetLine(models.Model):
 
     def _sgi_compute_real_invoiced(self):
         AML = self.env['account.move.line']
+        Param = self.env['ir.config_parameter'].sudo()
+        tol = float(Param.get_param('quimibond_sgi.price_gap_tolerance_pct', 3.0) or 0)
+        grave = float(Param.get_param('quimibond_sgi.price_gap_grave_pct', 10.0) or 0)
+        day = fields.Date.context_today(self)
         by_team = defaultdict(lambda: self.browse())
         for line in self:
             line.qty_real = 0.0
             line.amount_real = 0.0
             line.unconverted_count = 0
+            line.price_real_unit_currency = 0.0
+            line.price_gap_fx = False
+            line.price_gap = 0.0
+            line.price_gap_pct = 0.0
+            line.price_gap_alert = 'ok'
             if line.team_id and line.product_id and line.date:
                 by_team[line.team_id.id] |= line
         for team_id, lines in by_team.items():
@@ -1052,7 +1410,10 @@ class SgiSalesBudgetLine(models.Model):
                 key = (line.product_id.id, (line.date.year, line.date.month))
                 qty = amount = 0.0
                 unconverted = 0
+                amt_list = qty_list = 0.0  # importe/cantidad en la divisa de la lista
+                any_non_list = False
                 partner = line.partner_id.commercial_partner_id
+                list_ccy = line.list_currency_id
                 for aml in bucket.get(key, self.env['account.move.line']):
                     # Línea por cliente: solo la empresa comercial del documento.
                     if partner and aml.move_id.commercial_partner_id != partner:
@@ -1061,13 +1422,67 @@ class SgiSalesBudgetLine(models.Model):
                     amount += -aml.balance  # balance ya en moneda compañía
                     row_uom = aml.product_uom_id
                     if row_uom and line.uom_id and row_uom._has_common_reference(line.uom_id):
-                        qty += sign * row_uom._compute_quantity(
+                        conv = sign * row_uom._compute_quantity(
                             aml.quantity, line.uom_id, round=False)
+                        qty += conv
+                        if list_ccy and aml.currency_id == list_ccy:
+                            amt_list += -aml.amount_currency  # en la divisa de la lista
+                            qty_list += conv
+                        elif list_ccy:
+                            any_non_list = True
                     else:
                         unconverted += 1
                 line.qty_real = qty
                 line.amount_real = amount
                 line.unconverted_count = unconverted
+                line._sgi_set_price_gap(qty, amount, amt_list, qty_list,
+                                        any_non_list, day, tol, grave)
+
+    def _sgi_set_price_gap(self, qty, amount, amt_list, qty_list, any_non_list,
+                           day, tol, grave):
+        """Desviación de precio facturado vs lista (en la divisa de la lista)."""
+        self.ensure_one()
+        list_ccy = self.list_currency_id
+        if not list_ccy or qty <= 0 or not self.has_list_price:
+            return  # ya está en 0/ok
+        if qty_list and not any_non_list:
+            # Todas las facturas en la divisa de la lista: precio directo.
+            price_real = amt_list / qty_list
+            self.price_gap_fx = False
+        else:
+            # Convierte el promedio contable (MXN) a la divisa de la lista.
+            price_real = self._sgi_company_to_list_price(amount / qty, list_ccy, day)
+            self.price_gap_fx = True
+        self.price_real_unit_currency = price_real
+        gap = price_real - self.price_unit_currency
+        self.price_gap = gap
+        pct = (gap / self.price_unit_currency * 100.0) if self.price_unit_currency else 0.0
+        self.price_gap_pct = pct
+        magnitude = abs(pct)
+        if magnitude <= tol:
+            self.price_gap_alert = 'ok'
+        elif magnitude <= grave:
+            self.price_gap_alert = 'leve'
+        else:
+            self.price_gap_alert = 'grave'
+
+    def _sgi_company_to_list_price(self, price, list_currency, day):
+        """Convierte un precio en moneda de la compañía a la moneda de la lista con
+        el tipo presupuestal (inverso de _sgi_to_company_price)."""
+        company = self.company_id or self.env.company
+        company_currency = self.currency_id or company.currency_id
+        if not list_currency or list_currency == company_currency:
+            return price
+        rate = float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.budget_planning_rate', 0) or 0)
+        usd = self.env.ref('base.USD', raise_if_not_found=False)
+        mxn = self.env.ref('base.MXN', raise_if_not_found=False)
+        if rate > 0 and usd and mxn:
+            if list_currency == usd and company_currency == mxn:
+                return price / rate
+            if list_currency == mxn and company_currency == usd:
+                return price * rate
+        return company_currency._convert(price, list_currency, company, day)
 
     def _sgi_effective_monday(self, order):
         """Lunes de la semana comprometida de un pedido: commitment_date, o
@@ -1101,6 +1516,12 @@ class SgiSalesBudgetLine(models.Model):
             line.qty_real = 0.0
             line.amount_real = 0.0
             line.unconverted_count = 0
+            # El control de precios es sobre lo facturado; el pronóstico no lo usa.
+            line.price_real_unit_currency = 0.0
+            line.price_gap_fx = False
+            line.price_gap = 0.0
+            line.price_gap_pct = 0.0
+            line.price_gap_alert = 'ok'
             if line.partner_id and line.product_id and line.date:
                 by_partner[line.partner_id.commercial_partner_id.id] |= line
         for partner_id, lines in by_partner.items():
@@ -1226,6 +1647,35 @@ class SgiSalesBudgetLine(models.Model):
             line.avg_price_real = (
                 line.amount_real / line.qty_real if line.qty_real else 0.0)
 
+    @api.depends('product_id', 'partner_id', 'date', 'kind', 'uom_id')
+    def _compute_qty_forecast(self):
+        """Suma lo pronosticado del mismo producto/cliente/mes por los pronósticos
+        vigentes (no obsoletos) del año, convertido a la unidad de esta línea."""
+        for line in self:
+            line.qty_forecast = 0.0
+            if line.kind != 'presupuesto' or not line.product_id or not line.date:
+                continue
+            forecasts = self.env['sgi.sales.budget'].search([
+                ('kind', '=', 'pronostico'),
+                ('year', '=', line.budget_id.year),
+                ('state', '!=', 'obsoleto'),
+                ('company_id', '=', line.company_id.id)])
+            partner = line.partner_id.commercial_partner_id
+            total = 0.0
+            for fl in forecasts.mapped('line_ids'):
+                if fl.product_id != line.product_id or not fl.date:
+                    continue
+                if fl.date.month != line.date.month:
+                    continue
+                if partner and fl.partner_id.commercial_partner_id != partner:
+                    continue
+                qty = fl.qty_budget
+                if fl.uom_id and line.uom_id and \
+                        fl.uom_id._has_common_reference(line.uom_id):
+                    qty = fl.uom_id._compute_quantity(qty, line.uom_id, round=False)
+                total += qty
+            line.qty_forecast = total
+
     # --- Inmutabilidad: las líneas de un presupuesto aprobado no se tocan -----
     # (patrón Ola A: en borrador el equipo edita libre; aprobado es evidencia;
     # solo MAST puede, tras regresar el presupuesto a borrador.)
@@ -1242,11 +1692,24 @@ class SgiSalesBudgetLine(models.Model):
                 budget = Budget.browse(vals['budget_id'])
                 if budget.kind == 'pronostico' and budget.partner_id:
                     vals['partner_id'] = budget.partner_id.id
-        return super().create(vals_list)
+        lines = super().create(vals_list)
+        # Documento vivo: agregar líneas a un pronóstico 'revisado' también lo
+        # regresa a borrador (P-A28 4.2.2.7).
+        if not self.env.context.get('sgi_bypass_lock'):
+            reopen = lines.budget_id.filtered(
+                lambda b: b.kind == 'pronostico' and b.state == 'revisado')
+            for budget in reopen:
+                budget.with_context(sgi_bypass_lock=True).state = 'borrador'
+                budget.message_post(
+                    body="Actualizado por %s, requiere revisión." % self.env.user.name)
+        return lines
 
     def _sgi_locked_lines(self):
+        # El pronóstico es documento vivo: SIN candado de líneas (P-A28 4.2.2.7);
+        # solo el presupuesto aprobado congela sus líneas.
         return self.filtered(
-            lambda l: l.budget_id.state in self._SGI_LOCKED_PARENT_STATES)
+            lambda l: l.kind != 'pronostico'
+            and l.budget_id.state in self._SGI_LOCKED_PARENT_STATES)
 
     def write(self, vals):
         if (not self.env.su and not self.env.context.get('sgi_bypass_lock')
@@ -1259,7 +1722,20 @@ class SgiSalesBudgetLine(models.Model):
                     "evidencia). Pide al Jefe de MAST regresarlo a borrador o "
                     "crear una nueva revisión.\n\nPresupuesto(s): %s" % (
                         ", ".join(locked.mapped('budget_id.name'))))
-        return super().write(vals)
+        res = super().write(vals)
+        # Documento vivo (P-A28 4.2.2.7): tocar líneas de un pronóstico 'revisado'
+        # lo regresa a borrador automáticamente y avisa que requiere revisión. Solo
+        # cuenta la edición de campos de captura (no el refresh de la foto real).
+        if (self._SGI_EDITABLE_FIELDS & set(vals)
+                and not self.env.context.get('sgi_bypass_lock')):
+            reopen = self.budget_id.filtered(
+                lambda b: b.kind == 'pronostico' and b.state == 'revisado')
+            for budget in reopen:
+                budget.with_context(sgi_bypass_lock=True).state = 'borrador'
+                budget.message_post(
+                    body="Actualizado por %s, requiere revisión." % (
+                        self.env.user.name))
+        return res
 
     def unlink(self):
         if (not self.env.su and not self.env.context.get('sgi_bypass_lock')
