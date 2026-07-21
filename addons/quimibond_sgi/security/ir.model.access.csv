@@ -74,3 +74,5 @@ access_sgi_sales_budget_manager,sgi.sales.budget.manager,model_sgi_sales_budget,
 access_sgi_sales_budget_line_user,sgi.sales.budget.line.user,model_sgi_sales_budget_line,group_sgi_user,1,0,0,0
 access_sgi_sales_budget_line_sale_mgr,sgi.sales.budget.line.sale.mgr,model_sgi_sales_budget_line,sales_team.group_sale_manager,1,1,1,1
 access_sgi_sales_budget_line_manager,sgi.sales.budget.line.manager,model_sgi_sales_budget_line,group_sgi_manager,1,1,1,1
+access_sgi_sales_budget_import_sale_mgr,sgi.sales.budget.import.sale.mgr,model_sgi_sales_budget_import,sales_team.group_sale_manager,1,1,1,1
+access_sgi_sales_budget_import_manager,sgi.sales.budget.import.manager,model_sgi_sales_budget_import,group_sgi_manager,1,1,1,1

@@ -328,6 +328,20 @@ class SgiSalesBudget(models.Model):
         return self.env.ref(
             'quimibond_sgi.action_report_sales_budget').report_action(self)
 
+    def action_open_import(self):
+        """Abre el asistente de importación del Excel F-P-A28-18 (solo borrador)."""
+        self.ensure_one()
+        if self.state != 'borrador':
+            raise UserError("Solo se importa sobre un presupuesto en borrador.")
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Importar desde Excel — %s" % self.name,
+            'res_model': 'sgi.sales.budget.import',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'active_id': self.id, 'default_budget_id': self.id},
+        }
+
 
 class SgiSalesBudgetLine(models.Model):
     _name = 'sgi.sales.budget.line'
