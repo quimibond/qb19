@@ -93,3 +93,32 @@ class TestIncident(TransactionCase):
             ('res_id', '=', incident.id),
         ])
         self.assertTrue(activities, "Un incidente grave debe generar actividad de aviso.")
+
+    def test_05_escalate_severity_forces_nc(self):
+        # (a) Leve → write severity grave → NC mayor creada y ligada en ambos sentidos.
+        incident = self._new_incident(severity='leve')
+        self.assertFalse(incident.sgi_alert_id,
+                         "Un incidente leve no fuerza NC.")
+        incident.write({'severity': 'grave'})
+        self.assertTrue(incident.sgi_alert_id, "Al escalar a grave se fuerza la NC.")
+        self.assertEqual(incident.sgi_alert_id.sgi_classification, 'mayor')
+        self.assertEqual(incident.sgi_alert_id.sgi_incident_id, incident,
+                         "La NC apunta de vuelta al incidente.")
+
+    def test_06_already_serious_write_does_not_duplicate_nc(self):
+        # (b) Ya grave con NC → write de otro campo → no se duplica NC.
+        incident = self._new_incident(severity='grave')
+        alert = incident.sgi_alert_id
+        self.assertTrue(alert)
+        incident.write({'name': 'Otro título del incidente'})
+        self.assertEqual(incident.sgi_alert_id, alert, "No se re-crea la NC.")
+        self.assertEqual(self.env['quality.alert'].search_count(
+            [('sgi_incident_id', '=', incident.id)]), 1,
+            "No se duplica la NC del incidente.")
+
+    def test_07_escalate_leve_to_moderado_no_nc(self):
+        # (c) Leve → moderado → sin NC.
+        incident = self._new_incident(severity='leve')
+        incident.write({'severity': 'moderado'})
+        self.assertFalse(incident.sgi_alert_id,
+                         "Moderado no es grave/fatal: no fuerza NC.")
