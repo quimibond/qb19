@@ -191,6 +191,17 @@ esquema por producto (fila = producto); **el presupuesto por cliente se captura
 en la vista lista/ficha** (dos dimensiones de fila no se resolvieron en grid); el
 reporte desglosa por cliente con subtotal de producto.
 
+**Precio sugerido desde la lista.** `price_unit_budget` (moneda compañía,
+editable); `amount_budget` = qty × precio (compute almacenado invertible: capturar
+el importe despeja el precio). Un `@api.onchange('product_id','partner_id',
+'uom_id')` sugiere el precio de `partner.property_product_pricelist` (o
+`list_price` sin cliente) y **nunca pisa** uno ya capturado. Listas en otra moneda
+se convierten a compañía con el tipo presupuestal `budget_planning_rate` (USD→MXN;
+0 = tipo del día) y dejan rastro en `price_source` ("Lista 'Export USD': 2.15 USD
+× 17.50 = …"). La cotización borrador NO usa este precio: al cotizar se deja que
+Odoo aplique la lista vigente (la diferencia ppto vs real es información). El
+reporte añade columna precio unitario presupuestado vs precio promedio real.
+
 **KPIs 2.0 (v19.0.10):** `crecimiento_ventas` (VE-01, facturación neta timbrada del
 periodo vs mismo periodo año anterior, variación %) · `ots_atendidas` (MT-03,
 maintenance.request cerradas etapa done vs creadas) · `requisiciones` (CO-02,
@@ -291,6 +302,7 @@ plans. Detalle completo en el README del módulo.
 | `quimibond_sgi.production_monthly_capacity` | 0 | KPI MA-02: capacidad instalada mensual de producción (misma unidad que la producción, p.ej. kg). Se prorratea por días en periodos no mensuales. 0 = captura manual |
 | `quimibond_sgi.energy_partner_id` | 0 | KPI TR-03: proveedor de energía (res.partner) cuyas facturas del periodo suman el consumo. 0 = sin configurar → medición en 0 con nota |
 | `quimibond_sgi.sales_budget_alert_pct` | 80 | Cierre de mes: umbral (%) de cumplimiento acumulado del presupuesto de ventas bajo el cual se avisa al responsable del equipo |
+| `quimibond_sgi.budget_planning_rate` | 0 | Tipo de cambio presupuestal USD→MXN para sugerir precios de listas en otra moneda. 0 = tipo de cambio del día de captura |
 
 ### Parámetros añadidos en Ola 1 (Motor de Mejora, ISO 10)
 

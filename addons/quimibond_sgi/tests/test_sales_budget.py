@@ -5,6 +5,7 @@ Datos propios (no demo). Periodo 2040 para aislar de la facturación de demo.
 """
 from datetime import date
 
+from odoo import fields
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
@@ -485,3 +486,101 @@ class TestSalesBudgetClient(TransactionCase):
         line = self._line(budget, partner=None, amount=1000.0)
         self.assertAlmostEqual(line.amount_real, 800.0, places=2)
         self.assertAlmostEqual(budget.amount_real_unbudgeted, 0.0, places=2)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetPrice(TransactionCase):
+    """Adición 5.2: precio sugerido desde la lista de precios del cliente."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Param = cls.env['ir.config_parameter'].sudo()
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado precio PPV'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.usd = cls.env.ref('base.USD')  # moneda de la compañía en esta BD
+        cls.mxn = cls.env.ref('base.MXN')
+        cls.mxn.active = True
+        cls.product = cls.env['product.product'].create({
+            'name': 'Tela precio PPV', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 100.0})
+        cls.budget = cls.Budget.create({'year': 2040, 'team_id': cls.team.id})
+
+    def _pricelist(self, currency, price):
+        pl = self.env['product.pricelist'].create({
+            'name': 'Lista %s PPV' % currency.name, 'currency_id': currency.id})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pl.id, 'applied_on': '1_product',
+            'product_tmpl_id': self.product.product_tmpl_id.id,
+            'compute_price': 'fixed', 'fixed_price': price})
+        return pl
+
+    def _partner_with_list(self, pricelist):
+        partner = self.env['res.partner'].create(
+            {'name': 'Cliente lista PPV', 'is_company': True})
+        partner.property_product_pricelist = pricelist
+        return partner
+
+    def _new_line(self, partner=None, qty=10.0):
+        return self.Line.new({
+            'budget_id': self.budget.id, 'product_id': self.product.id,
+            'uom_id': self.uom_m.id, 'qty_budget': qty,
+            'partner_id': partner.id if partner else False})
+
+    def test_01_suggest_from_client_pricelist_mxn_company_currency(self):
+        # Lista en la MISMA moneda de la compañía (USD): sin conversión.
+        partner = self._partner_with_list(self._pricelist(self.usd, 37.63))
+        line = self._new_line(partner)
+        line._onchange_suggest_price()
+        self.assertAlmostEqual(line.price_unit_budget, 37.63, places=2)
+        self.assertIn("Lista", line.price_source)
+
+    def test_02_suggest_usd_list_with_planning_rate(self):
+        # Lista en MXN convertida con el tipo presupuestal (USD→MXN = 10):
+        # 350 MXN / 10 = 35 USD (moneda compañía).
+        self.Param.set_param('quimibond_sgi.budget_planning_rate', '10')
+        partner = self._partner_with_list(self._pricelist(self.mxn, 350.0))
+        line = self._new_line(partner)
+        line._onchange_suggest_price()
+        self.assertAlmostEqual(line.price_unit_budget, 35.0, places=2)
+        self.assertIn("MXN", line.price_source)
+
+    def test_03_rate_zero_uses_day_rate(self):
+        # Tipo presupuestal 0 → usa el tipo del día. Fijamos MXN=20/USD ese día.
+        self.Param.set_param('quimibond_sgi.budget_planning_rate', '0')
+        self.env['res.currency.rate'].create({
+            'currency_id': self.mxn.id, 'name': fields.Date.context_today(self),
+            'rate': 20.0, 'company_id': self.env.company.id})
+        partner = self._partner_with_list(self._pricelist(self.mxn, 350.0))
+        line = self._new_line(partner)
+        line._onchange_suggest_price()
+        # 350 MXN a 20/USD = 17.5 USD (no 35, que sería con tipo presupuestal 10).
+        self.assertAlmostEqual(line.price_unit_budget, 17.5, places=2)
+
+    def test_04_manual_price_not_overwritten(self):
+        partner = self._partner_with_list(self._pricelist(self.usd, 37.63))
+        line = self._new_line(partner)
+        line.price_unit_budget = 999.0  # capturado a mano
+        line._onchange_suggest_price()
+        self.assertEqual(line.price_unit_budget, 999.0, "No pisa el precio manual.")
+
+    def test_05_no_client_uses_list_price(self):
+        line = self._new_line(partner=None)
+        line._onchange_suggest_price()
+        self.assertAlmostEqual(line.price_unit_budget, 100.0, places=2)
+        self.assertIn("Precio de venta", line.price_source)
+
+    def test_06_amount_is_qty_times_price(self):
+        line = self.Line.create({
+            'budget_id': self.budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'qty_budget': 10.0, 'price_unit_budget': 5.0})
+        self.assertAlmostEqual(line.amount_budget, 50.0, places=2)
+        # Invertible: capturar el importe despeja el precio.
+        line2 = self.Line.create({
+            'budget_id': self.budget.id, 'product_id': self.product.id,
+            'date': date(2040, 7, 1), 'uom_id': self.uom_m.id,
+            'qty_budget': 10.0, 'amount_budget': 500.0})
+        self.assertAlmostEqual(line2.price_unit_budget, 50.0, places=2)

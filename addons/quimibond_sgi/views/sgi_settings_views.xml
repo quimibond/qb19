@@ -35,6 +35,10 @@
                                  help="Al cierre de mes, un equipo con presupuesto aprobado por debajo de este % del acumulado del año avisa a su responsable.">
                             <field name="sgi_sales_budget_alert_pct"/>
                         </setting>
+                        <setting string="Tipo de cambio presupuestal USD→MXN"
+                                 help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
+                            <field name="sgi_budget_planning_rate"/>
+                        </setting>
                     </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Días para escalar una NC sin acciones"
