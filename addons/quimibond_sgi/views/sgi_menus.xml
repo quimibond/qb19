@@ -68,18 +68,28 @@
               action="sgi_supplier_eval_action" sequence="40"/>
     <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
               parent="menu_sgi_measurement" action="sgi_competence_gap_action" sequence="50"/>
-    <menuitem id="menu_sgi_sales_budget" name="Presupuesto de ventas"
-              parent="menu_sgi_measurement" action="sgi_sales_budget_action" sequence="60"/>
-    <menuitem id="menu_sgi_sales_forecast" name="Pronóstico de ventas"
-              parent="menu_sgi_measurement" action="sgi_sales_forecast_action" sequence="65"/>
+    <!-- SGI → Medición: padre "Presupuesto y pronóstico" con 3 hijos (se
+         reutilizan los xmlids existentes como hijos renombrados; no rompe favoritos). -->
+    <menuitem id="menu_sgi_planning" name="Presupuesto y pronóstico"
+              parent="menu_sgi_measurement" sequence="60"/>
+    <menuitem id="menu_sgi_sales_budget" name="Presupuestos"
+              parent="menu_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
+    <menuitem id="menu_sgi_sales_forecast" name="Pronósticos"
+              parent="menu_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
+    <menuitem id="menu_sgi_sales_analysis" name="Análisis"
+              parent="menu_sgi_planning" action="sgi_sales_analysis_action" sequence="30"/>
 
-    <!-- Espejo en la app Ventas, tras Pedidos -->
-    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuesto de ventas"
-              parent="sale.sale_menu_root" action="sgi_sales_budget_action"
-              sequence="6" groups="quimibond_sgi.group_sgi_user"/>
-    <menuitem id="menu_sale_sgi_sales_forecast" name="Pronóstico de ventas"
-              parent="sale.sale_menu_root" action="sgi_sales_forecast_action"
-              sequence="7" groups="quimibond_sgi.group_sgi_user"/>
+    <!-- Espejo en la app Ventas, tras Pedidos: mismo padre con los 3 hijos
+         (se reutilizan los xmlids de los hijos de Ventas ya existentes). -->
+    <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
+              parent="sale.sale_menu_root" sequence="6"
+              groups="quimibond_sgi.group_sgi_user"/>
+    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuestos"
+              parent="menu_sale_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
+    <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
+              parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
+    <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
+              parent="menu_sale_sgi_planning" action="sgi_sales_analysis_action" sequence="30"/>
 
     <!-- 6. Procesos: el mapa y sus flujos -->
     <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"

@@ -14,8 +14,12 @@
                 <field name="date"/>
                 <field name="uom_id"/>
                 <field name="qty_budget"/>
-                <field name="price_unit_budget"/>
-                <field name="amount_budget"/>
+                <field name="price_unit_currency" readonly="1" optional="show"/>
+                <field name="amount_currency" readonly="1" optional="show"/>
+                <field name="list_currency_id" optional="hide"/>
+                <field name="price_unit_budget" readonly="1" optional="show"/>
+                <field name="amount_budget" readonly="1" optional="show"/>
+                <field name="has_list_price" readonly="1" optional="hide"/>
                 <field name="price_source" readonly="1" optional="hide"/>
                 <field name="qty_real" readonly="1" optional="show"/>
                 <field name="qty_net_demand" readonly="1" optional="show"/>
@@ -29,6 +33,9 @@
                 <button name="action_view_week_orders" type="object" icon="fa-shopping-cart"
                         string="Ver pedidos de la semana" title="Ver pedidos de la semana"
                         invisible="kind != 'pronostico'"/>
+                <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
+                        string="Ver facturas del mes" title="Ver facturas del mes"
+                        invisible="kind == 'pronostico'"/>
             </list>
         </field>
     </record>
@@ -43,6 +50,9 @@
                     <button name="action_view_week_orders" type="object"
                             string="Ver pedidos de la semana" icon="fa-shopping-cart"
                             invisible="kind != 'pronostico'"/>
+                    <button name="action_view_month_invoices" type="object"
+                            string="Ver facturas del mes" icon="fa-file-text-o"
+                            invisible="kind == 'pronostico'"/>
                 </header>
                 <sheet>
                     <group>
@@ -56,10 +66,18 @@
                         </group>
                         <group>
                             <field name="qty_budget"/>
-                            <field name="price_unit_budget"/>
-                            <field name="amount_budget"/>
-                            <field name="price_source" readonly="1"/>
                             <field name="currency_id" invisible="1"/>
+                            <field name="list_currency_id" invisible="1"/>
+                            <label for="price_unit_currency" string="Precio (divisa)"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="price_unit_currency" nolabel="1" readonly="1"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="amount_currency" readonly="1"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="price_unit_budget" readonly="1"/>
+                            <field name="amount_budget" readonly="1"/>
+                            <field name="has_list_price" readonly="1"/>
+                            <field name="price_source" readonly="1"/>
                         </group>
                     </group>
                     <group string="Real (facturado) y pedido — automático">
@@ -95,20 +113,8 @@
         </field>
     </record>
 
-    <record id="sgi_sales_budget_line_grid_amount" model="ir.ui.view">
-        <field name="name">sgi.sales.budget.line.grid.amount</field>
-        <field name="model">sgi.sales.budget.line</field>
-        <field name="arch" type="xml">
-            <grid string="Matriz de importes" editable="1" create_inline="1"
-                  display_empty="1">
-                <field name="product_id" type="row"/>
-                <field name="date" type="col">
-                    <range name="month" string="Mes" span="year" step="month" default="1"/>
-                </field>
-                <field name="amount_budget" type="measure"/>
-            </grid>
-        </field>
-    </record>
+    <!-- La grid de importes se eliminó: solo se capturan cantidades; el importe
+         lo pone la lista de precios. La grid de cantidades es LA captura. -->
 
     <record id="sgi_sales_budget_line_view_pivot" model="ir.ui.view">
         <field name="name">sgi.sales.budget.line.pivot</field>
@@ -138,6 +144,18 @@
                 <field name="amount_budget" type="measure"/>
                 <field name="amount_real" type="measure"/>
                 <field name="amount_ordered" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_graph_curve" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.graph.curve</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Curva acumulada (Dirección)" type="line" cumulated="1">
+                <field name="date" interval="month"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
             </graph>
         </field>
     </record>
@@ -190,7 +208,22 @@
         <field name="arch" type="xml">
             <form string="Presupuesto de ventas">
                 <header>
-                    <button name="action_approve" type="object" string="Aprobar"
+                    <!-- Flujo en orden: 1 plantilla · 2 importar/capturar · 3 actualizar · 4 aprobar -->
+                    <button name="action_download_template" type="object"
+                            string="1. Descargar plantilla" icon="fa-file-excel-o"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_open_import" type="object"
+                            string="2. Importar" icon="fa-upload"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_open_grid_qty" type="object"
+                            string="2. Capturar en la matriz" icon="fa-th"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_preload_from_orders" type="object"
+                            string="Precargar desde pedidos" icon="fa-download"
+                            invisible="kind != 'pronostico' or state != 'borrador'"/>
+                    <button name="action_refresh_actuals" type="object"
+                            string="3. Actualizar" icon="fa-refresh"/>
+                    <button name="action_approve" type="object" string="4. Aprobar"
                             class="btn-primary" invisible="state != 'borrador'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_revise" type="object" string="Revisar (nueva Rev.)"
@@ -199,26 +232,16 @@
                     <button name="action_set_borrador" type="object" string="Regresar a borrador"
                             invisible="state != 'aprobado'"
                             groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_open_import" type="object"
-                            string="Importar desde Excel" icon="fa-file-excel-o"
-                            invisible="state != 'borrador'"/>
-                    <button name="action_open_grid_qty" type="object"
-                            string="Capturar cantidades" icon="fa-th"/>
-                    <button name="action_open_grid_amount" type="object"
-                            string="Capturar importes" icon="fa-usd"/>
-                    <button name="action_refresh_actuals" type="object"
-                            string="Actualizar facturado/pedido" icon="fa-refresh"/>
-                    <button name="action_preload_from_orders" type="object"
-                            string="Precargar desde pedidos" icon="fa-download"
-                            invisible="kind != 'pronostico' or state != 'borrador'"/>
                     <button name="action_send_to_mps" type="object"
                             string="Enviar demanda al MPS" icon="fa-industry"
                             invisible="kind != 'pronostico' or state != 'aprobado' or not sgi_mps_available"/>
                     <field name="sgi_mps_available" invisible="1"/>
                     <button name="action_open_comparison" type="object"
                             string="Comparación" icon="fa-bar-chart"/>
+                    <button name="action_open_cumulative" type="object"
+                            string="Curva (Dirección)" icon="fa-line-chart"/>
                     <button name="action_print_budget" type="object"
-                            string="Imprimir (F-P-A28-18)" icon="fa-print"/>
+                            string="Imprimir" icon="fa-print"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="borrador,aprobado,obsoleto"/>
                 </header>
@@ -230,6 +253,15 @@
                         <field name="unconverted_count" class="oe_inline"/> línea(s) de factura
                         del periodo vienen en una unidad de otra categoría: cuentan en importe
                         pero NO en cantidad. Corrige la unidad en la factura o en la línea.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="no_price_count == 0">
+                        <field name="no_price_count" class="oe_inline"/> producto(s) SIN precio
+                        en la lista aplicable. El precio no se captura aquí: corrige
+                        <b>LA LISTA de precios</b> (y arregla cotizaciones, pedidos y presupuesto
+                        de un golpe).
+                        <button name="action_view_no_price" type="object"
+                                string="Ver líneas sin precio" class="btn-link"/>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>
@@ -263,6 +295,7 @@
                             <field name="amount_real_unbudgeted"/>
                         </group>
                         <group>
+                            <field name="amount_currency_text"/>
                             <field name="qty_budget_text"/>
                             <field name="qty_real_text"/>
                         </group>
@@ -276,8 +309,11 @@
                                     <field name="date"/>
                                     <field name="uom_id"/>
                                     <field name="qty_budget"/>
-                                    <field name="price_unit_budget"/>
-                                    <field name="amount_budget"/>
+                                    <field name="price_unit_currency" readonly="1" optional="show"/>
+                                    <field name="amount_currency" readonly="1" optional="show"/>
+                                    <field name="list_currency_id" optional="hide"/>
+                                    <field name="price_unit_budget" readonly="1"/>
+                                    <field name="amount_budget" readonly="1"/>
                                     <field name="qty_real" readonly="1"/>
                                     <field name="qty_net_demand" readonly="1"
                                            column_invisible="parent.kind != 'pronostico'"/>
@@ -436,5 +472,75 @@
             (pedidos confirmados por fecha de compromiso). Importa desde el
             forecast.xlsx con «Importar desde Excel».</p>
         </field>
+    </record>
+
+    <!-- ============ KANBAN de presupuestos/pronósticos ============ -->
+    <record id="sgi_sales_budget_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.kanban</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="fulfillment_pct"/>
+                <field name="kind"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="row">
+                            <div class="col-8">
+                                <strong><field name="year"/></strong> ·
+                                <field name="partner_id" invisible="kind != 'pronostico'"/>
+                                <field name="team_id" invisible="kind == 'pronostico'"/>
+                            </div>
+                            <div class="col-4 text-end">
+                                <field name="state" widget="label_selection"
+                                       options="{'classes': {'borrador': 'info', 'aprobado': 'success', 'obsoleto': 'muted'}}"/>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6 text-muted">
+                                <field name="amount_budget_total" widget="monetary"/>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span t-attf-class="badge #{record.fulfillment_pct.raw_value >= 90 ? 'text-bg-success' : (record.fulfillment_pct.raw_value >= 80 ? 'text-bg-warning' : 'text-bg-danger')}">
+                                    <field name="fulfillment_pct"/>%
+                                </span>
+                            </div>
+                        </div>
+                        <field name="currency_id" invisible="1"/>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============ ANÁLISIS (panel comercial) ============ -->
+    <record id="sgi_sales_analysis_action" model="ir.actions.act_window">
+        <field name="name">Análisis de ventas (presupuesto vs real)</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="domain">[('budget_id.state', '!=', 'obsoleto')]</field>
+        <field name="context">{'search_default_group_team': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Panel comercial</p>
+            <p>Cumplimiento por equipo/cliente/producto/mes: presupuestado,
+            comprometido, facturado y demanda neta. Cada celda navega a sus líneas
+            y de la línea a sus documentos.</p>
+        </field>
+    </record>
+
+    <!-- Reprograma las acciones de presupuesto/pronóstico con kanban primero. -->
+    <record id="sgi_sales_budget_action" model="ir.actions.act_window">
+        <field name="view_mode">kanban,list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_sales_budget_view_kanban')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
+    </record>
+    <record id="sgi_sales_forecast_action" model="ir.actions.act_window">
+        <field name="view_mode">kanban,list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_sales_budget_view_kanban')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_forecast_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
     </record>
 </odoo>

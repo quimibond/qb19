@@ -264,17 +264,23 @@ class SgiSalesBudgetImport(models.TransientModel):
                 budget.line_ids.filtered(
                     lambda l: l.product_id == product).unlink()
                 cleared.add(product.id)
+            # Solo se leen CANTIDADES: las columnas '$' se ignoran (el importe lo
+            # calcula la lista de precios).
             months = {}
             for (month, kind), col in month_cols.items():
+                if kind != 'qty':
+                    continue
                 val = self._as_number(ws.cell(r, col).value)
                 if val > 0:
-                    months.setdefault(month, {})[kind] = val
-            for month, kv in months.items():
+                    months[month] = val
+            for month, qty in months.items():
                 if self._upsert_line(
                         budget, product, date(budget.year, month, 1), uom,
-                        partner and partner.id, kv.get('qty', 0.0),
-                        kv.get('amount', 0.0), warnings):
+                        partner and partner.id, qty, warnings):
                     imported += 1
+        if any(k == 'amount' for (_m, k) in month_cols):
+            warnings.append("Las columnas de importe ($) se ignoraron: los "
+                            "importes se calculan de la lista de precios.")
         return imported, unmatched, warnings
 
     def _import_forecast(self, ws, budget):
@@ -317,16 +323,16 @@ class SgiSalesBudgetImport(models.TransientModel):
                 monday = self._week_monday(budget.year, week)
                 if self._upsert_line(
                         budget, product, monday, product.uom_id,
-                        budget.partner_id.id, qty, 0.0, warnings,
+                        budget.partner_id.id, qty, warnings,
                         customer_code=entry['code']):
                     imported += 1
         return imported, unmatched, warnings
 
     def _upsert_line(self, budget, product, line_date, uom, partner_id, qty,
-                     amount, warnings, customer_code=None):
-        """Crea/suma una línea (producto, fecha, cliente). Errores de datos
-        (unidad, esquema mixto, semana fuera de año) se reportan y NO abortan la
-        hoja (savepoint por línea)."""
+                     warnings, customer_code=None):
+        """Crea/suma una línea (SOLO cantidad; el precio/importe lo pone la lista).
+        Errores de datos (unidad, esquema mixto, semana fuera de año) se reportan y
+        NO abortan la hoja (savepoint por línea)."""
         Line = self.env['sgi.sales.budget.line']
         domain = [('budget_id', '=', budget.id), ('product_id', '=', product.id),
                   ('date', '=', line_date),
@@ -336,8 +342,6 @@ class SgiSalesBudgetImport(models.TransientModel):
                 existing = Line.search(domain, limit=1)
                 if existing and self.conflict_mode == 'add':
                     existing.qty_budget += qty
-                    if amount:
-                        existing.amount_budget = existing.amount_budget + amount
                     return True
                 vals = {
                     'budget_id': budget.id, 'product_id': product.id,
@@ -346,19 +350,11 @@ class SgiSalesBudgetImport(models.TransientModel):
                 }
                 if customer_code:
                     vals['customer_code'] = customer_code
-                if amount:
-                    vals['amount_budget'] = amount
-                line = Line.create(vals)
-                # m sin $: sugiere el importe con el precio de lista.
-                if qty and not amount:
-                    price, source = line._sgi_suggest_price()
-                    if price:
-                        line.price_unit_budget = price
-                        line.price_source = source
+                Line.create(vals)
                 return True
         except (ValidationError, UserError) as exc:
-            warnings.append("%s %02d/%s: %s" % (
-                product.display_name, month, budget.year,
+            warnings.append("%s %s: %s" % (
+                product.display_name, line_date,
                 exc.args[0] if exc.args else exc))
             return False
 
