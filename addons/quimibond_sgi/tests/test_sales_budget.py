@@ -1075,23 +1075,30 @@ class TestSalesBudgetTemplate(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado plantilla'})
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
         cls.prod_a = cls.env['product.product'].create({
             'name': 'Prod A tpl', 'default_code': 'PA-TPL', 'type': 'consu',
             'uom_id': cls.uom_m.id})
         cls.prod_b = cls.env['product.product'].create({
             'name': 'Prod B tpl', 'default_code': 'PB-TPL', 'type': 'consu',
             'uom_id': cls.uom_m.id})
-        cls.partner = cls.env['res.partner'].create(
-            {'name': 'Cliente plantilla', 'is_company': True})
+        cls.cli1 = cls.env['res.partner'].create(
+            {'name': 'AAA Cliente uno', 'is_company': True})
+        cls.cli2 = cls.env['res.partner'].create(
+            {'name': 'BBB Cliente dos', 'is_company': True})
 
-    def _sold_order(self, product):
-        so = self.env['sale.order'].create({
-            'partner_id': self.partner.id, 'team_id': self.team.id,
-            'order_line': [(0, 0, {
-                'product_id': product.id, 'product_uom_qty': 1,
-                'product_uom_id': self.uom_m.id, 'price_unit': 1.0})]})
-        so.action_confirm()
-        return so
+    def _invoice(self, client, product):
+        # Fecha reciente (dentro de los 24 meses) para que entre al historial.
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': client.id,
+            'invoice_date': date.today(), 'team_id': self.team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': product.id, 'quantity': 1,
+                'product_uom_id': self.uom_m.id, 'price_unit': 10.0,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
 
     def _read_template(self, budget):
         import base64
@@ -1103,30 +1110,44 @@ class TestSalesBudgetTemplate(TransactionCase):
         wb = openpyxl.load_workbook(io.BytesIO(base64.b64decode(att.datas)))
         return wb.active, att
 
-    def test_01_template_has_historical_products(self):
-        # Solo PA-TPL se vendió → la plantilla del equipo lleva esa fila.
-        self._sold_order(self.prod_a)
+    def _data_rows(self, ws):
+        """[(producto, cliente)] de las filas con producto (header en fila 2)."""
+        rows = []
+        for r in range(3, ws.max_row + 1):
+            prod = ws.cell(r, 1).value
+            if prod:
+                rows.append((prod, ws.cell(r, 2).value))
+        return rows
+
+    def test_01_template_has_client_product_pairs(self):
+        # 2 clientes × 2 productos facturados → 4 pares (cliente × producto).
+        self._invoice(self.cli1, self.prod_a)
+        self._invoice(self.cli1, self.prod_b)
+        self._invoice(self.cli2, self.prod_a)
         budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         ws, _ = self._read_template(budget)
-        codes = [ws.cell(r, 1).value for r in range(2, ws.max_row + 1)]
-        self.assertIn('PA-TPL', codes)
-        self.assertNotIn('PB-TPL', codes, "No vendido: no está en la plantilla.")
-        # Encabezado de meses del F-P-A28-18.
-        self.assertEqual(ws.cell(1, 1).value, 'PRODUCTO')
+        # Header en la fila 2 (fila 1 = instrucción).
+        self.assertEqual(ws.cell(2, 1).value, 'PRODUCTO')
+        self.assertEqual(ws.cell(2, 2).value, 'CLIENTE')
+        pairs = self._data_rows(ws)
+        self.assertIn(('PA-TPL', 'AAA Cliente uno'), pairs)
+        self.assertIn(('PB-TPL', 'AAA Cliente uno'), pairs)
+        self.assertIn(('PA-TPL', 'BBB Cliente dos'), pairs)
+        self.assertNotIn(('PB-TPL', 'BBB Cliente dos'), pairs,
+                         "Par no facturado: no aparece.")
+        # Ordenado por cliente y luego producto.
+        self.assertEqual(pairs[0], ('PA-TPL', 'AAA Cliente uno'))
 
     def test_02_roundtrip_download_fill_import(self):
-        self._sold_order(self.prod_a)
+        self._invoice(self.cli1, self.prod_a)
         budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         ws, att = self._read_template(budget)
-        # Llena la cantidad de ENERO (columna 4: PRODUCTO, UNIDAD, CLIENTE, ENERO m).
-        row = next(r for r in range(2, ws.max_row + 1)
+        # Fila del par (PA-TPL, cli1); ENERO m está en la columna 4.
+        row = next(r for r in range(3, ws.max_row + 1)
                    if ws.cell(r, 1).value == 'PA-TPL')
         ws.cell(row, 4).value = 250
         import base64
         import io
-        import openpyxl
-        wb = openpyxl.Workbook()  # reescribe el libro con el valor
-        # Regenera desde el ws modificado.
         buf = io.BytesIO()
         ws.parent.save(buf)
         wiz = self.env['sgi.sales.budget.import'].create({
@@ -1137,11 +1158,49 @@ class TestSalesBudgetTemplate(TransactionCase):
         self.assertEqual(len(line), 1)
         self.assertEqual(line.date, date(2040, 1, 1))
         self.assertEqual(line.qty_budget, 250.0)
+        self.assertEqual(line.partner_id, self.cli1, "Línea por cliente del par.")
+
+    def test_02b_empty_rows_do_not_import(self):
+        # Plantilla grande, ninguna cantidad → cero líneas (filas vacías se ignoran).
+        self._invoice(self.cli1, self.prod_a)
+        self._invoice(self.cli2, self.prod_b)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        ws, att = self._read_template(budget)
+        import base64
+        import io
+        buf = io.BytesIO()
+        ws.parent.save(buf)
+        wiz = self.env['sgi.sales.budget.import'].create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': ws.title})
+        wiz.action_import()
+        self.assertFalse(budget.line_ids, "Filas sin cantidad no generan líneas.")
+
+    def test_02c_row_without_client_makes_global_line(self):
+        self._invoice(self.cli1, self.prod_a)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        ws, att = self._read_template(budget)
+        row = next(r for r in range(3, ws.max_row + 1)
+                   if ws.cell(r, 1).value == 'PA-TPL')
+        ws.cell(row, 2).value = None   # borra el cliente → global
+        ws.cell(row, 4).value = 120
+        import base64
+        import io
+        buf = io.BytesIO()
+        ws.parent.save(buf)
+        wiz = self.env['sgi.sales.budget.import'].create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': ws.title})
+        wiz.action_import()
+        line = budget.line_ids.filtered(lambda l: l.product_id == self.prod_a)
+        self.assertEqual(len(line), 1)
+        self.assertFalse(line.partner_id, "Sin cliente en la fila → línea global.")
+        self.assertEqual(line.qty_budget, 120.0)
 
     def test_03_actions_filter_by_kind(self):
         b = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         f = self.Budget.create({'year': 2040, 'team_id': self.team.id,
-                                'kind': 'pronostico', 'partner_id': self.partner.id})
+                                'kind': 'pronostico', 'partner_id': self.cli1.id})
         act_b = self.env.ref('quimibond_sgi.sgi_sales_budget_action')
         act_f = self.env.ref('quimibond_sgi.sgi_sales_forecast_action')
         budgets = self.Budget.search(
