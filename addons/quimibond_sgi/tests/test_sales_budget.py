@@ -3,6 +3,8 @@
 
 Datos propios (no demo). Periodo 2040 para aislar de la facturación de demo.
 """
+import base64
+import io
 from datetime import date
 
 from odoo import fields
@@ -584,3 +586,100 @@ class TestSalesBudgetPrice(TransactionCase):
             'date': date(2040, 7, 1), 'uom_id': self.uom_m.id,
             'qty_budget': 10.0, 'amount_budget': 500.0})
         self.assertAlmostEqual(line2.price_unit_budget, 50.0, places=2)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetImport(TransactionCase):
+    """Adición 5.2: asistente de importación del Excel F-P-A28-18."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Wizard = cls.env['sgi.sales.budget.import']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado import PPV'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.uom_kg = cls.env.ref('uom.product_uom_kgm')
+        cls.tela = cls.env['product.product'].create({
+            'name': 'Tela import', 'default_code': 'TELA-1', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 40.0})
+        cls.fibra = cls.env['product.product'].create({
+            'name': 'Fibra import', 'default_code': 'FIBRA-1', 'type': 'consu',
+            'uom_id': cls.uom_kg.id})
+
+    def _xlsx(self):
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Presupuesto'
+        ws.append(['PRODUCTO', 'UNIDAD', 'ENERO m', 'ENERO $',
+                   'FEBRERO m', 'FEBRERO $', 'MARZO m', 'MARZO $'])
+        ws.append(['TELA-1', 'm', 100, 5000, 120, 6000, 0, 0])
+        ws.append(['FIBRA-1', 'kg', 50, 2500, 0, 0, 0, 0])
+        ws.append(['NOEXISTE', 'm', 10, 500, 0, 0, 0, 0])
+        buf = io.BytesIO()
+        wb.save(buf)
+        return base64.b64encode(buf.getvalue())
+
+    def _wizard(self, budget, mode='replace'):
+        return self.Wizard.create({
+            'budget_id': budget.id, 'file': self._xlsx(),
+            'filename': 'ppv.xlsx', 'sheet_name': 'Presupuesto',
+            'conflict_mode': mode})
+
+    def test_01_import_matrix(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        wiz = self._wizard(budget)
+        wiz.action_import()
+        # TELA-1: enero + febrero (2 líneas); FIBRA-1: enero (1). Total 3.
+        self.assertEqual(len(budget.line_ids), 3)
+        tela_ene = budget.line_ids.filtered(
+            lambda l: l.product_id == self.tela and l.date == date(2040, 1, 1))
+        self.assertEqual(tela_ene.qty_budget, 100.0)
+        self.assertAlmostEqual(tela_ene.amount_budget, 5000.0, places=2)
+        self.assertEqual(tela_ene.uom_id, self.uom_m)
+        fibra = budget.line_ids.filtered(lambda l: l.product_id == self.fibra)
+        self.assertEqual(fibra.uom_id, self.uom_kg, "Unidad kg de la columna UNIDAD.")
+        self.assertEqual(fibra.qty_budget, 50.0)
+
+    def test_02_unmatched_reported_not_fatal(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        wiz = self._wizard(budget)
+        wiz.action_import()
+        self.assertIn('NOEXISTE', wiz.result)
+        self.assertIn('sin match', wiz.result)
+        # A pesar del no-match, las líneas buenas se importaron.
+        self.assertEqual(len(budget.line_ids), 3)
+
+    def test_03_reimport_replace_no_duplicate(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self._wizard(budget).action_import()
+        self.assertEqual(len(budget.line_ids), 3)
+        # Reimportar en modo reemplazar no duplica.
+        self._wizard(budget).action_import()
+        self.assertEqual(len(budget.line_ids), 3)
+
+    def test_04_no_header_is_structural_error(self):
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(['COSA', 'OTRA'])  # sin 'PRODUCTO'
+        ws.append(['x', 'y'])
+        buf = io.BytesIO()
+        wb.save(buf)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        wiz = self.Wizard.create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': 'Sheet'})
+        with self.assertRaises(UserError):
+            wiz.action_import()
+        self.assertFalse(budget.line_ids, "Error estructural: se revierte todo.")
+
+    def test_05_approved_budget_blocks_import(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.env['sgi.sales.budget.line'].create({
+            'budget_id': budget.id, 'product_id': self.tela.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 1.0})
+        budget.state = 'aprobado'
+        with self.assertRaises(UserError):
+            budget.action_open_import()

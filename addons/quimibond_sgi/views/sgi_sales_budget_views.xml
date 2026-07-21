@@ -185,6 +185,9 @@
                     <button name="action_set_borrador" type="object" string="Regresar a borrador"
                             invisible="state != 'aprobado'"
                             groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_open_import" type="object"
+                            string="Importar desde Excel" icon="fa-file-excel-o"
+                            invisible="state != 'borrador'"/>
                     <button name="action_open_grid_qty" type="object"
                             string="Capturar cantidades" icon="fa-th"/>
                     <button name="action_open_grid_amount" type="object"
@@ -301,6 +304,48 @@
                 </group>
             </search>
         </field>
+    </record>
+
+    <!-- ============ ASISTENTE DE IMPORTACIÓN DESDE EXCEL ============ -->
+    <record id="sgi_sales_budget_import_view_form" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.import.form</field>
+        <field name="model">sgi.sales.budget.import</field>
+        <field name="arch" type="xml">
+            <form string="Importar presupuesto desde Excel">
+                <sheet>
+                    <div class="alert alert-info" role="alert" invisible="result">
+                        Sube el Excel del F-P-A28-18 (matriz producto × meses, pares
+                        «&lt;mes&gt; m» / «&lt;mes&gt; $»). Columnas opcionales UNIDAD y
+                        CLIENTE. Los productos sin match se reportan; ninguno se crea solo.
+                    </div>
+                    <group invisible="result">
+                        <field name="budget_id" readonly="1"/>
+                        <field name="file" filename="filename"/>
+                        <field name="filename" invisible="1"/>
+                        <field name="available_sheets" invisible="not available_sheets"/>
+                        <field name="sheet_name"/>
+                        <field name="conflict_mode"/>
+                    </group>
+                    <group invisible="not result">
+                        <field name="result" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_import" type="object" string="Importar"
+                            class="btn-primary" invisible="result"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_import_action" model="ir.actions.act_window">
+        <field name="name">Importar desde Excel</field>
+        <field name="res_model">sgi.sales.budget.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_view_types">form</field>
     </record>
 
     <record id="sgi_sales_budget_action" model="ir.actions.act_window">

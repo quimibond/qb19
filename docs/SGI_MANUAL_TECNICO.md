@@ -202,6 +202,16 @@ se convierten a compañía con el tipo presupuestal `budget_planning_rate` (USD�
 Odoo aplique la lista vigente (la diferencia ppto vs real es información). El
 reporte añade columna precio unitario presupuestado vs precio promedio real.
 
+**Importación desde el Excel real.** Asistente `sgi.sales.budget.import`
+(TransientModel, botón "Importar desde Excel" solo en borrador) que parsea el
+F-P-A28-18 con openpyxl: detecta la fila de encabezados por 'PRODUCTO', pares
+"<mes> m"/"<mes> $" (tolerante a mayúsculas/acentos/espacios), columnas opcionales
+UNIDAD y CLIENTE. Matching de producto por default_code → nombre exacto → nombre
+ilike único; los no-match se reportan (chatter + resultado) y NO abortan. Todo-o-
+nada por hoja para errores ESTRUCTURALES (savepoint); los errores de datos por
+línea usan savepoint anidado y se reportan. Modo de choque replace (default) /
+add. Convive con base_import (tabla plana).
+
 **KPIs 2.0 (v19.0.10):** `crecimiento_ventas` (VE-01, facturación neta timbrada del
 periodo vs mismo periodo año anterior, variación %) · `ots_atendidas` (MT-03,
 maintenance.request cerradas etapa done vs creadas) · `requisiciones` (CO-02,
