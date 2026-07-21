@@ -206,3 +206,74 @@ class TestSalesBudget(TransactionCase):
         self.assertEqual(new.year, 2040)
         self.assertEqual(len(new.line_ids), 1, "Copia las líneas.")
         self.assertEqual(new.line_ids.qty_budget, 10.0)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetStep2(TransactionCase):
+    """Paso 2: grid de captura, comparación, banner de formato e impresión."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado Confección PPV'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Entretela PPV', 'type': 'consu', 'uom_id': cls.uom_m.id})
+
+    def _budget(self):
+        return self.Budget.create({'year': 2040, 'team_id': self.team.id})
+
+    def test_01_grid_update_cell_creates_and_increments(self):
+        budget = self._budget()
+        Line = self.Line.with_context(default_budget_id=budget.id)
+        domain = [('budget_id', '=', budget.id),
+                  ('product_id', '=', self.product.id),
+                  ('date', '>=', '2040-06-01'), ('date', '<', '2040-07-01')]
+        # Celda vacía → crea la línea (producto/mes/unidad de venta).
+        Line.grid_update_cell(domain, 'qty_budget', 100.0)
+        line = self.Line.search([('budget_id', '=', budget.id)])
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.date, date(2040, 6, 1))
+        self.assertEqual(line.uom_id, self.uom_m)
+        self.assertEqual(line.qty_budget, 100.0)
+        # Celda existente → suma.
+        Line.grid_update_cell(domain, 'qty_budget', 50.0)
+        self.assertEqual(line.qty_budget, 150.0)
+        # También sobre importe.
+        Line.grid_update_cell(domain, 'amount_budget', 2000.0)
+        self.assertEqual(line.amount_budget, 2000.0)
+
+    def test_02_grid_zero_value_noop(self):
+        budget = self._budget()
+        Line = self.Line.with_context(default_budget_id=budget.id)
+        domain = [('budget_id', '=', budget.id),
+                  ('product_id', '=', self.product.id),
+                  ('date', '>=', '2040-06-01'), ('date', '<', '2040-07-01')]
+        Line.grid_update_cell(domain, 'qty_budget', 0.0)
+        self.assertFalse(self.Line.search([('budget_id', '=', budget.id)]))
+
+    def test_03_format_banner_a28_18(self):
+        budget = self._budget()
+        self.assertIn('F-P-A28-18', budget.sgi_format_banner or '')
+
+    def test_04_grid_and_comparison_actions(self):
+        budget = self._budget()
+        act_qty = budget.action_open_grid_qty()
+        self.assertEqual(act_qty['res_model'], 'sgi.sales.budget.line')
+        self.assertTrue(any(v[1] == 'grid' for v in act_qty['views']))
+        act_cmp = budget.action_open_comparison()
+        self.assertEqual(act_cmp['view_mode'], 'pivot,graph,list')
+
+    def test_05_report_renders(self):
+        budget = self._budget()
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'qty_budget': 1200.0, 'amount_budget': 48000.0})
+        html, ttype = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_sgi.action_report_sales_budget', budget.ids)
+        self.assertEqual(ttype, 'html')
+        self.assertIn('Presupuesto de Ventas', html.decode())
+        self.assertIn('F-P-A28-18', html.decode())

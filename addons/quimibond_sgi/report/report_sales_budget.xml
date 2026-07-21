@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_sales_budget" model="ir.actions.report">
+        <field name="name">Presupuesto de ventas (F-P-A28-18)</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_sales_budget_document</field>
+        <field name="report_file">quimibond_sgi.report_sales_budget_document</field>
+        <field name="print_report_name">'PPV-%s-%s' % (object.team_id.name or '', object.year or '')</field>
+    </record>
+
+    <template id="report_sales_budget_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-set="matrix" t-value="doc._report_matrix()"/>
+                    <div class="page">
+                        <h2 class="text-center">
+                            Presupuesto de Ventas<br/>
+                            <small t-out="doc.name"/>
+                        </h2>
+                        <p class="text-muted text-center" style="font-size:11px;">
+                            Cantidades por unidad (no se suman entre unidades distintas);
+                            el total global es solo en pesos (<span t-out="doc.currency_id.name"/>).
+                        </p>
+                        <table class="table table-sm table-bordered" style="font-size:9px;">
+                            <thead>
+                                <tr class="table-active">
+                                    <th>Producto</th>
+                                    <th>Unidad</th>
+                                    <th t-foreach="matrix['months']" t-as="m" class="text-end"
+                                        t-out="m"/>
+                                    <th class="text-end">Total cant.</th>
+                                    <th class="text-end">Importe</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="matrix['rows']" t-as="row">
+                                    <td t-out="row['product']"/>
+                                    <td t-out="row['uom']"/>
+                                    <td t-foreach="matrix['months']" t-as="m" class="text-end"
+                                        t-out="'{:,.0f}'.format(row['cells'][m]) if row['cells'][m] else ''"/>
+                                    <td class="text-end fw-bold"
+                                        t-out="'{:,.2f}'.format(row['qty_total'])"/>
+                                    <td class="text-end">
+                                        <span t-out="row['amount_total']"
+                                              t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-active">
+                                    <td colspan="14" class="text-end fw-bold">
+                                        Subtotal de cantidad por unidad:
+                                        <span t-out="matrix['qty_by_uom']"/>
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <span t-out="matrix['amount_total']"
+                                              t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

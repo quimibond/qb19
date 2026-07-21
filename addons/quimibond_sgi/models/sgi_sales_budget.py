@@ -24,7 +24,7 @@ _REAL_MOVE_TYPES = ('out_invoice', 'out_refund')
 class SgiSalesBudget(models.Model):
     _name = 'sgi.sales.budget'
     _description = "Presupuesto de ventas (F-P-A28-18)"
-    _inherit = ['sgi.base.mixin']
+    _inherit = ['sgi.base.mixin', 'sgi.format.mixin']
     _order = 'year desc, team_id, revision desc'
     _sgi_sequence_code = 'sgi.sales.budget'
     _sgi_locked_states = ('aprobado',)
@@ -199,6 +199,80 @@ class SgiSalesBudget(models.Model):
             'domain': [('budget_id', '=', self.id)],
             'context': {'default_budget_id': self.id},
         }
+
+    def _action_grid(self, view_xmlid, name):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "%s — %s" % (name, self.name),
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'grid,list,form',
+            'views': [
+                (self.env.ref(view_xmlid).id, 'grid'),
+                (False, 'list'), (False, 'form')],
+            'domain': [('budget_id', '=', self.id)],
+            'context': {'default_budget_id': self.id,
+                        'grid_anchor': fields.Date.to_string(
+                            fields.Date.to_date('%s-01-01' % self.year))},
+        }
+
+    def action_open_grid_qty(self):
+        return self._action_grid(
+            'quimibond_sgi.sgi_sales_budget_line_grid_qty', "Cantidades")
+
+    def action_open_grid_amount(self):
+        return self._action_grid(
+            'quimibond_sgi.sgi_sales_budget_line_grid_amount', "Importes")
+
+    def action_open_comparison(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Comparación (ppto vs facturado vs pedido) — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'pivot,graph,list',
+            'domain': [('budget_id', '=', self.id)],
+            'context': {'default_budget_id': self.id,
+                        'search_default_group_uom': 1},
+        }
+
+    # --- Matriz para el reporte F-P-A28-18 -----------------------------------
+    def _report_matrix(self):
+        """Estructura producto × 12 meses para el QWeb: filas con la cantidad por
+        mes (en la unidad de la línea), subtotal de cantidad por unidad y total de
+        dinero. Las cantidades NO se totalizan globalmente (unidades distintas);
+        el único total global es el de pesos."""
+        self.ensure_one()
+        months = list(range(1, 13))
+        rows = []
+        for line in self.line_ids.sorted(lambda l: (
+                l.product_id.default_code or '', l.product_id.name or '', l.date)):
+            key = (line.product_id.id, line.uom_id.id)
+            row = next((r for r in rows if r['_key'] == key), None)
+            if not row:
+                row = {
+                    '_key': key,
+                    'product': line.product_id.display_name,
+                    'uom': line.uom_id.name or '',
+                    'cells': {m: 0.0 for m in months},
+                    'qty_total': 0.0,
+                    'amount_total': 0.0,
+                }
+                rows.append(row)
+            row['cells'][line.date.month] += line.qty_budget
+            row['qty_total'] += line.qty_budget
+            row['amount_total'] += line.amount_budget
+        return {
+            'months': months,
+            'rows': rows,
+            'qty_by_uom': self.qty_budget_text,
+            'amount_total': self.amount_budget_total,
+        }
+
+    def action_print_budget(self):
+        self.ensure_one()
+        return self.env.ref(
+            'quimibond_sgi.action_report_sales_budget').report_action(self)
 
 
 class SgiSalesBudgetLine(models.Model):
@@ -432,3 +506,41 @@ class SgiSalesBudgetLine(models.Model):
                     "Presupuesto(s): %s" % (
                         ", ".join(locked.mapped('budget_id.name'))))
         return super().unlink()
+
+    # --- Grid de captura (matriz producto × mes) -----------------------------
+    def _grid_cell_vals_from_domain(self, domain):
+        """Producto, mes y presupuesto de la celda a crear, leídos del dominio del
+        grid (fila producto + columna mes) y del contexto (default_budget_id)."""
+        vals = {}
+        for leaf in domain:
+            if isinstance(leaf, (list, tuple)) and len(leaf) == 3:
+                field, op, val = leaf
+                if field == 'product_id' and op == '=':
+                    vals['product_id'] = val
+                elif field == 'date' and op in ('>=', '=', '>'):
+                    vals['date'] = val
+                elif field == 'budget_id' and op == '=':
+                    vals['budget_id'] = val
+        vals.setdefault('budget_id', self.env.context.get('default_budget_id'))
+        product = self.env['product.product'].browse(vals.get('product_id'))
+        vals['uom_id'] = product.uom_id.id
+        return vals
+
+    @api.model
+    def grid_update_cell(self, domain, measure_field_name, value):
+        """Suma `value` a la celda (producto × mes) del grid; crea la línea si no
+        existe (patrón timesheet_grid). La unidad de una línea nueva es la de venta
+        del producto; luego se ajusta en la lista/ficha si aplica."""
+        if not value:
+            return
+        line = self.search(domain, limit=1)
+        if line:
+            line[measure_field_name] += value
+            return
+        vals = self._grid_cell_vals_from_domain(domain)
+        if not vals.get('budget_id') or not vals.get('product_id') or not vals.get('date'):
+            raise UserError(
+                "No se pudo ubicar la celda (producto/mes/presupuesto). Captura "
+                "la línea desde la lista o la ficha.")
+        vals[measure_field_name] = value
+        self.create(vals)

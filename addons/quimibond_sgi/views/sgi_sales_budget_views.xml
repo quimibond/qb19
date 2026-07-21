@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ LÍNEA: LISTA / FICHA / GRID / PIVOT / GRAPH ============ -->
+    <record id="sgi_sales_budget_line_view_list" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.list</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <list string="Líneas de presupuesto" editable="bottom">
+                <field name="budget_id" column_invisible="context.get('default_budget_id')"/>
+                <field name="product_id"/>
+                <field name="date"/>
+                <field name="uom_id"/>
+                <field name="qty_budget"/>
+                <field name="amount_budget"/>
+                <field name="qty_real" readonly="1" optional="show"/>
+                <field name="amount_real" readonly="1" optional="show"/>
+                <field name="qty_ordered" readonly="1" optional="hide"/>
+                <field name="amount_ordered" readonly="1" optional="hide"/>
+                <field name="avg_price_budget" readonly="1" optional="hide"/>
+                <field name="avg_price_real" readonly="1" optional="hide"/>
+                <field name="unconverted_count" readonly="1" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_form" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.form</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <form string="Línea de presupuesto">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="budget_id"/>
+                            <field name="product_id"/>
+                            <field name="date"/>
+                            <field name="uom_id"/>
+                        </group>
+                        <group>
+                            <field name="qty_budget"/>
+                            <field name="amount_budget"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Real (facturado) y pedido — automático">
+                        <group>
+                            <field name="qty_real" readonly="1"/>
+                            <field name="amount_real" readonly="1"/>
+                            <field name="unconverted_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="qty_ordered" readonly="1"/>
+                            <field name="amount_ordered" readonly="1"/>
+                            <field name="avg_price_budget" readonly="1"/>
+                            <field name="avg_price_real" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_grid_qty" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.grid.qty</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <grid string="Matriz de cantidades" editable="1" create_inline="1"
+                  display_empty="1">
+                <field name="product_id" type="row"/>
+                <field name="date" type="col">
+                    <range name="month" string="Mes" span="year" step="month" default="1"/>
+                </field>
+                <field name="qty_budget" type="measure"/>
+            </grid>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_grid_amount" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.grid.amount</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <grid string="Matriz de importes" editable="1" create_inline="1"
+                  display_empty="1">
+                <field name="product_id" type="row"/>
+                <field name="date" type="col">
+                    <range name="month" string="Mes" span="year" step="month" default="1"/>
+                </field>
+                <field name="amount_budget" type="measure"/>
+            </grid>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.pivot</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Ppto vs facturado vs pedido">
+                <field name="uom_id" type="row"/>
+                <field name="product_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+                <field name="qty_budget" type="measure"/>
+                <field name="qty_real" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_graph" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.graph</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Ppto vs facturado vs pedido" type="bar">
+                <field name="date" interval="month"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_search" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.search</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <search string="Líneas de presupuesto">
+                <field name="product_id"/>
+                <field name="budget_id"/>
+                <field name="team_id"/>
+                <group>
+                    <filter name="group_uom" string="Unidad" context="{'group_by': 'uom_id'}"/>
+                    <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción global de líneas (importación base_import del Excel de MAST). -->
+    <record id="sgi_sales_budget_line_action" model="ir.actions.act_window">
+        <field name="name">Líneas de presupuesto de ventas</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Importa o captura las líneas del presupuesto</p>
+            <p>Para cargar el 2026 desde el Excel, usa <b>Favoritos → Importar registros</b>.
+            Columnas esperadas:</p>
+            <ul>
+                <li><b>Presupuesto</b> (budget_id) — el presupuesto del mercado y año</li>
+                <li><b>Producto</b> (product_id) — por referencia interna o nombre</li>
+                <li><b>Unidad</b> (uom_id) — opcional; por defecto la unidad de venta del producto</li>
+                <li><b>Mes</b> (date) — primer día del mes (AAAA-MM-01)</li>
+                <li><b>Cantidad presupuestada</b> (qty_budget) — en la unidad de la línea</li>
+                <li><b>Importe presupuestado</b> (amount_budget) — en moneda de la compañía</li>
+            </ul>
+        </field>
+    </record>
+
+    <!-- ============ PRESUPUESTO: FICHA / LISTA / SEARCH ============ -->
+    <record id="sgi_sales_budget_view_form" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.form</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <form string="Presupuesto de ventas">
+                <header>
+                    <button name="action_approve" type="object" string="Aprobar"
+                            class="btn-primary" invisible="state != 'borrador'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_revise" type="object" string="Revisar (nueva Rev.)"
+                            invisible="state != 'aprobado'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            invisible="state != 'aprobado'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_open_grid_qty" type="object"
+                            string="Capturar cantidades" icon="fa-th"/>
+                    <button name="action_open_grid_amount" type="object"
+                            string="Capturar importes" icon="fa-usd"/>
+                    <button name="action_open_comparison" type="object"
+                            string="Comparación" icon="fa-bar-chart"/>
+                    <button name="action_print_budget" type="object"
+                            string="Imprimir (F-P-A28-18)" icon="fa-print"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,aprobado,obsoleto"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Obsoleto" bg_color="text-bg-secondary"
+                            invisible="state != 'obsoleto'"/>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="unconverted_count == 0">
+                        <field name="unconverted_count" class="oe_inline"/> línea(s) de factura
+                        del periodo vienen en una unidad de otra categoría: cuentan en importe
+                        pero NO en cantidad. Corrige la unidad en la factura o en la línea.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <div class="text-muted">
+                            <field name="sgi_format_banner" readonly="1"/> ·
+                            Folio <field name="folio" readonly="1" class="oe_inline"/>
+                        </div>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="year"/>
+                            <field name="team_id"/>
+                            <field name="revision"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id"/>
+                            <field name="line_count"/>
+                        </group>
+                    </group>
+                    <group string="Totales (importe en moneda de la compañía)">
+                        <group>
+                            <field name="amount_budget_total"/>
+                            <field name="amount_real_total"/>
+                            <field name="amount_ordered_total"/>
+                            <field name="fulfillment_pct" widget="percentage"/>
+                        </group>
+                        <group>
+                            <field name="qty_budget_text"/>
+                            <field name="qty_real_text"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Matriz (producto × mes)">
+                            <field name="line_ids" context="{'default_budget_id': id}">
+                                <list string="Líneas" editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="date"/>
+                                    <field name="uom_id"/>
+                                    <field name="qty_budget"/>
+                                    <field name="amount_budget"/>
+                                    <field name="qty_real" readonly="1"/>
+                                    <field name="amount_real" readonly="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_view_list" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.list</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <list string="Presupuestos de ventas"
+                  decoration-muted="state == 'obsoleto'"
+                  decoration-success="state == 'aprobado'">
+                <field name="folio"/>
+                <field name="year"/>
+                <field name="team_id"/>
+                <field name="revision"/>
+                <field name="amount_budget_total" optional="show"/>
+                <field name="amount_real_total" optional="show"/>
+                <field name="fulfillment_pct" widget="percentage" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'aprobado'"
+                       decoration-info="state == 'borrador'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_view_search" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.search</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <search string="Presupuestos de ventas">
+                <field name="team_id"/>
+                <field name="year"/>
+                <filter name="approved" string="Aprobados" domain="[('state', '=', 'aprobado')]"/>
+                <filter name="draft" string="Borradores" domain="[('state', '=', 'borrador')]"/>
+                <filter name="not_obsolete" string="Vigentes (no obsoletos)"
+                        domain="[('state', '!=', 'obsoleto')]"/>
+                <group>
+                    <filter name="group_year" string="Año" context="{'group_by': 'year'}"/>
+                    <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_action" model="ir.actions.act_window">
+        <field name="name">Presupuesto de ventas</field>
+        <field name="res_model">sgi.sales.budget</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
+        <field name="context">{'search_default_not_obsolete': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el presupuesto maestro de ventas</p>
+            <p>Un presupuesto por mercado (equipo de ventas) y año (F-P-A28-18).
+            Captura la matriz producto × mes en cantidad y pesos; el real se calcula
+            solo desde lo facturado. En junio, revísalo con «Revisar (nueva Rev.)».</p>
+        </field>
+    </record>
+</odoo>
