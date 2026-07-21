@@ -14,8 +14,12 @@
                 <field name="date"/>
                 <field name="uom_id"/>
                 <field name="qty_budget"/>
-                <field name="price_unit_budget"/>
-                <field name="amount_budget"/>
+                <field name="price_unit_currency" readonly="1" optional="show"/>
+                <field name="amount_currency" readonly="1" optional="show"/>
+                <field name="list_currency_id" optional="hide"/>
+                <field name="price_unit_budget" readonly="1" optional="show"/>
+                <field name="amount_budget" readonly="1" optional="show"/>
+                <field name="has_list_price" readonly="1" optional="hide"/>
                 <field name="price_source" readonly="1" optional="hide"/>
                 <field name="qty_real" readonly="1" optional="show"/>
                 <field name="qty_net_demand" readonly="1" optional="show"/>
@@ -56,10 +60,18 @@
                         </group>
                         <group>
                             <field name="qty_budget"/>
-                            <field name="price_unit_budget"/>
-                            <field name="amount_budget"/>
-                            <field name="price_source" readonly="1"/>
                             <field name="currency_id" invisible="1"/>
+                            <field name="list_currency_id" invisible="1"/>
+                            <label for="price_unit_currency" string="Precio (divisa)"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="price_unit_currency" nolabel="1" readonly="1"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="amount_currency" readonly="1"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="price_unit_budget" readonly="1"/>
+                            <field name="amount_budget" readonly="1"/>
+                            <field name="has_list_price" readonly="1"/>
+                            <field name="price_source" readonly="1"/>
                         </group>
                     </group>
                     <group string="Real (facturado) y pedido — automático">
@@ -95,20 +107,8 @@
         </field>
     </record>
 
-    <record id="sgi_sales_budget_line_grid_amount" model="ir.ui.view">
-        <field name="name">sgi.sales.budget.line.grid.amount</field>
-        <field name="model">sgi.sales.budget.line</field>
-        <field name="arch" type="xml">
-            <grid string="Matriz de importes" editable="1" create_inline="1"
-                  display_empty="1">
-                <field name="product_id" type="row"/>
-                <field name="date" type="col">
-                    <range name="month" string="Mes" span="year" step="month" default="1"/>
-                </field>
-                <field name="amount_budget" type="measure"/>
-            </grid>
-        </field>
-    </record>
+    <!-- La grid de importes se eliminó: solo se capturan cantidades; el importe
+         lo pone la lista de precios. La grid de cantidades es LA captura. -->
 
     <record id="sgi_sales_budget_line_view_pivot" model="ir.ui.view">
         <field name="name">sgi.sales.budget.line.pivot</field>
@@ -204,8 +204,6 @@
                             invisible="state != 'borrador'"/>
                     <button name="action_open_grid_qty" type="object"
                             string="Capturar cantidades" icon="fa-th"/>
-                    <button name="action_open_grid_amount" type="object"
-                            string="Capturar importes" icon="fa-usd"/>
                     <button name="action_refresh_actuals" type="object"
                             string="Actualizar facturado/pedido" icon="fa-refresh"/>
                     <button name="action_preload_from_orders" type="object"
@@ -230,6 +228,15 @@
                         <field name="unconverted_count" class="oe_inline"/> línea(s) de factura
                         del periodo vienen en una unidad de otra categoría: cuentan en importe
                         pero NO en cantidad. Corrige la unidad en la factura o en la línea.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="no_price_count == 0">
+                        <field name="no_price_count" class="oe_inline"/> producto(s) SIN precio
+                        en la lista aplicable. El precio no se captura aquí: corrige
+                        <b>LA LISTA de precios</b> (y arregla cotizaciones, pedidos y presupuesto
+                        de un golpe).
+                        <button name="action_view_no_price" type="object"
+                                string="Ver líneas sin precio" class="btn-link"/>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>
@@ -263,6 +270,7 @@
                             <field name="amount_real_unbudgeted"/>
                         </group>
                         <group>
+                            <field name="amount_currency_text"/>
                             <field name="qty_budget_text"/>
                             <field name="qty_real_text"/>
                         </group>
@@ -276,8 +284,11 @@
                                     <field name="date"/>
                                     <field name="uom_id"/>
                                     <field name="qty_budget"/>
-                                    <field name="price_unit_budget"/>
-                                    <field name="amount_budget"/>
+                                    <field name="price_unit_currency" readonly="1" optional="show"/>
+                                    <field name="amount_currency" readonly="1" optional="show"/>
+                                    <field name="list_currency_id" optional="hide"/>
+                                    <field name="price_unit_budget" readonly="1"/>
+                                    <field name="amount_budget" readonly="1"/>
                                     <field name="qty_real" readonly="1"/>
                                     <field name="qty_net_demand" readonly="1"
                                            column_invisible="parent.kind != 'pronostico'"/>

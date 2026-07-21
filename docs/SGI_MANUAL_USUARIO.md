@@ -129,6 +129,17 @@ por indicador que MAST levantaba a mano, ya no se levanta: nace sola.
 
 ### 7.1 Presupuesto maestro de ventas (F-P-A28-18/17)
 
+> **Solo cantidades (v19.0.13).** Tú capturas **únicamente cantidades**. El precio,
+> los importes y las divisas los pone Odoo desde la **lista de precios** — la única
+> fuente de verdad. Si un precio está mal, **se corrige LA LISTA** (y con eso se
+> arreglan cotizaciones, pedidos y presupuesto de un golpe), nunca un número suelto
+> en el presupuesto. Doble moneda: ves el precio/importe en la moneda de la lista
+> (lo que el cliente conoce) y en pesos (moneda de la compañía, convertida con el
+> tipo presupuestal de Ajustes). Los totales de cantidad son **por unidad** y los de
+> divisa **por moneda** (nunca se suman entre sí); el único total global es en pesos.
+> Si un producto no tiene precio en la lista, la ficha lo avisa y te manda a la lista.
+
+
 **Ventas → Presupuesto de ventas** (o **SGI → Medición → Presupuesto de ventas**):
 un presupuesto por **mercado** (equipo: industrial, confección, especiales) y **año**.
 

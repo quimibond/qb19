@@ -67,6 +67,11 @@
                                         <td class="text-end">
                                             <span t-out="row['amount_total']"
                                                   t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                            <t t-if="row['list_currency'] and row['list_currency'] != doc.currency_id">
+                                                <br/>
+                                                <span class="text-muted" t-out="row['amount_currency']"
+                                                      t-options="{'widget': 'monetary', 'display_currency': row['list_currency']}"/>
+                                            </t>
                                         </td>
                                     </tr>
                                     <tr t-if="grp['by_client']" class="table-light">
