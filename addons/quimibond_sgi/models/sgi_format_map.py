@@ -99,6 +99,9 @@ class SgiConfig(models.AbstractModel):
         # Umbral (%) de cumplimiento acumulado del presupuesto de ventas bajo el
         # cual el cierre de mes avisa al responsable del equipo.
         'quimibond_sgi.sales_budget_alert_pct': '80',
+        # Tipo de cambio presupuestal USD→MXN para sugerir precios de listas en
+        # otra moneda. 0 = usar el tipo de cambio vigente del día de captura.
+        'quimibond_sgi.budget_planning_rate': '0',
     }
 
     @api.model

@@ -296,15 +296,25 @@ class SgiSalesBudget(models.Model):
                     'cells': {m: 0.0 for m in months},
                     'qty_total': 0.0,
                     'amount_total': 0.0,
+                    'qty_real': 0.0,
+                    'amount_real': 0.0,
                 }
                 grp['rows'][rkey] = row
             row['cells'][line.date.month] += line.qty_budget
             row['qty_total'] += line.qty_budget
             row['amount_total'] += line.amount_budget
+            row['qty_real'] += line.qty_real
+            row['amount_real'] += line.amount_real
             grp['subtotal_amount'] += line.amount_budget
         ordered = []
         for grp in groups.values():
-            grp['rows'] = list(grp['rows'].values())
+            rows = list(grp['rows'].values())
+            for row in rows:
+                row['price_budget'] = (
+                    row['amount_total'] / row['qty_total'] if row['qty_total'] else 0.0)
+                row['price_real'] = (
+                    row['amount_real'] / row['qty_real'] if row['qty_real'] else 0.0)
+            grp['rows'] = rows
             ordered.append(grp)
         return {
             'months': months,
@@ -348,8 +358,20 @@ class SgiSalesBudgetLine(models.Model):
              "la misma categoría que la unidad de venta del producto.")
     qty_budget = fields.Float(string="Cantidad presupuestada",
                               digits='Product Unit')
-    amount_budget = fields.Monetary(string="Importe presupuestado",
-                                    help="Importe en moneda de la compañía.")
+    price_unit_budget = fields.Monetary(
+        string="Precio unitario presupuestado",
+        help="Precio unitario planeado, en moneda de la compañía. Se sugiere de la "
+             "lista de precios del cliente (o del producto) pero es editable y "
+             "manda: el importe = cantidad × precio.")
+    price_source = fields.Char(
+        string="Origen del precio", readonly=True, copy=False,
+        help="Rastro de dónde salió el precio sugerido y con qué tipo de cambio "
+             "se planeó (informativo para Dirección).")
+    amount_budget = fields.Monetary(
+        string="Importe presupuestado", compute='_compute_amount_budget',
+        inverse='_inverse_amount_budget', store=True, readonly=False,
+        help="Importe en moneda de la compañía = cantidad × precio unitario. Si se "
+             "captura el importe directo, se despeja el precio.")
 
     # Real automático (base = FACTURADO). Computes no almacenados.
     qty_real = fields.Float(string="Cantidad facturada", digits='Product Unit',
@@ -392,10 +414,80 @@ class SgiSalesBudgetLine(models.Model):
                 name = "%s — %s" % (name, line.partner_id.name)
             line.display_name = name
 
+    @api.depends('qty_budget', 'price_unit_budget')
+    def _compute_amount_budget(self):
+        for line in self:
+            line.amount_budget = line.qty_budget * line.price_unit_budget
+
+    def _inverse_amount_budget(self):
+        """Capturar el importe directo despeja el precio unitario (invertible)."""
+        for line in self:
+            if line.qty_budget:
+                line.price_unit_budget = line.amount_budget / line.qty_budget
+
     @api.onchange('product_id')
     def _onchange_product_id(self):
         if self.product_id and not self.uom_id:
             self.uom_id = self.product_id.uom_id
+
+    @api.onchange('product_id', 'partner_id', 'uom_id')
+    def _onchange_suggest_price(self):
+        """Sugiere el precio de la lista del cliente (o del producto). NUNCA pisa
+        un precio ya capturado a mano (mismo patrón que el onchange de menús del
+        procedimiento)."""
+        if not self.product_id or self.price_unit_budget:
+            return
+        price, source = self._sgi_suggest_price()
+        if price:
+            self.price_unit_budget = price
+            self.price_source = source
+
+    def _sgi_to_company_price(self, price, list_currency, day):
+        """Convierte un precio de la lista a moneda de la compañía usando el tipo
+        de cambio PRESUPUESTAL (budget_planning_rate, USD→MXN); si es 0, usa el
+        tipo del día. Devuelve (precio_compañía, tipo_usado)."""
+        company = self.company_id or self.env.company
+        company_currency = self.currency_id or company.currency_id
+        if not list_currency or list_currency == company_currency:
+            return price, 0.0
+        rate = float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.budget_planning_rate', 0) or 0)
+        usd = self.env.ref('base.USD', raise_if_not_found=False)
+        mxn = self.env.ref('base.MXN', raise_if_not_found=False)
+        if rate > 0 and usd and mxn:
+            if list_currency == usd and company_currency == mxn:
+                return price * rate, rate
+            if list_currency == mxn and company_currency == usd:
+                return price / rate, rate
+        converted = list_currency._convert(price, company_currency, company, day)
+        return converted, (converted / price if price else 0.0)
+
+    def _sgi_suggest_price(self):
+        """(precio en moneda compañía, texto de origen) sugerido para la línea."""
+        self.ensure_one()
+        product = self.product_id
+        company_currency = self.currency_id or self.env.company.currency_id
+        if not product:
+            return 0.0, ''
+        qty = self.qty_budget or 1.0
+        uom = self.uom_id or product.uom_id
+        day = fields.Date.context_today(self)
+        pricelist = self.partner_id.property_product_pricelist if self.partner_id else False
+        if pricelist:
+            raw = pricelist._get_product_price(product, qty, uom=uom)
+            list_currency = pricelist.currency_id
+            price, rate = self._sgi_to_company_price(raw, list_currency, day)
+            if list_currency and list_currency != company_currency:
+                source = "Lista '%s': %.4g %s × %.4g = %s %s" % (
+                    pricelist.name, raw, list_currency.name, rate,
+                    '{:,.2f}'.format(price), company_currency.name)
+            else:
+                source = "Lista '%s': %s %s" % (
+                    pricelist.name, '{:,.2f}'.format(price), company_currency.name)
+            return price, source
+        price = product.list_price
+        return price, "Precio de venta del producto: %s %s" % (
+            '{:,.2f}'.format(price), company_currency.name)
 
     # --- Constraints de la línea ---------------------------------------------
     @api.constrains('date', 'budget_id')

@@ -31,6 +31,8 @@
                                     <th t-foreach="matrix['months']" t-as="m" class="text-end"
                                         t-out="m"/>
                                     <th class="text-end">Total cant.</th>
+                                    <th class="text-end">P. unit. ppto</th>
+                                    <th class="text-end">P. prom. real</th>
                                     <th class="text-end">Importe</th>
                                 </tr>
                             </thead>
@@ -49,12 +51,20 @@
                                         <td class="text-end fw-bold"
                                             t-out="'{:,.2f}'.format(row['qty_total'])"/>
                                         <td class="text-end">
+                                            <span t-out="row['price_budget']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            <span t-out="row['price_real']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
                                             <span t-out="row['amount_total']"
                                                   t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
                                         </td>
                                     </tr>
                                     <tr t-if="grp['by_client']" class="table-light">
-                                        <td colspan="14" class="text-end">
+                                        <td colspan="17" class="text-end">
                                             Subtotal <span t-out="grp['product']"/>:
                                         </td>
                                         <td class="text-end fw-bold">
@@ -66,7 +76,7 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-active">
-                                    <td colspan="14" class="text-end fw-bold">
+                                    <td colspan="17" class="text-end fw-bold">
                                         Subtotal de cantidad por unidad:
                                         <span t-out="matrix['qty_by_uom']"/>
                                     </td>
