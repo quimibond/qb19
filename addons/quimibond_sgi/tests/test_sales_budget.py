@@ -155,11 +155,13 @@ class TestSalesBudget(TransactionCase):
         self.assertIn('·', text, "Las unidades se listan por separado, no se suman.")
 
     def test_11_avg_prices_protege_division_cero(self):
+        # El precio ya no se captura: sale de la lista (list_price = 20).
+        self.product.list_price = 20.0
         budget = self._budget()
-        line = self._line(budget, date(2040, 6, 1), qty=0.0, amount=1000.0)
+        line = self._line(budget, date(2040, 6, 1), qty=0.0)
         self.assertEqual(line.avg_price_budget, 0.0)  # sin cantidad → 0, no ZeroDivision
-        line2 = self._line(budget, date(2040, 7, 1), qty=50.0, amount=1000.0)
-        self.assertEqual(line2.avg_price_budget, 20.0)
+        line2 = self._line(budget, date(2040, 7, 1), qty=50.0)
+        self.assertEqual(line2.avg_price_budget, 20.0)  # = precio de lista
 
     def test_12_locked_when_approved(self):
         manager = self.env['res.users'].create({
@@ -357,12 +359,9 @@ class TestSalesBudgetStep2(TransactionCase):
         self.assertEqual(line.date, date(2040, 6, 1))
         self.assertEqual(line.uom_id, self.uom_m)
         self.assertEqual(line.qty_budget, 100.0)
-        # Celda existente → suma.
+        # Celda existente → suma. (La grid de importes se eliminó: solo cantidades.)
         Line.grid_update_cell(domain, 'qty_budget', 50.0)
         self.assertEqual(line.qty_budget, 150.0)
-        # También sobre importe.
-        Line.grid_update_cell(domain, 'amount_budget', 2000.0)
-        self.assertEqual(line.amount_budget, 2000.0)
 
     def test_02_grid_zero_value_noop(self):
         budget = self._budget()
@@ -435,11 +434,23 @@ class TestSalesBudgetStep3(TransactionCase):
         return self.env['crm.team'].create({'name': name})
 
     def _approved_budget(self, team, when, amount):
+        # El importe ya no se captura: sale de la lista. Lista fija determinista
+        # (cliente) para que qty(100) × precio = amount (presupuesto = importe).
+        company_ccy = self.env.company.currency_id
+        pl = self.env['product.pricelist'].create(
+            {'name': 'PL VE02 %s' % team.name, 'currency_id': company_ccy.id})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pl.id, 'applied_on': '1_product',
+            'product_tmpl_id': self.product.product_tmpl_id.id,
+            'compute_price': 'fixed', 'fixed_price': amount / 100.0})
+        partner = self.env['res.partner'].create(
+            {'name': 'Cliente %s' % team.name, 'is_company': True})
+        partner.property_product_pricelist = pl
         budget = self.Budget.create({'year': when.year, 'team_id': team.id})
         self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': when, 'uom_id': self.uom_m.id, 'qty_budget': 100.0,
-            'amount_budget': amount})
+            'partner_id': partner.id})
         budget.state = 'aprobado'
         return budget
 
@@ -621,8 +632,8 @@ class TestSalesBudgetClient(TransactionCase):
 
 
 @tagged('post_install', '-at_install')
-class TestSalesBudgetPrice(TransactionCase):
-    """Adición 5.2: precio sugerido desde la lista de precios del cliente."""
+class TestSalesBudgetOnlyQty(TransactionCase):
+    """5.2d Paso 1: solo cantidades — el precio manda la lista, en doble moneda."""
 
     @classmethod
     def setUpClass(cls):
@@ -649,73 +660,94 @@ class TestSalesBudgetPrice(TransactionCase):
             'compute_price': 'fixed', 'fixed_price': price})
         return pl
 
-    def _partner_with_list(self, pricelist):
-        partner = self.env['res.partner'].create(
-            {'name': 'Cliente lista PPV', 'is_company': True})
+    def _partner_with_list(self, pricelist, name='Cliente lista PPV'):
+        partner = self.env['res.partner'].create({'name': name, 'is_company': True})
         partner.property_product_pricelist = pricelist
         return partner
 
-    def _new_line(self, partner=None, qty=10.0):
-        return self.Line.new({
-            'budget_id': self.budget.id, 'product_id': self.product.id,
+    def _line(self, budget, partner=None, qty=10.0, when=None, product=None):
+        return self.Line.create({
+            'budget_id': budget.id, 'product_id': (product or self.product).id,
             'uom_id': self.uom_m.id, 'qty_budget': qty,
+            'date': when or date(2040, 6, 1),
             'partner_id': partner.id if partner else False})
 
-    def test_01_suggest_from_client_pricelist_mxn_company_currency(self):
-        # Lista en la MISMA moneda de la compañía (USD): sin conversión.
+    def test_01_price_from_client_list_and_readonly(self):
+        # Precio SIEMPRE de la lista del cliente (USD = compañía): 37.63.
         partner = self._partner_with_list(self._pricelist(self.usd, 37.63))
-        line = self._new_line(partner)
-        line._onchange_suggest_price()
+        line = self._line(self.budget, partner)
         self.assertAlmostEqual(line.price_unit_budget, 37.63, places=2)
+        self.assertAlmostEqual(line.amount_budget, 376.3, places=2)  # 10 × 37.63
         self.assertIn("Lista", line.price_source)
+        # La lista es la fuente de verdad: aunque se fuerce otro valor, el refresh
+        # (botón/cron) lo devuelve al de la lista (en borrador). En la vista es
+        # readonly; aquí probamos que el precio SIEMPRE vuelve a la lista.
+        line.write({'price_unit_budget': 999.0})
+        self.budget.action_refresh_actuals()
+        self.assertAlmostEqual(line.price_unit_budget, 37.63, places=2)
 
-    def test_02_suggest_usd_list_with_planning_rate(self):
-        # Lista en MXN convertida con el tipo presupuestal (USD→MXN = 10):
-        # 350 MXN / 10 = 35 USD (moneda compañía).
+    def test_02_dual_currency_usd_client(self):
+        # Cliente con lista en MXN (≠ USD compañía), tipo presupuestal 10:
+        # precio divisa = 350 MXN; precio compañía = 35 USD.
         self.Param.set_param('quimibond_sgi.budget_planning_rate', '10')
         partner = self._partner_with_list(self._pricelist(self.mxn, 350.0))
-        line = self._new_line(partner)
-        line._onchange_suggest_price()
+        line = self._line(self.budget, partner)
+        self.assertEqual(line.list_currency_id, self.mxn)
+        self.assertAlmostEqual(line.price_unit_currency, 350.0, places=2)
+        self.assertAlmostEqual(line.amount_currency, 3500.0, places=2)  # 10 × 350
         self.assertAlmostEqual(line.price_unit_budget, 35.0, places=2)
-        self.assertIn("MXN", line.price_source)
+        self.assertAlmostEqual(line.amount_budget, 350.0, places=2)  # 10 × 35
 
-    def test_03_rate_zero_uses_day_rate(self):
-        # Tipo presupuestal 0 → usa el tipo del día. Fijamos MXN=20/USD ese día.
-        self.Param.set_param('quimibond_sgi.budget_planning_rate', '0')
-        self.env['res.currency.rate'].create({
-            'currency_id': self.mxn.id, 'name': fields.Date.context_today(self),
-            'rate': 20.0, 'company_id': self.env.company.id})
-        partner = self._partner_with_list(self._pricelist(self.mxn, 350.0))
-        line = self._new_line(partner)
-        line._onchange_suggest_price()
-        # 350 MXN a 20/USD = 17.5 USD (no 35, que sería con tipo presupuestal 10).
-        self.assertAlmostEqual(line.price_unit_budget, 17.5, places=2)
+    def test_03_mxn_client_no_currency_columns(self):
+        # Cliente con lista en moneda de la compañía (USD): sin divisa aparte.
+        partner = self._partner_with_list(self._pricelist(self.usd, 20.0))
+        line = self._line(self.budget, partner)
+        self.assertEqual(line.list_currency_id, self.usd)
+        self.assertEqual(line.list_currency_id, line.currency_id,
+                         "Lista en moneda compañía: las columnas de divisa se ocultan.")
 
-    def test_04_manual_price_not_overwritten(self):
-        partner = self._partner_with_list(self._pricelist(self.usd, 37.63))
-        line = self._new_line(partner)
-        line.price_unit_budget = 999.0  # capturado a mano
-        line._onchange_suggest_price()
-        self.assertEqual(line.price_unit_budget, 999.0, "No pisa el precio manual.")
+    def test_04_currency_text_mixed_clients(self):
+        self.Param.set_param('quimibond_sgi.budget_planning_rate', '10')
+        budget = self.Budget.create({'year': 2041, 'team_id': self.team.id})
+        p_usd = self._partner_with_list(self._pricelist(self.usd, 20.0), 'C USD')
+        # Segundo producto para el cliente MXN (evita esquema mixto por producto).
+        prod2 = self.env['product.product'].create(
+            {'name': 'Tela 2 PPV', 'type': 'consu', 'uom_id': self.uom_m.id})
+        pl_mxn = self.env['product.pricelist'].create(
+            {'name': 'PL MXN', 'currency_id': self.mxn.id})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pl_mxn.id, 'applied_on': '1_product',
+            'product_tmpl_id': prod2.product_tmpl_id.id,
+            'compute_price': 'fixed', 'fixed_price': 350.0})
+        p_mxn = self.env['res.partner'].create({'name': 'C MXN', 'is_company': True})
+        p_mxn.property_product_pricelist = pl_mxn
+        self._line(budget, p_usd, qty=10.0, when=date(2041, 6, 1))
+        self._line(budget, p_mxn, qty=10.0, when=date(2041, 6, 1), product=prod2)
+        text = budget.amount_currency_text
+        self.assertIn('MXN', text)  # divisa por moneda
+        self.assertIn('Total compañía', text)  # y el único total global en pesos
 
-    def test_05_no_client_uses_list_price(self):
-        line = self._new_line(partner=None)
-        line._onchange_suggest_price()
-        self.assertAlmostEqual(line.price_unit_budget, 100.0, places=2)
-        self.assertIn("Precio de venta", line.price_source)
+    def test_05_no_list_price_banner(self):
+        # Producto sin precio en ninguna lista (list_price 0) → sin precio de lista.
+        prod0 = self.env['product.product'].create(
+            {'name': 'Sin precio PPV', 'type': 'consu', 'uom_id': self.uom_m.id,
+             'list_price': 0.0})
+        budget = self.Budget.create({'year': 2042, 'team_id': self.team.id})
+        line = self._line(budget, qty=5.0, when=date(2042, 6, 1), product=prod0)
+        self.assertFalse(line.has_list_price)
+        self.assertEqual(budget.no_price_count, 1)
 
-    def test_06_amount_is_qty_times_price(self):
-        line = self.Line.create({
-            'budget_id': self.budget.id, 'product_id': self.product.id,
-            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
-            'qty_budget': 10.0, 'price_unit_budget': 5.0})
-        self.assertAlmostEqual(line.amount_budget, 50.0, places=2)
-        # Invertible: capturar el importe despeja el precio.
-        line2 = self.Line.create({
-            'budget_id': self.budget.id, 'product_id': self.product.id,
-            'date': date(2040, 7, 1), 'uom_id': self.uom_m.id,
-            'qty_budget': 10.0, 'amount_budget': 500.0})
-        self.assertAlmostEqual(line2.price_unit_budget, 50.0, places=2)
+    def test_06_price_frozen_on_approve(self):
+        partner = self._partner_with_list(self._pricelist(self.usd, 50.0))
+        budget = self.Budget.create({'year': 2043, 'team_id': self.team.id})
+        line = self._line(budget, partner, when=date(2043, 6, 1))
+        self.assertAlmostEqual(line.price_unit_budget, 50.0, places=2)
+        budget.state = 'aprobado'
+        # Cambia la lista y refresca: el aprobado NO se toca (congelado).
+        partner.property_product_pricelist.item_ids.fixed_price = 80.0
+        budget.action_refresh_actuals()
+        self.assertAlmostEqual(line.price_unit_budget, 50.0, places=2,
+                               msg="Aprobado: precio congelado.")
 
 
 @tagged('post_install', '-at_install')
@@ -732,7 +764,7 @@ class TestSalesBudgetImport(TransactionCase):
         cls.uom_kg = cls.env.ref('uom.product_uom_kgm')
         cls.tela = cls.env['product.product'].create({
             'name': 'Tela import', 'default_code': 'TELA-1', 'type': 'consu',
-            'uom_id': cls.uom_m.id, 'list_price': 40.0})
+            'uom_id': cls.uom_m.id, 'list_price': 30.0})
         cls.fibra = cls.env['product.product'].create({
             'name': 'Fibra import', 'default_code': 'FIBRA-1', 'type': 'consu',
             'uom_id': cls.uom_kg.id})
@@ -766,7 +798,10 @@ class TestSalesBudgetImport(TransactionCase):
         tela_ene = budget.line_ids.filtered(
             lambda l: l.product_id == self.tela and l.date == date(2040, 1, 1))
         self.assertEqual(tela_ene.qty_budget, 100.0)
-        self.assertAlmostEqual(tela_ene.amount_budget, 5000.0, places=2)
+        # El $ del Excel (5000) se IGNORA: el importe sale de la lista
+        # (100 × list_price 30 = 3000), y el resultado lo nota.
+        self.assertAlmostEqual(tela_ene.amount_budget, 3000.0, places=2)
+        self.assertIn('importes se calculan de la lista', wiz.result)
         self.assertEqual(tela_ene.uom_id, self.uom_m)
         fibra = budget.line_ids.filtered(lambda l: l.product_id == self.fibra)
         self.assertEqual(fibra.uom_id, self.uom_kg, "Unidad kg de la columna UNIDAD.")
@@ -905,3 +940,292 @@ class TestSalesBudgetForecastImport(TransactionCase):
         self.assertEqual(len(budget.line_ids), 1)
         self.assertEqual(budget.line_ids.date, date(2040, 1, 1))
         self.assertEqual(budget.line_ids.qty_budget, 100.0)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetNetDemand(TransactionCase):
+    """Extensión 5.2c: consumo de pronóstico + demanda neta al MPS."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado neta'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.uom_cm = cls.env.ref('uom.product_uom_cm')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Material neta', 'default_code': 'NET1', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente neta', 'is_company': True})
+
+    def _forecast(self):
+        return self.Budget.create({
+            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico',
+            'partner_id': self.client.id})
+
+    def _monday(self, ref):
+        from datetime import timedelta
+        return ref - timedelta(days=ref.weekday())
+
+    def _order(self, monday, qty, uom=None):
+        from datetime import datetime, timedelta
+        commit = datetime.combine(monday + timedelta(days=1), datetime.min.time())
+        so = self.env['sale.order'].create({
+            'partner_id': self.client.id, 'team_id': self.team.id,
+            'commitment_date': commit,
+            'order_line': [(0, 0, {
+                'product_id': self.product.id, 'product_uom_qty': qty,
+                'product_uom_id': (uom or self.uom_m).id, 'price_unit': 1.0})]})
+        so.action_confirm()
+        return so
+
+    def test_01_net_demand_order_bigger(self):
+        monday = self._monday(date(2040, 6, 3))
+        self._order(monday, 150.0)  # comprometido > pronóstico
+        fc = self._forecast()
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
+        self.assertEqual(line.qty_real, 150.0)
+        self.assertEqual(line.qty_net_demand, 150.0, "Manda el pedido si supera.")
+
+    def test_02_net_demand_order_smaller(self):
+        monday = self._monday(date(2040, 6, 10))
+        self._order(monday, 60.0)  # comprometido < pronóstico
+        fc = self._forecast()
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
+        self.assertEqual(line.qty_net_demand, 100.0, "Manda el pronóstico si es mayor.")
+
+    def test_03_preload_idempotent_no_overwrite(self):
+        m1 = self._monday(date(2040, 6, 3))
+        m2 = self._monday(date(2040, 6, 17))
+        self._order(m1, 80.0)
+        self._order(m2, 40.0)
+        fc = self._forecast()
+        # Captura previa en m1 (no debe pisarse).
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': m1,
+            'uom_id': self.uom_m.id, 'qty_budget': 999.0})
+        fc.action_preload_from_orders()
+        # m1 intacto; m2 creado con lo comprometido.
+        line_m1 = fc.line_ids.filtered(lambda l: l.date == m1)
+        line_m2 = fc.line_ids.filtered(lambda l: l.date == m2)
+        self.assertEqual(line_m1.qty_budget, 999.0, "No pisa la captura.")
+        self.assertEqual(line_m2.qty_budget, 40.0, "Precarga lo comprometido.")
+        # Idempotente: segunda corrida no duplica.
+        before = len(fc.line_ids)
+        fc.action_preload_from_orders()
+        self.assertEqual(len(fc.line_ids), before)
+
+    def test_04_mps_available_reflects_module(self):
+        fc = self._forecast()
+        self.assertEqual(fc.sgi_mps_available,
+                         'mrp.production.schedule' in self.env)
+
+    def test_05_send_net_demand_to_mps_idempotent(self):
+        if 'mrp.production.schedule' not in self.env:
+            self.skipTest("mrp_mps no está instalado en esta BD.")
+        monday = self._monday(date(2040, 6, 3))
+        fc = self._forecast()
+        # Línea en cm: 500 cm de demanda neta → 5 m (unidad del producto) al MPS.
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_cm.id, 'qty_budget': 500.0})
+        fc.state = 'aprobado'
+        fc.action_send_to_mps()
+        wh = self.env['stock.warehouse'].search(
+            [('company_id', '=', fc.company_id.id)], limit=1)
+        sched = self.env['mrp.production.schedule'].search([
+            ('product_id', '=', self.product.id), ('warehouse_id', '=', wh.id)])
+        self.assertTrue(sched)
+        forecasts = sched.forecast_ids.filtered(lambda f: f.date == monday)
+        self.assertEqual(len(forecasts), 1)
+        self.assertAlmostEqual(forecasts.forecast_qty, 5.0, places=2,
+                               msg="Convertido a la unidad del producto (m).")
+        # Re-envío tras revisión: actualiza sin duplicar.
+        fc.action_send_to_mps()
+        forecasts = sched.forecast_ids.filtered(lambda f: f.date == monday)
+        self.assertEqual(len(forecasts), 1, "No duplica en el re-envío.")
+
+    def test_06_no_sale_orders_created(self):
+        # PROHIBIDO crear pedidos desde el pronóstico: la precarga LEE pedidos,
+        # nunca los crea.
+        monday = self._monday(date(2040, 6, 3))
+        fc = self._forecast()
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
+        before = self.env['sale.order'].search_count([('partner_id', '=', self.client.id)])
+        fc.action_preload_from_orders()
+        after = self.env['sale.order'].search_count([('partner_id', '=', self.client.id)])
+        self.assertEqual(before, after, "El pronóstico no crea pedidos de venta.")
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetTemplate(TransactionCase):
+    """5.2d Paso 2: plantilla descargable, roundtrip, menús por tipo."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado plantilla'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.prod_a = cls.env['product.product'].create({
+            'name': 'Prod A tpl', 'default_code': 'PA-TPL', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.prod_b = cls.env['product.product'].create({
+            'name': 'Prod B tpl', 'default_code': 'PB-TPL', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.partner = cls.env['res.partner'].create(
+            {'name': 'Cliente plantilla', 'is_company': True})
+
+    def _sold_order(self, product):
+        so = self.env['sale.order'].create({
+            'partner_id': self.partner.id, 'team_id': self.team.id,
+            'order_line': [(0, 0, {
+                'product_id': product.id, 'product_uom_qty': 1,
+                'product_uom_id': self.uom_m.id, 'price_unit': 1.0})]})
+        so.action_confirm()
+        return so
+
+    def _read_template(self, budget):
+        import base64
+        import io
+        import openpyxl
+        action = budget.action_download_template()
+        att_id = int(action['url'].split('/web/content/')[1].split('?')[0])
+        att = self.env['ir.attachment'].browse(att_id)
+        wb = openpyxl.load_workbook(io.BytesIO(base64.b64decode(att.datas)))
+        return wb.active, att
+
+    def test_01_template_has_historical_products(self):
+        # Solo PA-TPL se vendió → la plantilla del equipo lleva esa fila.
+        self._sold_order(self.prod_a)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        ws, _ = self._read_template(budget)
+        codes = [ws.cell(r, 1).value for r in range(2, ws.max_row + 1)]
+        self.assertIn('PA-TPL', codes)
+        self.assertNotIn('PB-TPL', codes, "No vendido: no está en la plantilla.")
+        # Encabezado de meses del F-P-A28-18.
+        self.assertEqual(ws.cell(1, 1).value, 'PRODUCTO')
+
+    def test_02_roundtrip_download_fill_import(self):
+        self._sold_order(self.prod_a)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        ws, att = self._read_template(budget)
+        # Llena la cantidad de ENERO (columna 4: PRODUCTO, UNIDAD, CLIENTE, ENERO m).
+        row = next(r for r in range(2, ws.max_row + 1)
+                   if ws.cell(r, 1).value == 'PA-TPL')
+        ws.cell(row, 4).value = 250
+        import base64
+        import io
+        import openpyxl
+        wb = openpyxl.Workbook()  # reescribe el libro con el valor
+        # Regenera desde el ws modificado.
+        buf = io.BytesIO()
+        ws.parent.save(buf)
+        wiz = self.env['sgi.sales.budget.import'].create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': ws.title})
+        wiz.action_import()
+        line = budget.line_ids.filtered(lambda l: l.product_id == self.prod_a)
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.date, date(2040, 1, 1))
+        self.assertEqual(line.qty_budget, 250.0)
+
+    def test_03_actions_filter_by_kind(self):
+        b = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        f = self.Budget.create({'year': 2040, 'team_id': self.team.id,
+                                'kind': 'pronostico', 'partner_id': self.partner.id})
+        act_b = self.env.ref('quimibond_sgi.sgi_sales_budget_action')
+        act_f = self.env.ref('quimibond_sgi.sgi_sales_forecast_action')
+        budgets = self.Budget.search(
+            [('team_id', '=', self.team.id)] + list(eval(act_b.domain)))
+        forecasts = self.Budget.search(
+            [('team_id', '=', self.team.id)] + list(eval(act_f.domain)))
+        self.assertIn(b, budgets)
+        self.assertNotIn(f, budgets)
+        self.assertIn(f, forecasts)
+        self.assertNotIn(b, forecasts)
+
+    def test_04_template_only_on_draft(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget.state = 'aprobado'
+        with self.assertRaises(UserError):
+            budget.action_download_template()
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetAnalysis(TransactionCase):
+    """5.2d Paso 3: drill-down de facturas, curva y top-5 brechas del cierre."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Cron = cls.env['sgi.cron']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado analisis'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        cls.partner = cls.env['res.partner'].create({'name': 'Cliente analisis'})
+        cls.pa = cls.env['product.product'].create({
+            'name': 'Prod A an', 'default_code': 'PA-AN', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 10.0})
+        cls.pb = cls.env['product.product'].create({
+            'name': 'Prod B an', 'default_code': 'PB-AN', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 10.0})
+
+    def _invoice(self, product, when, qty, price):
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.partner.id,
+            'invoice_date': when, 'team_id': self.team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': product.id, 'quantity': qty,
+                'product_uom_id': self.uom_m.id, 'price_unit': price,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def test_01_view_month_invoices(self):
+        inv = self._invoice(self.pa, date(2040, 6, 10), 5.0, 10.0)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self.Line.create({
+            'budget_id': budget.id, 'product_id': self.pa.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        action = line.action_view_month_invoices()
+        self.assertEqual(action['res_model'], 'account.move')
+        moves = self.env['account.move'].search(action['domain'])
+        self.assertIn(inv, moves)
+
+    def test_02_cumulative_action(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        action = budget.action_open_cumulative()
+        self.assertEqual(action['res_model'], 'sgi.sales.budget.line')
+        self.assertTrue(any(v[1] == 'graph' for v in action['views']))
+
+    def test_03_month_close_note_lists_top_gaps(self):
+        self.team.user_id = self.env.user.id
+        # Presupuesto grande, facturación baja → brecha; PA mayor brecha que PB.
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.pa.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 1000.0})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.pb.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 200.0})
+        budget.state = 'aprobado'
+        self._invoice(self.pa, date(2040, 6, 10), 10.0, 10.0)  # 100 facturado
+        budget.action_refresh_actuals()
+        self.Cron._sgi_sales_budget_month_close(date(2040, 6, 1), date(2040, 6, 30))
+        act = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', budget.id)], limit=1)
+        self.assertTrue(act)
+        self.assertIn('mayor brecha', act.note or '')
+        self.assertIn('PA-AN', act.note, "El producto con mayor brecha aparece.")

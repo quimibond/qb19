@@ -93,6 +93,14 @@ class SgiSalesBudget(models.Model):
         help="Líneas de factura del periodo cuya unidad es de otra categoría que "
              "la presupuestada: se cuentan en importe pero NO en cantidad. El "
              "hueco queda visible aquí para corregir la unidad.")
+    amount_currency_text = fields.Char(
+        string="Totales por divisa", compute='_compute_amount_currency_text',
+        help="Totales POR divisa de las líneas cuya lista no es la moneda de la "
+             "compañía. Nunca se suman entre sí: el único total global es en pesos.")
+    no_price_count = fields.Integer(
+        string="Productos sin precio de lista", compute='_compute_no_price_count',
+        help="Líneas cuyo producto no tiene precio en la lista aplicable. Corrige "
+             "LA LISTA de precios (no el presupuesto).")
 
     @api.depends('team_id', 'year', 'revision', 'kind', 'partner_id')
     def _compute_name(self):
@@ -146,6 +154,37 @@ class SgiSalesBudget(models.Model):
     def _compute_unconverted_count(self):
         for budget in self:
             budget.unconverted_count = sum(budget.line_ids.mapped('unconverted_count'))
+
+    @api.depends('line_ids.amount_currency', 'line_ids.list_currency_id',
+                 'amount_budget_total', 'currency_id')
+    def _compute_amount_currency_text(self):
+        for budget in self:
+            company_ccy = budget.currency_id
+            by_ccy = defaultdict(float)
+            for line in budget.line_ids:
+                if line.list_currency_id and line.list_currency_id != company_ccy:
+                    by_ccy[line.list_currency_id] += line.amount_currency
+            parts = ["%s %s" % (ccy.name, '{:,.0f}'.format(amt))
+                     for ccy, amt in sorted(by_ccy.items(), key=lambda kv: kv[0].name)]
+            parts.append("Total compañía %s %s" % (
+                company_ccy.name or '', '{:,.0f}'.format(budget.amount_budget_total)))
+            budget.amount_currency_text = " · ".join(parts)
+
+    @api.depends('line_ids.has_list_price')
+    def _compute_no_price_count(self):
+        for budget in self:
+            budget.no_price_count = len(
+                budget.line_ids.filtered(lambda l: not l.has_list_price))
+
+    def action_view_no_price(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Líneas sin precio de lista — corrige LA LISTA",
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'list,form',
+            'domain': [('budget_id', '=', self.id), ('has_list_price', '=', False)],
+        }
 
     def _sgi_team_year_real(self):
         """Facturación neta del equipo en todo el año del presupuesto (moneda
@@ -277,10 +316,6 @@ class SgiSalesBudget(models.Model):
         return self._action_grid(
             'quimibond_sgi.sgi_sales_budget_line_grid_qty', "Cantidades")
 
-    def action_open_grid_amount(self):
-        return self._action_grid(
-            'quimibond_sgi.sgi_sales_budget_line_grid_amount', "Importes")
-
     def action_open_comparison(self):
         self.ensure_one()
         return {
@@ -291,6 +326,20 @@ class SgiSalesBudget(models.Model):
             'domain': [('budget_id', '=', self.id)],
             'context': {'default_budget_id': self.id,
                         'search_default_group_uom': 1},
+        }
+
+    def action_open_cumulative(self):
+        """Curva acumulada mes a mes (presupuesto vs facturado YTD) — la gráfica
+        de la Revisión por la Dirección."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Curva acumulada — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'graph',
+            'views': [(self.env.ref(
+                'quimibond_sgi.sgi_sales_budget_line_view_graph_curve').id, 'graph')],
+            'domain': [('budget_id', '=', self.id)],
         }
 
     # --- Matriz para el reporte F-P-A28-18 -----------------------------------
@@ -327,6 +376,8 @@ class SgiSalesBudget(models.Model):
                     'amount_total': 0.0,
                     'qty_real': 0.0,
                     'amount_real': 0.0,
+                    'amount_currency': 0.0,
+                    'list_currency': line.list_currency_id,
                 }
                 grp['rows'][rkey] = row
             row['cells'][line.date.month] += line.qty_budget
@@ -334,6 +385,9 @@ class SgiSalesBudget(models.Model):
             row['amount_total'] += line.amount_budget
             row['qty_real'] += line.qty_real
             row['amount_real'] += line.amount_real
+            row['amount_currency'] += line.amount_currency
+            if line.list_currency_id:
+                row['list_currency'] = line.list_currency_id
             grp['subtotal_amount'] += line.amount_budget
         ordered = []
         for grp in groups.values():
@@ -372,11 +426,12 @@ class SgiSalesBudget(models.Model):
                     'product': line.product_id.display_name,
                     'code': line.customer_code or '',
                     'uom': line.uom_id.name or '',
-                    'budget': {}, 'real': {},
+                    'budget': {}, 'real': {}, 'net': {},
                 }
                 rows[key] = row
             row['budget'][week] = row['budget'].get(week, 0.0) + line.qty_budget
             row['real'][week] = row['real'].get(week, 0.0) + line.qty_real
+            row['net'][week] = row['net'].get(week, 0.0) + line.qty_net_demand
         weeks_sorted = sorted(weeks)
         return {
             'weeks': [{'num': w, 'month': weeks[w]} for w in weeks_sorted],
@@ -396,12 +451,190 @@ class SgiSalesBudget(models.Model):
         return self.env.ref(
             'quimibond_sgi.action_report_sales_budget').report_action(self)
 
+    # --- Plantilla descargable (filas ya puestas) ----------------------------
+    _SGI_TEMPLATE_MONTHS = [
+        'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
+        'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
+
+    def _sgi_historical_products(self):
+        """Productos que este equipo vendió (o que se vendieron a ESTE cliente,
+        en pronóstico) en los últimos 24 meses — para pre-llenar las filas."""
+        self.ensure_one()
+        from dateutil.relativedelta import relativedelta as _rd
+        date_from = fields.Date.context_today(self) - _rd(months=24)
+        domain = [('order_id.state', 'in', ('sale', 'done')),
+                  ('order_id.date_order', '>=', date_from)]
+        if self.kind == 'pronostico':
+            partner = self.partner_id.commercial_partner_id
+            if not partner:
+                return self.env['product.product']
+            domain.append(
+                ('order_id.partner_id.commercial_partner_id', '=', partner.id))
+        else:
+            domain.append(('order_id.team_id', '=', self.team_id.id))
+        products = self.env['sale.order.line'].search(domain).mapped('product_id')
+        return products.sorted(lambda p: p.default_code or p.name or '')
+
+    def action_download_template(self):
+        """Genera con openpyxl el Excel VACÍO con las FILAS ya puestas (productos
+        históricos) para llenar cantidades y subir con el importador."""
+        self.ensure_one()
+        if self.state != 'borrador':
+            raise UserError("La plantilla se descarga sobre un presupuesto en borrador.")
+        import base64
+        import io
+        import openpyxl
+        products = self._sgi_historical_products()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        if self.kind == 'pronostico':
+            ws.title = (self.partner_id.name or 'Pronostico')[:31]
+            ws.append(['PRODUCTO', 'CODIGO CLIENTE', 'SEMANA']
+                      + list(range(1, 53)))
+            for product in products:
+                ws.append([product.default_code or product.name, '', ''] + [''] * 52)
+        else:
+            ws.title = (self.team_id.name or 'Presupuesto')[:31]
+            ws.append(['PRODUCTO', 'UNIDAD', 'CLIENTE']
+                      + ['%s m' % m for m in self._SGI_TEMPLATE_MONTHS])
+            for product in products:
+                ws.append([product.default_code or product.name,
+                           product.uom_id.name, ''] + [''] * 12)
+        buf = io.BytesIO()
+        wb.save(buf)
+        attachment = self.env['ir.attachment'].create({
+            'name': 'Plantilla %s.xlsx' % (self.name or self.folio),
+            'datas': base64.b64encode(buf.getvalue()),
+            'res_model': 'sgi.sales.budget', 'res_id': self.id,
+            'mimetype': 'application/vnd.openxmlformats-officedocument.'
+                        'spreadsheetml.sheet',
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%d?download=true' % attachment.id,
+            'target': 'self',
+        }
+
     def action_refresh_actuals(self):
-        """Recalcula la foto de facturado/pedido de las líneas (los computes
-        almacenados no se refrescan solos al timbrar facturas nuevas)."""
+        """Recalcula la foto de facturado/pedido Y el precio de lista de las líneas
+        (los computes almacenados no se refrescan solos al cambiar facturas o la
+        lista de precios). El precio solo cambia en borradores (ver _compute_price)."""
         lines = self.mapped('line_ids')
+        # El precio solo se refresca en borradores: lo aprobado queda congelado.
+        lines.filtered(lambda l: l.budget_id.state == 'borrador')._compute_price()
         lines._compute_real()
         lines._compute_ordered()
+        return True
+
+    # --- Consumo de pronóstico → demanda al MPS ------------------------------
+    sgi_mps_available = fields.Boolean(compute='_compute_mps_available')
+
+    def _compute_mps_available(self):
+        available = 'mrp.production.schedule' in self.env
+        for budget in self:
+            budget.sgi_mps_available = available
+
+    def _sgi_committed_by_week(self):
+        """{(product, lunes): cantidad en la unidad DE VENTA del producto} de los
+        pedidos confirmados del cliente del pronóstico, por semana comprometida."""
+        self.ensure_one()
+        result = defaultdict(float)
+        partner = self.partner_id.commercial_partner_id
+        if not partner:
+            return result
+        Line = self.env['sgi.sales.budget.line']
+        sols = self.env['sale.order.line'].search([
+            ('order_id.state', 'in', ('sale', 'done')),
+            ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+        ])
+        for sol in sols:
+            monday = Line._sgi_effective_monday(sol.order_id)
+            if not monday or monday.year != self.year:
+                continue
+            product = sol.product_id
+            qty = sol.product_uom_qty
+            if sol.product_uom_id and product.uom_id and \
+                    sol.product_uom_id._has_common_reference(product.uom_id):
+                qty = sol.product_uom_id._compute_quantity(
+                    qty, product.uom_id, round=False)
+            result[(product, monday)] += qty
+        return result
+
+    def action_preload_from_orders(self):
+        """Precarga las semanas del horizonte que ya tienen pedidos confirmados y
+        NO tienen celda de pronóstico, con qty_budget = lo comprometido.
+        Idempotente: no toca celdas ya capturadas."""
+        self.ensure_one()
+        if self.kind != 'pronostico':
+            raise UserError("La precarga desde pedidos es solo para pronósticos.")
+        if self.state != 'borrador':
+            raise UserError("Solo se precarga un pronóstico en borrador.")
+        Line = self.env['sgi.sales.budget.line']
+        existing = {(l.product_id.id, l.date) for l in self.line_ids}
+        created = 0
+        for (product, monday), qty in self._sgi_committed_by_week().items():
+            if qty <= 0 or (product.id, monday) in existing:
+                continue
+            Line.create({
+                'budget_id': self.id, 'product_id': product.id, 'date': monday,
+                'uom_id': product.uom_id.id, 'partner_id': self.partner_id.id,
+                'qty_budget': qty,
+            })
+            created += 1
+        self.message_post(
+            body="Precarga desde pedidos: %d celda(s) creada(s) con lo "
+                 "comprometido (el vendedor solo captura el futuro)." % created)
+        return True
+
+    def action_send_to_mps(self):
+        """Vuelca la DEMANDA NETA (no el pronóstico bruto) por producto/semana al
+        forecast del Programa Maestro (mrp_mps). Crea el schedule si falta;
+        re-envío tras revisión actualiza sin duplicar. No crea pedidos de venta."""
+        self.ensure_one()
+        if 'mrp.production.schedule' not in self.env:
+            raise UserError("El módulo Programa Maestro (mrp_mps) no está instalado.")
+        if self.kind != 'pronostico':
+            raise UserError("Solo se envía la demanda de un pronóstico.")
+        if self.state != 'aprobado':
+            raise UserError("Solo se envía la demanda de un pronóstico aprobado.")
+        warehouse = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company_id.id)], limit=1)
+        if not warehouse:
+            raise UserError("No hay almacén configurado para la compañía.")
+        Schedule = self.env['mrp.production.schedule']
+        Forecast = self.env['mrp.product.forecast']
+        demand = defaultdict(float)
+        for line in self.line_ids:
+            if line.qty_net_demand <= 0:
+                continue
+            qty = line.qty_net_demand
+            if line.uom_id and line.product_id.uom_id and \
+                    line.uom_id._has_common_reference(line.product_id.uom_id):
+                qty = line.uom_id._compute_quantity(
+                    qty, line.product_id.uom_id, round=False)
+            demand[(line.product_id, line.date)] += qty
+        details = []
+        for (product, monday), qty in sorted(
+                demand.items(), key=lambda kv: (kv[0][0].id, kv[0][1])):
+            sched = Schedule.search([
+                ('product_id', '=', product.id),
+                ('warehouse_id', '=', warehouse.id)], limit=1)
+            if not sched:
+                sched = Schedule.create(
+                    {'product_id': product.id, 'warehouse_id': warehouse.id})
+            forecast = sched.forecast_ids.filtered(lambda f: f.date == monday)[:1]
+            if forecast:
+                forecast.forecast_qty = qty  # re-envío: actualiza sin duplicar
+            else:
+                Forecast.create({
+                    'production_schedule_id': sched.id, 'date': monday,
+                    'forecast_qty': qty})
+            details.append("%s · %s: %s %s" % (
+                product.default_code or product.name, monday,
+                round(qty, 2), product.uom_id.name))
+        self.message_post(
+            body="Demanda neta enviada al Programa Maestro (%d celdas):<br/>%s" % (
+                len(details), "<br/>".join(details) or "sin demanda"))
         return True
 
     def action_open_import(self):
@@ -454,20 +687,39 @@ class SgiSalesBudgetLine(models.Model):
              "la misma categoría que la unidad de venta del producto.")
     qty_budget = fields.Float(string="Cantidad presupuestada",
                               digits='Product Unit')
+    # PRECIO: no se captura. Sale SIEMPRE de la lista de precios (la única fuente
+    # de verdad); si un precio está mal se corrige LA LISTA. Compute almacenado
+    # (foto), se refresca en borrador; al aprobar queda congelado (candado de
+    # líneas). Doble moneda: la de la lista (lo que el cliente conoce) y la de la
+    # compañía (convertida con el tipo presupuestal de Ajustes).
     price_unit_budget = fields.Monetary(
-        string="Precio unitario presupuestado",
-        help="Precio unitario planeado, en moneda de la compañía. Se sugiere de la "
-             "lista de precios del cliente (o del producto) pero es editable y "
-             "manda: el importe = cantidad × precio.")
+        string="Precio MXN", currency_field='currency_id',
+        compute='_compute_price', store=True,
+        help="Precio unitario en moneda de la compañía, tomado de la lista de "
+             "precios del cliente (o la lista default). No se captura.")
+    price_unit_currency = fields.Monetary(
+        string="Precio (divisa)", currency_field='list_currency_id',
+        compute='_compute_price', store=True,
+        help="Precio en la moneda de la lista aplicada (lo que el cliente conoce).")
+    list_currency_id = fields.Many2one(
+        'res.currency', string="Moneda de la lista",
+        compute='_compute_price', store=True)
+    has_list_price = fields.Boolean(
+        string="Con precio de lista", compute='_compute_price', store=True,
+        help="Falso si el producto no tiene precio en la lista aplicable: la línea "
+             "se crea igual, pero hay que corregir LA LISTA.")
     price_source = fields.Char(
-        string="Origen del precio", readonly=True, copy=False,
-        help="Rastro de dónde salió el precio sugerido y con qué tipo de cambio "
-             "se planeó (informativo para Dirección).")
+        string="Origen del precio", compute='_compute_price', store=True, copy=False,
+        help="Rastro del origen del precio y el tipo de cambio usado (ej. "
+             "\"Lista 'Export USD': 2.15 USD × 17.50\").")
     amount_budget = fields.Monetary(
-        string="Importe presupuestado", compute='_compute_amount_budget',
-        inverse='_inverse_amount_budget', store=True, readonly=False,
-        help="Importe en moneda de la compañía = cantidad × precio unitario. Si se "
-             "captura el importe directo, se despeja el precio.")
+        string="Importe MXN", currency_field='currency_id',
+        compute='_compute_amount_budget', store=True,
+        help="Cantidad × precio de lista, en moneda de la compañía.")
+    amount_currency = fields.Monetary(
+        string="Importe (divisa)", currency_field='list_currency_id',
+        compute='_compute_amount_budget', store=True,
+        help="Cantidad × precio, en la moneda de la lista.")
 
     # Real automático (base = FACTURADO). Almacenados para poder agregarse en
     # pivot/graph; son una FOTO: se recalculan al tocar la línea, con el botón
@@ -493,6 +745,13 @@ class SgiSalesBudgetLine(models.Model):
                                     "comercial, aún no necesariamente facturado.")
     amount_ordered = fields.Monetary(string="Importe pedido",
                                      compute='_compute_ordered', store=True)
+    qty_net_demand = fields.Float(
+        string="Demanda neta", digits='Product Unit',
+        compute='_compute_net_demand', store=True, aggregator='sum',
+        help="Consumo de pronóstico (forecast consumption): max(pronosticado, "
+             "comprometido). Los pedidos confirmados CONSUMEN el pronóstico de su "
+             "semana; si superan lo pronosticado, manda el pedido. Es la demanda "
+             "que se envía al Programa Maestro (no el pronóstico bruto).")
     avg_price_budget = fields.Monetary(string="Precio prom. presupuestado",
                                        compute='_compute_avg_prices')
     avg_price_real = fields.Monetary(string="Precio prom. real",
@@ -517,33 +776,70 @@ class SgiSalesBudgetLine(models.Model):
                 name = "%s — %s" % (name, line.partner_id.name)
             line.display_name = name
 
-    @api.depends('qty_budget', 'price_unit_budget')
+    @api.depends('qty_budget', 'price_unit_budget', 'price_unit_currency')
     def _compute_amount_budget(self):
         for line in self:
             line.amount_budget = line.qty_budget * line.price_unit_budget
-
-    def _inverse_amount_budget(self):
-        """Capturar el importe directo despeja el precio unitario (invertible)."""
-        for line in self:
-            if line.qty_budget:
-                line.price_unit_budget = line.amount_budget / line.qty_budget
+            line.amount_currency = line.qty_budget * line.price_unit_currency
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
         if self.product_id and not self.uom_id:
             self.uom_id = self.product_id.uom_id
 
-    @api.onchange('product_id', 'partner_id', 'uom_id')
-    def _onchange_suggest_price(self):
-        """Sugiere el precio de la lista del cliente (o del producto). NUNCA pisa
-        un precio ya capturado a mano (mismo patrón que el onchange de menús del
-        procedimiento)."""
-        if not self.product_id or self.price_unit_budget:
-            return
-        price, source = self._sgi_suggest_price()
-        if price:
-            self.price_unit_budget = price
-            self.price_source = source
+    @api.depends('product_id', 'partner_id', 'uom_id', 'qty_budget')
+    def _compute_price(self):
+        """El precio SIEMPRE sale de la lista (nunca se captura). Los campos de la
+        línea no cambian tras aprobar (candado), así que este compute no se
+        re-dispara solo en aprobados; el refresco manual/cron sí lo salta para no
+        pisar lo aprobado (ver action_refresh_actuals). Congelar aquí rompería el
+        primer cálculo perezoso de una línea recién aprobada."""
+        for line in self:
+            price_company, source, list_ccy, price_list, has_price = \
+                line._sgi_pricelist_price()
+            line.price_unit_budget = price_company
+            line.price_unit_currency = price_list
+            line.list_currency_id = list_ccy
+            line.price_source = source
+            line.has_list_price = has_price
+
+    def _sgi_default_pricelist(self):
+        """Lista de precios default de la compañía (cuando la línea no tiene
+        cliente): la primera de la compañía / global."""
+        company = self.company_id or self.env.company
+        return self.env['product.pricelist'].sudo().search(
+            [('company_id', 'in', (False, company.id))],
+            order='company_id, id', limit=1)
+
+    def _sgi_pricelist_price(self):
+        """(precio_compañía, texto_origen, moneda_lista, precio_en_lista, hay_precio)
+        de la lista aplicable a la línea. La lista es la única fuente de precios."""
+        self.ensure_one()
+        product = self.product_id
+        company_currency = self.currency_id or self.env.company.currency_id
+        if not product:
+            return 0.0, '', company_currency, 0.0, False
+        qty = self.qty_budget or 1.0
+        uom = self.uom_id or product.uom_id
+        day = fields.Date.context_today(self)
+        pricelist = (self.partner_id.property_product_pricelist
+                     if self.partner_id else self._sgi_default_pricelist())
+        if pricelist:
+            raw = pricelist._get_product_price(product, qty, uom=uom)
+            list_currency = pricelist.currency_id or company_currency
+            price, rate = self._sgi_to_company_price(raw, list_currency, day)
+            if list_currency and list_currency != company_currency:
+                source = "Lista '%s': %.4g %s × %.4g = %s %s" % (
+                    pricelist.name, raw, list_currency.name, rate,
+                    '{:,.2f}'.format(price), company_currency.name)
+            else:
+                source = "Lista '%s': %s %s" % (
+                    pricelist.name, '{:,.2f}'.format(price), company_currency.name)
+            return price, source, list_currency, raw, raw > 0
+        price = product.list_price
+        return (price, "Precio de venta del producto: %s %s" % (
+            '{:,.2f}'.format(price), company_currency.name),
+            company_currency, price, price > 0)
 
     def _sgi_to_company_price(self, price, list_currency, day):
         """Convierte un precio de la lista a moneda de la compañía usando el tipo
@@ -803,6 +1099,29 @@ class SgiSalesBudgetLine(models.Model):
             'domain': [('id', 'in', orders.ids)],
         }
 
+    def action_view_month_invoices(self):
+        """Drill-down del presupuesto: las facturas del producto/equipo(/cliente)
+        cuyo mes es el de la línea — análogo a "Ver pedidos de la semana"."""
+        self.ensure_one()
+        first, nxt = self._sgi_month_bounds(self.date)
+        domain = [
+            ('move_type', 'in', _REAL_MOVE_TYPES),
+            ('state', '=', 'posted'),
+            ('team_id', '=', self.team_id.id),
+            ('invoice_line_ids.product_id', '=', self.product_id.id),
+            ('invoice_date', '>=', first), ('invoice_date', '<', nxt),
+        ]
+        if self.partner_id:
+            domain.append(('commercial_partner_id', '=',
+                           self.partner_id.commercial_partner_id.id))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Facturas del mes — %s" % self.display_name,
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': domain,
+        }
+
     @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id')
     def _compute_ordered(self):
         SOL = self.env['sale.order.line']
@@ -845,6 +1164,11 @@ class SgiSalesBudgetLine(models.Model):
                             sol.product_uom_qty, line.uom_id, round=False)
                 line.qty_ordered = qty
                 line.amount_ordered = amount
+
+    @api.depends('qty_budget', 'qty_real')
+    def _compute_net_demand(self):
+        for line in self:
+            line.qty_net_demand = max(line.qty_budget, line.qty_real)
 
     @api.depends('amount_budget', 'qty_budget', 'amount_real', 'qty_real')
     def _compute_avg_prices(self):
