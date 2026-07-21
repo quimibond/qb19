@@ -905,3 +905,126 @@ class TestSalesBudgetForecastImport(TransactionCase):
         self.assertEqual(len(budget.line_ids), 1)
         self.assertEqual(budget.line_ids.date, date(2040, 1, 1))
         self.assertEqual(budget.line_ids.qty_budget, 100.0)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetNetDemand(TransactionCase):
+    """Extensión 5.2c: consumo de pronóstico + demanda neta al MPS."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado neta'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.uom_cm = cls.env.ref('uom.product_uom_cm')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Material neta', 'default_code': 'NET1', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente neta', 'is_company': True})
+
+    def _forecast(self):
+        return self.Budget.create({
+            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico',
+            'partner_id': self.client.id})
+
+    def _monday(self, ref):
+        from datetime import timedelta
+        return ref - timedelta(days=ref.weekday())
+
+    def _order(self, monday, qty, uom=None):
+        from datetime import datetime, timedelta
+        commit = datetime.combine(monday + timedelta(days=1), datetime.min.time())
+        so = self.env['sale.order'].create({
+            'partner_id': self.client.id, 'team_id': self.team.id,
+            'commitment_date': commit,
+            'order_line': [(0, 0, {
+                'product_id': self.product.id, 'product_uom_qty': qty,
+                'product_uom_id': (uom or self.uom_m).id, 'price_unit': 1.0})]})
+        so.action_confirm()
+        return so
+
+    def test_01_net_demand_order_bigger(self):
+        monday = self._monday(date(2040, 6, 3))
+        self._order(monday, 150.0)  # comprometido > pronóstico
+        fc = self._forecast()
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
+        self.assertEqual(line.qty_real, 150.0)
+        self.assertEqual(line.qty_net_demand, 150.0, "Manda el pedido si supera.")
+
+    def test_02_net_demand_order_smaller(self):
+        monday = self._monday(date(2040, 6, 10))
+        self._order(monday, 60.0)  # comprometido < pronóstico
+        fc = self._forecast()
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
+        self.assertEqual(line.qty_net_demand, 100.0, "Manda el pronóstico si es mayor.")
+
+    def test_03_preload_idempotent_no_overwrite(self):
+        m1 = self._monday(date(2040, 6, 3))
+        m2 = self._monday(date(2040, 6, 17))
+        self._order(m1, 80.0)
+        self._order(m2, 40.0)
+        fc = self._forecast()
+        # Captura previa en m1 (no debe pisarse).
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': m1,
+            'uom_id': self.uom_m.id, 'qty_budget': 999.0})
+        fc.action_preload_from_orders()
+        # m1 intacto; m2 creado con lo comprometido.
+        line_m1 = fc.line_ids.filtered(lambda l: l.date == m1)
+        line_m2 = fc.line_ids.filtered(lambda l: l.date == m2)
+        self.assertEqual(line_m1.qty_budget, 999.0, "No pisa la captura.")
+        self.assertEqual(line_m2.qty_budget, 40.0, "Precarga lo comprometido.")
+        # Idempotente: segunda corrida no duplica.
+        before = len(fc.line_ids)
+        fc.action_preload_from_orders()
+        self.assertEqual(len(fc.line_ids), before)
+
+    def test_04_mps_available_reflects_module(self):
+        fc = self._forecast()
+        self.assertEqual(fc.sgi_mps_available,
+                         'mrp.production.schedule' in self.env)
+
+    def test_05_send_net_demand_to_mps_idempotent(self):
+        if 'mrp.production.schedule' not in self.env:
+            self.skipTest("mrp_mps no está instalado en esta BD.")
+        monday = self._monday(date(2040, 6, 3))
+        fc = self._forecast()
+        # Línea en cm: 500 cm de demanda neta → 5 m (unidad del producto) al MPS.
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_cm.id, 'qty_budget': 500.0})
+        fc.state = 'aprobado'
+        fc.action_send_to_mps()
+        wh = self.env['stock.warehouse'].search(
+            [('company_id', '=', fc.company_id.id)], limit=1)
+        sched = self.env['mrp.production.schedule'].search([
+            ('product_id', '=', self.product.id), ('warehouse_id', '=', wh.id)])
+        self.assertTrue(sched)
+        forecasts = sched.forecast_ids.filtered(lambda f: f.date == monday)
+        self.assertEqual(len(forecasts), 1)
+        self.assertAlmostEqual(forecasts.forecast_qty, 5.0, places=2,
+                               msg="Convertido a la unidad del producto (m).")
+        # Re-envío tras revisión: actualiza sin duplicar.
+        fc.action_send_to_mps()
+        forecasts = sched.forecast_ids.filtered(lambda f: f.date == monday)
+        self.assertEqual(len(forecasts), 1, "No duplica en el re-envío.")
+
+    def test_06_no_sale_orders_created(self):
+        # PROHIBIDO crear pedidos desde el pronóstico: la precarga LEE pedidos,
+        # nunca los crea.
+        monday = self._monday(date(2040, 6, 3))
+        fc = self._forecast()
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
+        before = self.env['sale.order'].search_count([('partner_id', '=', self.client.id)])
+        fc.action_preload_from_orders()
+        after = self.env['sale.order'].search_count([('partner_id', '=', self.client.id)])
+        self.assertEqual(before, after, "El pronóstico no crea pedidos de venta.")

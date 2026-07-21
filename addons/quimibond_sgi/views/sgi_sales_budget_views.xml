@@ -18,6 +18,7 @@
                 <field name="amount_budget"/>
                 <field name="price_source" readonly="1" optional="hide"/>
                 <field name="qty_real" readonly="1" optional="show"/>
+                <field name="qty_net_demand" readonly="1" optional="show"/>
                 <field name="amount_real" readonly="1" optional="show"/>
                 <field name="qty_ordered" readonly="1" optional="hide"/>
                 <field name="amount_ordered" readonly="1" optional="hide"/>
@@ -123,6 +124,7 @@
                 <field name="amount_ordered" type="measure"/>
                 <field name="qty_budget" type="measure"/>
                 <field name="qty_real" type="measure"/>
+                <field name="qty_net_demand" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -206,6 +208,13 @@
                             string="Capturar importes" icon="fa-usd"/>
                     <button name="action_refresh_actuals" type="object"
                             string="Actualizar facturado/pedido" icon="fa-refresh"/>
+                    <button name="action_preload_from_orders" type="object"
+                            string="Precargar desde pedidos" icon="fa-download"
+                            invisible="kind != 'pronostico' or state != 'borrador'"/>
+                    <button name="action_send_to_mps" type="object"
+                            string="Enviar demanda al MPS" icon="fa-industry"
+                            invisible="kind != 'pronostico' or state != 'aprobado' or not sgi_mps_available"/>
+                    <field name="sgi_mps_available" invisible="1"/>
                     <button name="action_open_comparison" type="object"
                             string="Comparación" icon="fa-bar-chart"/>
                     <button name="action_print_budget" type="object"
@@ -270,6 +279,8 @@
                                     <field name="price_unit_budget"/>
                                     <field name="amount_budget"/>
                                     <field name="qty_real" readonly="1"/>
+                                    <field name="qty_net_demand" readonly="1"
+                                           column_invisible="parent.kind != 'pronostico'"/>
                                     <field name="amount_real" readonly="1"/>
                                     <field name="currency_id" column_invisible="1"/>
                                 </list>
