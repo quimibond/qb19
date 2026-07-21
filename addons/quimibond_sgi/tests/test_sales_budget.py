@@ -1306,3 +1306,66 @@ class TestSalesBudgetAnalysis(TransactionCase):
         self.assertTrue(act)
         self.assertIn('mayor brecha', act.note or '')
         self.assertIn('PA-AN', act.note, "El producto con mayor brecha aparece.")
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetAnalysisViews(TransactionCase):
+    """5.3: submenú Análisis con 4 vistas; anti-doble conteo; botón de ficha."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado analisis 53'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Prod 53', 'type': 'consu', 'uom_id': cls.uom_m.id,
+            'list_price': 5.0})
+
+    def _budget_line(self, year, state):
+        budget = self.Budget.create({'year': year, 'team_id': self.team.id})
+        line = self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(year, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        if state != 'borrador':
+            budget.state = state
+        return budget, line
+
+    def test_01_four_actions_and_views_validate(self):
+        Line = self.env['sgi.sales.budget.line']
+        for xmlid in ('sgi_sales_analysis_mercado_action',
+                      'sgi_sales_analysis_cliente_action',
+                      'sgi_sales_analysis_producto_action',
+                      'sgi_sales_analysis_global_action'):
+            action = self.env.ref('quimibond_sgi.%s' % xmlid)
+            self.assertEqual(action.res_model, 'sgi.sales.budget.line')
+            self.assertTrue(action.view_ids, "La acción define sus vistas.")
+            for v in action.view_ids:
+                # get_view valida/renderiza la arquitectura de cada vista.
+                Line.get_view(view_id=v.view_id.id, view_type=v.view_mode)
+            ctx = action.context
+            self.assertIn('search_default_vigente', ctx)
+            self.assertIn('search_default_presupuesto', ctx)
+
+    def test_02_vigente_filter_excludes_obsolete_and_draft(self):
+        appr, appr_line = self._budget_line(2040, 'aprobado')
+        obso, obso_line = self._budget_line(2041, 'obsoleto')
+        draft, draft_line = self._budget_line(2042, 'borrador')
+        vigente = self.Line.search([
+            ('budget_id.state', '=', 'aprobado'),
+            ('team_id', '=', self.team.id)])
+        self.assertIn(appr_line, vigente)
+        self.assertNotIn(obso_line, vigente, "Obsoleto excluido por defecto.")
+        self.assertNotIn(draft_line, vigente, "Borrador excluido por defecto.")
+
+    def test_03_ficha_button_filters_by_budget(self):
+        appr, appr_line = self._budget_line(2040, 'aprobado')
+        other, other_line = self._budget_line(2041, 'aprobado')
+        action = appr.action_open_analysis()
+        self.assertEqual(action['res_model'], 'sgi.sales.budget.line')
+        self.assertIn(('budget_id', '=', appr.id), action['domain'])
+        self.assertNotIn('search_default_vigente', action.get('context', {}))
+        lines = self.Line.search(action['domain'])
+        self.assertIn(appr_line, lines)
+        self.assertNotIn(other_line, lines)
