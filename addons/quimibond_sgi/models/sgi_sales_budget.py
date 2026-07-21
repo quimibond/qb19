@@ -14,7 +14,7 @@ Dos invariantes del negocio, tratadas con cuidado:
     ya convirtió cada factura a su tipo de cambio de la fecha — no reconvertimos).
 """
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
@@ -41,6 +41,18 @@ class SgiSalesBudget(models.Model):
                                    "industrial, confección, especiales…")
     revision = fields.Integer(string="Revisión", default=1, required=True,
                               tracking=True)
+    kind = fields.Selection([
+        ('presupuesto', "Presupuesto mensual (por mercado)"),
+        ('pronostico', "Pronóstico semanal (por cliente)"),
+    ], string="Tipo", default='presupuesto', required=True, tracking=True,
+        help="Presupuesto: matriz mensual por mercado (F-P-A28-18). "
+             "Pronóstico: matriz semanal por cliente (F-P-A28-13); un registro "
+             "por cliente y año, como cada hoja del forecast.")
+    partner_id = fields.Many2one(
+        'res.partner', string="Cliente del pronóstico",
+        domain="[('is_company', '=', True)]",
+        help="Cliente de este pronóstico (obligatorio en modo pronóstico; una "
+             "hoja del forecast = un cliente-año).")
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
     company_id = fields.Many2one('res.company', string="Compañía",
                                  default=lambda self: self.env.company, required=True)
@@ -82,12 +94,17 @@ class SgiSalesBudget(models.Model):
              "la presupuestada: se cuentan en importe pero NO en cantidad. El "
              "hueco queda visible aquí para corregir la unidad.")
 
-    @api.depends('team_id', 'year', 'revision')
+    @api.depends('team_id', 'year', 'revision', 'kind', 'partner_id')
     def _compute_name(self):
         for budget in self:
-            team = budget.team_id.name or "?"
-            budget.name = "Presupuesto %s %s Rev.%s" % (
-                team, budget.year or "?", budget.revision or 1)
+            if budget.kind == 'pronostico':
+                who = budget.partner_id.name or budget.team_id.name or "?"
+                budget.name = "Pronóstico %s %s Rev.%s" % (
+                    who, budget.year or "?", budget.revision or 1)
+            else:
+                team = budget.team_id.name or "?"
+                budget.name = "Presupuesto %s %s Rev.%s" % (
+                    team, budget.year or "?", budget.revision or 1)
 
     @api.depends('line_ids')
     def _compute_line_count(self):
@@ -151,8 +168,8 @@ class SgiSalesBudget(models.Model):
             captured = sum(budget.line_ids.mapped('amount_real'))
             budget.amount_real_unbudgeted = budget._sgi_team_year_real() - captured
 
-    # --- Constraint: un solo presupuesto no-obsoleto por año + equipo ---------
-    @api.constrains('year', 'team_id', 'state')
+    # --- Constraint: un solo no-obsoleto por año+equipo(+cliente)+kind --------
+    @api.constrains('year', 'team_id', 'state', 'kind', 'partner_id')
     def _check_unique_active(self):
         for budget in self:
             if budget.state == 'obsoleto':
@@ -161,13 +178,25 @@ class SgiSalesBudget(models.Model):
                 ('id', '!=', budget.id),
                 ('year', '=', budget.year),
                 ('team_id', '=', budget.team_id.id),
+                ('kind', '=', budget.kind),
+                ('partner_id', '=', budget.partner_id.id),
                 ('state', '!=', 'obsoleto'),
             ], limit=1)
             if dup:
                 raise ValidationError(
-                    "Ya existe un presupuesto no obsoleto de %s para %s (%s). "
-                    "Revísalo (crea una nueva Rev.) en vez de duplicarlo." % (
-                        budget.team_id.name, budget.year, dup.folio or dup.name))
+                    "Ya existe un %s no obsoleto de %s para %s (%s). Revísalo "
+                    "(crea una nueva Rev.) en vez de duplicarlo." % (
+                        dict(self._fields['kind'].selection)[budget.kind],
+                        budget.partner_id.name or budget.team_id.name,
+                        budget.year, dup.folio or dup.name))
+
+    @api.constrains('kind', 'partner_id')
+    def _check_forecast_partner(self):
+        for budget in self:
+            if budget.kind == 'pronostico' and not budget.partner_id:
+                raise ValidationError(
+                    "Un pronóstico semanal necesita un cliente (cada hoja del "
+                    "forecast es un cliente-año).")
 
     # --- Flujo de estados -----------------------------------------------------
     def action_approve(self):
@@ -323,6 +352,45 @@ class SgiSalesBudget(models.Model):
             'amount_total': self.amount_budget_total,
         }
 
+    def _report_forecast_matrix(self):
+        """Estructura del pronóstico F-P-A28-13 para el QWeb: producto+código de
+        cliente × semanas (las presentes en las líneas, con su mes), con la
+        cantidad presupuestada y la comprometida (real) por semana."""
+        self.ensure_one()
+        jan1 = date(self.year, 1, 1)
+        first_monday = jan1 + timedelta(days=(7 - jan1.weekday()) % 7)
+        weeks = {}
+        rows = {}
+        for line in self.line_ids.sorted(lambda l: (
+                l.product_id.default_code or '', l.customer_code or '', l.date)):
+            week = ((line.date - first_monday).days // 7) + 1
+            weeks[week] = line.date.month
+            key = (line.product_id.id, line.customer_code or '', line.uom_id.id)
+            row = rows.get(key)
+            if not row:
+                row = {
+                    'product': line.product_id.display_name,
+                    'code': line.customer_code or '',
+                    'uom': line.uom_id.name or '',
+                    'budget': {}, 'real': {},
+                }
+                rows[key] = row
+            row['budget'][week] = row['budget'].get(week, 0.0) + line.qty_budget
+            row['real'][week] = row['real'].get(week, 0.0) + line.qty_real
+        weeks_sorted = sorted(weeks)
+        return {
+            'weeks': [{'num': w, 'month': weeks[w]} for w in weeks_sorted],
+            'rows': list(rows.values()),
+            'partner': self.partner_id.name or '',
+        }
+
+    # Banner de formato según el tipo: pronóstico = F-P-A28-13, presupuesto = 18.
+    def _sgi_format_code(self, fmap):
+        self.ensure_one()
+        if self.kind == 'pronostico':
+            return fmap.sgi_code_alt or 'F-P-A28-13'
+        return fmap.sgi_code
+
     def action_print_budget(self):
         self.ensure_one()
         return self.env.ref(
@@ -363,16 +431,22 @@ class SgiSalesBudgetLine(models.Model):
     company_id = fields.Many2one(related='budget_id.company_id', store=True)
     currency_id = fields.Many2one(related='budget_id.currency_id', store=True,
                                   string="Moneda")
+    kind = fields.Selection(related='budget_id.kind', store=True, string="Tipo")
     product_id = fields.Many2one('product.product', string="Producto",
                                  required=True, index=True)
+    customer_code = fields.Char(
+        string="Código del cliente para el material",
+        help="Código con que el cliente identifica el material (ej. SCR31); se "
+             "imprime junto al producto en el pronóstico F-P-A28-13.")
     partner_id = fields.Many2one(
         'res.partner', string="Cliente", index=True,
-        domain="[('is_company', '=', True), ('customer_rank', '>', 0)]",
-        help="Vacío = presupuesto del producto para todo el mercado; con cliente "
-             "= presupuesto de esa cuenta. Un producto no puede tener a la vez "
-             "líneas con cliente y sin cliente en el mismo presupuesto.")
-    date = fields.Date(string="Mes", required=True,
-                       help="Primer día del mes presupuestado.")
+        domain="[('is_company', '=', True)]",
+        help="Presupuesto: vacío = producto para todo el mercado; con cliente = "
+             "esa cuenta (un producto no mezcla ambos). Pronóstico: es el cliente "
+             "de la cabecera (no editable).")
+    date = fields.Date(string="Mes / Semana", required=True,
+                       help="Presupuesto: primer día del mes. Pronóstico: lunes "
+                            "de la semana.")
     uom_id = fields.Many2one(
         'uom.uom', string="Unidad", required=True,
         help="Unidad en que se captura y lee la cantidad de esta línea "
@@ -404,11 +478,12 @@ class SgiSalesBudgetLine(models.Model):
                             help="Cantidad facturada del periodo convertida a la "
                                  "unidad de esta línea.")
     amount_real = fields.Monetary(
-        string="Importe facturado", compute='_compute_real', store=True,
-        help="Suma de account.move.line.balance (con el signo de "
-             "out_invoice/out_refund) de las facturas del periodo. Contabilidad "
-             "ya convirtió cada factura a moneda de la compañía a su tipo de "
-             "cambio; no se reconvierte con tasas de hoy.")
+        string="Importe real", compute='_compute_real', store=True,
+        help="Presupuesto: FACTURADO — suma de account.move.line.balance (con el "
+             "signo de out_invoice/out_refund) de las facturas del periodo "
+             "(contabilidad ya convirtió a moneda compañía; no se reconvierte). "
+             "Pronóstico: COMPROMETIDO — importe de los pedidos confirmados del "
+             "cliente cuya fecha comprometida cae en la semana.")
     unconverted_count = fields.Integer(
         string="Facturas sin convertir", compute='_compute_real', store=True)
     qty_ordered = fields.Float(string="Cantidad pedida", digits='Product Unit',
@@ -429,11 +504,13 @@ class SgiSalesBudgetLine(models.Model):
         'unique nulls not distinct (budget_id, product_id, date, partner_id)',
         "Ya existe una línea para ese producto, mes y cliente en este presupuesto.")
 
-    @api.depends('product_id', 'date', 'uom_id', 'partner_id')
+    @api.depends('product_id', 'date', 'uom_id', 'partner_id', 'customer_code')
     def _compute_display_name(self):
         for line in self:
             product = line.product_id
             label = product.default_code or product.name or ''
+            if line.customer_code:
+                label = "%s [%s]" % (label, line.customer_code)
             uom = line.uom_id.name or ''
             name = "%s (%s)" % (label, uom) if uom else label
             if line.partner_id:
@@ -521,13 +598,27 @@ class SgiSalesBudgetLine(models.Model):
         for line in self:
             if not line.date:
                 continue
-            if line.date.day != 1:
-                raise ValidationError(
-                    "La fecha de la línea debe ser el primer día del mes (%s)." % line.date)
             if line.date.year != line.budget_id.year:
                 raise ValidationError(
-                    "El mes %s no cae dentro del año del presupuesto (%s)." % (
+                    "La fecha %s no cae dentro del año del presupuesto (%s)." % (
                         line.date, line.budget_id.year))
+            if line.budget_id.kind == 'pronostico':
+                if line.date.weekday() != 0:
+                    raise ValidationError(
+                        "En un pronóstico semanal, la fecha de la línea debe ser "
+                        "lunes de la semana (%s)." % line.date)
+            elif line.date.day != 1:
+                raise ValidationError(
+                    "La fecha de la línea debe ser el primer día del mes (%s)." % line.date)
+
+    @api.constrains('partner_id', 'budget_id')
+    def _check_forecast_partner(self):
+        """En pronóstico, el cliente de la línea es el de la cabecera."""
+        for line in self:
+            if line.budget_id.kind == 'pronostico' and line.partner_id != line.budget_id.partner_id:
+                raise ValidationError(
+                    "En un pronóstico, el cliente de la línea es el del pronóstico "
+                    "(%s)." % (line.budget_id.partner_id.name or ''))
 
     @api.constrains('partner_id', 'product_id', 'budget_id')
     def _check_no_mixed_scheme(self):
@@ -570,8 +661,22 @@ class SgiSalesBudgetLine(models.Model):
             nxt = first.replace(month=first.month + 1)
         return first, nxt
 
-    @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id')
+    def _sgi_week_bounds(self, monday):
+        """(lunes, lunes siguiente) de la semana de una línea de pronóstico."""
+        from datetime import timedelta
+        return monday, monday + timedelta(days=7)
+
+    @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id', 'kind')
     def _compute_real(self):
+        """Presupuesto: real = FACTURADO (account.move.line). Pronóstico: real =
+        COMPROMETIDO a entregar = pedidos confirmados del cliente cuya fecha
+        comprometida (commitment_date, fallback expected_date/date_order) cae en la
+        semana. Base distinta a propósito (mide compromiso, no facturación)."""
+        forecast = self.filtered(lambda l: l.kind == 'pronostico')
+        (self - forecast)._sgi_compute_real_invoiced()
+        forecast._sgi_compute_real_committed()
+
+    def _sgi_compute_real_invoiced(self):
         AML = self.env['account.move.line']
         by_team = defaultdict(lambda: self.browse())
         for line in self:
@@ -619,6 +724,84 @@ class SgiSalesBudgetLine(models.Model):
                 line.qty_real = qty
                 line.amount_real = amount
                 line.unconverted_count = unconverted
+
+    def _sgi_effective_monday(self, order):
+        """Lunes de la semana comprometida de un pedido: commitment_date, o
+        expected_date, o date_order."""
+        from datetime import timedelta
+        eff = order.commitment_date or order.expected_date or order.date_order
+        if not eff:
+            return False
+        eff_date = fields.Datetime.to_datetime(eff).date()
+        return eff_date - timedelta(days=eff_date.weekday())
+
+    def _sgi_forecast_sols(self):
+        """Líneas de pedido confirmadas del cliente (comercial) para el producto
+        de esta línea, cuya semana comprometida = la semana de la línea."""
+        self.ensure_one()
+        partner = self.partner_id.commercial_partner_id
+        if not partner or not self.product_id or not self.date:
+            return self.env['sale.order.line']
+        sols = self.env['sale.order.line'].search([
+            ('order_id.state', 'in', ('sale', 'done')),
+            ('product_id', '=', self.product_id.id),
+            ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+        ])
+        return sols.filtered(
+            lambda s: self._sgi_effective_monday(s.order_id) == self.date)
+
+    def _sgi_compute_real_committed(self):
+        SOL = self.env['sale.order.line']
+        by_partner = defaultdict(lambda: self.browse())
+        for line in self:
+            line.qty_real = 0.0
+            line.amount_real = 0.0
+            line.unconverted_count = 0
+            if line.partner_id and line.product_id and line.date:
+                by_partner[line.partner_id.commercial_partner_id.id] |= line
+        for partner_id, lines in by_partner.items():
+            products = lines.mapped('product_id')
+            sols = SOL.search([
+                ('order_id.state', 'in', ('sale', 'done')),
+                ('product_id', 'in', products.ids),
+                ('order_id.partner_id.commercial_partner_id', '=', partner_id),
+            ])
+            bucket = defaultdict(lambda: self.env['sale.order.line'])
+            for sol in sols:
+                monday = lines[0]._sgi_effective_monday(sol.order_id)
+                if monday:
+                    bucket[(sol.product_id.id, monday)] |= sol
+            for line in lines:
+                key = (line.product_id.id, line.date)
+                qty = amount = 0.0
+                unconverted = 0
+                company = line.company_id or self.env.company
+                for sol in bucket.get(key, self.env['sale.order.line']):
+                    amount += sol.currency_id._convert(
+                        sol.price_subtotal, line.currency_id, company,
+                        sol.order_id.date_order.date())
+                    row_uom = sol.product_uom_id
+                    if row_uom and line.uom_id and row_uom._has_common_reference(line.uom_id):
+                        qty += row_uom._compute_quantity(
+                            sol.product_uom_qty, line.uom_id, round=False)
+                    else:
+                        unconverted += 1
+                line.qty_real = qty
+                line.amount_real = amount
+                line.unconverted_count = unconverted
+
+    def action_view_week_orders(self):
+        """Drill-down: los pedidos confirmados de ese producto/cliente/semana
+        (sustituye a las filas de PO/fecha del Excel)."""
+        self.ensure_one()
+        orders = self._sgi_forecast_sols().mapped('order_id')
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Pedidos de la semana — %s" % self.display_name,
+            'res_model': 'sale.order',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', orders.ids)],
+        }
 
     @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id')
     def _compute_ordered(self):
@@ -676,7 +859,18 @@ class SgiSalesBudgetLine(models.Model):
     # solo MAST puede, tras regresar el presupuesto a borrador.)
     _SGI_LOCKED_PARENT_STATES = ('aprobado',)
     _SGI_EDITABLE_FIELDS = {
-        'product_id', 'date', 'uom_id', 'qty_budget', 'amount_budget', 'budget_id'}
+        'product_id', 'date', 'uom_id', 'qty_budget', 'amount_budget', 'budget_id',
+        'price_unit_budget', 'price_source', 'partner_id', 'customer_code'}
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        Budget = self.env['sgi.sales.budget']
+        for vals in vals_list:
+            if vals.get('budget_id') and not vals.get('partner_id'):
+                budget = Budget.browse(vals['budget_id'])
+                if budget.kind == 'pronostico' and budget.partner_id:
+                    vals['partner_id'] = budget.partner_id.id
+        return super().create(vals_list)
 
     def _sgi_locked_lines(self):
         return self.filtered(
