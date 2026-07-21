@@ -386,3 +386,102 @@ class TestSalesBudgetStep3(TransactionCase):
         after = self.env['mail.activity'].search_count([
             ('res_model', '=', 'sgi.sales.budget')])
         self.assertEqual(before, after, "Equipo que cumple no genera aviso.")
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetClient(TransactionCase):
+    """Adición 5.2: dimensión cliente (opcional, sin doble conteo)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado cliente PPV'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Tela cliente PPV', 'type': 'consu', 'uom_id': cls.uom_m.id})
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        # Empresa comercial C con un contacto hijo CC, y otra empresa D.
+        cls.company_c = cls.env['res.partner'].create(
+            {'name': 'Cliente C', 'is_company': True})
+        cls.contact_cc = cls.env['res.partner'].create(
+            {'name': 'Contacto CC', 'parent_id': cls.company_c.id})
+        cls.company_d = cls.env['res.partner'].create(
+            {'name': 'Cliente D', 'is_company': True})
+
+    def _budget(self):
+        return self.Budget.create({'year': 2040, 'team_id': self.team.id})
+
+    def _line(self, budget, partner=None, amount=0.0, product=None):
+        return self.Line.create({
+            'budget_id': budget.id, 'product_id': (product or self.product).id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'partner_id': partner.id if partner else False,
+            'qty_budget': 10.0, 'amount_budget': amount})
+
+    def _invoice(self, partner, amount):
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': date(2040, 6, 10), 'team_id': self.team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': 1,
+                'product_uom_id': self.uom_m.id, 'price_unit': amount,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def test_01_double_count_blocked(self):
+        budget = self._budget()
+        self._line(budget, partner=None, amount=1000.0)  # global
+        # Mezclar el mismo producto con cliente → bloqueado.
+        with self.assertRaises(ValidationError):
+            self._line(budget, partner=self.company_c, amount=500.0)
+
+    def test_02_double_count_blocked_reverse(self):
+        budget = self._budget()
+        self._line(budget, partner=self.company_c, amount=500.0)  # por cliente
+        with self.assertRaises(ValidationError):
+            self._line(budget, partner=None, amount=1000.0)  # ahora global → bloqueado
+
+    def test_03_two_clients_ok(self):
+        budget = self._budget()
+        self._line(budget, partner=self.company_c, amount=500.0)
+        line_d = self._line(budget, partner=self.company_d, amount=300.0)
+        self.assertTrue(line_d.id, "Dos clientes distintos para el mismo producto: OK.")
+
+    def test_04_unique_global_per_product_month(self):
+        budget = self._budget()
+        self._line(budget, partner=None, amount=1000.0)
+        # Segundo global mismo producto+mes → viola el índice único.
+        with self.assertRaises(Exception):
+            with self.env.cr.savepoint():
+                self._line(budget, partner=None, amount=200.0)
+
+    def test_05_real_filtered_by_commercial_partner(self):
+        # Factura al CONTACTO hijo de C, y otra a D. La línea por cliente C debe
+        # tomar solo la de C (vía commercial_partner_id del documento).
+        self._invoice(self.contact_cc, 500.0)
+        self._invoice(self.company_d, 300.0)
+        budget = self._budget()
+        line = self._line(budget, partner=self.company_c, amount=400.0)
+        self.assertAlmostEqual(line.amount_real, 500.0, places=2)
+
+    def test_06_amount_real_unbudgeted(self):
+        # Equipo factura 800 (500 a C, 300 a D); se presupuesta solo C → 300 sin
+        # presupuestar.
+        self._invoice(self.contact_cc, 500.0)
+        self._invoice(self.company_d, 300.0)
+        budget = self._budget()
+        self._line(budget, partner=self.company_c, amount=400.0)
+        self.assertAlmostEqual(budget.amount_real_unbudgeted, 300.0, places=2)
+
+    def test_07_global_line_takes_all_clients(self):
+        # Sin dimensión cliente, el real es de todo el equipo (C + D).
+        self._invoice(self.contact_cc, 500.0)
+        self._invoice(self.company_d, 300.0)
+        budget = self._budget()
+        line = self._line(budget, partner=None, amount=1000.0)
+        self.assertAlmostEqual(line.amount_real, 800.0, places=2)
+        self.assertAlmostEqual(budget.amount_real_unbudgeted, 0.0, places=2)

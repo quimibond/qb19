@@ -178,6 +178,19 @@ unidades; el único total global es el de dinero. Captura en grid de Enterprise
 presupuesto aprobado; el cierre de mes (cron mensual) avisa al responsable del
 equipo por debajo de `sales_budget_alert_pct`.
 
+**Dimensión cliente (opcional por línea).** `sgi.sales.budget.line.partner_id`
+(vacío = global del producto para el mercado; con cliente = esa cuenta).
+Unicidad producto+mes+cliente con `UNIQUE NULLS NOT DISTINCT` (PG15+: el cliente
+nulo es un valor propio). Anti-doble-conteo: un producto no puede tener a la vez
+líneas con y sin cliente en el mismo presupuesto. El real por cliente filtra por
+`commercial_partner_id` del documento (los pedidos llegan a contactos/direcciones
+de entrega; se usa la empresa comercial, patrón del módulo intelligence).
+`amount_real_unbudgeted` en la cabecera = real del equipo en el año menos el real
+capturado por las líneas (lo vendido sin presupuestar). El grid gestiona solo el
+esquema por producto (fila = producto); **el presupuesto por cliente se captura
+en la vista lista/ficha** (dos dimensiones de fila no se resolvieron en grid); el
+reporte desglosa por cliente con subtotal de producto.
+
 **KPIs 2.0 (v19.0.10):** `crecimiento_ventas` (VE-01, facturación neta timbrada del
 periodo vs mismo periodo año anterior, variación %) · `ots_atendidas` (MT-03,
 maintenance.request cerradas etapa done vs creadas) · `requisiciones` (CO-02,

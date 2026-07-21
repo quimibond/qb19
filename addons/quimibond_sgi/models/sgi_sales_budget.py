@@ -14,6 +14,7 @@ Dos invariantes del negocio, tratadas con cuidado:
     ya convirtió cada factura a su tipo de cambio de la fecha — no reconvertimos).
 """
 from collections import defaultdict
+from datetime import date
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
@@ -64,6 +65,12 @@ class SgiSalesBudget(models.Model):
                                            compute='_compute_amount_totals')
     fulfillment_pct = fields.Float(string="% Cumplimiento (importe)",
                                    compute='_compute_amount_totals')
+    amount_real_unbudgeted = fields.Monetary(
+        string="Facturado NO presupuestado",
+        compute='_compute_unbudgeted',
+        help="Facturación neta del equipo en el año que no matchea ninguna línea "
+             "(ni global ni por cliente): total real del equipo menos el real "
+             "capturado por las líneas. Producto/cliente vendido sin presupuestar.")
     qty_budget_text = fields.Char(string="Cantidad presupuestada (por unidad)",
                                   compute='_compute_qty_texts')
     qty_real_text = fields.Char(string="Cantidad facturada (por unidad)",
@@ -122,6 +129,27 @@ class SgiSalesBudget(models.Model):
     def _compute_unconverted_count(self):
         for budget in self:
             budget.unconverted_count = sum(budget.line_ids.mapped('unconverted_count'))
+
+    def _sgi_team_year_real(self):
+        """Facturación neta del equipo en todo el año del presupuesto (moneda
+        compañía). Base para detectar lo vendido sin presupuestar."""
+        self.ensure_one()
+        if not self.team_id or not self.year:
+            return 0.0
+        moves = self.env['account.move'].sudo().search([
+            ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ('state', '=', 'posted'),
+            ('team_id', '=', self.team_id.id),
+            ('invoice_date', '>=', date(self.year, 1, 1)),
+            ('invoice_date', '<=', date(self.year, 12, 31)),
+        ])
+        return sum(moves.mapped('amount_untaxed_signed'))
+
+    @api.depends('line_ids.amount_real', 'team_id', 'year')
+    def _compute_unbudgeted(self):
+        for budget in self:
+            captured = sum(budget.line_ids.mapped('amount_real'))
+            budget.amount_real_unbudgeted = budget._sgi_team_year_real() - captured
 
     # --- Constraint: un solo presupuesto no-obsoleto por año + equipo ---------
     @api.constrains('year', 'team_id', 'state')
@@ -238,33 +266,49 @@ class SgiSalesBudget(models.Model):
 
     # --- Matriz para el reporte F-P-A28-18 -----------------------------------
     def _report_matrix(self):
-        """Estructura producto × 12 meses para el QWeb: filas con la cantidad por
-        mes (en la unidad de la línea), subtotal de cantidad por unidad y total de
-        dinero. Las cantidades NO se totalizan globalmente (unidades distintas);
-        el único total global es el de pesos."""
+        """Estructura producto × 12 meses para el QWeb, agrupada por producto. Un
+        producto presupuestado por cliente se desglosa en una fila por cliente con
+        subtotal de producto; uno global lleva una sola fila. Las cantidades no se
+        totalizan globalmente (unidades distintas); el total global es el de pesos."""
         self.ensure_one()
         months = list(range(1, 13))
-        rows = []
+        groups = {}
         for line in self.line_ids.sorted(lambda l: (
-                l.product_id.default_code or '', l.product_id.name or '', l.date)):
-            key = (line.product_id.id, line.uom_id.id)
-            row = next((r for r in rows if r['_key'] == key), None)
+                l.product_id.default_code or '', l.product_id.name or '',
+                l.partner_id.name or '', l.date)):
+            grp = groups.get(line.product_id.id)
+            if not grp:
+                grp = {
+                    'product': line.product_id.display_name,
+                    'by_client': False,
+                    'rows': {},
+                    'subtotal_amount': 0.0,
+                }
+                groups[line.product_id.id] = grp
+            if line.partner_id:
+                grp['by_client'] = True
+            rkey = (line.partner_id.id, line.uom_id.id)
+            row = grp['rows'].get(rkey)
             if not row:
                 row = {
-                    '_key': key,
-                    'product': line.product_id.display_name,
+                    'client': line.partner_id.name or '',
                     'uom': line.uom_id.name or '',
                     'cells': {m: 0.0 for m in months},
                     'qty_total': 0.0,
                     'amount_total': 0.0,
                 }
-                rows.append(row)
+                grp['rows'][rkey] = row
             row['cells'][line.date.month] += line.qty_budget
             row['qty_total'] += line.qty_budget
             row['amount_total'] += line.amount_budget
+            grp['subtotal_amount'] += line.amount_budget
+        ordered = []
+        for grp in groups.values():
+            grp['rows'] = list(grp['rows'].values())
+            ordered.append(grp)
         return {
             'months': months,
-            'rows': rows,
+            'groups': ordered,
             'qty_by_uom': self.qty_budget_text,
             'amount_total': self.amount_budget_total,
         }
@@ -289,6 +333,12 @@ class SgiSalesBudgetLine(models.Model):
                                   string="Moneda")
     product_id = fields.Many2one('product.product', string="Producto",
                                  required=True, index=True)
+    partner_id = fields.Many2one(
+        'res.partner', string="Cliente", index=True,
+        domain="[('is_company', '=', True), ('customer_rank', '>', 0)]",
+        help="Vacío = presupuesto del producto para todo el mercado; con cliente "
+             "= presupuesto de esa cuenta. Un producto no puede tener a la vez "
+             "líneas con cliente y sin cliente en el mismo presupuesto.")
     date = fields.Date(string="Mes", required=True,
                        help="Primer día del mes presupuestado.")
     uom_id = fields.Many2one(
@@ -325,17 +375,22 @@ class SgiSalesBudgetLine(models.Model):
     avg_price_real = fields.Monetary(string="Precio prom. real",
                                      compute='_compute_avg_prices')
 
-    _product_month_uniq = models.Constraint(
-        'unique(budget_id, product_id, date)',
-        "Ya existe una línea para ese producto y mes en este presupuesto.")
+    # Unicidad producto+mes+cliente. NULLS NOT DISTINCT (PG15+): un cliente nulo
+    # cuenta como su propio valor, así que solo hay una línea global por prod+mes.
+    _product_month_partner_uniq = models.Constraint(
+        'unique nulls not distinct (budget_id, product_id, date, partner_id)',
+        "Ya existe una línea para ese producto, mes y cliente en este presupuesto.")
 
-    @api.depends('product_id', 'date', 'uom_id')
+    @api.depends('product_id', 'date', 'uom_id', 'partner_id')
     def _compute_display_name(self):
         for line in self:
             product = line.product_id
             label = product.default_code or product.name or ''
             uom = line.uom_id.name or ''
-            line.display_name = "%s (%s)" % (label, uom) if uom else label
+            name = "%s (%s)" % (label, uom) if uom else label
+            if line.partner_id:
+                name = "%s — %s" % (name, line.partner_id.name)
+            line.display_name = name
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -355,6 +410,26 @@ class SgiSalesBudgetLine(models.Model):
                 raise ValidationError(
                     "El mes %s no cae dentro del año del presupuesto (%s)." % (
                         line.date, line.budget_id.year))
+
+    @api.constrains('partner_id', 'product_id', 'budget_id')
+    def _check_no_mixed_scheme(self):
+        """Anti-doble-conteo: dentro de un presupuesto, un producto es global
+        (sin cliente) O por cliente, nunca ambos — o el mismo importe se contaría
+        dos veces contra el mismo real."""
+        for line in self:
+            siblings = self.search([
+                ('budget_id', '=', line.budget_id.id),
+                ('product_id', '=', line.product_id.id),
+                ('id', '!=', line.id),
+            ])
+            has_global = any(not s.partner_id for s in siblings) or not line.partner_id
+            has_client = any(s.partner_id for s in siblings) or bool(line.partner_id)
+            if has_global and has_client:
+                raise ValidationError(
+                    "El producto '%s' ya está presupuestado por cliente en este "
+                    "presupuesto; captura el resto como otro cliente o cambia el "
+                    "esquema (no mezcles líneas con cliente y sin cliente para el "
+                    "mismo producto)." % line.product_id.display_name)
 
     @api.constrains('uom_id', 'product_id')
     def _check_uom_category(self):
@@ -377,7 +452,7 @@ class SgiSalesBudgetLine(models.Model):
             nxt = first.replace(month=first.month + 1)
         return first, nxt
 
-    @api.depends('product_id', 'date', 'uom_id', 'team_id')
+    @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id')
     def _compute_real(self):
         AML = self.env['account.move.line']
         by_team = defaultdict(lambda: self.browse())
@@ -410,7 +485,11 @@ class SgiSalesBudgetLine(models.Model):
                 key = (line.product_id.id, (line.date.year, line.date.month))
                 qty = amount = 0.0
                 unconverted = 0
+                partner = line.partner_id.commercial_partner_id
                 for aml in bucket.get(key, self.env['account.move.line']):
+                    # Línea por cliente: solo la empresa comercial del documento.
+                    if partner and aml.move_id.commercial_partner_id != partner:
+                        continue
                     sign = 1.0 if aml.move_id.move_type == 'out_invoice' else -1.0
                     amount += -aml.balance  # balance ya en moneda compañía
                     row_uom = aml.product_uom_id
@@ -423,7 +502,7 @@ class SgiSalesBudgetLine(models.Model):
                 line.amount_real = amount
                 line.unconverted_count = unconverted
 
-    @api.depends('product_id', 'date', 'uom_id', 'team_id')
+    @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id')
     def _compute_ordered(self):
         SOL = self.env['sale.order.line']
         by_team = defaultdict(lambda: self.browse())
@@ -452,7 +531,10 @@ class SgiSalesBudgetLine(models.Model):
                 key = (line.product_id.id, (line.date.year, line.date.month))
                 qty = amount = 0.0
                 company = line.company_id or self.env.company
+                partner = line.partner_id.commercial_partner_id
                 for sol in bucket.get(key, self.env['sale.order.line']):
+                    if partner and sol.order_id.partner_id.commercial_partner_id != partner:
+                        continue
                     amount += sol.currency_id._convert(
                         sol.price_subtotal, line.currency_id, company,
                         sol.order_id.date_order.date())
@@ -529,15 +611,19 @@ class SgiSalesBudgetLine(models.Model):
     @api.model
     def grid_update_cell(self, domain, measure_field_name, value):
         """Suma `value` a la celda (producto × mes) del grid; crea la línea si no
-        existe (patrón timesheet_grid). La unidad de una línea nueva es la de venta
-        del producto; luego se ajusta en la lista/ficha si aplica."""
+        existe (patrón timesheet_grid). El grid gestiona SOLO el esquema por
+        producto (sin cliente); el presupuesto por cliente se captura en la vista
+        lista (si el producto ya tiene líneas por cliente, el constraint
+        anti-doble-conteo avisará)."""
         if not value:
             return
+        domain = list(domain) + [('partner_id', '=', False)]
         line = self.search(domain, limit=1)
         if line:
             line[measure_field_name] += value
             return
         vals = self._grid_cell_vals_from_domain(domain)
+        vals['partner_id'] = False
         if not vals.get('budget_id') or not vals.get('product_id') or not vals.get('date'):
             raise UserError(
                 "No se pudo ubicar la celda (producto/mes/presupuesto). Captura "
