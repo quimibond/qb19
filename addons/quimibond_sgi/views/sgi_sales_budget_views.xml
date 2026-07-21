@@ -17,6 +17,7 @@
                 <field name="date"/>
                 <field name="uom_id"/>
                 <field name="qty_budget"/>
+                <field name="qty_forecast" readonly="1" optional="show"/>
                 <field name="price_unit_currency" readonly="1" optional="show"/>
                 <field name="price_real_unit_currency" readonly="1" optional="show"/>
                 <field name="price_gap_pct" readonly="1" optional="show"/>
@@ -89,6 +90,8 @@
                     <group string="Real (facturado) y pedido — automático">
                         <group>
                             <field name="qty_real" readonly="1"/>
+                            <field name="qty_forecast" readonly="1"
+                                   invisible="kind == 'pronostico'"/>
                             <field name="amount_real" readonly="1"/>
                             <field name="unconverted_count" readonly="1"/>
                         </group>
@@ -238,7 +241,9 @@
         <field name="arch" type="xml">
             <form string="Presupuesto de ventas">
                 <header>
-                    <!-- Flujo en orden: 1 plantilla · 2 importar/capturar · 3 actualizar · 4 aprobar -->
+                    <!-- Flujo (P-A28 Rev.15): captura → revisado (Admin ventas) →
+                         aprobado (alta dirección, solo presupuesto). El pronóstico
+                         es documento vivo: solo se marca revisado. -->
                     <button name="action_download_template" type="object"
                             string="1. Descargar plantilla" icon="fa-file-excel-o"
                             invisible="state != 'borrador'"/>
@@ -251,20 +256,32 @@
                     <button name="action_preload_from_orders" type="object"
                             string="Precargar desde pedidos" icon="fa-download"
                             invisible="kind != 'pronostico' or state != 'borrador'"/>
+                    <button name="action_preload_from_orders" type="object"
+                            string="Precargar (pronóstico + real)" icon="fa-download"
+                            invisible="kind != 'presupuesto' or state != 'borrador'"/>
                     <button name="action_refresh_actuals" type="object"
                             string="3. Actualizar" icon="fa-refresh"/>
-                    <button name="action_approve" type="object" string="4. Aprobar"
-                            class="btn-primary" invisible="state != 'borrador'"
-                            groups="quimibond_sgi.group_sgi_manager,sales_team.group_sale_manager"/>
+                    <button name="action_send_to_review" type="object"
+                            string="Enviar a revisión" class="btn-primary"
+                            invisible="kind != 'presupuesto' or state != 'borrador'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_send_to_review" type="object"
+                            string="Marcar revisado" class="btn-primary"
+                            invisible="kind != 'pronostico' or state != 'borrador'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_approve" type="object" string="Aprobar (Dirección)"
+                            class="btn-primary"
+                            invisible="kind != 'presupuesto' or state != 'revisado'"
+                            groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_revise" type="object" string="Revisar (nueva Rev.)"
-                            invisible="state != 'aprobado'"
+                            invisible="kind != 'presupuesto' or state != 'aprobado'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_set_borrador" type="object" string="Regresar a borrador"
-                            invisible="state != 'aprobado'"
-                            groups="quimibond_sgi.group_sgi_manager"/>
+                            invisible="state not in ('revisado', 'aprobado')"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_send_to_mps" type="object"
                             string="Enviar demanda al MPS" icon="fa-industry"
-                            invisible="kind != 'pronostico' or state != 'aprobado' or not sgi_mps_available"/>
+                            invisible="not sgi_mps_available or (kind == 'pronostico' and state != 'revisado') or (kind == 'presupuesto' and state != 'aprobado')"/>
                     <field name="sgi_mps_available" invisible="1"/>
                     <button name="action_open_comparison" type="object"
                             string="Comparación" icon="fa-bar-chart"/>
@@ -275,7 +292,7 @@
                     <button name="action_print_budget" type="object"
                             string="Imprimir" icon="fa-print"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="borrador,aprobado,obsoleto"/>
+                           statusbar_visible="borrador,revisado,aprobado,obsoleto"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -304,6 +321,15 @@
                                 string="Ver líneas sin precio" class="btn-link"/>
                         <button name="action_price_coverage_report" type="object"
                                 string="Auditar cobertura de precios" class="btn-link"/>
+                    </div>
+                    <field name="needs_justification" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not needs_justification">
+                        Este presupuesto aprobado va por <b>debajo del umbral de
+                        cumplimiento</b> (Ajustes → «Cumplimiento mínimo del
+                        presupuesto»). Captura la <b>justificación del incumplimiento</b>
+                        (P-A28 4.3.6.1) abajo. No bloquea nada: es evidencia del
+                        análisis, no un candado.
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>
@@ -342,6 +368,11 @@
                             <field name="qty_real_text"/>
                         </group>
                     </group>
+                    <group string="Justificación de incumplimiento (P-A28 4.3.6.1)"
+                           invisible="kind != 'presupuesto'">
+                        <field name="nonfulfillment_note" nolabel="1"
+                               placeholder="Análisis del porqué del incumplimiento del presupuesto (contexto de mercado, causas, acciones). No es candado: es evidencia."/>
+                    </group>
                     <notebook>
                         <page string="Matriz (producto × mes)">
                             <field name="line_ids" context="{'default_budget_id': id}">
@@ -351,6 +382,8 @@
                                     <field name="date"/>
                                     <field name="uom_id"/>
                                     <field name="qty_budget"/>
+                                    <field name="qty_forecast" readonly="1"
+                                           column_invisible="parent.kind != 'presupuesto'"/>
                                     <field name="price_unit_currency" readonly="1" optional="show"/>
                                     <field name="amount_currency" readonly="1" optional="show"/>
                                     <field name="list_currency_id" optional="hide"/>
@@ -387,6 +420,7 @@
                 <field name="fulfillment_pct" widget="percentage" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'aprobado'"
+                       decoration-warning="state == 'revisado'"
                        decoration-info="state == 'borrador'"/>
                 <field name="currency_id" column_invisible="1"/>
             </list>
@@ -405,6 +439,7 @@
                 <filter name="semanal" string="Pronóstico semanal" domain="[('kind', '=', 'pronostico')]"/>
                 <separator/>
                 <filter name="approved" string="Aprobados" domain="[('state', '=', 'aprobado')]"/>
+                <filter name="revised" string="Revisados" domain="[('state', '=', 'revisado')]"/>
                 <filter name="draft" string="Borradores" domain="[('state', '=', 'borrador')]"/>
                 <filter name="not_obsolete" string="Vigentes (no obsoletos)"
                         domain="[('state', '!=', 'obsoleto')]"/>
@@ -463,7 +498,7 @@
     </record>
 
     <record id="sgi_sales_budget_action" model="ir.actions.act_window">
-        <field name="name">Presupuesto de ventas</field>
+        <field name="name">Presupuesto de ventas (F-P-A28-17/18)</field>
         <field name="res_model">sgi.sales.budget</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
@@ -492,13 +527,14 @@
                 <field name="qty_real_text" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'aprobado'"
+                       decoration-warning="state == 'revisado'"
                        decoration-info="state == 'borrador'"/>
             </list>
         </field>
     </record>
 
     <record id="sgi_sales_forecast_action" model="ir.actions.act_window">
-        <field name="name">Pronóstico de ventas</field>
+        <field name="name">Pronóstico de ventas (F-P-A28-13)</field>
         <field name="res_model">sgi.sales.budget</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
@@ -534,7 +570,7 @@
                             </div>
                             <div class="col-4 text-end">
                                 <field name="state" widget="label_selection"
-                                       options="{'classes': {'borrador': 'info', 'aprobado': 'success', 'obsoleto': 'muted'}}"/>
+                                       options="{'classes': {'borrador': 'info', 'revisado': 'warning', 'aprobado': 'success', 'obsoleto': 'muted'}}"/>
                             </div>
                         </div>
                         <div class="row mt-2">

@@ -46,6 +46,10 @@
                         <setting string="Desviación de precio grave (%)">
                             <field name="sgi_price_gap_grave_pct"/>
                         </setting>
+                        <setting string="Cumplimiento mínimo del presupuesto (%)"
+                                 help="P-A28 4.3.6.1: un presupuesto aprobado por debajo de este % pide justificación (banner y actividad al Admin de ventas). No bloquea.">
+                            <field name="sgi_budget_fulfillment_min"/>
+                        </setting>
                     </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Días para escalar una NC sin acciones"

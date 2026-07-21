@@ -44,6 +44,13 @@ class SgiCron(models.AbstractModel):
         return group.all_user_ids[:1].id if group and group.all_user_ids \
             else self._sgi_manager_user_id()
 
+    def _sgi_sales_admin_user_id(self):
+        """Administrador de ventas (P-A28): primer usuario del grupo Admin de ventas
+        de Odoo; fallback al Jefe MAST/SGI."""
+        group = self.env.ref('sales_team.group_sale_manager', raise_if_not_found=False)
+        return group.all_user_ids[:1].id if group and group.all_user_ids \
+            else self._sgi_manager_user_id()
+
     # ------------------------------------------------------------------
     # 1. Cron diario — No Conformidades
     # ------------------------------------------------------------------
@@ -269,11 +276,15 @@ class SgiCron(models.AbstractModel):
         año, si el acumulado facturado del año va por debajo del umbral del
         presupuesto acumulado (sales_budget_alert_pct), agenda una actividad al
         responsable del equipo. Idempotente (dedup por resumen)."""
-        pct = float(self.env['ir.config_parameter'].sudo().get_param(
-            'quimibond_sgi.sales_budget_alert_pct', 80) or 0)
+        Param = self.env['ir.config_parameter'].sudo()
+        pct = float(Param.get_param('quimibond_sgi.sales_budget_alert_pct', 80) or 0)
+        # Umbral de justificación (P-A28 4.3.6.1): puede diferir del de aviso.
+        min_pct = float(Param.get_param('quimibond_sgi.budget_fulfillment_min', 80) or 0)
+        sales_admin_id = self._sgi_sales_admin_user_id()
         year = first_prev.year
         year_start = first_prev.replace(month=1, day=1)
         budgets = self.env['sgi.sales.budget'].search([
+            ('kind', '=', 'presupuesto'),
             ('state', '=', 'aprobado'), ('year', '=', year)])
         for budget in budgets:
             budgeted = sum(budget.line_ids.filtered(
@@ -282,6 +293,19 @@ class SgiCron(models.AbstractModel):
                 continue
             real = self._sgi_team_net_invoiced(budget.team_id, year_start, last_prev)
             achieved = real / budgeted * 100.0
+            # Justificación del incumplimiento (P-A28 4.3.6.1): si va por debajo del
+            # mínimo y AÚN no hay justificación capturada, se pide al Admin de ventas.
+            # No bloquea nada: es evidencia del análisis.
+            if achieved < min_pct and not (budget.nonfulfillment_note or '').strip() \
+                    and sales_admin_id:
+                self._sgi_schedule(
+                    budget,
+                    "Justificar incumplimiento del presupuesto %s (%.0f%%) — "
+                    "P-A28 4.3.6.1" % (budget.team_id.name, achieved),
+                    "El presupuesto va en %.1f%% (mínimo %.0f%%) y no tiene "
+                    "justificación. Captura el análisis del incumplimiento en el "
+                    "campo «Justificación de incumplimiento»." % (achieved, min_pct),
+                    sales_admin_id)
             if achieved >= pct:
                 continue
             user = budget.team_id.user_id
@@ -322,6 +346,41 @@ class SgiCron(models.AbstractModel):
                 product.default_code or product.name,
                 '{:,.0f}'.format(gap), currency.name or ''))
         return out
+
+    # ------------------------------------------------------------------
+    # 4b. Cron anual (junio) — Revaluación del S2 (P-A28 Nota 1)
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_budget_revaluation(self):
+        """P-A28 Nota 1: en JUNIO, pide al Admin de ventas revaluar las cantidades
+        del segundo semestre de cada presupuesto aprobado del año en curso. Corre
+        anual pero se protege con la guarda de mes (idempotente el resto del año)."""
+        if fields.Date.context_today(self).month != 6:
+            return True
+        return self._sgi_sales_budget_revaluation(
+            fields.Date.context_today(self).year)
+
+    @api.model
+    def _sgi_sales_budget_revaluation(self, year):
+        """Agenda al Admin de ventas una actividad de revaluación del S2 por cada
+        presupuesto aprobado del año (enlaza a la acción «Revisar (nueva Rev.)»).
+        Idempotente (dedup por resumen)."""
+        sales_admin_id = self._sgi_sales_admin_user_id()
+        if not sales_admin_id:
+            return True
+        budgets = self.env['sgi.sales.budget'].search([
+            ('kind', '=', 'presupuesto'),
+            ('state', '=', 'aprobado'), ('year', '=', year)])
+        for budget in budgets:
+            self._sgi_schedule(
+                budget,
+                "Revaluar cantidades del S2 — P-A28 Nota 1",
+                "Revaluación de mitad de año (P-A28 Nota 1): revisa y ajusta las "
+                "cantidades del segundo semestre del presupuesto %s. Si cambian, "
+                "genera la siguiente revisión con «Revisar (nueva Rev.)»." % (
+                    budget.folio or budget.name),
+                sales_admin_id)
+        return True
 
     @api.model
     def cron_indicators_weekly(self):

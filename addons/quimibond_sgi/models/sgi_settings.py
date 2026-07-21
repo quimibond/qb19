@@ -119,6 +119,12 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.price_gap_grave_pct',
         help="Gap por encima de este % = grave (entre la tolerancia y este umbral "
              "= leve).")
+    sgi_budget_fulfillment_min = fields.Integer(
+        string="Cumplimiento mínimo del presupuesto (%)",
+        config_parameter='quimibond_sgi.budget_fulfillment_min',
+        help="P-A28 4.3.6.1: si un presupuesto aprobado va por debajo de este % de "
+             "cumplimiento, se pide justificación (banner rojo y actividad al Admin "
+             "de ventas). No bloquea nada.")
 
     @api.model
     def get_values(self):

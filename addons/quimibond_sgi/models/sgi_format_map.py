@@ -106,6 +106,9 @@ class SgiConfig(models.AbstractModel):
         # 'leve' y umbral 'grave'.
         'quimibond_sgi.price_gap_tolerance_pct': '3.0',
         'quimibond_sgi.price_gap_grave_pct': '10.0',
+        # Cumplimiento mínimo (%) del presupuesto por debajo del cual se pide
+        # justificación del incumplimiento (P-A28 4.3.6.1). No bloquea nada.
+        'quimibond_sgi.budget_fulfillment_min': '80',
     }
 
     @api.model
