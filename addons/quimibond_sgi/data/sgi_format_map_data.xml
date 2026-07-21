@@ -57,6 +57,7 @@
     <record id="format_map_sales_budget" model="sgi.format.map">
         <field name="model_id" ref="model_sgi_sales_budget"/>
         <field name="sgi_code">F-P-A28-18</field>
-        <field name="note">Presupuesto de Ventas General (F-P-A28-17 es el comparativo ppto vs real)</field>
+        <field name="sgi_code_alt">F-P-A28-13</field>
+        <field name="note">Presupuesto de Ventas General F-P-A28-18 (mensual) / Pronóstico F-P-A28-13 (semanal por cliente); F-P-A28-17 es el comparativo ppto vs real</field>
     </record>
 </odoo>

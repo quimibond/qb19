@@ -14,7 +14,7 @@ Dos invariantes del negocio, tratadas con cuidado:
     ya convirtió cada factura a su tipo de cambio de la fecha — no reconvertimos).
 """
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
@@ -351,6 +351,45 @@ class SgiSalesBudget(models.Model):
             'qty_by_uom': self.qty_budget_text,
             'amount_total': self.amount_budget_total,
         }
+
+    def _report_forecast_matrix(self):
+        """Estructura del pronóstico F-P-A28-13 para el QWeb: producto+código de
+        cliente × semanas (las presentes en las líneas, con su mes), con la
+        cantidad presupuestada y la comprometida (real) por semana."""
+        self.ensure_one()
+        jan1 = date(self.year, 1, 1)
+        first_monday = jan1 + timedelta(days=(7 - jan1.weekday()) % 7)
+        weeks = {}
+        rows = {}
+        for line in self.line_ids.sorted(lambda l: (
+                l.product_id.default_code or '', l.customer_code or '', l.date)):
+            week = ((line.date - first_monday).days // 7) + 1
+            weeks[week] = line.date.month
+            key = (line.product_id.id, line.customer_code or '', line.uom_id.id)
+            row = rows.get(key)
+            if not row:
+                row = {
+                    'product': line.product_id.display_name,
+                    'code': line.customer_code or '',
+                    'uom': line.uom_id.name or '',
+                    'budget': {}, 'real': {},
+                }
+                rows[key] = row
+            row['budget'][week] = row['budget'].get(week, 0.0) + line.qty_budget
+            row['real'][week] = row['real'].get(week, 0.0) + line.qty_real
+        weeks_sorted = sorted(weeks)
+        return {
+            'weeks': [{'num': w, 'month': weeks[w]} for w in weeks_sorted],
+            'rows': list(rows.values()),
+            'partner': self.partner_id.name or '',
+        }
+
+    # Banner de formato según el tipo: pronóstico = F-P-A28-13, presupuesto = 18.
+    def _sgi_format_code(self, fmap):
+        self.ensure_one()
+        if self.kind == 'pronostico':
+            return fmap.sgi_code_alt or 'F-P-A28-13'
+        return fmap.sgi_code
 
     def action_print_budget(self):
         self.ensure_one()

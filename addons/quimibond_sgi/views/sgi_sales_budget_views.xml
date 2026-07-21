@@ -310,7 +310,11 @@
         <field name="arch" type="xml">
             <search string="Presupuestos de ventas">
                 <field name="team_id"/>
+                <field name="partner_id"/>
                 <field name="year"/>
+                <filter name="mensual" string="Presupuesto mensual" domain="[('kind', '=', 'presupuesto')]"/>
+                <filter name="semanal" string="Pronóstico semanal" domain="[('kind', '=', 'pronostico')]"/>
+                <separator/>
                 <filter name="approved" string="Aprobados" domain="[('state', '=', 'aprobado')]"/>
                 <filter name="draft" string="Borradores" domain="[('state', '=', 'borrador')]"/>
                 <filter name="not_obsolete" string="Vigentes (no obsoletos)"
@@ -332,9 +336,12 @@
             <form string="Importar presupuesto desde Excel">
                 <sheet>
                     <div class="alert alert-info" role="alert" invisible="result">
-                        Sube el Excel del F-P-A28-18 (matriz producto × meses, pares
-                        «&lt;mes&gt; m» / «&lt;mes&gt; $»). Columnas opcionales UNIDAD y
-                        CLIENTE. Los productos sin match se reportan; ninguno se crea solo.
+                        Sube el Excel. En un <b>presupuesto</b> se lee el F-P-A28-18
+                        (producto × pares «&lt;mes&gt; m»/«&lt;mes&gt; $»); en un
+                        <b>pronóstico</b>, el forecast F-P-A28-13 (fila «SEMANA» con
+                        números 1–52, producto en col A y código de cliente en col B;
+                        bloques repetidos se suman, filas PO/TOTAL/FECHA se ignoran).
+                        Los productos sin match se reportan; ninguno se crea solo.
                     </div>
                     <group invisible="result">
                         <field name="budget_id" readonly="1"/>
@@ -371,12 +378,52 @@
         <field name="res_model">sgi.sales.budget</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
-        <field name="context">{'search_default_not_obsolete': 1}</field>
+        <field name="domain">[('kind', '=', 'presupuesto')]</field>
+        <field name="context">{'search_default_not_obsolete': 1, 'default_kind': 'presupuesto'}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea el presupuesto maestro de ventas</p>
             <p>Un presupuesto por mercado (equipo de ventas) y año (F-P-A28-18).
             Captura la matriz producto × mes en cantidad y pesos; el real se calcula
             solo desde lo facturado. En junio, revísalo con «Revisar (nueva Rev.)».</p>
+        </field>
+    </record>
+
+    <record id="sgi_sales_forecast_view_list" model="ir.ui.view">
+        <field name="name">sgi.sales.forecast.list</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <list string="Pronósticos de ventas"
+                  decoration-muted="state == 'obsoleto'"
+                  decoration-success="state == 'aprobado'">
+                <field name="folio"/>
+                <field name="year"/>
+                <field name="partner_id"/>
+                <field name="team_id" optional="show"/>
+                <field name="revision"/>
+                <field name="qty_real_text" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'aprobado'"
+                       decoration-info="state == 'borrador'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_sales_forecast_action" model="ir.actions.act_window">
+        <field name="name">Pronóstico de ventas</field>
+        <field name="res_model">sgi.sales.budget</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
+        <field name="domain">[('kind', '=', 'pronostico')]</field>
+        <field name="context">{'search_default_not_obsolete': 1, 'default_kind': 'pronostico'}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_forecast_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el pronóstico semanal por cliente</p>
+            <p>Un pronóstico por cliente y año (F-P-A28-13, forecast). Captura la
+            matriz producto × semana; el real es lo comprometido a entregar
+            (pedidos confirmados por fecha de compromiso). Importa desde el
+            forecast.xlsx con «Importar desde Excel».</p>
         </field>
     </record>
 </odoo>

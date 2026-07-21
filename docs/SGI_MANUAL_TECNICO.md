@@ -212,6 +212,22 @@ nada por hoja para errores ESTRUCTURALES (savepoint); los errores de datos por
 línea usan savepoint anidado y se reportan. Modo de choque replace (default) /
 add. Convive con base_import (tabla plana).
 
+**Pronóstico semanal por cliente (F-P-A28-13, v19.0.12).** `sgi.sales.budget.kind`
+= presupuesto (mensual por mercado, default, todo igual) / pronostico (semanal por
+cliente). En pronóstico: `partner_id` en cabecera (obligatorio; unicidad
+año+equipo+cliente+kind), líneas con `date` = lunes de la semana y `customer_code`
+(código del cliente para el material). Real del pronóstico = COMPROMETIDO (pedidos
+confirmados del cliente comercial por `commitment_date`/expected/date_order de la
+semana), no facturado. Drill-down `action_view_week_orders`. Importador v2: el
+mismo asistente lee el forecast.xlsx cuando el presupuesto es pronóstico (fila
+`SEMANA` con números 1–52 anclados al primer lunes del año; producto col A, código
+cliente col B; bloques repetidos se suman; filas PO/TOTAL/FECHA se ignoran; comas
+de miles). Reporte QWeb con banner F-P-A28-13 (`sgi_code_alt`, override
+`_sgi_format_code` por kind). **Captura del pronóstico = plan B (lista/ficha por
+semana), NO grid**: el grid semanal (52 columnas) chocaba con el esquema por
+cliente de `grid_update_cell` (fuerza partner vacío) y su escala no era verificable
+sin la UI; el grid mensual por producto se mantiene para el presupuesto.
+
 **Facturado/pedido almacenados (foto).** `qty_real`/`amount_real`/`qty_ordered`/
 `amount_ordered` son computes ALMACENADOS (`store=True`, `aggregator='sum'`) para
 poder agregarse en pivot/graph — un measure no almacenado rompe el pivot ("No

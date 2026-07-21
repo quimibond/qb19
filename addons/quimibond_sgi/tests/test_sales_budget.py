@@ -813,3 +813,95 @@ class TestSalesBudgetImport(TransactionCase):
         budget.state = 'aprobado'
         with self.assertRaises(UserError):
             budget.action_open_import()
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetForecastImport(TransactionCase):
+    """Extensión 5.2b — Paso 2: importación e impresión del forecast."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Wizard = cls.env['sgi.sales.budget.import']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado fc import'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Material SCR31', 'default_code': 'SCR31', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente forecast import', 'is_company': True})
+
+    def _forecast(self):
+        return self.Budget.create({
+            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico',
+            'partner_id': self.client.id})
+
+    def _forecast_xlsx(self):
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Cliente A'
+        ws.append(['SEMANA', '', 23, 24, 25])
+        # Dos bloques del mismo producto (oleadas de PO) → se suman por semana.
+        ws.append(['SCR31', 'SCR31', '16,000', 1000, 0])  # coma de miles
+        ws.append(['SCR31', 'SCR31', 4000, 0, 500])
+        ws.append(['PO', '', 0, 0, 0])       # fila PO → se ignora
+        ws.append(['TOTAL', '', 20000, 1000, 500])  # fila TOTAL → se ignora
+        buf = io.BytesIO()
+        wb.save(buf)
+        return base64.b64encode(buf.getvalue())
+
+    def test_01_import_forecast_layout(self):
+        fc = self._forecast()
+        wiz = self.Wizard.create({
+            'budget_id': fc.id, 'file': self._forecast_xlsx(),
+            'sheet_name': 'Cliente A', 'conflict_mode': 'replace'})
+        wiz.action_import()
+        # 3 semanas (23, 24, 25) para SCR31.
+        self.assertEqual(len(fc.line_ids), 3)
+        by_week = {l.date: l for l in fc.line_ids}
+        wk23 = self.Wizard._week_monday(2040, 23)
+        line23 = by_week[wk23]
+        self.assertEqual(line23.qty_budget, 20000.0,
+                         "16,000 (coma) + 4,000 sumados por semana.")
+        self.assertEqual(line23.customer_code, 'SCR31')
+        self.assertEqual(line23.partner_id, self.client)
+        self.assertEqual(line23.date.weekday(), 0, "Lunes de la semana.")
+
+    def test_02_forecast_report_renders(self):
+        fc = self._forecast()
+        self.env['sgi.sales.budget.line'].create({
+            'budget_id': fc.id, 'product_id': self.product.id,
+            'date': self.Wizard._week_monday(2040, 23), 'uom_id': self.uom_m.id,
+            'customer_code': 'SCR31', 'qty_budget': 500.0})
+        html, ttype = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_sgi.action_report_sales_budget', fc.ids)
+        self.assertIn('Pronóstico de Ventas', html.decode())
+        self.assertIn('F-P-A28-13', html.decode())
+        self.assertIn('SCR31', html.decode())
+
+    def test_03_format_banner_by_kind(self):
+        fc = self._forecast()
+        self.assertIn('F-P-A28-13', fc.sgi_format_banner or '')
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.assertIn('F-P-A28-18', budget.sgi_format_banner or '')
+
+    def test_04_monthly_import_still_works_regression(self):
+        # Regresión: un presupuesto mensual sigue usando el layout F-P-A28-18.
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Presupuesto'
+        ws.append(['PRODUCTO', 'ENERO m', 'ENERO $'])
+        ws.append(['SCR31', 100, 5000])
+        buf = io.BytesIO()
+        wb.save(buf)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        wiz = self.Wizard.create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': 'Presupuesto'})
+        wiz.action_import()
+        self.assertEqual(len(budget.line_ids), 1)
+        self.assertEqual(budget.line_ids.date, date(2040, 1, 1))
+        self.assertEqual(budget.line_ids.qty_budget, 100.0)

@@ -13,6 +13,12 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
+                    <t t-if="doc.kind == 'pronostico'">
+                        <t t-call="quimibond_sgi.report_sales_forecast_page">
+                            <t t-set="doc" t-value="doc"/>
+                        </t>
+                    </t>
+                    <t t-else="">
                     <t t-set="matrix" t-value="doc._report_matrix()"/>
                     <div class="page">
                         <h2 class="text-center">
@@ -91,8 +97,60 @@
                             <t t-set="sgi_rec" t-value="doc"/>
                         </t>
                     </div>
+                    </t>
                 </t>
             </t>
         </t>
+    </template>
+
+    <template id="report_sales_forecast_page">
+        <t t-set="fc" t-value="doc._report_forecast_matrix()"/>
+        <div class="page">
+            <h2 class="text-center">
+                Pronóstico de Ventas (F-P-A28-13)<br/>
+                <small t-out="doc.name"/>
+            </h2>
+            <p class="text-muted text-center" style="font-size:11px;">
+                Cliente: <span t-out="fc['partner']"/> · Cantidad presupuestada y
+                (2ª fila) comprometida real por semana. Los pedidos se ven en Odoo
+                (drill-down «Ver pedidos de la semana»).
+            </p>
+            <table class="table table-sm table-bordered" style="font-size:8px;">
+                <thead>
+                    <tr class="table-active">
+                        <th>Producto / Código cliente</th>
+                        <th>Unidad</th>
+                        <th> </th>
+                        <th t-foreach="fc['weeks']" t-as="w" class="text-end">
+                            <span t-out="'S%s' % w['num']"/><br/>
+                            <span class="text-muted" t-out="'m%s' % w['month']"/>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="fc['rows']" t-as="row">
+                        <tr>
+                            <td rowspan="2">
+                                <span class="fw-bold" t-out="row['product']"/>
+                                <span t-if="row['code']" class="text-muted"
+                                      t-out="' [%s]' % row['code']"/>
+                            </td>
+                            <td rowspan="2" t-out="row['uom']"/>
+                            <td>Ppto</td>
+                            <td t-foreach="fc['weeks']" t-as="w" class="text-end"
+                                t-out="'{:,.0f}'.format(row['budget'].get(w['num'], 0)) if row['budget'].get(w['num']) else ''"/>
+                        </tr>
+                        <tr class="text-muted">
+                            <td>Real</td>
+                            <td t-foreach="fc['weeks']" t-as="w" class="text-end"
+                                t-out="'{:,.0f}'.format(row['real'].get(w['num'], 0)) if row['real'].get(w['num']) else ''"/>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+            <t t-call="quimibond_sgi.sgi_format_footer">
+                <t t-set="sgi_rec" t-value="doc"/>
+            </t>
+        </div>
     </template>
 </odoo>
