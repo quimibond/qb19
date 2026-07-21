@@ -91,6 +91,11 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.monthly_sales_budget': '0',
         'quimibond_sgi.rh_user_id': '0',
         'quimibond_sgi.purchase_approval_category_id': '0',
+        # Capacidad instalada mensual de producción (misma unidad que la
+        # producción, p.ej. kg) para el KPI MA-02. 0 = captura manual.
+        'quimibond_sgi.production_monthly_capacity': '0',
+        # Proveedor de energía (res.partner) para el KPI TR-03. 0 = sin configurar.
+        'quimibond_sgi.energy_partner_id': '0',
     }
 
     @api.model
@@ -111,6 +116,9 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.sgi_ind_ots_atendidas': 'ots_atendidas',
         'quimibond_sgi.sgi_ind_requisiciones': 'requisiciones',
         'quimibond_sgi.sgi_ind_embarques_sin_error': 'embarques_sin_error',
+        'quimibond_sgi.sgi_ind_producido_capacidad': 'produccion_vs_capacidad',
+        'quimibond_sgi.sgi_ind_consumo_energia': 'consumo_energia',
+        'quimibond_sgi.sgi_ind_capacitacion': 'capacitacion',
     }
 
     @api.model

@@ -277,6 +277,9 @@ class SgiCron(models.AbstractModel):
                 if indicator.calc_mode != 'manual' and value is not None:
                     vals['value'] = value
                     vals['state'] = 'capturado'
+                    note = indicator._sgi_compute_note(date_from, date_to)
+                    if note:
+                        vals['note'] = note
                 else:
                     vals['state'] = 'pendiente'
                 measure = Measure.create(vals)
