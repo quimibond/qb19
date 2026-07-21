@@ -7,8 +7,10 @@
         <field name="arch" type="xml">
             <form string="Documento controlado SGI">
                 <header>
+                    <button name="action_sgi_view_file" type="object" string="Ver archivo"
+                            class="btn-primary" icon="fa-file-pdf-o"/>
                     <button name="action_generate_acks" type="object" string="Generar acuses"
-                            class="btn-primary" invisible="sgi_state not in ('piloto','vigente')"/>
+                            class="btn-secondary" invisible="sgi_state not in ('piloto','vigente')"/>
                     <field name="sgi_state" widget="statusbar"
                            statusbar_visible="borrador,piloto,vigente,obsoleto"/>
                 </header>
@@ -19,6 +21,9 @@
                                 <field name="sgi_ack_read_pct" widget="statinfo" string="% Difusión"/>
                             </div>
                         </button>
+                        <button name="action_sgi_open_in_documents" type="object"
+                                class="oe_stat_button" icon="fa-folder-open-o"
+                                string="Abrir en Documentos"/>
                     </div>
                     <div class="alert alert-warning" role="alert"
                          invisible="not sgi_procedure_dirty">
@@ -133,6 +138,8 @@
                 <field name="sgi_ack_read_pct" widget="percentage" optional="show"/>
                 <field name="sgi_owner_id" optional="hide"/>
                 <field name="sgi_issue_date" optional="hide"/>
+                <button name="action_sgi_view_file" type="object" icon="fa-file-pdf-o"
+                        string="Ver archivo" title="Ver archivo"/>
             </list>
         </field>
     </record>
@@ -166,6 +173,9 @@
         <field name="domain">[('sgi_is_controlled','=',True)]</field>
         <field name="context">{'default_sgi_is_controlled': True, 'search_default_sgi_vigente': 1}</field>
         <field name="search_view_id" ref="sgi_document_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_document_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sube el primer documento controlado</p>
             <p>Con su clave en el nombre (P-A28, F-P-G05-01...). La revisión, vigencia y difusión se controlan desde aquí.</p>
@@ -181,11 +191,17 @@ employee = env.user.employee_id
 if employee:
     action = employee.action_sgi_my_procedures()
 else:
+    list_view = env.ref('quimibond_sgi.sgi_document_view_list', raise_if_not_found=False)
+    form_view = env.ref('quimibond_sgi.sgi_document_view_form', raise_if_not_found=False)
     action = {
         'type': 'ir.actions.act_window',
         'name': 'Mis procedimientos',
         'res_model': 'documents.document',
         'view_mode': 'list,form',
+        'views': [
+            (list_view.id if list_view else False, 'list'),
+            (form_view.id if form_view else False, 'form'),
+        ],
         'domain': [('id', '=', False)],
     }
         </field>
@@ -261,6 +277,8 @@ else:
                        decoration-success="sgi_migration_state in ('migrado', 'baja')"
                        decoration-warning="sgi_migration_state == 'pendiente'"
                        decoration-info="sgi_migration_state == 'en_curso'"/>
+                <button name="action_sgi_view_file" type="object" icon="fa-file-pdf-o"
+                        string="Ver archivo" title="Ver archivo"/>
             </list>
         </field>
     </record>
@@ -329,7 +347,8 @@ else:
         <field name="search_view_id" ref="sgi_migration_view_search"/>
         <field name="view_ids" eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_migration_view_kanban')}),
-            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_migration_view_list')})]"/>
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_migration_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin formatos por migrar</p>
             <p>Aquí se da seguimiento a la migración de cada formato del SGI a su
