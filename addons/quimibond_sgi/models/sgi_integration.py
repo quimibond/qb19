@@ -142,11 +142,21 @@ class HrEmployee(models.Model):
 
     def action_sgi_my_procedures(self):
         self.ensure_one()
+        list_view = self.env.ref('quimibond_sgi.sgi_document_view_list',
+                                 raise_if_not_found=False)
+        form_view = self.env.ref('quimibond_sgi.sgi_document_view_form',
+                                 raise_if_not_found=False)
         return {
             'type': 'ir.actions.act_window',
             'name': "Mis procedimientos",
             'res_model': 'documents.document',
             'view_mode': 'list,form',
+            # Fija la ficha SGI (clave/estado/tipo/familia); sin ella Odoo abre
+            # el formulario mínimo de captura de URL de la app Documentos.
+            'views': [
+                (list_view.id if list_view else False, 'list'),
+                (form_view.id if form_view else False, 'form'),
+            ],
             'domain': [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.job_id.ids)],
         }
 
