@@ -210,6 +210,21 @@ class TestProcedureVentasSeed(TransactionCase):
         self.assertEqual(act.odoo_menu_id, menu,
                          "La actividad de pedidos apunta al menú de Ventas.")
 
+    def test_06_seed_does_not_flag_dirty(self):
+        # La semilla ES la Rev.15 vigente: no debe disparar la divergencia G14.
+        self.assertFalse(self.proc_doc.sgi_procedure_dirty)
+        self.env['sgi.config'].seed_procedure_ventas()
+        self.proc_doc.invalidate_recordset()
+        self.assertFalse(self.proc_doc.sgi_procedure_dirty,
+                         "La semilla no marca el procedimiento como divergente.")
+        dirty_acts = self.env['mail.activity'].search_count([
+            ('res_model', '=', 'documents.document'),
+            ('res_id', '=', self.proc_doc.id),
+            ('summary', 'ilike', 'Procedimiento vivo cambió'),
+        ])
+        self.assertEqual(dirty_acts, 0,
+                         "La semilla no agenda la actividad de revisión (G14).")
+
 
 @tagged('post_install', '-at_install')
 class TestProcedureOdooMenu(TransactionCase):
