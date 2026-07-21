@@ -245,6 +245,9 @@ class SgiCron(models.AbstractModel):
             indicators, first_prev, first_prev, last_prev, deadline,
             "%s" % first_prev.strftime('%m/%Y'))
         self._sgi_sales_budget_month_close(first_prev, last_prev)
+        # Refresca la foto de facturado/pedido de los presupuestos vigentes.
+        self.env['sgi.sales.budget'].search(
+            [('state', '!=', 'obsoleto')]).action_refresh_actuals()
         return True
 
     @api.model

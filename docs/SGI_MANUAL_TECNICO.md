@@ -212,6 +212,13 @@ nada por hoja para errores ESTRUCTURALES (savepoint); los errores de datos por
 línea usan savepoint anidado y se reportan. Modo de choque replace (default) /
 add. Convive con base_import (tabla plana).
 
+**Facturado/pedido almacenados (foto).** `qty_real`/`amount_real`/`qty_ordered`/
+`amount_ordered` son computes ALMACENADOS (`store=True`, `aggregator='sum'`) para
+poder agregarse en pivot/graph — un measure no almacenado rompe el pivot ("No
+aggregate function…"). Son una foto: se recalculan al tocar la línea, con el botón
+"Actualizar facturado/pedido" del presupuesto y en el cron mensual; NO se
+refrescan solos al timbrar una factura nueva.
+
 **KPIs 2.0 (v19.0.10):** `crecimiento_ventas` (VE-01, facturación neta timbrada del
 periodo vs mismo periodo año anterior, variación %) · `ots_atendidas` (MT-03,
 maintenance.request cerradas etapa done vs creadas) · `requisiciones` (CO-02,

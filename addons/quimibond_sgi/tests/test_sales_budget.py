@@ -281,6 +281,20 @@ class TestSalesBudgetStep2(TransactionCase):
         self.assertIn('Presupuesto de Ventas', html.decode())
         self.assertIn('F-P-A28-18', html.decode())
 
+    def test_06_pivot_can_aggregate_real(self):
+        # El real/pedido están almacenados: el pivot (read_group) puede agregarlos
+        # sin "No aggregate function has been provided for the measure".
+        budget = self._budget()
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'qty_budget': 100.0, 'amount_budget': 5000.0})
+        groups = self.Line._read_group(
+            [('budget_id', '=', budget.id)], groupby=['product_id'],
+            aggregates=['amount_budget:sum', 'amount_real:sum',
+                        'amount_ordered:sum', 'qty_real:sum'])
+        self.assertTrue(groups)
+
 
 @tagged('post_install', '-at_install')
 class TestSalesBudgetStep3(TransactionCase):

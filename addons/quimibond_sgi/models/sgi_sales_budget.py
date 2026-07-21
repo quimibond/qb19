@@ -328,6 +328,14 @@ class SgiSalesBudget(models.Model):
         return self.env.ref(
             'quimibond_sgi.action_report_sales_budget').report_action(self)
 
+    def action_refresh_actuals(self):
+        """Recalcula la foto de facturado/pedido de las líneas (los computes
+        almacenados no se refrescan solos al timbrar facturas nuevas)."""
+        lines = self.mapped('line_ids')
+        lines._compute_real()
+        lines._compute_ordered()
+        return True
+
     def action_open_import(self):
         """Abre el asistente de importación del Excel F-P-A28-18 (solo borrador)."""
         self.ensure_one()
@@ -387,25 +395,29 @@ class SgiSalesBudgetLine(models.Model):
         help="Importe en moneda de la compañía = cantidad × precio unitario. Si se "
              "captura el importe directo, se despeja el precio.")
 
-    # Real automático (base = FACTURADO). Computes no almacenados.
+    # Real automático (base = FACTURADO). Almacenados para poder agregarse en
+    # pivot/graph; son una FOTO: se recalculan al tocar la línea, con el botón
+    # "Actualizar facturado/pedido" del presupuesto y en el cron mensual (no se
+    # refrescan solos al timbrar una factura nueva).
     qty_real = fields.Float(string="Cantidad facturada", digits='Product Unit',
-                            compute='_compute_real',
+                            compute='_compute_real', store=True, aggregator='sum',
                             help="Cantidad facturada del periodo convertida a la "
                                  "unidad de esta línea.")
     amount_real = fields.Monetary(
-        string="Importe facturado", compute='_compute_real',
+        string="Importe facturado", compute='_compute_real', store=True,
         help="Suma de account.move.line.balance (con el signo de "
              "out_invoice/out_refund) de las facturas del periodo. Contabilidad "
              "ya convirtió cada factura a moneda de la compañía a su tipo de "
              "cambio; no se reconvierte con tasas de hoy.")
     unconverted_count = fields.Integer(
-        string="Facturas sin convertir", compute='_compute_real')
+        string="Facturas sin convertir", compute='_compute_real', store=True)
     qty_ordered = fields.Float(string="Cantidad pedida", digits='Product Unit',
-                               compute='_compute_ordered',
+                               compute='_compute_ordered', store=True,
+                               aggregator='sum',
                                help="Lo pedido (sale.order confirmadas) — visión "
                                     "comercial, aún no necesariamente facturado.")
     amount_ordered = fields.Monetary(string="Importe pedido",
-                                     compute='_compute_ordered')
+                                     compute='_compute_ordered', store=True)
     avg_price_budget = fields.Monetary(string="Precio prom. presupuestado",
                                        compute='_compute_avg_prices')
     avg_price_real = fields.Monetary(string="Precio prom. real",

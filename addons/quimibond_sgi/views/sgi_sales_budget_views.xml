@@ -192,6 +192,8 @@
                             string="Capturar cantidades" icon="fa-th"/>
                     <button name="action_open_grid_amount" type="object"
                             string="Capturar importes" icon="fa-usd"/>
+                    <button name="action_refresh_actuals" type="object"
+                            string="Actualizar facturado/pedido" icon="fa-refresh"/>
                     <button name="action_open_comparison" type="object"
                             string="Comparación" icon="fa-bar-chart"/>
                     <button name="action_print_budget" type="object"
