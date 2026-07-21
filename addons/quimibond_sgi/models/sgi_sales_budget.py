@@ -328,6 +328,20 @@ class SgiSalesBudget(models.Model):
                         'search_default_group_uom': 1},
         }
 
+    def action_open_cumulative(self):
+        """Curva acumulada mes a mes (presupuesto vs facturado YTD) — la gráfica
+        de la Revisión por la Dirección."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Curva acumulada — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'graph',
+            'views': [(self.env.ref(
+                'quimibond_sgi.sgi_sales_budget_line_view_graph_curve').id, 'graph')],
+            'domain': [('budget_id', '=', self.id)],
+        }
+
     # --- Matriz para el reporte F-P-A28-18 -----------------------------------
     def _report_matrix(self):
         """Estructura producto × 12 meses para el QWeb, agrupada por producto. Un
@@ -1083,6 +1097,29 @@ class SgiSalesBudgetLine(models.Model):
             'res_model': 'sale.order',
             'view_mode': 'list,form',
             'domain': [('id', 'in', orders.ids)],
+        }
+
+    def action_view_month_invoices(self):
+        """Drill-down del presupuesto: las facturas del producto/equipo(/cliente)
+        cuyo mes es el de la línea — análogo a "Ver pedidos de la semana"."""
+        self.ensure_one()
+        first, nxt = self._sgi_month_bounds(self.date)
+        domain = [
+            ('move_type', 'in', _REAL_MOVE_TYPES),
+            ('state', '=', 'posted'),
+            ('team_id', '=', self.team_id.id),
+            ('invoice_line_ids.product_id', '=', self.product_id.id),
+            ('invoice_date', '>=', first), ('invoice_date', '<', nxt),
+        ]
+        if self.partner_id:
+            domain.append(('commercial_partner_id', '=',
+                           self.partner_id.commercial_partner_id.id))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Facturas del mes — %s" % self.display_name,
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': domain,
         }
 
     @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id')

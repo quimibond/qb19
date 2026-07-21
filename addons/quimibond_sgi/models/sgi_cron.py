@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
@@ -286,15 +287,41 @@ class SgiCron(models.AbstractModel):
             user = budget.team_id.user_id
             if not user:
                 continue
+            top = self._sgi_budget_top_gaps(budget, last_prev)
+            note = ("El acumulado facturado del equipo va en %.1f%% del presupuesto "
+                    "aprobado del año. Revisa el pipeline y las acciones "
+                    "comerciales." % achieved)
+            if top:
+                note += "\nProductos con mayor brecha (ppto − facturado):\n- " + \
+                    "\n- ".join(top)
             self._sgi_schedule(
                 budget,
                 "Presupuesto %s por debajo del %.0f%% al cierre de %s" % (
                     budget.team_id.name, pct, first_prev.strftime('%m/%Y')),
-                "El acumulado facturado del equipo va en %.1f%% del presupuesto "
-                "aprobado del año. Revisa el pipeline y las acciones comerciales." % (
-                    achieved),
-                user.id)
+                note, user.id)
         return True
+
+    @api.model
+    def _sgi_budget_top_gaps(self, budget, last_prev, limit=5):
+        """Los productos con mayor brecha (amount_budget − amount_real) del
+        presupuesto hasta el mes (accionable: dónde se está quedando corto)."""
+        gaps = defaultdict(lambda: [0.0, 0.0])  # product -> [ppto, real]
+        for line in budget.line_ids.filtered(
+                lambda l: l.date and l.date <= last_prev):
+            gaps[line.product_id][0] += line.amount_budget
+            gaps[line.product_id][1] += line.amount_real
+        ranked = sorted(
+            ((product, vals[0] - vals[1]) for product, vals in gaps.items()),
+            key=lambda kv: kv[1], reverse=True)
+        currency = budget.currency_id
+        out = []
+        for product, gap in ranked[:limit]:
+            if gap <= 0:
+                break
+            out.append("%s: %s %s" % (
+                product.default_code or product.name,
+                '{:,.0f}'.format(gap), currency.name or ''))
+        return out
 
     @api.model
     def cron_indicators_weekly(self):

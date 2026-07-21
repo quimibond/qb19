@@ -139,6 +139,19 @@ por indicador que MAST levantaba a mano, ya no se levanta: nace sola.
 > divisa **por moneda** (nunca se suman entre sí); el único total global es en pesos.
 > Si un producto no tiene precio en la lista, la ficha lo avisa y te manda a la lista.
 
+**El flujo en 4 pasos (los botones de la ficha, en orden).**
+1. **Descargar plantilla** — un Excel con las filas ya puestas (los productos que
+   vendiste, con su unidad). Solo llenas cantidades.
+2. **Importar** (subes el Excel) **o capturar en la matriz** (grid de cantidades).
+3. **Actualizar** — Odoo trae el facturado/pedido y el precio de la lista.
+4. **Aprobar** — a partir de aquí es evidencia; los precios quedan congelados.
+En junio se **Revisa** (nueva Rev.): la historia se conserva. Cada número navega a
+sus documentos: en presupuesto «Ver facturas del mes», en pronóstico «Ver pedidos
+de la semana». Para Dirección: la **Curva acumulada** (presupuesto vs facturado
+YTD) y el **Análisis** (panel comercial por equipo/cliente/producto). Al cierre de
+mes, si un equipo va por debajo del umbral, el aviso incluye los 5 productos con
+mayor brecha.
+
 
 **Ventas → Presupuesto de ventas** (o **SGI → Medición → Presupuesto de ventas**):
 un presupuesto por **mercado** (equipo: industrial, confección, especiales) y **año**.

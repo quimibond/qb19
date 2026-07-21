@@ -33,6 +33,9 @@
                 <button name="action_view_week_orders" type="object" icon="fa-shopping-cart"
                         string="Ver pedidos de la semana" title="Ver pedidos de la semana"
                         invisible="kind != 'pronostico'"/>
+                <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
+                        string="Ver facturas del mes" title="Ver facturas del mes"
+                        invisible="kind == 'pronostico'"/>
             </list>
         </field>
     </record>
@@ -47,6 +50,9 @@
                     <button name="action_view_week_orders" type="object"
                             string="Ver pedidos de la semana" icon="fa-shopping-cart"
                             invisible="kind != 'pronostico'"/>
+                    <button name="action_view_month_invoices" type="object"
+                            string="Ver facturas del mes" icon="fa-file-text-o"
+                            invisible="kind == 'pronostico'"/>
                 </header>
                 <sheet>
                     <group>
@@ -142,6 +148,18 @@
         </field>
     </record>
 
+    <record id="sgi_sales_budget_line_view_graph_curve" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.graph.curve</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Curva acumulada (Dirección)" type="line" cumulated="1">
+                <field name="date" interval="month"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
     <record id="sgi_sales_budget_line_view_search" model="ir.ui.view">
         <field name="name">sgi.sales.budget.line.search</field>
         <field name="model">sgi.sales.budget.line</field>
@@ -220,6 +238,8 @@
                     <field name="sgi_mps_available" invisible="1"/>
                     <button name="action_open_comparison" type="object"
                             string="Comparación" icon="fa-bar-chart"/>
+                    <button name="action_open_cumulative" type="object"
+                            string="Curva (Dirección)" icon="fa-line-chart"/>
                     <button name="action_print_budget" type="object"
                             string="Imprimir" icon="fa-print"/>
                     <field name="state" widget="statusbar"

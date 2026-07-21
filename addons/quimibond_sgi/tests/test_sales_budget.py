@@ -1158,3 +1158,74 @@ class TestSalesBudgetTemplate(TransactionCase):
         budget.state = 'aprobado'
         with self.assertRaises(UserError):
             budget.action_download_template()
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetAnalysis(TransactionCase):
+    """5.2d Paso 3: drill-down de facturas, curva y top-5 brechas del cierre."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Cron = cls.env['sgi.cron']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado analisis'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        cls.partner = cls.env['res.partner'].create({'name': 'Cliente analisis'})
+        cls.pa = cls.env['product.product'].create({
+            'name': 'Prod A an', 'default_code': 'PA-AN', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 10.0})
+        cls.pb = cls.env['product.product'].create({
+            'name': 'Prod B an', 'default_code': 'PB-AN', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 10.0})
+
+    def _invoice(self, product, when, qty, price):
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.partner.id,
+            'invoice_date': when, 'team_id': self.team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': product.id, 'quantity': qty,
+                'product_uom_id': self.uom_m.id, 'price_unit': price,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def test_01_view_month_invoices(self):
+        inv = self._invoice(self.pa, date(2040, 6, 10), 5.0, 10.0)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self.Line.create({
+            'budget_id': budget.id, 'product_id': self.pa.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        action = line.action_view_month_invoices()
+        self.assertEqual(action['res_model'], 'account.move')
+        moves = self.env['account.move'].search(action['domain'])
+        self.assertIn(inv, moves)
+
+    def test_02_cumulative_action(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        action = budget.action_open_cumulative()
+        self.assertEqual(action['res_model'], 'sgi.sales.budget.line')
+        self.assertTrue(any(v[1] == 'graph' for v in action['views']))
+
+    def test_03_month_close_note_lists_top_gaps(self):
+        self.team.user_id = self.env.user.id
+        # Presupuesto grande, facturación baja → brecha; PA mayor brecha que PB.
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.pa.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 1000.0})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.pb.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 200.0})
+        budget.state = 'aprobado'
+        self._invoice(self.pa, date(2040, 6, 10), 10.0, 10.0)  # 100 facturado
+        budget.action_refresh_actuals()
+        self.Cron._sgi_sales_budget_month_close(date(2040, 6, 1), date(2040, 6, 30))
+        act = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', budget.id)], limit=1)
+        self.assertTrue(act)
+        self.assertIn('mayor brecha', act.note or '')
+        self.assertIn('PA-AN', act.note, "El producto con mayor brecha aparece.")
