@@ -228,6 +228,21 @@ semana), NO grid**: el grid semanal (52 columnas) chocaba con el esquema por
 cliente de `grid_update_cell` (fuerza partner vacío) y su escala no era verificable
 sin la UI; el grid mensual por producto se mantiene para el presupuesto.
 
+**Consumo de pronóstico y demanda al MPS (v19.0.12.2).** `qty_net_demand` (compute
+almacenado junto a la foto del real, mismo refresco) = `max(qty_budget, qty_real)`:
+los pedidos confirmados CONSUMEN el pronóstico de su semana (forecast consumption);
+si superan lo pronosticado, manda el pedido. Se muestra en lista/pivot (tercera
+medida) y en el reporte F-P-A28-13 (tercera fila). `action_preload_from_orders`
+(pronóstico borrador): crea celdas para las semanas del horizonte que ya tienen
+pedidos y NO tienen pronóstico, con `qty_budget` = lo comprometido (idempotente, no
+pisa capturas). `action_send_to_mps` (pronóstico aprobado): vuelca la demanda NETA
+por producto/semana al forecast del Programa Maestro (`mrp.production.schedule` +
+`mrp.product.forecast` de `mrp_mps`), convertida a la unidad del producto; crea el
+schedule si falta y el re-envío actualiza sin duplicar; registra en el chatter.
+`mrp_mps` es OPCIONAL (no está en depends): el botón se oculta vía
+`sgi_mps_available` si el módulo no está. PROHIBIDO crear pedidos de venta desde el
+pronóstico (demanda ficticia): la precarga sólo LEE pedidos.
+
 **Facturado/pedido almacenados (foto).** `qty_real`/`amount_real`/`qty_ordered`/
 `amount_ordered` son computes ALMACENADOS (`store=True`, `aggregator='sum'`) para
 poder agregarse en pivot/graph — un measure no almacenado rompe el pivot ("No

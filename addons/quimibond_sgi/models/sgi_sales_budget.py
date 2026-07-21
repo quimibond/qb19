@@ -372,11 +372,12 @@ class SgiSalesBudget(models.Model):
                     'product': line.product_id.display_name,
                     'code': line.customer_code or '',
                     'uom': line.uom_id.name or '',
-                    'budget': {}, 'real': {},
+                    'budget': {}, 'real': {}, 'net': {},
                 }
                 rows[key] = row
             row['budget'][week] = row['budget'].get(week, 0.0) + line.qty_budget
             row['real'][week] = row['real'].get(week, 0.0) + line.qty_real
+            row['net'][week] = row['net'].get(week, 0.0) + line.qty_net_demand
         weeks_sorted = sorted(weeks)
         return {
             'weeks': [{'num': w, 'month': weeks[w]} for w in weeks_sorted],
@@ -402,6 +403,117 @@ class SgiSalesBudget(models.Model):
         lines = self.mapped('line_ids')
         lines._compute_real()
         lines._compute_ordered()
+        return True
+
+    # --- Consumo de pronóstico → demanda al MPS ------------------------------
+    sgi_mps_available = fields.Boolean(compute='_compute_mps_available')
+
+    def _compute_mps_available(self):
+        available = 'mrp.production.schedule' in self.env
+        for budget in self:
+            budget.sgi_mps_available = available
+
+    def _sgi_committed_by_week(self):
+        """{(product, lunes): cantidad en la unidad DE VENTA del producto} de los
+        pedidos confirmados del cliente del pronóstico, por semana comprometida."""
+        self.ensure_one()
+        result = defaultdict(float)
+        partner = self.partner_id.commercial_partner_id
+        if not partner:
+            return result
+        Line = self.env['sgi.sales.budget.line']
+        sols = self.env['sale.order.line'].search([
+            ('order_id.state', 'in', ('sale', 'done')),
+            ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+        ])
+        for sol in sols:
+            monday = Line._sgi_effective_monday(sol.order_id)
+            if not monday or monday.year != self.year:
+                continue
+            product = sol.product_id
+            qty = sol.product_uom_qty
+            if sol.product_uom_id and product.uom_id and \
+                    sol.product_uom_id._has_common_reference(product.uom_id):
+                qty = sol.product_uom_id._compute_quantity(
+                    qty, product.uom_id, round=False)
+            result[(product, monday)] += qty
+        return result
+
+    def action_preload_from_orders(self):
+        """Precarga las semanas del horizonte que ya tienen pedidos confirmados y
+        NO tienen celda de pronóstico, con qty_budget = lo comprometido.
+        Idempotente: no toca celdas ya capturadas."""
+        self.ensure_one()
+        if self.kind != 'pronostico':
+            raise UserError("La precarga desde pedidos es solo para pronósticos.")
+        if self.state != 'borrador':
+            raise UserError("Solo se precarga un pronóstico en borrador.")
+        Line = self.env['sgi.sales.budget.line']
+        existing = {(l.product_id.id, l.date) for l in self.line_ids}
+        created = 0
+        for (product, monday), qty in self._sgi_committed_by_week().items():
+            if qty <= 0 or (product.id, monday) in existing:
+                continue
+            Line.create({
+                'budget_id': self.id, 'product_id': product.id, 'date': monday,
+                'uom_id': product.uom_id.id, 'partner_id': self.partner_id.id,
+                'qty_budget': qty,
+            })
+            created += 1
+        self.message_post(
+            body="Precarga desde pedidos: %d celda(s) creada(s) con lo "
+                 "comprometido (el vendedor solo captura el futuro)." % created)
+        return True
+
+    def action_send_to_mps(self):
+        """Vuelca la DEMANDA NETA (no el pronóstico bruto) por producto/semana al
+        forecast del Programa Maestro (mrp_mps). Crea el schedule si falta;
+        re-envío tras revisión actualiza sin duplicar. No crea pedidos de venta."""
+        self.ensure_one()
+        if 'mrp.production.schedule' not in self.env:
+            raise UserError("El módulo Programa Maestro (mrp_mps) no está instalado.")
+        if self.kind != 'pronostico':
+            raise UserError("Solo se envía la demanda de un pronóstico.")
+        if self.state != 'aprobado':
+            raise UserError("Solo se envía la demanda de un pronóstico aprobado.")
+        warehouse = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company_id.id)], limit=1)
+        if not warehouse:
+            raise UserError("No hay almacén configurado para la compañía.")
+        Schedule = self.env['mrp.production.schedule']
+        Forecast = self.env['mrp.product.forecast']
+        demand = defaultdict(float)
+        for line in self.line_ids:
+            if line.qty_net_demand <= 0:
+                continue
+            qty = line.qty_net_demand
+            if line.uom_id and line.product_id.uom_id and \
+                    line.uom_id._has_common_reference(line.product_id.uom_id):
+                qty = line.uom_id._compute_quantity(
+                    qty, line.product_id.uom_id, round=False)
+            demand[(line.product_id, line.date)] += qty
+        details = []
+        for (product, monday), qty in sorted(
+                demand.items(), key=lambda kv: (kv[0][0].id, kv[0][1])):
+            sched = Schedule.search([
+                ('product_id', '=', product.id),
+                ('warehouse_id', '=', warehouse.id)], limit=1)
+            if not sched:
+                sched = Schedule.create(
+                    {'product_id': product.id, 'warehouse_id': warehouse.id})
+            forecast = sched.forecast_ids.filtered(lambda f: f.date == monday)[:1]
+            if forecast:
+                forecast.forecast_qty = qty  # re-envío: actualiza sin duplicar
+            else:
+                Forecast.create({
+                    'production_schedule_id': sched.id, 'date': monday,
+                    'forecast_qty': qty})
+            details.append("%s · %s: %s %s" % (
+                product.default_code or product.name, monday,
+                round(qty, 2), product.uom_id.name))
+        self.message_post(
+            body="Demanda neta enviada al Programa Maestro (%d celdas):<br/>%s" % (
+                len(details), "<br/>".join(details) or "sin demanda"))
         return True
 
     def action_open_import(self):
@@ -493,6 +605,13 @@ class SgiSalesBudgetLine(models.Model):
                                     "comercial, aún no necesariamente facturado.")
     amount_ordered = fields.Monetary(string="Importe pedido",
                                      compute='_compute_ordered', store=True)
+    qty_net_demand = fields.Float(
+        string="Demanda neta", digits='Product Unit',
+        compute='_compute_net_demand', store=True, aggregator='sum',
+        help="Consumo de pronóstico (forecast consumption): max(pronosticado, "
+             "comprometido). Los pedidos confirmados CONSUMEN el pronóstico de su "
+             "semana; si superan lo pronosticado, manda el pedido. Es la demanda "
+             "que se envía al Programa Maestro (no el pronóstico bruto).")
     avg_price_budget = fields.Monetary(string="Precio prom. presupuestado",
                                        compute='_compute_avg_prices')
     avg_price_real = fields.Monetary(string="Precio prom. real",
@@ -845,6 +964,11 @@ class SgiSalesBudgetLine(models.Model):
                             sol.product_uom_qty, line.uom_id, round=False)
                 line.qty_ordered = qty
                 line.amount_ordered = amount
+
+    @api.depends('qty_budget', 'qty_real')
+    def _compute_net_demand(self):
+        for line in self:
+            line.qty_net_demand = max(line.qty_budget, line.qty_real)
 
     @api.depends('amount_budget', 'qty_budget', 'amount_real', 'qty_real')
     def _compute_avg_prices(self):

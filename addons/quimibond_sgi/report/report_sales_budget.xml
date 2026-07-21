@@ -130,12 +130,12 @@
                 <tbody>
                     <t t-foreach="fc['rows']" t-as="row">
                         <tr>
-                            <td rowspan="2">
+                            <td rowspan="3">
                                 <span class="fw-bold" t-out="row['product']"/>
                                 <span t-if="row['code']" class="text-muted"
                                       t-out="' [%s]' % row['code']"/>
                             </td>
-                            <td rowspan="2" t-out="row['uom']"/>
+                            <td rowspan="3" t-out="row['uom']"/>
                             <td>Ppto</td>
                             <td t-foreach="fc['weeks']" t-as="w" class="text-end"
                                 t-out="'{:,.0f}'.format(row['budget'].get(w['num'], 0)) if row['budget'].get(w['num']) else ''"/>
@@ -144,6 +144,11 @@
                             <td>Real</td>
                             <td t-foreach="fc['weeks']" t-as="w" class="text-end"
                                 t-out="'{:,.0f}'.format(row['real'].get(w['num'], 0)) if row['real'].get(w['num']) else ''"/>
+                        </tr>
+                        <tr class="fw-bold">
+                            <td>Neta</td>
+                            <td t-foreach="fc['weeks']" t-as="w" class="text-end"
+                                t-out="'{:,.0f}'.format(row['net'].get(w['num'], 0)) if row['net'].get(w['num']) else ''"/>
                         </tr>
                     </t>
                 </tbody>
