@@ -437,6 +437,70 @@ class SgiSalesBudget(models.Model):
         return self.env.ref(
             'quimibond_sgi.action_report_sales_budget').report_action(self)
 
+    # --- Plantilla descargable (filas ya puestas) ----------------------------
+    _SGI_TEMPLATE_MONTHS = [
+        'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
+        'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
+
+    def _sgi_historical_products(self):
+        """Productos que este equipo vendió (o que se vendieron a ESTE cliente,
+        en pronóstico) en los últimos 24 meses — para pre-llenar las filas."""
+        self.ensure_one()
+        from dateutil.relativedelta import relativedelta as _rd
+        date_from = fields.Date.context_today(self) - _rd(months=24)
+        domain = [('order_id.state', 'in', ('sale', 'done')),
+                  ('order_id.date_order', '>=', date_from)]
+        if self.kind == 'pronostico':
+            partner = self.partner_id.commercial_partner_id
+            if not partner:
+                return self.env['product.product']
+            domain.append(
+                ('order_id.partner_id.commercial_partner_id', '=', partner.id))
+        else:
+            domain.append(('order_id.team_id', '=', self.team_id.id))
+        products = self.env['sale.order.line'].search(domain).mapped('product_id')
+        return products.sorted(lambda p: p.default_code or p.name or '')
+
+    def action_download_template(self):
+        """Genera con openpyxl el Excel VACÍO con las FILAS ya puestas (productos
+        históricos) para llenar cantidades y subir con el importador."""
+        self.ensure_one()
+        if self.state != 'borrador':
+            raise UserError("La plantilla se descarga sobre un presupuesto en borrador.")
+        import base64
+        import io
+        import openpyxl
+        products = self._sgi_historical_products()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        if self.kind == 'pronostico':
+            ws.title = (self.partner_id.name or 'Pronostico')[:31]
+            ws.append(['PRODUCTO', 'CODIGO CLIENTE', 'SEMANA']
+                      + list(range(1, 53)))
+            for product in products:
+                ws.append([product.default_code or product.name, '', ''] + [''] * 52)
+        else:
+            ws.title = (self.team_id.name or 'Presupuesto')[:31]
+            ws.append(['PRODUCTO', 'UNIDAD', 'CLIENTE']
+                      + ['%s m' % m for m in self._SGI_TEMPLATE_MONTHS])
+            for product in products:
+                ws.append([product.default_code or product.name,
+                           product.uom_id.name, ''] + [''] * 12)
+        buf = io.BytesIO()
+        wb.save(buf)
+        attachment = self.env['ir.attachment'].create({
+            'name': 'Plantilla %s.xlsx' % (self.name or self.folio),
+            'datas': base64.b64encode(buf.getvalue()),
+            'res_model': 'sgi.sales.budget', 'res_id': self.id,
+            'mimetype': 'application/vnd.openxmlformats-officedocument.'
+                        'spreadsheetml.sheet',
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%d?download=true' % attachment.id,
+            'target': 'self',
+        }
+
     def action_refresh_actuals(self):
         """Recalcula la foto de facturado/pedido Y el precio de lista de las líneas
         (los computes almacenados no se refrescan solos al cambiar facturas o la

@@ -1063,3 +1063,98 @@ class TestSalesBudgetNetDemand(TransactionCase):
         fc.action_preload_from_orders()
         after = self.env['sale.order'].search_count([('partner_id', '=', self.client.id)])
         self.assertEqual(before, after, "El pronóstico no crea pedidos de venta.")
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetTemplate(TransactionCase):
+    """5.2d Paso 2: plantilla descargable, roundtrip, menús por tipo."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado plantilla'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.prod_a = cls.env['product.product'].create({
+            'name': 'Prod A tpl', 'default_code': 'PA-TPL', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.prod_b = cls.env['product.product'].create({
+            'name': 'Prod B tpl', 'default_code': 'PB-TPL', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.partner = cls.env['res.partner'].create(
+            {'name': 'Cliente plantilla', 'is_company': True})
+
+    def _sold_order(self, product):
+        so = self.env['sale.order'].create({
+            'partner_id': self.partner.id, 'team_id': self.team.id,
+            'order_line': [(0, 0, {
+                'product_id': product.id, 'product_uom_qty': 1,
+                'product_uom_id': self.uom_m.id, 'price_unit': 1.0})]})
+        so.action_confirm()
+        return so
+
+    def _read_template(self, budget):
+        import base64
+        import io
+        import openpyxl
+        action = budget.action_download_template()
+        att_id = int(action['url'].split('/web/content/')[1].split('?')[0])
+        att = self.env['ir.attachment'].browse(att_id)
+        wb = openpyxl.load_workbook(io.BytesIO(base64.b64decode(att.datas)))
+        return wb.active, att
+
+    def test_01_template_has_historical_products(self):
+        # Solo PA-TPL se vendió → la plantilla del equipo lleva esa fila.
+        self._sold_order(self.prod_a)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        ws, _ = self._read_template(budget)
+        codes = [ws.cell(r, 1).value for r in range(2, ws.max_row + 1)]
+        self.assertIn('PA-TPL', codes)
+        self.assertNotIn('PB-TPL', codes, "No vendido: no está en la plantilla.")
+        # Encabezado de meses del F-P-A28-18.
+        self.assertEqual(ws.cell(1, 1).value, 'PRODUCTO')
+
+    def test_02_roundtrip_download_fill_import(self):
+        self._sold_order(self.prod_a)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        ws, att = self._read_template(budget)
+        # Llena la cantidad de ENERO (columna 4: PRODUCTO, UNIDAD, CLIENTE, ENERO m).
+        row = next(r for r in range(2, ws.max_row + 1)
+                   if ws.cell(r, 1).value == 'PA-TPL')
+        ws.cell(row, 4).value = 250
+        import base64
+        import io
+        import openpyxl
+        wb = openpyxl.Workbook()  # reescribe el libro con el valor
+        # Regenera desde el ws modificado.
+        buf = io.BytesIO()
+        ws.parent.save(buf)
+        wiz = self.env['sgi.sales.budget.import'].create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': ws.title})
+        wiz.action_import()
+        line = budget.line_ids.filtered(lambda l: l.product_id == self.prod_a)
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.date, date(2040, 1, 1))
+        self.assertEqual(line.qty_budget, 250.0)
+
+    def test_03_actions_filter_by_kind(self):
+        b = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        f = self.Budget.create({'year': 2040, 'team_id': self.team.id,
+                                'kind': 'pronostico', 'partner_id': self.partner.id})
+        act_b = self.env.ref('quimibond_sgi.sgi_sales_budget_action')
+        act_f = self.env.ref('quimibond_sgi.sgi_sales_forecast_action')
+        budgets = self.Budget.search(
+            [('team_id', '=', self.team.id)] + list(eval(act_b.domain)))
+        forecasts = self.Budget.search(
+            [('team_id', '=', self.team.id)] + list(eval(act_f.domain)))
+        self.assertIn(b, budgets)
+        self.assertNotIn(f, budgets)
+        self.assertIn(f, forecasts)
+        self.assertNotIn(b, forecasts)
+
+    def test_04_template_only_on_draft(self):
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget.state = 'aprobado'
+        with self.assertRaises(UserError):
+            budget.action_download_template()
