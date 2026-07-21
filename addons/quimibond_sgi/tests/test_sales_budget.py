@@ -226,6 +226,24 @@ class TestSalesBudget(TransactionCase):
             with self.assertRaises(UserError):
                 line.with_user(raso).write(vals)
 
+    def test_16_delete_budget_with_lines(self):
+        # Borrar un presupuesto con líneas no truena (los Monetary calculados con
+        # currency_field no hacen flush sobre líneas ya eliminadas).
+        budget = self._budget()
+        self._line(budget, date(2040, 6, 1), qty=10.0)
+        self._line(budget, date(2040, 7, 1), qty=20.0)
+        line_ids = budget.line_ids.ids
+        budget.unlink()
+        self.assertFalse(budget.exists())
+        self.assertFalse(self.Line.browse(line_ids).exists())
+
+    def test_17_delete_approved_budget(self):
+        budget = self._budget()
+        self._line(budget, date(2040, 6, 1), qty=10.0)
+        budget.state = 'aprobado'
+        budget.unlink()
+        self.assertFalse(budget.exists())
+
 
 @tagged('post_install', '-at_install')
 class TestSalesBudgetForecast(TransactionCase):

@@ -237,6 +237,14 @@ class SgiSalesBudget(models.Model):
                     "Un pronóstico semanal necesita un cliente (cada hoja del "
                     "forecast es un cliente-año).")
 
+    def unlink(self):
+        # Borra las líneas por ORM antes del DELETE en cascada de BD: así se
+        # descartan sus cómputos pendientes (los Monetary con currency_field
+        # calculado, p.ej. amount_currency/list_currency_id) y no se intenta hacer
+        # flush sobre registros ya eliminados (evita MissingError al borrar).
+        self.with_context(sgi_bypass_lock=True).mapped('line_ids').unlink()
+        return super().unlink()
+
     # --- Flujo de estados -----------------------------------------------------
     def action_approve(self):
         """Aprueba el presupuesto (solo MAST). A partir de aquí es evidencia."""
