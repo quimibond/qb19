@@ -294,6 +294,44 @@ class DocumentsDocument(models.Model):
             'context': {'default_document_id': self.id},
         }
 
+    def action_sgi_view_file(self):
+        """Abre el archivo del documento para previsualizarlo en el navegador.
+
+        Si el documento tiene adjunto binario, sirve su contenido inline (sin
+        download=true, para que el visor del navegador lo muestre); si es de tipo
+        enlace (URL), abre la URL; si no tiene nada, avisa amablemente."""
+        self.ensure_one()
+        if self.attachment_id:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': '/web/content/%d?filename=%s' % (
+                    self.attachment_id.id,
+                    self.name or self.attachment_id.name or ''),
+                'target': 'new',
+            }
+        if self.type == 'url' and self.url:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': self.url,
+                'target': 'new',
+            }
+        raise UserError(
+            "Este documento no tiene archivo ni enlace para abrir. "
+            "Sube el PDF en «Archivo adjunto» o captura la URL.")
+
+    def action_sgi_open_in_documents(self):
+        """Abre el documento en la app nativa de Documentos (visor completo con
+        carpetas), para quien quiera el explorador en vez de la ficha SGI."""
+        self.ensure_one()
+        action = self.env.ref('documents.document_action',
+                              raise_if_not_found=False)
+        if not action:
+            raise UserError("La app de Documentos no está disponible.")
+        result = action.sudo().read()[0]
+        result['res_id'] = self.id
+        result.setdefault('context', {})
+        return result
+
 
 class SgiDocumentAck(models.Model):
     _name = 'sgi.document.ack'

@@ -26,3 +26,4 @@ from . import test_procedure
 from . import test_ola_a_security
 from . import test_ola_a_procedure
 from . import test_ola_b
+from . import test_view_file
