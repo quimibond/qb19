@@ -161,8 +161,79 @@ TEJIDO D**, categoría param `waste_subproduct_category`; NO stock.scrap) ·
 `desperdicio_scrap` (histórico) · `calidad_pq` (mrp.revision.log sin causa) ·
 `cumplimiento_programa` (MOs con inicio en periodo — aproxima el MPS; validar antes de
 `nc_on_red`) · `cierre_nc` · `reclamos_cliente` · `preventivo_cumplido` · `rotacion_rh` ·
-`presupuesto_ventas` (incluye out_refund) · `inventario_ciclico` (requiere conteos) ·
+`presupuesto_ventas` (VE-02: facturación neta vs **presupuesto de ventas aprobado**
+del periodo — `sgi.sales.budget` líneas del mes, todos los equipos; SIEMPRE sobre
+importe en moneda compañía, nunca cantidades mezcladas; fallback al parámetro de
+Ajustes con nota) · `inventario_ciclico` (requiere conteos) ·
 stubs documentados que devuelven None → captura manual.
+
+**Presupuesto maestro de ventas (`sgi.sales.budget`, v19.0.11):** matriz tipo MPS
+del F-P-A28-18 por mercado (crm.team) y año, producto × mes en cantidad y pesos.
+El real sale solo de lo facturado (`account.move.line.balance`, ya en moneda
+compañía — no se reconvierte) y, complementario, de lo pedido (sale.order.line
+confirmadas, importe con `currency._convert`). Unidades por línea (`uom_id`,
+categoría vía `_has_common_reference`): las cantidades NUNCA se suman entre
+unidades; el único total global es el de dinero. Captura en grid de Enterprise
+(`web_grid`, `grid_update_cell` propio) e importación `base_import`. VE-02 lee el
+presupuesto aprobado; el cierre de mes (cron mensual) avisa al responsable del
+equipo por debajo de `sales_budget_alert_pct`.
+
+**Dimensión cliente (opcional por línea).** `sgi.sales.budget.line.partner_id`
+(vacío = global del producto para el mercado; con cliente = esa cuenta).
+Unicidad producto+mes+cliente con `UNIQUE NULLS NOT DISTINCT` (PG15+: el cliente
+nulo es un valor propio). Anti-doble-conteo: un producto no puede tener a la vez
+líneas con y sin cliente en el mismo presupuesto. El real por cliente filtra por
+`commercial_partner_id` del documento (los pedidos llegan a contactos/direcciones
+de entrega; se usa la empresa comercial, patrón del módulo intelligence).
+`amount_real_unbudgeted` en la cabecera = real del equipo en el año menos el real
+capturado por las líneas (lo vendido sin presupuestar). El grid gestiona solo el
+esquema por producto (fila = producto); **el presupuesto por cliente se captura
+en la vista lista/ficha** (dos dimensiones de fila no se resolvieron en grid); el
+reporte desglosa por cliente con subtotal de producto.
+
+**Precio sugerido desde la lista.** `price_unit_budget` (moneda compañía,
+editable); `amount_budget` = qty × precio (compute almacenado invertible: capturar
+el importe despeja el precio). Un `@api.onchange('product_id','partner_id',
+'uom_id')` sugiere el precio de `partner.property_product_pricelist` (o
+`list_price` sin cliente) y **nunca pisa** uno ya capturado. Listas en otra moneda
+se convierten a compañía con el tipo presupuestal `budget_planning_rate` (USD→MXN;
+0 = tipo del día) y dejan rastro en `price_source` ("Lista 'Export USD': 2.15 USD
+× 17.50 = …"). La cotización borrador NO usa este precio: al cotizar se deja que
+Odoo aplique la lista vigente (la diferencia ppto vs real es información). El
+reporte añade columna precio unitario presupuestado vs precio promedio real.
+
+**Importación desde el Excel real.** Asistente `sgi.sales.budget.import`
+(TransientModel, botón "Importar desde Excel" solo en borrador) que parsea el
+F-P-A28-18 con openpyxl: detecta la fila de encabezados por 'PRODUCTO', pares
+"<mes> m"/"<mes> $" (tolerante a mayúsculas/acentos/espacios), columnas opcionales
+UNIDAD y CLIENTE. Matching de producto por default_code → nombre exacto → nombre
+ilike único; los no-match se reportan (chatter + resultado) y NO abortan. Todo-o-
+nada por hoja para errores ESTRUCTURALES (savepoint); los errores de datos por
+línea usan savepoint anidado y se reportan. Modo de choque replace (default) /
+add. Convive con base_import (tabla plana).
+
+**Pronóstico semanal por cliente (F-P-A28-13, v19.0.12).** `sgi.sales.budget.kind`
+= presupuesto (mensual por mercado, default, todo igual) / pronostico (semanal por
+cliente). En pronóstico: `partner_id` en cabecera (obligatorio; unicidad
+año+equipo+cliente+kind), líneas con `date` = lunes de la semana y `customer_code`
+(código del cliente para el material). Real del pronóstico = COMPROMETIDO (pedidos
+confirmados del cliente comercial por `commitment_date`/expected/date_order de la
+semana), no facturado. Drill-down `action_view_week_orders`. Importador v2: el
+mismo asistente lee el forecast.xlsx cuando el presupuesto es pronóstico (fila
+`SEMANA` con números 1–52 anclados al primer lunes del año; producto col A, código
+cliente col B; bloques repetidos se suman; filas PO/TOTAL/FECHA se ignoran; comas
+de miles). Reporte QWeb con banner F-P-A28-13 (`sgi_code_alt`, override
+`_sgi_format_code` por kind). **Captura del pronóstico = plan B (lista/ficha por
+semana), NO grid**: el grid semanal (52 columnas) chocaba con el esquema por
+cliente de `grid_update_cell` (fuerza partner vacío) y su escala no era verificable
+sin la UI; el grid mensual por producto se mantiene para el presupuesto.
+
+**Facturado/pedido almacenados (foto).** `qty_real`/`amount_real`/`qty_ordered`/
+`amount_ordered` son computes ALMACENADOS (`store=True`, `aggregator='sum'`) para
+poder agregarse en pivot/graph — un measure no almacenado rompe el pivot ("No
+aggregate function…"). Son una foto: se recalculan al tocar la línea, con el botón
+"Actualizar facturado/pedido" del presupuesto y en el cron mensual; NO se
+refrescan solos al timbrar una factura nueva.
 
 **KPIs 2.0 (v19.0.10):** `crecimiento_ventas` (VE-01, facturación neta timbrada del
 periodo vs mismo periodo año anterior, variación %) · `ots_atendidas` (MT-03,
@@ -263,6 +334,8 @@ plans. Detalle completo en el README del módulo.
 | `quimibond_sgi.purchase_approval_category_id` | 0 | KPI CO-02: categoría de aprobación que cuenta como requisición de compra. 0 = autodetectar las de `approval_type='purchase'`; fíjalo solo si hay varias |
 | `quimibond_sgi.production_monthly_capacity` | 0 | KPI MA-02: capacidad instalada mensual de producción (misma unidad que la producción, p.ej. kg). Se prorratea por días en periodos no mensuales. 0 = captura manual |
 | `quimibond_sgi.energy_partner_id` | 0 | KPI TR-03: proveedor de energía (res.partner) cuyas facturas del periodo suman el consumo. 0 = sin configurar → medición en 0 con nota |
+| `quimibond_sgi.sales_budget_alert_pct` | 80 | Cierre de mes: umbral (%) de cumplimiento acumulado del presupuesto de ventas bajo el cual se avisa al responsable del equipo |
+| `quimibond_sgi.budget_planning_rate` | 0 | Tipo de cambio presupuestal USD→MXN para sugerir precios de listas en otra moneda. 0 = tipo de cambio del día de captura |
 
 ### Parámetros añadidos en Ola 1 (Motor de Mejora, ISO 10)
 
