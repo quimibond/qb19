@@ -84,6 +84,11 @@ class ResConfigSettings(models.TransientModel):
     sgi_waste_categ_id = fields.Many2one(
         'product.category', string="Categoría del byproduct de desperdicio",
         help="Categoría del SALDO (desperdicio) para el KPI automático.")
+    sgi_purchase_approval_category_id = fields.Many2one(
+        'approval.category', string="Categoría de requisiciones de compra",
+        help="KPI CO-02 (Requisiciones): categoría de aprobación que cuenta como "
+             "requisición de compra. Déjalo vacío para detectar automáticamente "
+             "la(s) categoría(s) de tipo compra; configúralo solo si hay varias.")
 
     @api.model
     def get_values(self):
@@ -94,6 +99,10 @@ class ResConfigSettings(models.TransientModel):
         categ_name = Param.get_param('quimibond_sgi.waste_subproduct_category', 'SubProducto')
         categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
         res['sgi_waste_categ_id'] = categ.id or False
+        cat_id = int(Param.get_param('quimibond_sgi.purchase_approval_category_id', '0') or 0)
+        res['sgi_purchase_approval_category_id'] = (
+            cat_id if cat_id and self.env['approval.category'].browse(cat_id).exists()
+            else False)
         return res
 
     def set_values(self):
@@ -103,3 +112,5 @@ class ResConfigSettings(models.TransientModel):
         if self.sgi_waste_categ_id:
             Param.set_param('quimibond_sgi.waste_subproduct_category',
                             self.sgi_waste_categ_id.name)
+        Param.set_param('quimibond_sgi.purchase_approval_category_id',
+                        self.sgi_purchase_approval_category_id.id or 0)

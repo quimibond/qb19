@@ -18,6 +18,12 @@
                             <field name="sgi_rh_user_id"/>
                         </setting>
                     </block>
+                    <block title="KPIs automáticos" name="sgi_auto_kpis">
+                        <setting string="Categoría de requisiciones de compra"
+                                 help="KPI CO-02: categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
+                            <field name="sgi_purchase_approval_category_id"/>
+                        </setting>
+                    </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Días para escalar una NC sin acciones"
                                  help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST.">

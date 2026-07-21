@@ -21,8 +21,12 @@ CALC_MODES = [
     ('rotacion_rh', "Rotación de personal"),
     ('plantilla_rh', "Cobertura de plantilla"),
     ('presupuesto_ventas', "Cumplimiento de presupuesto de ventas"),
+    ('crecimiento_ventas', "Crecimiento anual de ventas (vs año anterior)"),
     ('inventario_diferencia', "Diferencia de inventario físico vs sistema"),
     ('inventario_ciclico', "Diferencia de inventario cíclico (ajustes)"),
+    ('ots_atendidas', "Órdenes de trabajo atendidas (mantenimiento)"),
+    ('requisiciones', "Requisiciones atendidas (aprobaciones de compra)"),
+    ('embarques_sin_error', "Embarques sin error (sin devolución de cliente)"),
 ]
 
 
@@ -75,8 +79,12 @@ class SgiIndicator(models.Model):
         'rotacion_rh': "Empleados → bajas del periodo vs plantilla.",
         'plantilla_rh': "Empleados → puestos cubiertos vs plantilla autorizada.",
         'presupuesto_ventas': "Ventas → facturación real vs presupuesto configurado en Ajustes.",
+        'crecimiento_ventas': "Contabilidad → facturación neta timbrada del periodo vs el mismo periodo del año anterior (variación %).",
         'inventario_diferencia': "Inventario → ajustes de inventario físico vs sistema.",
         'inventario_ciclico': "Inventario → ajustes de conteos cíclicos.",
+        'ots_atendidas': "Mantenimiento → solicitudes cerradas (etapa terminada) en el periodo vs creadas en el periodo.",
+        'requisiciones': "Aprobaciones → requisiciones de compra aprobadas en el periodo vs solicitadas.",
+        'embarques_sin_error': "Inventario → embarques a clientes del periodo sin devolución ligada vs total.",
     }
 
     @api.depends('calc_mode')
@@ -338,6 +346,98 @@ class SgiIndicator(models.Model):
         invoiced = sum(moves.mapped('amount_untaxed_signed'))
         return round(invoiced / budget * 100.0, 2)
 
+    def _sgi_net_invoiced(self, date_from, date_to):
+        """Facturación neta timbrada del periodo: ventas timbradas (out_invoice)
+        menos notas de crédito (out_refund), sin impuestos. amount_untaxed_signed
+        ya trae las notas de crédito en negativo, así que la suma es neta."""
+        moves = self.env['account.move'].search([
+            ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ('state', '=', 'posted'),
+            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
+        ])
+        return sum(moves.mapped('amount_untaxed_signed'))
+
+    def _calc_crecimiento_ventas(self, date_from, date_to):
+        """Variación % de la facturación neta del periodo contra el mismo periodo
+        del año anterior. None si no hay base comparable (año anterior en cero)."""
+        current = self._sgi_net_invoiced(date_from, date_to)
+        prev = self._sgi_net_invoiced(
+            date_from - relativedelta(years=1), date_to - relativedelta(years=1))
+        if not prev:
+            return None
+        return round((current - prev) / prev * 100.0, 2)
+
+    def _calc_ots_atendidas(self, date_from, date_to):
+        """OTs de mantenimiento atendidas: solicitudes cerradas (etapa terminada)
+        en el periodo sobre las creadas en el periodo. request_date y close_date
+        son Date, así que la comparación es inclusiva sin datetime."""
+        Request = self.env['maintenance.request']
+        created = Request.search_count([
+            ('request_date', '>=', date_from), ('request_date', '<=', date_to),
+        ])
+        if not created:
+            return None
+        closed = Request.search_count([
+            ('stage_id.done', '=', True),
+            ('close_date', '>=', date_from), ('close_date', '<=', date_to),
+        ])
+        return round(closed / created * 100.0, 2)
+
+    def _sgi_purchase_approval_categories(self):
+        """Categoría(s) de aprobación de compras (approvals_purchase marca la
+        categoría con approval_type='purchase'). Si MAST configuró una categoría
+        específica en Ajustes (por ambigüedad), se usa esa."""
+        Category = self.env['approval.category']
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.purchase_approval_category_id')
+        if param:
+            cat = Category.browse(int(param)).exists()
+            if cat:
+                return cat
+        if 'approval_type' in Category._fields:
+            return Category.search([('approval_type', '=', 'purchase')])
+        return Category.browse()
+
+    def _calc_requisiciones(self, date_from, date_to):
+        """Requisiciones de compra atendidas: aprobadas sobre solicitadas del
+        periodo. El módulo de aprobaciones no guarda fecha de aprobación, así que
+        el cohorte es 'solicitadas en el periodo' (create_date) y de ellas se mide
+        la fracción con request_status='approved' — mide '% atendidas'."""
+        categories = self._sgi_purchase_approval_categories()
+        if not categories:
+            return None
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        requested = self.env['approval.request'].search([
+            ('category_id', 'in', categories.ids),
+            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
+        ])
+        if not requested:
+            return None
+        approved = requested.filtered(lambda r: r.request_status == 'approved')
+        return round(len(approved) / len(requested) * 100.0, 2)
+
+    def _sgi_outgoing_done(self, date_from, date_to):
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        return self.env['stock.picking'].search([
+            ('picking_type_id.code', '=', 'outgoing'),
+            ('state', '=', 'done'),
+            ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
+        ])
+
+    def _sgi_shipments_with_return(self, pickings):
+        """Embarques con devolución de cliente ligada: la devolución de una entrega
+        es un movimiento de retorno (returned_move_ids) creado desde sus movimientos."""
+        return pickings.filtered(lambda p: p.move_ids.returned_move_ids)
+
+    def _calc_embarques_sin_error(self, date_from, date_to):
+        """% de embarques a clientes del periodo SIN devolución ligada."""
+        pickings = self._sgi_outgoing_done(date_from, date_to)
+        total = len(pickings)
+        if not total:
+            return None
+        with_error = len(self._sgi_shipments_with_return(pickings))
+        return round((total - with_error) / total * 100.0, 2)
+
     def _calc_inventario_diferencia(self, date_from, date_to):
         # Requiere conteos físicos registrados; captura manual (README).
         return None
@@ -448,8 +548,13 @@ class SgiIndicatorMeasure(models.Model):
         'disponibilidad_mantto': ('maintenance.request', [], 'create_date', True),
         'preventivo_cumplido': ('maintenance.request', [('maintenance_type', '=', 'preventive')], 'create_date', True),
         'presupuesto_ventas': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
+        'crecimiento_ventas': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'inventario_diferencia': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
         'inventario_ciclico': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
+        'ots_atendidas': ('maintenance.request', [], 'request_date', False),
+        # requisiciones y embarques_sin_error no caben en un dominio de fecha
+        # simple (categoría dinámica / relación de devolución): su evidencia se
+        # resuelve en ramas propias de action_view_evidence.
     }
 
     def action_view_evidence(self):
@@ -463,7 +568,23 @@ class SgiIndicatorMeasure(models.Model):
                 "Este indicador es de captura manual: la evidencia la aporta el "
                 "responsable (%s). Cuando se automatice, aquí verás los registros."
                 % (indicator.responsible_id.name or 'sin asignar'))
-        if mode == 'reclamos_cliente':
+        if mode == 'embarques_sin_error':
+            # Evidencia = los embarques CON devolución (los errores): más útil que
+            # ver los buenos. Respeta las cotas del periodo vía _sgi_outgoing_done.
+            pickings = indicator._sgi_outgoing_done(date_from, date_to)
+            errors = indicator._sgi_shipments_with_return(pickings)
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Embarques con devolución — evidencia de %s" % self.period_date,
+                'res_model': 'stock.picking',
+                'view_mode': 'list,form',
+                'domain': [('id', 'in', errors.ids)],
+            }
+        if mode == 'requisiciones':
+            categories = indicator._sgi_purchase_approval_categories()
+            domain = [('category_id', 'in', categories.ids)] if categories else [('id', '=', False)]
+            model, date_field, is_dt = 'approval.request', 'create_date', True
+        elif mode == 'reclamos_cliente':
             team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
                                 raise_if_not_found=False)
             domain = [('team_id', '=', team.id)] if team else []
