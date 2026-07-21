@@ -164,6 +164,25 @@ TEJIDO D**, categoría param `waste_subproduct_category`; NO stock.scrap) ·
 `presupuesto_ventas` (incluye out_refund) · `inventario_ciclico` (requiere conteos) ·
 stubs documentados que devuelven None → captura manual.
 
+**KPIs 2.0 (v19.0.10):** `crecimiento_ventas` (VE-01, facturación neta timbrada del
+periodo vs mismo periodo año anterior, variación %) · `ots_atendidas` (MT-03,
+maintenance.request cerradas etapa done vs creadas) · `requisiciones` (CO-02,
+approval.request de categoría de compras aprobadas vs solicitadas; categoría
+autodetectada por `approval_type='purchase'` o param) · `embarques_sin_error` (AL-02,
+pickings salida done sin devolución de cliente `returned_move_ids` vs total) ·
+`produccion_vs_capacidad` (MA-02, producción real vs param `production_monthly_capacity`,
+prorrateada por días si el periodo no es mensual) · `consumo_energia` (TR-03, facturado
+del periodo por el proveedor param `energy_partner_id`; sin proveedor → 0 con nota) ·
+`compras_sin_devolucion` (**PROXY** de errores en OC; a validar por MAST; NO se activa en
+la siembra) · `capacitacion` (RH-02, competencias vigentes vs requeridas vía
+`sgi.competence.gap` con vigencia `valid_to`; foto a hoy, sin cota de periodo).
+Cada modo declara su fuente en `_SOURCE_INFO`, navega a su evidencia (dict `_EVIDENCE`
+o rama propia de `action_view_evidence`), respeta `_sgi_period_bounds` (fin inclusivo) y
+`_sgi_dt_bounds`. `sgi.config.activate_auto_indicators()` fija el `calc_mode` SOLO si el
+indicador sigue en `manual` (no pisa decisiones de MAST); CO-03 queda fuera a propósito.
+Manuales a propósito (sin fuente confiable): TR-02 (papel), TR-04 (residuos), LO-02
+(documentación de exportaciones), TI-01 (uptime, lo mide Odoo.sh externo).
+
 ## 6. Reportes QWeb
 
 F-P-G05-01 (NC individual) · F-P-G01-16 (NEWS) · CoA por lote (bilingüe, checks con
@@ -236,6 +255,14 @@ plans. Detalle completo en el README del módulo.
 | `quimibond_sgi.pesaje_tolerance_kg` | 3.0 | tolerancia del puente de pesaje |
 | `quimibond_sgi.monthly_sales_budget` | — | presupuesto si el indicador no lo define |
 | `quimibond_sgi.rh_user_id` | — | copia de avisos de vigencias de RH |
+
+### Parámetros añadidos en KPIs 2.0 (v19.0.10, indicadores automáticos)
+
+| Clave | Default | Uso |
+|---|---|---|
+| `quimibond_sgi.purchase_approval_category_id` | 0 | KPI CO-02: categoría de aprobación que cuenta como requisición de compra. 0 = autodetectar las de `approval_type='purchase'`; fíjalo solo si hay varias |
+| `quimibond_sgi.production_monthly_capacity` | 0 | KPI MA-02: capacidad instalada mensual de producción (misma unidad que la producción, p.ej. kg). Se prorratea por días en periodos no mensuales. 0 = captura manual |
+| `quimibond_sgi.energy_partner_id` | 0 | KPI TR-03: proveedor de energía (res.partner) cuyas facturas del periodo suman el consumo. 0 = sin configurar → medición en 0 con nota |
 
 ### Parámetros añadidos en Ola 1 (Motor de Mejora, ISO 10)
 

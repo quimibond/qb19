@@ -84,6 +84,21 @@ class ResConfigSettings(models.TransientModel):
     sgi_waste_categ_id = fields.Many2one(
         'product.category', string="Categoría del byproduct de desperdicio",
         help="Categoría del SALDO (desperdicio) para el KPI automático.")
+    sgi_purchase_approval_category_id = fields.Many2one(
+        'approval.category', string="Categoría de requisiciones de compra",
+        help="KPI CO-02 (Requisiciones): categoría de aprobación que cuenta como "
+             "requisición de compra. Déjalo vacío para detectar automáticamente "
+             "la(s) categoría(s) de tipo compra; configúralo solo si hay varias.")
+    sgi_production_monthly_capacity = fields.Float(
+        string="Capacidad instalada mensual de producción",
+        config_parameter='quimibond_sgi.production_monthly_capacity',
+        help="KPI MA-02 (Producido vs capacidad): capacidad mensual en la misma "
+             "unidad que la producción (p.ej. kg). Para periodos no mensuales se "
+             "prorratea por días. 0 = captura manual.")
+    sgi_energy_partner_id = fields.Many2one(
+        'res.partner', string="Proveedor de energía",
+        help="KPI TR-03 (Consumo de energía): proveedor cuyas facturas del periodo "
+             "suman el consumo. Sin configurar, la medición queda en 0 con nota.")
 
     @api.model
     def get_values(self):
@@ -94,6 +109,14 @@ class ResConfigSettings(models.TransientModel):
         categ_name = Param.get_param('quimibond_sgi.waste_subproduct_category', 'SubProducto')
         categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
         res['sgi_waste_categ_id'] = categ.id or False
+        cat_id = int(Param.get_param('quimibond_sgi.purchase_approval_category_id', '0') or 0)
+        res['sgi_purchase_approval_category_id'] = (
+            cat_id if cat_id and self.env['approval.category'].browse(cat_id).exists()
+            else False)
+        energy_id = int(Param.get_param('quimibond_sgi.energy_partner_id', '0') or 0)
+        res['sgi_energy_partner_id'] = (
+            energy_id if energy_id and self.env['res.partner'].browse(energy_id).exists()
+            else False)
         return res
 
     def set_values(self):
@@ -103,3 +126,7 @@ class ResConfigSettings(models.TransientModel):
         if self.sgi_waste_categ_id:
             Param.set_param('quimibond_sgi.waste_subproduct_category',
                             self.sgi_waste_categ_id.name)
+        Param.set_param('quimibond_sgi.purchase_approval_category_id',
+                        self.sgi_purchase_approval_category_id.id or 0)
+        Param.set_param('quimibond_sgi.energy_partner_id',
+                        self.sgi_energy_partner_id.id or 0)

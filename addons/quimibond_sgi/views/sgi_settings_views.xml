@@ -18,6 +18,20 @@
                             <field name="sgi_rh_user_id"/>
                         </setting>
                     </block>
+                    <block title="KPIs automáticos" name="sgi_auto_kpis">
+                        <setting string="Categoría de requisiciones de compra"
+                                 help="KPI CO-02: categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
+                            <field name="sgi_purchase_approval_category_id"/>
+                        </setting>
+                        <setting string="Capacidad instalada mensual de producción"
+                                 help="KPI MA-02: capacidad mensual en la misma unidad que la producción (kg). Para periodos no mensuales se prorratea por días. 0 = captura manual.">
+                            <field name="sgi_production_monthly_capacity"/>
+                        </setting>
+                        <setting string="Proveedor de energía"
+                                 help="KPI TR-03: proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
+                            <field name="sgi_energy_partner_id"/>
+                        </setting>
+                    </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Días para escalar una NC sin acciones"
                                  help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST.">

@@ -21,8 +21,16 @@ CALC_MODES = [
     ('rotacion_rh', "Rotación de personal"),
     ('plantilla_rh', "Cobertura de plantilla"),
     ('presupuesto_ventas', "Cumplimiento de presupuesto de ventas"),
+    ('crecimiento_ventas', "Crecimiento anual de ventas (vs año anterior)"),
     ('inventario_diferencia', "Diferencia de inventario físico vs sistema"),
     ('inventario_ciclico', "Diferencia de inventario cíclico (ajustes)"),
+    ('ots_atendidas', "Órdenes de trabajo atendidas (mantenimiento)"),
+    ('requisiciones', "Requisiciones atendidas (aprobaciones de compra)"),
+    ('embarques_sin_error', "Embarques sin error (sin devolución de cliente)"),
+    ('produccion_vs_capacidad', "Producido vs capacidad instalada"),
+    ('consumo_energia', "Consumo de energía (facturado por el proveedor)"),
+    ('compras_sin_devolucion', "Compras sin devolución a proveedor (proxy de errores en OC)"),
+    ('capacitacion', "Capacitación (competencias vigentes vs requeridas)"),
 ]
 
 
@@ -58,6 +66,17 @@ class SgiIndicator(models.Model):
     source_info = fields.Char(string="Fuente del dato", compute='_compute_source', store=True)
 
     # De dónde sale el valor de cada modo, en lenguaje humano (para el usuario).
+    #
+    # Quedan MANUALES a propósito (no hay fuente confiable en Odoo, así que
+    # automatizarlos daría un dato falso):
+    #   TR-02 Consumo de papel: no se captura la merma de papel por documento;
+    #         requeriría un contador físico o una hoja de consumo inexistente.
+    #   TR-04 Separación de residuos: la báscula de residuos por tipo no está en
+    #         Odoo (se registra en bitácora física del centro de acopio).
+    #   LO-02 Documentación de exportaciones: la completitud del pedimento/carta
+    #         porte se audita a mano; no hay un campo que marque "expediente OK".
+    #   TI-01 Disponibilidad de Odoo: el uptime lo mide Odoo.sh (externo), no la
+    #         base; se captura desde el reporte del proveedor.
     _SOURCE_INFO = {
         'manual': "El responsable lo captura cada periodo (aún no sale de Odoo).",
         'otif_ventas': "Inventario → entregas a clientes: embarques a tiempo vs total.",
@@ -75,8 +94,16 @@ class SgiIndicator(models.Model):
         'rotacion_rh': "Empleados → bajas del periodo vs plantilla.",
         'plantilla_rh': "Empleados → puestos cubiertos vs plantilla autorizada.",
         'presupuesto_ventas': "Ventas → facturación real vs presupuesto configurado en Ajustes.",
+        'crecimiento_ventas': "Contabilidad → facturación neta timbrada del periodo vs el mismo periodo del año anterior (variación %).",
         'inventario_diferencia': "Inventario → ajustes de inventario físico vs sistema.",
         'inventario_ciclico': "Inventario → ajustes de conteos cíclicos.",
+        'ots_atendidas': "Mantenimiento → solicitudes cerradas (etapa terminada) en el periodo vs creadas en el periodo.",
+        'requisiciones': "Aprobaciones → requisiciones de compra aprobadas en el periodo vs solicitadas.",
+        'embarques_sin_error': "Inventario → embarques a clientes del periodo sin devolución ligada vs total.",
+        'produccion_vs_capacidad': "Fabricación → producción real del periodo vs la capacidad instalada configurada en Ajustes (prorrateada por días si el periodo no es mensual).",
+        'consumo_energia': "Contabilidad → total facturado del periodo por el proveedor de energía configurado en Ajustes.",
+        'compras_sin_devolucion': "PROXY (a validar por MAST): órdenes de compra confirmadas del periodo sin devolución a proveedor vs total. No mide directamente los 'errores en OC'; MAST debe validar la definición antes de fiarse del dato.",
+        'capacitacion': "Empleados → competencias del puesto vigentes (certificación al día) vs requeridas.",
     }
 
     @api.depends('calc_mode')
@@ -338,6 +365,197 @@ class SgiIndicator(models.Model):
         invoiced = sum(moves.mapped('amount_untaxed_signed'))
         return round(invoiced / budget * 100.0, 2)
 
+    def _sgi_net_invoiced(self, date_from, date_to):
+        """Facturación neta timbrada del periodo: ventas timbradas (out_invoice)
+        menos notas de crédito (out_refund), sin impuestos. amount_untaxed_signed
+        ya trae las notas de crédito en negativo, así que la suma es neta."""
+        moves = self.env['account.move'].search([
+            ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ('state', '=', 'posted'),
+            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
+        ])
+        return sum(moves.mapped('amount_untaxed_signed'))
+
+    def _calc_crecimiento_ventas(self, date_from, date_to):
+        """Variación % de la facturación neta del periodo contra el mismo periodo
+        del año anterior. None si no hay base comparable (año anterior en cero)."""
+        current = self._sgi_net_invoiced(date_from, date_to)
+        prev = self._sgi_net_invoiced(
+            date_from - relativedelta(years=1), date_to - relativedelta(years=1))
+        if not prev:
+            return None
+        return round((current - prev) / prev * 100.0, 2)
+
+    def _calc_ots_atendidas(self, date_from, date_to):
+        """OTs de mantenimiento atendidas: solicitudes cerradas (etapa terminada)
+        en el periodo sobre las creadas en el periodo. request_date y close_date
+        son Date, así que la comparación es inclusiva sin datetime."""
+        Request = self.env['maintenance.request']
+        created = Request.search_count([
+            ('request_date', '>=', date_from), ('request_date', '<=', date_to),
+        ])
+        if not created:
+            return None
+        closed = Request.search_count([
+            ('stage_id.done', '=', True),
+            ('close_date', '>=', date_from), ('close_date', '<=', date_to),
+        ])
+        return round(closed / created * 100.0, 2)
+
+    def _sgi_purchase_approval_categories(self):
+        """Categoría(s) de aprobación de compras (approvals_purchase marca la
+        categoría con approval_type='purchase'). Si MAST configuró una categoría
+        específica en Ajustes (por ambigüedad), se usa esa."""
+        Category = self.env['approval.category']
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.purchase_approval_category_id')
+        if param:
+            cat = Category.browse(int(param)).exists()
+            if cat:
+                return cat
+        if 'approval_type' in Category._fields:
+            return Category.search([('approval_type', '=', 'purchase')])
+        return Category.browse()
+
+    def _calc_requisiciones(self, date_from, date_to):
+        """Requisiciones de compra atendidas: aprobadas sobre solicitadas del
+        periodo. El módulo de aprobaciones no guarda fecha de aprobación, así que
+        el cohorte es 'solicitadas en el periodo' (create_date) y de ellas se mide
+        la fracción con request_status='approved' — mide '% atendidas'."""
+        categories = self._sgi_purchase_approval_categories()
+        if not categories:
+            return None
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        requested = self.env['approval.request'].search([
+            ('category_id', 'in', categories.ids),
+            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
+        ])
+        if not requested:
+            return None
+        approved = requested.filtered(lambda r: r.request_status == 'approved')
+        return round(len(approved) / len(requested) * 100.0, 2)
+
+    def _sgi_outgoing_done(self, date_from, date_to):
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        return self.env['stock.picking'].search([
+            ('picking_type_id.code', '=', 'outgoing'),
+            ('state', '=', 'done'),
+            ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
+        ])
+
+    def _sgi_shipments_with_return(self, pickings):
+        """Embarques con devolución de cliente ligada: la devolución de una entrega
+        es un movimiento de retorno (returned_move_ids) creado desde sus movimientos."""
+        return pickings.filtered(lambda p: p.move_ids.returned_move_ids)
+
+    def _calc_embarques_sin_error(self, date_from, date_to):
+        """% de embarques a clientes del periodo SIN devolución ligada."""
+        pickings = self._sgi_outgoing_done(date_from, date_to)
+        total = len(pickings)
+        if not total:
+            return None
+        with_error = len(self._sgi_shipments_with_return(pickings))
+        return round((total - with_error) / total * 100.0, 2)
+
+    # ----- Paso 2: modos con parámetro + proxy -----------------------------
+    def _calc_produccion_vs_capacidad(self, date_from, date_to):
+        """Producción real del periodo (misma base que produccion_vs_programado)
+        sobre la capacidad instalada configurada en Ajustes. La capacidad es
+        mensual; para periodos no mensuales se prorratea por los días del periodo.
+        Sin capacidad configurada → None (se captura manual, patrón presupuesto)."""
+        capacity = float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.production_monthly_capacity', 0) or 0)
+        if not capacity:
+            return None
+        produced = sum(self._sgi_production_done(date_from, date_to).mapped('qty_produced'))
+        if self.frequency == 'monthly':
+            cap = capacity
+        else:
+            month_start = date_from.replace(day=1)
+            days_in_month = ((month_start + relativedelta(months=1)) - month_start).days
+            period_days = (date_to - date_from).days + 1  # fin inclusivo
+            cap = capacity * period_days / days_in_month
+        if not cap:
+            return None
+        return round(produced / cap * 100.0, 2)
+
+    def _sgi_energy_partner(self):
+        """Proveedor de energía configurado en Ajustes (m2o), o vacío."""
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.energy_partner_id')
+        if not param or not int(param or 0):
+            return self.env['res.partner']
+        return self.env['res.partner'].browse(int(param)).exists()
+
+    def _calc_consumo_energia(self, date_from, date_to):
+        """Total facturado del periodo por el proveedor de energía (facturas de
+        proveedor menos notas de crédito, sin impuestos). Sin proveedor
+        configurado, la medición queda en 0 con una nota (ver _note_*)."""
+        partner = self._sgi_energy_partner()
+        if not partner:
+            return 0.0
+        moves = self.env['account.move'].search([
+            ('move_type', 'in', ('in_invoice', 'in_refund')),
+            ('state', '=', 'posted'),
+            ('partner_id', 'child_of', partner.id),
+            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
+        ])
+        total = 0.0
+        for move in moves:
+            total += move.amount_untaxed if move.move_type == 'in_invoice' \
+                else -move.amount_untaxed
+        return round(total, 2)
+
+    def _note_consumo_energia(self, date_from, date_to):
+        if not self._sgi_energy_partner():
+            return ("Configure el proveedor de energía en Ajustes para medir este "
+                    "indicador automáticamente.")
+        return ''
+
+    def _calc_compras_sin_devolucion(self, date_from, date_to):
+        """PROXY (a validar por MAST): órdenes de compra confirmadas del periodo
+        sin devolución a proveedor sobre el total. La devolución a proveedor es un
+        movimiento de retorno ligado a las recepciones de la OC."""
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        orders = self.env['purchase.order'].search([
+            ('state', 'in', ('purchase', 'done')),
+            ('date_approve', '>=', dt_from), ('date_approve', '<', dt_to),
+        ])
+        total = len(orders)
+        if not total:
+            return None
+        with_return = orders.filtered(
+            lambda o: o.picking_ids.move_ids.returned_move_ids)
+        return round((total - len(with_return)) / total * 100.0, 2)
+
+    def _calc_capacitacion(self, date_from, date_to):
+        """% de competencias del puesto VIGENTES (certificación al día) vs las
+        requeridas, a través de la vista de brechas (sgi.competence.gap): una
+        competencia caducada (valid_to vencido) cuenta como brecha. Es una foto
+        del estado actual, no acumula por periodo; las cotas del periodo no aplican
+        (competencia = vigencia a hoy)."""
+        Employee = self.env['hr.employee']
+        JobSkill = self.env['hr.job.skill']
+        employees = Employee.search([])
+        required = 0
+        for employee in employees:
+            if employee.job_id:
+                required += JobSkill.search_count([('job_id', '=', employee.job_id.id)])
+        if not required:
+            return None
+        gaps = self.env['sgi.competence.gap'].search_count(
+            [('employee_id', 'in', employees.ids)])
+        return round((required - gaps) / required * 100.0, 2)
+
+    def _sgi_compute_note(self, date_from, date_to):
+        """Nota opcional que acompaña la medición generada por el cron (p.ej.
+        avisar de una configuración faltante). '' salvo que el modo la provea."""
+        self.ensure_one()
+        if self.calc_mode == 'manual':
+            return ''
+        method = getattr(self, '_note_%s' % self.calc_mode, None)
+        return method(date_from, date_to) if method else ''
+
     def _calc_inventario_diferencia(self, date_from, date_to):
         # Requiere conteos físicos registrados; captura manual (README).
         return None
@@ -448,8 +666,16 @@ class SgiIndicatorMeasure(models.Model):
         'disponibilidad_mantto': ('maintenance.request', [], 'create_date', True),
         'preventivo_cumplido': ('maintenance.request', [('maintenance_type', '=', 'preventive')], 'create_date', True),
         'presupuesto_ventas': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
+        'crecimiento_ventas': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'inventario_diferencia': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
         'inventario_ciclico': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
+        'ots_atendidas': ('maintenance.request', [], 'request_date', False),
+        'produccion_vs_capacidad': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
+        # requisiciones, embarques_sin_error, consumo_energia,
+        # compras_sin_devolucion y capacitacion no caben en un dominio de fecha
+        # simple (categoría/proveedor dinámicos, relación de devolución, o foto de
+        # vigencia): su evidencia se resuelve en ramas propias de
+        # action_view_evidence.
     }
 
     def action_view_evidence(self):
@@ -463,7 +689,57 @@ class SgiIndicatorMeasure(models.Model):
                 "Este indicador es de captura manual: la evidencia la aporta el "
                 "responsable (%s). Cuando se automatice, aquí verás los registros."
                 % (indicator.responsible_id.name or 'sin asignar'))
-        if mode == 'reclamos_cliente':
+        if mode == 'embarques_sin_error':
+            # Evidencia = los embarques CON devolución (los errores): más útil que
+            # ver los buenos. Respeta las cotas del periodo vía _sgi_outgoing_done.
+            pickings = indicator._sgi_outgoing_done(date_from, date_to)
+            errors = indicator._sgi_shipments_with_return(pickings)
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Embarques con devolución — evidencia de %s" % self.period_date,
+                'res_model': 'stock.picking',
+                'view_mode': 'list,form',
+                'domain': [('id', 'in', errors.ids)],
+            }
+        if mode == 'compras_sin_devolucion':
+            # Evidencia = las OCs CON devolución a proveedor (los errores del proxy).
+            dt_from, dt_to = indicator._sgi_dt_bounds(date_from, date_to)
+            orders = self.env['purchase.order'].search([
+                ('state', 'in', ('purchase', 'done')),
+                ('date_approve', '>=', dt_from), ('date_approve', '<', dt_to),
+            ])
+            errors = orders.filtered(
+                lambda o: o.picking_ids.move_ids.returned_move_ids)
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "OCs con devolución — evidencia de %s" % self.period_date,
+                'res_model': 'purchase.order',
+                'view_mode': 'list,form',
+                'domain': [('id', 'in', errors.ids)],
+            }
+        if mode == 'capacitacion':
+            # Evidencia = las brechas de competencia (foto a hoy; sin cota de periodo).
+            employees = self.env['hr.employee'].search([])
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Brechas de competencia — evidencia",
+                'res_model': 'sgi.competence.gap',
+                'view_mode': 'list,pivot',
+                'domain': [('employee_id', 'in', employees.ids)],
+                'context': {'search_default_group_skill_type': 1},
+            }
+        if mode == 'consumo_energia':
+            partner = indicator._sgi_energy_partner()
+            domain = [('move_type', 'in', ('in_invoice', 'in_refund')),
+                      ('state', '=', 'posted')]
+            domain += [('partner_id', 'child_of', partner.id)] if partner \
+                else [('id', '=', False)]
+            model, date_field, is_dt = 'account.move', 'invoice_date', False
+        elif mode == 'requisiciones':
+            categories = indicator._sgi_purchase_approval_categories()
+            domain = [('category_id', 'in', categories.ids)] if categories else [('id', '=', False)]
+            model, date_field, is_dt = 'approval.request', 'create_date', True
+        elif mode == 'reclamos_cliente':
             team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
                                 raise_if_not_found=False)
             domain = [('team_id', '=', team.id)] if team else []
