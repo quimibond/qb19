@@ -119,6 +119,16 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.price_gap_grave_pct',
         help="Gap por encima de este % = grave (entre la tolerancia y este umbral "
              "= leve).")
+    sgi_forecast_over_tolerance_pct = fields.Float(
+        string="Tolerancia de pronóstico excedido (%)",
+        config_parameter='quimibond_sgi.forecast_over_tolerance_pct',
+        help="Cobertura del pronóstico: comprometido por encima de 100% + este % "
+             "= 'excedido'.")
+    sgi_forecast_capture_horizon_weeks = fields.Integer(
+        string="Horizonte de captura del pronóstico (semanas)",
+        config_parameter='quimibond_sgi.forecast_capture_horizon_weeks',
+        help="Solo se evalúa la cobertura de las semanas dentro de este horizonte "
+             "(semana actual + N-1); las de fuera quedan 'fuera_horizonte'.")
     sgi_budget_fulfillment_min = fields.Integer(
         string="Cumplimiento mínimo del presupuesto (%)",
         config_parameter='quimibond_sgi.budget_fulfillment_min',
