@@ -1312,11 +1312,13 @@ class TestSalesBudgetAnalysis(TransactionCase):
         self._invoice(self.pa, date(2040, 6, 10), 10.0, 10.0)  # 100 facturado
         budget.action_refresh_actuals()
         self.Cron._sgi_sales_budget_month_close(date(2040, 6, 1), date(2040, 6, 30))
-        act = self.env['mail.activity'].search([
-            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', budget.id)], limit=1)
-        self.assertTrue(act)
-        self.assertIn('mayor brecha', act.note or '')
-        self.assertIn('PA-AN', act.note, "El producto con mayor brecha aparece.")
+        # El cierre de mes (P-A28 5.5) agenda dos avisos: la justificación del
+        # incumplimiento y el de la brecha por producto. Tomamos el de la brecha.
+        acts = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', budget.id)])
+        top = acts.filtered(lambda a: 'mayor brecha' in (a.note or ''))
+        self.assertTrue(top, "Debe existir el aviso con los productos de mayor brecha.")
+        self.assertIn('PA-AN', top.note, "El producto con mayor brecha aparece.")
 
 
 @tagged('post_install', '-at_install')
@@ -1753,3 +1755,82 @@ class TestSalesBudgetLifecycle55(TransactionCase):
         line.with_user(self.sale_mgr).write({'qty_budget': 50.0})
         self.assertEqual(line.qty_budget, 50.0)
         self.assertEqual(fc.state, 'borrador', "La edición reabrió el pronóstico.")
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetImportPartner(TransactionCase):
+    """Hotfix: resolución de cliente ambigua en el import mensual."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Wizard = cls.env['sgi.sales.budget.import']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado import cli'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.prod = cls.env['product.product'].create({
+            'name': 'Prod cli', 'default_code': 'HFXPROD', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.fxi = cls.env['res.partner'].create(
+            {'name': 'FXITEST', 'is_company': True})
+        cls.fxi_cua = cls.env['res.partner'].create(
+            {'name': 'FXITEST CUAUTITLAN', 'is_company': True})
+
+    def _import(self, rows):
+        import base64
+        import io
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Presupuesto'
+        ws.append(['PRODUCTO', 'CLIENTE', 'ENERO m'])
+        for code, client, qty in rows:
+            ws.append([code, client, qty])
+        buf = io.BytesIO()
+        wb.save(buf)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        wiz = self.Wizard.create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': 'Presupuesto'})
+        wiz.action_import()
+        return budget, wiz
+
+    def test_01_exact_wins_over_prefix(self):
+        budget, wiz = self._import([
+            ('HFXPROD', 'FXITEST', 100),
+            ('HFXPROD', 'FXITEST CUAUTITLAN', 200)])
+        by_partner = {l.partner_id: l.qty_budget for l in budget.line_ids}
+        self.assertEqual(by_partner.get(self.fxi), 100.0,
+                         "'FXITEST' resuelve al exacto, no al que lo contiene.")
+        self.assertEqual(by_partner.get(self.fxi_cua), 200.0)
+
+    def test_02_unique_ilike_resolves(self):
+        uniq = self.env['res.partner'].create(
+            {'name': 'ZZUNIQUECLI COMPANY', 'is_company': True})
+        budget, wiz = self._import([('HFXPROD', 'ZZUNIQUECLI', 50)])
+        line = budget.line_ids
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.partner_id, uniq, "ilike único sí resuelve.")
+
+    def test_03_ambiguous_ilike_skips_and_reports(self):
+        self.env['res.partner'].create({'name': 'ZAMBI NORTE', 'is_company': True})
+        self.env['res.partner'].create({'name': 'ZAMBI SUR', 'is_company': True})
+        budget, wiz = self._import([('HFXPROD', 'ZAMBI', 300)])
+        self.assertFalse(budget.line_ids, "Cliente ambiguo: no se importa la fila.")
+        self.assertIn('ambiguo', wiz.result)
+        self.assertIn('ZAMBI', wiz.result)
+
+    def test_04_typographic_apostrophe_resolves(self):
+        osu = self.env['res.partner'].create(
+            {'name': "O'SULLIVAN", 'is_company': True})
+        # El template trae el apóstrofe tipográfico ’.
+        budget, wiz = self._import([('HFXPROD', 'O’SULLIVAN', 75)])
+        line = budget.line_ids
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.partner_id, osu)
+        self.assertEqual(line.qty_budget, 75.0)
+
+    def test_05_client_not_found_skips(self):
+        budget, wiz = self._import([('HFXPROD', 'CLIENTE INEXISTENTE ZZZ', 10)])
+        self.assertFalse(budget.line_ids, "Cliente no encontrado: fila reportada.")
+        self.assertIn('no encontrado', wiz.result)
