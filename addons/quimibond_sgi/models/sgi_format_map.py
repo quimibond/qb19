@@ -109,6 +109,10 @@ class SgiConfig(models.AbstractModel):
         # Cumplimiento mínimo (%) del presupuesto por debajo del cual se pide
         # justificación del incumplimiento (P-A28 4.3.6.1). No bloquea nada.
         'quimibond_sgi.budget_fulfillment_min': '80',
+        # Cobertura del pronóstico (P-A28 4.2.2.7): tolerancia % sobre 100 para
+        # 'excedido', y horizonte de captura en semanas (semana actual + N-1).
+        'quimibond_sgi.forecast_over_tolerance_pct': '10.0',
+        'quimibond_sgi.forecast_capture_horizon_weeks': '3',
     }
 
     @api.model

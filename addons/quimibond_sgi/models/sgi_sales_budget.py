@@ -111,6 +111,9 @@ class SgiSalesBudget(models.Model):
     price_deviation_count = fields.Integer(
         string="Desviaciones de precio", compute='_compute_price_deviation_count',
         help="Líneas con desviación de precio leve o grave (facturado vs lista).")
+    uncovered_count = fields.Integer(
+        string="Semanas descubiertas", compute='_compute_uncovered_count',
+        help="Líneas de pronóstico en horizonte sin pedido o con pedido parcial.")
     # KPI y justificación (P-A28 4.3.6.1): no bloquea nada; es evidencia del
     # análisis del incumplimiento, no un candado.
     nonfulfillment_note = fields.Text(
@@ -246,6 +249,65 @@ class SgiSalesBudget(models.Model):
             'res_model': 'sgi.sales.budget.line',
             'view_mode': 'list,form',
             'domain': [('budget_id', '=', self.id), ('has_list_price', '=', False)],
+        }
+
+    # --- Cobertura del pronóstico (P-A28 4.2.2.7) ----------------------------
+    @api.depends('line_ids.coverage_state')
+    def _compute_uncovered_count(self):
+        for budget in self:
+            budget.uncovered_count = len(budget.line_ids.filtered(
+                lambda l: l.coverage_state in ('sin_pedido', 'parcial')))
+
+    def action_view_uncovered(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Semanas descubiertas — %s" % self.name,
+            'res_model': 'sgi.sales.budget.line',
+            'view_mode': 'list,form',
+            'domain': [('budget_id', '=', self.id),
+                       ('coverage_state', 'in', ('sin_pedido', 'parcial'))],
+        }
+
+    def _sgi_horizon_mondays(self):
+        """Lista de lunes del horizonte de captura (semana actual + N-1)."""
+        self.ensure_one()
+        horizon = int(float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.forecast_capture_horizon_weeks', 3) or 1))
+        today = fields.Date.context_today(self)
+        monday = today - timedelta(days=today.weekday())
+        return [monday + timedelta(weeks=w) for w in range(horizon)]
+
+    def _sgi_orders_without_forecast(self):
+        """Control inverso (4.2.2.7): líneas de pedido confirmadas del cliente en
+        semanas del horizonte SIN línea de pronóstico para ese producto+semana."""
+        self.ensure_one()
+        partner = self.partner_id.commercial_partner_id
+        if self.kind != 'pronostico' or not partner:
+            return self.env['sale.order.line']
+        mondays = set(self._sgi_horizon_mondays())
+        Line = self.env['sgi.sales.budget.line']
+        forecast_keys = {(l.product_id.id, l.date) for l in self.line_ids}
+        sols = self.env['sale.order.line'].search([
+            ('order_id.state', 'in', ('sale', 'done')),
+            ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+        ])
+        result = self.env['sale.order.line']
+        for sol in sols:
+            monday = Line._sgi_effective_monday(sol.order_id)
+            if monday in mondays and (sol.product_id.id, monday) not in forecast_keys:
+                result |= sol
+        return result
+
+    def action_view_orders_without_forecast(self):
+        self.ensure_one()
+        orders = self._sgi_orders_without_forecast().mapped('order_id')
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Pedidos fuera de pronóstico — %s" % self.name,
+            'res_model': 'sale.order',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', orders.ids)],
         }
 
     def _sgi_team_year_real(self):
@@ -1121,6 +1183,23 @@ class SgiSalesBudgetLine(models.Model):
                                        compute='_compute_avg_prices')
     avg_price_real = fields.Monetary(string="Precio prom. real",
                                      compute='_compute_avg_prices')
+
+    # Cobertura del pronóstico (P-A28 4.2.2.7): comprometido (qty_real, que en el
+    # pronóstico son los pedidos confirmados por producto+cliente+semana) vs lo
+    # pronosticado. Foto: se refresca con el mismo mecanismo del real. Solo aplica
+    # a kind=pronostico; en presupuesto queda 'fuera_horizonte'/0.
+    coverage_pct = fields.Float(
+        string="Cobertura del pronóstico", compute='_compute_real', store=True,
+        help="Comprometido / pronosticado (pedidos confirmados de la semana entre "
+             "lo pronosticado). Solo pronóstico.")
+    coverage_state = fields.Selection([
+        ('cubierto', "Cubierto"),
+        ('parcial', "Parcial"),
+        ('sin_pedido', "Sin pedido"),
+        ('excedido', "Excedido"),
+        ('fuera_horizonte', "Fuera de horizonte"),
+    ], string="Estado de cobertura", default='fuera_horizonte',
+        compute='_compute_real', store=True)
     # Informativo (P-A28 4.2.2.1): lo PRONOSTICADO del mismo producto/cliente/mes
     # por los pronósticos vigentes del año. Compute NO almacenado (referencia viva
     # para el comercial); se muestra en la lista y la ficha del presupuesto.
@@ -1385,6 +1464,9 @@ class SgiSalesBudgetLine(models.Model):
             line.price_gap = 0.0
             line.price_gap_pct = 0.0
             line.price_gap_alert = 'ok'
+            # La cobertura solo aplica al pronóstico; el presupuesto queda neutral.
+            line.coverage_pct = 0.0
+            line.coverage_state = 'fuera_horizonte'
             if line.team_id and line.product_id and line.date:
                 by_team[line.team_id.id] |= line
         for team_id, lines in by_team.items():
@@ -1511,6 +1593,13 @@ class SgiSalesBudgetLine(models.Model):
 
     def _sgi_compute_real_committed(self):
         SOL = self.env['sale.order.line']
+        Param = self.env['ir.config_parameter'].sudo()
+        over_tol = float(Param.get_param(
+            'quimibond_sgi.forecast_over_tolerance_pct', 10.0) or 0)
+        horizon = int(float(Param.get_param(
+            'quimibond_sgi.forecast_capture_horizon_weeks', 3) or 1))
+        today = fields.Date.context_today(self)
+        current_monday = today - timedelta(days=today.weekday())
         by_partner = defaultdict(lambda: self.browse())
         for line in self:
             line.qty_real = 0.0
@@ -1522,6 +1611,8 @@ class SgiSalesBudgetLine(models.Model):
             line.price_gap = 0.0
             line.price_gap_pct = 0.0
             line.price_gap_alert = 'ok'
+            line.coverage_pct = 0.0
+            line.coverage_state = 'fuera_horizonte'
             if line.partner_id and line.product_id and line.date:
                 by_partner[line.partner_id.commercial_partner_id.id] |= line
         for partner_id, lines in by_partner.items():
@@ -1554,6 +1645,23 @@ class SgiSalesBudgetLine(models.Model):
                 line.qty_real = qty
                 line.amount_real = amount
                 line.unconverted_count = unconverted
+                line._sgi_set_coverage(qty, current_monday, horizon, over_tol)
+
+    def _sgi_set_coverage(self, committed, current_monday, horizon, over_tol):
+        """Estado de cobertura de una línea de pronóstico (P-A28 4.2.2.7)."""
+        self.ensure_one()
+        self.coverage_pct = (committed / self.qty_budget) if self.qty_budget else 0.0
+        last_monday = current_monday + timedelta(weeks=horizon - 1)
+        if not (current_monday <= self.date <= last_monday):
+            self.coverage_state = 'fuera_horizonte'
+        elif committed <= 0:
+            self.coverage_state = 'sin_pedido'
+        elif self.coverage_pct > 1.0 + over_tol / 100.0:
+            self.coverage_state = 'excedido'
+        elif self.coverage_pct >= 1.0:
+            self.coverage_state = 'cubierto'
+        else:
+            self.coverage_state = 'parcial'
 
     def action_view_week_orders(self):
         """Drill-down: los pedidos confirmados de ese producto/cliente/semana
@@ -1566,6 +1674,50 @@ class SgiSalesBudgetLine(models.Model):
             'res_model': 'sale.order',
             'view_mode': 'list,form',
             'domain': [('id', 'in', orders.ids)],
+        }
+
+    def action_create_draft_quotation(self):
+        """Crea una cotización BORRADOR por el faltante (qty_budget − comprometido)
+        para cerrar la semana descubierta. NO la confirma (demanda real la genera
+        el cliente); si ya existe un borrador con ese origin para el producto/
+        semana, la reabre en vez de duplicar."""
+        self.ensure_one()
+        if self.budget_id.kind != 'pronostico':
+            raise UserError("La cotización se crea desde una línea de pronóstico.")
+        partner = self.partner_id or self.budget_id.partner_id
+        if not partner:
+            raise UserError("El pronóstico no tiene cliente.")
+        shortfall = self.qty_budget - self.qty_real
+        if shortfall <= 0:
+            raise UserError(
+                "No hay faltante en %s: los pedidos ya cubren el pronóstico." % (
+                    self.display_name))
+        from datetime import datetime, time as _time
+        origin = self.budget_id.folio or self.budget_id.name
+        SO = self.env['sale.order']
+        existing = SO.search([
+            ('state', '=', 'draft'), ('origin', '=', origin),
+            ('partner_id', '=', partner.id),
+            ('order_line.product_id', '=', self.product_id.id),
+        ]).filtered(
+            lambda o: o.commitment_date and o.commitment_date.date() == self.date)
+        order = existing[:1] or SO.create({
+            'partner_id': partner.id,
+            'origin': origin,
+            'commitment_date': datetime.combine(self.date, _time()),
+            'team_id': self.team_id.id,
+            'order_line': [(0, 0, {
+                'product_id': self.product_id.id,
+                'product_uom_qty': shortfall,
+                'product_uom_id': self.uom_id.id,
+            })],
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Cotización — %s" % self.display_name,
+            'res_model': 'sale.order',
+            'view_mode': 'form',
+            'res_id': order.id,
         }
 
     def action_view_month_invoices(self):

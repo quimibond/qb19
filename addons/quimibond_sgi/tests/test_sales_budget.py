@@ -1834,3 +1834,141 @@ class TestSalesBudgetImportPartner(TransactionCase):
         budget, wiz = self._import([('HFXPROD', 'CLIENTE INEXISTENTE ZZZ', 10)])
         self.assertFalse(budget.line_ids, "Cliente no encontrado: fila reportada.")
         self.assertIn('no encontrado', wiz.result)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetForecastCoverage(TransactionCase):
+    """5.6: cobertura del pronóstico (pedidos vs pronosticado, P-A28 4.2.2.7)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        from datetime import timedelta
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Cron = cls.env['sgi.cron']
+        cls.Param = cls.env['ir.config_parameter'].sudo()
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado cobertura'})
+        cls.team.user_id = cls.env.user.id
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente cobertura', 'is_company': True})
+        today = date.today()
+        cls.cur_mon = today - timedelta(days=today.weekday())
+
+    def _monday(self, weeks):
+        from datetime import timedelta
+        return self.cur_mon + timedelta(weeks=weeks)
+
+    def _product(self, code):
+        return self.env['product.product'].create({
+            'name': 'P %s' % code, 'default_code': code, 'type': 'consu',
+            'uom_id': self.uom_m.id, 'list_price': 10.0})
+
+    def _order(self, product, qty, monday):
+        from datetime import datetime, timedelta
+        so = self.env['sale.order'].create({
+            'partner_id': self.client.id, 'team_id': self.team.id,
+            'commitment_date': datetime.combine(
+                monday + timedelta(days=1), datetime.min.time()),
+            'order_line': [(0, 0, {
+                'product_id': product.id, 'product_uom_qty': qty,
+                'product_uom_id': self.uom_m.id, 'price_unit': 1.0})]})
+        so.action_confirm()
+        return so
+
+    def _forecast(self):
+        return self.Budget.create({
+            'year': self.cur_mon.year, 'team_id': self.team.id,
+            'kind': 'pronostico', 'partner_id': self.client.id})
+
+    def _fline(self, budget, product, monday, qty):
+        return self.Line.create({
+            'budget_id': budget.id, 'product_id': product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': qty})
+
+    def test_01_coverage_states(self):
+        p1, p2, p3, p4, p5 = [self._product('COV%d' % i) for i in range(1, 6)]
+        self._order(p1, 100, self._monday(0))   # cubierto
+        self._order(p2, 60, self._monday(0))    # parcial
+        self._order(p4, 120, self._monday(0))   # excedido
+        self._order(p5, 100, self._monday(3))   # fuera de horizonte (>= horizonte 3)
+        fc = self._forecast()
+        l1 = self._fline(fc, p1, self._monday(0), 100)
+        l2 = self._fline(fc, p2, self._monday(0), 100)
+        l3 = self._fline(fc, p3, self._monday(0), 100)  # sin pedido
+        l4 = self._fline(fc, p4, self._monday(0), 100)
+        l5 = self._fline(fc, p5, self._monday(3), 100)
+        self.assertEqual(l1.coverage_state, 'cubierto')
+        self.assertEqual(l2.coverage_state, 'parcial')
+        self.assertEqual(l3.coverage_state, 'sin_pedido')
+        self.assertEqual(l4.coverage_state, 'excedido')
+        self.assertEqual(l5.coverage_state, 'fuera_horizonte')
+        self.assertEqual(fc.uncovered_count, 2)  # l2 parcial + l3 sin_pedido
+
+    def test_02_cron_one_activity_idempotent(self):
+        p1 = self._product('CR1')
+        fc = self._forecast()
+        self._fline(fc, p1, self._monday(0), 100)  # sin pedido → descubierta
+        self.Cron.cron_forecast_coverage()
+        acts = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', fc.id)])
+        self.assertEqual(len(acts), 1, "Una sola actividad por pronóstico.")
+        self.assertIn('CR1', acts.note or '')
+        self.assertIn('faltante', acts.note or '')
+        self.Cron.cron_forecast_coverage()  # idempotente
+        self.assertEqual(self.env['mail.activity'].search_count([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', fc.id)]), 1)
+
+    def test_03_create_draft_quotation(self):
+        p1 = self._product('QT1')
+        self._order(p1, 40, self._monday(0))  # parcial: faltan 60
+        fc = self._forecast()
+        line = self._fline(fc, p1, self._monday(0), 100)
+        self.assertEqual(line.coverage_state, 'parcial')
+        action = line.action_create_draft_quotation()
+        order = self.env['sale.order'].browse(action['res_id'])
+        self.assertEqual(order.state, 'draft', "NO se confirma la cotización.")
+        self.assertEqual(order.origin, fc.folio)
+        self.assertEqual(order.order_line.product_uom_qty, 60.0, "Solo el faltante.")
+        self.assertEqual(order.commitment_date.date(), self._monday(0))
+        # Reabrir en vez de duplicar.
+        action2 = line.action_create_draft_quotation()
+        self.assertEqual(action2['res_id'], order.id)
+
+    def test_04_orders_without_forecast(self):
+        p1, p2 = self._product('OWF1'), self._product('OWF2')
+        self._order(p1, 50, self._monday(0))  # con línea de pronóstico
+        self._order(p2, 30, self._monday(0))  # SIN línea de pronóstico
+        fc = self._forecast()
+        self._fline(fc, p1, self._monday(0), 100)
+        orphans = fc._sgi_orders_without_forecast()
+        self.assertIn(p2, orphans.mapped('product_id'))
+        self.assertNotIn(p1, orphans.mapped('product_id'))
+
+    def test_05_horizon_and_tolerance_params(self):
+        p1 = self._product('HZ1')
+        self._order(p1, 105, self._monday(2))  # 1.05
+        fc = self._forecast()
+        line = self._fline(fc, p1, self._monday(2), 100)
+        # Horizonte default 3 → semana +2 está dentro; 1.05 <= 1.10 → cubierto.
+        self.assertEqual(line.coverage_state, 'cubierto')
+        # Tolerancia a 3% → 1.05 > 1.03 → excedido (tras refresh).
+        self.Param.set_param('quimibond_sgi.forecast_over_tolerance_pct', '3.0')
+        fc.action_refresh_actuals()
+        self.assertEqual(line.coverage_state, 'excedido')
+        # Horizonte a 1 → semana +2 queda fuera.
+        self.Param.set_param('quimibond_sgi.forecast_capture_horizon_weeks', '1')
+        fc.action_refresh_actuals()
+        self.assertEqual(line.coverage_state, 'fuera_horizonte')
+
+    def test_06_no_coverage_for_presupuesto(self):
+        p1 = self._product('PB1')
+        budget = self.Budget.create({
+            'year': self.cur_mon.year, 'team_id': self.team.id})
+        line = self.Line.create({
+            'budget_id': budget.id, 'product_id': p1.id,
+            'date': date(self.cur_mon.year, 6, 1), 'uom_id': self.uom_m.id,
+            'qty_budget': 100.0})
+        self.assertEqual(line.coverage_state, 'fuera_horizonte')
+        self.assertEqual(budget.uncovered_count, 0)

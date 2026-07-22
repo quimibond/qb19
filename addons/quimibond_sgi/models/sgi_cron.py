@@ -271,6 +271,50 @@ class SgiCron(models.AbstractModel):
         return sum(moves.mapped('amount_untaxed_signed'))
 
     @api.model
+    def cron_forecast_coverage(self):
+        """Cron semanal (lunes): por cada pronóstico vigente/revisado, agrupa las
+        líneas descubiertas EN HORIZONTE y los pedidos fuera de pronóstico, y crea
+        UNA actividad al coordinador con el resumen. Idempotente (dedup por
+        resumen). No aplica a presupuestos (P-A28 4.2.2.7)."""
+        def _fmt(value):
+            return '{:,.0f}'.format(value or 0)
+        Budget = self.env['sgi.sales.budget']
+        Line = self.env['sgi.sales.budget.line']
+        for budget in Budget.search([('kind', '=', 'pronostico'),
+                                     ('state', '!=', 'obsoleto')]):
+            budget.action_refresh_actuals()  # cobertura con el horizonte de hoy
+            uncovered = budget.line_ids.filtered(
+                lambda l: l.coverage_state in ('sin_pedido', 'parcial'))
+            orphans = budget._sgi_orders_without_forecast()
+            if not uncovered and not orphans:
+                continue
+            user_id = budget.team_id.user_id.id or self._sgi_sales_admin_user_id()
+            if not user_id:
+                continue
+            parts = []
+            if uncovered:
+                rows = ["%s · %s: pronosticado %s, comprometido %s, faltante %s %s" % (
+                    l.product_id.default_code or l.product_id.name, l.date,
+                    _fmt(l.qty_budget), _fmt(l.qty_real),
+                    _fmt(l.qty_budget - l.qty_real), l.uom_id.name or '')
+                    for l in uncovered.sorted(
+                        lambda x: (x.date, x.product_id.default_code or ''))]
+                parts.append("Semanas descubiertas:\n- " + "\n- ".join(rows))
+            if orphans:
+                rows = ["Pedido sin pronóstico: %s · %s (%s) — agrégalo al pronóstico" % (
+                    sol.product_id.default_code or sol.product_id.name,
+                    Line._sgi_effective_monday(sol.order_id), sol.order_id.name)
+                    for sol in orphans.sorted(
+                        lambda s: s.product_id.default_code or '')]
+                parts.append("Pedidos fuera de pronóstico:\n- " + "\n- ".join(rows))
+            self._sgi_schedule(
+                budget,
+                "Cobertura del pronóstico %s (P-A28 4.2.2.7)" % (
+                    budget.partner_id.name or budget.name),
+                "\n\n".join(parts), user_id)
+        return True
+
+    @api.model
     def _sgi_sales_budget_month_close(self, first_prev, last_prev):
         """Aviso de cierre de mes: por cada equipo con presupuesto aprobado del
         año, si el acumulado facturado del año va por debajo del umbral del

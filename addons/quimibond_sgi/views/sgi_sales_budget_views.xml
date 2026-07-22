@@ -33,6 +33,14 @@
                 <field name="amount_real" readonly="1" optional="show"/>
                 <field name="qty_ordered" readonly="1" optional="hide"/>
                 <field name="amount_ordered" readonly="1" optional="hide"/>
+                <field name="coverage_pct" widget="percentage" readonly="1" optional="show"
+                       column_invisible="context.get('sgi_hide_coverage')"/>
+                <field name="coverage_state" widget="badge" readonly="1" optional="show"
+                       column_invisible="context.get('sgi_hide_coverage')"
+                       decoration-success="coverage_state == 'cubierto'"
+                       decoration-warning="coverage_state == 'parcial'"
+                       decoration-danger="coverage_state == 'sin_pedido'"
+                       decoration-info="coverage_state == 'excedido'"/>
                 <field name="avg_price_budget" readonly="1" optional="hide"/>
                 <field name="avg_price_real" readonly="1" optional="hide"/>
                 <field name="unconverted_count" readonly="1" optional="hide"/>
@@ -40,6 +48,9 @@
                 <button name="action_view_week_orders" type="object" icon="fa-shopping-cart"
                         string="Ver pedidos de la semana" title="Ver pedidos de la semana"
                         invisible="kind != 'pronostico'"/>
+                <button name="action_create_draft_quotation" type="object" icon="fa-file-o"
+                        string="Crear cotización" title="Crear cotización (borrador)"
+                        invisible="kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')"/>
                 <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
                         string="Ver facturas del mes" title="Ver facturas del mes"
                         invisible="kind == 'pronostico'"/>
@@ -54,9 +65,13 @@
             <form string="Línea de presupuesto">
                 <header>
                     <field name="kind" invisible="1"/>
+                    <field name="coverage_state" invisible="1"/>
                     <button name="action_view_week_orders" type="object"
                             string="Ver pedidos de la semana" icon="fa-shopping-cart"
                             invisible="kind != 'pronostico'"/>
+                    <button name="action_create_draft_quotation" type="object"
+                            string="Crear cotización (borrador)" icon="fa-file-o"
+                            invisible="kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')"/>
                     <button name="action_view_month_invoices" type="object"
                             string="Ver facturas del mes" icon="fa-file-text-o"
                             invisible="kind == 'pronostico'"/>
@@ -98,6 +113,10 @@
                         <group>
                             <field name="qty_ordered" readonly="1"/>
                             <field name="amount_ordered" readonly="1"/>
+                            <field name="coverage_pct" widget="percentage" readonly="1"
+                                   invisible="kind != 'pronostico'"/>
+                            <field name="coverage_state" widget="badge" readonly="1"
+                                   invisible="kind != 'pronostico'"/>
                             <field name="avg_price_budget" readonly="1"/>
                             <field name="avg_price_real" readonly="1"/>
                         </group>
@@ -199,6 +218,13 @@
                         domain="[('price_gap_alert', 'in', ('leve', 'grave'))]"/>
                 <filter name="sin_precio_lista" string="Sin precio de lista"
                         domain="[('has_list_price', '=', False)]"/>
+                <separator/>
+                <filter name="cov_sin_pedido" string="Sin pedido (en horizonte)"
+                        domain="[('coverage_state', '=', 'sin_pedido')]"/>
+                <filter name="cov_parcial" string="Parciales"
+                        domain="[('coverage_state', '=', 'parcial')]"/>
+                <filter name="cov_excedido" string="Excedidos"
+                        domain="[('coverage_state', '=', 'excedido')]"/>
                 <group>
                     <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
                     <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
@@ -302,6 +328,16 @@
                             <field name="price_deviation_count" widget="statinfo"
                                    string="Desviaciones de precio"/>
                         </button>
+                        <button name="action_view_uncovered" type="object"
+                                class="oe_stat_button" icon="fa-calendar-times-o"
+                                invisible="kind != 'pronostico' or uncovered_count == 0">
+                            <field name="uncovered_count" widget="statinfo"
+                                   string="Semanas descubiertas"/>
+                        </button>
+                        <button name="action_view_orders_without_forecast" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart"
+                                invisible="kind != 'pronostico'"
+                                string="Pedidos fuera de pronóstico"/>
                     </div>
                     <widget name="web_ribbon" title="Obsoleto" bg_color="text-bg-secondary"
                             invisible="state != 'obsoleto'"/>
