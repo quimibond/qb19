@@ -1312,11 +1312,13 @@ class TestSalesBudgetAnalysis(TransactionCase):
         self._invoice(self.pa, date(2040, 6, 10), 10.0, 10.0)  # 100 facturado
         budget.action_refresh_actuals()
         self.Cron._sgi_sales_budget_month_close(date(2040, 6, 1), date(2040, 6, 30))
-        act = self.env['mail.activity'].search([
-            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', budget.id)], limit=1)
-        self.assertTrue(act)
-        self.assertIn('mayor brecha', act.note or '')
-        self.assertIn('PA-AN', act.note, "El producto con mayor brecha aparece.")
+        # El cierre de mes (P-A28 5.5) agenda dos avisos: la justificación del
+        # incumplimiento y el de la brecha por producto. Tomamos el de la brecha.
+        acts = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', budget.id)])
+        top = acts.filtered(lambda a: 'mayor brecha' in (a.note or ''))
+        self.assertTrue(top, "Debe existir el aviso con los productos de mayor brecha.")
+        self.assertIn('PA-AN', top.note, "El producto con mayor brecha aparece.")
 
 
 @tagged('post_install', '-at_install')
@@ -1753,3 +1755,220 @@ class TestSalesBudgetLifecycle55(TransactionCase):
         line.with_user(self.sale_mgr).write({'qty_budget': 50.0})
         self.assertEqual(line.qty_budget, 50.0)
         self.assertEqual(fc.state, 'borrador', "La edición reabrió el pronóstico.")
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetImportPartner(TransactionCase):
+    """Hotfix: resolución de cliente ambigua en el import mensual."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Wizard = cls.env['sgi.sales.budget.import']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado import cli'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.prod = cls.env['product.product'].create({
+            'name': 'Prod cli', 'default_code': 'HFXPROD', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.fxi = cls.env['res.partner'].create(
+            {'name': 'FXITEST', 'is_company': True})
+        cls.fxi_cua = cls.env['res.partner'].create(
+            {'name': 'FXITEST CUAUTITLAN', 'is_company': True})
+
+    def _import(self, rows):
+        import base64
+        import io
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Presupuesto'
+        ws.append(['PRODUCTO', 'CLIENTE', 'ENERO m'])
+        for code, client, qty in rows:
+            ws.append([code, client, qty])
+        buf = io.BytesIO()
+        wb.save(buf)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        wiz = self.Wizard.create({
+            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
+            'sheet_name': 'Presupuesto'})
+        wiz.action_import()
+        return budget, wiz
+
+    def test_01_exact_wins_over_prefix(self):
+        budget, wiz = self._import([
+            ('HFXPROD', 'FXITEST', 100),
+            ('HFXPROD', 'FXITEST CUAUTITLAN', 200)])
+        by_partner = {l.partner_id: l.qty_budget for l in budget.line_ids}
+        self.assertEqual(by_partner.get(self.fxi), 100.0,
+                         "'FXITEST' resuelve al exacto, no al que lo contiene.")
+        self.assertEqual(by_partner.get(self.fxi_cua), 200.0)
+
+    def test_02_unique_ilike_resolves(self):
+        uniq = self.env['res.partner'].create(
+            {'name': 'ZZUNIQUECLI COMPANY', 'is_company': True})
+        budget, wiz = self._import([('HFXPROD', 'ZZUNIQUECLI', 50)])
+        line = budget.line_ids
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.partner_id, uniq, "ilike único sí resuelve.")
+
+    def test_03_ambiguous_ilike_skips_and_reports(self):
+        self.env['res.partner'].create({'name': 'ZAMBI NORTE', 'is_company': True})
+        self.env['res.partner'].create({'name': 'ZAMBI SUR', 'is_company': True})
+        budget, wiz = self._import([('HFXPROD', 'ZAMBI', 300)])
+        self.assertFalse(budget.line_ids, "Cliente ambiguo: no se importa la fila.")
+        self.assertIn('ambiguo', wiz.result)
+        self.assertIn('ZAMBI', wiz.result)
+
+    def test_04_typographic_apostrophe_resolves(self):
+        osu = self.env['res.partner'].create(
+            {'name': "O'SULLIVAN", 'is_company': True})
+        # El template trae el apóstrofe tipográfico ’.
+        budget, wiz = self._import([('HFXPROD', 'O’SULLIVAN', 75)])
+        line = budget.line_ids
+        self.assertEqual(len(line), 1)
+        self.assertEqual(line.partner_id, osu)
+        self.assertEqual(line.qty_budget, 75.0)
+
+    def test_05_client_not_found_skips(self):
+        budget, wiz = self._import([('HFXPROD', 'CLIENTE INEXISTENTE ZZZ', 10)])
+        self.assertFalse(budget.line_ids, "Cliente no encontrado: fila reportada.")
+        self.assertIn('no encontrado', wiz.result)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetForecastCoverage(TransactionCase):
+    """5.6: cobertura del pronóstico (pedidos vs pronosticado, P-A28 4.2.2.7)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        from datetime import timedelta
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Cron = cls.env['sgi.cron']
+        cls.Param = cls.env['ir.config_parameter'].sudo()
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado cobertura'})
+        cls.team.user_id = cls.env.user.id
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente cobertura', 'is_company': True})
+        today = date.today()
+        cls.cur_mon = today - timedelta(days=today.weekday())
+
+    def _monday(self, weeks):
+        from datetime import timedelta
+        return self.cur_mon + timedelta(weeks=weeks)
+
+    def _product(self, code):
+        return self.env['product.product'].create({
+            'name': 'P %s' % code, 'default_code': code, 'type': 'consu',
+            'uom_id': self.uom_m.id, 'list_price': 10.0})
+
+    def _order(self, product, qty, monday):
+        from datetime import datetime, timedelta
+        so = self.env['sale.order'].create({
+            'partner_id': self.client.id, 'team_id': self.team.id,
+            'commitment_date': datetime.combine(
+                monday + timedelta(days=1), datetime.min.time()),
+            'order_line': [(0, 0, {
+                'product_id': product.id, 'product_uom_qty': qty,
+                'product_uom_id': self.uom_m.id, 'price_unit': 1.0})]})
+        so.action_confirm()
+        return so
+
+    def _forecast(self):
+        return self.Budget.create({
+            'year': self.cur_mon.year, 'team_id': self.team.id,
+            'kind': 'pronostico', 'partner_id': self.client.id})
+
+    def _fline(self, budget, product, monday, qty):
+        return self.Line.create({
+            'budget_id': budget.id, 'product_id': product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': qty})
+
+    def test_01_coverage_states(self):
+        p1, p2, p3, p4, p5 = [self._product('COV%d' % i) for i in range(1, 6)]
+        self._order(p1, 100, self._monday(0))   # cubierto
+        self._order(p2, 60, self._monday(0))    # parcial
+        self._order(p4, 120, self._monday(0))   # excedido
+        self._order(p5, 100, self._monday(3))   # fuera de horizonte (>= horizonte 3)
+        fc = self._forecast()
+        l1 = self._fline(fc, p1, self._monday(0), 100)
+        l2 = self._fline(fc, p2, self._monday(0), 100)
+        l3 = self._fline(fc, p3, self._monday(0), 100)  # sin pedido
+        l4 = self._fline(fc, p4, self._monday(0), 100)
+        l5 = self._fline(fc, p5, self._monday(3), 100)
+        self.assertEqual(l1.coverage_state, 'cubierto')
+        self.assertEqual(l2.coverage_state, 'parcial')
+        self.assertEqual(l3.coverage_state, 'sin_pedido')
+        self.assertEqual(l4.coverage_state, 'excedido')
+        self.assertEqual(l5.coverage_state, 'fuera_horizonte')
+        self.assertEqual(fc.uncovered_count, 2)  # l2 parcial + l3 sin_pedido
+
+    def test_02_cron_one_activity_idempotent(self):
+        p1 = self._product('CR1')
+        fc = self._forecast()
+        self._fline(fc, p1, self._monday(0), 100)  # sin pedido → descubierta
+        self.Cron.cron_forecast_coverage()
+        acts = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', fc.id)])
+        self.assertEqual(len(acts), 1, "Una sola actividad por pronóstico.")
+        self.assertIn('CR1', acts.note or '')
+        self.assertIn('faltante', acts.note or '')
+        self.Cron.cron_forecast_coverage()  # idempotente
+        self.assertEqual(self.env['mail.activity'].search_count([
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', fc.id)]), 1)
+
+    def test_03_create_draft_quotation(self):
+        p1 = self._product('QT1')
+        self._order(p1, 40, self._monday(0))  # parcial: faltan 60
+        fc = self._forecast()
+        line = self._fline(fc, p1, self._monday(0), 100)
+        self.assertEqual(line.coverage_state, 'parcial')
+        action = line.action_create_draft_quotation()
+        order = self.env['sale.order'].browse(action['res_id'])
+        self.assertEqual(order.state, 'draft', "NO se confirma la cotización.")
+        self.assertEqual(order.origin, fc.folio)
+        self.assertEqual(order.order_line.product_uom_qty, 60.0, "Solo el faltante.")
+        self.assertEqual(order.commitment_date.date(), self._monday(0))
+        # Reabrir en vez de duplicar.
+        action2 = line.action_create_draft_quotation()
+        self.assertEqual(action2['res_id'], order.id)
+
+    def test_04_orders_without_forecast(self):
+        p1, p2 = self._product('OWF1'), self._product('OWF2')
+        self._order(p1, 50, self._monday(0))  # con línea de pronóstico
+        self._order(p2, 30, self._monday(0))  # SIN línea de pronóstico
+        fc = self._forecast()
+        self._fline(fc, p1, self._monday(0), 100)
+        orphans = fc._sgi_orders_without_forecast()
+        self.assertIn(p2, orphans.mapped('product_id'))
+        self.assertNotIn(p1, orphans.mapped('product_id'))
+
+    def test_05_horizon_and_tolerance_params(self):
+        p1 = self._product('HZ1')
+        self._order(p1, 105, self._monday(2))  # 1.05
+        fc = self._forecast()
+        line = self._fline(fc, p1, self._monday(2), 100)
+        # Horizonte default 3 → semana +2 está dentro; 1.05 <= 1.10 → cubierto.
+        self.assertEqual(line.coverage_state, 'cubierto')
+        # Tolerancia a 3% → 1.05 > 1.03 → excedido (tras refresh).
+        self.Param.set_param('quimibond_sgi.forecast_over_tolerance_pct', '3.0')
+        fc.action_refresh_actuals()
+        self.assertEqual(line.coverage_state, 'excedido')
+        # Horizonte a 1 → semana +2 queda fuera.
+        self.Param.set_param('quimibond_sgi.forecast_capture_horizon_weeks', '1')
+        fc.action_refresh_actuals()
+        self.assertEqual(line.coverage_state, 'fuera_horizonte')
+
+    def test_06_no_coverage_for_presupuesto(self):
+        p1 = self._product('PB1')
+        budget = self.Budget.create({
+            'year': self.cur_mon.year, 'team_id': self.team.id})
+        line = self.Line.create({
+            'budget_id': budget.id, 'product_id': p1.id,
+            'date': date(self.cur_mon.year, 6, 1), 'uom_id': self.uom_m.id,
+            'qty_budget': 100.0})
+        self.assertEqual(line.coverage_state, 'fuera_horizonte')
+        self.assertEqual(budget.uncovered_count, 0)

@@ -139,6 +139,47 @@ class SgiSalesBudgetImport(models.TransientModel):
         return product if len(product) == 1 else Product
 
     @staticmethod
+    def _norm_apostrophe(text):
+        """Apóstrofe tipográfico → recto ('O’SULLIVAN' -> \"O'SULLIVAN\"). El
+        unaccent de Postgres (activo en Odoo.sh) ya cubre los acentos en ilike."""
+        return (str(text) if text is not None else '').replace('’', "'").strip()
+
+    def _match_partner(self, text):
+        """Resuelve un cliente por nombre igual que _match_product (exacto → único).
+        Devuelve (partner, candidatos): partner resuelto y candidatos=None; o
+        partner vacío con candidatos=[nombres] si es ambiguo (2+); o
+        (vacío, None) si no se encontró. NUNCA adivina entre varios."""
+        Partner = self.env['res.partner']
+        text = self._norm_apostrophe(text)
+        if not text:
+            return Partner, None
+        # a. Exacto (=ilike, sin comodines, case-insensitive) sobre name.
+        exact = Partner.search([('name', '=ilike', text)], limit=5)
+        if len(exact) == 1:
+            return exact, None
+        if len(exact) >= 2:
+            companies = exact.filtered('is_company')
+            if len(companies) == 1:
+                return companies, None
+            return Partner, exact.mapped('display_name')
+        # b. Exacto sobre empresas por name/display_name/ref (por si capturan clave).
+        comp = Partner.search([
+            '&', ('is_company', '=', True),
+            '|', '|', ('name', '=ilike', text),
+            ('display_name', '=ilike', text), ('ref', '=ilike', text)], limit=5)
+        if len(comp) == 1:
+            return comp, None
+        if len(comp) >= 2:
+            return Partner, comp.mapped('display_name')
+        # c. Parcial (ilike): SOLO si devuelve exactamente uno.
+        partial = Partner.search([('name', 'ilike', text)], limit=5)
+        if len(partial) == 1:
+            return partial, None
+        if len(partial) >= 2:
+            return Partner, partial.mapped('display_name')
+        return Partner, None
+
+    @staticmethod
     def _as_number(value):
         """Número tolerante a comas de miles ('16,000' → 16000.0)."""
         if value in (None, ''):
@@ -256,10 +297,24 @@ class SgiSalesBudgetImport(models.TransientModel):
             uom = self._resolve_uom(unit_text, product, warnings)
             partner = False
             if client_col:
-                ctext = ws.cell(r, client_col).value
-                if ctext and str(ctext).strip():
-                    partner = self.env['res.partner'].search(
-                        [('name', 'ilike', str(ctext).strip())], limit=1)
+                ctext = self._norm_apostrophe(ws.cell(r, client_col).value)
+                if ctext:
+                    partner, candidates = self._match_partner(ctext)
+                    if not partner:
+                        # Cliente explícito sin resolución única: NO se adivina ni
+                        # se importa como global (cambiaría el esquema y el
+                        # constraint anti-doble-conteo). Se salta la fila y se reporta.
+                        if candidates:
+                            warnings.append(
+                                "Cliente '%s' ambiguo: %s — usa el nombre completo "
+                                "en el template." % (ctext, ", ".join(candidates)))
+                        else:
+                            warnings.append(
+                                "Cliente '%s' no encontrado — crea el cliente o usa "
+                                "el nombre exacto." % ctext)
+                        unmatched.append("%s / cliente '%s'" % (
+                            product.default_code or product.name, ctext))
+                        continue
             if self.conflict_mode == 'replace' and product.id not in cleared:
                 budget.line_ids.filtered(
                     lambda l: l.product_id == product).unlink()
