@@ -353,6 +353,7 @@ class SgiIndicator(models.Model):
         periodo. Prorrateo mensual = las líneas de ese mes. Siempre en importe y
         moneda de la compañía (nunca cantidades mezcladas)."""
         lines = self.env['sgi.sales.budget.line'].sudo().search([
+            ('budget_id.kind', '=', 'presupuesto'),
             ('budget_id.state', '=', 'aprobado'),
             ('date', '>=', date_from), ('date', '<=', date_to),
         ])
@@ -736,7 +737,8 @@ class SgiIndicatorMeasure(models.Model):
                 'name': "Presupuesto del periodo — evidencia de %s" % self.period_date,
                 'res_model': 'sgi.sales.budget.line',
                 'view_mode': 'list,form',
-                'domain': [('budget_id.state', '=', 'aprobado'),
+                'domain': [('budget_id.kind', '=', 'presupuesto'),
+                           ('budget_id.state', '=', 'aprobado'),
                            ('date', '>=', date_from), ('date', '<=', date_to)],
             }
         if mode == 'capacitacion':

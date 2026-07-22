@@ -172,6 +172,7 @@ class TestSalesBudget(TransactionCase):
             'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_user').id])]})
         budget = self._budget()
         line = self._line(budget, date(2040, 6, 1), qty=10.0)
+        budget.with_user(manager).action_send_to_review()
         budget.with_user(manager).action_approve()
         self.assertEqual(budget.state, 'aprobado')
         # Raso no puede editar ni borrar la línea aprobada.
@@ -183,16 +184,24 @@ class TestSalesBudget(TransactionCase):
         line.with_user(manager).write({'qty_budget': 42.0})
         self.assertEqual(line.qty_budget, 42.0)
 
-    def test_13_approve_requires_manager_and_lines(self):
+    def test_13_approve_requires_review_manager_and_lines(self):
+        manager = self.env['res.users'].create({
+            'name': 'MAST PPV 13', 'login': 'ppv_mgr13',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_manager').id])]})
         raso = self.env['res.users'].create({
             'name': 'Raso PPV 2', 'login': 'ppv_raso2',
             'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_user').id])]})
         budget = self._budget()
-        # Sin líneas no aprueba.
+        # Sin líneas no se puede enviar a revisión.
         with self.assertRaises(UserError):
-            budget.action_approve()
+            budget.with_user(manager).action_send_to_review()
         self._line(budget, date(2040, 6, 1), qty=10.0)
-        # Raso no aprueba.
+        # Un presupuesto en borrador no se aprueba directo: primero revisado.
+        with self.assertRaises(UserError):
+            budget.with_user(manager).action_approve()
+        budget.with_user(manager).action_send_to_review()
+        self.assertEqual(budget.state, 'revisado')
+        # Raso (ni Admin de ventas) no puede aprobar: es de la alta dirección.
         with self.assertRaises(UserError):
             budget.with_user(raso).action_approve()
 
@@ -202,6 +211,7 @@ class TestSalesBudget(TransactionCase):
             'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_manager').id])]})
         budget = self._budget()
         self._line(budget, date(2040, 6, 1), qty=10.0, amount=500.0)
+        budget.with_user(manager).action_send_to_review()
         budget.with_user(manager).action_approve()
         action = budget.with_user(manager).action_revise()
         new = self.Budget.browse(action['res_id'])
@@ -1053,7 +1063,8 @@ class TestSalesBudgetNetDemand(TransactionCase):
         self.Line.create({
             'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
             'uom_id': self.uom_cm.id, 'qty_budget': 500.0})
-        fc.state = 'aprobado'
+        # El pronóstico es documento vivo: su estado terminal es 'revisado'.
+        fc.state = 'revisado'
         fc.action_send_to_mps()
         wh = self.env['stock.warehouse'].search(
             [('company_id', '=', fc.company_id.id)], limit=1)
@@ -1306,3 +1317,439 @@ class TestSalesBudgetAnalysis(TransactionCase):
         self.assertTrue(act)
         self.assertIn('mayor brecha', act.note or '')
         self.assertIn('PA-AN', act.note, "El producto con mayor brecha aparece.")
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetAnalysisViews(TransactionCase):
+    """5.3: submenú Análisis con 4 vistas; anti-doble conteo; botón de ficha."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado analisis 53'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.product = cls.env['product.product'].create({
+            'name': 'Prod 53', 'type': 'consu', 'uom_id': cls.uom_m.id,
+            'list_price': 5.0})
+
+    def _budget_line(self, year, state):
+        budget = self.Budget.create({'year': year, 'team_id': self.team.id})
+        line = self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(year, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        if state != 'borrador':
+            budget.state = state
+        return budget, line
+
+    def test_01_four_actions_and_views_validate(self):
+        Line = self.env['sgi.sales.budget.line']
+        for xmlid in ('sgi_sales_analysis_mercado_action',
+                      'sgi_sales_analysis_cliente_action',
+                      'sgi_sales_analysis_producto_action',
+                      'sgi_sales_analysis_global_action'):
+            action = self.env.ref('quimibond_sgi.%s' % xmlid)
+            self.assertEqual(action.res_model, 'sgi.sales.budget.line')
+            self.assertTrue(action.view_ids, "La acción define sus vistas.")
+            for v in action.view_ids:
+                # get_view valida/renderiza la arquitectura de cada vista.
+                Line.get_view(view_id=v.view_id.id, view_type=v.view_mode)
+            ctx = action.context
+            self.assertIn('search_default_vigente', ctx)
+            self.assertIn('search_default_presupuesto', ctx)
+
+    def test_02_vigente_filter_excludes_obsolete_and_draft(self):
+        appr, appr_line = self._budget_line(2040, 'aprobado')
+        obso, obso_line = self._budget_line(2041, 'obsoleto')
+        draft, draft_line = self._budget_line(2042, 'borrador')
+        vigente = self.Line.search([
+            ('budget_id.state', '=', 'aprobado'),
+            ('team_id', '=', self.team.id)])
+        self.assertIn(appr_line, vigente)
+        self.assertNotIn(obso_line, vigente, "Obsoleto excluido por defecto.")
+        self.assertNotIn(draft_line, vigente, "Borrador excluido por defecto.")
+
+    def test_03_ficha_button_filters_by_budget(self):
+        appr, appr_line = self._budget_line(2040, 'aprobado')
+        other, other_line = self._budget_line(2041, 'aprobado')
+        action = appr.action_open_analysis()
+        self.assertEqual(action['res_model'], 'sgi.sales.budget.line')
+        self.assertIn(('budget_id', '=', appr.id), action['domain'])
+        self.assertNotIn('search_default_vigente', action.get('context', {}))
+        lines = self.Line.search(action['domain'])
+        self.assertIn(appr_line, lines)
+        self.assertNotIn(other_line, lines)
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetPriceControl(TransactionCase):
+    """5.4: control de precios (lista vs facturado) y cobertura de listas."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Param = cls.env['ir.config_parameter'].sudo()
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado precio 54'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.usd = cls.env.ref('base.USD')  # moneda de la compañía
+        cls.mxn = cls.env.ref('base.MXN')
+        cls.mxn.active = True
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        cls.product = cls.env['product.product'].create({
+            'name': 'Tela precio 54', 'type': 'consu', 'uom_id': cls.uom_m.id,
+            'list_price': 100.0})
+
+    def _pricelist(self, currency, price):
+        pl = self.env['product.pricelist'].create(
+            {'name': 'PL %s 54' % currency.name, 'currency_id': currency.id})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pl.id, 'applied_on': '1_product',
+            'product_tmpl_id': self.product.product_tmpl_id.id,
+            'compute_price': 'fixed', 'fixed_price': price})
+        return pl
+
+    def _client(self, pricelist):
+        p = self.env['res.partner'].create(
+            {'name': 'Cliente 54', 'is_company': True})
+        p.property_product_pricelist = pricelist
+        return p
+
+    def _invoice(self, client, qty, price, currency, when=None):
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': client.id,
+            'invoice_date': when or date(2040, 6, 10), 'team_id': self.team.id,
+            'currency_id': currency.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': qty,
+                'product_uom_id': self.uom_m.id, 'price_unit': price,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def _line(self, budget, client):
+        return self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'partner_id': client.id, 'qty_budget': 10.0})
+
+    def test_01_gap_usd_list_usd_invoice(self):
+        # Lista USD 100; factura USD a 110 → gap +10% en USD, sin cruce de divisas.
+        client = self._client(self._pricelist(self.usd, 100.0))
+        self._invoice(client, 5.0, 110.0, self.usd)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
+        self.assertAlmostEqual(line.price_real_unit_currency, 110.0, places=2)
+        self.assertAlmostEqual(line.price_gap_pct, 10.0, places=2)
+        self.assertFalse(line.price_gap_fx)
+
+    def test_02_gap_crosses_fx_with_planning_rate(self):
+        # Lista MXN (≠ USD compañía) 2000; factura en USD (compañía). El real
+        # contable (USD) se convierte a MXN con el tipo presupuestal 20.
+        self.Param.set_param('quimibond_sgi.budget_planning_rate', '20')
+        client = self._client(self._pricelist(self.mxn, 2000.0))
+        # 5 m a 110 USD c/u (moneda compañía) → 110 × 20 = 2200 MXN por unidad.
+        self._invoice(client, 5.0, 110.0, self.usd)
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        self.assertEqual(line.list_currency_id, self.mxn)
+        self.assertTrue(line.price_gap_fx, "Factura en otra moneda: cruza divisas.")
+        self.assertAlmostEqual(line.price_real_unit_currency, 2200.0, places=1)
+        self.assertAlmostEqual(line.price_gap_pct, 10.0, places=1)
+
+    def test_03_thresholds_from_settings(self):
+        client = self._client(self._pricelist(self.usd, 100.0))
+        self._invoice(client, 5.0, 105.0, self.usd)  # +5%
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        # Default tol 3 / grave 10 → 5% = leve.
+        self.assertEqual(line.price_gap_alert, 'leve')
+        # Sube la tolerancia a 8 → 5% pasa a OK (tras refresh).
+        self.Param.set_param('quimibond_sgi.price_gap_tolerance_pct', '8.0')
+        budget.action_refresh_actuals()
+        self.assertEqual(line.price_gap_alert, 'ok')
+        # Baja el grave a 4 → 5% pasa a grave.
+        self.Param.set_param('quimibond_sgi.price_gap_tolerance_pct', '3.0')
+        self.Param.set_param('quimibond_sgi.price_gap_grave_pct', '4.0')
+        budget.action_refresh_actuals()
+        self.assertEqual(line.price_gap_alert, 'grave')
+
+    def test_04_approve_blocked_without_price_coverage(self):
+        # Producto sin precio en la lista aplicable → no_price_count > 0.
+        prod0 = self.env['product.product'].create(
+            {'name': 'Sin precio 54', 'type': 'consu', 'uom_id': self.uom_m.id,
+             'list_price': 0.0})
+        client = self.env['res.partner'].create(
+            {'name': 'Cli sin precio', 'is_company': True})
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': prod0.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'partner_id': client.id, 'qty_budget': 5.0})
+        self.assertTrue(budget.no_price_count > 0)
+        # El Admin de ventas manda a revisión: aquí el gate solo AVISA (no bloquea).
+        sale_mgr = self.env['res.users'].create({
+            'name': 'Vendedor 54', 'login': 'vend54',
+            'group_ids': [(6, 0, [self.env.ref('sales_team.group_sale_manager').id])]})
+        budget.with_user(sale_mgr).action_send_to_review()
+        self.assertEqual(budget.state, 'revisado')
+        # La alta dirección aprueba: aquí el gate BLOQUEA sin excepción.
+        director = self.env['res.users'].create({
+            'name': 'Dirección 54', 'login': 'dir54',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_director').id])]})
+        with self.assertRaises(UserError):
+            budget.with_user(director).action_approve()
+        # Con contexto de excepción → aprueba y deja constancia.
+        msgs_before = len(budget.message_ids)
+        budget.with_user(director).with_context(
+            sgi_bypass_price_check=True).action_approve()
+        self.assertEqual(budget.state, 'aprobado')
+        self.assertTrue(len(budget.message_ids) > msgs_before,
+                        "El bypass deja constancia en el chatter.")
+
+    def test_04b_manager_approves_with_exception(self):
+        prod0 = self.env['product.product'].create(
+            {'name': 'Sin precio 54b', 'type': 'consu', 'uom_id': self.uom_m.id,
+             'list_price': 0.0})
+        client = self.env['res.partner'].create(
+            {'name': 'Cli sp b', 'is_company': True})
+        manager = self.env['res.users'].create({
+            'name': 'MAST 54', 'login': 'mast54',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_manager').id])]})
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': prod0.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'partner_id': client.id, 'qty_budget': 5.0})
+        budget.with_user(manager).action_send_to_review()
+        # El Jefe MAST/SGI (fallback de sistema) aprueba con excepción explícita.
+        budget.with_user(manager).with_context(
+            sgi_bypass_price_check=True).action_approve()
+        self.assertEqual(budget.state, 'aprobado')
+
+    def test_05_refresh_does_not_change_frozen_price(self):
+        client = self._client(self._pricelist(self.usd, 100.0))
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        line = self._line(budget, client)
+        self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
+        budget.state = 'aprobado'
+        # Cambia la lista y refresca: el precio congelado NO se toca (la referencia).
+        client.property_product_pricelist.item_ids.fixed_price = 200.0
+        self._invoice(client, 5.0, 130.0, self.usd)
+        budget.action_refresh_actuals()
+        self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2,
+                               msg="Precio de lista congelado en aprobado.")
+        # Pero el real y el gap sí se actualizan.
+        self.assertAlmostEqual(line.price_real_unit_currency, 130.0, places=2)
+
+    def test_06_coverage_report_and_deviation_count(self):
+        client = self._client(self._pricelist(self.usd, 100.0))
+        self._invoice(client, 5.0, 130.0, self.usd)  # +30% → grave
+        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        self._line(budget, client)
+        self.assertEqual(budget.price_deviation_count, 1)
+        act = budget.action_view_price_deviations()
+        self.assertEqual(act['res_model'], 'sgi.sales.budget.line')
+        cov = budget.action_price_coverage_report()
+        self.assertIn(('has_list_price', '=', False), cov['domain'])
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetLifecycle55(TransactionCase):
+    """Mini-fase 5.5 — alineación al P-A28 Rev.15: ciclos, roles e interconexión.
+    Presupuesto: borrador→revisado→aprobado (alta dirección). Pronóstico:
+    documento vivo borrador↔revisado (sin candado). Precarga combinada, MPS sin
+    doble conteo y revaluación de junio (Nota 1)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.Cron = cls.env['sgi.cron']
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income')], limit=1)
+        cls.product = cls.env['product.product'].create({
+            'name': 'Prod 55 P', 'default_code': 'P55', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 10.0})
+        cls.product_q = cls.env['product.product'].create({
+            'name': 'Prod 55 Q', 'default_code': 'Q55', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'list_price': 5.0})
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente 55', 'is_company': True})
+        cls.sale_mgr = cls.env['res.users'].create({
+            'name': 'Admin ventas 55', 'login': 'ventas55',
+            'group_ids': [(6, 0, [cls.env.ref('sales_team.group_sale_manager').id])]})
+        cls.director = cls.env['res.users'].create({
+            'name': 'Dirección 55', 'login': 'dir55',
+            'group_ids': [(6, 0, [cls.env.ref('quimibond_sgi.group_sgi_director').id])]})
+        cls.raso = cls.env['res.users'].create({
+            'name': 'Raso 55', 'login': 'raso55',
+            'group_ids': [(6, 0, [cls.env.ref('quimibond_sgi.group_sgi_user').id])]})
+
+    def _team(self, name):
+        return self.env['crm.team'].create({'name': name})
+
+    def _monday(self, ref):
+        from datetime import timedelta
+        return ref - timedelta(days=ref.weekday())
+
+    def _forecast(self, team, partner=None):
+        return self.Budget.create({
+            'year': 2040, 'team_id': team.id, 'kind': 'pronostico',
+            'partner_id': (partner or self.client).id})
+
+    def _invoice(self, team, partner, product, when, qty):
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': when, 'team_id': team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': product.id, 'quantity': qty,
+                'product_uom_id': self.uom_m.id, 'price_unit': 10.0,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    # (i) write en línea de un pronóstico revisado → vuelve a borrador y postea.
+    def test_01_forecast_line_write_reopens_and_posts(self):
+        team = self._team('L55 reopen')
+        fc = self._forecast(team)
+        monday = self._monday(date(2040, 6, 3))
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
+            'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        fc.with_user(self.sale_mgr).action_send_to_review()
+        self.assertEqual(fc.state, 'revisado')
+        before = len(fc.message_ids)
+        line.write({'qty_budget': 20.0})
+        self.assertEqual(fc.state, 'borrador', "Editar líneas reabre el pronóstico.")
+        self.assertTrue(len(fc.message_ids) > before)
+        self.assertTrue(any('requiere revisión' in (m.body or '')
+                            for m in fc.message_ids))
+
+    # (ii) el pronóstico no admite action_revise.
+    def test_02_forecast_has_no_revise(self):
+        team = self._team('L55 no revise')
+        fc = self._forecast(team)
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id,
+            'date': self._monday(date(2040, 6, 3)), 'uom_id': self.uom_m.id,
+            'qty_budget': 10.0})
+        with self.assertRaises(UserError):
+            fc.action_revise()
+
+    # (iii) presupuesto: requiere revisado antes de aprobado y grupo Dirección.
+    def test_03_budget_review_then_director_approves(self):
+        team = self._team('L55 flow')
+        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        # Desde borrador no se aprueba: falta el paso 'revisado'.
+        with self.assertRaises(UserError):
+            budget.with_user(self.director).action_approve()
+        budget.with_user(self.sale_mgr).action_send_to_review()
+        self.assertEqual(budget.state, 'revisado')
+        # El Admin de ventas revisa pero NO aprueba (es de la alta dirección).
+        with self.assertRaises(UserError):
+            budget.with_user(self.sale_mgr).action_approve()
+        with self.assertRaises(UserError):
+            budget.with_user(self.raso).action_approve()
+        budget.with_user(self.director).action_approve()
+        self.assertEqual(budget.state, 'aprobado')
+
+    # (iv) precarga combina pronóstico (semana→mes) + facturado real (12 m).
+    def test_04_preload_combines_forecast_and_real(self):
+        from datetime import timedelta
+        team = self._team('L55 preload')
+        fc = self._forecast(team)
+        # El real cae en el mes ACTUAL (dentro de los 12 meses); el pronóstico se
+        # coloca en el MISMO mes de 2040 para que ambos aporten a la misma celda.
+        today = fields.Date.context_today(self.env['sgi.cron'])
+        when = today.replace(day=15)
+        first = date(2040, when.month, 1)
+        first_monday = first + timedelta(days=(7 - first.weekday()) % 7)
+        # Pronóstico: 2 semanas × 15 m = 30 m para el producto P en ese mes.
+        for monday in (first_monday, first_monday + timedelta(days=7)):
+            self.Line.create({
+                'budget_id': fc.id, 'product_id': self.product.id,
+                'date': monday, 'uom_id': self.uom_m.id, 'qty_budget': 15.0})
+        fc.state = 'revisado'
+        self._invoice(team, self.client, self.product, when, 20.0)
+        self._invoice(team, self.client, self.product_q, when, 25.0)
+        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
+        budget.action_preload_from_orders()
+        month = when.month
+        line_p = budget.line_ids.filtered(lambda l: l.product_id == self.product)
+        line_q = budget.line_ids.filtered(lambda l: l.product_id == self.product_q)
+        self.assertEqual(len(line_p), 1)
+        self.assertEqual(line_p.date, date(2040, month, 1))
+        self.assertEqual(line_p.partner_id, self.client)
+        self.assertEqual(line_p.qty_budget, 30.0,
+                         "max(pronóstico 30, real 20) = 30.")
+        self.assertEqual(line_q.qty_budget, 25.0,
+                         "Sin pronóstico: manda el real 25.")
+
+    # (v) send_to_mps del presupuesto omite productos con pronóstico vigente.
+    def test_05_budget_mps_omits_forecast_covered(self):
+        team = self._team('L55 mps')
+        fc = self._forecast(team)
+        self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id,
+            'date': self._monday(date(2040, 6, 3)), 'uom_id': self.uom_m.id,
+            'qty_budget': 10.0})
+        fc.state = 'revisado'
+        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
+        for prod in (self.product, self.product_q):
+            self.Line.create({
+                'budget_id': budget.id, 'product_id': prod.id,
+                'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+                'qty_budget': 100.0})
+        covered = budget._sgi_forecast_covered_products()
+        self.assertIn(self.product.id, covered, "P lo cubre el pronóstico.")
+        self.assertNotIn(self.product_q.id, covered, "Q no.")
+        if 'mrp.production.schedule' not in self.env:
+            self.skipTest("mrp_mps no está instalado en esta BD.")
+        budget.state = 'aprobado'
+        before = len(budget.message_ids)
+        budget.action_send_to_mps()
+        self.assertTrue(len(budget.message_ids) > before)
+        bodies = " ".join(m.body or '' for m in budget.message_ids)
+        self.assertIn('omitidos 1', bodies)
+        self.assertIn('P55', bodies, "El producto omitido aparece en el resumen.")
+
+    # (vi) cron de junio crea la actividad de revaluación al Admin de ventas.
+    def test_06_june_revaluation_creates_activity(self):
+        team = self._team('L55 junio')
+        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': self.product.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        budget.state = 'aprobado'
+        self.Cron._sgi_sales_budget_revaluation(2040)
+        acts = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.sales.budget'),
+            ('res_id', '=', budget.id),
+            ('summary', '=', "Revaluar cantidades del S2 — P-A28 Nota 1")])
+        self.assertTrue(acts, "Debe agendar la revaluación del S2 (P-A28 Nota 1).")
+
+    # (vii) sin candado en pronóstico: editar qty no levanta el UserError del lock.
+    def test_07_forecast_no_lock_on_qty_edit(self):
+        team = self._team('L55 nolock')
+        fc = self._forecast(team)
+        line = self.Line.create({
+            'budget_id': fc.id, 'product_id': self.product.id,
+            'date': self._monday(date(2040, 6, 3)), 'uom_id': self.uom_m.id,
+            'qty_budget': 10.0})
+        fc.state = 'revisado'
+        # Un Admin de ventas (NO Jefe MAST) edita la cantidad: el candado le
+        # aplicaría si la línea estuviera bloqueada, pero el pronóstico es
+        # documento vivo → sin candado, no levanta UserError.
+        line.with_user(self.sale_mgr).write({'qty_budget': 50.0})
+        self.assertEqual(line.qty_budget, 50.0)
+        self.assertEqual(fc.state, 'borrador', "La edición reabrió el pronóstico.")
