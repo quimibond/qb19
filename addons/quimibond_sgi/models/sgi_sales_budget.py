@@ -291,6 +291,7 @@ class SgiSalesBudget(models.Model):
         sols = self.env['sale.order.line'].search([
             ('order_id.state', 'in', ('sale', 'done')),
             ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
         ])
         result = self.env['sale.order.line']
         for sol in sols:
@@ -320,6 +321,7 @@ class SgiSalesBudget(models.Model):
             ('move_type', 'in', ('out_invoice', 'out_refund')),
             ('state', '=', 'posted'),
             ('team_id', '=', self.team_id.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
             ('invoice_date', '>=', date(self.year, 1, 1)),
             ('invoice_date', '<=', date(self.year, 12, 31)),
         ])
@@ -373,6 +375,7 @@ class SgiSalesBudget(models.Model):
             ('move_type', 'in', _REAL_MOVE_TYPES),
             ('state', '=', 'posted'),
             ('team_id', '=', self.team_id.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
             ('invoice_date', '>=', date(self.year, 1, 1)),
             ('invoice_date', '<=', date(self.year, 12, 31)),
         ])
@@ -403,6 +406,7 @@ class SgiSalesBudget(models.Model):
             ('move_type', 'in', _REAL_MOVE_TYPES),
             ('state', '=', 'posted'),
             ('team_id', '=', False),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
             ('invoice_date', '>=', date(self.year, 1, 1)),
             ('invoice_date', '<=', date(self.year, 12, 31)),
         ])
@@ -463,8 +467,8 @@ class SgiSalesBudget(models.Model):
             },
         }
 
-    # --- Constraint: un solo no-obsoleto por año+equipo(+cliente)+kind --------
-    @api.constrains('year', 'team_id', 'state', 'kind', 'partner_id')
+    # --- Constraint: un solo no-obsoleto por año+equipo(+cliente)+kind+compañía -
+    @api.constrains('year', 'team_id', 'state', 'kind', 'partner_id', 'company_id')
     def _check_unique_active(self):
         for budget in self:
             if budget.state == 'obsoleto':
@@ -475,6 +479,7 @@ class SgiSalesBudget(models.Model):
                 ('team_id', '=', budget.team_id.id),
                 ('kind', '=', budget.kind),
                 ('partner_id', '=', budget.partner_id.id),
+                ('company_id', '=', budget.company_id.id),  # por compañía del grupo
                 ('state', '!=', 'obsoleto'),
             ], limit=1)
             if dup:
@@ -841,8 +846,13 @@ class SgiSalesBudget(models.Model):
             ('order_id.state', 'in', ('sale', 'done')),
             ('order_id.date_order', '>=', date_from),
             ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
         ]).mapped('product_id')
-        return products.sorted(lambda p: p.default_code or p.name or '')
+        # sudo puntual: un producto de otra compañía (mal configurado) pudo colarse
+        # en pedidos de esta compañía; leer default_code/name para ordenar reventaría
+        # el prefetch multicompañía (AccessError). Solo se leen etiquetas, no datos
+        # sensibles.
+        return products.sudo().sorted(lambda p: p.default_code or p.name or '')
 
     def _sgi_historical_pairs(self):
         """[(cliente comercial, producto)] FACTURADOS por el equipo en los últimos
@@ -854,12 +864,15 @@ class SgiSalesBudget(models.Model):
             ('parent_state', '=', 'posted'),
             ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
             ('move_id.team_id', '=', self.team_id.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
             ('move_id.invoice_date', '>=', date_from),
             ('product_id', '!=', False),
         ])
         pairs = {(aml.move_id.commercial_partner_id, aml.product_id) for aml in amls}
+        # sudo al ordenar: un producto de otra compañía en facturas de esta compañía
+        # reventaría el prefetch (AccessError); solo se leen etiquetas para ordenar.
         return sorted(pairs, key=lambda cp: (
-            cp[0].name or '', cp[1].default_code or cp[1].name or ''))
+            cp[0].name or '', cp[1].sudo().default_code or cp[1].sudo().name or ''))
 
     def action_download_template(self):
         """Genera con openpyxl el Excel VACÍO con las FILAS ya puestas (productos
@@ -877,6 +890,7 @@ class SgiSalesBudget(models.Model):
             ws.append(['PRODUCTO', 'CODIGO CLIENTE', 'SEMANA']
                       + list(range(1, 53)))
             for product in self._sgi_historical_products():
+                product = product.sudo()  # prefetch multicompañía: solo etiqueta
                 ws.append([product.default_code or product.name, '', ''] + [''] * 52)
         else:
             ws.title = (self.team_id.name or 'Presupuesto')[:31]
@@ -887,6 +901,7 @@ class SgiSalesBudget(models.Model):
                        "a la vez."])
             ws.append(['PRODUCTO', 'CLIENTE', 'UNIDAD'] + months)
             for partner, product in self._sgi_historical_pairs():
+                product = product.sudo()  # prefetch multicompañía: uom/código
                 ws.append([product.default_code or product.name, partner.name,
                            product.uom_id.name] + [''] * 12)
             # Bloque de filas libres para clientes/productos nuevos (producto vacío
@@ -940,6 +955,7 @@ class SgiSalesBudget(models.Model):
         sols = self.env['sale.order.line'].search([
             ('order_id.state', 'in', ('sale', 'done')),
             ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
         ])
         for sol in sols:
             monday = Line._sgi_effective_monday(sol.order_id)
@@ -947,10 +963,13 @@ class SgiSalesBudget(models.Model):
                 continue
             product = sol.product_id
             qty = sol.product_uom_qty
-            if sol.product_uom_id and product.uom_id and \
-                    sol.product_uom_id._has_common_reference(product.uom_id):
+            # sudo puntual: product de otra compañía en pedidos de esta compañía
+            # (mal configurado) reventaría el prefetch al leer uom_id (AccessError).
+            product_uom = product.sudo().uom_id
+            if sol.product_uom_id and product_uom and \
+                    sol.product_uom_id._has_common_reference(product_uom):
                 qty = sol.product_uom_id._compute_quantity(
-                    qty, product.uom_id, round=False)
+                    qty, product_uom, round=False)
             result[(product, monday)] += qty
         return result
 
@@ -982,8 +1001,8 @@ class SgiSalesBudget(models.Model):
                 continue
             Line.create({
                 'budget_id': self.id, 'product_id': product.id, 'date': monday,
-                'uom_id': product.uom_id.id, 'partner_id': self.partner_id.id,
-                'qty_budget': qty,
+                'uom_id': product.sudo().uom_id.id,  # prefetch multicompañía
+                'partner_id': self.partner_id.id, 'qty_budget': qty,
             })
             created += 1
         self.message_post(
@@ -1001,8 +1020,12 @@ class SgiSalesBudget(models.Model):
         from dateutil.relativedelta import relativedelta as _rd
 
         def _to_sale_uom(product, uom, qty):
-            if uom and product.uom_id and uom._has_common_reference(product.uom_id):
-                return uom._compute_quantity(qty, product.uom_id, round=False)
+            # sudo puntual: el producto puede venir de facturas y ser de otra
+            # compañía (mal configurado); leer uom_id sin sudo reventaría el
+            # prefetch multicompañía (AccessError). Solo se lee la unidad.
+            sale_uom = product.sudo().uom_id
+            if uom and sale_uom and uom._has_common_reference(sale_uom):
+                return uom._compute_quantity(qty, sale_uom, round=False)
             return qty
 
         forecast_qty = defaultdict(float)
@@ -1023,6 +1046,7 @@ class SgiSalesBudget(models.Model):
             ('parent_state', '=', 'posted'),
             ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
             ('move_id.team_id', '=', self.team_id.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
             ('move_id.invoice_date', '>=', date_from),
             ('product_id', '!=', False),
         ])
@@ -1054,7 +1078,7 @@ class SgiSalesBudget(models.Model):
         # Producto ya presente como GLOBAL (sin cliente): no se puede mezclar con
         # líneas por cliente (constraint anti-doble-conteo) → se omite.
         global_products = {l.product_id.id for l in self.line_ids if not l.partner_id}
-        created = skipped_scheme = 0
+        created = skipped_scheme = skipped_company = 0
         for (product, partner, month), qty in sorted(
                 self._preload_budget_proposals().items(),
                 key=lambda kv: (kv[0][0].id, (kv[0][1].id if kv[0][1] else 0), kv[0][2])):
@@ -1062,13 +1086,19 @@ class SgiSalesBudget(models.Model):
             partner_id = partner.id if partner else False
             if (product.id, partner_id, when) in existing:
                 continue
+            # Producto de OTRA compañía facturado en esta (mal configurado): no se
+            # presupuesta (crear la línea reventaría al leer su producto foráneo).
+            prod_company = product.sudo().company_id
+            if prod_company and prod_company.id != self.company_id.id:
+                skipped_company += 1
+                continue
             if product.id in global_products:
                 skipped_scheme += 1
                 continue
             Line.create({
                 'budget_id': self.id, 'product_id': product.id, 'date': when,
-                'uom_id': product.uom_id.id, 'partner_id': partner_id,
-                'qty_budget': qty,
+                'uom_id': product.sudo().uom_id.id,  # prefetch multicompañía
+                'partner_id': partner_id, 'qty_budget': qty,
             })
             existing.add((product.id, partner_id, when))
             created += 1
@@ -1078,6 +1108,9 @@ class SgiSalesBudget(models.Model):
         if skipped_scheme:
             note += (" %d omitida(s): el producto ya está capturado como global "
                      "(no se mezcla con líneas por cliente)." % skipped_scheme)
+        if skipped_company:
+            note += (" %d omitida(s): producto de otra compañía facturado en "
+                     "esta (mal configurado)." % skipped_company)
         self.message_post(body=note)
         return True
 
@@ -1659,9 +1692,11 @@ class SgiSalesBudgetLine(models.Model):
             # La cobertura solo aplica al pronóstico; el presupuesto queda neutral.
             line.coverage_pct = 0.0
             line.coverage_state = 'fuera_horizonte'
+            # Agrupa por (equipo, compañía): un mismo equipo puede existir en
+            # varias compañías del grupo; el real solo mide la compañía del ppto.
             if line.team_id and line.product_id and line.date:
-                by_team[line.team_id.id] |= line
-        for team_id, lines in by_team.items():
+                by_team[(line.team_id.id, line.company_id.id)] |= line
+        for (team_id, company_id), lines in by_team.items():
             products = lines.mapped('product_id')
             dates = lines.mapped('date')
             start = min(dates).replace(day=1)
@@ -1671,6 +1706,7 @@ class SgiSalesBudgetLine(models.Model):
                 ('parent_state', '=', 'posted'),
                 ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
                 ('move_id.team_id', '=', team_id),
+                ('company_id', '=', company_id),  # solo la compañía del ppto
                 ('product_id', 'in', products.ids),
                 ('move_id.invoice_date', '>=', start),
                 ('move_id.invoice_date', '<', end_next),
@@ -1779,6 +1815,7 @@ class SgiSalesBudgetLine(models.Model):
             ('order_id.state', 'in', ('sale', 'done')),
             ('product_id', '=', self.product_id.id),
             ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
         ])
         return sols.filtered(
             lambda s: self._sgi_effective_monday(s.order_id) == self.date)
@@ -1806,13 +1843,15 @@ class SgiSalesBudgetLine(models.Model):
             line.coverage_pct = 0.0
             line.coverage_state = 'fuera_horizonte'
             if line.partner_id and line.product_id and line.date:
-                by_partner[line.partner_id.commercial_partner_id.id] |= line
-        for partner_id, lines in by_partner.items():
+                by_partner[(line.partner_id.commercial_partner_id.id,
+                            line.company_id.id)] |= line
+        for (partner_id, company_id), lines in by_partner.items():
             products = lines.mapped('product_id')
             sols = SOL.search([
                 ('order_id.state', 'in', ('sale', 'done')),
                 ('product_id', 'in', products.ids),
                 ('order_id.partner_id.commercial_partner_id', '=', partner_id),
+                ('company_id', '=', company_id),  # solo la compañía del ppto
             ])
             bucket = defaultdict(lambda: self.env['sale.order.line'])
             for sol in sols:
@@ -1890,6 +1929,7 @@ class SgiSalesBudgetLine(models.Model):
         existing = SO.search([
             ('state', '=', 'draft'), ('origin', '=', origin),
             ('partner_id', '=', partner.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
             ('order_line.product_id', '=', self.product_id.id),
         ]).filtered(
             lambda o: o.commitment_date and o.commitment_date.date() == self.date)
@@ -1898,6 +1938,7 @@ class SgiSalesBudgetLine(models.Model):
             'origin': origin,
             'commitment_date': datetime.combine(self.date, _time()),
             'team_id': self.team_id.id,
+            'company_id': self.company_id.id,
             'order_line': [(0, 0, {
                 'product_id': self.product_id.id,
                 'product_uom_qty': shortfall,
@@ -1921,6 +1962,7 @@ class SgiSalesBudgetLine(models.Model):
             ('move_type', 'in', _REAL_MOVE_TYPES),
             ('state', '=', 'posted'),
             ('team_id', '=', self.team_id.id),
+            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
             ('invoice_line_ids.product_id', '=', self.product_id.id),
             ('invoice_date', '>=', first), ('invoice_date', '<', nxt),
         ]
@@ -1943,8 +1985,8 @@ class SgiSalesBudgetLine(models.Model):
             line.qty_ordered = 0.0
             line.amount_ordered = 0.0
             if line.team_id and line.product_id and line.date:
-                by_team[line.team_id.id] |= line
-        for team_id, lines in by_team.items():
+                by_team[(line.team_id.id, line.company_id.id)] |= line
+        for (team_id, company_id), lines in by_team.items():
             products = lines.mapped('product_id')
             dates = lines.mapped('date')
             start = min(dates).replace(day=1)
@@ -1952,6 +1994,7 @@ class SgiSalesBudgetLine(models.Model):
             sols = SOL.search([
                 ('order_id.state', 'in', ('sale', 'done')),
                 ('order_id.team_id', '=', team_id),
+                ('company_id', '=', company_id),  # solo la compañía del ppto
                 ('product_id', 'in', products.ids),
                 ('order_id.date_order', '>=', start),
                 ('order_id.date_order', '<', end_next),
