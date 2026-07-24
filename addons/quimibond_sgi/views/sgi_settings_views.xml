@@ -39,6 +39,14 @@
                                  help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
                             <field name="sgi_budget_planning_rate"/>
                         </setting>
+                        <setting string="Lista de precios presupuestal"
+                                 help="Lista con que se valúan las líneas del presupuesto SIN cliente (global). Sin configurar, quedan sin precio (nunca una lista arbitraria).">
+                            <field name="sgi_budget_pricelist_id"/>
+                        </setting>
+                        <setting string="Precio de lista mínimo plausible"
+                                 help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla.">
+                            <field name="sgi_price_min_plausible"/>
+                        </setting>
                         <setting string="Tolerancia de desviación de precio (%)"
                                  help="Control de precios: gap facturado vs lista dentro de este % = OK; entre este y el grave = leve.">
                             <field name="sgi_price_gap_tolerance_pct"/>
