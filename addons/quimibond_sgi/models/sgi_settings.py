@@ -135,6 +135,18 @@ class ResConfigSettings(models.TransientModel):
         help="P-A28 4.3.6.1: si un presupuesto aprobado va por debajo de este % de "
              "cumplimiento, se pide justificación (banner rojo y actividad al Admin "
              "de ventas). No bloquea nada.")
+    sgi_price_min_plausible = fields.Float(
+        string="Precio de lista mínimo plausible (moneda compañía)",
+        config_parameter='quimibond_sgi.price_min_plausible',
+        help="Un precio de lista resuelto por debajo de este umbral se toma como "
+             "placebo (placeholder $1) y la línea queda 'sin precio de lista', "
+             "aunque haya una regla. Cierra el hoyo de los precios placeholder.")
+    sgi_budget_pricelist_id = fields.Many2one(
+        'product.pricelist', string="Lista de precios presupuestal",
+        help="Lista con que se valúan las líneas del presupuesto SIN cliente "
+             "(global). Sin configurar, esas líneas quedan sin precio (NUNCA se "
+             "toma una lista arbitraria: eso valuaba el global con la tarifa de un "
+             "cliente).")
 
     @api.model
     def get_values(self):
@@ -153,6 +165,10 @@ class ResConfigSettings(models.TransientModel):
         res['sgi_energy_partner_id'] = (
             energy_id if energy_id and self.env['res.partner'].browse(energy_id).exists()
             else False)
+        pl_id = int(Param.get_param('quimibond_sgi.budget_pricelist_id', '0') or 0)
+        res['sgi_budget_pricelist_id'] = (
+            pl_id if pl_id and self.env['product.pricelist'].browse(pl_id).exists()
+            else False)
         return res
 
     def set_values(self):
@@ -166,3 +182,5 @@ class ResConfigSettings(models.TransientModel):
                         self.sgi_purchase_approval_category_id.id or 0)
         Param.set_param('quimibond_sgi.energy_partner_id',
                         self.sgi_energy_partner_id.id or 0)
+        Param.set_param('quimibond_sgi.budget_pricelist_id',
+                        self.sgi_budget_pricelist_id.id or 0)

@@ -313,6 +313,9 @@
                             string="Comparación" icon="fa-bar-chart"/>
                     <button name="action_open_analysis" type="object"
                             string="Análisis" icon="fa-table"/>
+                    <button name="action_reconcile_invoiced" type="object"
+                            string="Conciliar facturado" icon="fa-balance-scale"
+                            invisible="kind != 'presupuesto'"/>
                     <button name="action_open_cumulative" type="object"
                             string="Curva (Dirección)" icon="fa-line-chart"/>
                     <button name="action_print_budget" type="object"
