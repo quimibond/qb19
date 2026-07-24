@@ -2325,3 +2325,107 @@ class TestSalesBudgetReconcile(TransactionCase):
             'partner_id': self.cli_a.id})
         with self.assertRaises(UserError):
             fc.action_reconcile_invoiced()
+
+
+@tagged('post_install', '-at_install')
+class TestSalesBudgetMultiCompany(TransactionCase):
+    """Hotfix 13.11: el presupuesto solo mide la facturación/pedidos de SU
+    compañía, y no truena con productos mal configurados de otra compañía."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Budget = cls.env['sgi.sales.budget']
+        cls.Line = cls.env['sgi.sales.budget.line']
+        cls.company_a = cls.env.company
+        cls.company_b = cls.env['res.company'].create({'name': 'Compañía B SGI'})
+        cls.team = cls.env['crm.team'].create({'name': 'Mercado multi'})
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.income = cls.env['account.account'].search(
+            [('account_type', '=', 'income'),
+             ('company_ids', 'in', cls.company_a.id)], limit=1)
+        cls.product = cls.env['product.product'].create({
+            'name': 'Tela multi', 'default_code': 'MULTI', 'type': 'consu',
+            'uom_id': cls.uom_m.id})
+        cls.client = cls.env['res.partner'].create(
+            {'name': 'Cliente multi', 'is_company': True})
+
+    def _invoice_a(self, product=None):
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id,
+            'invoice_date': date(2048, 6, 10), 'team_id': self.team.id,
+            'company_id': self.company_a.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': (product or self.product).id, 'quantity': 10.0,
+                'product_uom_id': self.uom_m.id, 'price_unit': 100.0,
+                'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def test_01_cross_company_invoice_does_not_leak(self):
+        # Factura de la compañía A (10 × 100 = 1000). Un presupuesto de la
+        # compañía B, mismo equipo/producto/cliente, NO la ve: el real filtra por
+        # compañía (equivale a "la factura de B no entra al presupuesto de A").
+        self._invoice_a()
+        budget_a = self.Budget.create({
+            'year': 2048, 'team_id': self.team.id, 'company_id': self.company_a.id})
+        self.Line.create({
+            'budget_id': budget_a.id, 'product_id': self.product.id,
+            'date': date(2048, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        budget_a.action_refresh_actuals()
+        self.assertAlmostEqual(budget_a.line_ids.qty_real, 10.0, places=2)
+        self.assertAlmostEqual(budget_a.line_ids.amount_real, 1000.0, places=2)
+
+        budget_b = self.Budget.create({
+            'year': 2048, 'team_id': self.team.id, 'company_id': self.company_b.id})
+        self.Line.create({
+            'budget_id': budget_b.id, 'product_id': self.product.id,
+            'date': date(2048, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
+        budget_b.action_refresh_actuals()
+        self.assertAlmostEqual(
+            budget_b.line_ids.qty_real, 0.0, places=2,
+            msg="La facturación de otra compañía no entra al presupuesto.")
+        self.assertAlmostEqual(budget_b.line_ids.amount_real, 0.0, places=2)
+
+    def test_02_foreign_product_does_not_break_company_a_user(self):
+        # Producto de la compañía B facturado en A (mal configurado): un usuario
+        # solo con A refresca/precarga/concilia sin AccessError, y la conciliación
+        # lo cuenta como NO presupuestado.
+        self._invoice_a()  # producto aún compartido al timbrar
+        # El producto pasa a ser de la compañía B tras timbrarse en A.
+        self.env.cr.execute(
+            "UPDATE product_template SET company_id=%s WHERE id=%s",
+            (self.company_b.id, self.product.product_tmpl_id.id))
+        self.env.invalidate_all()
+        # Presupuesto de A con OTRO producto (propio); el foráneo entra solo por la
+        # agregación del equipo, nunca como línea propia.
+        prod_a = self.env['product.product'].create({
+            'name': 'Prod A multi', 'default_code': 'PA-MULTI', 'type': 'consu',
+            'uom_id': self.uom_m.id})
+        budget = self.Budget.create({
+            'year': 2048, 'team_id': self.team.id, 'company_id': self.company_a.id})
+        self.Line.create({
+            'budget_id': budget.id, 'product_id': prod_a.id,
+            'date': date(2048, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 5.0,
+            'partner_id': self.client.id})
+        user_a = self.env['res.users'].create({
+            'name': 'Solo A', 'login': 'soloa_multi',
+            'company_id': self.company_a.id,
+            'company_ids': [(6, 0, [self.company_a.id])],
+            'group_ids': [(6, 0, [
+                self.env.ref('sales_team.group_sale_manager').id,
+                self.env.ref('quimibond_sgi.group_sgi_manager').id,
+                self.env.ref('account.group_account_invoice').id])]})
+        budget_u = budget.with_user(user_a)
+        # (a) refresco no truena con el producto foráneo en la agregación del equipo.
+        budget_u.action_refresh_actuals()
+        # (b) conciliación: no truena y el foráneo cae como NO presupuestado.
+        d = budget_u._sgi_reconcile_data()
+        self.assertAlmostEqual(d['unbudgeted'], 1000.0, places=2,
+                               msg="El producto foráneo facturado cae como no "
+                                   "presupuestado, sin reventar por multicompañía.")
+        # (c) precarga: no truena y OMITE el producto foráneo (no lo presupuesta).
+        budget_u.action_preload_from_orders()
+        self.assertFalse(
+            budget.line_ids.filtered(lambda l: l.product_id == self.product),
+            "La precarga omite el producto de otra compañía (mal configurado).")
