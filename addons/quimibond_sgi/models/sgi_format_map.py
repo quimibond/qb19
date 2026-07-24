@@ -113,6 +113,12 @@ class SgiConfig(models.AbstractModel):
         # 'excedido', y horizonte de captura en semanas (semana actual + N-1).
         'quimibond_sgi.forecast_over_tolerance_pct': '10.0',
         'quimibond_sgi.forecast_capture_horizon_weeks': '3',
+        # Precio de lista mínimo plausible (moneda compañía): por debajo se toma
+        # como placebo (placeholder $1) y la línea queda sin precio de lista.
+        'quimibond_sgi.price_min_plausible': '5.0',
+        # Lista de precios PRESUPUESTAL para líneas sin cliente (id). 0 = sin
+        # configurar: esas líneas quedan sin precio (nunca una lista arbitraria).
+        'quimibond_sgi.budget_pricelist_id': '0',
     }
 
     @api.model

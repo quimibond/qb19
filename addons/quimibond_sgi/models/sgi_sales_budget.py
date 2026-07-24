@@ -331,6 +331,138 @@ class SgiSalesBudget(models.Model):
             captured = sum(budget.line_ids.mapped('amount_real'))
             budget.amount_real_unbudgeted = budget._sgi_team_year_real() - captured
 
+    # --- Conciliación facturado vs contabilidad (cuadre del presupuesto) ------
+    def _sgi_reconcile_data(self):
+        """Descompone el facturado contable del equipo en el año contra lo que
+        capturaron las líneas del presupuesto, para explicar la brecha:
+
+          A  = facturado contable del equipo (out_invoice/out_refund posted del
+               año, amount_untaxed_signed);
+          B  = suma de amount_real de las líneas del presupuesto (lo capturado);
+          partidas que explican A − B (cada una con monto):
+            · unbudgeted        productos facturados del equipo NO presupuestados;
+            · no_product        líneas de factura sin producto (fletes/servicios);
+            · by_client_others  facturado de productos presupuestados POR CLIENTE a
+                                OTROS clientes distintos del presupuestado;
+          residual = A − (B + partidas) → 0 si la foto real está fresca y cuadra;
+          no_team  = informativo (FUERA de A): facturas del año SIN equipo de
+                     ventas (la fuga principal del cuadre).
+
+        Objetivo verificable: A = B + unbudgeted + no_product + by_client_others +
+        residual. Trabaja sobre la foto real vigente (amount_real); refresca antes
+        (action_refresh_actuals) para que el residuo sea solo redondeo."""
+        self.ensure_one()
+        result = {
+            'A': 0.0, 'B': 0.0, 'unbudgeted': 0.0, 'no_product': 0.0,
+            'by_client_others': 0.0, 'residual': 0.0, 'captured_aml': 0.0,
+            'no_team': 0.0, 'currency': self.currency_id,
+        }
+        if self.kind != 'presupuesto':
+            return result
+        result['B'] = sum(self.line_ids.mapped('amount_real'))
+        # Esquema presupuestado por producto (global vs por cliente).
+        global_products = set()
+        by_client = defaultdict(set)
+        for line in self.line_ids:
+            if line.partner_id:
+                by_client[line.product_id.id].add(
+                    line.partner_id.commercial_partner_id.id)
+            else:
+                global_products.add(line.product_id.id)
+        moves = self.env['account.move'].sudo().search([
+            ('move_type', 'in', _REAL_MOVE_TYPES),
+            ('state', '=', 'posted'),
+            ('team_id', '=', self.team_id.id),
+            ('invoice_date', '>=', date(self.year, 1, 1)),
+            ('invoice_date', '<=', date(self.year, 12, 31)),
+        ])
+        captured = 0.0
+        for move in moves:
+            result['A'] += move.amount_untaxed_signed
+            cp = move.commercial_partner_id
+            for aml in move.invoice_line_ids.filtered(
+                    lambda l: l.display_type == 'product'):
+                contrib = -aml.balance  # base sin impuestos, moneda compañía, signada
+                product = aml.product_id
+                if not product:
+                    result['no_product'] += contrib
+                elif product.id in global_products:
+                    captured += contrib
+                elif product.id in by_client:
+                    if cp.id in by_client[product.id]:
+                        captured += contrib
+                    else:
+                        result['by_client_others'] += contrib
+                else:
+                    result['unbudgeted'] += contrib
+        result['captured_aml'] = captured
+        result['residual'] = (
+            result['A'] - result['B'] - result['unbudgeted']
+            - result['no_product'] - result['by_client_others'])
+        no_team_moves = self.env['account.move'].sudo().search([
+            ('move_type', 'in', _REAL_MOVE_TYPES),
+            ('state', '=', 'posted'),
+            ('team_id', '=', False),
+            ('invoice_date', '>=', date(self.year, 1, 1)),
+            ('invoice_date', '<=', date(self.year, 12, 31)),
+        ])
+        result['no_team'] = sum(no_team_moves.mapped('amount_untaxed_signed'))
+        return result
+
+    def action_reconcile_invoiced(self):
+        """Refresca la foto y publica en el chatter la tabla de conciliación del
+        facturado contable vs el presupuesto (solo presupuesto)."""
+        self.ensure_one()
+        if self.kind != 'presupuesto':
+            raise UserError(
+                "La conciliación de facturado aplica al presupuesto (el pronóstico "
+                "mide compromiso, no facturación).")
+        self.action_refresh_actuals()
+        d = self._sgi_reconcile_data()
+        ccy = (d['currency'].name or '') + ' '
+
+        def _m(v):
+            return "%s%s" % (ccy, '{:,.2f}'.format(v))
+        cuadra = abs(d['residual']) < 0.01
+        body = (
+            "<b>Conciliación facturado vs presupuesto — %s</b>"
+            "<table class='table table-sm'>"
+            "<tr><td><b>A. Facturado contable del equipo</b></td>"
+            "<td style='text-align:right'>%s</td></tr>"
+            "<tr><td>B. Capturado por el presupuesto (facturado de las líneas)</td>"
+            "<td style='text-align:right'>%s</td></tr>"
+            "<tr><td>+ Productos facturados NO presupuestados</td>"
+            "<td style='text-align:right'>%s</td></tr>"
+            "<tr><td>+ Líneas de factura sin producto (fletes/servicios)</td>"
+            "<td style='text-align:right'>%s</td></tr>"
+            "<tr><td>+ Presupuestado por cliente, facturado a OTROS clientes</td>"
+            "<td style='text-align:right'>%s</td></tr>"
+            "<tr><td><b>= Residuo (A − B − partidas)</b></td>"
+            "<td style='text-align:right'><b>%s</b></td></tr>"
+            "</table>"
+            "%s"
+            "<i>Informativo (fuera de A): facturas del año SIN equipo de ventas: "
+            "%s.</i>" % (
+                self.year, _m(d['A']), _m(d['B']), _m(d['unbudgeted']),
+                _m(d['no_product']), _m(d['by_client_others']), _m(d['residual']),
+                ("<span class='text-success'>Cuadra exacto (residuo 0).</span><br/>"
+                 if cuadra else
+                 "<span class='text-danger'>No cuadra: revisa el residuo "
+                 "(foto real desactualizada o redondeos).</span><br/>"),
+                _m(d['no_team'])))
+        self.message_post(body=body)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': "Conciliación de facturado",
+                'message': "A=%s · B=%s · residuo=%s. Detalle en el chatter." % (
+                    _m(d['A']), _m(d['B']), _m(d['residual'])),
+                'type': 'success' if cuadra else 'warning',
+                'sticky': False,
+            },
+        }
+
     # --- Constraint: un solo no-obsoleto por año+equipo(+cliente)+kind --------
     @api.constrains('year', 'team_id', 'state', 'kind', 'partner_id')
     def _check_unique_active(self):
@@ -950,14 +1082,16 @@ class SgiSalesBudget(models.Model):
         return True
 
     def _sgi_forecast_covered_products(self):
-        """IDs de productos cubiertos por un pronóstico VIGENTE (no obsoleto) del
-        mismo año y compañía. Esos productos los manda el pronóstico al MPS con su
-        demanda neta; el presupuesto NO debe volverlos a enviar (anti-doble conteo,
-        P-A28 4.2.1 + 4.2.2.5)."""
+        """IDs de productos cubiertos por un pronóstico REVISADO del mismo año y
+        compañía. Esos productos los manda el pronóstico al MPS con su demanda neta;
+        el presupuesto NO debe volverlos a enviar (anti-doble conteo, P-A28 4.2.1 +
+        4.2.2.5). Solo cuenta el pronóstico 'revisado': un borrador NO puede enviar
+        demanda (action_send_to_mps exige 'revisado'), así que omitir sus productos
+        del presupuesto los dejaría SIN demanda en el MPS."""
         self.ensure_one()
         forecasts = self.env['sgi.sales.budget'].search([
             ('kind', '=', 'pronostico'), ('year', '=', self.year),
-            ('state', '!=', 'obsoleto'), ('company_id', '=', self.company_id.id)])
+            ('state', '=', 'revisado'), ('company_id', '=', self.company_id.id)])
         return set(forecasts.mapped('line_ids.product_id').ids)
 
     def _sgi_mps_warehouse(self):
@@ -1280,16 +1414,43 @@ class SgiSalesBudgetLine(models.Model):
             line.has_list_price = has_price
 
     def _sgi_default_pricelist(self):
-        """Lista de precios default de la compañía (cuando la línea no tiene
-        cliente): la primera de la compañía / global."""
+        """Lista de precios PRESUPUESTAL para líneas SIN cliente (Ajustes SGI →
+        'Lista de precios presupuestal'). NUNCA una lista arbitraria: si el
+        parámetro no está configurado (o apunta a una lista de otra compañía),
+        devuelve el recordset vacío y la línea queda has_list_price=False con un
+        price_source claro. Antes se tomaba 'la primera lista por id', que en
+        producción eligió la tarifa de un cliente (LEAR) para todo el global."""
         company = self.company_id or self.env.company
-        return self.env['product.pricelist'].sudo().search(
-            [('company_id', 'in', (False, company.id))],
-            order='company_id, id', limit=1)
+        pid = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.budget_pricelist_id', 0) or 0)
+        if not pid:
+            return self.env['product.pricelist']
+        pricelist = self.env['product.pricelist'].sudo().browse(pid).exists()
+        if pricelist and (not pricelist.company_id
+                          or pricelist.company_id.id == company.id):
+            return pricelist
+        return self.env['product.pricelist']
+
+    def _sgi_min_plausible(self):
+        """Umbral (moneda compañía) por debajo del cual un precio resuelto se toma
+        como placebo (placeholder $1) aunque venga de una regla."""
+        return float(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.price_min_plausible', 5.0) or 0)
 
     def _sgi_pricelist_price(self):
         """(precio_compañía, texto_origen, moneda_lista, precio_en_lista, hay_precio)
-        de la lista aplicable a la línea. La lista es la única fuente de precios."""
+        de la lista aplicable a la línea. La lista es la única fuente de precios.
+
+        has_list_price es True SOLO si el motor matcheó una REGLA real del producto
+        (rule_id) cuyo precio no sea placebo. El engine de Odoo, cuando la lista no
+        tiene regla para el producto, cae al precio de venta (list_price) convertido
+        a la moneda de la lista — con catálogos llenos de placeholders ($1) ese
+        placebo se disfraza de precio válido. Detectamos el hoyo con tres filtros:
+          · sin regla (rule_id falsy) → cayó al precio de venta: NO usar;
+          · regla global 'fórmula sobre precio de venta' (applied_on '3_global' con
+            base 'list_price') → es el mismo precio de venta con disfraz de regla;
+          · precio resuelto (moneda compañía) por debajo de price_min_plausible →
+            placebo dentro de la regla misma."""
         self.ensure_one()
         product = self.product_id
         company_currency = self.currency_id or self.env.company.currency_id
@@ -1298,24 +1459,55 @@ class SgiSalesBudgetLine(models.Model):
         qty = self.qty_budget or 1.0
         uom = self.uom_id or product.uom_id
         day = fields.Date.context_today(self)
-        pricelist = (self.partner_id.property_product_pricelist
-                     if self.partner_id else self._sgi_default_pricelist())
-        if pricelist:
-            raw = pricelist._get_product_price(product, qty, uom=uom)
-            list_currency = pricelist.currency_id or company_currency
-            price, rate = self._sgi_to_company_price(raw, list_currency, day)
-            if list_currency and list_currency != company_currency:
-                source = "Lista '%s': %.4g %s × %.4g = %s %s" % (
-                    pricelist.name, raw, list_currency.name, rate,
-                    '{:,.2f}'.format(price), company_currency.name)
-            else:
-                source = "Lista '%s': %s %s" % (
-                    pricelist.name, '{:,.2f}'.format(price), company_currency.name)
-            return price, source, list_currency, raw, raw > 0
-        price = product.list_price
-        return (price, "Precio de venta del producto: %s %s" % (
-            '{:,.2f}'.format(price), company_currency.name),
-            company_currency, price, price > 0)
+        if self.partner_id:
+            pricelist = self.partner_id.property_product_pricelist
+            if not pricelist:
+                price = product.list_price
+                return (price, "SIN LISTA del cliente '%s'; precio de venta del "
+                        "producto: %s %s (NO usar)" % (
+                            self.partner_id.name or '',
+                            '{:,.2f}'.format(price), company_currency.name),
+                        company_currency, price, False)
+        else:
+            pricelist = self._sgi_default_pricelist()
+            if not pricelist:
+                return (0.0, "SIN LISTA PRESUPUESTAL CONFIGURADA (Ajustes SGI → "
+                        "'Lista de precios presupuestal'): configúrala para valuar "
+                        "las líneas sin cliente.", company_currency, 0.0, False)
+        raw, rule_id = pricelist._get_product_price_rule(
+            product, qty, uom=uom, date=day)
+        rule = self.env['product.pricelist.item'].browse(rule_id) if rule_id else None
+        list_currency = pricelist.currency_id or company_currency
+        price, rate = self._sgi_to_company_price(raw, list_currency, day)
+        # ¿Regla genuina, o el engine cayó al precio de venta? Sin regla → cayó al
+        # list_price. Regla global de FÓRMULA/PORCENTAJE sobre el precio de venta
+        # (applied_on '3_global', base 'list_price', no fija) = el mismo precio de
+        # venta con disfraz de regla. Una regla global de precio FIJO sí es real.
+        fell_to_sale = (not rule_id) or (
+            rule.applied_on == '3_global' and rule.base == 'list_price'
+            and rule.compute_price != 'fixed')
+        min_plausible = self._sgi_min_plausible()
+        implausible = (not fell_to_sale) and price < min_plausible
+        has_price = (not fell_to_sale) and (not implausible)
+        if fell_to_sale:
+            source = ("SIN REGLA en lista '%s'; precio de venta del producto: "
+                      "%s %s (NO usar)" % (
+                          pricelist.name, '{:,.2f}'.format(price),
+                          company_currency.name))
+        elif implausible:
+            source = ("Lista '%s': regla implausible < %s %s (%s %s — placeholder, "
+                      "NO usar)" % (
+                          pricelist.name, '{:,.2f}'.format(min_plausible),
+                          company_currency.name, '{:,.2f}'.format(price),
+                          company_currency.name))
+        elif list_currency and list_currency != company_currency:
+            source = "Lista '%s': %.4g %s × %.4g = %s %s" % (
+                pricelist.name, raw, list_currency.name, rate,
+                '{:,.2f}'.format(price), company_currency.name)
+        else:
+            source = "Lista '%s': %s %s" % (
+                pricelist.name, '{:,.2f}'.format(price), company_currency.name)
+        return price, source, list_currency, raw, has_price
 
     def _sgi_to_company_price(self, price, list_currency, day):
         """Convierte un precio de la lista a moneda de la compañía usando el tipo
@@ -1845,16 +2037,27 @@ class SgiSalesBudgetLine(models.Model):
                 if budget.kind == 'pronostico' and budget.partner_id:
                     vals['partner_id'] = budget.partner_id.id
         lines = super().create(vals_list)
-        # Documento vivo: agregar líneas a un pronóstico 'revisado' también lo
-        # regresa a borrador (P-A28 4.2.2.7).
-        if not self.env.context.get('sgi_bypass_lock'):
-            reopen = lines.budget_id.filtered(
-                lambda b: b.kind == 'pronostico' and b.state == 'revisado')
-            for budget in reopen:
-                budget.with_context(sgi_bypass_lock=True).state = 'borrador'
-                budget.message_post(
-                    body="Actualizado por %s, requiere revisión." % self.env.user.name)
+        # Agregar líneas a un documento 'revisado' lo regresa a borrador: el
+        # pronóstico porque es documento vivo (P-A28 4.2.2.7); el presupuesto para
+        # que Dirección no apruebe contenido distinto al que revisó el Admin.
+        lines._sgi_reopen_reviewed_parents(lines.budget_id)
         return lines
+
+    def _sgi_reopen_reviewed_parents(self, budgets):
+        """Regresa a 'borrador' los documentos 'revisado' de `budgets` tras editar
+        sus líneas de captura, con constancia en el chatter. Aplica al pronóstico
+        (documento vivo) y al presupuesto (gobernanza del revisado). Se salta bajo
+        sgi_bypass_lock (refresco de la foto real, borrado en cascada)."""
+        if self.env.context.get('sgi_bypass_lock'):
+            return
+        for budget in budgets.filtered(lambda b: b.state == 'revisado'):
+            budget.with_context(sgi_bypass_lock=True).state = 'borrador'
+            if budget.kind == 'pronostico':
+                body = "Actualizado por %s, requiere revisión." % self.env.user.name
+            else:
+                body = ("Actualizado por %s tras la revisión, requiere "
+                        "re-revisión." % self.env.user.name)
+            budget.message_post(body=body)
 
     def _sgi_locked_lines(self):
         # El pronóstico es documento vivo: SIN candado de líneas (P-A28 4.2.2.7);
@@ -1875,18 +2078,11 @@ class SgiSalesBudgetLine(models.Model):
                     "crear una nueva revisión.\n\nPresupuesto(s): %s" % (
                         ", ".join(locked.mapped('budget_id.name'))))
         res = super().write(vals)
-        # Documento vivo (P-A28 4.2.2.7): tocar líneas de un pronóstico 'revisado'
-        # lo regresa a borrador automáticamente y avisa que requiere revisión. Solo
-        # cuenta la edición de campos de captura (no el refresh de la foto real).
-        if (self._SGI_EDITABLE_FIELDS & set(vals)
-                and not self.env.context.get('sgi_bypass_lock')):
-            reopen = self.budget_id.filtered(
-                lambda b: b.kind == 'pronostico' and b.state == 'revisado')
-            for budget in reopen:
-                budget.with_context(sgi_bypass_lock=True).state = 'borrador'
-                budget.message_post(
-                    body="Actualizado por %s, requiere revisión." % (
-                        self.env.user.name))
+        # Tocar campos de captura de un documento 'revisado' lo regresa a borrador
+        # (pronóstico documento vivo P-A28 4.2.2.7; presupuesto: gobernanza del
+        # revisado). Solo la edición de captura cuenta, no el refresh de la foto.
+        if self._SGI_EDITABLE_FIELDS & set(vals):
+            self._sgi_reopen_reviewed_parents(self.budget_id)
         return res
 
     def unlink(self):
@@ -1899,7 +2095,12 @@ class SgiSalesBudgetLine(models.Model):
                     "evidencia). Pide al Jefe de MAST regresarlo a borrador.\n\n"
                     "Presupuesto(s): %s" % (
                         ", ".join(locked.mapped('budget_id.name'))))
-        return super().unlink()
+        # Capturar los documentos padre antes del DELETE: borrar líneas de captura
+        # de un documento 'revisado' también lo regresa a borrador (gobernanza).
+        budgets = self.budget_id
+        res = super().unlink()
+        self.browse()._sgi_reopen_reviewed_parents(budgets)
+        return res
 
     # --- Grid de captura (matriz producto × mes) -----------------------------
     def _grid_cell_vals_from_domain(self, domain):
