@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="costo_producto_action" model="ir.actions.act_window">
+        <field name="name">Costo por producto</field>
+        <field name="res_model">qb.costo.producto</field>
+        <field name="view_mode">list,form,pivot</field>
+    </record>
+    <record id="costo_producto_view_search" model="ir.ui.view">
+        <field name="name">qb.costo.producto.search</field>
+        <field name="model">qb.costo.producto</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <field name="product_bucket"/>
+                <filter name="vendidos" string="Vendidos en el período"
+                        domain="[('qty_vendida', '&gt;', 0)]"/>
+                <filter name="margen_negativo" string="Margen absorbido negativo"
+                        domain="[('margen_absorbido', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
+                <filter name="contribucion_negativa" string="Contribución negativa"
+                        domain="[('margen_contribucion', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_period" string="Período"
+                            context="{'group_by': 'period'}"/>
+                    <filter name="group_bucket" string="Clasificación"
+                            context="{'group_by': 'product_bucket'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="costo_producto_view_list" model="ir.ui.view">
+        <field name="name">qb.costo.producto.list</field>
+        <field name="model">qb.costo.producto</field>
+        <field name="arch" type="xml">
+            <list create="false"
+                  decoration-danger="margen_contribucion &lt; 0 and qty_vendida &gt; 0"
+                  decoration-warning="margen_absorbido &lt; 0 and margen_contribucion &gt;= 0 and qty_vendida &gt; 0">
+                <field name="period" optional="show"/>
+                <field name="default_code"/>
+                <field name="product_id"/>
+                <field name="product_bucket" optional="hide"/>
+                <field name="uom_name"/>
+                <field name="qty_vendida" sum="Total"/>
+                <field name="precio_prom"/>
+                <field name="mp_unit"/>
+                <field name="energia_unit" optional="hide"/>
+                <field name="costo_variable"/>
+                <field name="fab_unit"/>
+                <field name="op_unit" optional="hide"/>
+                <field name="costo_absorbido"/>
+                <field name="margen_contribucion"/>
+                <field name="margen_contribucion_pct"/>
+                <field name="margen_absorbido_pct"/>
+                <field name="contrib_hora_maquina"/>
+            </list>
+        </field>
+    </record>
+    <record id="costo_producto_view_form" model="ir.ui.view">
+        <field name="name">qb.costo.producto.form</field>
+        <field name="model">qb.costo.producto</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <sheet>
+                    <group>
+                        <group string="Producto">
+                            <field name="period"/>
+                            <field name="product_id"/>
+                            <field name="default_code"/>
+                            <field name="product_bucket"/>
+                            <field name="centro_route"/>
+                            <field name="uom_name"/>
+                            <field name="kg_per_unit"/>
+                            <field name="m_per_kg"/>
+                        </group>
+                        <group string="Venta del período">
+                            <field name="qty_vendida"/>
+                            <field name="precio_prom"/>
+                            <field name="factores_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Costo por capa ($/u)">
+                            <field name="mp_unit"/>
+                            <field name="energia_unit"/>
+                            <field name="costo_variable"/>
+                            <field name="fab_unit"/>
+                            <field name="op_unit"/>
+                            <field name="costo_absorbido"/>
+                        </group>
+                        <group string="Márgenes">
+                            <field name="margen_contribucion"/>
+                            <field name="margen_contribucion_pct"/>
+                            <field name="margen_absorbido"/>
+                            <field name="margen_absorbido_pct"/>
+                            <field name="contrib_hora_maquina"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="costo_producto_view_pivot" model="ir.ui.view">
+        <field name="name">qb.costo.producto.pivot</field>
+        <field name="model">qb.costo.producto</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="product_bucket" type="row"/>
+                <field name="period" type="col"/>
+                <field name="qty_vendida" type="measure"/>
+                <field name="margen_contribucion" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Recalcular el mes anterior a demanda -->
+    <record id="costo_recompute_action" model="ir.actions.server">
+        <field name="name">Recalcular costeo (mes anterior)</field>
+        <field name="model_id" ref="model_qb_costo_producto"/>
+        <field name="state">code</field>
+        <field name="code">model.action_recompute_period()</field>
+    </record>
+
+</odoo>

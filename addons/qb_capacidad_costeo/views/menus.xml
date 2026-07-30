@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_qb_costeo_root" name="Capacidad &amp; Costeo" sequence="85"/>
+
+    <!-- Operación diaria -->
+    <menuitem id="menu_qb_capacidad" name="Capacidad por máquina"
+              parent="menu_qb_costeo_root" action="capacidad_action" sequence="10"/>
+    <menuitem id="menu_qb_balance" name="Balance de línea"
+              parent="menu_qb_costeo_root" action="balance_action" sequence="20"/>
+    <menuitem id="menu_qb_costo_producto" name="Costo por producto"
+              parent="menu_qb_costeo_root" action="costo_producto_action" sequence="30"/>
+    <menuitem id="menu_qb_cotizador" name="Cotizador"
+              parent="menu_qb_costeo_root" action="cotizador_wizard_action" sequence="40"/>
+    <menuitem id="menu_qb_cotizaciones" name="Cotizaciones"
+              parent="menu_qb_costeo_root" action="cotizacion_action" sequence="45"/>
+    <menuitem id="menu_qb_ociosidad" name="Ociosidad"
+              parent="menu_qb_costeo_root" action="ociosidad_action" sequence="50"/>
+    <menuitem id="menu_qb_escenario" name="Escenario de turnos"
+              parent="menu_qb_costeo_root" action="escenario_turno_action" sequence="55"/>
+    <menuitem id="menu_qb_rh" name="RH por centro"
+              parent="menu_qb_costeo_root" action="rh_centro_action" sequence="60"/>
+
+    <!-- Histórico -->
+    <menuitem id="menu_qb_snapshots_group" name="Histórico"
+              parent="menu_qb_costeo_root" sequence="70"/>
+    <menuitem id="menu_qb_snapshots" name="Snapshots"
+              parent="menu_qb_snapshots_group" action="snapshot_action" sequence="10"/>
+    <menuitem id="menu_qb_tendencia" name="Tendencia por centro"
+              parent="menu_qb_snapshots_group" action="snapshot_line_action" sequence="20"/>
+    <menuitem id="menu_qb_factores" name="Factores por período"
+              parent="menu_qb_snapshots_group" action="costo_factores_action" sequence="30"/>
+
+    <!-- Configuración (solo admin de manufactura) -->
+    <menuitem id="menu_qb_config" name="Configuración"
+              parent="menu_qb_costeo_root" sequence="90"
+              groups="mrp.group_mrp_manager"/>
+    <menuitem id="menu_qb_centros" name="Centros de costo"
+              parent="menu_qb_config" action="centro_action" sequence="10"/>
+    <menuitem id="menu_qb_cuentas" name="Clasificación de cuentas"
+              parent="menu_qb_config" action="cuenta_class_action" sequence="20"/>
+    <menuitem id="menu_qb_cuentas_map" name="Cuentas mapeadas"
+              parent="menu_qb_config" action="cuenta_map_action" sequence="25"/>
+    <menuitem id="menu_qb_cuentas_pendientes" name="Cuentas sin clasificar"
+              parent="menu_qb_config" action="cuentas_pendientes_action" sequence="27"/>
+    <menuitem id="menu_qb_parametros" name="Parámetros"
+              parent="menu_qb_config" action="factor_config_action" sequence="30"/>
+    <menuitem id="menu_qb_pesos" name="Pesos por producto"
+              parent="menu_qb_config" action="producto_peso_action" sequence="40"/>
+    <menuitem id="menu_qb_ruteo" name="Ruteo por familia"
+              parent="menu_qb_config" action="producto_ruteo_action" sequence="50"/>
+    <menuitem id="menu_qb_turnos" name="Turnos / capacidad manual"
+              parent="menu_qb_config" action="turno_config_action" sequence="60"/>
+    <menuitem id="menu_qb_recompute" name="Recalcular costeo (mes anterior)"
+              parent="menu_qb_config" action="costo_recompute_action" sequence="70"/>
+
+</odoo>
