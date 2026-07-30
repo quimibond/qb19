@@ -238,13 +238,21 @@ class QbCosteoFactorConfig(models.Model):
     ]
 
     @api.model
+    def _get_record(self, key):
+        """Parámetro de la compañía activa; fallback a cualquier compañía
+        (instalaciones mono-compañía seedean solo una)."""
+        rec = self.search([('key', '=', key),
+                           ('company_id', '=', self.env.company.id)], limit=1)
+        return rec or self.search([('key', '=', key)], limit=1)
+
+    @api.model
     def get_param(self, key, default=0.0):
-        rec = self.search([('key', '=', key)], limit=1)
+        rec = self._get_record(key)
         return rec.value if rec else default
 
     @api.model
     def get_param_text(self, key, default=''):
-        rec = self.search([('key', '=', key)], limit=1)
+        rec = self._get_record(key)
         return rec.value_text if rec and rec.value_text else default
 
 
@@ -286,7 +294,7 @@ class QbProductoPeso(models.Model):
     }
 
     @api.model
-    def resolve_kg_per_unit(self, product):
+    def resolve_kg_per_unit(self, product, cache=None):
         """kg por unidad de venta, con la cadena de prioridad documentada.
 
         1. Registro en esta tabla (manual/cvu/etc.).
@@ -296,7 +304,19 @@ class QbProductoPeso(models.Model):
            (Un bloque de 4 dígitos es código de resina — 4032/9032 — NO gramaje.)
         4. weight de Odoo solo si cae en rango creíble 0.01–1.5 kg/unidad.
         5. Gemelo nacional para importados (' I').
+
+        `cache` (dict opcional {product_id: kg}) evita re-resolver en loops
+        grandes (motor de costeo): un search por producto no escala a 3k SKUs.
         """
+        if cache is not None and product.id in cache:
+            return cache[product.id]
+        kg = self._resolve_kg_per_unit(product, cache)
+        if cache is not None:
+            cache[product.id] = kg
+        return kg
+
+    @api.model
+    def _resolve_kg_per_unit(self, product, cache=None):
         rec = self.search([('product_id', '=', product.id)], limit=1)
         if rec and rec.kg_per_unit:
             return rec.kg_per_unit
@@ -308,7 +328,7 @@ class QbProductoPeso(models.Model):
             twin = self.env['product.product'].search(
                 [('default_code', '=', ref[:-2].strip())], limit=1)
             if twin:
-                return self.resolve_kg_per_unit(twin)
+                return self.resolve_kg_per_unit(twin, cache)
         gramaje = self._gramaje_from_ref(ref)
         if gramaje:
             return gramaje
@@ -332,11 +352,11 @@ class QbProductoPeso(models.Model):
         return gramaje / 1000.0 * ancho
 
     @api.model
-    def resolve_m_per_kg(self, product):
+    def resolve_m_per_kg(self, product, cache=None):
         rec = self.search([('product_id', '=', product.id)], limit=1)
         if rec and rec.m_per_kg:
             return rec.m_per_kg
-        kg = self.resolve_kg_per_unit(product)
+        kg = self.resolve_kg_per_unit(product, cache)
         uom_name = (product.uom_id.name or '').lower()
         if kg and uom_name not in ('kg', 'kgs', 'kilogramo', 'kilogramos'):
             # Producto en metros: kg = kg/m → m/kg es su inverso.
@@ -381,7 +401,7 @@ class QbProductoRuteo(models.Model):
                     'Cada regla de ruteo necesita producto, categoría o patrón.')
 
     @api.model
-    def resolve(self, product):
+    def resolve(self, product, rules=None):
         """(product_bucket, centros) para un producto.
 
         Prioridad: regla por producto > patrón de nombre/ref (subproducto,
@@ -389,8 +409,12 @@ class QbProductoRuteo(models.Model):
         (child_of) > patrón de categoría. Dentro de cada nivel gana la
         primera regla por sequence. Si Odoo trae rutas MRP por producto en
         el futuro, este método es el único punto a cambiar.
+
+        `rules` (recordset opcional): prefetchear con search([]) una sola vez
+        en loops grandes — el motor de costeo lo llama por cada nodo de BOM.
         """
-        rules = self.search([])
+        if rules is None:
+            rules = self.search([])
         ref = product.default_code or ''
         name = product.name or ''
         categ_name = product.categ_id.complete_name or ''

@@ -284,13 +284,40 @@ class QbCostoProducto(models.Model):
     # MP: último costo de compra, explosión recursiva
     # ------------------------------------------------------------------
     @api.model
-    def _last_purchase_cost(self, product):
-        """Último precio de compra confirmado, en moneda de la compañía."""
-        pol = self.env['purchase.order.line'].search([
-            ('product_id', '=', product.id),
-            ('state', 'in', ('purchase', 'done')),
-            ('price_unit', '>', 0),
-        ], order='date_order desc, id desc', limit=1)
+    def _last_purchase_line_map(self, product_ids):
+        """{product_id: purchase_order_line_id} de la última compra confirmada,
+        resuelto en UN query (DISTINCT ON). Un search por hoja de BOM no
+        escala: con 3k SKUs × BOMs recursivas son decenas de miles de queries.
+        """
+        if not product_ids:
+            return {}
+        self.env.cr.execute("""
+            SELECT DISTINCT ON (pol.product_id) pol.product_id, pol.id
+            FROM purchase_order_line pol
+            WHERE pol.state IN ('purchase', 'done')
+              AND pol.price_unit > 0
+              AND pol.product_id = ANY(%s)
+            ORDER BY pol.product_id, pol.date_order DESC, pol.id DESC
+        """, (list(product_ids),))
+        return dict(self.env.cr.fetchall())
+
+    @api.model
+    def _last_purchase_cost(self, product, pol_map=None):
+        """Último precio de compra confirmado, en moneda de la compañía.
+
+        Con `pol_map` (de _last_purchase_line_map) no hace ningún search;
+        sin él (cotizador, llamadas sueltas) busca la línea individual.
+        """
+        if pol_map is not None:
+            pol_id = pol_map.get(product.id)
+            pol = self.env['purchase.order.line'].browse(pol_id) if pol_id \
+                else self.env['purchase.order.line']
+        else:
+            pol = self.env['purchase.order.line'].search([
+                ('product_id', '=', product.id),
+                ('state', 'in', ('purchase', 'done')),
+                ('price_unit', '>', 0),
+            ], order='date_order desc, id desc', limit=1)
         if not pol:
             return product.standard_price or 0.0
         price = pol.price_unit * (1 - (pol.discount or 0.0) / 100.0)
@@ -310,33 +337,64 @@ class QbCostoProducto(models.Model):
         return price
 
     @api.model
-    def _mp_cost_unit(self, product, cache=None, seen=None):
+    def _engine_ctx(self, product_ids=None):
+        """Contexto de una corrida del motor: todo lo que se resuelve UNA vez
+        y se comparte en el loop (reglas de ruteo, mapa de últimas compras,
+        cachés de peso y MP). Mantiene el motor O(productos), no O(queries).
+        """
+        leaf_ids = set(product_ids or [])
+        # Todas las hojas posibles de las recetas, en un query
+        self.env.cr.execute(
+            'SELECT DISTINCT product_id FROM mrp_bom_line WHERE product_id IS NOT NULL')
+        leaf_ids.update(r[0] for r in self.env.cr.fetchall())
+        pol_map = self._last_purchase_line_map(leaf_ids)
+        # Warm-up del cache ORM: un solo fetch para todas las líneas de compra
+        if pol_map:
+            self.env['purchase.order.line'].browse(
+                list(pol_map.values())).read(
+                ['price_unit', 'discount', 'currency_id', 'date_order'])
+        return {
+            'rules': self.env['qb.producto.ruteo'].search([]),
+            'pol_map': pol_map,
+            'peso_cache': {},
+            'mp_cache': {},
+        }
+
+    @api.model
+    def _mp_cost_unit(self, product, cache=None, seen=None, ctx=None):
         """Costo primo MP por unidad: BOM recursiva a último costo.
 
         Reglas: subproducto → $0 (su MP ya está en la receta del principal);
         importado → landed (avg de Odoo), sin costo propio → gemelo nacional;
         hoja sin BOM → último costo de compra (fallback avg).
+
+        `ctx` (de _engine_ctx) comparte reglas/pol_map/cachés en loops
+        grandes; sin él (cotizador, tests) resuelve todo al vuelo.
         """
-        cache = cache if cache is not None else {}
+        cache = cache if cache is not None \
+            else (ctx['mp_cache'] if ctx else {})
         seen = seen if seen is not None else set()
         if product.id in cache:
             return cache[product.id]
         if product.id in seen:  # ciclo en la receta: cortar con avg
             return product.standard_price or 0.0
         seen = seen | {product.id}
+        rules = ctx['rules'] if ctx else None
+        pol_map = ctx['pol_map'] if ctx else None
 
-        bucket, _centros = self.env['qb.producto.ruteo'].resolve(product)
+        bucket, _centros = self.env['qb.producto.ruteo'].resolve(product, rules)
         ref = product.default_code or ''
         cost = 0.0
         if bucket == 'subproducto':
             cost = 0.0
         elif bucket == 'importado' or ref.endswith(' I'):
-            cost = product.standard_price or self._last_purchase_cost(product)
+            cost = product.standard_price \
+                or self._last_purchase_cost(product, pol_map)
             if not cost and ref.endswith(' I'):
                 twin = self.env['product.product'].search(
                     [('default_code', '=', ref[:-2].strip())], limit=1)
                 if twin:
-                    cost = self._mp_cost_unit(twin, cache, seen)
+                    cost = self._mp_cost_unit(twin, cache, seen, ctx)
         else:
             bom = self.env['mrp.bom']._bom_find(product).get(product)
             if bom:
@@ -345,12 +403,12 @@ class QbCostoProducto(models.Model):
                     comp = line.product_id
                     qty = line.product_uom_id._compute_quantity(
                         line.product_qty, comp.uom_id, round=False)
-                    total += qty * self._mp_cost_unit(comp, cache, seen)
+                    total += qty * self._mp_cost_unit(comp, cache, seen, ctx)
                 bom_qty = bom.product_uom_id._compute_quantity(
                     bom.product_qty, product.uom_id, round=False) or 1.0
                 cost = total / bom_qty
             else:
-                cost = self._last_purchase_cost(product)
+                cost = self._last_purchase_cost(product, pol_map)
         cache[product.id] = cost
         return cost
 
@@ -425,73 +483,99 @@ class QbCostoProducto(models.Model):
 
         Ruteo = self.env['qb.producto.ruteo']
         Peso = self.env['qb.producto.peso']
-        mp_cache = {}
+        ctx = self._engine_ctx(product_ids)
         existing = {r.product_id.id: r for r in self.search(
             [('period', '=', period),
              ('company_id', '=', self.env.company.id)])}
         fab_absorbida_total = 0.0
+        to_create = []
+        errores = 0
 
-        for product in Product.browse(list(product_ids)).exists():
-            bucket, centros = Ruteo.resolve(product)
-            kg = Peso.resolve_kg_per_unit(product)
-            m_per_kg = Peso.resolve_m_per_kg(product)
-            uom_name = (product.uom_id.name or '').lower()
-            is_kg = uom_name in KG_UOM_NAMES
-            qty, revenue = sales.get(product.id, (0.0, 0.0))
-            precio = revenue / qty if qty else 0.0
-
-            mp = self._mp_cost_unit(product, mp_cache)
-            energia = 0.0 if bucket in ('importado', 'subproducto') \
-                else factores.energia_por_kg * kg
-            fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
-            op = factores.op_pct * precio
-            variable = mp + energia
-            absorbido = variable + fab + op
-            contrib = precio - variable
-            hours_per_unit = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
-
-            vals = {
-                'period': period,
-                'product_id': product.id,
-                'product_bucket': bucket,
-                'uom_name': product.uom_id.name,
-                'kg_per_unit': kg,
-                'm_per_kg': m_per_kg,
-                'qty_vendida': qty,
-                'precio_prom': precio,
-                'mp_unit': mp,
-                'energia_unit': energia,
-                'costo_variable': variable,
-                'fab_unit': fab,
-                'op_unit': op,
-                'costo_absorbido': absorbido,
-                'margen_contribucion': contrib if precio else 0.0,
-                'margen_contribucion_pct':
-                    100.0 * contrib / precio if precio else 0.0,
-                'margen_absorbido': precio - absorbido if precio else 0.0,
-                'margen_absorbido_pct':
-                    100.0 * (precio - absorbido) / precio if precio else 0.0,
-                'contrib_hora_maquina':
-                    contrib / hours_per_unit if hours_per_unit and precio else 0.0,
-                'centro_route': ', '.join(centros.mapped('code')),
-                'factores_id': factores.id,
-            }
+        products = Product.browse(list(product_ids)).exists()
+        # Prefetch en bloque: evita un fetch por producto dentro del loop
+        products.read(['default_code', 'standard_price', 'weight'])
+        for product in products:
+            try:
+                vals, fab_x_qty = self._compute_product_vals(
+                    product, period, factores, sales, ctx, Ruteo, Peso)
+            except Exception:
+                # Una BOM rota (ciclo raro, UoM inconsistente) no debe tumbar
+                # el cálculo mensual completo: se loggea y se sigue.
+                errores += 1
+                _logger.exception(
+                    'qb.costo.producto: error costeando %s — se omite',
+                    product.display_name)
+                continue
+            fab_absorbida_total += fab_x_qty
             rec = existing.get(product.id)
             if rec:
                 rec.write(vals)
             else:
-                self.create(vals)
-            fab_absorbida_total += fab * qty
+                to_create.append(vals)
+        if to_create:
+            self.create(to_create)
 
         if factores.fab_pool_month:
             factores.cobertura_fab_pct = (
                 100.0 * fab_absorbida_total
                 / (factores.fab_pool_month + factores.entretela_pool_month))
         _logger.info(
-            'qb.costo.producto: recalculados %s productos para %s '
-            '(cobertura fab %.1f%%)',
-            len(product_ids), period, factores.cobertura_fab_pct)
+            'qb.costo.producto: %s productos para %s (%s nuevos, %s errores, '
+            'cobertura fab %.1f%%)',
+            len(products), period, len(to_create), errores,
+            factores.cobertura_fab_pct)
         return True
+
+    @api.model
+    def _compute_product_vals(self, product, period, factores, sales, ctx,
+                              Ruteo, Peso):
+        """Vals de qb.costo.producto para UN producto. Devuelve
+        (vals, fab_absorbida × qty) para el acumulado de cobertura."""
+        bucket, centros = Ruteo.resolve(product, ctx['rules'])
+        kg = Peso.resolve_kg_per_unit(product, ctx['peso_cache'])
+        m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
+        uom_name = (product.uom_id.name or '').lower()
+        is_kg = uom_name in KG_UOM_NAMES
+        qty, revenue = sales.get(product.id, (0.0, 0.0))
+        precio = revenue / qty if qty else 0.0
+
+        mp = self._mp_cost_unit(product, ctx=ctx)
+        energia = 0.0 if bucket in ('importado', 'subproducto') \
+            else factores.energia_por_kg * kg
+        fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
+        op = factores.op_pct * precio
+        variable = mp + energia
+        absorbido = variable + fab + op
+        contrib = precio - variable
+        hours_per_unit = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
+
+        vals = {
+            'period': period,
+            'product_id': product.id,
+            'product_bucket': bucket,
+            'uom_name': product.uom_id.name,
+            'kg_per_unit': kg,
+            'm_per_kg': m_per_kg,
+            'qty_vendida': qty,
+            'precio_prom': precio,
+            'mp_unit': mp,
+            'energia_unit': energia,
+            'costo_variable': variable,
+            'fab_unit': fab,
+            'op_unit': op,
+            'costo_absorbido': absorbido,
+            'margen_contribucion': contrib if precio else 0.0,
+            'margen_contribucion_pct':
+                100.0 * contrib / precio if precio else 0.0,
+            'margen_absorbido': precio - absorbido if precio else 0.0,
+            'margen_absorbido_pct':
+                100.0 * (precio - absorbido) / precio if precio else 0.0,
+            'contrib_hora_maquina':
+                contrib / hours_per_unit if hours_per_unit and precio else 0.0,
+            'centro_route': ', '.join(centros.mapped('code')),
+            'factores_id': factores.id,
+        }
+        return vals, fab * qty
 
     @api.model
     def _fab_unit(self, bucket, is_kg, kg, m_per_kg, factores):

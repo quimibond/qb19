@@ -37,6 +37,7 @@ class QbCosteoCuentaMap(models.Model):
     _description = 'Cuenta → bucket de costeo (resuelto)'
     _auto = False
     _order = 'bucket, account_id'
+    _rec_name = 'account_id'
 
     account_id = fields.Many2one('account.account', readonly=True)
     class_id = fields.Many2one('qb.costeo.cuenta.class', readonly=True)

@@ -91,6 +91,15 @@ class TestQbCosteo(TransactionCase):
         fab_kg = self.Costo._fab_unit('tela', True, 1.0, 13.9, factores)
         self.assertAlmostEqual(fab_kg, 30.0 + 13.9 * 3.0, places=4)
 
+    def test_engine_ctx_equivale_a_camino_directo(self):
+        """El camino batch (ctx con pol_map/reglas/cachés prefetcheados)
+        da exactamente el mismo MP que el camino directo del cotizador."""
+        directo = self.Costo._mp_cost_unit(self.tela)
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        batch = self.Costo._mp_cost_unit(self.tela, ctx=ctx)
+        self.assertAlmostEqual(directo, batch, places=6)
+        self.assertIn(self.tela.id, ctx['mp_cache'])
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)

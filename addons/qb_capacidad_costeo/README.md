@@ -107,6 +107,21 @@ lista las 4xx-7xx pendientes.
 - Parser de gramaje: solo bloques de exactamente 3 dígitos (4 dígitos =
   código de resina, p.ej. 4032/9032).
 
+## Rendimiento (límites de cron de Odoo.sh)
+
+El recálculo mensual está diseñado para caber en el límite de tiempo de los
+crons de Odoo.sh con miles de SKUs:
+
+- **Un solo query** resuelve el último costo de compra de TODAS las hojas de
+  BOM (`_last_purchase_line_map`, `DISTINCT ON`) + warm-up del cache ORM.
+- Las reglas de ruteo y los pesos se resuelven **una vez por corrida**
+  (`_engine_ctx`) y se comparten en todo el loop, incluida la recursión de BOM.
+- Los registros nuevos se crean **en lote** (un `create(vals_list)`).
+- Un producto con BOM rota (ciclo, UoM inconsistente) se **loggea y se omite**
+  — no tumba el cálculo mensual completo; el log reporta el conteo de errores.
+- `post_init_hook`: el matching cuenta↔clase queda poblado al instalar, así
+  las vistas SQL tienen datos desde el día 1.
+
 ## Crons
 
 | Cuándo | Qué |
