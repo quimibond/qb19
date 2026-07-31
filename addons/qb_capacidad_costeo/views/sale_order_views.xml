@@ -11,13 +11,13 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <button name="%(qb_capacidad_costeo.cotizador_wizard_action)d"
-                        type="action" string="Cotizar costo"
+                <button name="%(qb_capacidad_costeo.cotizador_orden_action)d"
+                        type="action" string="Cotizar costos"
                         class="btn-secondary"
-                        help="Calculadora de capacidad y costo: costo por capa,
-                              pisos de precio, contribución y chequeo de
-                              capacidad — con opción de aplicar el precio a la
-                              línea."/>
+                        help="Todas las líneas del pedido con su costo
+                              variable, pisos, precio sugerido y semáforo;
+                              corrige precios en lote o abre el detalle de
+                              cualquier producto."/>
             </xpath>
         </field>
     </record>

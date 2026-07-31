@@ -648,6 +648,64 @@ class QbCostoProducto(models.Model):
             worst = max(worst, hours)
         return worst
 
+    # ------------------------------------------------------------------
+    # Cotización puntual (una sola fuente de matemáticas para todos los
+    # wizards: individual y por orden completa)
+    # ------------------------------------------------------------------
+    @api.model
+    def quote_product(self, product, factores=None, target=None):
+        """Costo por capa y precios de UN producto con los factores vigentes.
+
+        Fórmulas (op% y margen meta van SOBRE VENTA, por eso dividen):
+          variable        = MP + energía
+          piso_ocioso     = variable
+          piso_lleno      = (variable + fab) / (1 − op)
+          precio_sugerido = (variable + fab) / (1 − op − margen_meta)
+        """
+        Peso = self.env['qb.producto.peso']
+        Config = self.env['qb.costeo.factor.config']
+        if factores is None:
+            factores = self.env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1)
+        if not factores:
+            return None
+        bucket, centros = self.env['qb.producto.ruteo'].resolve(product)
+        kg = Peso.resolve_kg_per_unit(product)
+        m_per_kg = Peso.resolve_m_per_kg(product)
+        is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
+        mp = self._mp_cost_unit(product)
+        energia = 0.0 if bucket in ('importado', 'subproducto') \
+            else factores.energia_por_kg * kg
+        fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
+        variable = mp + energia
+        op = factores.op_pct
+        if target is None:
+            target = Config.get_param('target_margin', 0.30)
+        piso_lleno = (variable + fab) / (1.0 - op) if op < 1 else 0.0
+        denom = 1.0 - op - target
+        sugerido = (variable + fab) / denom if denom > 0 else 0.0
+        hours = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
+        return {
+            'bucket': bucket, 'centros': centros, 'kg': kg,
+            'm_per_kg': m_per_kg, 'is_kg': is_kg,
+            'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
+            'op_pct': op, 'target': target,
+            'piso_ocioso': variable, 'piso_lleno': piso_lleno,
+            'precio_sugerido': sugerido, 'hours_per_unit': hours,
+            'factores': factores,
+        }
+
+    @api.model
+    def semaforo_for(self, precio, piso_ocioso, piso_lleno):
+        """rojo = debajo del variable; ámbar = entre pisos; verde = cubre todo."""
+        if not precio:
+            return False
+        if precio < piso_ocioso:
+            return 'rojo'
+        if piso_lleno and precio < piso_lleno:
+            return 'ambar'
+        return 'verde'
+
     @api.model
     def cron_recompute_monthly(self):
         """Cron: día 2 de cada mes, recalcula el mes anterior."""
