@@ -102,7 +102,13 @@ class QbCosteoPanel(models.TransientModel):
             '<tr><td style="padding:4px 8px;">%s</td>'
             '<td style="padding:4px 8px;"><b>%s</b></td>'
             '<td style="padding:4px 8px;">%s</td></tr>' % c for c in checks)
-        return ('<table class="table table-sm"><tbody>%s</tbody></table>' % rows)
+        table = '<table class="table table-sm"><tbody>%s</tbody></table>' % rows
+        if all(c[0] == OK for c in checks):
+            # Todo en verde: colapsar el detalle para dejar el foco en KPIs
+            return ('<details><summary style="cursor:pointer;">%s '
+                    '<b>Configuración completa</b> — clic para el detalle'
+                    '</summary>%s</details>' % (OK, table))
+        return table
 
     # ------------------------------------------------------------------
     # KPIs del mes
@@ -134,7 +140,31 @@ class QbCosteoPanel(models.TransientModel):
             '<p><b>Cuello de botella:</b> %s — techo de planta. &nbsp; '
             '<b>Costo ocioso del mes:</b> $%s</p>'
             % (cuello.centro_id.code if cuello else 'n/d', f'{idle:,.0f}'))
-        return header + ''.join(cards)
+        return header + ''.join(cards) + self._build_tendencia()
+
+    def _build_tendencia(self):
+        """Mini-tendencia de los últimos snapshots mensuales (utilización
+        promedio y costo ocioso). El detalle vive en Histórico → Tendencia."""
+        snapshots = self.env['qb.costeo.snapshot'].search(
+            [], order='period DESC', limit=6)
+        if not snapshots:
+            return ''
+        rows = ''
+        for snap in reversed(snapshots):
+            lines = snap.line_ids
+            util = (sum(lines.mapped('utilization_pct')) / len(lines)
+                    if lines else 0.0)
+            idle = sum(lines.mapped('idle_cost_month'))
+            rows += (
+                '<tr><td style="padding:2px 8px;">%s</td>'
+                '<td style="padding:2px 8px;text-align:right;">%.0f%%</td>'
+                '<td style="padding:2px 8px;text-align:right;">$%s</td></tr>'
+                % (snap.period.strftime('%Y-%m'), util, f'{idle:,.0f}'))
+        return ('<h5 style="margin-top:12px;">Tendencia (snapshots)</h5>'
+                '<table class="table table-sm" style="max-width:420px;">'
+                '<thead><tr><th>Mes</th><th style="text-align:right;">'
+                'Utilización prom.</th><th style="text-align:right;">'
+                'Costo ocioso</th></tr></thead><tbody>%s</tbody></table>' % rows)
 
     # ------------------------------------------------------------------
     # Botones de acción directa
@@ -162,3 +192,6 @@ class QbCosteoPanel(models.TransientModel):
 
     def action_cotizar(self):
         return self._open('cotizador_wizard_action')
+
+    def action_ranking(self):
+        return self._open('costo_ranking_action')

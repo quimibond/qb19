@@ -118,6 +118,19 @@ class QbCostoProducto(models.Model):
         help='Margen de contribución ÷ horas-máquina por unidad en el centro '
              'más lento de su ruta. Para rankear productos cuando la '
              'capacidad es el límite.')
+    contrib_total = fields.Float(
+        string='Contribución total (período)',
+        help='Contribución unitaria × qty vendida: cuánto aportó a fijos '
+             'este producto en el mes.')
+    alerta = fields.Selection([
+        ('bajo_variable', 'Vendido bajo costo variable'),
+        ('bajo_absorbido', 'No cubre costo absorbido'),
+        ('sin_peso', 'Sin peso resuelto'),
+        ('ok', 'OK'),
+    ], string='Alerta',
+        help='bajo_variable = destruye valor (rojo); bajo_absorbido = aporta '
+             'a fijos pero no cubre todo (ámbar); sin_peso = falta el peso '
+             'kg/u, la fabricación no se puede repartir.')
     centro_route = fields.Char(string='Ruta (centros)')
     factores_id = fields.Many2one('qb.costo.factores', string='Factores usados')
 
@@ -557,6 +570,16 @@ class QbCostoProducto(models.Model):
         contrib = precio - variable
         hours_per_unit = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
 
+        if qty and precio and precio < variable:
+            alerta = 'bajo_variable'
+        elif qty and precio and precio < absorbido:
+            alerta = 'bajo_absorbido'
+        elif not kg and not is_kg and bucket in (
+                'tela', 'entretela_tejida', 'entretela_carda'):
+            alerta = 'sin_peso'
+        else:
+            alerta = 'ok'
+
         vals = {
             'period': period,
             'product_id': product.id,
@@ -580,6 +603,8 @@ class QbCostoProducto(models.Model):
                 100.0 * (precio - absorbido) / precio if precio else 0.0,
             'contrib_hora_maquina':
                 contrib / hours_per_unit if hours_per_unit and precio else 0.0,
+            'contrib_total': contrib * qty if precio else 0.0,
+            'alerta': alerta,
             'centro_route': ', '.join(centros.mapped('code')),
             'factores_id': factores.id,
         }

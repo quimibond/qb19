@@ -25,6 +25,8 @@
               parent="menu_qb_costeo_root" sequence="20"/>
     <menuitem id="menu_qb_costo_producto" name="Costo por producto"
               parent="menu_qb_costos_group" action="costo_producto_action" sequence="10"/>
+    <menuitem id="menu_qb_ranking" name="Ranking por hora-máquina"
+              parent="menu_qb_costos_group" action="costo_ranking_action" sequence="15"/>
     <menuitem id="menu_qb_factores" name="Factores por período"
               parent="menu_qb_costos_group" action="costo_factores_action" sequence="20"/>
 
