@@ -158,64 +158,65 @@ class QbCotizadorWizard(models.TransientModel):
                              '"Recalcular costeo (mes anterior)" en '
                              'Configuración una primera vez.'}
 
+        target = self.target_margin / 100.0 if self.target_margin else None
         if self.product_id and not self.spec_mode:
             product = self.product_id
-            bucket, centros = self.env['qb.producto.ruteo'].resolve(product)
-            kg = self.env['qb.producto.peso'].resolve_kg_per_unit(product)
-            m_per_kg = self.env['qb.producto.peso'].resolve_m_per_kg(product)
-            is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
-            mp = Costo._mp_cost_unit(product)
+            q = Costo.quote_product(product, factores, target)
             uom_name = product.uom_id.name
             name = 'COT %s' % (product.default_code or product.name)
         else:
+            # Especificación nueva: no existe el producto; misma matemática
+            # que quote_product con los datos capturados (se cotiza por metro)
             bucket = self.spec_bucket
-            centros = self.spec_centro_ids
             kg = (self.spec_gramaje / 1000.0) * (self.spec_ancho or 1.5)
             m_per_kg = 1.0 / kg if kg else Config.get_param('m_per_kg_default', 8.0)
-            is_kg = False  # especificación nueva se cotiza por metro
             mp = self.spec_mp_unit
+            energia = 0.0 if bucket in ('importado', 'subproducto') \
+                else factores.energia_por_kg * kg
+            fab = Costo._fab_unit(bucket, False, kg, m_per_kg, factores)
+            variable = mp + energia
+            op = factores.op_pct
+            t = target if target is not None \
+                else Config.get_param('target_margin', 0.30)
+            denom = 1.0 - op - t
+            centros = self.spec_centro_ids
+            q = {
+                'bucket': bucket, 'centros': centros, 'kg': kg,
+                'm_per_kg': m_per_kg, 'is_kg': False,
+                'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
+                'op_pct': op, 'target': t,
+                'piso_ocioso': variable,
+                'piso_lleno': (variable + fab) / (1.0 - op) if op < 1 else 0.0,
+                'precio_sugerido': (variable + fab) / denom if denom > 0 else 0.0,
+                'hours_per_unit': 0.0,
+                'factores': factores,
+            }
             uom_name = 'm'
             name = 'COT %s' % (self.spec_descripcion or 'especificación nueva')
-        if not centros:
-            centros = self._default_centros(bucket)
+        centros = q['centros'] or self._default_centros(q['bucket'])
+        if not q['hours_per_unit']:
+            q['hours_per_unit'] = Costo._hours_per_unit(
+                centros, q['is_kg'], q['kg'], q['m_per_kg'])
 
-        energia = 0.0 if bucket in ('importado', 'subproducto') \
-            else factores.energia_por_kg * kg
-        fab = Costo._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
-        variable = mp + energia
-        op_pct = factores.op_pct
-        target = self.target_margin / 100.0 if self.target_margin \
-            else Config.get_param('target_margin', 0.30)
-
-        denom = 1.0 - op_pct - target
-        precio_sugerido = (variable + fab) / denom if denom > 0 else 0.0
-        piso_ocioso = variable
-        piso_lleno = (variable + fab) / (1.0 - op_pct) if op_pct < 1 else 0.0
-        precio_ref = self.precio_objetivo or precio_sugerido
-        contrib = precio_ref - variable
-        hours_per_unit = Costo._hours_per_unit(centros, is_kg, kg, m_per_kg)
-        contrib_hora = contrib / hours_per_unit if hours_per_unit else 0.0
-
+        precio_ref = self.precio_objetivo or q['precio_sugerido']
+        contrib = precio_ref - q['variable']
+        contrib_hora = contrib / q['hours_per_unit'] \
+            if q['hours_per_unit'] else 0.0
         capacity_ok, capacity_detail = self._check_capacity(
-            centros, is_kg, kg, m_per_kg, self.volumen)
-
-        if not precio_ref:
-            semaforo = False
-        elif precio_ref < piso_ocioso:
-            semaforo = 'rojo'
-        elif piso_lleno and precio_ref < piso_lleno:
-            semaforo = 'ambar'
-        else:
-            semaforo = 'verde'
+            centros, q['is_kg'], q['kg'], q['m_per_kg'], self.volumen)
+        semaforo = Costo.semaforo_for(
+            precio_ref, q['piso_ocioso'], q['piso_lleno'])
 
         return {
             'semaforo': semaforo,
-            'name': name, 'bucket': bucket, 'centros': centros,
-            'factores': factores, 'kg': kg, 'm_per_kg': m_per_kg,
-            'uom_name': uom_name, 'mp': mp, 'energia': energia, 'fab': fab,
-            'variable': variable, 'op_pct': op_pct, 'target': target,
-            'precio_sugerido': precio_sugerido, 'piso_ocioso': piso_ocioso,
-            'piso_lleno': piso_lleno, 'precio_ref': precio_ref,
+            'name': name, 'bucket': q['bucket'], 'centros': centros,
+            'factores': factores, 'kg': q['kg'], 'm_per_kg': q['m_per_kg'],
+            'uom_name': uom_name, 'mp': q['mp'], 'energia': q['energia'],
+            'fab': q['fab'], 'variable': q['variable'],
+            'op_pct': q['op_pct'], 'target': q['target'],
+            'precio_sugerido': q['precio_sugerido'],
+            'piso_ocioso': q['piso_ocioso'], 'piso_lleno': q['piso_lleno'],
+            'precio_ref': precio_ref,
             'contrib': contrib, 'contrib_hora': contrib_hora,
             'capacity_ok': capacity_ok, 'capacity_detail': capacity_detail,
         }

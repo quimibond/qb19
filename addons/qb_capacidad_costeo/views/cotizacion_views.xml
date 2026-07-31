@@ -106,6 +106,69 @@
         </field>
     </record>
 
+    <!-- ============ Cotizador de ORDEN completa ============ -->
+    <record id="cotizador_orden_action" model="ir.actions.act_window">
+        <field name="name">Cotizar costos de la orden</field>
+        <field name="res_model">qb.cotizador.orden.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <record id="cotizador_orden_view_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.orden.wizard.form</field>
+        <field name="model">qb.cotizador.orden.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group>
+                        <field name="sale_order_id"/>
+                        <field name="partner_id"/>
+                    </group>
+                    <group>
+                        <field name="factores_id"/>
+                        <field name="resumen"/>
+                    </group>
+                </group>
+                <field name="line_ids">
+                    <list editable="bottom" create="false" delete="false"
+                          decoration-danger="semaforo == 'rojo'"
+                          decoration-warning="semaforo == 'ambar'">
+                        <field name="product_id" readonly="1"/>
+                        <field name="qty" readonly="1"/>
+                        <field name="uom_name" readonly="1" optional="hide"/>
+                        <field name="precio_actual" readonly="1"/>
+                        <field name="costo_variable" readonly="1"/>
+                        <field name="fab_unit" readonly="1" optional="hide"/>
+                        <field name="piso_lleno" readonly="1"/>
+                        <field name="precio_sugerido" readonly="1"/>
+                        <field name="semaforo" widget="badge" readonly="1"
+                               decoration-danger="semaforo == 'rojo'"
+                               decoration-warning="semaforo == 'ambar'"
+                               decoration-success="semaforo == 'verde'"/>
+                        <field name="contrib_unit" readonly="1" optional="show"/>
+                        <field name="contrib_hora" readonly="1" optional="show"/>
+                        <field name="aplicar"/>
+                        <field name="nuevo_precio"/>
+                        <button name="action_detalle" string="Detalle"
+                                type="object" icon="fa-search-plus"/>
+                    </list>
+                </field>
+                <div class="text-muted">
+                    🔴 debajo del costo variable (pre-marcadas para corregir) ·
+                    🟡 aporta a fijos, no absorbe todo · 🟢 cubre costo total.
+                    "Detalle" abre la calculadora individual con capacidad y
+                    escenarios.
+                </div>
+                <footer>
+                    <button name="action_aplicar_seleccionados"
+                            string="Aplicar precios marcados" type="object"
+                            class="btn-primary"
+                            confirm="Escribe los nuevos precios en las líneas marcadas del pedido. ¿Continuar?"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
     <!-- ============ Cotizaciones guardadas ============ -->
     <record id="cotizacion_action" model="ir.actions.act_window">
         <field name="name">Cotizaciones</field>

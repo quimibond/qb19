@@ -162,6 +162,72 @@ class TestQbCosteo(TransactionCase):
         self.assertTrue(cot)
         self.assertEqual(cot.semaforo, 'verde')
 
+    def test_matematicas_identidades(self):
+        """Las fórmulas cumplen su álgebra exacta:
+        - Al precio SUGERIDO, el margen absorbido == margen meta.
+        - Al piso LLENO, el margen absorbido == 0 (cubre todo, gana nada).
+        - Al piso OCIOSO, la contribución == 0.
+        - El semáforo cambia exactamente en los pisos."""
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2026, 5, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        q = self.Costo.quote_product(self.tela, factores, target=0.30)
+        v, f, op = q['variable'], q['fab'], q['op_pct']
+
+        # margen absorbido en el sugerido = (p − v − f − op·p) / p = target
+        p = q['precio_sugerido']
+        self.assertAlmostEqual((p - v - f - op * p) / p, 0.30, places=6)
+        # margen absorbido en el piso lleno = 0
+        p2 = q['piso_lleno']
+        self.assertAlmostEqual(p2 - v - f - op * p2, 0.0, places=6)
+        # contribución en el piso ocioso = 0
+        self.assertAlmostEqual(q['piso_ocioso'] - v, 0.0, places=6)
+        # semáforo exacto en las fronteras
+        eps = 0.001
+        self.assertEqual(self.Costo.semaforo_for(v - eps, v, p2), 'rojo')
+        self.assertEqual(self.Costo.semaforo_for(v + eps, v, p2), 'ambar')
+        self.assertEqual(self.Costo.semaforo_for(p2 + eps, v, p2), 'verde')
+        # jerarquía de precios: ocioso < lleno < sugerido
+        self.assertLess(q['piso_ocioso'], q['piso_lleno'])
+        self.assertLess(q['piso_lleno'], q['precio_sugerido'])
+
+    def test_cotizador_orden_multilinea(self):
+        """Orden con varios productos: una fila por línea con su semáforo,
+        pre-marcado lo rojo, y aplicar escribe los precios en lote."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 6, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        partner = self.env['res.partner'].create({'name': 'Cliente Multi'})
+        order = self.env['sale.order'].create({
+            'partner_id': partner.id,
+            'order_line': [
+                (0, 0, {'product_id': self.tela.id,
+                        'product_uom_qty': 100, 'price_unit': 1.0}),   # rojo
+                (0, 0, {'product_id': self.importado.id,
+                        'product_uom_qty': 50, 'price_unit': 100.0}),  # verde
+            ],
+        })
+        wiz = self.env['qb.cotizador.orden.wizard'].with_context(
+            active_model='sale.order', active_id=order.id).create({})
+        self.assertEqual(len(wiz.line_ids), 2)
+        l_tela = wiz.line_ids.filtered(lambda l: l.product_id == self.tela)
+        l_imp = wiz.line_ids.filtered(lambda l: l.product_id == self.importado)
+        self.assertEqual(l_tela.semaforo, 'rojo')
+        self.assertTrue(l_tela.aplicar, 'lo rojo se pre-marca')
+        self.assertEqual(l_imp.semaforo, 'verde')
+        self.assertFalse(l_imp.aplicar)
+        # el sugerido de la tela cubre op + margen meta sobre venta
+        self.assertGreater(l_tela.precio_sugerido, l_tela.piso_lleno)
+        # aplicar en lote: solo la marcada cambia
+        wiz.action_aplicar_seleccionados()
+        self.assertAlmostEqual(
+            order.order_line[0].price_unit, l_tela.precio_sugerido, places=2)
+        self.assertEqual(order.order_line[1].price_unit, 100.0)
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)
