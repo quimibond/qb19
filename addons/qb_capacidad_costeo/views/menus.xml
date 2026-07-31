@@ -31,6 +31,21 @@
     <menuitem id="menu_qb_factores" name="Factores por período"
               parent="menu_qb_snapshots_group" action="costo_factores_action" sequence="30"/>
 
+    <!-- ============ Integración con la app de VENTAS ============
+         Los vendedores cotizan desde su app, sin ir al módulo de costeo:
+         Ventas → Cotizador de costos. Mismas acciones, otro punto de entrada. -->
+    <menuitem id="menu_sale_qb_cotizador_root" name="Cotizador de costos"
+              parent="sale.sale_menu_root" sequence="15"/>
+    <menuitem id="menu_sale_qb_cotizador" name="Cotizar (capacidad y costo)"
+              parent="menu_sale_qb_cotizador_root" action="cotizador_wizard_action"
+              sequence="10"/>
+    <menuitem id="menu_sale_qb_cotizaciones" name="Cotizaciones guardadas"
+              parent="menu_sale_qb_cotizador_root" action="cotizacion_action"
+              sequence="20"/>
+    <menuitem id="menu_sale_qb_costo_producto" name="Costo por producto"
+              parent="menu_sale_qb_cotizador_root" action="costo_producto_action"
+              sequence="30"/>
+
     <!-- Configuración (solo admin de manufactura) -->
     <menuitem id="menu_qb_config" name="Configuración"
               parent="menu_qb_costeo_root" sequence="90"
