@@ -9,3 +9,4 @@ from . import costeo
 from . import cotizacion
 from . import snapshot
 from . import supabase_import
+from . import panel

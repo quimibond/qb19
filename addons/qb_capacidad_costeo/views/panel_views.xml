@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="panel_action" model="ir.actions.act_window">
+        <field name="name">Panel — Capacidad &amp; Costeo</field>
+        <field name="res_model">qb.costeo.panel</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+    <record id="panel_view_form" model="ir.ui.view">
+        <field name="name">qb.costeo.panel.form</field>
+        <field name="model">qb.costeo.panel</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title"><h1>Capacidad &amp; Costeo</h1></div>
+                    <group string="Acciones rápidas">
+                        <div colspan="2">
+                            <button name="action_cotizar" string="➜ Cotizar"
+                                    type="object" class="btn-primary me-2"/>
+                            <button name="action_balance" string="Balance de línea"
+                                    type="object" class="btn-secondary me-2"/>
+                            <button name="action_importar_supabase"
+                                    string="Importar config de Supabase"
+                                    type="object" class="btn-secondary me-2"/>
+                            <button name="action_recalcular"
+                                    string="Recalcular costeo (mes anterior)"
+                                    type="object" class="btn-secondary me-2"
+                                    confirm="Recalcula factores y costo por producto del mes anterior. Puede tardar unos minutos. ¿Continuar?"/>
+                            <button name="action_turnos" string="Capturar turnos"
+                                    type="object" class="btn-secondary me-2"/>
+                            <button name="action_cuentas_pendientes"
+                                    string="Cuentas sin clasificar"
+                                    type="object" class="btn-secondary"/>
+                        </div>
+                    </group>
+                    <group string="Estado de configuración (qué falta y qué desbloquea)">
+                        <field name="estado_html" nolabel="1" colspan="2"/>
+                    </group>
+                    <group string="Capacidad del mes">
+                        <field name="kpi_html" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
