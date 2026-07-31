@@ -40,11 +40,13 @@ tablas de configuración del módulo, editables desde la UI.
         'data/ir_cron.xml',
         'views/config_views.xml',
         'views/panel_views.xml',
-        'views/sale_order_views.xml',
         'report/cotizacion_report.xml',
         'views/capacidad_views.xml',
         'views/costeo_views.xml',
         'views/cotizacion_views.xml',
+        # DESPUÉS de cotizacion_views: su botón referencia
+        # cotizador_orden_action, que se define ahí
+        'views/sale_order_views.xml',
         'views/snapshot_views.xml',
         'views/menus.xml',
     ],
