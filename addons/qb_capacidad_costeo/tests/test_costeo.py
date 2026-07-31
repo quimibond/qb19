@@ -100,6 +100,34 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(directo, batch, places=6)
         self.assertIn(self.tela.id, ctx['mp_cache'])
 
+    def test_cotizador_calculadora_viva(self):
+        """Los resultados del wizard se computan en vivo (sin botón) y el
+        precio sugerido cubre op% + margen meta sobre venta."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 3, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'target_margin': 30.0,
+        })
+        # MP 3.6 + energía 4×0.072 = variable; fab por híbrida en metros
+        self.assertAlmostEqual(wiz.mp_unit, 0.072 * 50.0, places=4)
+        self.assertAlmostEqual(wiz.energia_unit, 4.0 * 0.072, places=4)
+        self.assertAlmostEqual(
+            wiz.costo_variable, wiz.mp_unit + wiz.energia_unit, places=4)
+        self.assertAlmostEqual(wiz.fab_unit, 0.072 * 30.0 + 3.0, places=4)
+        # precio sugerido = (variable+fab) / (1 − op − margen)
+        esperado = (wiz.costo_variable + wiz.fab_unit) / (1 - 0.18 - 0.30)
+        self.assertAlmostEqual(wiz.precio_sugerido, esperado, places=3)
+        self.assertEqual(wiz.piso_ocioso, wiz.costo_variable)
+        # Guardar produce la cotización con los mismos números
+        action = wiz.action_cotizar()
+        cot = self.env['qb.cotizacion'].browse(action['res_id'])
+        self.assertAlmostEqual(cot.costo_variable, wiz.costo_variable, places=4)
+        self.assertAlmostEqual(cot.precio_sugerido, wiz.precio_sugerido, places=4)
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)

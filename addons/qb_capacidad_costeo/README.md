@@ -38,7 +38,7 @@ su lógica ni su versión de manifest.
 |---|---|
 | `qb.costo.factores` | Los factores del mes: pools GL suavizados, denominadores kg/m, factor $/kg y $/m, energía $/kg, op %, factor entretela, **cobertura del pool** — trazabilidad completa |
 | `qb.costo.producto` | Costo por capa por producto: MP (BOM recursiva a último costo), energía, fabricación híbrida, operación; márgenes de contribución y absorbido; **contribución por hora-máquina** |
-| `qb.cotizacion` | Cotizaciones guardadas con supuestos (para comparar antes/después) |
+| `qb.cotizacion` | Cotizaciones guardadas con supuestos (para comparar antes/después). El wizard es una **calculadora viva**: los resultados (costo por capa, pisos, contribución, capacidad) se recalculan al instante al cambiar producto/volumen/precio/margen; el botón solo guarda el escenario |
 | `qb.costeo.snapshot` | Foto mensual de capacidad/ociosidad por centro (tendencia) |
 
 ## Fórmulas
