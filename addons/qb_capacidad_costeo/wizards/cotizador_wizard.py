@@ -49,7 +49,13 @@ class QbCotizadorWizard(models.TransientModel):
     target_margin = fields.Float(
         string='Margen meta %',
         help='0 = usar el target_margin de configuración.')
-    fx_rate = fields.Float(string='FX (MXN/USD)')
+    fx_rate = fields.Float(
+        string='TC (MXN por divisa)', digits=(16, 4),
+        help='Tipo de cambio de Odoo a hoy. Se llena solo desde la moneda '
+             'del pedido (o USD si se abre suelto). Los costos son MXN; el '
+             'precio se escribe en la moneda del pedido convertido con esto.')
+    regularidad_info = fields.Char(
+        compute='_compute_regularidad', string='Histórico del cliente')
 
     # Integración con la orden de venta (cuando se lanza desde una)
     sale_order_id = fields.Many2one('sale.order', string='Orden de venta',
@@ -117,28 +123,74 @@ class QbCotizadorWizard(models.TransientModel):
         """Prefill desde el contexto: lanzado desde una orden de venta toma
         cliente, la primera línea con producto, su precio y su cantidad."""
         res = super().default_get(fields_list)
+        Costo = self.env['qb.costo.producto']
+        order = None
+        order_id = res.get('sale_order_id')
         if (self.env.context.get('active_model') == 'sale.order'
                 and self.env.context.get('active_id')):
-            order = self.env['sale.order'].browse(
-                self.env.context['active_id']).exists()
-            if order:
-                res.setdefault('partner_id', order.partner_id.id)
-                res.setdefault('sale_order_id', order.id)
-                line = order.order_line.filtered('product_id')[:1]
-                if line:
-                    res.setdefault('sale_line_id', line.id)
-                    res.setdefault('product_id', line.product_id.id)
-                    res.setdefault('precio_objetivo', line.price_unit)
-                    res.setdefault('volumen', line.product_uom_qty)
+            order_id = self.env.context['active_id']
+        if order_id:
+            order = self.env['sale.order'].browse(order_id).exists()
+        if order:
+            rate = Costo.to_mxn_rate(order.currency_id)
+            res.setdefault('partner_id', order.partner_id.id)
+            res.setdefault('sale_order_id', order.id)
+            res.setdefault('fx_rate', rate)
+            line = (self.env['sale.order.line'].browse(
+                res.get('sale_line_id')).exists()
+                or order.order_line.filtered('product_id')[:1])
+            if line:
+                res.setdefault('sale_line_id', line.id)
+                res.setdefault('product_id', line.product_id.id)
+                # Precio del pedido convertido a MXN (los costos son MXN)
+                res['precio_objetivo'] = line.price_unit * rate
+                # Volumen: si el cliente compra REGULAR este producto, el
+                # run-rate mensual histórico manda sobre la qty del pedido
+                vol, meses, _v = Costo.monthly_sales_volume(
+                    line.product_id, order.partner_id)
+                res['volumen'] = vol if meses >= 3 else line.product_uom_qty
+        if not res.get('fx_rate'):
+            usd = self.env.ref('base.USD', raise_if_not_found=False)
+            if usd:
+                res['fx_rate'] = Costo.to_mxn_rate(usd)
         return res
 
     @api.onchange('sale_line_id')
     def _onchange_sale_line(self):
-        """Cambiar de línea re-precarga producto, precio y cantidad."""
+        """Cambiar de línea re-precarga producto, precio (a MXN) y volumen
+        (run-rate histórico si el cliente es regular)."""
         if self.sale_line_id:
+            Costo = self.env['qb.costo.producto']
+            rate = Costo.to_mxn_rate(self.sale_line_id.order_id.currency_id)
             self.product_id = self.sale_line_id.product_id
-            self.precio_objetivo = self.sale_line_id.price_unit
-            self.volumen = self.sale_line_id.product_uom_qty
+            self.precio_objetivo = self.sale_line_id.price_unit * rate
+            self.fx_rate = rate
+            vol, meses, _v = Costo.monthly_sales_volume(
+                self.sale_line_id.product_id,
+                self.sale_line_id.order_id.partner_id)
+            self.volumen = vol if meses >= 3 \
+                else self.sale_line_id.product_uom_qty
+
+    @api.depends('product_id', 'partner_id')
+    def _compute_regularidad(self):
+        Costo = self.env['qb.costo.producto']
+        for wiz in self:
+            if not wiz.product_id:
+                wiz.regularidad_info = False
+                continue
+            vol, meses, ventana = Costo.monthly_sales_volume(
+                wiz.product_id, wiz.partner_id)
+            if not meses:
+                wiz.regularidad_info = (
+                    'Sin histórico de este producto%s en los últimos 12 meses.'
+                    % (' con este cliente' if wiz.partner_id else ''))
+            else:
+                wiz.regularidad_info = (
+                    '%s: %s de %s meses con compra, promedio %s %s/mes%s.'
+                    % ('Cliente REGULAR' if meses >= 3 else 'Compra ocasional',
+                       meses, ventana, f'{vol:,.0f}',
+                       wiz.product_id.uom_id.name or 'u',
+                       ' (usado como volumen)' if meses >= 3 else ''))
 
     # ------------------------------------------------------------------
     # Cálculo (compartido entre el compute vivo y el guardado)
@@ -363,16 +415,21 @@ class QbCotizadorWizard(models.TransientModel):
         if not self.sale_line_id:
             raise UserError('Elige la línea del pedido a la que aplicar el precio.')
         cotizacion = self._save_cotizacion()
-        precio = self.precio_objetivo or cotizacion.precio_sugerido
-        self.sale_line_id.price_unit = precio
+        precio_mxn = self.precio_objetivo or cotizacion.precio_sugerido
+        # La línea vive en la moneda del pedido: convertir con el TC de Odoo
+        rate = self.env['qb.costo.producto'].to_mxn_rate(
+            self.sale_order_id.currency_id)
+        precio_divisa = precio_mxn / rate if rate else precio_mxn
+        self.sale_line_id.price_unit = precio_divisa
+        divisa = self.sale_order_id.currency_id.name or 'MXN'
+        fx = (' (TC %.4f)' % rate) if rate != 1.0 else ''
         self.sale_order_id.message_post(
-            body='Precio de %s actualizado a $%.2f por el cotizador de '
-                 'costos (%s, semáforo: %s). Ver %s.'
-                 % (self.sale_line_id.product_id.display_name, precio,
-                    cotizacion.name,
+            body='Precio de %s actualizado a %s %.2f%s ($%.2f MXN) por el '
+                 'cotizador de costos (%s, semáforo: %s).'
+                 % (self.sale_line_id.product_id.display_name, divisa,
+                    precio_divisa, fx, precio_mxn, cotizacion.name,
                     dict(cotizacion._fields['semaforo'].selection).get(
-                        cotizacion.semaforo, 'n/d'),
-                    cotizacion.display_name))
+                        cotizacion.semaforo, 'n/d')))
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'sale.order',
