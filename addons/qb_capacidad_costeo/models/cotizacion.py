@@ -57,6 +57,30 @@ class QbCotizacion(models.Model):
              'Con la planta llena no aceptar debajo de esto.')
     margen_contribucion = fields.Float(string='Contribución $/u', digits=(16, 4))
     margen_contribucion_pct = fields.Float(string='Contribución %')
+    margen_bruto_pct = fields.Float(
+        string='Margen bruto %',
+        help='(precio − costo de producción) ÷ precio, al precio cotizado.')
+    margen_neto_pct = fields.Float(
+        string='Margen neto %',
+        help='(precio − costo de producción − operación) ÷ precio.')
+
+    # Espejo en divisa (desde el TC guardado al cotizar)
+    precio_sugerido_divisa = fields.Float(
+        compute='_compute_divisa', string='Sugerido (divisa)', digits=(16, 4))
+    piso_ocioso_divisa = fields.Float(
+        compute='_compute_divisa', string='Piso ocioso (divisa)', digits=(16, 4))
+    piso_lleno_divisa = fields.Float(
+        compute='_compute_divisa', string='Piso lleno (divisa)', digits=(16, 4))
+    es_divisa = fields.Boolean(compute='_compute_divisa')
+
+    @api.depends('fx_rate', 'precio_sugerido', 'piso_ocioso', 'piso_lleno')
+    def _compute_divisa(self):
+        for rec in self:
+            fx = rec.fx_rate if rec.fx_rate and rec.fx_rate != 1.0 else 0.0
+            rec.es_divisa = bool(fx)
+            rec.precio_sugerido_divisa = rec.precio_sugerido / fx if fx else 0.0
+            rec.piso_ocioso_divisa = rec.piso_ocioso / fx if fx else 0.0
+            rec.piso_lleno_divisa = rec.piso_lleno / fx if fx else 0.0
     contrib_hora_maquina = fields.Float(
         string='Contribución $/hora-máquina',
         help='Para rankear contra otros productos cuando hay cuello de botella.')

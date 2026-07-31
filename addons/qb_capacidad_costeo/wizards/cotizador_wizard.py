@@ -156,6 +156,15 @@ class QbCotizadorWizard(models.TransientModel):
              '(fx_buffer_pct): cotizar exportación al TC de HOY sin colchón '
              'deja el margen expuesto a la depreciación del peso durante la '
              'vigencia de la cotización.')
+    margen_bruto_pct = fields.Float(
+        compute='_compute_cotizacion', string='Margen bruto %',
+        help='(precio − costo de producción [MP + energía + fabricación]) '
+             '÷ precio. Evaluado al precio objetivo (o al sugerido).')
+    margen_neto_pct = fields.Float(
+        compute='_compute_cotizacion', string='Margen neto %',
+        help='(precio − costo de producción − operación) ÷ precio: lo que '
+             'queda después de TODO. Al precio sugerido, es exactamente el '
+             'margen meta.')
     piso_ocioso_divisa = fields.Float(
         compute='_compute_cotizacion', string='Piso ocioso (divisa)',
         digits=(16, 4))
@@ -341,7 +350,8 @@ class QbCotizadorWizard(models.TransientModel):
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
                 'margen_contribucion_pct', 'contrib_hora_maquina',
                 'precio_sugerido_divisa', 'piso_ocioso_divisa',
-                'piso_lleno_divisa', 'sugerido_colchon_divisa'], 0.0)
+                'piso_lleno_divisa', 'sugerido_colchon_divisa',
+                'margen_bruto_pct', 'margen_neto_pct'], 0.0)
             zero['semaforo'] = False
             try:
                 res = wiz._calc()
@@ -395,6 +405,13 @@ class QbCotizadorWizard(models.TransientModel):
                     res['precio_sugerido'] / res['fx']
                     * (1.0 + self.env['qb.costeo.factor.config'].get_param(
                         'fx_buffer_pct', 0.03)),
+                'margen_bruto_pct':
+                    100.0 * (precio_ref - res['variable'] - res['fab'])
+                    / precio_ref if precio_ref else 0.0,
+                'margen_neto_pct':
+                    100.0 * (precio_ref - res['variable'] - res['fab']
+                             - res['op_pct'] * precio_ref) / precio_ref
+                    if precio_ref else 0.0,
             })
 
     # ------------------------------------------------------------------
@@ -456,6 +473,8 @@ class QbCotizadorWizard(models.TransientModel):
             'margen_contribucion_pct':
                 100.0 * res['contrib'] / res['precio_ref']
                 if res['precio_ref'] else 0.0,
+            'margen_bruto_pct': self.margen_bruto_pct,
+            'margen_neto_pct': self.margen_neto_pct,
             'contrib_hora_maquina': res['contrib_hora'],
             'capacity_ok': res['capacity_ok'],
             'capacity_detail': res['capacity_detail'],

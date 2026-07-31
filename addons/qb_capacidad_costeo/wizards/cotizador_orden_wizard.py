@@ -85,6 +85,13 @@ class QbCotizadorOrdenWizard(models.TransientModel):
                 'contrib_hora': ((precio_mxn - q['variable'])
                                  / q['hours_per_unit']
                                  if q['hours_per_unit'] else 0.0),
+                'margen_bruto_pct':
+                    100.0 * (precio_mxn - q['variable'] - q['fab'])
+                    / precio_mxn if precio_mxn else 0.0,
+                'margen_neto_pct':
+                    100.0 * (precio_mxn - q['variable'] - q['fab']
+                             - q['op_pct'] * precio_mxn)
+                    / precio_mxn if precio_mxn else 0.0,
                 # Pre-marcar solo lo que destruye valor: decisión obvia
                 'aplicar': semaforo == 'rojo',
             }))
@@ -180,6 +187,10 @@ class QbCotizadorOrdenLinea(models.TransientModel):
                                 digits=(16, 2))
     contrib_hora = fields.Float(string='$/hora-máquina', readonly=True,
                                 digits=(16, 0))
+    margen_bruto_pct = fields.Float(string='Margen bruto %', readonly=True,
+                                    digits=(16, 1))
+    margen_neto_pct = fields.Float(string='Margen neto %', readonly=True,
+                                   digits=(16, 1))
     semaforo = fields.Selection(SEMAFORO, readonly=True)
     aplicar = fields.Boolean(
         string='Aplicar',
