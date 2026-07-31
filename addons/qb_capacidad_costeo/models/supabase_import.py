@@ -94,6 +94,7 @@ class QbCosteoSupabaseImport(models.TransientModel):
         log.append(self._import_cuentas())
         log.append(self._import_factor_config())
         log.append(self._import_pesos())
+        log.append(self._import_fichas())
         # Con cuentas nuevas clasificadas, refrescar el matching de una vez
         self.env['qb.costeo.cuenta.class'].cron_refresh_account_matching()
         log.append('Matching de cuentas refrescado.')
@@ -317,6 +318,36 @@ class QbCosteoSupabaseImport(models.TransientModel):
                 '(override local o producto inexistente) de %s en Supabase; '
                 '%s conversiones kg↔m.'
                 % (created, updated, skipped, len(kg_rows), len(conv)))
+
+    @api.model
+    def _import_fichas(self):
+        """Fichas técnicas: genera desde la nomenclatura y superpone el
+        gramaje/ancho CURADO de Supabase (product_uom_conversion trae
+        gramaje_g_m2 y ancho_m verificados contra CVU/maestro). Las fichas
+        manuales no se pisan."""
+        Ficha = self.env['qb.producto.ficha']
+        Ficha.action_generar_fichas()
+        rows = self._sb_get('product_uom_conversion')
+        fichas = {f.product_id.id: f
+                  for f in Ficha.with_context(active_test=False).search([])}
+        n = 0
+        for row in rows:
+            ficha = fichas.get(row['odoo_product_id'])
+            if not ficha or ficha.source == 'manual':
+                continue
+            vals = {}
+            if row.get('gramaje_g_m2'):
+                vals['gramaje_g_m2'] = float(row['gramaje_g_m2'])
+            if row.get('ancho_m'):
+                vals['ancho_m'] = float(row['ancho_m'])
+            if row.get('m_per_kg'):
+                vals['rendimiento_m_kg'] = float(row['m_per_kg'])
+            if vals:
+                vals['source'] = 'supabase'
+                ficha.write(vals)
+                n += 1
+        return ('Fichas técnicas: generadas para vendibles; %s con '
+                'gramaje/ancho curado de Supabase.' % n)
 
     # ------------------------------------------------------------------
     # UI / cron

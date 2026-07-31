@@ -44,6 +44,10 @@
     <menuitem id="menu_qb_rh" name="RH / MOD por centro"
               parent="menu_qb_capacidad_group" action="rh_centro_action" sequence="50"/>
 
+    <!-- 4.5 Fichas técnicas: la nomenclatura hecha datos -->
+    <menuitem id="menu_qb_fichas" name="Fichas técnicas"
+              parent="menu_qb_costeo_root" action="ficha_action" sequence="35"/>
+
     <!-- 5. Histórico -->
     <menuitem id="menu_qb_snapshots_group" name="Histórico"
               parent="menu_qb_costeo_root" sequence="40"/>
@@ -92,5 +96,7 @@
               parent="menu_qb_config" action="producto_ruteo_action" sequence="50"/>
     <menuitem id="menu_qb_turnos" name="Turnos / capacidad manual"
               parent="menu_qb_config" action="turno_config_action" sequence="60"/>
+    <menuitem id="menu_qb_generar_fichas" name="Generar fichas técnicas"
+              parent="menu_qb_config" action="ficha_generar_action" sequence="65"/>
 
 </odoo>
