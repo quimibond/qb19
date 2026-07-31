@@ -176,3 +176,8 @@ class TestQbCosteo(TransactionCase):
                 msg='Invariante roto en %s' % rec.product_id.display_name)
             if rec.product_bucket in ('importado', 'subproducto'):
                 self.assertEqual(rec.fab_unit, 0.0)
+            self.assertTrue(rec.alerta, 'alerta debe poblarse siempre')
+            self.assertAlmostEqual(
+                rec.contrib_total,
+                (rec.margen_contribucion * rec.qty_vendida
+                 if rec.precio_prom else 0.0), places=2)
