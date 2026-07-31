@@ -31,7 +31,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 
-from .cuenta_map import CUENTA_MAP_SQL
+from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
 
 _logger = logging.getLogger(__name__)
 
@@ -181,20 +181,20 @@ class QbCostoProducto(models.Model):
         wc_ids = centros.mapped('workcenter_ids').ids
         if wc_ids:
             self.env.cr.execute("""
-                SELECT COALESCE(SUM(wo.qty_produced), 0)
+                SELECT COALESCE(SUM(%s), 0)
                 FROM mrp_workorder wo
-                WHERE wo.workcenter_id IN %s AND wo.state = 'done'
-                  AND wo.date_finished >= %s AND wo.date_finished < %s
-            """, (tuple(wc_ids), date_from, date_to))
+                WHERE wo.workcenter_id IN %%s AND wo.state = 'done'
+                  AND wo.date_finished >= %%s AND wo.date_finished < %%s
+            """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
             total += self.env.cr.fetchone()[0] or 0.0
         for centro in centros.filtered(
                 lambda c: c.mo_name_pattern and not c.workcenter_ids):
             self.env.cr.execute("""
-                SELECT COALESCE(SUM(mp.qty_produced), 0)
+                SELECT COALESCE(SUM(%s), 0)
                 FROM mrp_production mp
-                WHERE mp.name LIKE %s AND mp.state = 'done'
-                  AND mp.date_finished >= %s AND mp.date_finished < %s
-            """, (centro.mo_name_pattern, date_from, date_to))
+                WHERE mp.name LIKE %%s AND mp.state = 'done'
+                  AND mp.date_finished >= %%s AND mp.date_finished < %%s
+            """ % mo_qty_sql(self.env), (centro.mo_name_pattern, date_from, date_to))
             total += self.env.cr.fetchone()[0] or 0.0
         return total / months
 

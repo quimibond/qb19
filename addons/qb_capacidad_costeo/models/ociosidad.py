@@ -8,7 +8,7 @@ normal y a producción real) y el costo hundido del mes.
 """
 from odoo import fields, models
 
-from .cuenta_map import CUENTA_MAP_SQL
+from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
 
 
 class QbOciosidad(models.Model):
@@ -101,7 +101,7 @@ class QbOciosidad(models.Model):
             ),
             wo_prod AS (
                 SELECT rel.centro_id,
-                       SUM(wo.qty_produced) / (SELECT window_months FROM cfg) AS qty_month
+                       SUM(%(wo_qty)s) / (SELECT window_months FROM cfg) AS qty_month
                 FROM qb_centro_workcenter_rel rel
                 JOIN mrp_workorder wo ON wo.workcenter_id = rel.workcenter_id
                 JOIN cfg ON TRUE
@@ -113,7 +113,7 @@ class QbOciosidad(models.Model):
             ),
             mo_prod AS (
                 SELECT ctr.id AS centro_id,
-                       SUM(mp.qty_produced) / (SELECT window_months FROM cfg) AS qty_month
+                       SUM(%(mo_qty)s) / (SELECT window_months FROM cfg) AS qty_month
                 FROM qb_costeo_centro ctr
                 JOIN mrp_production mp ON mp.name LIKE ctr.mo_name_pattern
                 JOIN cfg ON TRUE
@@ -168,4 +168,6 @@ class QbOciosidad(models.Model):
                      ELSE 0 END AS fixed_unit_real,
                 b.company_id
             FROM base b
-        """ % {'cuenta_map': CUENTA_MAP_SQL}
+        """ % {'cuenta_map': CUENTA_MAP_SQL,
+               'wo_qty': wo_qty_sql(self.env),
+               'mo_qty': mo_qty_sql(self.env)}

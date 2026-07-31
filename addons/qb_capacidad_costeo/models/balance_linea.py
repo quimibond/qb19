@@ -12,6 +12,8 @@ workcenters reales, entran solos por la vía nativa.
 """
 from odoo import fields, models
 
+from .cuenta_map import mo_qty_sql, wo_qty_sql
+
 
 class QbBalance(models.Model):
     _name = 'qb.balance'
@@ -87,7 +89,7 @@ class QbBalance(models.Model):
             wo_prod AS (
                 -- Producción real por centro vía sus workcenters
                 SELECT rel.centro_id,
-                       SUM(wo.qty_produced) / (SELECT window_months FROM cfg) AS qty_month
+                       SUM(%(wo_qty)s) / (SELECT window_months FROM cfg) AS qty_month
                 FROM qb_centro_workcenter_rel rel
                 JOIN mrp_workorder wo ON wo.workcenter_id = rel.workcenter_id
                 JOIN cfg ON TRUE
@@ -100,7 +102,7 @@ class QbBalance(models.Model):
             mo_prod AS (
                 -- Fallback: producción por patrón de órdenes (centros sin WC)
                 SELECT ctr.id AS centro_id,
-                       SUM(mp.qty_produced) / (SELECT window_months FROM cfg) AS qty_month
+                       SUM(%(mo_qty)s) / (SELECT window_months FROM cfg) AS qty_month
                 FROM qb_costeo_centro ctr
                 JOIN mrp_production mp ON mp.name LIKE ctr.mo_name_pattern
                 JOIN cfg ON TRUE
@@ -164,4 +166,4 @@ class QbBalance(models.Model):
                 e.capacity_source,
                 e.company_id
             FROM equiv e
-        """
+        """ % {'wo_qty': wo_qty_sql(self.env), 'mo_qty': mo_qty_sql(self.env)}

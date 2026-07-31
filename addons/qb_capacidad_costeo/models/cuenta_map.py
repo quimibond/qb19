@@ -11,6 +11,32 @@ no depender del orden de creación de vistas en el registry.
 """
 from odoo import fields, models
 
+def mo_qty_sql(env, alias='mp'):
+    """Expresión SQL de la cantidad producida de una mrp.production.
+
+    Odoo 19 eliminó la columna qty_produced del MO: para órdenes done la
+    cantidad real vive en qty_producing (con product_qty como fallback).
+    Se detecta en runtime para funcionar en 19 y sobrevivir si vuelve a
+    cambiar en versiones futuras.
+    """
+    field = env['mrp.production']._fields.get('qty_produced')
+    if field and field.store and field.column_type:
+        return '%s.qty_produced' % alias
+    return ('COALESCE(NULLIF(%(a)s.qty_producing, 0), %(a)s.product_qty)'
+            % {'a': alias})
+
+
+def wo_qty_sql(env, alias='wo'):
+    """Expresión SQL de la cantidad producida de una mrp.workorder,
+    con fallback a la cantidad de su orden de producción si la columna
+    no existe en esta versión."""
+    field = env['mrp.workorder']._fields.get('qty_produced')
+    if field and field.store and field.column_type:
+        return '%s.qty_produced' % alias
+    return ('(SELECT COALESCE(NULLIF(p.qty_producing, 0), p.product_qty) '
+            'FROM mrp_production p WHERE p.id = %s.production_id)' % alias)
+
+
 # CTE reutilizable: una fila por cuenta con su mejor clasificación activa.
 CUENTA_MAP_SQL = """
     SELECT DISTINCT ON (rel.account_id)
