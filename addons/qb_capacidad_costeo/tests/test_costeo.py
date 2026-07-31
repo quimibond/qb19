@@ -278,6 +278,23 @@ class TestQbCosteo(TransactionCase):
             order.order_line[0].price_unit, line.precio_sugerido / 20.0,
             places=2)
 
+        # Wizard individual: el precio objetivo se captura EN EUR y el
+        # modelo lo convierte; los espejos en divisa cuadran con el TC
+        wiz_ind = self.env['qb.cotizador.wizard'].with_context(
+            active_model='sale.order', active_id=order.id).create({})
+        self.assertEqual(wiz_ind.currency_id, eur)
+        self.assertAlmostEqual(wiz_ind.fx_rate, 20.0, places=2)
+        wiz_ind.precio_objetivo = 3.0  # EUR (= 60 MXN)
+        self.assertNotEqual(wiz_ind.semaforo, 'rojo')
+        self.assertAlmostEqual(
+            wiz_ind.precio_sugerido_divisa,
+            wiz_ind.precio_sugerido / 20.0, places=3)
+        self.assertAlmostEqual(
+            wiz_ind.piso_ocioso_divisa, wiz_ind.piso_ocioso / 20.0, places=3)
+        # Con precio 0.5 EUR (= 10 MXN < variable) sí es rojo
+        wiz_ind.precio_objetivo = 0.5
+        self.assertEqual(wiz_ind.semaforo, 'rojo')
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)

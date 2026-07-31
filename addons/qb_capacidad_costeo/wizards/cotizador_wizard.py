@@ -45,15 +45,41 @@ class QbCotizadorWizard(models.TransientModel):
         'qb.costeo.centro', string='Ruta (centros)',
         help='Centros por los que pasaría. Vacío = según familia.')
     volumen = fields.Float(string='Volumen (unidades/mes)')
-    precio_objetivo = fields.Float(string='Precio objetivo $/u')
+    currency_id = fields.Many2one(
+        'res.currency', string='Moneda de la cotización',
+        default=lambda self: self.env.company.currency_id,
+        help='La moneda en la que CAPTURAS el precio objetivo y en la que '
+             'se muestran/aplican los precios. Se precarga con la moneda '
+             'del pedido. Los COSTOS del modelo siempre son MXN.')
+    precio_objetivo = fields.Float(
+        string='Precio objetivo',
+        help='EN LA MONEDA DE LA COTIZACIÓN (campo de arriba). El modelo lo '
+             'convierte a MXN con el TC de Odoo para compararlo con costos.')
     target_margin = fields.Float(
         string='Margen meta %',
         help='0 = usar el target_margin de configuración.')
     fx_rate = fields.Float(
-        string='TC (MXN por divisa)', digits=(16, 4),
-        help='Tipo de cambio de Odoo a hoy. Se llena solo desde la moneda '
-             'del pedido (o USD si se abre suelto). Los costos son MXN; el '
-             'precio se escribe en la moneda del pedido convertido con esto.')
+        string='TC (MXN por 1 de la moneda)', digits=(16, 4), readonly=True,
+        compute='_compute_fx_rate',
+        help='Tipo de cambio de Odoo a hoy para la moneda elegida.')
+    moneda_info = fields.Char(compute='_compute_fx_rate')
+    es_mxn = fields.Boolean(compute='_compute_fx_rate')
+
+    @api.depends('currency_id')
+    def _compute_fx_rate(self):
+        Costo = self.env['qb.costo.producto']
+        for wiz in self:
+            rate = Costo.to_mxn_rate(wiz.currency_id)
+            wiz.fx_rate = rate
+            wiz.es_mxn = rate == 1.0
+            if rate == 1.0:
+                wiz.moneda_info = 'Todo en MXN (moneda de la compañía).'
+            else:
+                wiz.moneda_info = (
+                    'Capturas el precio en %s · TC Odoo de hoy: 1 %s = '
+                    '$%.4f MXN. Los costos del modelo son MXN; los precios '
+                    'se muestran en ambas monedas.'
+                    % (wiz.currency_id.name, wiz.currency_id.name, rate))
     regularidad_info = fields.Char(
         compute='_compute_regularidad', string='Histórico del cliente')
 
@@ -117,6 +143,16 @@ class QbCotizadorWizard(models.TransientModel):
         help='Evalúa el precio objetivo (o el sugerido) contra los pisos: '
              'rojo = destruye valor; ámbar = con capacidad ociosa conviene, '
              'aporta a fijos; verde = cubre todo el costo absorbido.')
+    # Espejo en la moneda elegida (visibles cuando no es MXN)
+    precio_sugerido_divisa = fields.Float(
+        compute='_compute_cotizacion', string='Precio sugerido (divisa)',
+        digits=(16, 4))
+    piso_ocioso_divisa = fields.Float(
+        compute='_compute_cotizacion', string='Piso ocioso (divisa)',
+        digits=(16, 4))
+    piso_lleno_divisa = fields.Float(
+        compute='_compute_cotizacion', string='Piso lleno (divisa)',
+        digits=(16, 4))
 
     @api.model
     def default_get(self, fields_list):
@@ -132,39 +168,34 @@ class QbCotizadorWizard(models.TransientModel):
         if order_id:
             order = self.env['sale.order'].browse(order_id).exists()
         if order:
-            rate = Costo.to_mxn_rate(order.currency_id)
             res.setdefault('partner_id', order.partner_id.id)
             res.setdefault('sale_order_id', order.id)
-            res.setdefault('fx_rate', rate)
+            # La moneda de la cotización ES la del pedido: el precio se
+            # captura y aplica en ella, sin conversiones mentales
+            res['currency_id'] = order.currency_id.id
             line = (self.env['sale.order.line'].browse(
                 res.get('sale_line_id')).exists()
                 or order.order_line.filtered('product_id')[:1])
             if line:
                 res.setdefault('sale_line_id', line.id)
                 res.setdefault('product_id', line.product_id.id)
-                # Precio del pedido convertido a MXN (los costos son MXN)
-                res['precio_objetivo'] = line.price_unit * rate
+                res['precio_objetivo'] = line.price_unit  # moneda del pedido
                 # Volumen: si el cliente compra REGULAR este producto, el
                 # run-rate mensual histórico manda sobre la qty del pedido
                 vol, meses, _v = Costo.monthly_sales_volume(
                     line.product_id, order.partner_id)
                 res['volumen'] = vol if meses >= 3 else line.product_uom_qty
-        if not res.get('fx_rate'):
-            usd = self.env.ref('base.USD', raise_if_not_found=False)
-            if usd:
-                res['fx_rate'] = Costo.to_mxn_rate(usd)
         return res
 
     @api.onchange('sale_line_id')
     def _onchange_sale_line(self):
-        """Cambiar de línea re-precarga producto, precio (a MXN) y volumen
-        (run-rate histórico si el cliente es regular)."""
+        """Cambiar de línea re-precarga producto, precio (en la moneda del
+        pedido) y volumen (run-rate histórico si el cliente es regular)."""
         if self.sale_line_id:
             Costo = self.env['qb.costo.producto']
-            rate = Costo.to_mxn_rate(self.sale_line_id.order_id.currency_id)
             self.product_id = self.sale_line_id.product_id
-            self.precio_objetivo = self.sale_line_id.price_unit * rate
-            self.fx_rate = rate
+            self.currency_id = self.sale_line_id.order_id.currency_id
+            self.precio_objetivo = self.sale_line_id.price_unit
             vol, meses, _v = Costo.monthly_sales_volume(
                 self.sale_line_id.product_id,
                 self.sale_line_id.order_id.partner_id)
@@ -250,7 +281,10 @@ class QbCotizadorWizard(models.TransientModel):
             q['hours_per_unit'] = Costo._hours_per_unit(
                 centros, q['is_kg'], q['kg'], q['m_per_kg'])
 
-        precio_ref = self.precio_objetivo or q['precio_sugerido']
+        # El precio objetivo viene EN LA MONEDA elegida → a MXN para comparar
+        fx = self.env['qb.costo.producto'].to_mxn_rate(self.currency_id)
+        precio_ref = (self.precio_objetivo * fx) if self.precio_objetivo \
+            else q['precio_sugerido']
         contrib = precio_ref - q['variable']
         contrib_hora = contrib / q['hours_per_unit'] \
             if q['hours_per_unit'] else 0.0
@@ -260,7 +294,7 @@ class QbCotizadorWizard(models.TransientModel):
             precio_ref, q['piso_ocioso'], q['piso_lleno'])
 
         return {
-            'semaforo': semaforo,
+            'semaforo': semaforo, 'fx': fx,
             'name': name, 'bucket': q['bucket'], 'centros': centros,
             'factores': factores, 'kg': q['kg'], 'm_per_kg': q['m_per_kg'],
             'uom_name': uom_name, 'mp': q['mp'], 'energia': q['energia'],
@@ -282,7 +316,9 @@ class QbCotizadorWizard(models.TransientModel):
                 'kg_per_unit', 'mp_unit', 'energia_unit', 'fab_unit',
                 'costo_variable', 'op_pct_display', 'precio_sugerido',
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
-                'margen_contribucion_pct', 'contrib_hora_maquina'], 0.0)
+                'margen_contribucion_pct', 'contrib_hora_maquina',
+                'precio_sugerido_divisa', 'piso_ocioso_divisa',
+                'piso_lleno_divisa'], 0.0)
             zero['semaforo'] = False
             try:
                 res = wiz._calc()
@@ -329,6 +365,9 @@ class QbCotizadorWizard(models.TransientModel):
                 'capacity_ok': res['capacity_ok'],
                 'capacity_detail': res['capacity_detail'],
                 'semaforo': res['semaforo'],
+                'precio_sugerido_divisa': res['precio_sugerido'] / res['fx'],
+                'piso_ocioso_divisa': res['piso_ocioso'] / res['fx'],
+                'piso_lleno_divisa': res['piso_lleno'] / res['fx'],
             })
 
     # ------------------------------------------------------------------
@@ -379,7 +418,10 @@ class QbCotizadorWizard(models.TransientModel):
             'costo_variable': res['variable'],
             'costo_absorbido_sin_op': res['variable'] + res['fab'],
             'target_margin': res['target'] * 100.0,
-            'precio_objetivo': self.precio_objetivo,
+            # Todo lo guardado es MXN (consistencia histórica); el TC y la
+            # moneda capturada quedan en fx_rate/supuestos
+            'precio_objetivo': self.precio_objetivo * res['fx']
+                               if self.precio_objetivo else 0.0,
             'precio_sugerido': res['precio_sugerido'],
             'piso_ocioso': res['piso_ocioso'],
             'piso_lleno': res['piso_lleno'],
@@ -415,10 +457,13 @@ class QbCotizadorWizard(models.TransientModel):
         if not self.sale_line_id:
             raise UserError('Elige la línea del pedido a la que aplicar el precio.')
         cotizacion = self._save_cotizacion()
-        precio_mxn = self.precio_objetivo or cotizacion.precio_sugerido
-        # La línea vive en la moneda del pedido: convertir con el TC de Odoo
-        rate = self.env['qb.costo.producto'].to_mxn_rate(
-            self.sale_order_id.currency_id)
+        Costo = self.env['qb.costo.producto']
+        # precio_objetivo está en la moneda de la cotización → a MXN → a la
+        # moneda del pedido (normalmente son la misma y esto es identidad)
+        fx_wiz = Costo.to_mxn_rate(self.currency_id)
+        precio_mxn = (self.precio_objetivo * fx_wiz) if self.precio_objetivo \
+            else cotizacion.precio_sugerido
+        rate = Costo.to_mxn_rate(self.sale_order_id.currency_id)
         precio_divisa = precio_mxn / rate if rate else precio_mxn
         self.sale_line_id.price_unit = precio_divisa
         divisa = self.sale_order_id.currency_id.name or 'MXN'
