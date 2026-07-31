@@ -39,10 +39,37 @@
                         <field name="spec_centro_ids" widget="many2many_tags"/>
                     </group>
                 </group>
+                <!-- Resultados EN VIVO: se recalculan al cambiar cualquier input -->
+                <group invisible="not product_id and not spec_mode">
+                    <group string="Costo por capa ($/u)">
+                        <field name="product_bucket"/>
+                        <field name="kg_per_unit"/>
+                        <field name="mp_unit"/>
+                        <field name="energia_unit"/>
+                        <field name="costo_variable"/>
+                        <field name="fab_unit"/>
+                        <field name="op_pct_display"/>
+                    </group>
+                    <group string="Precios y contribución">
+                        <field name="precio_sugerido" class="fw-bold"/>
+                        <field name="piso_ocioso"/>
+                        <field name="piso_lleno"/>
+                        <field name="margen_contribucion"/>
+                        <field name="margen_contribucion_pct"/>
+                        <field name="contrib_hora_maquina"/>
+                    </group>
+                </group>
+                <group string="Capacidad" invisible="not product_id and not spec_mode">
+                    <field name="capacity_ok"/>
+                    <field name="capacity_detail" nolabel="1"/>
+                </group>
+                <div class="text-muted" invisible="not factores_info">
+                    <field name="factores_info" readonly="1" nolabel="1"/>
+                </div>
                 <footer>
-                    <button name="action_cotizar" string="Cotizar" type="object"
-                            class="btn-primary"/>
-                    <button string="Cancelar" special="cancel"/>
+                    <button name="action_cotizar" string="Guardar cotización"
+                            type="object" class="btn-primary"/>
+                    <button string="Cerrar" special="cancel"/>
                 </footer>
             </form>
         </field>
