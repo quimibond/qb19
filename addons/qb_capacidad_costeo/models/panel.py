@@ -140,7 +140,38 @@ class QbCosteoPanel(models.TransientModel):
             '<p><b>Cuello de botella:</b> %s — techo de planta. &nbsp; '
             '<b>Costo ocioso del mes:</b> $%s</p>'
             % (cuello.centro_id.code if cuello else 'n/d', f'{idle:,.0f}'))
-        return header + ''.join(cards) + self._build_tendencia()
+        return (header + ''.join(cards) + self._build_breakeven()
+                + self._build_tendencia())
+
+    def _build_breakeven(self):
+        """La pregunta del CEO: ¿la contribución del mes ya cubrió los
+        fijos? (fabricación + entretelas + operación). Arriba del 100%,
+        cada peso de contribución adicional es utilidad."""
+        factores = self.env['qb.costo.factores'].search(
+            [], order='period DESC', limit=1)
+        if not factores:
+            return ''
+        contrib = sum(self.env['qb.costo.producto'].search([
+            ('period', '=', factores.period)]).mapped('contrib_total'))
+        fijos = (factores.fab_pool_month + factores.entretela_pool_month
+                 + factores.op_pool_month)
+        if not fijos:
+            return ''
+        pct = 100.0 * contrib / fijos
+        color = '#198754' if pct >= 100 else (
+            '#fd7e14' if pct >= 80 else '#dc3545')
+        return (
+            '<h5 style="margin-top:12px;">Cobertura de fijos — %s</h5>'
+            '<p>Contribución del mes <b>$%s</b> vs fijos <b>$%s</b> '
+            '(fabricación + entretelas + operación):</p>'
+            '<div style="max-width:420px;background:#e9ecef;'
+            'border-radius:6px;"><div style="width:%s%%;background:%s;'
+            'border-radius:6px;padding:3px 8px;color:white;'
+            'white-space:nowrap;"><b>%.0f%%</b>%s</div></div>'
+            % (factores.period, f'{contrib:,.0f}', f'{fijos:,.0f}',
+               min(pct, 100), color, pct,
+               ' — arriba de aquí todo es utilidad' if pct >= 100 else
+               ' — faltan $%s' % f'{max(fijos - contrib, 0):,.0f}'))
 
     def _build_tendencia(self):
         """Mini-tendencia de los últimos snapshots mensuales (utilización

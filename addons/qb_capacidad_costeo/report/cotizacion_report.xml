@@ -28,7 +28,12 @@
                                 (<span t-field="o.spec_gramaje"/> g/m² × <span t-field="o.spec_ancho"/> m)<br/>
                             </t>
                             <strong>Volumen:</strong>
-                            <span t-esc="'%s %s/mes' % ('{:,.0f}'.format(o.volumen), o.uom_name or 'u')"/>
+                            <span t-esc="'%s %s/mes' % ('{:,.0f}'.format(o.volumen), o.uom_name or 'u')"/><br/>
+                            <t t-if="o.validez_hasta">
+                                <strong>Válida hasta:</strong>
+                                <span t-field="o.validez_hasta"/> (después,
+                                TC y costos de MP pueden cambiar)
+                            </t>
                         </p>
 
                         <div t-if="o.semaforo == 'rojo'" class="alert alert-danger">
@@ -59,15 +64,33 @@
 
                         <h4>Precios</h4>
                         <table class="table table-sm">
+                            <thead t-if="o.es_divisa">
+                                <tr><th></th><th class="text-end">MXN</th>
+                                    <th class="text-end">Divisa (TC <span t-esc="'{:.4f}'.format(o.fx_rate)"/>)</th></tr>
+                            </thead>
                             <tbody>
                                 <tr class="fw-bold"><td>Precio sugerido (margen meta <span t-esc="'{:.0f}'.format(o.target_margin)"/>%)</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.precio_sugerido)"/></td></tr>
+                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.precio_sugerido)"/></td>
+                                    <td t-if="o.es_divisa" class="text-end fw-bold"><span t-esc="'{:,.4f}'.format(o.precio_sugerido_divisa)"/></td></tr>
                                 <tr t-if="o.precio_objetivo"><td>Precio objetivo</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.precio_objetivo)"/></td></tr>
+                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.precio_objetivo)"/></td>
+                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.precio_objetivo / o.fx_rate)"/></td></tr>
                                 <tr><td>Piso con capacidad ociosa (= costo variable)</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.piso_ocioso)"/></td></tr>
+                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.piso_ocioso)"/></td>
+                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_ocioso_divisa)"/></td></tr>
                                 <tr><td>Piso a planta llena (margen cero absorbido)</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.piso_lleno)"/></td></tr>
+                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.piso_lleno)"/></td>
+                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_lleno_divisa)"/></td></tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Márgenes al precio evaluado</h4>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr><td>Margen bruto (precio − costo de producción)</td>
+                                    <td class="text-end"><span t-esc="'{:.1f}'.format(o.margen_bruto_pct)"/>%</td></tr>
+                                <tr><td>Margen neto (después de producción + operación)</td>
+                                    <td class="text-end"><span t-esc="'{:.1f}'.format(o.margen_neto_pct)"/>%</td></tr>
                                 <tr><td>Contribución</td>
                                     <td class="text-end"><span t-esc="'{:,.2f}'.format(o.margen_contribucion)"/>
                                         (<span t-esc="'{:.1f}'.format(o.margen_contribucion_pct)"/>%)</td></tr>

@@ -122,6 +122,9 @@ class TestQbCosteo(TransactionCase):
         esperado = (wiz.costo_variable + wiz.fab_unit) / (1 - 0.18 - 0.30)
         self.assertAlmostEqual(wiz.precio_sugerido, esperado, places=3)
         self.assertEqual(wiz.piso_ocioso, wiz.costo_variable)
+        # Márgenes al precio sugerido: neto == margen meta; bruto = neto + op
+        self.assertAlmostEqual(wiz.margen_neto_pct, 30.0, places=3)
+        self.assertAlmostEqual(wiz.margen_bruto_pct, 30.0 + 18.0, places=3)
         # Guardar produce la cotización con los mismos números
         action = wiz.action_cotizar()
         cot = self.env['qb.cotizacion'].browse(action['res_id'])
