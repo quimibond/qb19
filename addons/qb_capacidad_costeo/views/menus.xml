@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Navegación reorganizada (2026-07-31): Panel como puerta de entrada,
+         luego grupos por intención (Cotizar / Costos / Capacidad / Histórico /
+         Configuración). Los xmlids NO cambian — solo padres, secuencias y
+         etiquetas — para no romper favoritos. -->
+
+    <menuitem id="menu_qb_costeo_root" name="Capacidad &amp; Costeo" sequence="85"/>
+
+    <!-- 1. Panel: semáforo de configuración + KPIs, la respuesta a "¿por qué
+         sale en cero?" -->
+    <menuitem id="menu_qb_panel" name="Panel"
+              parent="menu_qb_costeo_root" action="panel_action" sequence="5"/>
+
+    <!-- 2. Cotizar: el flujo diario del vendedor -->
+    <menuitem id="menu_qb_cotizar_group" name="Cotizar"
+              parent="menu_qb_costeo_root" sequence="10"/>
+    <menuitem id="menu_qb_cotizador" name="Nueva cotización"
+              parent="menu_qb_cotizar_group" action="cotizador_wizard_action" sequence="10"/>
+    <menuitem id="menu_qb_cotizaciones" name="Cotizaciones guardadas"
+              parent="menu_qb_cotizar_group" action="cotizacion_action" sequence="20"/>
+
+    <!-- 3. Costos: qué cuesta cada producto y con qué factores -->
+    <menuitem id="menu_qb_costos_group" name="Costos"
+              parent="menu_qb_costeo_root" sequence="20"/>
+    <menuitem id="menu_qb_costo_producto" name="Costo por producto"
+              parent="menu_qb_costos_group" action="costo_producto_action" sequence="10"/>
+    <menuitem id="menu_qb_ranking" name="Ranking por hora-máquina"
+              parent="menu_qb_costos_group" action="costo_ranking_action" sequence="15"/>
+    <menuitem id="menu_qb_factores" name="Factores por período"
+              parent="menu_qb_costos_group" action="costo_factores_action" sequence="20"/>
+
+    <!-- 4. Capacidad: cuánto cabe, dónde está el cuello, cuánto cuesta lo ocioso -->
+    <menuitem id="menu_qb_capacidad_group" name="Capacidad"
+              parent="menu_qb_costeo_root" sequence="30"/>
+    <menuitem id="menu_qb_balance" name="Balance de línea"
+              parent="menu_qb_capacidad_group" action="balance_action" sequence="10"/>
+    <menuitem id="menu_qb_capacidad" name="Por máquina"
+              parent="menu_qb_capacidad_group" action="capacidad_action" sequence="20"/>
+    <menuitem id="menu_qb_ociosidad" name="Ociosidad"
+              parent="menu_qb_capacidad_group" action="ociosidad_action" sequence="30"/>
+    <menuitem id="menu_qb_escenario" name="Escenarios de turno"
+              parent="menu_qb_capacidad_group" action="escenario_turno_action" sequence="40"/>
+    <menuitem id="menu_qb_rh" name="RH / MOD por centro"
+              parent="menu_qb_capacidad_group" action="rh_centro_action" sequence="50"/>
+
+    <!-- 5. Histórico -->
+    <menuitem id="menu_qb_snapshots_group" name="Histórico"
+              parent="menu_qb_costeo_root" sequence="40"/>
+    <menuitem id="menu_qb_snapshots" name="Snapshots"
+              parent="menu_qb_snapshots_group" action="snapshot_action" sequence="10"/>
+    <menuitem id="menu_qb_tendencia" name="Tendencia por centro"
+              parent="menu_qb_snapshots_group" action="snapshot_line_action" sequence="20"/>
+
+    <!-- ============ Integración con la app de VENTAS ============
+         Los vendedores cotizan desde su app, sin ir al módulo de costeo:
+         Ventas → Cotizador de costos. Mismas acciones, otro punto de entrada. -->
+    <menuitem id="menu_sale_qb_cotizador_root" name="Cotizador de costos"
+              parent="sale.sale_menu_root" sequence="15"/>
+    <menuitem id="menu_sale_qb_cotizador" name="Cotizar (capacidad y costo)"
+              parent="menu_sale_qb_cotizador_root" action="cotizador_wizard_action"
+              sequence="10"/>
+    <menuitem id="menu_sale_qb_cotizaciones" name="Cotizaciones guardadas"
+              parent="menu_sale_qb_cotizador_root" action="cotizacion_action"
+              sequence="20"/>
+    <menuitem id="menu_sale_qb_costo_producto" name="Costo por producto"
+              parent="menu_sale_qb_cotizador_root" action="costo_producto_action"
+              sequence="30"/>
+
+    <!-- 6. Configuración (solo admin de manufactura / sistema).
+         Primero el import automático; lo manual después. -->
+    <menuitem id="menu_qb_config" name="Configuración"
+              parent="menu_qb_costeo_root" sequence="90"
+              groups="mrp.group_mrp_manager,base.group_system"/>
+    <menuitem id="menu_qb_supabase_import" name="Importar desde Supabase"
+              parent="menu_qb_config" action="supabase_import_action" sequence="5"/>
+    <menuitem id="menu_qb_recompute" name="Recalcular costeo (mes anterior)"
+              parent="menu_qb_config" action="costo_recompute_action" sequence="8"/>
+    <menuitem id="menu_qb_centros" name="Centros de costo"
+              parent="menu_qb_config" action="centro_action" sequence="10"/>
+    <menuitem id="menu_qb_cuentas" name="Clasificación de cuentas"
+              parent="menu_qb_config" action="cuenta_class_action" sequence="20"/>
+    <menuitem id="menu_qb_cuentas_map" name="Cuentas mapeadas"
+              parent="menu_qb_config" action="cuenta_map_action" sequence="25"/>
+    <menuitem id="menu_qb_cuentas_pendientes" name="Cuentas sin clasificar"
+              parent="menu_qb_config" action="cuentas_pendientes_action" sequence="27"/>
+    <menuitem id="menu_qb_parametros" name="Parámetros"
+              parent="menu_qb_config" action="factor_config_action" sequence="30"/>
+    <menuitem id="menu_qb_pesos" name="Pesos por producto"
+              parent="menu_qb_config" action="producto_peso_action" sequence="40"/>
+    <menuitem id="menu_qb_ruteo" name="Ruteo por familia"
+              parent="menu_qb_config" action="producto_ruteo_action" sequence="50"/>
+    <menuitem id="menu_qb_turnos" name="Turnos / capacidad manual"
+              parent="menu_qb_config" action="turno_config_action" sequence="60"/>
+
+</odoo>

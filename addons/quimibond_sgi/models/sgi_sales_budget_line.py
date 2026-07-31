@@ -7,7 +7,7 @@ y las guardas de captura. Se separó del archivo de la cabecera solo por tamaño
 (mismo modelo lógico); comparte los helpers _REAL_MOVE_TYPES y _convert_qty.
 """
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import timedelta
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError

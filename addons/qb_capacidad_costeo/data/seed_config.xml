@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Seeds idempotentes (noupdate: los ajustes del usuario sobreviven
+         updates del módulo). Arrancan con la clasificación ya validada con
+         dirección; todo es editable desde Configuración. -->
+    <data noupdate="1">
+
+        <!-- ============ Parámetros globales ============ -->
+        <record id="factor_fab_weight_share" model="qb.costeo.factor.config">
+            <field name="key">fab_weight_share</field>
+            <field name="value">0.67</field>
+            <field name="descripcion">Share del pool de fabricación repartido por PESO (tejido+tintorería+gas); el resto por LARGO (acabado).</field>
+        </record>
+        <record id="factor_energia_por_kg" model="qb.costeo.factor.config">
+            <field name="key">energia_por_kg</field>
+            <field name="value">0</field>
+            <field name="descripcion">Energía variable $/kg. 0 = automático (pool cuentas bucket=energia ÷ kg producidos).</field>
+        </record>
+        <record id="factor_op_pct_override" model="qb.costeo.factor.config">
+            <field name="key">op_pct_override</field>
+            <field name="value">0</field>
+            <field name="descripcion">Operación % sobre ventas. 0 = automático (Σ cuentas operación ÷ Σ ventas, suavizado).</field>
+        </record>
+        <record id="factor_target_margin" model="qb.costeo.factor.config">
+            <field name="key">target_margin</field>
+            <field name="value">0.30</field>
+            <field name="descripcion">Margen meta default del cotizador (fracción sobre venta).</field>
+        </record>
+        <record id="factor_smoothing_months" model="qb.costeo.factor.config">
+            <field name="key">smoothing_months</field>
+            <field name="value">12</field>
+            <field name="descripcion">Ventana de suavizado de gastos GL (meses). La renta se paga a saltos y la energía con rezago: promediar.</field>
+        </record>
+        <record id="factor_production_window" model="qb.costeo.factor.config">
+            <field name="key">production_window_months</field>
+            <field name="value">3</field>
+            <field name="descripcion">Ventana de promedio de producción real (meses completos).</field>
+        </record>
+        <record id="factor_weeks_per_month" model="qb.costeo.factor.config">
+            <field name="key">weeks_per_month</field>
+            <field name="value">4.33</field>
+            <field name="descripcion">Semanas por mes para convertir horas de calendario.</field>
+        </record>
+        <record id="factor_m_per_kg_default" model="qb.costeo.factor.config">
+            <field name="key">m_per_kg_default</field>
+            <field name="value">8.0</field>
+            <field name="descripcion">Factor kg↔m default cuando el producto no tiene peso resuelto (balance de línea en metros-equivalentes).</field>
+        </record>
+        <record id="factor_fx_buffer" model="qb.costeo.factor.config">
+            <field name="key">fx_buffer_pct</field>
+            <field name="value">0.03</field>
+            <field name="descripcion">Colchón cambiario para cotizaciones en divisa (fracción): protege el margen si el peso se aprecia durante la vigencia.</field>
+        </record>
+        <record id="factor_quote_validity" model="qb.costeo.factor.config">
+            <field name="key">quote_validity_days</field>
+            <field name="value">15</field>
+            <field name="descripcion">Días de vigencia de una cotización: después, TC y último costo de MP pueden haber cambiado — re-cotizar.</field>
+        </record>
+        <record id="factor_entretela_extra" model="qb.costeo.factor.config">
+            <field name="key">entretela_overhead_extra_mxn</field>
+            <field name="value">0</field>
+            <field name="descripcion">Overhead extra mensual del centro de entretelas (energía/depreciación de carda) si se cuantifica.</field>
+        </record>
+
+        <!-- ============ Centros de costo/proceso ============ -->
+        <record id="centro_tejido" model="qb.costeo.centro">
+            <field name="sequence">10</field>
+            <field name="code">TEJIDO</field>
+            <field name="name">Tejido circular</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">peso</field>
+            <field name="std_output_per_hour">11</field>
+            <field name="renta_contractual_mxn">284269</field>
+            <field name="es_denominador_kg" eval="True"/>
+            <field name="notes">36 máquinas circulares. Ligar aquí los mrp.workcenter de tejido. Throughput 11 kg/h/máquina (rango real 8.3-12.6 según galga).</field>
+        </record>
+        <record id="centro_tintoreria" model="qb.costeo.centro">
+            <field name="sequence">20</field>
+            <field name="code">TINTORERIA</field>
+            <field name="name">Tintorería</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">peso</field>
+            <field name="renta_contractual_mxn">178467</field>
+            <field name="notes">5 jets. Aún sin workcenters: capturar turnos en Turnos/Capacidad manual, o dar de alta los jets como workcenters y ligarlos aquí — entran solos.</field>
+        </record>
+        <record id="centro_acabado" model="qb.costeo.centro">
+            <field name="sequence">30</field>
+            <field name="code">ACABADO</field>
+            <field name="name">Acabado / Rama</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">largo</field>
+            <field name="std_output_per_hour">1779</field>
+            <field name="renta_contractual_mxn">178467</field>
+            <field name="mo_name_pattern">TL/OP-ACA%</field>
+            <field name="es_denominador_m" eval="True"/>
+            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA mientras no haya workcenters.</field>
+        </record>
+        <record id="centro_entretelas" model="qb.costeo.centro">
+            <field name="sequence">40</field>
+            <field name="code">ENTRETELAS</field>
+            <field name="name">Entretelas (carda / puntos)</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">largo</field>
+            <field name="renta_contractual_mxn">352062</field>
+            <field name="mo_name_pattern">TL/OP-CAR%</field>
+            <field name="notes">Carda, puntos (resina), espolvoreo, perfoquim, impregnación, termofijado. Lote 10. Factor propio $/m.</field>
+        </record>
+        <record id="centro_insp" model="qb.costeo.centro">
+            <field name="sequence">50</field>
+            <field name="code">INSP_EMPAQUE</field>
+            <field name="name">Inspección y empaque</field>
+            <field name="nature">fabril_indirecto</field>
+            <field name="driver_principal">largo</field>
+            <field name="mo_name_pattern">TL/INSP%</field>
+            <field name="notes">Gate final: mide toda la tela vendible.</field>
+        </record>
+        <record id="centro_admin" model="qb.costeo.centro">
+            <field name="sequence">90</field>
+            <field name="code">ADMINISTRACION</field>
+            <field name="name">Administración</field>
+            <field name="nature">admin</field>
+            <field name="driver_principal">largo</field>
+        </record>
+
+        <!-- ============ Clasificación de cuentas ============
+             El patrón más LARGO gana cuando varios matchean, así que
+             504.01.0001 (energía) le gana a 504.01% (overhead). -->
+        <record id="cc_ventas" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">401%</field>
+            <field name="bucket">ventas</field>
+        </record>
+        <record id="cc_mod" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">501.06%</field>
+            <field name="bucket">mod</field>
+            <field name="driver">peso</field>
+            <field name="notes">MOD. La nómina por centro se separa vía departamentos (RH); el GL entra completo al pool de fabricación.</field>
+        </record>
+        <record id="cc_energia_luz" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0001%</field>
+            <field name="bucket">energia</field>
+            <field name="es_variable" eval="True"/>
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="driver">peso</field>
+            <field name="notes">Energéticos (electricidad) → Tejido.</field>
+        </record>
+        <record id="cc_energia_gas" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0003%</field>
+            <field name="bucket">energia</field>
+            <field name="es_variable" eval="True"/>
+            <field name="centro_id" ref="centro_acabado"/>
+            <field name="driver">peso</field>
+            <field name="notes">Gas → Acabado (secar tela pesada consume más gas: driver peso).</field>
+        </record>
+        <record id="cc_energia_agua" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0004%</field>
+            <field name="bucket">energia</field>
+            <field name="es_variable" eval="True"/>
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="driver">peso</field>
+            <field name="notes">Agua (la grande, del teñido) → Tintorería.</field>
+        </record>
+        <record id="cc_renta_planta" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0008%</field>
+            <field name="bucket">no_costeo</field>
+            <field name="notes">Renta de planta según flujo (a saltos). Se usa la renta CONTRACTUAL fija de cada centro en su lugar — no doble contar.</field>
+        </record>
+        <record id="cc_overhead_fab" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01%</field>
+            <field name="bucket">overhead_fab</field>
+            <field name="notes">Overhead fábrica general (mantenimiento, agujados, etc.). Las cuentas con patrón más largo (energía, renta) salen de aquí solas.</field>
+        </record>
+        <record id="cc_deprec_08" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.08%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_deprec_09" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.09%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_deprec_1x" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.1%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_deprec_2x" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.2%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_arrend_maq" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">701.11%</field>
+            <field name="bucket">arrend_maquinaria</field>
+            <field name="notes">Leaseback de maquinaria productiva (~$909k/mes): overhead fijo de fabricación, análogo a depreciación de maquinaria propia.</field>
+        </record>
+        <record id="cc_op_601" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">601%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+        </record>
+        <record id="cc_op_602" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">602%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+        </record>
+        <record id="cc_op_603" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">603%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+        </record>
+        <record id="cc_op_613" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">613%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+            <field name="notes">Depreciación corporativa: gasto de operación, no de fábrica.</field>
+        </record>
+        <record id="cc_cogs_no" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">501.01%</field>
+            <field name="bucket">no_costeo</field>
+            <field name="notes">COGS contable AVCO: el módulo calcula MP desde BOM a último costo — no se toma del GL.</field>
+        </record>
+        <record id="cc_502_no" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">502%</field>
+            <field name="bucket">no_costeo</field>
+            <field name="notes">Compras de importación: ya viven en el landed cost del producto.</field>
+        </record>
+
+        <!-- ============ Ruteo por familia ============ -->
+        <record id="ruteo_subproducto" model="qb.producto.ruteo">
+            <field name="sequence">5</field>
+            <field name="name_pattern">^(SALDO|DESPERDICIO)</field>
+            <field name="product_bucket">subproducto</field>
+            <field name="notes">MP $0: su materia ya está en la receta del producto principal. Su venta es recuperación pura de margen.</field>
+        </record>
+        <record id="ruteo_importado" model="qb.producto.ruteo">
+            <field name="sequence">8</field>
+            <field name="name_pattern"> I$</field>
+            <field name="product_bucket">importado</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_insp')])]"/>
+            <field name="notes">Solo inspección/reempaque: no cargan fabricación ni energía; sí operación.</field>
+        </record>
+        <record id="ruteo_importado_categ" model="qb.producto.ruteo">
+            <field name="sequence">9</field>
+            <field name="categ_pattern">%Importaci%</field>
+            <field name="product_bucket">importado</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_insp')])]"/>
+        </record>
+        <record id="ruteo_entretela_tejida" model="qb.producto.ruteo">
+            <field name="sequence">10</field>
+            <field name="categ_pattern">%fusionable tejida%</field>
+            <field name="product_bucket">entretela_tejida</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_tejido'), ref('centro_tintoreria'), ref('centro_entretelas')])]"/>
+            <field name="notes">Base tejido circular + resina (puntos): carga tejido+tintorería por peso + factor entretela por metro.</field>
+        </record>
+        <record id="ruteo_entretela_tejida_nombre" model="qb.producto.ruteo">
+            <field name="sequence">11</field>
+            <field name="categ_pattern">%Entretela%</field>
+            <field name="name_pattern">(?i)tejido circular|(?&lt;!no )tejida</field>
+            <field name="product_bucket">entretela_tejida</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_tejido'), ref('centro_tintoreria'), ref('centro_entretelas')])]"/>
+        </record>
+        <record id="ruteo_entretela_carda" model="qb.producto.ruteo">
+            <field name="sequence">12</field>
+            <field name="categ_pattern">%Entretela%</field>
+            <field name="product_bucket">entretela_carda</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_entretelas')])]"/>
+        </record>
+        <record id="ruteo_perfoquim" model="qb.producto.ruteo">
+            <field name="sequence">13</field>
+            <field name="categ_pattern">%Perfoquim%</field>
+            <field name="product_bucket">entretela_carda</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_entretelas')])]"/>
+            <field name="notes">Árbol nuevo: Perfoquim ya no contiene la palabra Entretela.</field>
+        </record>
+        <record id="ruteo_tela_default" model="qb.producto.ruteo">
+            <field name="sequence">100</field>
+            <field name="categ_pattern">%Tejido Circular%</field>
+            <field name="product_bucket">tela</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_tejido'), ref('centro_tintoreria'), ref('centro_acabado')])]"/>
+            <field name="notes">Tren completo de tela: tejido (kg) → tintorería (kg) → rama (m).</field>
+        </record>
+
+    </data>
+</odoo>

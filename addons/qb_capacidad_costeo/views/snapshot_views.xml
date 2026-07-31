@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="snapshot_action" model="ir.actions.act_window">
+        <field name="name">Snapshots mensuales</field>
+        <field name="res_model">qb.costeo.snapshot</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="snapshot_view_list" model="ir.ui.view">
+        <field name="name">qb.costeo.snapshot.list</field>
+        <field name="model">qb.costeo.snapshot</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="period"/>
+                <field name="create_date"/>
+            </list>
+        </field>
+    </record>
+    <record id="snapshot_view_form" model="ir.ui.view">
+        <field name="name">qb.costeo.snapshot.form</field>
+        <field name="model">qb.costeo.snapshot</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="period"/>
+                    </group>
+                    <field name="line_ids">
+                        <list>
+                            <field name="centro_id"/>
+                            <field name="capacity_month_units"/>
+                            <field name="prod_month_units"/>
+                            <field name="utilization_pct"/>
+                            <field name="hours_month_available"/>
+                            <field name="free_hours_month"/>
+                            <field name="fixed_pool_month" sum="Total"/>
+                            <field name="idle_cost_month" sum="Total"/>
+                        </list>
+                    </field>
+                    <field name="notes" placeholder="Notas..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Líneas planas para tendencia (pivot por período) -->
+    <record id="snapshot_line_action" model="ir.actions.act_window">
+        <field name="name">Tendencia por centro</field>
+        <field name="res_model">qb.costeo.snapshot.line</field>
+        <field name="view_mode">pivot,graph,list</field>
+    </record>
+    <record id="snapshot_line_view_pivot" model="ir.ui.view">
+        <field name="name">qb.costeo.snapshot.line.pivot</field>
+        <field name="model">qb.costeo.snapshot.line</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="centro_id" type="row"/>
+                <field name="period" type="col"/>
+                <field name="utilization_pct" type="measure"/>
+                <field name="idle_cost_month" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="snapshot_line_view_graph" model="ir.ui.view">
+        <field name="name">qb.costeo.snapshot.line.graph</field>
+        <field name="model">qb.costeo.snapshot.line</field>
+        <field name="arch" type="xml">
+            <graph type="line">
+                <field name="period"/>
+                <field name="idle_cost_month" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="snapshot_line_view_list" model="ir.ui.view">
+        <field name="name">qb.costeo.snapshot.line.list</field>
+        <field name="model">qb.costeo.snapshot.line</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false">
+                <field name="period"/>
+                <field name="centro_id"/>
+                <field name="capacity_month_units"/>
+                <field name="prod_month_units"/>
+                <field name="utilization_pct"/>
+                <field name="fixed_pool_month"/>
+                <field name="idle_cost_month"/>
+            </list>
+        </field>
+    </record>
+
+</odoo>
