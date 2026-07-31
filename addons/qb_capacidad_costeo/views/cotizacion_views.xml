@@ -95,6 +95,8 @@
                                string="Precio sugerido $/u MXN"/>
                         <field name="precio_sugerido_divisa" class="fw-bold"
                                invisible="es_mxn"/>
+                        <field name="sugerido_colchon_divisa" class="fw-bold"
+                               invisible="es_mxn"/>
                         <field name="piso_ocioso" string="Piso ocioso $/u MXN"/>
                         <field name="piso_ocioso_divisa" invisible="es_mxn"/>
                         <field name="piso_lleno" string="Piso lleno $/u MXN"/>
@@ -128,6 +130,24 @@
                 </footer>
             </form>
         </field>
+    </record>
+
+    <!-- Cotizar desde la ficha/lista de producto (menú Acción) -->
+    <record id="cotizador_from_product_action" model="ir.actions.act_window">
+        <field name="name">Cotizar costo</field>
+        <field name="res_model">qb.cotizador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">form,list</field>
+    </record>
+    <record id="cotizador_from_template_action" model="ir.actions.act_window">
+        <field name="name">Cotizar costo</field>
+        <field name="res_model">qb.cotizador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">form,list</field>
     </record>
 
     <!-- ============ Cotizador de ORDEN completa ============ -->
@@ -234,6 +254,9 @@
                        decoration-warning="semaforo == 'ambar'"
                        decoration-success="semaforo == 'verde'"/>
                 <field name="capacity_ok"/>
+                <field name="validez_hasta" optional="show"/>
+                <field name="real_precio_prom" optional="show"/>
+                <field name="delta_precio_pct" optional="show"/>
                 <field name="state"/>
             </list>
         </field>
@@ -301,6 +324,18 @@
                     <group string="Capacidad">
                         <field name="capacity_ok"/>
                         <field name="capacity_detail"/>
+                    </group>
+                    <group>
+                        <group string="¿Qué pasó de verdad? (post-mortem)">
+                            <field name="real_precio_prom"/>
+                            <field name="real_qty"/>
+                            <field name="real_margen_pct"/>
+                            <field name="delta_precio_pct"/>
+                        </group>
+                        <group string="Vigencia">
+                            <field name="validez_hasta"/>
+                            <field name="fx_rate"/>
+                        </group>
                     </group>
                     <group string="Supuestos (trazabilidad)">
                         <field name="factores_id"/>

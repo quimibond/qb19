@@ -92,6 +92,51 @@ class QbCotizacion(models.Model):
         ('won', 'Ganada'),
         ('lost', 'Perdida'),
     ], default='draft')
+    validez_hasta = fields.Date(
+        string='Válida hasta',
+        help='Después de esta fecha los supuestos (TC, último costo de MP) '
+             'pueden haber cambiado: re-cotizar antes de comprometer.')
+
+    # ------------------------------------------------------------------
+    # Post-mortem: qué pasó DE VERDAD después de cotizar
+    # (mejor práctica: cerrar el ciclo cotizado → real; sin esto las
+    # cotizaciones nunca aprenden)
+    # ------------------------------------------------------------------
+    real_precio_prom = fields.Float(
+        compute='_compute_real', string='Precio real $/u MXN', digits=(16, 2),
+        help='Precio promedio al que este producto realmente se vendió en el '
+             'último período costeado DESPUÉS de la cotización.')
+    real_qty = fields.Float(
+        compute='_compute_real', string='Qty real vendida/mes', digits=(16, 0))
+    real_margen_pct = fields.Float(
+        compute='_compute_real', string='Contribución real %')
+    delta_precio_pct = fields.Float(
+        compute='_compute_real', string='Δ precio real vs cotizado %',
+        help='Positivo = se vendió más caro que lo cotizado; negativo = el '
+             'precio real quedó por debajo de lo que se cotizó.')
+
+    def _compute_real(self):
+        Costo = self.env['qb.costo.producto']
+        for rec in self:
+            rec.real_precio_prom = rec.real_qty = 0.0
+            rec.real_margen_pct = rec.delta_precio_pct = 0.0
+            if not rec.product_id:
+                continue
+            real = Costo.search([
+                ('product_id', '=', rec.product_id.id),
+                ('period', '>=', (rec.create_date or fields.Datetime.now())
+                 .date().replace(day=1)),
+                ('qty_vendida', '>', 0),
+            ], order='period DESC', limit=1)
+            if not real:
+                continue
+            rec.real_precio_prom = real.precio_prom
+            rec.real_qty = real.qty_vendida
+            rec.real_margen_pct = real.margen_contribucion_pct
+            base = rec.precio_objetivo or rec.precio_sugerido
+            if base:
+                rec.delta_precio_pct = \
+                    100.0 * (real.precio_prom - base) / base
 
     @api.onchange('product_id')
     def _onchange_product(self):

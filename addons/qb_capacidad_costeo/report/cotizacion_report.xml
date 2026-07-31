@@ -28,7 +28,12 @@
                                 (<span t-field="o.spec_gramaje"/> g/m² × <span t-field="o.spec_ancho"/> m)<br/>
                             </t>
                             <strong>Volumen:</strong>
-                            <span t-esc="'%s %s/mes' % ('{:,.0f}'.format(o.volumen), o.uom_name or 'u')"/>
+                            <span t-esc="'%s %s/mes' % ('{:,.0f}'.format(o.volumen), o.uom_name or 'u')"/><br/>
+                            <t t-if="o.validez_hasta">
+                                <strong>Válida hasta:</strong>
+                                <span t-field="o.validez_hasta"/> (después,
+                                TC y costos de MP pueden cambiar)
+                            </t>
                         </p>
 
                         <div t-if="o.semaforo == 'rojo'" class="alert alert-danger">

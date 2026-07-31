@@ -7,6 +7,8 @@ margen — sensación de hoja de cálculo, pero con datos que entran solos de
 Odoo (último costo de BOM, factores del GL, horas-máquina libres). El botón
 solo GUARDA el escenario elegido como qb.cotizacion con sus supuestos.
 """
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -147,6 +149,13 @@ class QbCotizadorWizard(models.TransientModel):
     precio_sugerido_divisa = fields.Float(
         compute='_compute_cotizacion', string='Precio sugerido (divisa)',
         digits=(16, 4))
+    sugerido_colchon_divisa = fields.Float(
+        compute='_compute_cotizacion',
+        string='Sugerido + colchón FX (divisa)', digits=(16, 4),
+        help='Precio sugerido con el colchón cambiario de configuración '
+             '(fx_buffer_pct): cotizar exportación al TC de HOY sin colchón '
+             'deja el margen expuesto a la depreciación del peso durante la '
+             'vigencia de la cotización.')
     piso_ocioso_divisa = fields.Float(
         compute='_compute_cotizacion', string='Piso ocioso (divisa)',
         digits=(16, 4))
@@ -160,6 +169,20 @@ class QbCotizadorWizard(models.TransientModel):
         cliente, la primera línea con producto, su precio y su cantidad."""
         res = super().default_get(fields_list)
         Costo = self.env['qb.costo.producto']
+        # Lanzado desde un PRODUCTO (menú Acción en la ficha/lista): cotizar
+        # sin pasar por un pedido — volumen = run-rate global del producto
+        active_model = self.env.context.get('active_model')
+        if active_model in ('product.product', 'product.template') \
+                and self.env.context.get('active_id'):
+            record = self.env[active_model].browse(
+                self.env.context['active_id']).exists()
+            product = (record if active_model == 'product.product'
+                       else record.product_variant_id) if record else None
+            if product:
+                res.setdefault('product_id', product.id)
+                vol, meses, _v = Costo.monthly_sales_volume(product)
+                if meses >= 3:
+                    res.setdefault('volumen', vol)
         order = None
         order_id = res.get('sale_order_id')
         if (self.env.context.get('active_model') == 'sale.order'
@@ -318,7 +341,7 @@ class QbCotizadorWizard(models.TransientModel):
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
                 'margen_contribucion_pct', 'contrib_hora_maquina',
                 'precio_sugerido_divisa', 'piso_ocioso_divisa',
-                'piso_lleno_divisa'], 0.0)
+                'piso_lleno_divisa', 'sugerido_colchon_divisa'], 0.0)
             zero['semaforo'] = False
             try:
                 res = wiz._calc()
@@ -368,6 +391,10 @@ class QbCotizadorWizard(models.TransientModel):
                 'precio_sugerido_divisa': res['precio_sugerido'] / res['fx'],
                 'piso_ocioso_divisa': res['piso_ocioso'] / res['fx'],
                 'piso_lleno_divisa': res['piso_lleno'] / res['fx'],
+                'sugerido_colchon_divisa':
+                    res['precio_sugerido'] / res['fx']
+                    * (1.0 + self.env['qb.costeo.factor.config'].get_param(
+                        'fx_buffer_pct', 0.03)),
             })
 
     # ------------------------------------------------------------------
@@ -436,6 +463,9 @@ class QbCotizadorWizard(models.TransientModel):
             'sale_order_id': self.sale_order_id.id,
             'factores_id': factores.id,
             'supuestos': supuestos,
+            'validez_hasta': fields.Date.today() + relativedelta(
+                days=int(self.env['qb.costeo.factor.config'].get_param(
+                    'quote_validity_days', 15))),
         })
         return cotizacion
 
