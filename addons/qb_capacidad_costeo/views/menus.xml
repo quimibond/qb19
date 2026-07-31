@@ -49,7 +49,7 @@
     <!-- Configuración (solo admin de manufactura) -->
     <menuitem id="menu_qb_config" name="Configuración"
               parent="menu_qb_costeo_root" sequence="90"
-              groups="mrp.group_mrp_manager"/>
+              groups="mrp.group_mrp_manager,base.group_system"/>
     <menuitem id="menu_qb_centros" name="Centros de costo"
               parent="menu_qb_config" action="centro_action" sequence="10"/>
     <menuitem id="menu_qb_cuentas" name="Clasificación de cuentas"

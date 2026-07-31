@@ -28,3 +28,14 @@ access_qb_snapshot_line_user,qb.costeo.snapshot.line.user,model_qb_costeo_snapsh
 access_qb_snapshot_line_mgr,qb.costeo.snapshot.line.mgr,model_qb_costeo_snapshot_line,mrp.group_mrp_manager,1,1,1,1
 access_qb_cotizador_wizard,qb.cotizador.wizard,model_qb_cotizador_wizard,base.group_user,1,1,1,1
 access_qb_escenario_wizard,qb.escenario.turno.wizard,model_qb_escenario_turno_wizard,base.group_user,1,1,1,1
+access_qb_costeo_centro_sys,qb.costeo.centro.sys,model_qb_costeo_centro,base.group_system,1,1,1,1
+access_qb_cuenta_class_sys,qb.costeo.cuenta.class.sys,model_qb_costeo_cuenta_class,base.group_system,1,1,1,1
+access_qb_factor_config_sys,qb.costeo.factor.config.sys,model_qb_costeo_factor_config,base.group_system,1,1,1,1
+access_qb_producto_peso_sys,qb.producto.peso.sys,model_qb_producto_peso,base.group_system,1,1,1,1
+access_qb_producto_ruteo_sys,qb.producto.ruteo.sys,model_qb_producto_ruteo,base.group_system,1,1,1,1
+access_qb_turno_config_sys,qb.turno.config.sys,model_qb_turno_config,base.group_system,1,1,1,1
+access_qb_costo_factores_sys,qb.costo.factores.sys,model_qb_costo_factores,base.group_system,1,1,1,1
+access_qb_costo_producto_sys,qb.costo.producto.sys,model_qb_costo_producto,base.group_system,1,1,1,1
+access_qb_snapshot_sys,qb.costeo.snapshot.sys,model_qb_costeo_snapshot,base.group_system,1,1,1,1
+access_qb_snapshot_line_sys,qb.costeo.snapshot.line.sys,model_qb_costeo_snapshot_line,base.group_system,1,1,1,1
+access_qb_cotizacion_sys,qb.cotizacion.sys,model_qb_cotizacion,base.group_system,1,1,1,1
