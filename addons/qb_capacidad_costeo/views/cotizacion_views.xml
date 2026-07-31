@@ -25,18 +25,29 @@
                         <field name="volumen"
                                help="Si el cliente compra este producto de forma regular, se precarga solo con su promedio mensual histórico."/>
                         <field name="regularidad_info" readonly="1" nolabel="0"/>
-                        <field name="precio_objetivo" string="Precio objetivo $/u MXN"/>
+                        <field name="currency_id" options="{'no_create': True}"/>
+                        <field name="precio_objetivo"/>
                         <field name="target_margin"/>
-                        <field name="fx_rate"/>
+                        <field name="es_mxn" invisible="1"/>
+                        <field name="fx_rate" invisible="es_mxn"/>
                     </group>
                 </group>
+                <div class="alert alert-secondary" role="alert"
+                     invisible="not moneda_info or es_mxn">
+                    💱 <field name="moneda_info" readonly="1" class="oe_inline"/>
+                </div>
+                <field name="moneda_info" invisible="1"/>
                 <!-- Semáforo: el criterio de decisión en un color -->
                 <field name="semaforo" invisible="1"/>
                 <div class="alert alert-danger" role="alert"
                      invisible="semaforo != 'rojo'">
                     <b>🔴 Precio DEBAJO del costo variable</b> — destruye valor:
                     ni la materia prima y energía se recuperan. Piso mínimo
-                    absoluto: <field name="piso_ocioso" readonly="1" class="oe_inline"/>.
+                    absoluto: $<field name="piso_ocioso" readonly="1"
+                    class="oe_inline"/> MXN<span invisible="es_mxn"> (=
+                    <field name="piso_ocioso_divisa" readonly="1"
+                    class="oe_inline"/> <field name="currency_id" readonly="1"
+                    class="oe_inline"/>)</span>.
                 </div>
                 <div class="alert alert-warning" role="alert"
                      invisible="semaforo != 'ambar'">
@@ -44,7 +55,11 @@
                     contribución, pero no absorbe toda la fabricación y
                     operación. Con capacidad OCIOSA conviene tomarlo; con la
                     planta llena, pedir al menos
-                    <field name="piso_lleno" readonly="1" class="oe_inline"/>.
+                    $<field name="piso_lleno" readonly="1" class="oe_inline"/>
+                    MXN<span invisible="es_mxn"> (=
+                    <field name="piso_lleno_divisa" readonly="1"
+                    class="oe_inline"/> <field name="currency_id" readonly="1"
+                    class="oe_inline"/>)</span>.
                 </div>
                 <div class="alert alert-success" role="alert"
                      invisible="semaforo != 'verde'">
@@ -66,7 +81,7 @@
                 </group>
                 <!-- Resultados EN VIVO: se recalculan al cambiar cualquier input -->
                 <group invisible="not product_id and not spec_mode">
-                    <group string="Costo por capa ($/u)">
+                    <group string="Costo por capa ($/u MXN)">
                         <field name="product_bucket"/>
                         <field name="kg_per_unit"/>
                         <field name="mp_unit"/>
@@ -75,13 +90,20 @@
                         <field name="fab_unit"/>
                         <field name="op_pct_display"/>
                     </group>
-                    <group string="Precios y contribución">
-                        <field name="precio_sugerido" class="fw-bold"/>
-                        <field name="piso_ocioso"/>
-                        <field name="piso_lleno"/>
-                        <field name="margen_contribucion"/>
+                    <group string="Precios y contribución (MXN)">
+                        <field name="precio_sugerido" class="fw-bold"
+                               string="Precio sugerido $/u MXN"/>
+                        <field name="precio_sugerido_divisa" class="fw-bold"
+                               invisible="es_mxn"/>
+                        <field name="piso_ocioso" string="Piso ocioso $/u MXN"/>
+                        <field name="piso_ocioso_divisa" invisible="es_mxn"/>
+                        <field name="piso_lleno" string="Piso lleno $/u MXN"/>
+                        <field name="piso_lleno_divisa" invisible="es_mxn"/>
+                        <field name="margen_contribucion"
+                               string="Contribución $/u MXN"/>
                         <field name="margen_contribucion_pct"/>
-                        <field name="contrib_hora_maquina"/>
+                        <field name="contrib_hora_maquina"
+                               string="Contribución MXN/hora-máquina"/>
                     </group>
                 </group>
                 <group string="Capacidad" invisible="not product_id and not spec_mode">
