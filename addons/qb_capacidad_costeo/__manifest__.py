@@ -39,6 +39,7 @@ tablas de configuración del módulo, editables desde la UI.
         'data/seed_config.xml',
         'data/ir_cron.xml',
         'views/config_views.xml',
+        'views/panel_views.xml',
         'views/capacidad_views.xml',
         'views/costeo_views.xml',
         'views/cotizacion_views.xml',
