@@ -312,6 +312,19 @@ class TestQbCosteo(TransactionCase):
         self.assertTrue(wiz_mxn.moneda_alerta)
         self.assertIn('pesos', wiz_mxn.moneda_alerta)
 
+        # La moneda sigue al CLIENTE sin pedido: partner con pricelist EUR
+        partner_eur = self.env['res.partner'].create({
+            'name': 'Cliente Export EUR',
+            'property_product_pricelist': pricelist.id,
+        })
+        wiz_std = self.env['qb.cotizador.wizard'].new({
+            'product_id': self.tela.id})
+        wiz_std.partner_id = partner_eur
+        wiz_std._onchange_partner()
+        self.assertEqual(wiz_std.currency_id, eur,
+                         'la moneda debe derivarse de la lista de precios '
+                         'del cliente aunque no venga de un pedido')
+
     def test_desglose_explicado_consistente(self):
         """El desglose (mp_breakdown) suma EXACTO lo mismo que el motor
         (_mp_cost_unit) — si divergen, la explicación miente."""

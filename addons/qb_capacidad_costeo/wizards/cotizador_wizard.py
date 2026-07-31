@@ -247,7 +247,26 @@ class QbCotizadorWizard(models.TransientModel):
                 vol, meses, _v = Costo.monthly_sales_volume(
                     line.product_id, order.partner_id)
                 res['volumen'] = vol if meses >= 3 else line.product_uom_qty
+        # Sin pedido pero con cliente en contexto: la moneda de su lista
+        # de precios (Contitech en USD → cotización en USD, sola)
+        if not res.get('currency_id') and res.get('partner_id'):
+            partner = self.env['res.partner'].browse(res['partner_id']).exists()
+            pricelist = getattr(partner, 'property_product_pricelist', None) \
+                if partner else None
+            if pricelist and pricelist.currency_id:
+                res['currency_id'] = pricelist.currency_id.id
         return res
+
+    @api.onchange('partner_id')
+    def _onchange_partner(self):
+        """La moneda sigue al CLIENTE aunque no vengas de un pedido: si su
+        lista de precios está en USD/EUR, la cotización arranca en esa
+        moneda — sin acordarse de cambiarla a mano."""
+        if self.partner_id and not self.sale_order_id:
+            pricelist = getattr(self.partner_id,
+                                'property_product_pricelist', None)
+            if pricelist and pricelist.currency_id:
+                self.currency_id = pricelist.currency_id
 
     @api.onchange('sale_line_id')
     def _onchange_sale_line(self):
