@@ -120,6 +120,16 @@ class QbCotizadorOrdenWizard(models.TransientModel):
                     100.0 * contrib / venta if venta else 0.0,
                     f'{venta:,.0f}', fx))
 
+    def action_volver_pedido(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     def action_aplicar_seleccionados(self):
         """Escribe nuevo_precio en las líneas marcadas y documenta en el
         chatter de la orden qué cambió y por qué."""

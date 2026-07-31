@@ -19,6 +19,8 @@
               parent="menu_qb_cotizar_group" action="cotizador_wizard_action" sequence="10"/>
     <menuitem id="menu_qb_cotizaciones" name="Cotizaciones guardadas"
               parent="menu_qb_cotizar_group" action="cotizacion_action" sequence="20"/>
+    <menuitem id="menu_qb_winloss" name="Win/Loss"
+              parent="menu_qb_cotizar_group" action="winloss_action" sequence="30"/>
 
     <!-- 3. Costos: qué cuesta cada producto y con qué factores -->
     <menuitem id="menu_qb_costos_group" name="Costos"
@@ -27,6 +29,8 @@
               parent="menu_qb_costos_group" action="costo_producto_action" sequence="10"/>
     <menuitem id="menu_qb_ranking" name="Ranking por hora-máquina"
               parent="menu_qb_costos_group" action="costo_ranking_action" sequence="15"/>
+    <menuitem id="menu_qb_clientes" name="Rentabilidad por cliente"
+              parent="menu_qb_costos_group" action="cliente_rentabilidad_action" sequence="17"/>
     <menuitem id="menu_qb_factores" name="Factores por período"
               parent="menu_qb_costos_group" action="costo_factores_action" sequence="20"/>
 
