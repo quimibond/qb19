@@ -228,6 +228,56 @@ class TestQbCosteo(TransactionCase):
             order.order_line[0].price_unit, l_tela.precio_sugerido, places=2)
         self.assertEqual(order.order_line[1].price_unit, 100.0)
 
+    def test_moneda_extranjera_semaforo(self):
+        """Pedido en divisa: el precio se compara CONVERTIDO con el TC de
+        Odoo — un precio de exportación razonable en USD/EUR no debe salir
+        'destruye valor' por compararlo crudo contra pisos MXN."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 7, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        eur = self.env.ref('base.EUR')
+        eur.active = True
+        self.env['res.currency.rate'].create({
+            'currency_id': eur.id,
+            'rate': 0.05,  # 1 moneda cía = 0.05 EUR → 1 EUR = 20 cía
+            'name': date.today().replace(day=1),
+        })
+        Costo = self.env['qb.costo.producto']
+        self.assertAlmostEqual(Costo.to_mxn_rate(eur), 20.0, places=2)
+        self.assertEqual(
+            Costo.to_mxn_rate(self.env.company.currency_id), 1.0)
+
+        pricelist = self.env['product.pricelist'].create({
+            'name': 'Export EUR', 'currency_id': eur.id})
+        partner = self.env['res.partner'].create({'name': 'Cliente Export'})
+        order = self.env['sale.order'].create({
+            'partner_id': partner.id,
+            'pricelist_id': pricelist.id,
+            'order_line': [(0, 0, {
+                'product_id': self.tela.id,
+                'product_uom_qty': 100,
+                'price_unit': 3.0,  # 3 EUR = 60 MXN — precio razonable
+            })],
+        })
+        wiz = self.env['qb.cotizador.orden.wizard'].with_context(
+            active_model='sale.order', active_id=order.id).create({})
+        line = wiz.line_ids[0]
+        self.assertTrue(wiz.is_foreign)
+        self.assertAlmostEqual(line.precio_actual_mxn, 60.0, places=2)
+        # 60 MXN vs variable ~7.9: NO es rojo (antes salía rojo falso)
+        self.assertNotEqual(line.semaforo, 'rojo')
+        # El nuevo precio default es el sugerido CONVERTIDO a la divisa
+        self.assertAlmostEqual(
+            line.nuevo_precio, line.precio_sugerido / 20.0, places=2)
+        # Aplicar escribe en EUR (moneda del pedido), no en MXN
+        line.aplicar = True
+        wiz.action_aplicar_seleccionados()
+        self.assertAlmostEqual(
+            order.order_line[0].price_unit, line.precio_sugerido / 20.0,
+            places=2)
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)

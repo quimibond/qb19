@@ -188,28 +188,38 @@ class QbCostoProducto(models.Model):
         workcenters (mrp.workorder) o su mo_name_pattern (mrp.production)."""
         if not centros:
             return 0.0
-        months = max(
-            (date_to.year - date_from.year) * 12 + date_to.month - date_from.month, 1)
-        total = 0.0
+        # Promediar SOLO los meses con producción: si los workcenters
+        # arrancaron a media ventana (tejido: mayo 2026), dividir entre la
+        # ventana completa subestima el denominador ×4 e infla energía y
+        # factores de fabricación en la misma proporción.
+        by_month = {}
         wc_ids = centros.mapped('workcenter_ids').ids
         if wc_ids:
             self.env.cr.execute("""
-                SELECT COALESCE(SUM(%s), 0)
+                SELECT date_trunc('month', wo.date_finished)::date,
+                       COALESCE(SUM(%s), 0)
                 FROM mrp_workorder wo
                 WHERE wo.workcenter_id IN %%s AND wo.state = 'done'
                   AND wo.date_finished >= %%s AND wo.date_finished < %%s
+                GROUP BY 1
             """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
-            total += self.env.cr.fetchone()[0] or 0.0
+            for mes, qty in self.env.cr.fetchall():
+                by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
         for centro in centros.filtered(
                 lambda c: c.mo_name_pattern and not c.workcenter_ids):
             self.env.cr.execute("""
-                SELECT COALESCE(SUM(%s), 0)
+                SELECT date_trunc('month', mp.date_finished)::date,
+                       COALESCE(SUM(%s), 0)
                 FROM mrp_production mp
                 WHERE mp.name LIKE %%s AND mp.state = 'done'
                   AND mp.date_finished >= %%s AND mp.date_finished < %%s
-            """ % mo_qty_sql(self.env), (centro.mo_name_pattern, date_from, date_to))
-            total += self.env.cr.fetchone()[0] or 0.0
-        return total / months
+                GROUP BY 1
+            """ % mo_qty_sql(self.env),
+                (centro.mo_name_pattern, date_from, date_to))
+            for mes, qty in self.env.cr.fetchall():
+                by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
+        activos = [q for q in by_month.values() if q > 0]
+        return sum(activos) / len(activos) if activos else 0.0
 
     # ------------------------------------------------------------------
     # Factores del período
@@ -694,6 +704,57 @@ class QbCostoProducto(models.Model):
             'precio_sugerido': sugerido, 'hours_per_unit': hours,
             'factores': factores,
         }
+
+    @api.model
+    def monthly_sales_volume(self, product, partner=None, months=12):
+        """Volumen mensual histórico del producto (opcionalmente por cliente).
+
+        Devuelve (qty_promedio_mensual, meses_con_compra, months). El
+        promedio es sobre los meses CON compra — para un producto de línea
+        o proyecto en curso, eso es el run-rate real del cliente. Dedup del
+        triplete (DISTINCT ON move/product/|qty|) como en todo el módulo.
+        """
+        date_to = fields.Date.today().replace(day=1)
+        date_from = date_to - relativedelta(months=months)
+        params = [product.id, date_from, date_to, self.env.company.id]
+        partner_clause = ''
+        if partner:
+            partner_clause = 'AND am.commercial_partner_id = %s'
+            params.append(partner.commercial_partner_id.id)
+        self.env.cr.execute("""
+            WITH lines AS (
+                SELECT DISTINCT ON (aml.move_id, aml.product_id, ABS(aml.quantity))
+                       aml.move_id, aml.quantity, am.move_type, am.invoice_date
+                FROM account_move_line aml
+                JOIN account_move am ON am.id = aml.move_id
+                WHERE am.move_type IN ('out_invoice', 'out_refund')
+                  AND am.state = 'posted'
+                  AND aml.display_type = 'product'
+                  AND aml.product_id = %%s
+                  AND am.invoice_date >= %%s AND am.invoice_date < %%s
+                  AND aml.company_id = %%s
+                  %s
+                ORDER BY aml.move_id, aml.product_id, ABS(aml.quantity)
+            )
+            SELECT date_trunc('month', invoice_date)::date,
+                   SUM(CASE WHEN move_type = 'out_refund'
+                            THEN -quantity ELSE quantity END)
+            FROM lines GROUP BY 1
+        """ % partner_clause, tuple(params))
+        by_month = [q for _mes, q in self.env.cr.fetchall() if q and q > 0]
+        if not by_month:
+            return 0.0, 0, months
+        return sum(by_month) / len(by_month), len(by_month), months
+
+    @api.model
+    def to_mxn_rate(self, currency, date=None):
+        """MXN por 1 unidad de `currency`, con el tipo de cambio de Odoo
+        (res.currency.rate) a la fecha dada."""
+        company = self.env.company
+        if not currency or currency == company.currency_id:
+            return 1.0
+        return currency._convert(1.0, company.currency_id, company,
+                                 date or fields.Date.today(), round=False)
 
     @api.model
     def semaforo_for(self, precio, piso_ocioso, piso_lleno):

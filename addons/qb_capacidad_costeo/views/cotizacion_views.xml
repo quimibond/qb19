@@ -22,8 +22,10 @@
                         <field name="spec_mode"/>
                     </group>
                     <group string="Condiciones">
-                        <field name="volumen"/>
-                        <field name="precio_objetivo"/>
+                        <field name="volumen"
+                               help="Si el cliente compra este producto de forma regular, se precarga solo con su promedio mensual histórico."/>
+                        <field name="regularidad_info" readonly="1" nolabel="0"/>
+                        <field name="precio_objetivo" string="Precio objetivo $/u MXN"/>
                         <field name="target_margin"/>
                         <field name="fx_rate"/>
                     </group>
@@ -122,12 +124,23 @@
                     <group>
                         <field name="sale_order_id"/>
                         <field name="partner_id"/>
+                        <field name="currency_id"/>
                     </group>
                     <group>
                         <field name="factores_id"/>
+                        <field name="is_foreign" invisible="1"/>
+                        <field name="fx_rate" invisible="not is_foreign"/>
                         <field name="resumen"/>
                     </group>
                 </group>
+                <div class="alert alert-info" role="alert"
+                     invisible="not is_foreign">
+                    Pedido en <field name="currency_id" readonly="1"
+                    class="oe_inline"/>: los costos y pisos son MXN; los
+                    precios del pedido se comparan convertidos con el tipo de
+                    cambio de Odoo de hoy, y el "Nuevo precio" se escribe en
+                    la moneda del pedido.
+                </div>
                 <field name="line_ids">
                     <list editable="bottom" create="false" delete="false"
                           decoration-danger="semaforo == 'rojo'"
@@ -135,17 +148,22 @@
                         <field name="product_id" readonly="1"/>
                         <field name="qty" readonly="1"/>
                         <field name="uom_name" readonly="1" optional="hide"/>
+                        <field name="vol_mensual" readonly="1" optional="show"/>
+                        <field name="meses_compra" readonly="1" optional="hide"/>
                         <field name="precio_actual" readonly="1"/>
+                        <field name="precio_actual_mxn" readonly="1" optional="show"/>
                         <field name="costo_variable" readonly="1"/>
                         <field name="fab_unit" readonly="1" optional="hide"/>
                         <field name="piso_lleno" readonly="1"/>
                         <field name="precio_sugerido" readonly="1"/>
+                        <field name="precio_sugerido_divisa" readonly="1"
+                               optional="show"/>
                         <field name="semaforo" widget="badge" readonly="1"
                                decoration-danger="semaforo == 'rojo'"
                                decoration-warning="semaforo == 'ambar'"
                                decoration-success="semaforo == 'verde'"/>
                         <field name="contrib_unit" readonly="1" optional="show"/>
-                        <field name="contrib_hora" readonly="1" optional="show"/>
+                        <field name="contrib_hora" readonly="1" optional="hide"/>
                         <field name="aplicar"/>
                         <field name="nuevo_precio"/>
                         <button name="action_detalle" string="Detalle"
