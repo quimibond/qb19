@@ -10,3 +10,4 @@ from . import cotizacion
 from . import snapshot
 from . import supabase_import
 from . import panel
+from . import ficha
