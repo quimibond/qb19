@@ -51,6 +51,15 @@ class QbCotizadorWizard(models.TransientModel):
         help='0 = usar el target_margin de configuración.')
     fx_rate = fields.Float(string='FX (MXN/USD)')
 
+    # Integración con la orden de venta (cuando se lanza desde una)
+    sale_order_id = fields.Many2one('sale.order', string='Orden de venta',
+                                    readonly=True)
+    sale_line_id = fields.Many2one(
+        'sale.order.line', string='Línea a cotizar',
+        domain="[('order_id', '=', sale_order_id), ('product_id', '!=', False)]",
+        help='Al guardar con "Aplicar a la línea", el precio calculado se '
+             'escribe en esta línea del pedido.')
+
     # ------------------------------------------------------------------
     # Resultados EN VIVO (computados, se refrescan al teclear)
     # ------------------------------------------------------------------
@@ -94,20 +103,42 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='¿Cabe en capacidad?')
     capacity_detail = fields.Text(
         compute='_compute_cotizacion', string='Detalle de capacidad')
+    semaforo = fields.Selection([
+        ('rojo', 'Debajo del costo variable'),
+        ('ambar', 'Aporta a fijos (no absorbe todo)'),
+        ('verde', 'Cubre costo total + operación'),
+    ], compute='_compute_cotizacion', string='Semáforo de precio',
+        help='Evalúa el precio objetivo (o el sugerido) contra los pisos: '
+             'rojo = destruye valor; ámbar = con capacidad ociosa conviene, '
+             'aporta a fijos; verde = cubre todo el costo absorbido.')
 
     @api.model
     def default_get(self, fields_list):
-        """Prefill desde el contexto: lanzado desde una cotización de venta
-        (sale.order) toma el cliente automáticamente."""
+        """Prefill desde el contexto: lanzado desde una orden de venta toma
+        cliente, la primera línea con producto, su precio y su cantidad."""
         res = super().default_get(fields_list)
         if (self.env.context.get('active_model') == 'sale.order'
-                and self.env.context.get('active_id')
-                and 'partner_id' in fields_list and not res.get('partner_id')):
+                and self.env.context.get('active_id')):
             order = self.env['sale.order'].browse(
                 self.env.context['active_id']).exists()
             if order:
-                res['partner_id'] = order.partner_id.id
+                res.setdefault('partner_id', order.partner_id.id)
+                res.setdefault('sale_order_id', order.id)
+                line = order.order_line.filtered('product_id')[:1]
+                if line:
+                    res.setdefault('sale_line_id', line.id)
+                    res.setdefault('product_id', line.product_id.id)
+                    res.setdefault('precio_objetivo', line.price_unit)
+                    res.setdefault('volumen', line.product_uom_qty)
         return res
+
+    @api.onchange('sale_line_id')
+    def _onchange_sale_line(self):
+        """Cambiar de línea re-precarga producto, precio y cantidad."""
+        if self.sale_line_id:
+            self.product_id = self.sale_line_id.product_id
+            self.precio_objetivo = self.sale_line_id.price_unit
+            self.volumen = self.sale_line_id.product_uom_qty
 
     # ------------------------------------------------------------------
     # Cálculo (compartido entre el compute vivo y el guardado)
@@ -168,7 +199,17 @@ class QbCotizadorWizard(models.TransientModel):
         capacity_ok, capacity_detail = self._check_capacity(
             centros, is_kg, kg, m_per_kg, self.volumen)
 
+        if not precio_ref:
+            semaforo = False
+        elif precio_ref < piso_ocioso:
+            semaforo = 'rojo'
+        elif piso_lleno and precio_ref < piso_lleno:
+            semaforo = 'ambar'
+        else:
+            semaforo = 'verde'
+
         return {
+            'semaforo': semaforo,
             'name': name, 'bucket': bucket, 'centros': centros,
             'factores': factores, 'kg': kg, 'm_per_kg': m_per_kg,
             'uom_name': uom_name, 'mp': mp, 'energia': energia, 'fab': fab,
@@ -189,6 +230,7 @@ class QbCotizadorWizard(models.TransientModel):
                 'costo_variable', 'op_pct_display', 'precio_sugerido',
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
                 'margen_contribucion_pct', 'contrib_hora_maquina'], 0.0)
+            zero['semaforo'] = False
             try:
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
@@ -233,12 +275,14 @@ class QbCotizadorWizard(models.TransientModel):
                 'contrib_hora_maquina': res['contrib_hora'],
                 'capacity_ok': res['capacity_ok'],
                 'capacity_detail': res['capacity_detail'],
+                'semaforo': res['semaforo'],
             })
 
     # ------------------------------------------------------------------
     # Guardar el escenario
     # ------------------------------------------------------------------
-    def action_cotizar(self):
+    def _save_cotizacion(self):
+        """Congela el escenario actual como qb.cotizacion (con supuestos)."""
         self.ensure_one()
         if not self.volumen:
             raise UserError('Captura el volumen mensual para guardar la cotización.')
@@ -293,13 +337,45 @@ class QbCotizadorWizard(models.TransientModel):
             'contrib_hora_maquina': res['contrib_hora'],
             'capacity_ok': res['capacity_ok'],
             'capacity_detail': res['capacity_detail'],
+            'semaforo': res['semaforo'],
+            'sale_order_id': self.sale_order_id.id,
             'factores_id': factores.id,
             'supuestos': supuestos,
         })
+        return cotizacion
+
+    def action_cotizar(self):
+        cotizacion = self._save_cotizacion()
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'qb.cotizacion',
             'res_id': cotizacion.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_aplicar_precio(self):
+        """Guarda la cotización Y escribe el precio calculado en la línea
+        del pedido (precio objetivo si lo capturaste; si no, el sugerido).
+        Regresa a la orden de venta."""
+        self.ensure_one()
+        if not self.sale_line_id:
+            raise UserError('Elige la línea del pedido a la que aplicar el precio.')
+        cotizacion = self._save_cotizacion()
+        precio = self.precio_objetivo or cotizacion.precio_sugerido
+        self.sale_line_id.price_unit = precio
+        self.sale_order_id.message_post(
+            body='Precio de %s actualizado a $%.2f por el cotizador de '
+                 'costos (%s, semáforo: %s). Ver %s.'
+                 % (self.sale_line_id.product_id.display_name, precio,
+                    cotizacion.name,
+                    dict(cotizacion._fields['semaforo'].selection).get(
+                        cotizacion.semaforo, 'n/d'),
+                    cotizacion.display_name))
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
             'view_mode': 'form',
             'target': 'current',
         }
