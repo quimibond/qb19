@@ -47,6 +47,7 @@ tablas de configuración del módulo, editables desde la UI.
         # DESPUÉS de cotizacion_views: su botón referencia
         # cotizador_orden_action, que se define ahí
         'views/sale_order_views.xml',
+        'views/ficha_views.xml',
         'views/snapshot_views.xml',
         'views/menus.xml',
     ],

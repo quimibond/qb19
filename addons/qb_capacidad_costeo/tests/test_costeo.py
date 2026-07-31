@@ -327,6 +327,37 @@ class TestQbCosteo(TransactionCase):
                         'Operación', 'Costo completo'):
             self.assertIn(seccion, html)
 
+    def test_ficha_parser_nomenclatura(self):
+        """El parser lee la nomenclatura: WR135Q46JNT165 → WR, 135 g/m²,
+        Q46, terminado, NT, 1.65 m. Los códigos de resina (4 dígitos) no
+        se confunden con gramaje."""
+        Ficha = self.env['qb.producto.ficha']
+        v = Ficha.parse_ref('WR135Q46JNT165')
+        self.assertEqual(v['familia'], 'WR')
+        self.assertEqual(v['gramaje_g_m2'], 135.0)
+        self.assertEqual(v['calidad'], 'Q46')
+        self.assertEqual(v['estado'], 'terminado')
+        self.assertEqual(v['color'], 'NT')
+        self.assertEqual(v['ancho_m'], 1.65)
+        self.assertFalse(v['parse_warning'])
+        v2 = Ficha.parse_ref('WM4032OW152 I')
+        self.assertEqual(v2['resina_code'], '4032')
+        self.assertNotIn('gramaje_g_m2', v2)
+        self.assertEqual(v2['color'], 'OW')
+        self.assertEqual(v2['ancho_m'], 1.52)
+        self.assertTrue(v2['es_importado'])
+        v3 = Ficha.parse_ref('SALDO WJ045')
+        self.assertEqual(v3['familia'], 'SUBPRODUCTO')
+        # Generación masiva: crea fichas y respeta las manuales
+        Ficha.action_generar_fichas()
+        ficha = Ficha.search([('product_id', '=', self.tela.id)], limit=1)
+        self.assertTrue(ficha)
+        self.assertEqual(ficha.gramaje_g_m2, 45.0)  # WJ045NT160
+        self.assertEqual(ficha.ancho_m, 1.60)
+        ficha.write({'gramaje_g_m2': 47.0, 'source': 'manual'})
+        Ficha.action_generar_fichas()
+        self.assertEqual(ficha.gramaje_g_m2, 47.0, 'manual no se pisa')
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)
