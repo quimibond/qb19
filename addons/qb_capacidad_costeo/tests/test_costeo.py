@@ -298,6 +298,33 @@ class TestQbCosteo(TransactionCase):
         wiz_ind.precio_objetivo = 0.5
         self.assertEqual(wiz_ind.semaforo, 'rojo')
 
+        # Guardián de moneda: 1.68 "USD" tecleado con moneda MXN → alerta
+        wiz_mxn = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'precio_objetivo': 1.68,
+        })
+        self.assertTrue(wiz_mxn.moneda_alerta)
+        self.assertIn('dólares', wiz_mxn.moneda_alerta)
+        # Mismo precio con la moneda correcta (EUR) → sin alerta
+        wiz_mxn.currency_id = eur
+        self.assertFalse(wiz_mxn.moneda_alerta)
+        # Inverso: 60 "MXN" tecleados con moneda EUR (60×20=1200 MXN ≫ piso)
+        wiz_mxn.precio_objetivo = 60.0
+        self.assertTrue(wiz_mxn.moneda_alerta)
+        self.assertIn('pesos', wiz_mxn.moneda_alerta)
+
+        # La moneda sigue al CLIENTE sin pedido: partner con pricelist EUR
+        partner_eur = self.env['res.partner'].create({
+            'name': 'Cliente Export EUR',
+            'property_product_pricelist': pricelist.id,
+        })
+        wiz_std = self.env['qb.cotizador.wizard'].new({
+            'product_id': self.tela.id})
+        wiz_std.partner_id = partner_eur
+        wiz_std._onchange_partner()
+        self.assertEqual(wiz_std.currency_id, eur,
+                         'la moneda debe derivarse de la lista de precios '
+                         'del cliente aunque no venga de un pedido')
+
     def test_desglose_explicado_consistente(self):
         """El desglose (mp_breakdown) suma EXACTO lo mismo que el motor
         (_mp_cost_unit) — si divergen, la explicación miente."""
