@@ -20,12 +20,11 @@
                         domain="[('margen_absorbido', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
                 <filter name="contribucion_negativa" string="Contribución negativa"
                         domain="[('margen_contribucion', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
-                <group expand="0" string="Agrupar por">
-                    <filter name="group_period" string="Período"
-                            context="{'group_by': 'period'}"/>
-                    <filter name="group_bucket" string="Clasificación"
-                            context="{'group_by': 'product_bucket'}"/>
-                </group>
+                <separator/>
+                <filter name="group_period" string="Agrupar por período"
+                        context="{'group_by': 'period'}"/>
+                <filter name="group_bucket" string="Agrupar por clasificación"
+                        context="{'group_by': 'product_bucket'}"/>
             </search>
         </field>
     </record>
