@@ -61,6 +61,18 @@ class QbCotizacion(models.Model):
         string='Contribución $/hora-máquina',
         help='Para rankear contra otros productos cuando hay cuello de botella.')
 
+    semaforo = fields.Selection([
+        ('rojo', 'Debajo del costo variable'),
+        ('ambar', 'Aporta a fijos (no absorbe todo)'),
+        ('verde', 'Cubre costo total + operación'),
+    ], string='Semáforo de precio',
+        help='Precio evaluado contra los pisos: rojo = destruye valor; '
+             'ámbar = con capacidad ociosa conviene (aporta a fijos); '
+             'verde = cubre el costo absorbido completo.')
+    sale_order_id = fields.Many2one(
+        'sale.order', string='Orden de venta', readonly=True,
+        help='Orden desde la que se generó la cotización (si aplica).')
+
     # Chequeo de capacidad
     capacity_ok = fields.Boolean(string='¿Cabe en capacidad?')
     capacity_detail = fields.Text(

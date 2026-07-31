@@ -128,6 +128,40 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(cot.costo_variable, wiz.costo_variable, places=4)
         self.assertAlmostEqual(cot.precio_sugerido, wiz.precio_sugerido, places=4)
 
+    def test_cotizador_desde_orden_aplicar_precio(self):
+        """Lanzado desde una sale.order: prefillea cliente/línea/producto,
+        el semáforo evalúa el precio vs pisos, y 'aplicar a la línea'
+        escribe el precio en el pedido."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 4, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        partner = self.env['res.partner'].create({'name': 'Cliente Test'})
+        order = self.env['sale.order'].create({
+            'partner_id': partner.id,
+            'order_line': [(0, 0, {
+                'product_id': self.tela.id,
+                'product_uom_qty': 500,
+                'price_unit': 1.0,  # precio absurdo: debajo del variable
+            })],
+        })
+        wiz = self.env['qb.cotizador.wizard'].with_context(
+            active_model='sale.order', active_id=order.id,
+        ).create({})
+        self.assertEqual(wiz.sale_order_id, order)
+        self.assertEqual(wiz.product_id, self.tela)
+        self.assertEqual(wiz.semaforo, 'rojo')  # $1 < costo variable
+        # Precio arriba del piso lleno → verde, y se aplica a la línea
+        wiz.precio_objetivo = 100.0
+        self.assertEqual(wiz.semaforo, 'verde')
+        wiz.action_aplicar_precio()
+        self.assertEqual(order.order_line[0].price_unit, 100.0)
+        cot = self.env['qb.cotizacion'].search(
+            [('sale_order_id', '=', order.id)], limit=1)
+        self.assertTrue(cot)
+        self.assertEqual(cot.semaforo, 'verde')
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)
