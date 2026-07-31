@@ -372,6 +372,13 @@ class QbCotizadorWizard(models.TransientModel):
                 continue
             factores = res['factores']
             precio_ref = res['precio_ref']
+            if precio_ref:
+                # bruto = tras costo de producción; neto = bruto − op%
+                bruto = 100.0 * (precio_ref - res['variable']
+                                 - res['fab']) / precio_ref
+                neto = bruto - 100.0 * res['op_pct']
+            else:
+                bruto = neto = 0.0
             wiz.update({
                 'factores_id': factores.id,
                 'factores_info': 'Factores %s (ventana %sm) · fab $%.2f/kg + '
@@ -405,13 +412,8 @@ class QbCotizadorWizard(models.TransientModel):
                     res['precio_sugerido'] / res['fx']
                     * (1.0 + self.env['qb.costeo.factor.config'].get_param(
                         'fx_buffer_pct', 0.03)),
-                'margen_bruto_pct':
-                    100.0 * (precio_ref - res['variable'] - res['fab'])
-                    / precio_ref if precio_ref else 0.0,
-                'margen_neto_pct':
-                    100.0 * (precio_ref - res['variable'] - res['fab']
-                             - res['op_pct'] * precio_ref) / precio_ref
-                    if precio_ref else 0.0,
+                'margen_bruto_pct': bruto,
+                'margen_neto_pct': neto,
             })
 
     # ------------------------------------------------------------------
