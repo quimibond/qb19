@@ -57,7 +57,10 @@
                                     <td class="text-end"><span t-esc="'{:,.2f}'.format(o.costo_variable)"/></td></tr>
                                 <tr><td>Fabricación absorbida</td>
                                     <td class="text-end"><span t-esc="'{:,.2f}'.format(o.fab_unit)"/></td></tr>
-                                <tr><td>Operación (<span t-esc="'{:.1f}'.format(o.op_pct)"/>% sobre venta)</td>
+                                <tr><td>Operación: <span t-esc="'{:.1f}'.format(o.op_pct)"/>% sobre venta
+                                    <t t-if="o.factores_id">
+                                        <br/><span style="font-size:10px;" t-esc="'(= gastos admin/ventas 6xx $%s/mes ÷ ventas $%s/mes, GL de Odoo suavizado %s meses)' % ('{:,.0f}'.format(o.factores_id.op_pool_month), '{:,.0f}'.format(o.factores_id.ventas_pool_month), o.factores_id.window_months)"/>
+                                    </t></td>
                                     <td class="text-end">s/precio</td></tr>
                             </tbody>
                         </table>
