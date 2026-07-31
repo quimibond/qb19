@@ -137,6 +137,31 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='¿Cabe en capacidad?')
     capacity_detail = fields.Text(
         compute='_compute_cotizacion', string='Detalle de capacidad')
+    explicacion_html = fields.Html(
+        compute='_compute_explicacion', sanitize=False,
+        string='¿De dónde viene cada costo?')
+
+    @api.depends('product_id', 'target_margin')
+    def _compute_explicacion(self):
+        """El desglose completo con fuentes: BOM hoja por hoja con su última
+        compra, peso con su fuente, factores con la fórmula y los números
+        del período. Solo depende del producto (no recalcula al teclear
+        precio/volumen — eso lo hace el compute ligero)."""
+        Costo = self.env['qb.costo.producto']
+        for wiz in self:
+            if not wiz.product_id or wiz.spec_mode:
+                wiz.explicacion_html = False
+                continue
+            factores = self.env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1)
+            if not factores:
+                wiz.explicacion_html = False
+                continue
+            try:
+                wiz.explicacion_html = Costo.explain_quote_html(
+                    wiz.product_id, factores)
+            except Exception as exc:
+                wiz.explicacion_html = '<p>Error al explicar: %s</p>' % exc
     semaforo = fields.Selection([
         ('rojo', 'Debajo del costo variable'),
         ('ambar', 'Aporta a fijos (no absorbe todo)'),
@@ -484,6 +509,7 @@ class QbCotizadorWizard(models.TransientModel):
             'sale_order_id': self.sale_order_id.id,
             'factores_id': factores.id,
             'supuestos': supuestos,
+            'desglose_html': self.explicacion_html or False,
             'validez_hasta': fields.Date.today() + relativedelta(
                 days=int(self.env['qb.costeo.factor.config'].get_param(
                     'quote_validity_days', 15))),

@@ -757,6 +757,147 @@ class QbCostoProducto(models.Model):
                                  date or fields.Date.today(), round=False)
 
     @api.model
+    def mp_breakdown(self, product, qty=1.0, _depth=0):
+        """Explosión de la BOM en HOJAS, con la FUENTE de cada costo.
+
+        Devuelve filas {name, ref, qty, uom, unit_cost, total, fuente}:
+        de dónde viene cada peso de la MP — última compra (proveedor y
+        fecha), costo promedio, landed de importado o subproducto en $0.
+        La suma de `total` reproduce exactamente _mp_cost_unit.
+        """
+        if _depth > 10:  # guard de recetas circulares
+            return []
+        bucket, _centros = self.env['qb.producto.ruteo'].resolve(product)
+        ref = product.default_code or ''
+        base = {'name': product.name, 'ref': ref, 'qty': qty,
+                'uom': product.uom_id.name}
+        if bucket == 'subproducto':
+            return [dict(base, unit_cost=0.0, total=0.0,
+                         fuente='Subproducto: su MP ya está en la receta '
+                                'del producto principal → $0')]
+        if bucket == 'importado' or ref.endswith(' I'):
+            cost = product.standard_price or self._last_purchase_cost(product)
+            return [dict(base, unit_cost=cost, total=cost * qty,
+                         fuente='Importado: landed cost (promedio Odoo, '
+                                'incluye flete/aduana)')]
+        bom = self.env['mrp.bom']._bom_find(product).get(product)
+        if bom:
+            rows = []
+            bom_qty = bom.product_uom_id._compute_quantity(
+                bom.product_qty, product.uom_id, round=False) or 1.0
+            for line in bom.bom_line_ids:
+                comp = line.product_id
+                qty_comp = line.product_uom_id._compute_quantity(
+                    line.product_qty, comp.uom_id, round=False)
+                rows.extend(self.mp_breakdown(
+                    comp, qty * qty_comp / bom_qty, _depth + 1))
+            return rows
+        # Hoja comprada: buscar la última compra real
+        pol = self.env['purchase.order.line'].search([
+            ('product_id', '=', product.id),
+            ('order_id.state', 'in', ('purchase', 'done')),
+            ('price_unit', '>', 0),
+        ], order='id desc', limit=1)
+        cost = self._last_purchase_cost(product)
+        if pol:
+            fuente = 'Última compra: %s a %s (%s, %s %s)' % (
+                pol.order_id.name, pol.order_id.partner_id.name,
+                pol.order_id.date_order.date() if pol.order_id.date_order
+                else 's/f',
+                pol.price_unit, pol.order_id.currency_id.name or 'MXN')
+        else:
+            fuente = 'Sin compras registradas: costo promedio de Odoo'
+        return [dict(base, unit_cost=cost, total=cost * qty, fuente=fuente)]
+
+    @api.model
+    def explain_quote_html(self, product, factores):
+        """El costo completo EXPLICADO: cada capa con su fórmula, sus
+        números reales y la fuente de cada dato — para cotizar entendiendo,
+        no confiando a ciegas."""
+        Peso = self.env['qb.producto.peso']
+        q = self.quote_product(product, factores)
+        if not q:
+            return '<p>Sin factores calculados.</p>'
+        kg = q['kg']
+        peso_rec = Peso.search([('product_id', '=', product.id)], limit=1)
+        peso_fuente = dict(Peso._fields['source'].selection).get(
+            peso_rec.source) if peso_rec else \
+            'gramaje del ref / peso de Odoo (sin registro en el maestro)'
+
+        # ---- 1. Materia prima ----
+        rows = self.mp_breakdown(product)
+        mp_total = sum(r['total'] for r in rows)
+        mp_rows = ''.join(
+            '<tr><td>%s <span class="text-muted">%s</span></td>'
+            '<td class="text-end">%.4f %s</td>'
+            '<td class="text-end">$%.2f</td>'
+            '<td class="text-end">$%.4f</td>'
+            '<td style="font-size:11px;">%s</td></tr>'
+            % (r['ref'] or r['name'],
+               r['name'] if r['ref'] else '',
+               r['qty'], r['uom'] or '', r['unit_cost'], r['total'],
+               r['fuente'])
+            for r in rows)
+        html = (
+            '<h5>1. Materia prima — $%.2f/u (explosión de la receta)</h5>'
+            '<table class="table table-sm" style="font-size:12px;">'
+            '<thead><tr><th>Componente</th><th class="text-end">Cant/u</th>'
+            '<th class="text-end">$ unit</th><th class="text-end">Total</th>'
+            '<th>De dónde viene</th></tr></thead>'
+            '<tbody>%s</tbody></table>' % (mp_total, mp_rows))
+
+        # ---- 2. Energía ----
+        html += (
+            '<h5>2. Energía variable — $%.2f/u</h5>'
+            '<p style="font-size:12px;">$%.2f/kg × %.4f kg/u. El $/kg = '
+            'pool de luz+gas+agua ($%s/mes, cuentas clasificadas como '
+            'variables) ÷ %s kg producidos/mes. Peso del producto: '
+            '<b>%.4f kg/u</b> (fuente: %s).</p>'
+            % (q['energia'], factores.energia_por_kg, kg,
+               f'{factores.energia_pool_month:,.0f}',
+               f'{factores.kg_denom_month:,.0f}', kg, peso_fuente))
+
+        # ---- 3. Fabricación ----
+        ws = factores.fab_weight_share
+        html += (
+            '<h5>3. Fabricación absorbida — $%.2f/u</h5>'
+            '<p style="font-size:12px;">Pool fijo de fábrica (MOD + '
+            'overhead + depreciación + arrendamiento de maquinaria) = '
+            '<b>$%s/mes</b> (GL suavizado %s meses, período %s). Se '
+            'reparte híbrido: %.0f%% por PESO (tejido+tintorería: '
+            '$%.2f/kg) y %.0f%% por LARGO (acabado: $%.2f/m). Este '
+            'producto: %.4f kg × $%.2f + $%.2f = <b>$%.2f</b>. '
+            'Familia: %s (importados y subproductos no cargan '
+            'fabricación).</p>'
+            % (q['fab'], f'{factores.fab_pool_month:,.0f}',
+               factores.window_months, factores.period,
+               ws * 100, factores.factor_fab_kg,
+               (1 - ws) * 100, factores.factor_fab_m,
+               kg, factores.factor_fab_kg, factores.factor_fab_m,
+               q['fab'], q['bucket']))
+
+        # ---- 4. Operación ----
+        html += (
+            '<h5>4. Operación — %.1f%% sobre el precio de venta</h5>'
+            '<p style="font-size:12px;">Gastos de admin y ventas (cuentas '
+            '6xx: $%s/mes) ÷ ventas ($%s/mes) = %.1f%%. Se cobra sobre '
+            'el precio porque escala con cuánto vendes, no con lo que '
+            'produces.</p>'
+            % (q['op_pct'] * 100, f'{factores.op_pool_month:,.0f}',
+               f'{factores.ventas_pool_month:,.0f}', q['op_pct'] * 100))
+
+        # ---- Resumen ----
+        html += (
+            '<h5>= Costo completo</h5>'
+            '<p style="font-size:12px;"><b>Variable</b> (MP + energía) = '
+            '$%.2f → piso absoluto. <b>+ Fabricación</b> = $%.2f. '
+            '<b>+ Operación</b> → piso a planta llena $%.2f. Con margen '
+            'meta %.0f%%: <b>precio sugerido $%.2f MXN</b>.</p>'
+            % (q['variable'], q['variable'] + q['fab'], q['piso_lleno'],
+               q['target'] * 100, q['precio_sugerido']))
+        return html
+
+    @api.model
     def semaforo_for(self, precio, piso_ocioso, piso_lleno):
         """rojo = debajo del variable; ámbar = entre pisos; verde = cubre todo."""
         if not precio:

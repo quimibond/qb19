@@ -298,6 +298,35 @@ class TestQbCosteo(TransactionCase):
         wiz_ind.precio_objetivo = 0.5
         self.assertEqual(wiz_ind.semaforo, 'rojo')
 
+    def test_desglose_explicado_consistente(self):
+        """El desglose (mp_breakdown) suma EXACTO lo mismo que el motor
+        (_mp_cost_unit) — si divergen, la explicación miente."""
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2026, 8, 1), 'window_months': 12,
+            'fab_pool_month': 5000000, 'energia_pool_month': 600000,
+            'op_pool_month': 3000000, 'ventas_pool_month': 17000000,
+            'kg_denom_month': 90000, 'm_denom_month': 900000,
+            'fab_weight_share': 0.67,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        rows = self.Costo.mp_breakdown(self.tela)
+        self.assertTrue(rows)
+        suma = sum(r['total'] for r in rows)
+        self.assertAlmostEqual(
+            suma, self.Costo._mp_cost_unit(self.tela), places=6)
+        self.assertTrue(all(r['fuente'] for r in rows),
+                        'cada hoja debe decir de dónde viene su costo')
+        # Subproducto explicado en $0
+        rows_saldo = self.Costo.mp_breakdown(self.saldo)
+        self.assertEqual(rows_saldo[0]['total'], 0.0)
+        self.assertIn('Subproducto', rows_saldo[0]['fuente'])
+        # El HTML trae las 4 capas y el resumen
+        html = self.Costo.explain_quote_html(self.tela, factores)
+        for seccion in ('Materia prima', 'Energía', 'Fabricación',
+                        'Operación', 'Costo completo'):
+            self.assertIn(seccion, html)
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)
