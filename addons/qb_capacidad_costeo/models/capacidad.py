@@ -9,6 +9,8 @@ workorders aparece con producción 0 (100% disponible) — no rompe nada.
 """
 from odoo import fields, models
 
+from .cuenta_map import wo_qty_sql
+
 
 class QbCapacidad(models.Model):
     _name = 'qb.capacidad'
@@ -65,7 +67,7 @@ class QbCapacidad(models.Model):
             ),
             prod AS (
                 SELECT wo.workcenter_id,
-                       SUM(wo.qty_produced) / (SELECT window_months FROM cfg) AS qty_month,
+                       SUM(%(wo_qty)s) / (SELECT window_months FROM cfg) AS qty_month,
                        SUM(COALESCE(wo.duration, 0)) / 60.0
                            / (SELECT window_months FROM cfg) AS hours_month
                 FROM mrp_workorder wo
@@ -117,4 +119,4 @@ class QbCapacidad(models.Model):
             LEFT JOIN wc_centro wcc ON wcc.workcenter_id = wc.id
             LEFT JOIN prod p ON p.workcenter_id = wc.id
             WHERE wc.active
-        """
+        """ % {'wo_qty': wo_qty_sql(self.env)}
