@@ -291,13 +291,16 @@ class QbCostoProducto(models.Model):
         """
         if not product_ids:
             return {}
+        # state/date_order viven en purchase_order (en Odoo 19 ya no son
+        # columnas de la línea) — joinear la orden.
         self.env.cr.execute("""
             SELECT DISTINCT ON (pol.product_id) pol.product_id, pol.id
             FROM purchase_order_line pol
-            WHERE pol.state IN ('purchase', 'done')
+            JOIN purchase_order po ON po.id = pol.order_id
+            WHERE po.state IN ('purchase', 'done')
               AND pol.price_unit > 0
               AND pol.product_id = ANY(%s)
-            ORDER BY pol.product_id, pol.date_order DESC, pol.id DESC
+            ORDER BY pol.product_id, po.date_order DESC, pol.id DESC
         """, (list(product_ids),))
         return dict(self.env.cr.fetchall())
 
@@ -313,19 +316,24 @@ class QbCostoProducto(models.Model):
             pol = self.env['purchase.order.line'].browse(pol_id) if pol_id \
                 else self.env['purchase.order.line']
         else:
+            # order_id.state en el domain y orden por id (proxy de recencia):
+            # state/date_order de la línea no son columnas propias en Odoo 19.
             pol = self.env['purchase.order.line'].search([
                 ('product_id', '=', product.id),
-                ('state', 'in', ('purchase', 'done')),
+                ('order_id.state', 'in', ('purchase', 'done')),
                 ('price_unit', '>', 0),
-            ], order='date_order desc, id desc', limit=1)
+            ], order='id desc', limit=1)
         if not pol:
             return product.standard_price or 0.0
         price = pol.price_unit * (1 - (pol.discount or 0.0) / 100.0)
         company = self.env.company
-        if pol.currency_id and pol.currency_id != company.currency_id:
-            price = pol.currency_id._convert(
+        # Moneda y fecha desde la orden: en Odoo 19 no son columnas de la línea
+        currency = pol.order_id.currency_id
+        date_order = pol.order_id.date_order
+        if currency and currency != company.currency_id:
+            price = currency._convert(
                 price, company.currency_id, company,
-                pol.date_order and pol.date_order.date() or fields.Date.today())
+                date_order and date_order.date() or fields.Date.today())
         # Normalizar a la UoM del producto (campo renombrado en Odoo 17+)
         pol_uom = pol.product_uom_id if 'product_uom_id' in pol._fields \
             else pol.product_uom
@@ -348,11 +356,11 @@ class QbCostoProducto(models.Model):
             'SELECT DISTINCT product_id FROM mrp_bom_line WHERE product_id IS NOT NULL')
         leaf_ids.update(r[0] for r in self.env.cr.fetchall())
         pol_map = self._last_purchase_line_map(leaf_ids)
-        # Warm-up del cache ORM: un solo fetch para todas las líneas de compra
+        # Warm-up del cache ORM: un solo fetch para las líneas y sus órdenes
         if pol_map:
-            self.env['purchase.order.line'].browse(
-                list(pol_map.values())).read(
-                ['price_unit', 'discount', 'currency_id', 'date_order'])
+            pols = self.env['purchase.order.line'].browse(list(pol_map.values()))
+            pols.read(['price_unit', 'discount', 'order_id'])
+            pols.order_id.read(['currency_id', 'date_order'])
         return {
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,
