@@ -120,6 +120,11 @@
                     <field name="capacity_ok"/>
                     <field name="capacity_detail" nolabel="1"/>
                 </group>
+                <notebook invisible="not product_id or spec_mode">
+                    <page string="🔍 ¿De dónde viene cada costo?">
+                        <field name="explicacion_html" nolabel="1" readonly="1"/>
+                    </page>
+                </notebook>
                 <div class="text-muted" invisible="not factores_info">
                     <field name="factores_info" readonly="1" nolabel="1"/>
                 </div>
@@ -363,6 +368,11 @@
                         <field name="factores_id"/>
                         <field name="supuestos"/>
                     </group>
+                    <notebook>
+                        <page string="🔍 Desglose explicado (foto al cotizar)">
+                            <field name="desglose_html" nolabel="1" readonly="1"/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

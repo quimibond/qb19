@@ -104,6 +104,11 @@ class QbCotizacion(models.Model):
         help='Horas-máquina requeridas vs libres por centro de la ruta; '
              'cuántas máquinas/turnos faltan si no cabe.')
 
+    desglose_html = fields.Html(
+        string='Desglose explicado', sanitize=False,
+        help='Foto del desglose de costos al momento de cotizar: BOM hoja '
+             'por hoja con su última compra, peso, factores y fórmulas.')
+
     # Supuestos (trazabilidad)
     factores_id = fields.Many2one('qb.costo.factores', string='Factores usados')
     supuestos = fields.Text(

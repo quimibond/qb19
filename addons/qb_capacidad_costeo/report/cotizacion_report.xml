@@ -105,6 +105,12 @@
 
                         <h4>Supuestos</h4>
                         <pre style="font-size:10px;"><span t-field="o.supuestos"/></pre>
+
+                        <t t-if="o.desglose_html">
+                            <div style="page-break-before:always;"/>
+                            <h4>Desglose explicado — de dónde viene cada costo</h4>
+                            <div t-field="o.desglose_html"/>
+                        </t>
                     </div>
                 </t>
             </t>
