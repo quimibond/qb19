@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Wizard cotizador ============ -->
+    <record id="cotizador_wizard_action" model="ir.actions.act_window">
+        <field name="name">Cotizador</field>
+        <field name="res_model">qb.cotizador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <record id="cotizador_wizard_view_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.wizard.form</field>
+        <field name="model">qb.cotizador.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group string="Qué cotizar">
+                        <field name="partner_id"/>
+                        <field name="product_id" invisible="spec_mode"/>
+                        <field name="spec_mode"/>
+                    </group>
+                    <group string="Condiciones">
+                        <field name="volumen"/>
+                        <field name="precio_objetivo"/>
+                        <field name="target_margin"/>
+                        <field name="fx_rate"/>
+                    </group>
+                </group>
+                <group string="Especificación nueva" invisible="not spec_mode">
+                    <group>
+                        <field name="spec_descripcion"/>
+                        <field name="spec_gramaje"/>
+                        <field name="spec_ancho"/>
+                        <field name="spec_galga"/>
+                    </group>
+                    <group>
+                        <field name="spec_bucket"/>
+                        <field name="spec_mp_unit"/>
+                        <field name="spec_centro_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_cotizar" string="Cotizar" type="object"
+                            class="btn-primary"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============ Cotizaciones guardadas ============ -->
+    <record id="cotizacion_action" model="ir.actions.act_window">
+        <field name="name">Cotizaciones</field>
+        <field name="res_model">qb.cotizacion</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="cotizacion_view_list" model="ir.ui.view">
+        <field name="name">qb.cotizacion.list</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="not capacity_ok">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="volumen"/>
+                <field name="costo_variable"/>
+                <field name="precio_sugerido"/>
+                <field name="margen_contribucion_pct"/>
+                <field name="contrib_hora_maquina"/>
+                <field name="capacity_ok"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+    <record id="cotizacion_view_form" model="ir.ui.view">
+        <field name="name">qb.cotizacion.form</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar"
+                           options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group string="Qué se cotizó">
+                            <field name="partner_id"/>
+                            <field name="product_id"/>
+                            <field name="spec_descripcion"/>
+                            <field name="spec_gramaje"/>
+                            <field name="spec_ancho"/>
+                            <field name="spec_galga"/>
+                            <field name="volumen"/>
+                            <field name="uom_name"/>
+                            <field name="fx_rate"/>
+                        </group>
+                        <group string="Costo por capa ($/u)">
+                            <field name="mp_unit"/>
+                            <field name="energia_unit"/>
+                            <field name="costo_variable"/>
+                            <field name="fab_unit"/>
+                            <field name="costo_absorbido_sin_op"/>
+                            <field name="op_pct"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Precios">
+                            <field name="target_margin"/>
+                            <field name="precio_objetivo"/>
+                            <field name="precio_sugerido"/>
+                            <field name="piso_ocioso"/>
+                            <field name="piso_lleno"/>
+                        </group>
+                        <group string="Contribución">
+                            <field name="margen_contribucion"/>
+                            <field name="margen_contribucion_pct"/>
+                            <field name="contrib_hora_maquina"/>
+                        </group>
+                    </group>
+                    <group string="Capacidad">
+                        <field name="capacity_ok"/>
+                        <field name="capacity_detail"/>
+                    </group>
+                    <group string="Supuestos (trazabilidad)">
+                        <field name="factores_id"/>
+                        <field name="supuestos"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
