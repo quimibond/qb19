@@ -291,6 +291,13 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_recotizar" type="object"
+                            string="↻ Re-cotizar / nuevo escenario"
+                            class="btn-primary"
+                            help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
+                    <button name="action_enviar_correo" type="object"
+                            string="✉ Enviar por correo"
+                            help="Correo al cliente con el PDF de la cotización adjunto."/>
                     <field name="state" widget="statusbar"
                            options="{'clickable': '1'}"/>
                 </header>
@@ -380,6 +387,7 @@
                         </page>
                     </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

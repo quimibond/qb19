@@ -792,19 +792,38 @@ class QbCostoProducto(models.Model):
                 rows.extend(self.mp_breakdown(
                     comp, qty * qty_comp / bom_qty, _depth + 1))
             return rows
-        # Hoja comprada: buscar la última compra real
-        pol = self.env['purchase.order.line'].search([
+        # Hoja comprada: última compra real + tendencia de las últimas 5
+        pols = self.env['purchase.order.line'].search([
             ('product_id', '=', product.id),
             ('order_id.state', 'in', ('purchase', 'done')),
             ('price_unit', '>', 0),
-        ], order='id desc', limit=1)
+        ], order='id desc', limit=5)
         cost = self._last_purchase_cost(product)
-        if pol:
+        if pols:
+            pol = pols[0]
             fuente = 'Última compra: %s a %s (%s, %s %s)' % (
                 pol.order_id.name, pol.order_id.partner_id.name,
                 pol.order_id.date_order.date() if pol.order_id.date_order
                 else 's/f',
                 pol.price_unit, pol.order_id.currency_id.name or 'MXN')
+            if len(pols) > 1:
+                # ¿Cotizas con el costo en subida o en bajada? Con la MP
+                # dominando el variable, este es el mayor riesgo de cotizar.
+                company = self.env.company
+                mxn = [p.order_id.currency_id._convert(
+                    p.price_unit, company.currency_id, company,
+                    p.order_id.date_order.date() if p.order_id.date_order
+                    else fields.Date.today(), round=False) for p in pols]
+                serie = list(reversed(mxn))  # vieja → nueva
+                if serie[-1] > serie[0] * 1.02:
+                    arrow = '📈 SUBIENDO'
+                elif serie[-1] < serie[0] * 0.98:
+                    arrow = '📉 bajando'
+                else:
+                    arrow = '➡️ estable'
+                fuente += ' · Tendencia %s compras: %s MXN %s' % (
+                    len(serie),
+                    ' → '.join('%.2f' % v for v in serie), arrow)
         else:
             fuente = 'Sin compras registradas: costo promedio de Odoo'
         return [dict(base, unit_cost=cost, total=cost * qty, fuente=fuente)]

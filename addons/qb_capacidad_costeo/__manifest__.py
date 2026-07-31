@@ -26,6 +26,7 @@ tablas de configuración del módulo, editables desde la UI.
     'website': 'https://quimibond.com',
     'depends': [
         'base',
+        'mail',
         'mrp',
         'hr',
         'account',
@@ -48,6 +49,8 @@ tablas de configuración del módulo, editables desde la UI.
         # cotizador_orden_action, que se define ahí
         'views/sale_order_views.xml',
         'views/ficha_views.xml',
+        'data/mail_template.xml',
+        'views/cliente_views.xml',
         'views/snapshot_views.xml',
         'views/menus.xml',
     ],
