@@ -298,6 +298,20 @@ class TestQbCosteo(TransactionCase):
         wiz_ind.precio_objetivo = 0.5
         self.assertEqual(wiz_ind.semaforo, 'rojo')
 
+        # Guardián de moneda: 1.68 "USD" tecleado con moneda MXN → alerta
+        wiz_mxn = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'precio_objetivo': 1.68,
+        })
+        self.assertTrue(wiz_mxn.moneda_alerta)
+        self.assertIn('dólares', wiz_mxn.moneda_alerta)
+        # Mismo precio con la moneda correcta (EUR) → sin alerta
+        wiz_mxn.currency_id = eur
+        self.assertFalse(wiz_mxn.moneda_alerta)
+        # Inverso: 60 "MXN" tecleados con moneda EUR (60×20=1200 MXN ≫ piso)
+        wiz_mxn.precio_objetivo = 60.0
+        self.assertTrue(wiz_mxn.moneda_alerta)
+        self.assertIn('pesos', wiz_mxn.moneda_alerta)
+
     def test_desglose_explicado_consistente(self):
         """El desglose (mp_breakdown) suma EXACTO lo mismo que el motor
         (_mp_cost_unit) — si divergen, la explicación miente."""

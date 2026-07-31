@@ -37,6 +37,12 @@
                     💱 <field name="moneda_info" readonly="1" class="oe_inline"/>
                 </div>
                 <field name="moneda_info" invisible="1"/>
+                <!-- Guardián anti-error de moneda: antes que el semáforo -->
+                <div class="alert alert-warning" role="alert"
+                     invisible="not moneda_alerta">
+                    💱⚠️ <b>Revisa la moneda:</b>
+                    <field name="moneda_alerta" readonly="1" class="oe_inline"/>
+                </div>
                 <!-- Semáforo: el criterio de decisión en un color -->
                 <field name="semaforo" invisible="1"/>
                 <div class="alert alert-danger" role="alert"

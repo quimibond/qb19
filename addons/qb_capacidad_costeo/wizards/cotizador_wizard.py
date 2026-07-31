@@ -140,6 +140,11 @@ class QbCotizadorWizard(models.TransientModel):
     explicacion_html = fields.Html(
         compute='_compute_explicacion', sanitize=False,
         string='¿De dónde viene cada costo?')
+    moneda_alerta = fields.Char(
+        compute='_compute_cotizacion', string='Alerta de moneda',
+        help='Guardián anti-error de captura: precio sospechosamente chico '
+             '(¿USD tecleado con moneda MXN?) o sospechosamente grande '
+             '(¿MXN tecleado con moneda USD?).')
 
     @api.depends('product_id', 'target_margin')
     def _compute_explicacion(self):
@@ -378,6 +383,7 @@ class QbCotizadorWizard(models.TransientModel):
                 'piso_lleno_divisa', 'sugerido_colchon_divisa',
                 'margen_bruto_pct', 'margen_neto_pct'], 0.0)
             zero['semaforo'] = False
+            zero['moneda_alerta'] = False
             try:
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
@@ -404,7 +410,27 @@ class QbCotizadorWizard(models.TransientModel):
                 neto = bruto - 100.0 * res['op_pct']
             else:
                 bruto = neto = 0.0
+            # Guardián anti-error de moneda: el precio capturado quedó
+            # ABSURDO contra los pisos → casi siempre es la moneda equivocada
+            moneda_alerta = False
+            piso = res['piso_ocioso']
+            if wiz.precio_objetivo and piso:
+                if wiz.es_mxn and precio_ref < piso * 0.25:
+                    moneda_alerta = (
+                        'El precio capturado ($%.2f MXN) es menos de ¼ del '
+                        'piso mínimo ($%.2f MXN). ¿Lo tecleaste en dólares? '
+                        'Cambia "Moneda de la cotización" a USD.'
+                        % (precio_ref, piso))
+                elif not wiz.es_mxn and res['piso_lleno'] \
+                        and precio_ref > res['piso_lleno'] * 5:
+                    moneda_alerta = (
+                        'El precio capturado (%.2f %s = $%.2f MXN) es más de '
+                        '5× el piso lleno. ¿Lo tecleaste en pesos? Cambia '
+                        '"Moneda de la cotización" a MXN.'
+                        % (wiz.precio_objetivo, wiz.currency_id.name,
+                           precio_ref))
             wiz.update({
+                'moneda_alerta': moneda_alerta,
                 'factores_id': factores.id,
                 'factores_info': 'Factores %s (ventana %sm) · fab $%.2f/kg + '
                                  '$%.2f/m · energía $%.2f/kg · op %.1f%%' % (
