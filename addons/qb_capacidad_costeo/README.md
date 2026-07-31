@@ -75,6 +75,26 @@ precio sugerido = (variable + fab) / (1 − op_pct − target_margin)
 - MP: último costo de compra por hoja de BOM, convertido a MXN al FX de la compra.
 - Capacidad: `resource.calendar` real × `time_efficiency` — nunca 24/7 asumido.
 
+## Configuración automática desde Supabase (cero manual)
+
+**Configuración → Importar desde Supabase** (y cron semanal que además
+recalcula el período): jala toda la configuración curada en la capa silver
+de Quimibond Intelligence usando las credenciales que el sync ya tiene en
+Odoo.sh (`quimibond_intelligence.supabase_url` / `supabase_service_key`):
+
+| Tabla Supabase | → Modelo del módulo |
+|---|---|
+| `cost_center_config` (12 centros) | `qb.costeo.centro` + departamentos RH por patrón de nómina |
+| `rent_lot_assignment` (5 lotes) | renta contractual por centro (Σ monto × %) |
+| `workcenter_cost_config` | throughput nominal (11 kg/h) + **auto-link de workcenters** por patrón `%CIRCULAR%` |
+| `overhead_account_assignment` | clasificación cuenta→centro (energía variable / overhead directo; asignadas a admin → fuera del pool fabril) |
+| `costing_variable_accounts` | luz/gas/agua como variables |
+| `costing_config` | `fab_weight_share` (0.67) y demás parámetros |
+| `product_kg_per_unit` (2,758) + `product_uom_conversion` (769) | `qb.producto.peso` (match directo por `odoo_product_id`; overrides locales `manual` no se pisan) |
+
+Idempotente: se puede correr las veces que sea. Workcenters nuevos que
+matcheen el patrón entran solos en la corrida semanal.
+
 ## Cómo agregar un centro nuevo (cero código)
 
 1. Dar de alta el `mrp.workcenter` en Manufactura (con su `resource.calendar`

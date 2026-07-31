@@ -277,6 +277,7 @@ class QbProductoPeso(models.Model):
         ('bom', 'Peso por receta (BOM)'),
         ('odoo_weight', 'Peso de Odoo'),
         ('import_twin', 'Gemelo nacional'),
+        ('kg_native', 'UoM en kg (= 1)'),
     ], default='manual', required=True,
         help='Prioridad al resolver: manual > cvu > ref_gramaje > bom > odoo_weight.')
     active = fields.Boolean(default=True)
