@@ -174,13 +174,25 @@
         <field name="name">Cotizar costos de la orden</field>
         <field name="res_model">qb.cotizador.orden.wizard</field>
         <field name="view_mode">form</field>
-        <field name="target">new</field>
+        <!-- Página completa (no diálogo): los botones "Detalle" por línea
+             funcionan sin pelearse con el guardado del modal, y queda
+             breadcrumb de regreso al pedido -->
+        <field name="target">current</field>
     </record>
     <record id="cotizador_orden_view_form" model="ir.ui.view">
         <field name="name">qb.cotizador.orden.wizard.form</field>
         <field name="model">qb.cotizador.orden.wizard</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_aplicar_seleccionados"
+                            string="Aplicar precios marcados" type="object"
+                            class="btn-primary"
+                            confirm="Escribe los nuevos precios en las líneas marcadas del pedido. ¿Continuar?"/>
+                    <button name="action_volver_pedido" string="Volver al pedido"
+                            type="object" class="btn-secondary"/>
+                </header>
+                <sheet>
                 <group>
                     <group>
                         <field name="sale_order_id"/>
@@ -239,13 +251,7 @@
                     "Detalle" abre la calculadora individual con capacidad y
                     escenarios.
                 </div>
-                <footer>
-                    <button name="action_aplicar_seleccionados"
-                            string="Aplicar precios marcados" type="object"
-                            class="btn-primary"
-                            confirm="Escribe los nuevos precios en las líneas marcadas del pedido. ¿Continuar?"/>
-                    <button string="Cerrar" special="cancel"/>
-                </footer>
+                </sheet>
             </form>
         </field>
     </record>
@@ -291,6 +297,13 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_recotizar" type="object"
+                            string="↻ Re-cotizar / nuevo escenario"
+                            class="btn-primary"
+                            help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
+                    <button name="action_enviar_correo" type="object"
+                            string="✉ Enviar por correo"
+                            help="Correo al cliente con el PDF de la cotización adjunto."/>
                     <field name="state" widget="statusbar"
                            options="{'clickable': '1'}"/>
                 </header>
@@ -380,6 +393,7 @@
                         </page>
                     </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

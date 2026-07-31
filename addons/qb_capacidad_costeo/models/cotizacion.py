@@ -10,6 +10,7 @@ from odoo import api, fields, models
 class QbCotizacion(models.Model):
     _name = 'qb.cotizacion'
     _description = 'Cotización de capacidad y costo'
+    _inherit = ['mail.thread']
     _order = 'create_date DESC'
 
     name = fields.Char(required=True, default='Nueva cotización')
@@ -120,7 +121,21 @@ class QbCotizacion(models.Model):
         ('done', 'Presentada'),
         ('won', 'Ganada'),
         ('lost', 'Perdida'),
-    ], default='draft')
+    ], default='draft', tracking=True)
+    precio_vs_piso_pct = fields.Float(
+        compute='_compute_precio_vs_piso', store=True,
+        string='% sobre el piso lleno',
+        help='(precio evaluado ÷ piso a planta llena) − 1. El insumo del '
+             'análisis win/loss: ¿a qué % sobre el piso ganamos y a cuál '
+             'perdemos?')
+
+    @api.depends('precio_objetivo', 'precio_sugerido', 'piso_lleno')
+    def _compute_precio_vs_piso(self):
+        for rec in self:
+            base = rec.precio_objetivo or rec.precio_sugerido
+            rec.precio_vs_piso_pct = (
+                100.0 * (base / rec.piso_lleno - 1.0)
+                if base and rec.piso_lleno else 0.0)
     validez_hasta = fields.Date(
         string='Válida hasta',
         help='Después de esta fecha los supuestos (TC, último costo de MP) '
@@ -171,3 +186,63 @@ class QbCotizacion(models.Model):
     def _onchange_product(self):
         if self.product_id:
             self.uom_name = self.product_id.uom_id.name
+
+    # ------------------------------------------------------------------
+    # Re-cotizar / duplicar escenario / enviar por correo
+    # ------------------------------------------------------------------
+    def action_recotizar(self):
+        """Abre la calculadora precargada con esta cotización — para
+        refrescarla con factores/TC de hoy o probar otro precio como nuevo
+        escenario. Guardar crea una cotización NUEVA (la original queda
+        intacta como histórico)."""
+        self.ensure_one()
+        Costo = self.env['qb.costo.producto']
+        pricelist = getattr(self.partner_id, 'property_product_pricelist', None)
+        currency = (pricelist.currency_id if pricelist and pricelist.currency_id
+                    else self.env.company.currency_id)
+        rate = Costo.to_mxn_rate(currency)
+        ctx = {
+            'default_partner_id': self.partner_id.id,
+            'default_product_id': self.product_id.id,
+            'default_currency_id': currency.id,
+            'default_volumen': self.volumen,
+            'default_target_margin': self.target_margin,
+            # El objetivo guardado es MXN → a la moneda de la cotización
+            'default_precio_objetivo':
+                self.precio_objetivo / rate if self.precio_objetivo else 0.0,
+        }
+        if not self.product_id:
+            ctx.update({
+                'default_spec_mode': True,
+                'default_spec_descripcion': self.spec_descripcion,
+                'default_spec_gramaje': self.spec_gramaje,
+                'default_spec_ancho': self.spec_ancho,
+                'default_spec_galga': self.spec_galga,
+            })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Re-cotizar / nuevo escenario',
+            'res_model': 'qb.cotizador.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': ctx,
+        }
+
+    def action_enviar_correo(self):
+        """Composer de correo con la plantilla y el PDF adjunto."""
+        self.ensure_one()
+        template = self.env.ref(
+            'qb_capacidad_costeo.mail_template_cotizacion',
+            raise_if_not_found=False)
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'mail.compose.message',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_model': 'qb.cotizacion',
+                'default_res_ids': self.ids,
+                'default_template_id': template.id if template else False,
+                'default_composition_mode': 'comment',
+            },
+        }
