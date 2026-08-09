@@ -34,7 +34,7 @@ def post_init_hook(env):
             'name': 'Consumo Mantenimiento',
             'usage': 'production',
             'location_id': parent.id,
-            'company_id': False,
+            'company_id': parent.company_id.id,
         })
 
     ConfigParam.set_param(
