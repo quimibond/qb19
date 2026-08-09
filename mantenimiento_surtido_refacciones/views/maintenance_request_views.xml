@@ -6,17 +6,23 @@
         <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form"/>
         <field name="arch" type="xml">
 
-            <!-- Botón inteligente de traslados generados -->
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_ver_pickings_refacciones" type="object"
-                        class="oe_stat_button" icon="fa-truck"
-                        invisible="picking_refaccion_count == 0">
-                    <field name="picking_refaccion_count" widget="statinfo"
-                           string="Traslados"/>
-                </button>
+            <!-- Esta vista base NO trae button_box (verificado contra el
+                 arch real vía odoo-bin shell en Odoo.sh, 09/ago/2026):
+                 se crea aquí, insertado justo antes del campo
+                 kanban_state, que es el primer elemento dentro de
+                 <sheet>. -->
+            <xpath expr="//field[@name='kanban_state']" position="before">
+                <div name="button_box" class="oe_button_box">
+                    <button name="action_ver_pickings_refacciones" type="object"
+                            class="oe_stat_button" icon="fa-truck"
+                            invisible="picking_refaccion_count == 0">
+                        <field name="picking_refaccion_count" widget="statinfo"
+                               string="Traslados"/>
+                    </button>
+                </div>
             </xpath>
 
-            <!-- Botón de acción principal, junto a los botones de estado -->
+            <!-- El <header> sí existe tal cual en la vista base. -->
             <xpath expr="//header" position="inside">
                 <button name="action_generar_requerimiento_refacciones" type="object"
                         string="Generar Requerimiento de Surtido"
@@ -24,7 +30,8 @@
                         invisible="not refaccion_line_ids"/>
             </xpath>
 
-            <!-- Nueva pestaña de Refacciones -->
+            <!-- El <notebook> sí existe tal cual en la vista base
+                 (pestañas "Notas" e "Instrucciones"). -->
             <xpath expr="//notebook" position="inside">
                 <page string="Refacciones" name="refacciones">
                     <group>

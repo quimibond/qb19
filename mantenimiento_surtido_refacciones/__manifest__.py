@@ -20,11 +20,11 @@ Integra el módulo de Mantenimiento con Inventario y Contabilidad para:
     'depends': ['maintenance', 'stock_account', 'account'],
     'data': [
         'security/ir.model.access.csv',
-        'data/stock_data.xml',
         'views/stock_picking_views.xml',
         'views/maintenance_request_views.xml',
     ],
     'installable': True,
     'application': False,
     'license': 'LGPL-3',
+    'post_init_hook': 'post_init_hook',
 }

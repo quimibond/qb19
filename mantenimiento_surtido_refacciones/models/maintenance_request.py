@@ -71,9 +71,13 @@ class MaintenanceRequest(models.Model):
             ('default_location_src_id', '=', self.location_mantto_id.id),
         ], limit=1)
         if not picking_type:
-            picking_type = self.env.ref(
-                'mantenimiento_surtido_refacciones.picking_type_refacciones_mantto',
-                raise_if_not_found=False)
+            # El tipo de operación de referencia se crea en el
+            # post_init_hook del módulo, sin xmlid fijo (ver hooks.py) --
+            # se localiza por nombre.
+            picking_type = self.env['stock.picking.type'].search([
+                ('name', '=', 'Requerimiento de Refacciones (Mantenimiento)'),
+                ('warehouse_id.company_id', '=', self.company_id.id),
+            ], limit=1)
         return picking_type
 
     def action_generar_requerimiento_refacciones(self):
@@ -97,7 +101,7 @@ class MaintenanceRequest(models.Model):
                 'configurado para la ubicación de refacciones.')
 
         move_vals = [(0, 0, {
-            'name': line.product_id.display_name,
+            'description_picking': line.product_id.display_name,
             'product_id': line.product_id.id,
             'product_uom_qty': line.quantity,
             'product_uom': line.product_uom_id.id,
