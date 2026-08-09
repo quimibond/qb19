@@ -61,6 +61,7 @@ def post_init_hook(env):
             'name': 'Requerimiento de Refacciones (Mantenimiento)',
             'code': 'internal',
             'sequence_id': sequence.id,
+            'sequence_code': 'REQMTTO',
             'default_location_dest_id': location.id,
             'warehouse_id': warehouse.id,
             'show_operations': True,
