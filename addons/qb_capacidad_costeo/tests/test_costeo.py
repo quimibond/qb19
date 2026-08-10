@@ -101,8 +101,9 @@ class TestQbCosteo(TransactionCase):
         self.assertIn(self.tela.id, ctx['mp_cache'])
 
     def test_cotizador_calculadora_viva(self):
-        """Los resultados del wizard se computan en vivo (sin botón) y el
-        precio sugerido cubre op% + margen meta sobre venta."""
+        """Los resultados del wizard se computan en vivo (sin botón). Sin
+        margen meta: la evaluación cae en cascada objetivo → mercado →
+        piso lleno, y los márgenes se calculan al precio evaluado."""
         self.env['qb.costo.factores'].create({
             'period': date(2026, 3, 1), 'window_months': 12,
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
@@ -110,7 +111,6 @@ class TestQbCosteo(TransactionCase):
         })
         wiz = self.env['qb.cotizador.wizard'].create({
             'product_id': self.tela.id, 'volumen': 1000,
-            'target_margin': 30.0,
         })
         # MP 3.6 + energía 4×0.072 = variable; fab por híbrida en metros
         self.assertAlmostEqual(wiz.mp_unit, 0.072 * 50.0, places=4)
@@ -118,18 +118,28 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(
             wiz.costo_variable, wiz.mp_unit + wiz.energia_unit, places=4)
         self.assertAlmostEqual(wiz.fab_unit, 0.072 * 30.0 + 3.0, places=4)
-        # precio sugerido = (variable+fab) / (1 − op − margen)
-        esperado = (wiz.costo_variable + wiz.fab_unit) / (1 - 0.18 - 0.30)
-        self.assertAlmostEqual(wiz.precio_sugerido, esperado, places=3)
         self.assertEqual(wiz.piso_ocioso, wiz.costo_variable)
-        # Márgenes al precio sugerido: neto == margen meta; bruto = neto + op
-        self.assertAlmostEqual(wiz.margen_neto_pct, 30.0, places=3)
-        self.assertAlmostEqual(wiz.margen_bruto_pct, 30.0 + 18.0, places=3)
+        self.assertAlmostEqual(
+            wiz.piso_lleno,
+            (wiz.costo_variable + wiz.fab_unit) / (1 - 0.18), places=3)
+        # Sin objetivo ni ventas: se evalúa el PISO LLENO → neto exacto 0
+        self.assertEqual(wiz.precio_mercado, 0.0)
+        self.assertIn('piso a planta llena', wiz.evaluado_info)
+        self.assertAlmostEqual(wiz.margen_neto_pct, 0.0, places=3)
+        self.assertAlmostEqual(wiz.margen_bruto_pct, 18.0, places=3)
+        # Con objetivo capturado: los márgenes se evalúan a ESE precio
+        wiz.precio_objetivo = 100.0
+        self.assertIn('objetivo', wiz.evaluado_info)
+        bruto = 100.0 * (100.0 - wiz.costo_variable - wiz.fab_unit) / 100.0
+        self.assertAlmostEqual(wiz.margen_bruto_pct, bruto, places=3)
+        self.assertAlmostEqual(wiz.margen_neto_pct, bruto - 18.0, places=3)
         # Guardar produce la cotización con los mismos números
         action = wiz.action_cotizar()
         cot = self.env['qb.cotizacion'].browse(action['res_id'])
         self.assertAlmostEqual(cot.costo_variable, wiz.costo_variable, places=4)
-        self.assertAlmostEqual(cot.precio_sugerido, wiz.precio_sugerido, places=4)
+        self.assertAlmostEqual(cot.piso_lleno, wiz.piso_lleno, places=4)
+        self.assertEqual(cot.evaluado_fuente, 'precio objetivo')
+        self.assertAlmostEqual(cot.precio_evaluado, 100.0, places=2)
 
     def test_cotizador_desde_orden_aplicar_precio(self):
         """Lanzado desde una sale.order: prefillea cliente/línea/producto,
@@ -167,7 +177,6 @@ class TestQbCosteo(TransactionCase):
 
     def test_matematicas_identidades(self):
         """Las fórmulas cumplen su álgebra exacta:
-        - Al precio SUGERIDO, el margen absorbido == margen meta.
         - Al piso LLENO, el margen absorbido == 0 (cubre todo, gana nada).
         - Al piso OCIOSO, la contribución == 0.
         - El semáforo cambia exactamente en los pisos."""
@@ -176,12 +185,9 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18,
         })
-        q = self.Costo.quote_product(self.tela, factores, target=0.30)
+        q = self.Costo.quote_product(self.tela, factores)
         v, f, op = q['variable'], q['fab'], q['op_pct']
 
-        # margen absorbido en el sugerido = (p − v − f − op·p) / p = target
-        p = q['precio_sugerido']
-        self.assertAlmostEqual((p - v - f - op * p) / p, 0.30, places=6)
         # margen absorbido en el piso lleno = 0
         p2 = q['piso_lleno']
         self.assertAlmostEqual(p2 - v - f - op * p2, 0.0, places=6)
@@ -192,9 +198,9 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(self.Costo.semaforo_for(v - eps, v, p2), 'rojo')
         self.assertEqual(self.Costo.semaforo_for(v + eps, v, p2), 'ambar')
         self.assertEqual(self.Costo.semaforo_for(p2 + eps, v, p2), 'verde')
-        # jerarquía de precios: ocioso < lleno < sugerido
+        # jerarquía de pisos y referencia de mercado presente (0 sin ventas)
         self.assertLess(q['piso_ocioso'], q['piso_lleno'])
-        self.assertLess(q['piso_lleno'], q['precio_sugerido'])
+        self.assertEqual(q['precio_mercado'], 0.0)
 
     def test_cotizador_orden_multilinea(self):
         """Orden con varios productos: una fila por línea con su semáforo,
@@ -223,12 +229,14 @@ class TestQbCosteo(TransactionCase):
         self.assertTrue(l_tela.aplicar, 'lo rojo se pre-marca')
         self.assertEqual(l_imp.semaforo, 'verde')
         self.assertFalse(l_imp.aplicar)
-        # el sugerido de la tela cubre op + margen meta sobre venta
-        self.assertGreater(l_tela.precio_sugerido, l_tela.piso_lleno)
+        # sin ventas 12m el default de corrección es el PISO LLENO
+        self.assertEqual(l_tela.precio_mercado, 0.0)
+        self.assertAlmostEqual(
+            l_tela.nuevo_precio, l_tela.piso_lleno, places=2)
         # aplicar en lote: solo la marcada cambia
         wiz.action_aplicar_seleccionados()
         self.assertAlmostEqual(
-            order.order_line[0].price_unit, l_tela.precio_sugerido, places=2)
+            order.order_line[0].price_unit, l_tela.piso_lleno, places=2)
         self.assertEqual(order.order_line[1].price_unit, 100.0)
 
     def test_moneda_extranjera_semaforo(self):
@@ -271,14 +279,15 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(line.precio_actual_mxn, 60.0, places=2)
         # 60 MXN vs variable ~7.9: NO es rojo (antes salía rojo falso)
         self.assertNotEqual(line.semaforo, 'rojo')
-        # El nuevo precio default es el sugerido CONVERTIDO a la divisa
+        # Sin ventas 12m el default es el PISO LLENO convertido a la divisa
+        self.assertEqual(line.precio_mercado, 0.0)
         self.assertAlmostEqual(
-            line.nuevo_precio, line.precio_sugerido / 20.0, places=2)
+            line.nuevo_precio, line.piso_lleno / 20.0, places=2)
         # Aplicar escribe en EUR (moneda del pedido), no en MXN
         line.aplicar = True
         wiz.action_aplicar_seleccionados()
         self.assertAlmostEqual(
-            order.order_line[0].price_unit, line.precio_sugerido / 20.0,
+            order.order_line[0].price_unit, line.piso_lleno / 20.0,
             places=2)
 
         # Wizard individual: el precio objetivo se captura EN EUR y el
@@ -292,8 +301,7 @@ class TestQbCosteo(TransactionCase):
         # El espejo en MXN del precio objetivo hace explícita la conversión
         self.assertAlmostEqual(wiz_ind.precio_objetivo_mxn, 60.0, places=2)
         self.assertAlmostEqual(
-            wiz_ind.precio_sugerido_divisa,
-            wiz_ind.precio_sugerido / 20.0, places=3)
+            wiz_ind.piso_lleno_divisa, wiz_ind.piso_lleno / 20.0, places=3)
         self.assertAlmostEqual(
             wiz_ind.piso_ocioso_divisa, wiz_ind.piso_ocioso / 20.0, places=3)
         # Con precio 0.5 EUR (= 10 MXN < variable) sí es rojo
@@ -449,6 +457,8 @@ class TestQbCosteo(TransactionCase):
                       'la presentación en kg debe listarse')
         self.assertIn('KILOS', html)
         self.assertIn('sin ventas 12m', html)
+        self.assertIn('piso lleno', html,
+                      'sin ventas la referencia mostrada es el piso lleno')
         # En el wizard se computa sola y se guarda como foto en la cotización
         wiz = self.env['qb.cotizador.wizard'].create({
             'product_id': self.tela.id, 'volumen': 1000,
@@ -461,18 +471,21 @@ class TestQbCosteo(TransactionCase):
         action = wiz.action_cotizar()
         cot = self.env['qb.cotizacion'].browse(action['res_id'])
         self.assertIn('IWJ045NT160', cot.comparativa_html)
-        # Glosario: mismos términos en wizard y cotización
-        for termino in ('Precio objetivo', 'Precio sugerido',
-                        'Tipo de cambio', 'Margen bruto', 'Margen neto',
-                        'Ociosidad', 'Piso con capacidad ociosa',
-                        'Piso a planta llena', 'Capacidad'):
+        # Glosario: mismos términos en wizard y cotización — sin margen meta
+        for termino in ('Precio objetivo', 'Precio de mercado',
+                        'Precio evaluado', 'Tipo de cambio', 'Margen bruto',
+                        'Margen neto', 'Ociosidad',
+                        'Piso con capacidad ociosa', 'Piso a planta llena',
+                        'Capacidad'):
             self.assertIn(termino, wiz.glosario_html)
             self.assertIn(termino, cot.glosario_html)
+        self.assertNotIn('margen meta', wiz.glosario_html)
         self.assertTrue(kg_twin.exists())
 
     def test_precio_cliente_mxn(self):
         """El PDF comercial presenta UN solo precio: el objetivo si se
-        capturó, si no el sugerido. En MXN la parte divisa queda en 0."""
+        capturó; sin objetivo ni ventas cae al piso a planta llena. En MXN
+        la parte divisa queda en 0."""
         self.env['qb.costo.factores'].create({
             'period': date(2026, 10, 1), 'window_months': 12,
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
@@ -488,14 +501,15 @@ class TestQbCosteo(TransactionCase):
         self.assertFalse(cot.es_divisa)
         self.assertAlmostEqual(cot.precio_cliente_mxn, 100.0, places=2)
         self.assertEqual(cot.precio_cliente_divisa, 0.0)
-        # Sin precio objetivo → el cliente ve el sugerido
+        # Sin precio objetivo ni ventas → cae al piso a planta llena
         wiz2 = self.env['qb.cotizador.wizard'].create({
             'product_id': self.tela.id, 'volumen': 1000,
         })
         cot2 = self.env['qb.cotizacion'].browse(
             wiz2.action_cotizar()['res_id'])
+        self.assertEqual(cot2.evaluado_fuente, 'piso a planta llena')
         self.assertAlmostEqual(
-            cot2.precio_cliente_mxn, cot2.precio_sugerido, places=4)
+            cot2.precio_cliente_mxn, cot2.piso_lleno, places=4)
 
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""

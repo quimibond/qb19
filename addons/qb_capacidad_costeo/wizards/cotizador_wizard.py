@@ -60,18 +60,14 @@ class QbCotizadorWizard(models.TransientModel):
         help='El precio que TÚ propones o que el cliente pide, EN LA MONEDA '
              'DE LA COTIZACIÓN (campo de arriba). El modelo lo convierte a '
              'MXN con el TC de Odoo y sobre él evalúa semáforo y márgenes. '
-             'Vacío = se evalúa el precio sugerido.')
+             'Vacío = se evalúa el precio de mercado (o el piso lleno si '
+             'no hay ventas).')
     precio_objetivo_mxn = fields.Float(
         compute='_compute_cotizacion', string='= Precio objetivo en MXN',
         digits=(16, 2),
         help='El precio objetivo convertido a pesos con el TC de hoy — este '
              'es el número que se compara contra los costos y pisos (que '
              'siempre son MXN).')
-    target_margin = fields.Float(
-        string='Margen meta %',
-        help='El % de utilidad NETA (después de operación) que quieres '
-             'ganar sobre el precio de venta. 0 = usar el margen meta de '
-             'configuración.')
     fx_rate = fields.Float(
         string='TC (MXN por 1 de la moneda)', digits=(16, 4), readonly=True,
         compute='_compute_fx_rate',
@@ -128,8 +124,17 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='Costo variable $/u', digits=(16, 4))
     op_pct_display = fields.Float(
         compute='_compute_cotizacion', string='Operación % s/venta')
-    precio_sugerido = fields.Float(
-        compute='_compute_cotizacion', string='Precio sugerido $/u', digits=(16, 4))
+    precio_mercado = fields.Float(
+        compute='_compute_cotizacion', string='Precio de mercado $/u MXN',
+        digits=(16, 4),
+        help='El precio promedio al que este producto REALMENTE se facturó '
+             'en los últimos 12 meses (todos los clientes). El ancla '
+             'realista para cotizar. 0 = sin ventas en la ventana.')
+    evaluado_info = fields.Char(
+        compute='_compute_cotizacion', string='Precio evaluado',
+        help='Qué precio están evaluando el semáforo y los márgenes: el '
+             'objetivo si lo capturaste; si no, el de mercado; si tampoco '
+             'hay ventas, el piso a planta llena.')
     piso_ocioso = fields.Float(
         compute='_compute_cotizacion', string='Piso con capacidad ociosa $/u',
         digits=(16, 4),
@@ -158,7 +163,7 @@ class QbCotizadorWizard(models.TransientModel):
              '(¿USD tecleado con moneda MXN?) o sospechosamente grande '
              '(¿MXN tecleado con moneda USD?).')
 
-    @api.depends('product_id', 'target_margin')
+    @api.depends('product_id', 'spec_mode')
     def _compute_explicacion(self):
         """El desglose completo con fuentes: BOM hoja por hoja con su última
         compra, peso con su fuente, factores con la fórmula y los números
@@ -217,29 +222,21 @@ class QbCotizadorWizard(models.TransientModel):
         ('ambar', 'Aporta a fijos (no absorbe todo)'),
         ('verde', 'Cubre costo total + operación'),
     ], compute='_compute_cotizacion', string='Semáforo de precio',
-        help='Evalúa el precio objetivo (o el sugerido) contra los pisos: '
-             'rojo = destruye valor; ámbar = con capacidad ociosa conviene, '
-             'aporta a fijos; verde = cubre todo el costo absorbido.')
+        help='Evalúa el precio (objetivo → mercado → piso lleno) contra los '
+             'pisos: rojo = destruye valor; ámbar = con capacidad ociosa '
+             'conviene, aporta a fijos; verde = cubre todo el costo.')
     # Espejo en la moneda elegida (visibles cuando no es MXN)
-    precio_sugerido_divisa = fields.Float(
-        compute='_compute_cotizacion', string='Precio sugerido (divisa)',
+    precio_mercado_divisa = fields.Float(
+        compute='_compute_cotizacion', string='Precio de mercado (divisa)',
         digits=(16, 4))
-    sugerido_colchon_divisa = fields.Float(
-        compute='_compute_cotizacion',
-        string='Sugerido + colchón FX (divisa)', digits=(16, 4),
-        help='Precio sugerido con el colchón cambiario de configuración '
-             '(fx_buffer_pct): cotizar exportación al TC de HOY sin colchón '
-             'deja el margen expuesto a la depreciación del peso durante la '
-             'vigencia de la cotización.')
     margen_bruto_pct = fields.Float(
         compute='_compute_cotizacion', string='Margen bruto %',
         help='(precio − costo de producción [MP + energía + fabricación]) '
-             '÷ precio. Evaluado al precio objetivo (o al sugerido).')
+             '÷ precio. Evaluado al precio en evaluación.')
     margen_neto_pct = fields.Float(
         compute='_compute_cotizacion', string='Margen neto %',
         help='(precio − costo de producción − operación) ÷ precio: lo que '
-             'queda después de TODO. Al precio sugerido, es exactamente el '
-             'margen meta.')
+             'queda después de TODO.')
     piso_ocioso_divisa = fields.Float(
         compute='_compute_cotizacion', string='Piso ocioso (divisa)',
         digits=(16, 4))
@@ -367,10 +364,9 @@ class QbCotizadorWizard(models.TransientModel):
                              '"Recalcular costeo (mes anterior)" en '
                              'Configuración una primera vez.'}
 
-        target = self.target_margin / 100.0 if self.target_margin else None
         if self.product_id and not self.spec_mode:
             product = self.product_id
-            q = Costo.quote_product(product, factores, target)
+            q = Costo.quote_product(product, factores)
             uom_name = product.uom_id.name
             name = 'COT %s' % (product.default_code or product.name)
         else:
@@ -385,18 +381,15 @@ class QbCotizadorWizard(models.TransientModel):
             fab = Costo._fab_unit(bucket, False, kg, m_per_kg, factores)
             variable = mp + energia
             op = factores.op_pct
-            t = target if target is not None \
-                else Config.get_param('target_margin', 0.30)
-            denom = 1.0 - op - t
             centros = self.spec_centro_ids
             q = {
                 'bucket': bucket, 'centros': centros, 'kg': kg,
                 'm_per_kg': m_per_kg, 'is_kg': False,
                 'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
-                'op_pct': op, 'target': t,
+                'op_pct': op,
                 'piso_ocioso': variable,
                 'piso_lleno': (variable + fab) / (1.0 - op) if op < 1 else 0.0,
-                'precio_sugerido': (variable + fab) / denom if denom > 0 else 0.0,
+                'precio_mercado': 0.0,
                 'hours_per_unit': 0.0,
                 'factores': factores,
             }
@@ -407,10 +400,19 @@ class QbCotizadorWizard(models.TransientModel):
             q['hours_per_unit'] = Costo._hours_per_unit(
                 centros, q['is_kg'], q['kg'], q['m_per_kg'])
 
-        # El precio objetivo viene EN LA MONEDA elegida → a MXN para comparar
+        # El precio objetivo viene EN LA MONEDA elegida → a MXN para comparar.
+        # Sin objetivo se evalúa el precio de MERCADO (a lo que ya se vende);
+        # sin ventas, el piso a planta llena (margen cero).
         fx = self.env['qb.costo.producto'].to_mxn_rate(self.currency_id)
-        precio_ref = (self.precio_objetivo * fx) if self.precio_objetivo \
-            else q['precio_sugerido']
+        if self.precio_objetivo:
+            precio_ref = self.precio_objetivo * fx
+            fuente = 'precio objetivo capturado'
+        elif q['precio_mercado']:
+            precio_ref = q['precio_mercado']
+            fuente = 'precio de mercado (promedio real 12m)'
+        else:
+            precio_ref = q['piso_lleno']
+            fuente = 'piso a planta llena (sin objetivo ni ventas 12m)'
         contrib = precio_ref - q['variable']
         contrib_hora = contrib / q['hours_per_unit'] \
             if q['hours_per_unit'] else 0.0
@@ -425,30 +427,31 @@ class QbCotizadorWizard(models.TransientModel):
             'factores': factores, 'kg': q['kg'], 'm_per_kg': q['m_per_kg'],
             'uom_name': uom_name, 'mp': q['mp'], 'energia': q['energia'],
             'fab': q['fab'], 'variable': q['variable'],
-            'op_pct': q['op_pct'], 'target': q['target'],
-            'precio_sugerido': q['precio_sugerido'],
+            'op_pct': q['op_pct'],
+            'precio_mercado': q['precio_mercado'],
             'piso_ocioso': q['piso_ocioso'], 'piso_lleno': q['piso_lleno'],
-            'precio_ref': precio_ref,
+            'precio_ref': precio_ref, 'evaluado_fuente': fuente,
             'contrib': contrib, 'contrib_hora': contrib_hora,
             'capacity_ok': capacity_ok, 'capacity_detail': capacity_detail,
         }
 
     @api.depends('product_id', 'spec_mode', 'spec_gramaje', 'spec_ancho',
                  'spec_bucket', 'spec_mp_unit', 'spec_centro_ids',
-                 'volumen', 'precio_objetivo', 'target_margin')
+                 'volumen', 'precio_objetivo')
     def _compute_cotizacion(self):
         for wiz in self:
             zero = dict.fromkeys([
                 'kg_per_unit', 'mp_unit', 'energia_unit', 'fab_unit',
-                'costo_variable', 'op_pct_display', 'precio_sugerido',
+                'costo_variable', 'op_pct_display', 'precio_mercado',
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
                 'margen_contribucion_pct', 'contrib_hora_maquina',
-                'precio_sugerido_divisa', 'piso_ocioso_divisa',
-                'piso_lleno_divisa', 'sugerido_colchon_divisa',
+                'precio_mercado_divisa', 'piso_ocioso_divisa',
+                'piso_lleno_divisa',
                 'margen_bruto_pct', 'margen_neto_pct',
                 'precio_objetivo_mxn'], 0.0)
             zero['semaforo'] = False
             zero['moneda_alerta'] = False
+            zero['evaluado_info'] = False
             try:
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
@@ -514,7 +517,10 @@ class QbCotizadorWizard(models.TransientModel):
                 'fab_unit': res['fab'],
                 'costo_variable': res['variable'],
                 'op_pct_display': res['op_pct'] * 100.0,
-                'precio_sugerido': res['precio_sugerido'],
+                'precio_mercado': res['precio_mercado'],
+                'evaluado_info': 'Semáforo y márgenes evaluados al %s: '
+                                 '$%.2f MXN.' % (res['evaluado_fuente'],
+                                                 precio_ref),
                 'piso_ocioso': res['piso_ocioso'],
                 'piso_lleno': res['piso_lleno'],
                 'margen_contribucion': res['contrib'],
@@ -524,13 +530,9 @@ class QbCotizadorWizard(models.TransientModel):
                 'capacity_ok': res['capacity_ok'],
                 'capacity_detail': res['capacity_detail'],
                 'semaforo': res['semaforo'],
-                'precio_sugerido_divisa': res['precio_sugerido'] / res['fx'],
+                'precio_mercado_divisa': res['precio_mercado'] / res['fx'],
                 'piso_ocioso_divisa': res['piso_ocioso'] / res['fx'],
                 'piso_lleno_divisa': res['piso_lleno'] / res['fx'],
-                'sugerido_colchon_divisa':
-                    res['precio_sugerido'] / res['fx']
-                    * (1.0 + self.env['qb.costeo.factor.config'].get_param(
-                        'fx_buffer_pct', 0.03)),
                 'margen_bruto_pct': bruto,
                 'margen_neto_pct': neto,
             })
@@ -583,12 +585,11 @@ class QbCotizadorWizard(models.TransientModel):
             'op_pct': res['op_pct'] * 100.0,
             'costo_variable': res['variable'],
             'costo_absorbido_sin_op': res['variable'] + res['fab'],
-            'target_margin': res['target'] * 100.0,
             # Todo lo guardado es MXN (consistencia histórica); el TC y la
             # moneda capturada quedan en fx_rate/supuestos
             'precio_objetivo': self.precio_objetivo * res['fx']
                                if self.precio_objetivo else 0.0,
-            'precio_sugerido': res['precio_sugerido'],
+            'precio_mercado': res['precio_mercado'],
             'piso_ocioso': res['piso_ocioso'],
             'piso_lleno': res['piso_lleno'],
             'margen_contribucion': res['contrib'],
@@ -624,8 +625,8 @@ class QbCotizadorWizard(models.TransientModel):
 
     def action_aplicar_precio(self):
         """Guarda la cotización Y escribe el precio calculado en la línea
-        del pedido (precio objetivo si lo capturaste; si no, el sugerido).
-        Regresa a la orden de venta."""
+        del pedido (precio objetivo si lo capturaste; si no, el precio
+        evaluado: mercado → piso lleno). Regresa a la orden de venta."""
         self.ensure_one()
         if not self.sale_line_id:
             raise UserError('Elige la línea del pedido a la que aplicar el precio.')
@@ -635,7 +636,7 @@ class QbCotizadorWizard(models.TransientModel):
         # moneda del pedido (normalmente son la misma y esto es identidad)
         fx_wiz = Costo.to_mxn_rate(self.currency_id)
         precio_mxn = (self.precio_objetivo * fx_wiz) if self.precio_objetivo \
-            else cotizacion.precio_sugerido
+            else cotizacion.precio_evaluado
         rate = Costo.to_mxn_rate(self.sale_order_id.currency_id)
         precio_divisa = precio_mxn / rate if rate else precio_mxn
         self.sale_line_id.price_unit = precio_divisa

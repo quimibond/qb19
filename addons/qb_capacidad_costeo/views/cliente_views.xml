@@ -78,8 +78,8 @@
             <p class="o_view_nocontent_smiling_face">Win/Loss</p>
             <p>Marca tus cotizaciones como Ganada o Perdida (en el statusbar
             de cada una) y aquí verás a qué % sobre el piso lleno ganas y a
-            cuál pierdes — el dato que calibra tu margen meta real por
-            mercado. Agrupa por cliente para ver su sensibilidad de precio.</p>
+            cuál pierdes — el margen REAL que el mercado te está pagando.
+            Agrupa por cliente para ver su sensibilidad de precio.</p>
         </field>
     </record>
 

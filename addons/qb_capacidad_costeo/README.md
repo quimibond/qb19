@@ -17,7 +17,7 @@ su lógica ni su versión de manifest.
 |---|---|
 | `qb.costeo.centro` | Catálogo de centros de proceso: naturaleza, driver (peso/largo), **workcenter_ids** (M2M a `mrp.workcenter`), departamentos RH, throughput nominal, capacidad normal (IAS 2), renta contractual, patrón de órdenes (fallback pre-workcenter) |
 | `qb.costeo.cuenta.class` | Clasificación de cuentas: cuenta o patrón LIKE → bucket (mp/energia/mod/overhead_fab/depreciacion/arrend_maquinaria/operacion/ventas/no_costeo), variable/fija, centro, driver, % |
-| `qb.costeo.factor.config` | Parámetros globales por key: `fab_weight_share` (0.67), `smoothing_months` (12), `production_window_months` (3), `target_margin`, `m_per_kg_default`, `energia_por_kg` (0=auto), `op_pct_override` (0=auto), `weeks_per_month`, `entretela_overhead_extra_mxn`, `denominador_kg_override`, `denominador_m_override` |
+| `qb.costeo.factor.config` | Parámetros globales por key: `fab_weight_share` (0.67), `smoothing_months` (12), `production_window_months` (3), `m_per_kg_default`, `energia_por_kg` (0=auto), `op_pct_override` (0=auto), `weeks_per_month`, `entretela_overhead_extra_mxn`, `denominador_kg_override`, `denominador_m_override` |
 | `qb.producto.peso` | Override de peso/unidad y kg↔m por producto (manual > cvu > ref_gramaje > bom > odoo_weight) |
 | `qb.producto.ruteo` | Producto/categoría/patrón → familia de costeo (tela / entretela tejida / entretela carda / importado / subproducto) + centros de su ruta |
 | `qb.turno.config` | Turnos manuales por centro (fallback mientras no haya `resource.calendar` vía workcenters) |
@@ -39,7 +39,7 @@ su lógica ni su versión de manifest.
 | `qb.costo.factores` | Los factores del mes: pools GL suavizados, denominadores kg/m, factor $/kg y $/m, energía $/kg, op %, factor entretela, **cobertura del pool** — trazabilidad completa |
 | `qb.costo.producto` | Costo por capa por producto: MP (BOM recursiva a último costo), energía, fabricación híbrida, operación; márgenes de contribución y absorbido; **contribución por hora-máquina** |
 | `qb.cotizacion` | Cotizaciones guardadas con supuestos (para comparar antes/después). El wizard es una **calculadora viva**: los resultados (costo por capa, pisos, contribución, capacidad) se recalculan al instante al cambiar producto/volumen/precio/margen; el botón solo guarda el escenario |
-| — claridad de términos | **Glosario único** (`models/glosario.py`) visible en el wizard, en la cotización guardada y en el PDF: precio objetivo, precio sugerido, TC, márgenes bruto/neto/contribución, pisos, capacidad, ociosidad, semáforo. Toda cifra indica su moneda (MXN vs divisa); el precio objetivo capturado en divisa muestra su espejo `= en MXN` con el TC del día |
+| — claridad de términos | **Glosario único** (`models/glosario.py`) visible en el wizard, en la cotización guardada y en el PDF: precio objetivo, precio de mercado, TC, márgenes bruto/neto/contribución, pisos, capacidad, ociosidad, semáforo. Toda cifra indica su moneda (MXN vs divisa); el precio objetivo capturado en divisa muestra su espejo `= en MXN` con el TC del día |
 | — comparativa | Pestaña **«¿A cuánto lo vendo hoy?»** (`comparativa_html`, snapshot en la cotización y en el PDF): precio promedio real de los últimos 12 meses **cliente por cliente** (en MXN vía `aml.balance` — las facturas en USD salen en pesos reales) con contribución % y margen neto % al costo VIGENTE, + **otras presentaciones del mismo artículo** por nomenclatura (prefijo `I` = venta en kg, ej. WJ038Q22JNT160 ↔ IWJ038Q22JNT160; sufijo ` I` = importado) con el margen de cada una a su precio actual y el equivalente $/m de la versión en kg |
 | `qb.costeo.snapshot` | Foto mensual de capacidad/ociosidad por centro (tendencia) |
 
@@ -64,7 +64,12 @@ costo_absorbido = variable + fab + op     → P&L / piso a planta llena
 
 piso ocioso  = costo variable
 piso lleno   = (variable + fab) / (1 − op_pct)
-precio sugerido = (variable + fab) / (1 − op_pct − target_margin)
+precio de mercado = promedio real facturado 12m (todos los clientes, MXN)
+
+Evaluación (semáforo, márgenes, PDF cliente), en cascada:
+  precio objetivo capturado → precio de mercado → piso lleno
+Sin "margen meta": el ancla no es una aspiración — son los pisos (debajo
+de qué no bajar) y el mercado (qué se está logrando de verdad).
 ```
 
 ## PDFs de cotización — DOS documentos (mejor práctica)
@@ -76,18 +81,20 @@ precio sugerido = (variable + fab) / (1 − op_pct − target_margin)
   ociosidad / precio sano).
 - **«Del costo al precio»**: una sola tabla-cascada MP → +energía →
   =costo variable (piso mínimo) → +fabricación → +operación % →
-  =piso a planta llena → ⭐ precio sugerido → precio objetivo, con columna
-  en divisa para los precios y nota corta por renglón.
-- **«Qué deja el precio evaluado»**: una línea con contribución $/%,
-  margen bruto, margen neto y $/hora-máquina.
+  =piso a planta llena → precio de mercado (prom. 12m) → ⭐ precio
+  objetivo, con columna en divisa para los precios y nota corta por renglón.
+- **«Qué deja el precio evaluado»** (objetivo → mercado → piso lleno): una
+  línea con contribución $/%, margen bruto, margen neto y $/hora-máquina.
 - Capacidad: una línea si cabe; el detalle por centro SOLO si no cabe.
 - Comparativa (clientes + presentaciones m/kg/importado).
-- Letra chica: supuestos. El glosario y el desglose BOM viven en las
-  pestañas de Odoo, no en el papel.
+- **Anexo «¿De dónde sale cada número?»**: el desglose snapshot (BOM
+  componente por componente con su última compra, peso y fuente, factores
+  del GL con fórmula) + supuestos. La trazabilidad completa, pero en anexo
+  — no estorbando la página de decisión.
 
 **2. Cotización para cliente** (`report_cotizacion_cliente`) — comercial:
 producto/especificación, volumen estimado, UN precio unitario en la moneda
-del cliente (`precio_cliente_*`: objetivo si se capturó, si no el sugerido)
+del cliente (`precio_cliente_*`: objetivo → mercado → piso lleno)
 y condiciones (IVA, vigencia). **Cero datos internos** — sin costos, sin
 márgenes, sin pisos.
 
