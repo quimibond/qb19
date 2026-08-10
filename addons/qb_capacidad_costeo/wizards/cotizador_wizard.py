@@ -575,6 +575,7 @@ class QbCotizadorWizard(models.TransientModel):
             'spec_galga': self.spec_galga,
             'volumen': self.volumen,
             'uom_name': res['uom_name'],
+            'currency_id': self.currency_id.id,
             'fx_rate': self.fx_rate,
             'mp_unit': res['mp'],
             'energia_unit': res['energia'],

@@ -299,6 +299,16 @@ class TestQbCosteo(TransactionCase):
         # Con precio 0.5 EUR (= 10 MXN < variable) sí es rojo
         wiz_ind.precio_objetivo = 0.5
         self.assertEqual(wiz_ind.semaforo, 'rojo')
+        # Al guardar: la moneda queda en la cotización y el precio para el
+        # PDF del cliente sale en SU divisa (0.5 EUR), aunque el interno
+        # guarde MXN (10.0)
+        action = wiz_ind.action_cotizar()
+        cot_eur = self.env['qb.cotizacion'].browse(action['res_id'])
+        self.assertEqual(cot_eur.currency_id, eur)
+        self.assertTrue(cot_eur.es_divisa)
+        self.assertAlmostEqual(cot_eur.precio_objetivo, 10.0, places=2)
+        self.assertAlmostEqual(cot_eur.precio_cliente_mxn, 10.0, places=2)
+        self.assertAlmostEqual(cot_eur.precio_cliente_divisa, 0.5, places=3)
 
         # Guardián de moneda: 1.68 "USD" tecleado con moneda MXN → alerta
         wiz_mxn = self.env['qb.cotizador.wizard'].create({
@@ -459,6 +469,33 @@ class TestQbCosteo(TransactionCase):
             self.assertIn(termino, wiz.glosario_html)
             self.assertIn(termino, cot.glosario_html)
         self.assertTrue(kg_twin.exists())
+
+    def test_precio_cliente_mxn(self):
+        """El PDF comercial presenta UN solo precio: el objetivo si se
+        capturó, si no el sugerido. En MXN la parte divisa queda en 0."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 10, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'precio_objetivo': 100.0,
+        })
+        cot = self.env['qb.cotizacion'].browse(
+            wiz.action_cotizar()['res_id'])
+        self.assertEqual(cot.currency_id, self.env.company.currency_id)
+        self.assertFalse(cot.es_divisa)
+        self.assertAlmostEqual(cot.precio_cliente_mxn, 100.0, places=2)
+        self.assertEqual(cot.precio_cliente_divisa, 0.0)
+        # Sin precio objetivo → el cliente ve el sugerido
+        wiz2 = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+        })
+        cot2 = self.env['qb.cotizacion'].browse(
+            wiz2.action_cotizar()['res_id'])
+        self.assertAlmostEqual(
+            cot2.precio_cliente_mxn, cot2.precio_sugerido, places=4)
 
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
