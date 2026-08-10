@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- ================================================================
+         PDF 1 — HOJA INTERNA DE COSTO Y PRECIO (decisión, 1 página)
+         Para dirección/ventas. NO se envía al cliente.
+         ================================================================ -->
     <record id="action_report_cotizacion" model="ir.actions.report">
-        <field name="name">Cotización de costo (PDF)</field>
+        <field name="name">Hoja interna de costo y precio (NO enviar al cliente)</field>
         <field name="model">qb.cotizacion</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">qb_capacidad_costeo.report_cotizacion</field>
-        <field name="print_report_name">'Cotizacion - %s' % (object.name)</field>
+        <field name="print_report_name">'Hoja interna - %s' % (object.name)</field>
         <field name="binding_model_id" ref="model_qb_cotizacion"/>
         <field name="binding_type">report</field>
     </record>
@@ -17,12 +21,14 @@
                 <t t-call="web.external_layout">
                     <div class="page">
 
-                        <!-- ============ 1. Datos generales ============ -->
-                        <h2><span t-field="o.name"/></h2>
-                        <table class="table table-sm" style="font-size:12px;">
+                        <h2><span t-field="o.name"/>
+                            <span style="font-size:13px; color:#888;"> · hoja interna de costo y precio</span></h2>
+
+                        <!-- Datos generales -->
+                        <table class="table table-sm table-borderless" style="font-size:12px; margin-bottom:4px;">
                             <tbody>
                                 <tr>
-                                    <td style="width:50%;">
+                                    <td style="width:50%; padding:2px;">
                                         <strong>Cliente:</strong> <span t-field="o.partner_id"/><br/>
                                         <t t-if="o.product_id">
                                             <strong>Producto:</strong> <span t-field="o.product_id.display_name"/><br/>
@@ -31,211 +37,218 @@
                                             <strong>Especificación:</strong> <span t-field="o.spec_descripcion"/>
                                             (<span t-field="o.spec_gramaje"/> g/m² × <span t-field="o.spec_ancho"/> m)<br/>
                                         </t>
-                                        <strong>Volumen cotizado:</strong>
-                                        <span t-esc="'%s %s por mes' % ('{:,.0f}'.format(o.volumen), o.uom_name or 'u')"/>
+                                        <strong>Volumen:</strong>
+                                        <span t-esc="'%s %s/mes' % ('{:,.0f}'.format(o.volumen), o.uom_name or 'u')"/>
                                     </td>
-                                    <td>
+                                    <td style="padding:2px;">
                                         <strong>Fecha:</strong> <span t-field="o.create_date" t-options='{"widget": "date"}'/><br/>
                                         <t t-if="o.validez_hasta">
                                             <strong>Válida hasta:</strong> <span t-field="o.validez_hasta"/><br/>
                                         </t>
-                                        <t t-if="o.sale_order_id">
-                                            <strong>Pedido:</strong> <span t-field="o.sale_order_id.name"/><br/>
+                                        <t t-if="o.es_divisa">
+                                            <strong>TC:</strong> 1 <span t-esc="o.currency_id.name or 'divisa'"/> =
+                                            $<span t-esc="'{:,.4f}'.format(o.fx_rate)"/> MXN (del día de cotizar)<br/>
                                         </t>
-                                        <strong>Margen meta:</strong>
-                                        <span t-esc="'{:.0f}'.format(o.target_margin)"/>%
+                                        <strong>Margen meta:</strong> <span t-esc="'{:.0f}'.format(o.target_margin)"/>%
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <!-- Cómo leer las monedas de este documento -->
-                        <div class="alert alert-secondary" style="font-size:11px; padding:6px 10px;">
-                            <b>💱 Cómo leer este documento:</b> todos los
-                            <b>costos</b> se calculan en pesos mexicanos (MXN).
-                            <t t-if="o.es_divisa">
-                                Los <b>precios</b> se muestran en MXN y en divisa
-                                al tipo de cambio guardado al cotizar:
-                                <b>1 divisa = $<span t-esc="'{:,.4f}'.format(o.fx_rate)"/> MXN</b>.
-                                Después de la fecha de validez, el TC puede cambiar y
-                                hay que re-cotizar.
-                            </t>
-                            <t t-else="">
-                                Esta cotización es 100% en MXN (sin divisa).
-                            </t>
-                            Al final hay un <b>glosario</b> con la definición de
-                            cada término.
+                        <!-- La decisión, en una línea -->
+                        <div t-if="o.semaforo == 'rojo'" class="alert alert-danger" style="font-size:12px; padding:6px 10px;">
+                            🔴 <b>NO tomar a este precio</b>: está debajo del costo variable — ni la materia prima se recupera.
+                        </div>
+                        <div t-if="o.semaforo == 'ambar'" class="alert alert-warning" style="font-size:12px; padding:6px 10px;">
+                            🟡 <b>Tomar SOLO con capacidad ociosa</b>: aporta a los fijos, pero no cubre el costo completo.
+                        </div>
+                        <div t-if="o.semaforo == 'verde'" class="alert alert-success" style="font-size:12px; padding:6px 10px;">
+                            🟢 <b>Precio sano</b>: cubre el costo completo y deja margen.
                         </div>
 
-                        <!-- ============ 2. Resumen ejecutivo ============ -->
-                        <h4>Resumen</h4>
-                        <div t-if="o.semaforo == 'rojo'" class="alert alert-danger" style="font-size:12px;">
-                            🔴 <b>Precio DEBAJO del costo variable</b> — destruye
-                            valor: ni la materia prima y la energía se recuperan.
-                            No tomar a este precio.
-                        </div>
-                        <div t-if="o.semaforo == 'ambar'" class="alert alert-warning" style="font-size:12px;">
-                            🟡 <b>Aporta a fijos, pero no cubre todo</b> — el
-                            precio paga la materia prima y deja contribución,
-                            pero no absorbe toda la fabricación y operación.
-                            Conviene SOLO con capacidad ociosa (máquinas paradas).
-                        </div>
-                        <div t-if="o.semaforo == 'verde'" class="alert alert-success" style="font-size:12px;">
-                            🟢 <b>Cubre el costo total y deja margen</b> — el
-                            precio absorbe fabricación y operación completas.
-                        </div>
+                        <!-- Del costo al precio: cada número UNA sola vez -->
+                        <h5 style="margin-bottom:4px;">Del costo al precio ($/<span t-esc="o.uom_name or 'unidad'"/>)</h5>
                         <table class="table table-sm" style="font-size:12px;">
                             <thead>
                                 <tr><th></th>
-                                    <th class="text-end">$/u MXN</th>
-                                    <th t-if="o.es_divisa" class="text-end">en divisa (TC <span t-esc="'{:.4f}'.format(o.fx_rate)"/>)</th>
-                                </tr>
+                                    <th class="text-end" style="width:14%;">MXN</th>
+                                    <th t-if="o.es_divisa" class="text-end" style="width:14%;"><span t-esc="o.currency_id.name or 'Divisa'"/></th>
+                                    <th style="width:44%; font-weight:normal; color:#888;"></th></tr>
                             </thead>
                             <tbody>
-                                <tr class="fw-bold">
-                                    <td>⭐ Precio sugerido (deja el margen meta de <span t-esc="'{:.0f}'.format(o.target_margin)"/>%)</td>
-                                    <td class="text-end">$<span t-esc="'{:,.2f}'.format(o.precio_sugerido)"/></td>
-                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.precio_sugerido_divisa)"/></td>
-                                </tr>
-                                <tr t-if="o.precio_objetivo">
-                                    <td>Precio objetivo (el precio propuesto / pedido por el cliente)</td>
-                                    <td class="text-end">$<span t-esc="'{:,.2f}'.format(o.precio_objetivo)"/></td>
-                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.precio_objetivo / o.fx_rate)"/></td>
-                                </tr>
-                                <tr>
-                                    <td>Margen neto al precio evaluado (lo que queda después de TODO)</td>
-                                    <td class="text-end" colspan="2"><b><span t-esc="'{:.1f}'.format(o.margen_neto_pct)"/>%</b></td>
-                                </tr>
-                                <tr>
-                                    <td>¿Cabe el volumen en la capacidad de la planta?</td>
-                                    <td class="text-end" colspan="2"><span t-esc="'✔ Sí' if o.capacity_ok else '✘ NO'"/></td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <!-- ============ 3. Cómo se construye el precio ============ -->
-                        <h4>¿Cómo se construye el precio? (paso a paso, $/unidad MXN)</h4>
-                        <table class="table table-sm" style="font-size:12px;">
-                            <thead>
-                                <tr><th style="width:4%;"></th><th>Concepto</th>
-                                    <th class="text-end" style="width:15%;">$/u MXN</th>
-                                    <th style="width:42%;">Cómo se calcula</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td>1</td><td>Materia prima (MP)</td>
+                                <tr><td>Materia prima</td>
                                     <td class="text-end"><span t-esc="'{:,.2f}'.format(o.mp_unit)"/></td>
-                                    <td>Receta (BOM) explotada al ÚLTIMO costo de compra de cada componente, en MXN.</td></tr>
-                                <tr><td>2</td><td>+ Energía variable</td>
+                                    <td t-if="o.es_divisa"/>
+                                    <td style="color:#888;">receta a último costo de compra</td></tr>
+                                <tr><td>+ Energía</td>
                                     <td class="text-end"><span t-esc="'{:,.2f}'.format(o.energia_unit)"/></td>
-                                    <td>Luz, gas y agua de producir la unidad ($/kg × peso).</td></tr>
-                                <tr class="fw-bold" style="background:#f8f9fa;">
-                                    <td>=</td><td>Costo variable</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.costo_variable)"/></td>
-                                    <td>Lo que sale de la bolsa por cada unidad extra. Piso absoluto.</td></tr>
-                                <tr><td>3</td><td>+ Fabricación absorbida</td>
+                                    <td t-if="o.es_divisa"/>
+                                    <td style="color:#888;">luz / gas / agua</td></tr>
+                                <tr style="background:#f8f9fa;"><td><b>= Costo variable</b></td>
+                                    <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.costo_variable)"/></b></td>
+                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_ocioso_divisa)"/></td>
+                                    <td style="color:#888;">piso mínimo absoluto — nunca vender debajo</td></tr>
+                                <tr><td>+ Fabricación</td>
                                     <td class="text-end"><span t-esc="'{:,.2f}'.format(o.fab_unit)"/></td>
-                                    <td>Parte del gasto FIJO de fábrica (sueldos de planta, renta, depreciación, arrendamiento de maquinaria) que le toca a esta unidad.</td></tr>
-                                <tr class="fw-bold" style="background:#f8f9fa;">
-                                    <td>=</td><td>Costo de producción</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.costo_absorbido_sin_op)"/></td>
-                                    <td>Variable + fabricación.</td></tr>
-                                <tr><td>4</td><td>+ Operación</td>
-                                    <td class="text-end"><span t-esc="'{:.1f}'.format(o.op_pct)"/>% s/venta</td>
-                                    <td>Gastos de administración y ventas como % del precio
-                                    <t t-if="o.factores_id">
-                                        (= $<span t-esc="'{:,.0f}'.format(o.factores_id.op_pool_month)"/>/mes de gastos 6xx ÷
-                                        $<span t-esc="'{:,.0f}'.format(o.factores_id.ventas_pool_month)"/>/mes de ventas,
-                                        GL suavizado <span t-esc="o.factores_id.window_months"/> meses)</t>.</td></tr>
-                                <tr class="fw-bold">
-                                    <td>⭐</td><td>Precio sugerido</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.precio_sugerido)"/></td>
-                                    <td>= (costo variable + fabricación) ÷ (1 − %operación − margen meta): paga la operación y deja exactamente el margen meta de <span t-esc="'{:.0f}'.format(o.target_margin)"/>%.</td></tr>
+                                    <td t-if="o.es_divisa"/>
+                                    <td style="color:#888;">gasto fijo de planta que absorbe esta unidad</td></tr>
+                                <tr><td>+ Operación</td>
+                                    <td class="text-end"><span t-esc="'{:.1f}'.format(o.op_pct)"/>%</td>
+                                    <td t-if="o.es_divisa"/>
+                                    <td style="color:#888;">admin y ventas, % sobre el precio</td></tr>
+                                <tr style="background:#f8f9fa;"><td><b>= Piso a planta llena</b></td>
+                                    <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.piso_lleno)"/></b></td>
+                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_lleno_divisa)"/></td>
+                                    <td style="color:#888;">cubre todo, gana cero — mínimo con planta llena</td></tr>
+                                <tr style="background:#e7f5ec;"><td><b>⭐ Precio sugerido</b></td>
+                                    <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.precio_sugerido)"/></b></td>
+                                    <td t-if="o.es_divisa" class="text-end"><b><span t-esc="'{:,.4f}'.format(o.precio_sugerido_divisa)"/></b></td>
+                                    <td style="color:#888;">cubre todo + margen meta de <span t-esc="'{:.0f}'.format(o.target_margin)"/>%</td></tr>
+                                <tr t-if="o.precio_objetivo"><td><b>Precio objetivo (evaluado)</b></td>
+                                    <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.precio_objetivo)"/></b></td>
+                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.precio_objetivo / o.fx_rate)"/></td>
+                                    <td style="color:#888;">lo que pide el cliente / se propone</td></tr>
                             </tbody>
                         </table>
 
-                        <!-- ============ 4. Los tres precios de referencia ============ -->
-                        <h4>Los tres precios de referencia — ¿cuándo usar cada uno?</h4>
+                        <!-- Qué deja el precio evaluado: una sola línea de márgenes -->
+                        <h5 style="margin-bottom:4px;">Qué deja
+                            <t t-if="o.precio_objetivo">el precio objetivo</t>
+                            <t t-else="">el precio sugerido</t>
+                        </h5>
                         <table class="table table-sm" style="font-size:12px;">
                             <thead>
-                                <tr><th>Precio</th>
-                                    <th class="text-end">$/u MXN</th>
-                                    <th t-if="o.es_divisa" class="text-end">en divisa</th>
-                                    <th style="width:45%;">Qué significa</th></tr>
+                                <tr><th class="text-end">Contribución $/u</th>
+                                    <th class="text-end">Contribución %</th>
+                                    <th class="text-end">Margen bruto %</th>
+                                    <th class="text-end">Margen neto %</th>
+                                    <th class="text-end">$/hora-máquina</th></tr>
                             </thead>
                             <tbody>
-                                <tr><td>🔴 Piso con capacidad ociosa</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.piso_ocioso)"/></td>
-                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_ocioso_divisa)"/></td>
-                                    <td>= costo variable. Con máquinas paradas, todo lo que se cobre arriba de esto aporta a pagar los fijos. <b>Nunca vender debajo.</b></td></tr>
-                                <tr><td>🟡 Piso a planta llena</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.piso_lleno)"/></td>
-                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_lleno_divisa)"/></td>
-                                    <td>Margen CERO absorbiendo todo (fabricación + operación). Si la planta está llena, aceptar menos es regalar capacidad.</td></tr>
-                                <tr class="fw-bold"><td>🟢 Precio sugerido</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.precio_sugerido)"/></td>
-                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.precio_sugerido_divisa)"/></td>
-                                    <td>Cubre todo Y deja el margen meta de <span t-esc="'{:.0f}'.format(o.target_margin)"/>% sobre venta.</td></tr>
-                            </tbody>
-                        </table>
-
-                        <!-- ============ 5. Márgenes ============ -->
-                        <h4>Márgenes al precio evaluado
-                            <span style="font-weight:normal; font-size:12px;">
-                                (<t t-if="o.precio_objetivo">al precio objetivo de
-                                $<span t-esc="'{:,.2f}'.format(o.precio_objetivo)"/> MXN</t><t t-else="">al precio sugerido</t>)
-                            </span></h4>
-                        <table class="table table-sm" style="font-size:12px;">
-                            <thead><tr><th>Margen</th><th class="text-end" style="width:15%;">Valor</th>
-                                <th style="width:50%;">Qué mide</th></tr></thead>
-                            <tbody>
-                                <tr><td>Margen de contribución</td>
-                                    <td class="text-end">$<span t-esc="'{:,.2f}'.format(o.margen_contribucion)"/>
-                                        (<span t-esc="'{:.1f}'.format(o.margen_contribucion_pct)"/>%)</td>
-                                    <td>Precio − costo variable: lo que cada unidad aporta para pagar los costos fijos.</td></tr>
-                                <tr><td>Margen bruto</td>
+                                <tr>
+                                    <td class="text-end">$<span t-esc="'{:,.2f}'.format(o.margen_contribucion)"/></td>
+                                    <td class="text-end"><span t-esc="'{:.1f}'.format(o.margen_contribucion_pct)"/>%</td>
                                     <td class="text-end"><span t-esc="'{:.1f}'.format(o.margen_bruto_pct)"/>%</td>
-                                    <td>(Precio − costo de producción) ÷ precio. Después de fabricar, ANTES de administración y ventas.</td></tr>
-                                <tr class="fw-bold"><td>Margen neto</td>
-                                    <td class="text-end"><span t-esc="'{:.1f}'.format(o.margen_neto_pct)"/>%</td>
-                                    <td>Margen bruto − %operación: lo que queda de verdad después de TODO. Al precio sugerido = margen meta.</td></tr>
-                                <tr><td>Contribución por hora-máquina</td>
-                                    <td class="text-end">$<span t-esc="'{:,.2f}'.format(o.contrib_hora_maquina)"/></td>
-                                    <td>Contribución ÷ horas del centro más lento: qué tan bien paga este producto el uso de las máquinas.</td></tr>
+                                    <td class="text-end"><b><span t-esc="'{:.1f}'.format(o.margen_neto_pct)"/>%</b></td>
+                                    <td class="text-end">$<span t-esc="'{:,.0f}'.format(o.contrib_hora_maquina)"/></td>
+                                </tr>
                             </tbody>
                         </table>
-
-                        <!-- ============ 6. Capacidad ============ -->
-                        <h4>Capacidad — ¿cabe este volumen en la planta?</h4>
-                        <p style="font-size:12px;">
-                            <span t-esc="'✔ SÍ cabe en la capacidad actual.' if o.capacity_ok else '✘ NO cabe en la capacidad actual.'"/>
-                            Se comparan las horas-máquina que exige el volumen
-                            cotizado contra las horas LIBRES de cada centro de la
-                            ruta (ociosidad = capacidad instalada sin usar):
+                        <p style="font-size:10px; color:#888; margin-top:-6px;">
+                            Contribución = precio − costo variable (lo que aporta a fijos) ·
+                            bruto = después de fabricar · neto = después de TODO
+                            (al sugerido, neto = margen meta).
                         </p>
-                        <pre style="font-size:11px;"><span t-field="o.capacity_detail"/></pre>
 
-                        <!-- ============ 7. Comparativa de mercado interno ============ -->
+                        <!-- Capacidad: una línea si cabe; detalle solo si NO cabe -->
+                        <p style="font-size:12px; margin-bottom:2px;">
+                            <b>Capacidad:</b>
+                            <t t-if="o.capacity_ok">✔ el volumen cabe en la planta (detalle por centro en Odoo).</t>
+                            <t t-else="">✘ <b>NO cabe en la capacidad actual:</b></t>
+                        </p>
+                        <pre t-if="not o.capacity_ok" style="font-size:10px;"><span t-field="o.capacity_detail"/></pre>
+
+                        <!-- Comparativa: lo más valioso para decidir precio -->
                         <t t-if="o.comparativa_html">
-                            <div style="page-break-before:always;"/>
-                            <h4>¿A cuánto vendo hoy este producto? (foto al cotizar)</h4>
                             <div t-field="o.comparativa_html"/>
                         </t>
 
-                        <!-- ============ 8. Supuestos ============ -->
-                        <h4>Supuestos de esta cotización (para reproducir el número)</h4>
-                        <pre style="font-size:10px;"><span t-field="o.supuestos"/></pre>
+                        <!-- Letra chica: trazabilidad -->
+                        <div style="border-top:1px solid #ddd; margin-top:8px; padding-top:4px;">
+                            <pre style="font-size:9px; color:#888; white-space:pre-wrap;"><span t-field="o.supuestos"/></pre>
+                            <p style="font-size:9px; color:#888;">
+                                Documento INTERNO — al cliente se le envía la «Cotización
+                                (PDF para cliente)», sin costos ni márgenes. Definiciones de
+                                términos y desglose de la receta: pestañas Glosario y
+                                Desglose en Odoo.
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
 
-                        <!-- ============ 9. Desglose explicado ============ -->
-                        <t t-if="o.desglose_html">
-                            <div style="page-break-before:always;"/>
-                            <h4>Desglose explicado — de dónde viene cada costo</h4>
-                            <div t-field="o.desglose_html"/>
-                        </t>
+    <!-- ================================================================
+         PDF 2 — COTIZACIÓN PARA CLIENTE (comercial)
+         Solo producto, precio y condiciones. Sin ningún dato interno.
+         ================================================================ -->
+    <record id="action_report_cotizacion_cliente" model="ir.actions.report">
+        <field name="name">Cotización (PDF para cliente)</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_capacidad_costeo.report_cotizacion_cliente</field>
+        <field name="print_report_name">'Cotizacion Quimibond - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_qb_cotizacion"/>
+        <field name="binding_type">report</field>
+    </record>
 
-                        <!-- ============ 10. Glosario ============ -->
-                        <div style="page-break-before:always;"/>
-                        <h4>📖 Glosario — qué significa cada término</h4>
-                        <div t-field="o.glosario_html"/>
+    <template id="report_cotizacion_cliente">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Cotización</h2>
+                        <p style="font-size:13px;">
+                            <strong>Cliente:</strong> <span t-field="o.partner_id"/><br/>
+                            <strong>Fecha:</strong> <span t-field="o.create_date" t-options='{"widget": "date"}'/>
+                            <t t-if="o.validez_hasta"><br/>
+                                <strong>Vigencia:</strong> hasta el <span t-field="o.validez_hasta"/>
+                            </t>
+                        </p>
+
+                        <table class="table table-sm" style="font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-end">Volumen estimado</th>
+                                    <th class="text-end">Precio unitario</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <t t-if="o.product_id">
+                                            <span t-field="o.product_id.display_name"/>
+                                        </t>
+                                        <t t-if="o.spec_descripcion">
+                                            <span t-field="o.spec_descripcion"/>
+                                            (<span t-field="o.spec_gramaje"/> g/m² ×
+                                            <span t-field="o.spec_ancho"/> m<t t-if="o.spec_galga">,
+                                            galga <span t-field="o.spec_galga"/></t>)
+                                        </t>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-esc="'%s %s/mes' % ('{:,.0f}'.format(o.volumen), o.uom_name or 'u')"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <t t-if="o.es_divisa">
+                                            <b><span t-esc="'{:,.4f}'.format(o.precio_cliente_divisa)"/>
+                                            <span t-esc="o.currency_id.name or ''"/></b>
+                                            por <span t-esc="o.uom_name or 'unidad'"/>
+                                        </t>
+                                        <t t-else="">
+                                            <b>$<span t-esc="'{:,.2f}'.format(o.precio_cliente_mxn)"/> MXN</b>
+                                            por <span t-esc="o.uom_name or 'unidad'"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h5>Condiciones</h5>
+                        <ul style="font-size:12px;">
+                            <li>Precio unitario más IVA.</li>
+                            <li t-if="o.validez_hasta">Cotización válida hasta el
+                                <span t-field="o.validez_hasta"/>; después de esa fecha
+                                está sujeta a reconfirmación.</li>
+                            <li t-if="o.es_divisa">Precio expresado en
+                                <span t-esc="o.currency_id.name or 'divisa'"/>.</li>
+                            <li>Volumen estimado mensual de referencia; ajustes
+                                importantes de volumen pueden requerir re-cotización.</li>
+                        </ul>
+
+                        <p style="font-size:12px;">Quedamos atentos a sus comentarios.</p>
                     </div>
                 </t>
             </t>

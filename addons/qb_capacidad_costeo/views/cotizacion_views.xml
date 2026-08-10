@@ -348,8 +348,8 @@
                             class="btn-primary"
                             help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
                     <button name="action_enviar_correo" type="object"
-                            string="✉ Enviar por correo"
-                            help="Correo al cliente con el PDF de la cotización adjunto."/>
+                            string="✉ Enviar al cliente"
+                            help="Correo al cliente con el PDF COMERCIAL adjunto (solo producto, precio y condiciones). La hoja interna de costo se imprime aparte desde el menú Imprimir y NO se envía."/>
                     <field name="state" widget="statusbar"
                            options="{'clickable': '1'}"/>
                 </header>
@@ -388,6 +388,7 @@
                             <field name="spec_galga"/>
                             <field name="volumen"/>
                             <field name="uom_name"/>
+                            <field name="currency_id"/>
                             <field name="fx_rate"/>
                         </group>
                         <group string="1 · Costo de producirlo ($/u, todo MXN)">

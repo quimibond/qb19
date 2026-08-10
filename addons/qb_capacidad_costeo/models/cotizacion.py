@@ -29,6 +29,10 @@ class QbCotizacion(models.Model):
     spec_galga = fields.Char(string='Galga')
     volumen = fields.Float(string='Volumen (unidades/mes)')
     uom_name = fields.Char(string='Unidad')
+    currency_id = fields.Many2one(
+        'res.currency', string='Moneda de la cotización',
+        help='La moneda en la que se capturó y se presenta el precio al '
+             'cliente. Los montos guardados están en MXN; el TC los traduce.')
     fx_rate = fields.Float(
         string='TC usado (MXN por 1 divisa)',
         help='Tipo de cambio de Odoo el día que se cotizó: pesos por 1 '
@@ -116,6 +120,23 @@ class QbCotizacion(models.Model):
             rec.precio_sugerido_divisa = rec.precio_sugerido / fx if fx else 0.0
             rec.piso_ocioso_divisa = rec.piso_ocioso / fx if fx else 0.0
             rec.piso_lleno_divisa = rec.piso_lleno / fx if fx else 0.0
+
+    # El precio que se PRESENTA al cliente: el objetivo si se capturó, si
+    # no el sugerido. Es lo único de dinero que lleva el PDF comercial.
+    precio_cliente_mxn = fields.Float(
+        compute='_compute_precio_cliente', digits=(16, 2),
+        string='Precio al cliente $/u MXN')
+    precio_cliente_divisa = fields.Float(
+        compute='_compute_precio_cliente', digits=(16, 4),
+        string='Precio al cliente (divisa)')
+
+    @api.depends('precio_objetivo', 'precio_sugerido', 'fx_rate')
+    def _compute_precio_cliente(self):
+        for rec in self:
+            rec.precio_cliente_mxn = rec.precio_objetivo or rec.precio_sugerido
+            fx = rec.fx_rate if rec.fx_rate and rec.fx_rate != 1.0 else 0.0
+            rec.precio_cliente_divisa = \
+                rec.precio_cliente_mxn / fx if fx else 0.0
     contrib_hora_maquina = fields.Float(
         string='Contribución $/hora-máquina',
         help='Para rankear contra otros productos cuando hay cuello de botella.')
@@ -277,10 +298,14 @@ class QbCotizacion(models.Model):
         }
 
     def action_enviar_correo(self):
-        """Composer de correo con la plantilla y el PDF adjunto."""
+        """Composer de correo al cliente con el PDF COMERCIAL adjunto
+        (solo producto, precio y condiciones). La hoja interna de costo
+        NUNCA se manda por aquí."""
         self.ensure_one()
+        # Sin fallback a la plantilla vieja: aquella adjuntaba la hoja
+        # INTERNA con costos y márgenes — jamás debe llegar al cliente.
         template = self.env.ref(
-            'qb_capacidad_costeo.mail_template_cotizacion',
+            'qb_capacidad_costeo.mail_template_cotizacion_cliente',
             raise_if_not_found=False)
         return {
             'type': 'ir.actions.act_window',

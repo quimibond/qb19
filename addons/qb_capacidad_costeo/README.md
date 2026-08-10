@@ -67,22 +67,35 @@ piso lleno   = (variable + fab) / (1 − op_pct)
 precio sugerido = (variable + fab) / (1 − op_pct − target_margin)
 ```
 
-## PDF de cotización (estructura)
+## PDFs de cotización — DOS documentos (mejor práctica)
 
-1. Datos generales + **caja «cómo leer este documento»** (costos siempre MXN;
-   precios en MXN y divisa al TC guardado).
-2. Resumen ejecutivo: semáforo explicado, precio sugerido/objetivo en ambas
-   monedas, margen neto, ¿cabe en capacidad?
-3. **¿Cómo se construye el precio?** — paso a paso (MP → +energía → =variable
-   → +fabricación → =producción → +operación → ⭐ sugerido) con la fórmula de
-   cada renglón.
-4. Los tres precios de referencia (piso ocioso / piso lleno / sugerido) con
-   *cuándo usar cada uno*.
-5. Márgenes al precio evaluado, cada uno con *qué mide*.
-6. Capacidad (horas requeridas vs libres, ociosidad).
-7. Comparativa: a cuánto se vende hoy a otros clientes + otras presentaciones.
-8. Supuestos + desglose explicado (BOM hoja por hoja).
-9. **Glosario** completo de términos.
+**1. Hoja interna de costo y precio** (`report_cotizacion`) — para decidir,
+1 página, cada número aparece UNA sola vez:
+- Datos generales + TC del día (si hay divisa).
+- La decisión en una línea (semáforo con la acción: no tomar / solo con
+  ociosidad / precio sano).
+- **«Del costo al precio»**: una sola tabla-cascada MP → +energía →
+  =costo variable (piso mínimo) → +fabricación → +operación % →
+  =piso a planta llena → ⭐ precio sugerido → precio objetivo, con columna
+  en divisa para los precios y nota corta por renglón.
+- **«Qué deja el precio evaluado»**: una línea con contribución $/%,
+  margen bruto, margen neto y $/hora-máquina.
+- Capacidad: una línea si cabe; el detalle por centro SOLO si no cabe.
+- Comparativa (clientes + presentaciones m/kg/importado).
+- Letra chica: supuestos. El glosario y el desglose BOM viven en las
+  pestañas de Odoo, no en el papel.
+
+**2. Cotización para cliente** (`report_cotizacion_cliente`) — comercial:
+producto/especificación, volumen estimado, UN precio unitario en la moneda
+del cliente (`precio_cliente_*`: objetivo si se capturó, si no el sugerido)
+y condiciones (IVA, vigencia). **Cero datos internos** — sin costos, sin
+márgenes, sin pisos.
+
+El botón **«✉ Enviar al cliente»** usa la plantilla
+`mail_template_cotizacion_cliente`, que adjunta SOLO el PDF comercial. La
+plantilla vieja (que adjuntaba la hoja interna) quedó marcada obsoleta y el
+código ya no la referencia — la hoja interna con costos jamás debe salir
+por correo.
 
 ## Ventanas de datos
 
