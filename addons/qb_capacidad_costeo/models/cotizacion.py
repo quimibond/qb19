@@ -66,20 +66,17 @@ class QbCotizacion(models.Model):
         help='Costo variable + fabricación absorbida (aún sin operación).')
 
     # Precios (guardados SIEMPRE en MXN; el espejo en divisa usa el TC)
-    target_margin = fields.Float(
-        string='Margen meta %',
-        help='El % de utilidad neta (después de operación) que se quiere '
-             'ganar sobre el precio de venta.')
     precio_objetivo = fields.Float(
         string='Precio objetivo $/u MXN',
         help='El precio que se propuso o que pidió el cliente. Se capturó '
              'en la moneda de la cotización y aquí está YA CONVERTIDO a MXN '
              'con el TC guardado.')
-    precio_sugerido = fields.Float(
-        string='Precio sugerido $/u MXN',
-        help='(costo variable + fabricación) ÷ (1 − %operación − margen '
-             'meta): a este precio se paga la operación y queda exactamente '
-             'el margen meta.')
+    precio_mercado = fields.Float(
+        string='Precio de mercado $/u MXN',
+        help='Promedio REAL facturado de este producto en los 12 meses '
+             'previos a cotizar (todos los clientes). El ancla realista: '
+             'los pisos dicen debajo de qué no bajar; el mercado dice qué '
+             'se está logrando. 0 = sin ventas en la ventana.')
     piso_ocioso = fields.Float(
         string='Piso con capacidad ociosa $/u MXN',
         help='= costo variable. Con capacidad ociosa, todo precio arriba de '
@@ -100,40 +97,55 @@ class QbCotizacion(models.Model):
              'Utilidad después de fabricar, ANTES de admin/ventas.')
     margen_neto_pct = fields.Float(
         string='Margen neto %',
-        help='Margen bruto − %operación: lo que queda después de TODO. Al '
-             'precio sugerido, es exactamente el margen meta.')
+        help='Margen bruto − %operación: lo que queda después de TODO.')
 
     # Espejo en divisa (desde el TC guardado al cotizar)
-    precio_sugerido_divisa = fields.Float(
-        compute='_compute_divisa', string='Sugerido (divisa)', digits=(16, 4))
+    precio_mercado_divisa = fields.Float(
+        compute='_compute_divisa', string='Mercado (divisa)', digits=(16, 4))
     piso_ocioso_divisa = fields.Float(
         compute='_compute_divisa', string='Piso ocioso (divisa)', digits=(16, 4))
     piso_lleno_divisa = fields.Float(
         compute='_compute_divisa', string='Piso lleno (divisa)', digits=(16, 4))
     es_divisa = fields.Boolean(compute='_compute_divisa')
 
-    @api.depends('fx_rate', 'precio_sugerido', 'piso_ocioso', 'piso_lleno')
+    @api.depends('fx_rate', 'precio_mercado', 'piso_ocioso', 'piso_lleno')
     def _compute_divisa(self):
         for rec in self:
             fx = rec.fx_rate if rec.fx_rate and rec.fx_rate != 1.0 else 0.0
             rec.es_divisa = bool(fx)
-            rec.precio_sugerido_divisa = rec.precio_sugerido / fx if fx else 0.0
+            rec.precio_mercado_divisa = rec.precio_mercado / fx if fx else 0.0
             rec.piso_ocioso_divisa = rec.piso_ocioso / fx if fx else 0.0
             rec.piso_lleno_divisa = rec.piso_lleno / fx if fx else 0.0
 
-    # El precio que se PRESENTA al cliente: el objetivo si se capturó, si
-    # no el sugerido. Es lo único de dinero que lleva el PDF comercial.
+    # El precio EVALUADO (semáforo, márgenes, PDF cliente): el objetivo si
+    # se capturó; si no, el de mercado; sin ventas, el piso a planta llena.
+    precio_evaluado = fields.Float(
+        compute='_compute_precio_evaluado', digits=(16, 2),
+        string='Precio evaluado $/u MXN',
+        help='Objetivo → mercado → piso lleno. Sobre este precio están '
+             'calculados el semáforo y los márgenes.')
+    evaluado_fuente = fields.Char(
+        compute='_compute_precio_evaluado', string='Fuente del precio')
     precio_cliente_mxn = fields.Float(
-        compute='_compute_precio_cliente', digits=(16, 2),
+        compute='_compute_precio_evaluado', digits=(16, 2),
         string='Precio al cliente $/u MXN')
     precio_cliente_divisa = fields.Float(
-        compute='_compute_precio_cliente', digits=(16, 4),
+        compute='_compute_precio_evaluado', digits=(16, 4),
         string='Precio al cliente (divisa)')
 
-    @api.depends('precio_objetivo', 'precio_sugerido', 'fx_rate')
-    def _compute_precio_cliente(self):
+    @api.depends('precio_objetivo', 'precio_mercado', 'piso_lleno', 'fx_rate')
+    def _compute_precio_evaluado(self):
         for rec in self:
-            rec.precio_cliente_mxn = rec.precio_objetivo or rec.precio_sugerido
+            if rec.precio_objetivo:
+                rec.precio_evaluado = rec.precio_objetivo
+                rec.evaluado_fuente = 'precio objetivo'
+            elif rec.precio_mercado:
+                rec.precio_evaluado = rec.precio_mercado
+                rec.evaluado_fuente = 'precio de mercado (prom. 12m)'
+            else:
+                rec.precio_evaluado = rec.piso_lleno
+                rec.evaluado_fuente = 'piso a planta llena'
+            rec.precio_cliente_mxn = rec.precio_evaluado
             fx = rec.fx_rate if rec.fx_rate and rec.fx_rate != 1.0 else 0.0
             rec.precio_cliente_divisa = \
                 rec.precio_cliente_mxn / fx if fx else 0.0
@@ -198,10 +210,10 @@ class QbCotizacion(models.Model):
              'análisis win/loss: ¿a qué % sobre el piso ganamos y a cuál '
              'perdemos?')
 
-    @api.depends('precio_objetivo', 'precio_sugerido', 'piso_lleno')
+    @api.depends('precio_objetivo', 'precio_mercado', 'piso_lleno')
     def _compute_precio_vs_piso(self):
         for rec in self:
-            base = rec.precio_objetivo or rec.precio_sugerido
+            base = rec.precio_objetivo or rec.precio_mercado
             rec.precio_vs_piso_pct = (
                 100.0 * (base / rec.piso_lleno - 1.0)
                 if base and rec.piso_lleno else 0.0)
@@ -246,7 +258,7 @@ class QbCotizacion(models.Model):
             rec.real_precio_prom = real.precio_prom
             rec.real_qty = real.qty_vendida
             rec.real_margen_pct = real.margen_contribucion_pct
-            base = rec.precio_objetivo or rec.precio_sugerido
+            base = rec.precio_objetivo or rec.precio_mercado
             if base:
                 rec.delta_precio_pct = \
                     100.0 * (real.precio_prom - base) / base
@@ -275,7 +287,6 @@ class QbCotizacion(models.Model):
             'default_product_id': self.product_id.id,
             'default_currency_id': currency.id,
             'default_volumen': self.volumen,
-            'default_target_margin': self.target_margin,
             # El objetivo guardado es MXN → a la moneda de la cotización
             'default_precio_objetivo':
                 self.precio_objetivo / rate if self.precio_objetivo else 0.0,

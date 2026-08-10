@@ -36,7 +36,6 @@
                         </div>
                         <field name="precio_objetivo_mxn" readonly="1"
                                invisible="es_mxn or not precio_objetivo"/>
-                        <field name="target_margin"/>
                         <field name="es_mxn" invisible="1"/>
                         <field name="fx_rate" invisible="es_mxn"/>
                     </group>
@@ -115,17 +114,13 @@
                                string="+ Operación % s/venta"
                                help="Gastos de admin y ventas (6xx) como % del precio de venta."/>
                     </group>
-                    <group string="2 · ¿A cuánto venderlo? (precios de referencia)">
-                        <field name="precio_sugerido_divisa" class="fw-bold"
+                    <group string="2 · ¿A cuánto venderlo? (referencias reales)">
+                        <field name="precio_mercado_divisa" class="fw-bold"
                                invisible="es_mxn"
-                               string="⭐ Precio sugerido (divisa)"/>
-                        <field name="sugerido_colchon_divisa"
-                               invisible="es_mxn"
-                               string="Sugerido + colchón FX (divisa)"/>
-                        <field name="precio_sugerido"
-                               string="⭐ Precio sugerido $/u MXN"
-                               class="fw-bold"
-                               help="(variable + fabricación) ÷ (1 − %operación − margen meta): cubre operación y deja el margen meta."/>
+                               string="⭐ Precio de mercado (divisa)"/>
+                        <field name="precio_mercado"
+                               string="⭐ Precio de mercado $/u MXN"
+                               class="fw-bold"/>
                         <field name="piso_lleno_divisa" invisible="es_mxn"
                                string="Piso a planta llena (divisa)"/>
                         <field name="piso_lleno"
@@ -146,18 +141,16 @@
                         <field name="margen_bruto_pct"
                                help="(precio − costo de producción) ÷ precio. Antes de admin/ventas."/>
                         <field name="margen_neto_pct"
-                               help="Margen bruto − %operación: lo que queda después de TODO. Al precio sugerido = margen meta."/>
+                               help="Margen bruto − %operación: lo que queda después de TODO."/>
                         <field name="contrib_hora_maquina"
                                string="Contribución MXN/hora-máquina"
                                help="Para comparar productos cuando las máquinas son el límite."/>
                     </group>
                 </group>
                 <div class="text-muted" style="font-size:12px;"
-                     invisible="not product_id and not spec_mode">
-                    Se evalúa el <b>precio objetivo</b> si lo capturaste; si
-                    no, el <b>precio sugerido</b>. Fórmula del sugerido:
-                    (costo variable + fabricación) ÷ (1 − %operación − margen
-                    meta). Dudas con un término → pestaña «📖 Glosario».
+                     invisible="not evaluado_info">
+                    <field name="evaluado_info" readonly="1" nolabel="1"/>
+                    Dudas con un término → pestaña «📖 Glosario».
                 </div>
                 <group string="Capacidad: ¿cabe este volumen en la planta?"
                        invisible="not product_id and not spec_mode">
@@ -274,8 +267,8 @@
                         <field name="costo_variable" readonly="1"/>
                         <field name="fab_unit" readonly="1" optional="hide"/>
                         <field name="piso_lleno" readonly="1"/>
-                        <field name="precio_sugerido" readonly="1"/>
-                        <field name="precio_sugerido_divisa" readonly="1"
+                        <field name="precio_mercado" readonly="1"/>
+                        <field name="precio_ref_divisa" readonly="1"
                                optional="show"/>
                         <field name="semaforo" widget="badge" readonly="1"
                                decoration-danger="semaforo == 'rojo'"
@@ -319,8 +312,8 @@
                 <field name="sale_order_id" optional="show"/>
                 <field name="volumen"/>
                 <field name="costo_variable"/>
-                <field name="precio_sugerido"/>
-                <field name="precio_sugerido_divisa" optional="show"/>
+                <field name="precio_evaluado"/>
+                <field name="precio_mercado" optional="show"/>
                 <field name="margen_bruto_pct" optional="show"/>
                 <field name="margen_neto_pct" optional="show"/>
                 <field name="margen_contribucion_pct"/>
@@ -406,17 +399,18 @@
                     <group>
                         <group string="2 · Precios de referencia (MXN y divisa)">
                             <field name="es_divisa" invisible="1"/>
-                            <field name="precio_sugerido_divisa"
-                                   class="fw-bold" invisible="not es_divisa"/>
-                            <field name="precio_sugerido" class="fw-bold"/>
+                            <field name="precio_evaluado" class="fw-bold"/>
+                            <field name="evaluado_fuente"/>
+                            <field name="precio_objetivo"/>
+                            <field name="precio_mercado_divisa"
+                                   invisible="not es_divisa"/>
+                            <field name="precio_mercado"/>
                             <field name="piso_lleno_divisa"
                                    invisible="not es_divisa"/>
                             <field name="piso_lleno"/>
                             <field name="piso_ocioso_divisa"
                                    invisible="not es_divisa"/>
                             <field name="piso_ocioso"/>
-                            <field name="target_margin"/>
-                            <field name="precio_objetivo"/>
                         </group>
                         <group string="3 · Márgenes al precio evaluado">
                             <field name="margen_contribucion"/>

@@ -19,9 +19,6 @@ GLOSARIO_HTML = """
         <td>Pesos por 1 unidad de la divisa (ej. TC 18.50 = 1 USD cuesta
         $18.50 MXN). Se toma de Odoo el día de cotizar y queda guardado en
         la cotización para trazabilidad.</td></tr>
-    <tr><td><b>Colchón cambiario</b></td>
-        <td>% que se suma al precio en divisa para proteger el margen si el
-        peso se aprecia durante la vigencia de la cotización.</td></tr>
 
     <tr><th colspan="2" style="background:#f2f2f2;">🏭 Costos (por unidad, MXN)</th></tr>
     <tr><td><b>Materia prima (MP)</b></td>
@@ -50,11 +47,15 @@ GLOSARIO_HTML = """
         <td>El precio que TÚ propones o que el cliente pide. Se captura en
         la moneda de la cotización; el sistema lo convierte a MXN con el TC
         del día y sobre él evalúa semáforo y márgenes.</td></tr>
-    <tr><td><b>Precio sugerido</b></td>
-        <td>El que calcula el sistema:
-        <b>(costo variable + fabricación) ÷ (1 − %operación − margen
-        meta)</b>. A ese precio se paga la operación y queda exactamente el
-        margen meta.</td></tr>
+    <tr><td><b>Precio de mercado</b></td>
+        <td>El precio promedio al que este producto REALMENTE se facturó en
+        los últimos 12 meses (todos los clientes, en MXN). Es el ancla
+        realista para cotizar: los pisos dicen debajo de qué no bajar; el
+        mercado dice qué se está logrando hoy.</td></tr>
+    <tr><td><b>Precio evaluado</b></td>
+        <td>El precio sobre el que se calculan semáforo y márgenes: el
+        objetivo si se capturó; si no, el de mercado; si tampoco hay ventas,
+        el piso a planta llena.</td></tr>
     <tr><td><b>Piso con capacidad ociosa</b></td>
         <td>= costo variable. Si hay máquinas paradas, cualquier precio
         arriba de esto aporta algo para pagar los fijos (que se pagan
@@ -63,9 +64,6 @@ GLOSARIO_HTML = """
         <td>= (variable + fabricación) ÷ (1 − %operación). Margen CERO
         cubriendo todo. Si la planta está llena, aceptar menos es regalar
         capacidad.</td></tr>
-    <tr><td><b>Margen meta</b></td>
-        <td>% de utilidad neta que se quiere ganar sobre el precio de
-        venta.</td></tr>
 
     <tr><th colspan="2" style="background:#f2f2f2;">📈 Márgenes (al precio evaluado)</th></tr>
     <tr><td><b>Margen de contribución</b></td>
@@ -76,7 +74,7 @@ GLOSARIO_HTML = """
         fabricar, ANTES de administración y ventas.</td></tr>
     <tr><td><b>Margen neto %</b></td>
         <td>= margen bruto − %operación. Lo que queda de verdad después de
-        TODO. Al precio sugerido, es exactamente el margen meta.</td></tr>
+        TODO.</td></tr>
     <tr><td><b>Contribución por hora-máquina</b></td>
         <td>= contribución ÷ horas del centro más lento de la ruta. Para
         decidir qué producto conviene cuando las máquinas son el

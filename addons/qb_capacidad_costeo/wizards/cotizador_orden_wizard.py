@@ -2,7 +2,7 @@
 """Cotizador de ORDEN COMPLETA: todas las líneas de una vez.
 
 Desde una orden con varios productos, muestra cada línea con su costo
-variable, pisos, precio actual vs sugerido y semáforo; permite corregir
+variable, pisos, precio actual vs mercado y semáforo; permite corregir
 precios en lote (checkbox por línea) y abrir la calculadora individual
 para el detalle de cualquier producto. Las matemáticas son las mismas del
 motor (qb.costo.producto.quote_product) — una sola fuente de fórmulas.
@@ -65,6 +65,9 @@ class QbCotizadorOrdenWizard(models.TransientModel):
                 precio_mxn, q['piso_ocioso'], q['piso_lleno'])
             vol, meses, ventana = Costo.monthly_sales_volume(
                 line.product_id, order.partner_id)
+            # Referencia para corregir precio: el MERCADO (a lo que ya se
+            # vende, prom. 12m); sin ventas, el piso a planta llena
+            ref_mxn = q['precio_mercado'] or q['piso_lleno']
             lines.append((0, 0, {
                 'sale_line_id': line.id,
                 'product_id': line.product_id.id,
@@ -77,9 +80,9 @@ class QbCotizadorOrdenWizard(models.TransientModel):
                 'costo_variable': q['variable'],
                 'fab_unit': q['fab'],
                 'piso_lleno': q['piso_lleno'],
-                'precio_sugerido': q['precio_sugerido'],
-                'precio_sugerido_divisa': q['precio_sugerido'] / rate,
-                'nuevo_precio': q['precio_sugerido'] / rate,
+                'precio_mercado': q['precio_mercado'],
+                'precio_ref_divisa': ref_mxn / rate,
+                'nuevo_precio': ref_mxn / rate,
                 'semaforo': semaforo,
                 'contrib_unit': precio_mxn - q['variable'],
                 'contrib_hora': ((precio_mxn - q['variable'])
@@ -144,10 +147,11 @@ class QbCotizadorOrdenWizard(models.TransientModel):
                 raise UserError('El nuevo precio de %s debe ser mayor a 0.'
                                 % line.product_id.display_name)
             cambios.append(
-                '%s: %s %.2f → %s %.2f (sugerido $%.2f MXN, variable $%.2f MXN)'
+                '%s: %s %.2f → %s %.2f (mercado 12m $%.2f MXN, piso lleno '
+                '$%.2f MXN, variable $%.2f MXN)'
                 % (line.product_id.display_name, divisa, line.precio_actual,
-                   divisa, line.nuevo_precio,
-                   line.precio_sugerido, line.costo_variable))
+                   divisa, line.nuevo_precio, line.precio_mercado,
+                   line.piso_lleno, line.costo_variable))
             line.sale_line_id.price_unit = line.nuevo_precio
         fx = (' · TC %.4f' % self.fx_rate) if self.is_foreign else ''
         self.sale_order_id.message_post(
@@ -185,14 +189,18 @@ class QbCotizadorOrdenLinea(models.TransientModel):
                                  readonly=True, digits=(16, 2))
     precio_actual_mxn = fields.Float(string='Precio actual MXN',
                                      readonly=True, digits=(16, 2))
-    precio_sugerido_divisa = fields.Float(
-        string='Sugerido (divisa)', readonly=True, digits=(16, 2))
-    costo_variable = fields.Float(string='Costo variable', readonly=True,
+    precio_ref_divisa = fields.Float(
+        string='Referencia (divisa)', readonly=True, digits=(16, 2),
+        help='El precio de mercado (o el piso lleno si no hay ventas) '
+             'convertido a la moneda del pedido — el default de "Nuevo precio".')
+    costo_variable = fields.Float(string='Costo variable MXN', readonly=True,
                                   digits=(16, 2))
-    fab_unit = fields.Float(string='Fabricación', readonly=True, digits=(16, 2))
-    piso_lleno = fields.Float(string='Piso lleno', readonly=True, digits=(16, 2))
-    precio_sugerido = fields.Float(string='Sugerido', readonly=True,
-                                   digits=(16, 2))
+    fab_unit = fields.Float(string='Fabricación MXN', readonly=True, digits=(16, 2))
+    piso_lleno = fields.Float(string='Piso lleno MXN', readonly=True, digits=(16, 2))
+    precio_mercado = fields.Float(
+        string='Mercado 12m MXN', readonly=True, digits=(16, 2),
+        help='Precio promedio real facturado en los últimos 12 meses '
+             '(todos los clientes). 0 = sin ventas en la ventana.')
     contrib_unit = fields.Float(string='Contribución/u', readonly=True,
                                 digits=(16, 2))
     contrib_hora = fields.Float(string='$/hora-máquina', readonly=True,
@@ -208,7 +216,8 @@ class QbCotizadorOrdenLinea(models.TransientModel):
     nuevo_precio = fields.Float(
         string='Nuevo precio (divisa)', digits=(16, 2),
         help='En la MONEDA del pedido — es lo que se escribe en la línea. '
-             'Default: el sugerido convertido con el TC de Odoo.')
+             'Default: el precio de mercado (o el piso lleno si no hay '
+             'ventas) convertido con el TC de Odoo.')
 
     def action_detalle(self):
         """Abre la calculadora individual precargada con esta línea (para

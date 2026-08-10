@@ -49,7 +49,8 @@
                                             <strong>TC:</strong> 1 <span t-esc="o.currency_id.name or 'divisa'"/> =
                                             $<span t-esc="'{:,.4f}'.format(o.fx_rate)"/> MXN (del día de cotizar)<br/>
                                         </t>
-                                        <strong>Margen meta:</strong> <span t-esc="'{:.0f}'.format(o.target_margin)"/>%
+                                        <strong>Precio evaluado:</strong>
+                                        <span t-esc="o.evaluado_fuente"/>
                                     </td>
                                 </tr>
                             </tbody>
@@ -100,21 +101,23 @@
                                     <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.piso_lleno)"/></b></td>
                                     <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_lleno_divisa)"/></td>
                                     <td style="color:#888;">cubre todo, gana cero — mínimo con planta llena</td></tr>
-                                <tr style="background:#e7f5ec;"><td><b>⭐ Precio sugerido</b></td>
-                                    <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.precio_sugerido)"/></b></td>
-                                    <td t-if="o.es_divisa" class="text-end"><b><span t-esc="'{:,.4f}'.format(o.precio_sugerido_divisa)"/></b></td>
-                                    <td style="color:#888;">cubre todo + margen meta de <span t-esc="'{:.0f}'.format(o.target_margin)"/>%</td></tr>
-                                <tr t-if="o.precio_objetivo"><td><b>Precio objetivo (evaluado)</b></td>
+                                <tr t-if="o.precio_mercado" style="background:#e7f5ec;"><td><b>Precio de mercado (prom. 12m)</b></td>
+                                    <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.precio_mercado)"/></b></td>
+                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.precio_mercado_divisa)"/></td>
+                                    <td style="color:#888;">a lo que ya se vende de verdad (todos los clientes)</td></tr>
+                                <tr t-if="o.precio_objetivo"><td><b>⭐ Precio objetivo (evaluado)</b></td>
                                     <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.precio_objetivo)"/></b></td>
-                                    <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.precio_objetivo / o.fx_rate)"/></td>
+                                    <td t-if="o.es_divisa" class="text-end"><b><span t-esc="'{:,.4f}'.format(o.precio_objetivo / o.fx_rate)"/></b></td>
                                     <td style="color:#888;">lo que pide el cliente / se propone</td></tr>
                             </tbody>
                         </table>
 
                         <!-- Qué deja el precio evaluado: una sola línea de márgenes -->
-                        <h5 style="margin-bottom:4px;">Qué deja
-                            <t t-if="o.precio_objetivo">el precio objetivo</t>
-                            <t t-else="">el precio sugerido</t>
+                        <h5 style="margin-bottom:4px;">Qué deja el precio evaluado
+                            <span style="font-weight:normal; font-size:12px;">
+                                (<span t-esc="o.evaluado_fuente"/>:
+                                $<span t-esc="'{:,.2f}'.format(o.precio_evaluado)"/> MXN)
+                            </span>
                         </h5>
                         <table class="table table-sm" style="font-size:12px;">
                             <thead>
@@ -136,8 +139,7 @@
                         </table>
                         <p style="font-size:10px; color:#888; margin-top:-6px;">
                             Contribución = precio − costo variable (lo que aporta a fijos) ·
-                            bruto = después de fabricar · neto = después de TODO
-                            (al sugerido, neto = margen meta).
+                            bruto = después de fabricar · neto = después de TODO.
                         </p>
 
                         <!-- Capacidad: una línea si cabe; detalle solo si NO cabe -->
@@ -153,16 +155,29 @@
                             <div t-field="o.comparativa_html"/>
                         </t>
 
-                        <!-- Letra chica: trazabilidad -->
-                        <div style="border-top:1px solid #ddd; margin-top:8px; padding-top:4px;">
-                            <pre style="font-size:9px; color:#888; white-space:pre-wrap;"><span t-field="o.supuestos"/></pre>
-                            <p style="font-size:9px; color:#888;">
-                                Documento INTERNO — al cliente se le envía la «Cotización
-                                (PDF para cliente)», sin costos ni márgenes. Definiciones de
-                                términos y desglose de la receta: pestañas Glosario y
-                                Desglose en Odoo.
+                        <p style="font-size:9px; color:#888; border-top:1px solid #ddd; margin-top:8px; padding-top:4px;">
+                            Documento INTERNO — al cliente se le envía la «Cotización
+                            (PDF para cliente)», sin costos ni márgenes. Definiciones
+                            de cada término: pestaña Glosario en Odoo. El anexo
+                            siguiente muestra de dónde sale cada número.
+                        </p>
+
+                        <!-- ============ ANEXO: ¿de dónde salen los números? ============ -->
+                        <t t-if="o.desglose_html">
+                            <div style="page-break-before:always;"/>
+                            <h4>Anexo — ¿De dónde sale cada número?</h4>
+                            <p style="font-size:11px; color:#555;">
+                                Foto tomada al momento de cotizar: la receta (BOM)
+                                componente por componente con su última compra real
+                                (proveedor, fecha, precio y tendencia), el peso usado y
+                                su fuente, los pools de gasto del GL con la fórmula de
+                                cada factor, y el % de operación. Si un número no
+                                cuadra, aquí se ve exactamente de qué dato viene.
                             </p>
-                        </div>
+                            <div t-field="o.desglose_html"/>
+                        </t>
+                        <h5 style="margin-top:8px;">Supuestos de esta cotización</h5>
+                        <pre style="font-size:10px; white-space:pre-wrap;"><span t-field="o.supuestos"/></pre>
                     </div>
                 </t>
             </t>
