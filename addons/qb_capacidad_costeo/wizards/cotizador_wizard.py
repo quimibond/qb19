@@ -12,6 +12,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from ..models.glosario import GLOSARIO_HTML
+
 KG_UOM_NAMES = ('kg', 'kgs', 'kilogramo', 'kilogramos')
 
 
@@ -55,11 +57,21 @@ class QbCotizadorWizard(models.TransientModel):
              'del pedido. Los COSTOS del modelo siempre son MXN.')
     precio_objetivo = fields.Float(
         string='Precio objetivo',
-        help='EN LA MONEDA DE LA COTIZACIÓN (campo de arriba). El modelo lo '
-             'convierte a MXN con el TC de Odoo para compararlo con costos.')
+        help='El precio que TÚ propones o que el cliente pide, EN LA MONEDA '
+             'DE LA COTIZACIÓN (campo de arriba). El modelo lo convierte a '
+             'MXN con el TC de Odoo y sobre él evalúa semáforo y márgenes. '
+             'Vacío = se evalúa el precio sugerido.')
+    precio_objetivo_mxn = fields.Float(
+        compute='_compute_cotizacion', string='= Precio objetivo en MXN',
+        digits=(16, 2),
+        help='El precio objetivo convertido a pesos con el TC de hoy — este '
+             'es el número que se compara contra los costos y pisos (que '
+             'siempre son MXN).')
     target_margin = fields.Float(
         string='Margen meta %',
-        help='0 = usar el target_margin de configuración.')
+        help='El % de utilidad NETA (después de operación) que quieres '
+             'ganar sobre el precio de venta. 0 = usar el margen meta de '
+             'configuración.')
     fx_rate = fields.Float(
         string='TC (MXN por 1 de la moneda)', digits=(16, 4), readonly=True,
         compute='_compute_fx_rate',
@@ -167,6 +179,39 @@ class QbCotizadorWizard(models.TransientModel):
                     wiz.product_id, factores)
             except Exception as exc:
                 wiz.explicacion_html = '<p>Error al explicar: %s</p>' % exc
+
+    comparativa_html = fields.Html(
+        compute='_compute_comparativa', sanitize=False,
+        string='¿A cuánto lo vendo hoy?',
+        help='Precios reales (12 meses) de este producto a otros clientes y '
+             'de sus otras presentaciones (metros/kilos, importado), con el '
+             'margen de cada una a su precio de venta actual.')
+    glosario_html = fields.Html(
+        compute='_compute_glosario', sanitize=False, string='Glosario')
+
+    def _compute_glosario(self):
+        for wiz in self:
+            wiz.glosario_html = GLOSARIO_HTML
+
+    @api.depends('product_id', 'partner_id', 'spec_mode')
+    def _compute_comparativa(self):
+        Costo = self.env['qb.costo.producto']
+        for wiz in self:
+            if not wiz.product_id or wiz.spec_mode:
+                wiz.comparativa_html = False
+                continue
+            factores = self.env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1)
+            if not factores:
+                wiz.comparativa_html = False
+                continue
+            try:
+                wiz.comparativa_html = Costo.comparativa_html(
+                    wiz.product_id, factores,
+                    wiz.partner_id.commercial_partner_id
+                    if wiz.partner_id else None)
+            except Exception as exc:
+                wiz.comparativa_html = '<p>Error al comparar: %s</p>' % exc
     semaforo = fields.Selection([
         ('rojo', 'Debajo del costo variable'),
         ('ambar', 'Aporta a fijos (no absorbe todo)'),
@@ -400,7 +445,8 @@ class QbCotizadorWizard(models.TransientModel):
                 'margen_contribucion_pct', 'contrib_hora_maquina',
                 'precio_sugerido_divisa', 'piso_ocioso_divisa',
                 'piso_lleno_divisa', 'sugerido_colchon_divisa',
-                'margen_bruto_pct', 'margen_neto_pct'], 0.0)
+                'margen_bruto_pct', 'margen_neto_pct',
+                'precio_objetivo_mxn'], 0.0)
             zero['semaforo'] = False
             zero['moneda_alerta'] = False
             try:
@@ -450,6 +496,9 @@ class QbCotizadorWizard(models.TransientModel):
                            precio_ref))
             wiz.update({
                 'moneda_alerta': moneda_alerta,
+                'precio_objetivo_mxn':
+                    wiz.precio_objetivo * res['fx']
+                    if wiz.precio_objetivo else 0.0,
                 'factores_id': factores.id,
                 'factores_info': 'Factores %s (ventana %sm) · fab $%.2f/kg + '
                                  '$%.2f/m · energía $%.2f/kg · op %.1f%%' % (
@@ -555,6 +604,7 @@ class QbCotizadorWizard(models.TransientModel):
             'factores_id': factores.id,
             'supuestos': supuestos,
             'desglose_html': self.explicacion_html or False,
+            'comparativa_html': self.comparativa_html or False,
             'validez_hasta': fields.Date.today() + relativedelta(
                 days=int(self.env['qb.costeo.factor.config'].get_param(
                     'quote_validity_days', 15))),

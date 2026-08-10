@@ -6,6 +6,8 @@ denominadores) para trazabilidad y comparación antes/después.
 """
 from odoo import api, fields, models
 
+from .glosario import GLOSARIO_HTML
+
 
 class QbCotizacion(models.Model):
     _name = 'qb.cotizacion'
@@ -28,42 +30,74 @@ class QbCotizacion(models.Model):
     volumen = fields.Float(string='Volumen (unidades/mes)')
     uom_name = fields.Char(string='Unidad')
     fx_rate = fields.Float(
-        string='FX (MXN/USD)',
-        help='Supuesto de tipo de cambio usado. Informativo: la MP ya viene '
-             'convertida a MXN al FX de cada compra.')
+        string='TC usado (MXN por 1 divisa)',
+        help='Tipo de cambio de Odoo el día que se cotizó: pesos por 1 '
+             'unidad de la divisa (ej. 18.50 = 1 USD costaba $18.50 MXN). '
+             '1.0 o vacío = la cotización fue en MXN. Informativo para la '
+             'MP: ya viene convertida a MXN al TC de cada compra.')
 
-    # Desglose de costo por capa ($/unidad)
-    mp_unit = fields.Float(string='MP $/u', digits=(16, 4))
-    energia_unit = fields.Float(string='Energía $/u', digits=(16, 4))
-    fab_unit = fields.Float(string='Fabricación $/u', digits=(16, 4))
-    op_pct = fields.Float(string='Operación %')
-    costo_variable = fields.Float(string='Costo variable $/u', digits=(16, 4))
+    # Desglose de costo por capa ($/unidad, siempre MXN)
+    mp_unit = fields.Float(
+        string='Materia prima $/u MXN', digits=(16, 4),
+        help='Receta (BOM) explotada al ÚLTIMO costo de compra de cada '
+             'componente, convertido a MXN.')
+    energia_unit = fields.Float(
+        string='Energía $/u MXN', digits=(16, 4),
+        help='Luz/gas/agua variables: $/kg del período × peso de la unidad.')
+    fab_unit = fields.Float(
+        string='Fabricación $/u MXN', digits=(16, 4),
+        help='Parte del gasto FIJO de fábrica (sueldos de planta, renta, '
+             'depreciación, arrendamiento de maquinaria) que absorbe cada '
+             'unidad, repartida por peso y por metros.')
+    op_pct = fields.Float(
+        string='Operación % s/venta',
+        help='Gastos de administración y ventas (6xx) como % de las ventas. '
+             'Se cobra como % del precio.')
+    costo_variable = fields.Float(
+        string='Costo variable $/u MXN', digits=(16, 4),
+        help='MP + energía: lo que sale de la bolsa por producir UNA unidad '
+             'más. Piso absoluto de cualquier precio.')
     costo_absorbido_sin_op = fields.Float(
-        string='Costo variable + fab $/u', digits=(16, 4))
+        string='Costo de producción $/u MXN', digits=(16, 4),
+        help='Costo variable + fabricación absorbida (aún sin operación).')
 
-    # Precios
-    target_margin = fields.Float(string='Margen meta %')
-    precio_objetivo = fields.Float(string='Precio objetivo $/u')
+    # Precios (guardados SIEMPRE en MXN; el espejo en divisa usa el TC)
+    target_margin = fields.Float(
+        string='Margen meta %',
+        help='El % de utilidad neta (después de operación) que se quiere '
+             'ganar sobre el precio de venta.')
+    precio_objetivo = fields.Float(
+        string='Precio objetivo $/u MXN',
+        help='El precio que se propuso o que pidió el cliente. Se capturó '
+             'en la moneda de la cotización y aquí está YA CONVERTIDO a MXN '
+             'con el TC guardado.')
     precio_sugerido = fields.Float(
-        string='Precio sugerido $/u',
-        help='costo ÷ (1 − margen meta − op%): cubre operación y deja el '
-             'margen meta sobre venta.')
+        string='Precio sugerido $/u MXN',
+        help='(costo variable + fabricación) ÷ (1 − %operación − margen '
+             'meta): a este precio se paga la operación y queda exactamente '
+             'el margen meta.')
     piso_ocioso = fields.Float(
-        string='Piso con capacidad ociosa $/u',
+        string='Piso con capacidad ociosa $/u MXN',
         help='= costo variable. Con capacidad ociosa, todo precio arriba de '
-             'esto APORTA a fijos (aunque el absorbido salga negativo).')
+             'esto APORTA a fijos (aunque el absorbido salga negativo). '
+             'Nunca vender debajo.')
     piso_lleno = fields.Float(
-        string='Piso a planta llena $/u',
+        string='Piso a planta llena $/u MXN',
         help='= (variable + fab) ÷ (1 − op%): margen cero absorbiendo todo. '
              'Con la planta llena no aceptar debajo de esto.')
-    margen_contribucion = fields.Float(string='Contribución $/u', digits=(16, 4))
+    margen_contribucion = fields.Float(
+        string='Contribución $/u MXN', digits=(16, 4),
+        help='Precio − costo variable: lo que cada unidad aporta para pagar '
+             'los costos fijos.')
     margen_contribucion_pct = fields.Float(string='Contribución %')
     margen_bruto_pct = fields.Float(
         string='Margen bruto %',
-        help='(precio − costo de producción) ÷ precio, al precio cotizado.')
+        help='(precio − costo de producción) ÷ precio, al precio cotizado. '
+             'Utilidad después de fabricar, ANTES de admin/ventas.')
     margen_neto_pct = fields.Float(
         string='Margen neto %',
-        help='(precio − costo de producción − operación) ÷ precio.')
+        help='Margen bruto − %operación: lo que queda después de TODO. Al '
+             'precio sugerido, es exactamente el margen meta.')
 
     # Espejo en divisa (desde el TC guardado al cotizar)
     precio_sugerido_divisa = fields.Float(
@@ -109,6 +143,20 @@ class QbCotizacion(models.Model):
         string='Desglose explicado', sanitize=False,
         help='Foto del desglose de costos al momento de cotizar: BOM hoja '
              'por hoja con su última compra, peso, factores y fórmulas.')
+    comparativa_html = fields.Html(
+        string='Comparativa de precios', sanitize=False,
+        help='Foto al cotizar: a cuánto se vendía este producto a otros '
+             'clientes (últimos 12 meses) y a cuánto sus otras '
+             'presentaciones (metros/kilos, nacional/importado), con el '
+             'margen de cada una a su precio de venta.')
+    glosario_html = fields.Html(
+        compute='_compute_glosario', sanitize=False, string='Glosario',
+        help='Definición de cada término del cotizador (precio objetivo, '
+             'TC, márgenes, pisos, capacidad, ociosidad...).')
+
+    def _compute_glosario(self):
+        for rec in self:
+            rec.glosario_html = GLOSARIO_HTML
 
     # Supuestos (trazabilidad)
     factores_id = fields.Many2one('qb.costo.factores', string='Factores usados')
