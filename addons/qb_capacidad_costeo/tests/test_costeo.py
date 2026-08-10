@@ -289,6 +289,8 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(wiz_ind.fx_rate, 20.0, places=2)
         wiz_ind.precio_objetivo = 3.0  # EUR (= 60 MXN)
         self.assertNotEqual(wiz_ind.semaforo, 'rojo')
+        # El espejo en MXN del precio objetivo hace explícita la conversión
+        self.assertAlmostEqual(wiz_ind.precio_objetivo_mxn, 60.0, places=2)
         self.assertAlmostEqual(
             wiz_ind.precio_sugerido_divisa,
             wiz_ind.precio_sugerido / 20.0, places=3)
@@ -384,6 +386,79 @@ class TestQbCosteo(TransactionCase):
         ficha.write({'gramaje_g_m2': 47.0, 'source': 'manual'})
         Ficha.action_generar_fichas()
         self.assertEqual(ficha.gramaje_g_m2, 47.0, 'manual no se pisa')
+
+    def test_related_presentations_kg_metros_importado(self):
+        """El prefijo 'I' empareja la presentación en kilos con la de
+        metros (WJ045NT160 ↔ IWJ045NT160) y el sufijo ' I' con el gemelo
+        nacional — en AMBAS direcciones y solo si el ref hermano existe."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        kg_twin = self.env['product.product'].create({
+            'name': 'TELA TEST EN KILOS', 'default_code': 'IWJ045NT160',
+            'is_storable': True, 'uom_id': uom_kg.id, 'sale_ok': True,
+        })
+        rels = {p.id: label
+                for p, label in self.Costo.related_presentations(self.tela)}
+        self.assertIn(kg_twin.id, rels,
+                      'la tela en metros debe encontrar su presentación en kg')
+        self.assertIn('KILOS', rels[kg_twin.id])
+        rels_inv = self.Costo.related_presentations(kg_twin)
+        self.assertIn(self.tela.id, [p.id for p, _l in rels_inv],
+                      'la presentación en kg debe encontrar la de metros')
+        # Importado ' I' ↔ gemelo nacional
+        nacional = self.env['product.product'].create({
+            'name': 'TELA NACIONAL TEST', 'default_code': 'WM4032OW152',
+            'is_storable': True, 'uom_id': self.tela.uom_id.id,
+            'sale_ok': True,
+        })
+        rels_imp = self.Costo.related_presentations(self.importado)
+        self.assertIn(nacional.id, [p.id for p, _l in rels_imp])
+        labels = [l for _p, l in rels_imp]
+        self.assertTrue(any('nacional' in l for l in labels))
+        # Sin referencia → sin variantes (no truena)
+        sin_ref = self.env['product.product'].create({
+            'name': 'SIN REF', 'is_storable': True, 'sale_ok': True})
+        self.assertEqual(self.Costo.related_presentations(sin_ref), [])
+
+    def test_comparativa_y_glosario(self):
+        """La comparativa lista las otras presentaciones con su margen y el
+        glosario aparece en wizard, cotización guardada y con los términos
+        clave definidos. Sin ventas: lo dice claro en vez de inventar."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        kg_twin = self.env['product.product'].create({
+            'name': 'TELA TEST EN KILOS', 'default_code': 'IWJ045NT160',
+            'is_storable': True, 'uom_id': uom_kg.id, 'sale_ok': True,
+        })
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2026, 9, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        html = self.Costo.comparativa_html(self.tela, factores)
+        self.assertIn('Sin ventas', html, 'sin facturas debe decirlo claro')
+        self.assertIn('IWJ045NT160', html,
+                      'la presentación en kg debe listarse')
+        self.assertIn('KILOS', html)
+        self.assertIn('sin ventas 12m', html)
+        # En el wizard se computa sola y se guarda como foto en la cotización
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+        })
+        self.assertTrue(wiz.comparativa_html)
+        self.assertIn('IWJ045NT160', wiz.comparativa_html)
+        # MXN: el precio objetivo y su espejo coinciden (TC = 1)
+        wiz.precio_objetivo = 100.0
+        self.assertAlmostEqual(wiz.precio_objetivo_mxn, 100.0, places=2)
+        action = wiz.action_cotizar()
+        cot = self.env['qb.cotizacion'].browse(action['res_id'])
+        self.assertIn('IWJ045NT160', cot.comparativa_html)
+        # Glosario: mismos términos en wizard y cotización
+        for termino in ('Precio objetivo', 'Precio sugerido',
+                        'Tipo de cambio', 'Margen bruto', 'Margen neto',
+                        'Ociosidad', 'Piso con capacidad ociosa',
+                        'Piso a planta llena', 'Capacidad'):
+            self.assertIn(termino, wiz.glosario_html)
+            self.assertIn(termino, cot.glosario_html)
+        self.assertTrue(kg_twin.exists())
 
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""

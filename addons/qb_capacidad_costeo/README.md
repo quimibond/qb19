@@ -39,6 +39,8 @@ su lógica ni su versión de manifest.
 | `qb.costo.factores` | Los factores del mes: pools GL suavizados, denominadores kg/m, factor $/kg y $/m, energía $/kg, op %, factor entretela, **cobertura del pool** — trazabilidad completa |
 | `qb.costo.producto` | Costo por capa por producto: MP (BOM recursiva a último costo), energía, fabricación híbrida, operación; márgenes de contribución y absorbido; **contribución por hora-máquina** |
 | `qb.cotizacion` | Cotizaciones guardadas con supuestos (para comparar antes/después). El wizard es una **calculadora viva**: los resultados (costo por capa, pisos, contribución, capacidad) se recalculan al instante al cambiar producto/volumen/precio/margen; el botón solo guarda el escenario |
+| — claridad de términos | **Glosario único** (`models/glosario.py`) visible en el wizard, en la cotización guardada y en el PDF: precio objetivo, precio sugerido, TC, márgenes bruto/neto/contribución, pisos, capacidad, ociosidad, semáforo. Toda cifra indica su moneda (MXN vs divisa); el precio objetivo capturado en divisa muestra su espejo `= en MXN` con el TC del día |
+| — comparativa | Pestaña **«¿A cuánto lo vendo hoy?»** (`comparativa_html`, snapshot en la cotización y en el PDF): precio promedio real de los últimos 12 meses **cliente por cliente** (en MXN vía `aml.balance` — las facturas en USD salen en pesos reales) con contribución % y margen neto % al costo VIGENTE, + **otras presentaciones del mismo artículo** por nomenclatura (prefijo `I` = venta en kg, ej. WJ038Q22JNT160 ↔ IWJ038Q22JNT160; sufijo ` I` = importado) con el margen de cada una a su precio actual y el equivalente $/m de la versión en kg |
 | `qb.costeo.snapshot` | Foto mensual de capacidad/ociosidad por centro (tendencia) |
 
 ## Fórmulas
@@ -64,6 +66,23 @@ piso ocioso  = costo variable
 piso lleno   = (variable + fab) / (1 − op_pct)
 precio sugerido = (variable + fab) / (1 − op_pct − target_margin)
 ```
+
+## PDF de cotización (estructura)
+
+1. Datos generales + **caja «cómo leer este documento»** (costos siempre MXN;
+   precios en MXN y divisa al TC guardado).
+2. Resumen ejecutivo: semáforo explicado, precio sugerido/objetivo en ambas
+   monedas, margen neto, ¿cabe en capacidad?
+3. **¿Cómo se construye el precio?** — paso a paso (MP → +energía → =variable
+   → +fabricación → =producción → +operación → ⭐ sugerido) con la fórmula de
+   cada renglón.
+4. Los tres precios de referencia (piso ocioso / piso lleno / sugerido) con
+   *cuándo usar cada uno*.
+5. Márgenes al precio evaluado, cada uno con *qué mide*.
+6. Capacidad (horas requeridas vs libres, ociosidad).
+7. Comparativa: a cuánto se vende hoy a otros clientes + otras presentaciones.
+8. Supuestos + desglose explicado (BOM hoja por hoja).
+9. **Glosario** completo de términos.
 
 ## Ventanas de datos
 

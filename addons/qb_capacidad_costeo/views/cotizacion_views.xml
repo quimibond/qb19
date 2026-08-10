@@ -25,8 +25,17 @@
                         <field name="volumen"
                                help="Si el cliente compra este producto de forma regular, se precarga solo con su promedio mensual histórico."/>
                         <field name="regularidad_info" readonly="1" nolabel="0"/>
-                        <field name="currency_id" options="{'no_create': True}"/>
-                        <field name="precio_objetivo"/>
+                        <field name="currency_id" options="{'no_create': True}"
+                               help="La moneda en la que capturas el precio objetivo y en la que se muestran los precios al cliente. Los COSTOS del modelo siempre se calculan en MXN."/>
+                        <label for="precio_objetivo"/>
+                        <div class="o_row">
+                            <field name="precio_objetivo" class="oe_inline"/>
+                            <field name="currency_id" readonly="1" nolabel="1"
+                                   class="oe_inline text-muted"
+                                   options="{'no_open': True}"/>
+                        </div>
+                        <field name="precio_objetivo_mxn" readonly="1"
+                               invisible="es_mxn or not precio_objetivo"/>
                         <field name="target_margin"/>
                         <field name="es_mxn" invisible="1"/>
                         <field name="fx_rate" invisible="es_mxn"/>
@@ -87,48 +96,85 @@
                 </group>
                 <!-- Resultados EN VIVO: se recalculan al cambiar cualquier input -->
                 <group invisible="not product_id and not spec_mode">
-                    <group string="Costo por capa ($/u MXN)">
+                    <group string="1 · ¿Cuánto cuesta producirlo? ($/u, todo MXN)">
                         <field name="product_bucket"/>
                         <field name="kg_per_unit"/>
-                        <field name="mp_unit"/>
-                        <field name="energia_unit"/>
-                        <field name="costo_variable"/>
-                        <field name="fab_unit"/>
-                        <field name="op_pct_display"/>
+                        <field name="mp_unit"
+                               string="Materia prima $/u MXN"
+                               help="Receta (BOM) al último costo de compra de cada componente."/>
+                        <field name="energia_unit"
+                               string="+ Energía $/u MXN"
+                               help="Luz/gas/agua variables: $/kg × peso."/>
+                        <field name="costo_variable"
+                               string="= Costo variable $/u MXN" class="fw-bold"
+                               help="MP + energía: lo que sale de la bolsa por cada unidad extra. Piso absoluto."/>
+                        <field name="fab_unit"
+                               string="+ Fabricación $/u MXN"
+                               help="Parte del gasto fijo de fábrica (sueldos, renta, depreciación, arrendamiento de maquinaria) que le toca a esta unidad."/>
+                        <field name="op_pct_display"
+                               string="+ Operación % s/venta"
+                               help="Gastos de admin y ventas (6xx) como % del precio de venta."/>
                     </group>
-                    <group string="Precios">
+                    <group string="2 · ¿A cuánto venderlo? (precios de referencia)">
                         <field name="precio_sugerido_divisa" class="fw-bold"
                                invisible="es_mxn"
                                string="⭐ Precio sugerido (divisa)"/>
                         <field name="sugerido_colchon_divisa"
-                               invisible="es_mxn"/>
+                               invisible="es_mxn"
+                               string="Sugerido + colchón FX (divisa)"/>
                         <field name="precio_sugerido"
-                               string="Precio sugerido $/u MXN"
-                               class="fw-bold"/>
-                        <field name="piso_ocioso_divisa" invisible="es_mxn"/>
-                        <field name="piso_ocioso" string="Piso ocioso $/u MXN"/>
-                        <field name="piso_lleno_divisa" invisible="es_mxn"/>
-                        <field name="piso_lleno" string="Piso lleno $/u MXN"/>
+                               string="⭐ Precio sugerido $/u MXN"
+                               class="fw-bold"
+                               help="(variable + fabricación) ÷ (1 − %operación − margen meta): cubre operación y deja el margen meta."/>
+                        <field name="piso_lleno_divisa" invisible="es_mxn"
+                               string="Piso a planta llena (divisa)"/>
+                        <field name="piso_lleno"
+                               string="Piso a planta llena $/u MXN"
+                               help="Margen CERO cubriendo todo. Con la planta llena, no aceptar debajo."/>
+                        <field name="piso_ocioso_divisa" invisible="es_mxn"
+                               string="Piso con ociosidad (divisa)"/>
+                        <field name="piso_ocioso"
+                               string="Piso con ociosidad $/u MXN"
+                               help="= costo variable. Con máquinas paradas, arriba de esto ya aporta a fijos. NUNCA vender debajo."/>
                     </group>
-                    <group string="Márgenes al precio evaluado">
-                        <field name="margen_bruto_pct"
-                               help="(precio − costo de producción) ÷ precio"/>
-                        <field name="margen_neto_pct"
-                               help="Después de TODO (producción + operación). Al precio sugerido = margen meta."/>
+                    <group string="3 · ¿Qué gano al precio evaluado?">
                         <field name="margen_contribucion"
-                               string="Contribución $/u MXN"/>
-                        <field name="margen_contribucion_pct"/>
+                               string="Contribución $/u MXN"
+                               help="Precio − costo variable: lo que aporta para pagar los fijos."/>
+                        <field name="margen_contribucion_pct"
+                               string="Contribución %"/>
+                        <field name="margen_bruto_pct"
+                               help="(precio − costo de producción) ÷ precio. Antes de admin/ventas."/>
+                        <field name="margen_neto_pct"
+                               help="Margen bruto − %operación: lo que queda después de TODO. Al precio sugerido = margen meta."/>
                         <field name="contrib_hora_maquina"
-                               string="Contribución MXN/hora-máquina"/>
+                               string="Contribución MXN/hora-máquina"
+                               help="Para comparar productos cuando las máquinas son el límite."/>
                     </group>
                 </group>
-                <group string="Capacidad" invisible="not product_id and not spec_mode">
+                <div class="text-muted" style="font-size:12px;"
+                     invisible="not product_id and not spec_mode">
+                    Se evalúa el <b>precio objetivo</b> si lo capturaste; si
+                    no, el <b>precio sugerido</b>. Fórmula del sugerido:
+                    (costo variable + fabricación) ÷ (1 − %operación − margen
+                    meta). Dudas con un término → pestaña «📖 Glosario».
+                </div>
+                <group string="Capacidad: ¿cabe este volumen en la planta?"
+                       invisible="not product_id and not spec_mode">
                     <field name="capacity_ok"/>
                     <field name="capacity_detail" nolabel="1"/>
                 </group>
-                <notebook invisible="not product_id or spec_mode">
-                    <page string="🔍 ¿De dónde viene cada costo?">
+                <notebook>
+                    <page string="🔍 ¿De dónde viene cada costo?"
+                          invisible="not product_id or spec_mode">
                         <field name="explicacion_html" nolabel="1" readonly="1"/>
+                    </page>
+                    <page string="💲 ¿A cuánto lo vendo hoy?"
+                          invisible="not product_id or spec_mode">
+                        <field name="comparativa_html" nolabel="1" readonly="1"/>
+                    </page>
+                    <page string="📖 Glosario">
+                        <field name="glosario_html" nolabel="1" readonly="1"/>
                     </page>
                 </notebook>
                 <div class="text-muted" invisible="not factores_info">
@@ -322,6 +368,15 @@
                          invisible="semaforo != 'verde'">
                         🟢 <b>Cubre el costo total</b> + margen.
                     </div>
+                    <div class="alert alert-light" role="alert"
+                         style="font-size:12px;">
+                        Todos los <b>costos y precios guardados están en MXN</b>.
+                        <span invisible="not es_divisa">La cotización se capturó
+                        en divisa: los campos «(divisa)» usan el TC guardado
+                        (<field name="fx_rate" readonly="1" class="oe_inline"/>
+                        MXN por 1).</span>
+                        Cada término está definido en la pestaña «📖 Glosario».
+                    </div>
                     <group>
                         <group string="Qué se cotizó">
                             <field name="partner_id"/>
@@ -335,39 +390,43 @@
                             <field name="uom_name"/>
                             <field name="fx_rate"/>
                         </group>
-                        <group string="Costo por capa ($/u)">
-                            <field name="mp_unit"/>
-                            <field name="energia_unit"/>
-                            <field name="costo_variable"/>
-                            <field name="fab_unit"/>
-                            <field name="costo_absorbido_sin_op"/>
+                        <group string="1 · Costo de producirlo ($/u, todo MXN)">
+                            <field name="mp_unit" string="Materia prima $/u MXN"/>
+                            <field name="energia_unit" string="+ Energía $/u MXN"/>
+                            <field name="costo_variable"
+                                   string="= Costo variable $/u MXN"
+                                   class="fw-bold"/>
+                            <field name="fab_unit" string="+ Fabricación $/u MXN"/>
+                            <field name="costo_absorbido_sin_op"
+                                   string="= Costo de producción $/u MXN"/>
                             <field name="op_pct"/>
                         </group>
                     </group>
                     <group>
-                        <group string="Precios (MXN y divisa)">
+                        <group string="2 · Precios de referencia (MXN y divisa)">
                             <field name="es_divisa" invisible="1"/>
                             <field name="precio_sugerido_divisa"
                                    class="fw-bold" invisible="not es_divisa"/>
-                            <field name="precio_sugerido"/>
-                            <field name="piso_ocioso_divisa"
-                                   invisible="not es_divisa"/>
-                            <field name="piso_ocioso"/>
+                            <field name="precio_sugerido" class="fw-bold"/>
                             <field name="piso_lleno_divisa"
                                    invisible="not es_divisa"/>
                             <field name="piso_lleno"/>
+                            <field name="piso_ocioso_divisa"
+                                   invisible="not es_divisa"/>
+                            <field name="piso_ocioso"/>
                             <field name="target_margin"/>
                             <field name="precio_objetivo"/>
                         </group>
-                        <group string="Márgenes y contribución">
-                            <field name="margen_bruto_pct"/>
-                            <field name="margen_neto_pct"/>
+                        <group string="3 · Márgenes al precio evaluado">
                             <field name="margen_contribucion"/>
                             <field name="margen_contribucion_pct"/>
+                            <field name="margen_bruto_pct"/>
+                            <field name="margen_neto_pct"/>
                             <field name="contrib_hora_maquina"/>
+                            <field name="precio_vs_piso_pct"/>
                         </group>
                     </group>
-                    <group string="Capacidad">
+                    <group string="Capacidad: ¿cabe este volumen en la planta?">
                         <field name="capacity_ok"/>
                         <field name="capacity_detail"/>
                     </group>
@@ -390,6 +449,13 @@
                     <notebook>
                         <page string="🔍 Desglose explicado (foto al cotizar)">
                             <field name="desglose_html" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="💲 A cuánto lo vendía (foto al cotizar)"
+                              invisible="not comparativa_html">
+                            <field name="comparativa_html" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="📖 Glosario">
+                            <field name="glosario_html" nolabel="1" readonly="1"/>
                         </page>
                     </notebook>
                 </sheet>
