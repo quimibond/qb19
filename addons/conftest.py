@@ -59,5 +59,11 @@ def _stub_odoo():
         if not hasattr(odoo_exc, exc):
             setattr(odoo_exc, exc, type(exc, (Exception,), {}))
 
+    # odoo.tools — helpers puros que los addons importan a nivel de módulo
+    odoo_tools = sys.modules['odoo.tools']
+    if not hasattr(odoo_tools, 'html_escape'):
+        import html as _html
+        odoo_tools.html_escape = _html.escape
+
 
 _stub_odoo()

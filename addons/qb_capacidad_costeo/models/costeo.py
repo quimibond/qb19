@@ -30,6 +30,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
+from odoo.tools import html_escape
 
 from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
 
@@ -745,6 +746,284 @@ class QbCostoProducto(models.Model):
         if not by_month:
             return 0.0, 0, months
         return sum(by_month) / len(by_month), len(by_month), months
+
+    @api.model
+    def sales_by_customer(self, product, months=12):
+        """¿A cuánto se vende HOY este producto, cliente por cliente?
+
+        Devuelve filas ordenadas por venta:
+        {partner (res.partner), qty, qty_mes, meses, ultima, revenue_mxn,
+         precio_mxn, currency (nombre si facturó en divisa), precio_divisa}
+
+        Precio MXN desde aml.balance (moneda de la compañía): un cliente
+        facturado en USD sale con su precio real en pesos, no con el número
+        en dólares crudo. Dedup del triplete como en todo el módulo.
+        """
+        date_from = fields.Date.today() - relativedelta(months=months)
+        self.env.cr.execute("""
+            WITH lines AS (
+                SELECT aml.move_id, aml.quantity, aml.price_subtotal,
+                       aml.balance, am.move_type, am.invoice_date,
+                       am.commercial_partner_id, am.currency_id
+                FROM account_move_line aml
+                JOIN account_move am ON am.id = aml.move_id
+                WHERE am.move_type IN ('out_invoice', 'out_refund')
+                  AND am.state = 'posted'
+                  AND aml.display_type = 'product'
+                  AND aml.product_id = %s
+                  AND am.invoice_date >= %s
+                  AND aml.company_id = %s
+            ),
+            qty_dedup AS (
+                SELECT DISTINCT ON (move_id, ABS(quantity))
+                       move_id, commercial_partner_id, invoice_date,
+                       CASE WHEN move_type = 'out_refund'
+                            THEN -quantity ELSE quantity END AS qty
+                FROM lines
+                ORDER BY move_id, ABS(quantity)
+            ),
+            qty_agg AS (
+                SELECT commercial_partner_id,
+                       SUM(qty) AS qty,
+                       COUNT(DISTINCT date_trunc('month', invoice_date)) AS meses,
+                       MAX(invoice_date) AS ultima
+                FROM qty_dedup GROUP BY 1
+            ),
+            rev AS (
+                SELECT commercial_partner_id,
+                       SUM(-balance) AS revenue_mxn,
+                       SUM(CASE WHEN move_type = 'out_refund'
+                                THEN -price_subtotal
+                                ELSE price_subtotal END) AS revenue_doc,
+                       MIN(currency_id) AS cur_min,
+                       MAX(currency_id) AS cur_max
+                FROM lines GROUP BY 1
+            )
+            SELECT q.commercial_partner_id, q.qty, q.meses, q.ultima,
+                   r.revenue_mxn, r.revenue_doc, r.cur_min, r.cur_max
+            FROM qty_agg q
+            JOIN rev r USING (commercial_partner_id)
+            ORDER BY r.revenue_mxn DESC
+        """, (product.id, date_from, self.env.company.id))
+        company_cur = self.env.company.currency_id
+        rows = []
+        for pid, qty, meses, ultima, rev_mxn, rev_doc, cmin, cmax in \
+                self.env.cr.fetchall():
+            qty = qty or 0.0
+            currency = None
+            precio_divisa = 0.0
+            if cmin and cmin == cmax and cmin != company_cur.id:
+                currency = self.env['res.currency'].browse(cmin).name
+                precio_divisa = (rev_doc or 0.0) / qty if qty else 0.0
+            rows.append({
+                'partner': self.env['res.partner'].browse(pid),
+                'qty': qty,
+                'qty_mes': qty / meses if meses else 0.0,
+                'meses': meses or 0,
+                'ultima': ultima,
+                'revenue_mxn': rev_mxn or 0.0,
+                'precio_mxn': (rev_mxn or 0.0) / qty if qty else 0.0,
+                'currency': currency,
+                'precio_divisa': precio_divisa,
+            })
+        return rows
+
+    @api.model
+    def related_presentations(self, product):
+        """Otras presentaciones/variantes del MISMO artículo, por nomenclatura:
+
+        - Prefijo 'I' = el mismo tejido vendido en KILOS
+          (WJ038Q22JNT160 ↔ IWJ038Q22JNT160).
+        - Sufijo ' I' = versión IMPORTADA del mismo artículo.
+
+        Devuelve [(product, etiqueta)]. Solo empareja si la referencia
+        hermana existe tal cual — sin adivinar.
+        """
+        Product = self.env['product.product']
+        ref = (product.default_code or '').strip()
+        if not ref:
+            return []
+        seen = {product.id}
+        out = []
+
+        def add(code, label):
+            if not code:
+                return
+            for p in Product.search([('default_code', '=', code),
+                                     ('id', 'not in', list(seen))]):
+                seen.add(p.id)
+                out.append((p, label))
+
+        if ref.endswith(' I'):
+            base = ref[:-2].strip()
+            add(base, 'Gemelo nacional (mismo artículo, fabricado aquí)')
+        else:
+            base = ref
+            add(base + ' I', 'Versión importada del mismo artículo')
+        if base.startswith('I'):
+            add(base[1:], 'El mismo artículo vendido en METROS')
+        else:
+            add('I' + base, 'El mismo artículo vendido en KILOS')
+        return out
+
+    @api.model
+    def comparativa_html(self, product, factores=None, partner=None,
+                         max_clientes=10):
+        """La comparativa que pide dirección al cotizar: ¿a cuánto vendo YA
+        este producto a otros clientes, y a cuánto sus otras presentaciones
+        (metros vs kilos, nacional vs importado) — y qué margen deja cada
+        una a su precio de venta actual?
+
+        Márgenes evaluados con el costo VIGENTE (factores de hoy), no el del
+        mes en que se facturó: la pregunta es "si hoy vendo a ese precio,
+        ¿qué gano?". `partner` (commercial) resalta al cliente cotizado.
+        """
+        if factores is None:
+            factores = self.env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1)
+        if not factores:
+            return False
+        emoji = {'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢', False: ''}
+
+        def margenes(q, precio):
+            """(contribución %, neto %, semáforo) al precio dado, MXN."""
+            if not precio:
+                return 0.0, 0.0, False
+            contrib = 100.0 * (precio - q['variable']) / precio
+            neto = (100.0 * (precio - q['variable'] - q['fab']) / precio
+                    - 100.0 * q['op_pct'])
+            return contrib, neto, self.semaforo_for(
+                precio, q['piso_ocioso'], q['piso_lleno'])
+
+        q_prod = self.quote_product(product, factores)
+        uom = product.uom_id.name or 'u'
+
+        # ---- A. Por cliente ----
+        rows = self.sales_by_customer(product)
+        html = (
+            '<h5>💲 ¿A cuánto vendo HOY este producto? '
+            '<span style="font-weight:normal;">(últimos 12 meses — precios '
+            'promedio realmente facturados, en MXN)</span></h5>')
+        if not rows:
+            html += ('<p style="font-size:12px;">Sin ventas de este producto '
+                     'en los últimos 12 meses: no hay precio de referencia '
+                     'de otros clientes.</p>')
+        else:
+            html += (
+                '<p style="font-size:12px;" class="text-muted">Márgenes '
+                'evaluados con el costo VIGENTE: «si hoy le vendo a ese '
+                'precio, ¿qué gano?». Contribución = (precio − costo '
+                'variable) ÷ precio; neto = después de fabricación y '
+                'operación.</p>'
+                '<table class="table table-sm" style="font-size:12px;">'
+                '<thead><tr><th>Cliente</th>'
+                '<th class="text-end">Meses c/compra</th>'
+                '<th class="text-end">Vol. prom/mes</th>'
+                '<th class="text-end">Precio prom $/%s MXN</th>'
+                '<th class="text-end">Contribución %%</th>'
+                '<th class="text-end">Margen neto %%</th>'
+                '<th>🚦</th></tr></thead><tbody>' % html_escape(uom))
+            partner_id = partner.id if partner else None
+            resto = rows[max_clientes:]
+            for r in rows[:max_clientes]:
+                contrib, neto, sem = margenes(q_prod, r['precio_mxn'])
+                es_actual = r['partner'].id == partner_id
+                divisa = (' <span class="text-muted">(facturado en %s: '
+                          '%.2f %s/%s)</span>'
+                          % (r['currency'], r['precio_divisa'],
+                             r['currency'], html_escape(uom))
+                          if r['currency'] else '')
+                html += (
+                    '<tr%s><td>%s%s</td><td class="text-end">%s</td>'
+                    '<td class="text-end">%s</td>'
+                    '<td class="text-end">$%.2f%s</td>'
+                    '<td class="text-end">%.1f%%</td>'
+                    '<td class="text-end">%.1f%%</td><td>%s</td></tr>'
+                    % (' style="background:#fff3cd;font-weight:bold;"'
+                       if es_actual else '',
+                       html_escape(r['partner'].name or '?'),
+                       ' ← este cliente' if es_actual else '',
+                       r['meses'], f"{r['qty_mes']:,.0f}",
+                       r['precio_mxn'], divisa, contrib, neto,
+                       emoji.get(sem, '')))
+            if resto:
+                qty_r = sum(r['qty'] for r in resto)
+                rev_r = sum(r['revenue_mxn'] for r in resto)
+                precio_r = rev_r / qty_r if qty_r else 0.0
+                contrib, neto, sem = margenes(q_prod, precio_r)
+                html += (
+                    '<tr class="text-muted"><td>Otros (%s clientes)</td>'
+                    '<td class="text-end">—</td><td class="text-end">%s</td>'
+                    '<td class="text-end">$%.2f</td>'
+                    '<td class="text-end">%.1f%%</td>'
+                    '<td class="text-end">%.1f%%</td><td>%s</td></tr>'
+                    % (len(resto), f'{qty_r / 12.0:,.0f}', precio_r,
+                       contrib, neto, emoji.get(sem, '')))
+            html += '</tbody></table>'
+
+        # ---- B. Otras presentaciones del mismo artículo ----
+        variantes = self.related_presentations(product)
+        if variantes:
+            Peso = self.env['qb.producto.peso']
+            html += (
+                '<h5>⚖ El mismo artículo en otras presentaciones</h5>'
+                '<p style="font-size:12px;" class="text-muted">La versión '
+                'con prefijo «I» es el MISMO tejido vendido por peso (kg); '
+                'la de sufijo « I» es la versión importada. Para comparar '
+                'peras con peras, el precio por kg se muestra también como '
+                'su equivalente por metro. Cada margen está evaluado al '
+                'precio de venta actual de ESA presentación.</p>'
+                '<table class="table table-sm" style="font-size:12px;">'
+                '<thead><tr><th>Referencia</th><th>Relación</th>'
+                '<th>Se vende en</th>'
+                '<th class="text-end">Precio prom 12m (MXN)</th>'
+                '<th class="text-end">Equivalente</th>'
+                '<th class="text-end">Contribución %</th>'
+                '<th class="text-end">Margen neto %</th>'
+                '<th>🚦</th></tr></thead><tbody>')
+            for p, label in [(product, 'La que estás cotizando')] + variantes:
+                qq = q_prod if p == product \
+                    else self.quote_product(p, factores)
+                r_all = self.sales_by_customer(p)
+                qty_t = sum(r['qty'] for r in r_all)
+                rev_t = sum(r['revenue_mxn'] for r in r_all)
+                precio = rev_t / qty_t if qty_t else 0.0
+                p_uom = (p.uom_id.name or 'u')
+                equiv = '—'
+                if precio and p_uom.lower() in KG_UOM_NAMES:
+                    m_per_kg = Peso.resolve_m_per_kg(p)
+                    if m_per_kg:
+                        equiv = ('≈ $%.2f/m (1 kg ≈ %.1f m)'
+                                 % (precio / m_per_kg, m_per_kg))
+                if precio:
+                    contrib, neto, sem = margenes(qq, precio)
+                    celdas = (
+                        '<td class="text-end">$%.2f / %s</td>'
+                        '<td class="text-end">%s</td>'
+                        '<td class="text-end">%.1f%%</td>'
+                        '<td class="text-end">%.1f%%</td><td>%s</td>'
+                        % (precio, html_escape(p_uom), equiv, contrib,
+                           neto, emoji.get(sem, '')))
+                else:
+                    celdas = (
+                        '<td class="text-end text-muted">sin ventas 12m '
+                        '(sugerido: $%.2f)</td>'
+                        '<td class="text-end">—</td>'
+                        '<td class="text-end">—</td>'
+                        '<td class="text-end">—</td><td></td>'
+                        % (qq['precio_sugerido'] if qq else 0.0))
+                html += (
+                    '<tr%s><td>%s</td><td style="font-size:11px;">%s</td>'
+                    '<td>%s</td>%s</tr>'
+                    % (' class="fw-bold"' if p == product else '',
+                       html_escape(p.default_code or p.name),
+                       html_escape(label), html_escape(p_uom), celdas))
+            html += '</tbody></table>'
+        else:
+            html += ('<p style="font-size:12px;" class="text-muted">Sin '
+                     'otras presentaciones detectadas (kg/metros o '
+                     'importado) para esta referencia.</p>')
+        return html
 
     @api.model
     def to_mxn_rate(self, currency, date=None):
