@@ -511,6 +511,58 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(
             cot2.precio_cliente_mxn, cot2.piso_lleno, places=4)
 
+    def test_escalera_volumen(self):
+        """La escalera estandariza el descuento por volumen con sus dos
+        reglas duras: nunca debajo del piso lleno y contribución total
+        $/mes que nunca baja. Se guarda como tramos en la cotización y el
+        PDF comercial solo ofrece los que caben en capacidad."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 11, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'precio_objetivo': 100.0,
+        })
+        tramos = wiz._escalera_tramos(wiz._calc())
+        self.assertEqual([t['volumen'] for t in tramos],
+                         [500.0, 1000.0, 2000.0, 4000.0])
+        base = next(t for t in tramos if t['es_base'])
+        self.assertAlmostEqual(base['precio_mxn'], 100.0, places=2)
+        precios = [t['precio_mxn'] for t in tramos]
+        # ½× cobra premium; de ahí en adelante el precio no sube
+        self.assertGreater(precios[0], precios[1])
+        self.assertGreaterEqual(precios[1], precios[2])
+        self.assertGreaterEqual(precios[2], precios[3])
+        # 3% por duplicación (default del seed no existe en test DB → 0.03)
+        self.assertAlmostEqual(precios[2], 97.0, places=2)
+        self.assertAlmostEqual(precios[3], 94.0, places=2)
+        piso = wiz.piso_lleno
+        contribs = [t['contrib_total_mes'] for t in tramos]
+        for t in tramos:
+            self.assertGreaterEqual(t['precio_mxn'], round(piso, 2) - 0.01,
+                                    'ningún tramo debajo del piso lleno')
+        self.assertEqual(contribs, sorted(contribs),
+                         'la contribución total nunca baja')
+        self.assertTrue(wiz.escalera_html)
+        self.assertIn('duplicación', wiz.escalera_html)
+        self.assertIn('cotizado', wiz.escalera_html)
+        # Guardar congela los tramos en la cotización
+        cot = self.env['qb.cotizacion'].browse(
+            wiz.action_cotizar()['res_id'])
+        self.assertEqual(len(cot.tramo_ids), 4)
+        self.assertEqual(cot.tramo_ids.filtered('es_base').volumen, 1000.0)
+        # Piso duro: objetivo AL piso lleno → los tramos ≥1× no descuentan
+        wiz2 = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+        })  # sin objetivo ni ventas: base = piso lleno
+        tramos2 = wiz2._escalera_tramos(wiz2._calc())
+        for t in tramos2:
+            if t['multiplo'] >= 1:
+                self.assertAlmostEqual(
+                    t['precio_mxn'], round(wiz2.piso_lleno, 2), places=2)
+
     def test_recompute_invariante_costo_total(self):
         """costo_absorbido = MP + energía + fab + op, exacto por producto."""
         period = date.today().replace(day=1)

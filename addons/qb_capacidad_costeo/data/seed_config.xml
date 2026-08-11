@@ -26,6 +26,16 @@
             <field name="value">0.30</field>
             <field name="descripcion">Margen meta default del cotizador (fracción sobre venta).</field>
         </record>
+        <record id="factor_escalera_desc_doble" model="qb.costeo.factor.config">
+            <field name="key">escalera_desc_doble</field>
+            <field name="value">0.03</field>
+            <field name="descripcion">Escalera de volumen: descuento (fracción) por cada DUPLICACIÓN del volumen. 0.03 = 3% por doblar. El precio nunca baja del piso a planta llena y la contribución total nunca baja.</field>
+        </record>
+        <record id="factor_escalera_multiplos" model="qb.costeo.factor.config">
+            <field name="key">escalera_multiplos</field>
+            <field name="value_text">0.5,1,2,4</field>
+            <field name="descripcion">Escalera de volumen: múltiplos del volumen cotizado que forman los tramos (separados por coma).</field>
+        </record>
         <record id="factor_smoothing_months" model="qb.costeo.factor.config">
             <field name="key">smoothing_months</field>
             <field name="value">12</field>

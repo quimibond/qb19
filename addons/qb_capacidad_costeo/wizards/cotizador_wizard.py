@@ -7,6 +7,8 @@ margen — sensación de hoja de cálculo, pero con datos que entran solos de
 Odoo (último costo de BOM, factores del GL, horas-máquina libres). El botón
 solo GUARDA el escenario elegido como qb.cotizacion con sus supuestos.
 """
+from math import log2
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
@@ -185,6 +187,13 @@ class QbCotizadorWizard(models.TransientModel):
             except Exception as exc:
                 wiz.explicacion_html = '<p>Error al explicar: %s</p>' % exc
 
+    escalera_html = fields.Html(
+        compute='_compute_cotizacion', sanitize=False,
+        string='Escalera de volumen',
+        help='Precios estandarizados por tramo de volumen (½×, 1×, 2×, 4× '
+             'del cotizado): descuento fijo por cada duplicación, nunca '
+             'debajo del piso a planta llena, y la contribución total del '
+             'negocio nunca baja.')
     comparativa_html = fields.Html(
         compute='_compute_comparativa', sanitize=False,
         string='¿A cuánto lo vendo hoy?',
@@ -424,6 +433,7 @@ class QbCotizadorWizard(models.TransientModel):
         return {
             'semaforo': semaforo, 'fx': fx,
             'name': name, 'bucket': q['bucket'], 'centros': centros,
+            'is_kg': q['is_kg'],
             'factores': factores, 'kg': q['kg'], 'm_per_kg': q['m_per_kg'],
             'uom_name': uom_name, 'mp': q['mp'], 'energia': q['energia'],
             'fab': q['fab'], 'variable': q['variable'],
@@ -434,6 +444,141 @@ class QbCotizadorWizard(models.TransientModel):
             'contrib': contrib, 'contrib_hora': contrib_hora,
             'capacity_ok': capacity_ok, 'capacity_detail': capacity_detail,
         }
+
+    # ------------------------------------------------------------------
+    # Escalera de volumen: precios estandarizados por tramo
+    # ------------------------------------------------------------------
+    def _escalera_tramos(self, res):
+        """Tramos de precio por volumen, con las DOS reglas duras que hacen
+        defendible el descuento:
+
+        1. El precio de un tramo NUNCA baja del piso a planta llena (y si
+           el precio base ya está debajo, no se descuenta más).
+        2. La contribución total del negocio (contrib/u × volumen) NUNCA
+           baja al pasar a un tramo mayor — si el descuento la bajara, el
+           precio del tramo se ajusta hacia arriba hasta empatarla.
+
+        El descuento estándar es `escalera_desc_doble` por cada duplicación
+        del volumen (multiplicativo vía log2); los múltiplos vienen de
+        `escalera_multiplos`. Ambos editables en Configuración → Parámetros.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        if not self.volumen or not res or res.get('error'):
+            return []
+        desc = Config.get_param('escalera_desc_doble', 0.03)
+        try:
+            multiplos = sorted(float(x) for x in Config.get_param_text(
+                'escalera_multiplos', '0.5,1,2,4').split(',') if x.strip())
+        except ValueError:
+            multiplos = [0.5, 1.0, 2.0, 4.0]
+        base = res['precio_ref']
+        piso = min(res['piso_lleno'], base) if base else res['piso_lleno']
+        variable = res['variable']
+        fab = res['fab']
+        op = res['op_pct']
+        fx = res['fx'] if res['fx'] and res['fx'] != 1.0 else 0.0
+        tramos = []
+        prev_total = None
+        for m in multiplos:
+            if m <= 0:
+                continue
+            volumen = self.volumen * m
+            precio = base * (1.0 - desc * log2(m))
+            if m >= 1:
+                precio = max(precio, piso)
+            contrib_total = (precio - variable) * volumen
+            # Regla 2: la contribución total nunca baja
+            if prev_total is not None and contrib_total < prev_total:
+                precio = variable + prev_total / volumen
+                contrib_total = prev_total
+            precio = round(precio, 2)
+            contrib_total = (precio - variable) * volumen
+            prev_total = contrib_total
+            neto = (100.0 * (precio - variable - fab) / precio
+                    - 100.0 * op) if precio else 0.0
+            capacity_ok, _detail = self._check_capacity(
+                res['centros'], res['is_kg'], res['kg'], res['m_per_kg'],
+                volumen)
+            tramos.append({
+                'multiplo': m,
+                'volumen': volumen,
+                'es_base': m == 1.0,
+                'precio_mxn': precio,
+                'precio_divisa': round(precio / fx, 4) if fx else 0.0,
+                'margen_neto_pct': neto,
+                'contrib_total_mes': contrib_total,
+                'semaforo': self.env['qb.costo.producto'].semaforo_for(
+                    precio, res['piso_ocioso'], res['piso_lleno']),
+                'capacity_ok': capacity_ok,
+            })
+        return tramos
+
+    def _escalera_html_render(self, tramos, res):
+        """La escalera como tabla visual: tramos en COLUMNAS (se lee como
+        menú de opciones), precio grande, margen, contribución con barra
+        proporcional, capacidad y semáforo."""
+        if not tramos:
+            return ('<p class="text-muted">Captura el volumen mensual para '
+                    'generar la escalera de precios por volumen.</p>')
+        emoji = {'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢', False: ''}
+        uom = res['uom_name'] or 'u'
+        fx = res['fx'] if res['fx'] and res['fx'] != 1.0 else 0.0
+        divisa = self.currency_id.name if fx else ''
+        max_contrib = max(t['contrib_total_mes'] for t in tramos) or 1.0
+        desc = self.env['qb.costeo.factor.config'].get_param(
+            'escalera_desc_doble', 0.03)
+
+        def col(t, contenido, style=''):
+            extra = 'background:#eef7f0;' if t['es_base'] else ''
+            return '<td class="text-center" style="%s%s">%s</td>' % (
+                extra, style, contenido)
+
+        html = (
+            '<p style="font-size:12px;" class="text-muted">Estandarizado: '
+            '<b>%.1f%% de descuento por cada duplicación</b> del volumen. '
+            'El volumen justifica el precio menor porque absorbe mejor los '
+            'fijos y alarga las corridas (menos cambios de máquina, menos '
+            'merma). Dos reglas duras: el precio nunca baja del piso a '
+            'planta llena, y la contribución total $/mes nunca baja al '
+            'crecer el tramo.</p>'
+            '<table class="table table-sm" style="font-size:12px;">'
+            % (desc * 100.0))
+        # Fila 1: volumen
+        html += '<tr><th style="width:18%;">Volumen/mes</th>' + ''.join(
+            col(t, '<b>%s %s</b>%s' % (
+                f"{t['volumen']:,.0f}", uom,
+                '<br/><span style="font-size:10px;">← cotizado</span>'
+                if t['es_base'] else ''))
+            for t in tramos) + '</tr>'
+        # Fila 2: precio (grande)
+        html += '<tr><th>Precio $/u MXN</th>' + ''.join(
+            col(t, '<span style="font-size:16px;font-weight:bold;">$%.2f'
+                   '</span>' % t['precio_mxn'])
+            for t in tramos) + '</tr>'
+        if fx:
+            html += '<tr><th>Precio (%s)</th>' % divisa + ''.join(
+                col(t, '%.4f' % t['precio_divisa']) for t in tramos) + '</tr>'
+        # Fila 3: margen neto
+        html += '<tr><th>Margen neto %</th>' + ''.join(
+            col(t, '%.1f%%' % t['margen_neto_pct']) for t in tramos) + '</tr>'
+        # Fila 4: contribución total con barra proporcional
+        html += '<tr><th>Contribución $/mes</th>' + ''.join(
+            col(t, '$%s<div style="background:#4c9a6a;height:6px;'
+                   'width:%.0f%%;margin-top:2px;"></div>' % (
+                       f"{t['contrib_total_mes']:,.0f}",
+                       100.0 * t['contrib_total_mes'] / max_contrib))
+            for t in tramos) + '</tr>'
+        # Fila 5: capacidad + semáforo
+        html += '<tr><th>¿Cabe? · Semáforo</th>' + ''.join(
+            col(t, '%s · %s' % ('✔' if t['capacity_ok'] else '✘ NO',
+                                emoji.get(t['semaforo'], '')))
+            for t in tramos) + '</tr>'
+        html += '</table>'
+        if any(not t['capacity_ok'] for t in tramos):
+            html += ('<p style="font-size:11px;" class="text-muted">Los '
+                     'tramos que NO caben en capacidad no se ofrecen al '
+                     'cliente (el PDF comercial los omite).</p>')
+        return html
 
     @api.depends('product_id', 'spec_mode', 'spec_gramaje', 'spec_ancho',
                  'spec_bucket', 'spec_mp_unit', 'spec_centro_ids',
@@ -452,6 +597,7 @@ class QbCotizadorWizard(models.TransientModel):
             zero['semaforo'] = False
             zero['moneda_alerta'] = False
             zero['evaluado_info'] = False
+            zero['escalera_html'] = False
             try:
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
@@ -497,8 +643,14 @@ class QbCotizadorWizard(models.TransientModel):
                         '"Moneda de la cotización" a MXN.'
                         % (wiz.precio_objetivo, wiz.currency_id.name,
                            precio_ref))
+            try:
+                escalera = wiz._escalera_html_render(
+                    wiz._escalera_tramos(res), res)
+            except Exception as exc:
+                escalera = '<p>Error en la escalera: %s</p>' % exc
             wiz.update({
                 'moneda_alerta': moneda_alerta,
+                'escalera_html': escalera,
                 'precio_objetivo_mxn':
                     wiz.precio_objetivo * res['fx']
                     if wiz.precio_objetivo else 0.0,
@@ -607,6 +759,7 @@ class QbCotizadorWizard(models.TransientModel):
             'supuestos': supuestos,
             'desglose_html': self.explicacion_html or False,
             'comparativa_html': self.comparativa_html or False,
+            'tramo_ids': [(0, 0, t) for t in self._escalera_tramos(res)],
             'validez_hasta': fields.Date.today() + relativedelta(
                 days=int(self.env['qb.costeo.factor.config'].get_param(
                     'quote_validity_days', 15))),

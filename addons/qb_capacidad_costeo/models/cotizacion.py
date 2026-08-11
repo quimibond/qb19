@@ -176,6 +176,12 @@ class QbCotizacion(models.Model):
         string='Desglose explicado', sanitize=False,
         help='Foto del desglose de costos al momento de cotizar: BOM hoja '
              'por hoja con su última compra, peso, factores y fórmulas.')
+    tramo_ids = fields.One2many(
+        'qb.cotizacion.tramo', 'cotizacion_id',
+        string='Escalera de volumen',
+        help='Precios estandarizados por tramo de volumen: descuento fijo '
+             'por cada duplicación, nunca debajo del piso a planta llena y '
+             'con contribución total que nunca baja.')
     comparativa_html = fields.Html(
         string='Comparativa de precios', sanitize=False,
         help='Foto al cotizar: a cuánto se vendía este producto a otros '
@@ -330,3 +336,37 @@ class QbCotizacion(models.Model):
                 'default_composition_mode': 'comment',
             },
         }
+
+
+class QbCotizacionTramo(models.Model):
+    _name = 'qb.cotizacion.tramo'
+    _description = 'Tramo de la escalera de volumen de una cotización'
+    _order = 'volumen'
+
+    cotizacion_id = fields.Many2one(
+        'qb.cotizacion', required=True, ondelete='cascade', index=True)
+    multiplo = fields.Float(
+        string='× volumen cotizado',
+        help='0.5 = la mitad del volumen cotizado; 2 = el doble.')
+    volumen = fields.Float(string='Volumen/mes', digits=(16, 0))
+    es_base = fields.Boolean(
+        string='Cotizado',
+        help='El tramo del volumen realmente cotizado (múltiplo 1×).')
+    precio_mxn = fields.Float(string='Precio $/u MXN', digits=(16, 2))
+    precio_divisa = fields.Float(string='Precio (divisa)', digits=(16, 4))
+    margen_neto_pct = fields.Float(string='Margen neto %', digits=(16, 1))
+    contrib_total_mes = fields.Float(
+        string='Contribución $/mes MXN', digits=(16, 0),
+        help='(precio − costo variable) × volumen: el cheque total que ese '
+             'tramo aporta a los fijos cada mes. La regla de la escalera es '
+             'que NUNCA baje al crecer el volumen — si un descuento lo '
+             'bajara, el precio del tramo se ajusta hacia arriba.')
+    semaforo = fields.Selection([
+        ('rojo', 'Debajo del costo variable'),
+        ('ambar', 'Aporta a fijos'),
+        ('verde', 'Cubre costo total'),
+    ], string='Semáforo')
+    capacity_ok = fields.Boolean(
+        string='¿Cabe?',
+        help='Si ese volumen cabe en las horas libres de la planta. Al '
+             'cliente solo se le ofrecen tramos que sí caben.')
