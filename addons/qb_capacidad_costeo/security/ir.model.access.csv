@@ -49,3 +49,6 @@ access_qb_producto_ficha_mgr,qb.producto.ficha.mgr,model_qb_producto_ficha,mrp.g
 access_qb_producto_ficha_sys,qb.producto.ficha.sys,model_qb_producto_ficha,base.group_system,1,1,1,1
 access_qb_producto_ficha_sales,qb.producto.ficha.sales,model_qb_producto_ficha,sales_team.group_sale_salesman,1,1,1,0
 access_qb_cliente_rentab_user,qb.cliente.rentabilidad.user,model_qb_cliente_rentabilidad,base.group_user,1,0,0,0
+access_qb_cotizacion_tramo_user,qb.cotizacion.tramo.user,model_qb_cotizacion_tramo,base.group_user,1,1,1,0
+access_qb_cotizacion_tramo_mgr,qb.cotizacion.tramo.mgr,model_qb_cotizacion_tramo,mrp.group_mrp_manager,1,1,1,1
+access_qb_cotizacion_tramo_sys,qb.cotizacion.tramo.sys,model_qb_cotizacion_tramo,base.group_system,1,1,1,1

@@ -15,7 +15,7 @@
                         type="action" string="Cotizar costos"
                         class="btn-secondary"
                         help="Todas las líneas del pedido con su costo
-                              variable, pisos, precio sugerido y semáforo;
+                              variable, pisos, precio de mercado y semáforo;
                               corrige precios en lote o abre el detalle de
                               cualquier producto."/>
             </xpath>

@@ -664,17 +664,20 @@ class QbCostoProducto(models.Model):
     # wizards: individual y por orden completa)
     # ------------------------------------------------------------------
     @api.model
-    def quote_product(self, product, factores=None, target=None):
+    def quote_product(self, product, factores=None):
         """Costo por capa y precios de UN producto con los factores vigentes.
 
-        Fórmulas (op% y margen meta van SOBRE VENTA, por eso dividen):
+        Fórmulas (op% va SOBRE VENTA, por eso divide):
           variable        = MP + energía
           piso_ocioso     = variable
           piso_lleno      = (variable + fab) / (1 − op)
-          precio_sugerido = (variable + fab) / (1 − op − margen_meta)
+          precio_mercado  = promedio real facturado 12m (todos los clientes)
+
+        Sin "margen meta": el ancla para cotizar no es una aspiración — son
+        los pisos (debajo de qué no bajar) y el mercado (qué se está
+        logrando de verdad).
         """
         Peso = self.env['qb.producto.peso']
-        Config = self.env['qb.costeo.factor.config']
         if factores is None:
             factores = self.env['qb.costo.factores'].search(
                 [], order='period DESC', limit=1)
@@ -690,21 +693,27 @@ class QbCostoProducto(models.Model):
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
         variable = mp + energia
         op = factores.op_pct
-        if target is None:
-            target = Config.get_param('target_margin', 0.30)
         piso_lleno = (variable + fab) / (1.0 - op) if op < 1 else 0.0
-        denom = 1.0 - op - target
-        sugerido = (variable + fab) / denom if denom > 0 else 0.0
         hours = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
         return {
             'bucket': bucket, 'centros': centros, 'kg': kg,
             'm_per_kg': m_per_kg, 'is_kg': is_kg,
             'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
-            'op_pct': op, 'target': target,
+            'op_pct': op,
             'piso_ocioso': variable, 'piso_lleno': piso_lleno,
-            'precio_sugerido': sugerido, 'hours_per_unit': hours,
+            'precio_mercado': self.market_price(product),
+            'hours_per_unit': hours,
             'factores': factores,
         }
+
+    @api.model
+    def market_price(self, product, months=12):
+        """Precio promedio REAL al que se facturó el producto en la ventana
+        (todos los clientes, MXN, dedup del triplete). 0 = sin ventas."""
+        rows = self.sales_by_customer(product, months)
+        qty = sum(r['qty'] for r in rows)
+        rev = sum(r['revenue_mxn'] for r in rows)
+        return rev / qty if qty else 0.0
 
     @api.model
     def monthly_sales_volume(self, product, partner=None, months=12):
@@ -1007,11 +1016,11 @@ class QbCostoProducto(models.Model):
                 else:
                     celdas = (
                         '<td class="text-end text-muted">sin ventas 12m '
-                        '(sugerido: $%.2f)</td>'
+                        '(piso lleno: $%.2f)</td>'
                         '<td class="text-end">—</td>'
                         '<td class="text-end">—</td>'
                         '<td class="text-end">—</td><td></td>'
-                        % (qq['precio_sugerido'] if qq else 0.0))
+                        % (qq['piso_lleno'] if qq else 0.0))
                 html += (
                     '<tr%s><td>%s</td><td style="font-size:11px;">%s</td>'
                     '<td>%s</td>%s</tr>'
@@ -1185,14 +1194,17 @@ class QbCostoProducto(models.Model):
                f'{factores.ventas_pool_month:,.0f}', q['op_pct'] * 100))
 
         # ---- Resumen ----
+        mercado = q.get('precio_mercado', 0.0)
         html += (
             '<h5>= Costo completo</h5>'
             '<p style="font-size:12px;"><b>Variable</b> (MP + energía) = '
             '$%.2f → piso absoluto. <b>+ Fabricación</b> = $%.2f. '
-            '<b>+ Operación</b> → piso a planta llena $%.2f. Con margen '
-            'meta %.0f%%: <b>precio sugerido $%.2f MXN</b>.</p>'
+            '<b>+ Operación</b> → piso a planta llena <b>$%.2f MXN</b> '
+            '(margen cero cubriendo todo).%s</p>'
             % (q['variable'], q['variable'] + q['fab'], q['piso_lleno'],
-               q['target'] * 100, q['precio_sugerido']))
+               (' Referencia de mercado: hoy se vende en promedio a '
+                '<b>$%.2f MXN</b> (12m, todos los clientes).' % mercado)
+               if mercado else ''))
         return html
 
     @api.model
