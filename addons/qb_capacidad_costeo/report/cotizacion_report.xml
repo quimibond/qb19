@@ -142,6 +142,40 @@
                             bruto = después de fabricar · neto = después de TODO.
                         </p>
 
+                        <!-- Escalera de volumen: las opciones estandarizadas -->
+                        <t t-if="o.tramo_ids">
+                            <h5 style="margin-bottom:4px;">📶 Escalera de volumen (precios estandarizados)</h5>
+                            <table class="table table-sm" style="font-size:12px;">
+                                <thead>
+                                    <tr><th class="text-end">Volumen/mes</th>
+                                        <th class="text-end">Precio $/u MXN</th>
+                                        <th t-if="o.es_divisa" class="text-end">Precio (<span t-esc="o.currency_id.name or 'divisa'"/>)</th>
+                                        <th class="text-end">Margen neto %</th>
+                                        <th class="text-end">Contribución $/mes</th>
+                                        <th>🚦</th><th>¿Cabe?</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.tramo_ids" t-as="t"
+                                        t-att-style="'background:#eef7f0;font-weight:bold;' if t.es_base else ''">
+                                        <td class="text-end"><span t-esc="'{:,.0f}'.format(t.volumen)"/> <span t-esc="o.uom_name or 'u'"/>
+                                            <t t-if="t.es_base"> ← cotizado</t></td>
+                                        <td class="text-end">$<span t-esc="'{:,.2f}'.format(t.precio_mxn)"/></td>
+                                        <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(t.precio_divisa)"/></td>
+                                        <td class="text-end"><span t-esc="'{:.1f}'.format(t.margen_neto_pct)"/>%</td>
+                                        <td class="text-end">$<span t-esc="'{:,.0f}'.format(t.contrib_total_mes)"/></td>
+                                        <td><span t-esc="{'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢'}.get(t.semaforo, '')"/></td>
+                                        <td><span t-esc="'✔' if t.capacity_ok else '✘ NO'"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p style="font-size:10px; color:#888; margin-top:-6px;">
+                                Descuento estándar por duplicación de volumen; el precio
+                                nunca baja del piso a planta llena y la contribución
+                                $/mes nunca baja al crecer el tramo. Al cliente solo se
+                                le ofrecen tramos que caben en capacidad.
+                            </p>
+                        </t>
+
                         <!-- Capacidad: una línea si cabe; detalle solo si NO cabe -->
                         <p style="font-size:12px; margin-bottom:2px;">
                             <b>Capacidad:</b>
@@ -251,9 +285,41 @@
                             </tbody>
                         </table>
 
+                        <t t-set="tramos_ok" t-value="o.tramo_ids.filtered(lambda t: t.capacity_ok)"/>
+                        <t t-if="len(tramos_ok) &gt; 1">
+                            <h5>Precios por volumen</h5>
+                            <p style="font-size:12px;">A mayor volumen mensual
+                                sostenido, mejor precio unitario:</p>
+                            <table class="table table-sm" style="font-size:13px; width:60%;">
+                                <thead>
+                                    <tr><th class="text-end">Volumen mensual</th>
+                                        <th class="text-end">Precio unitario</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="tramos_ok" t-as="t"
+                                        t-att-style="'font-weight:bold;' if t.es_base else ''">
+                                        <td class="text-end"><span t-esc="'{:,.0f}'.format(t.volumen)"/>
+                                            <span t-esc="o.uom_name or 'u'"/>/mes</td>
+                                        <td class="text-end">
+                                            <t t-if="o.es_divisa">
+                                                <span t-esc="'{:,.4f}'.format(t.precio_divisa)"/>
+                                                <span t-esc="o.currency_id.name or ''"/>
+                                            </t>
+                                            <t t-else="">
+                                                $<span t-esc="'{:,.2f}'.format(t.precio_mxn)"/> MXN
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+
                         <h5>Condiciones</h5>
                         <ul style="font-size:12px;">
                             <li>Precio unitario más IVA.</li>
+                            <li t-if="len(tramos_ok) &gt; 1">Los precios por volumen
+                                aplican sobre volumen mensual sostenido; el tramo se
+                                revisa contra el volumen real facturado.</li>
                             <li t-if="o.validez_hasta">Cotización válida hasta el
                                 <span t-field="o.validez_hasta"/>; después de esa fecha
                                 está sujeta a reconfirmación.</li>

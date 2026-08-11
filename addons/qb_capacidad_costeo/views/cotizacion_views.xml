@@ -152,6 +152,10 @@
                     <field name="evaluado_info" readonly="1" nolabel="1"/>
                     Dudas con un término → pestaña «📖 Glosario».
                 </div>
+                <separator string="📶 Escalera de volumen — opciones estandarizadas"
+                           invisible="not product_id and not spec_mode"/>
+                <field name="escalera_html" nolabel="1" readonly="1"
+                       invisible="not product_id and not spec_mode"/>
                 <group string="Capacidad: ¿cabe este volumen en la planta?"
                        invisible="not product_id and not spec_mode">
                     <field name="capacity_ok"/>
@@ -420,6 +424,26 @@
                             <field name="contrib_hora_maquina"/>
                             <field name="precio_vs_piso_pct"/>
                         </group>
+                    </group>
+                    <group string="📶 Escalera de volumen (foto al cotizar)"
+                           invisible="not tramo_ids">
+                        <field name="tramo_ids" nolabel="1" readonly="1" colspan="2">
+                            <list decoration-success="es_base"
+                                  decoration-muted="not capacity_ok">
+                                <field name="volumen"/>
+                                <field name="multiplo" optional="hide"/>
+                                <field name="es_base" string="Cotizado"/>
+                                <field name="precio_mxn"/>
+                                <field name="precio_divisa" optional="show"/>
+                                <field name="margen_neto_pct"/>
+                                <field name="contrib_total_mes"/>
+                                <field name="semaforo" widget="badge"
+                                       decoration-danger="semaforo == 'rojo'"
+                                       decoration-warning="semaforo == 'ambar'"
+                                       decoration-success="semaforo == 'verde'"/>
+                                <field name="capacity_ok"/>
+                            </list>
+                        </field>
                     </group>
                     <group string="Capacidad: ¿cabe este volumen en la planta?">
                         <field name="capacity_ok"/>

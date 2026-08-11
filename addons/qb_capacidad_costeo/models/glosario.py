@@ -56,6 +56,14 @@ GLOSARIO_HTML = """
         <td>El precio sobre el que se calculan semáforo y márgenes: el
         objetivo si se capturó; si no, el de mercado; si tampoco hay ventas,
         el piso a planta llena.</td></tr>
+    <tr><td><b>Escalera de volumen</b></td>
+        <td>Precios estandarizados por tramo (½×, 1×, 2×, 4× del volumen
+        cotizado) con un descuento fijo por cada duplicación. El volumen
+        justifica el precio menor porque absorbe mejor los costos fijos y
+        alarga las corridas (menos cambios de máquina, menos merma). Dos
+        reglas duras: el precio nunca baja del piso a planta llena, y la
+        contribución total $/mes nunca baja al crecer el tramo. Al cliente
+        solo se le ofrecen tramos que caben en capacidad.</td></tr>
     <tr><td><b>Piso con capacidad ociosa</b></td>
         <td>= costo variable. Si hay máquinas paradas, cualquier precio
         arriba de esto aporta algo para pagar los fijos (que se pagan
