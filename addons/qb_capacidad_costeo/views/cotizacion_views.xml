@@ -27,14 +27,11 @@
                         <field name="regularidad_info" readonly="1" nolabel="0"/>
                         <field name="currency_id" options="{'no_create': True}"
                                help="La moneda en la que capturas el precio objetivo y en la que se muestran los precios al cliente. Los COSTOS del modelo siempre se calculan en MXN."/>
-                        <label for="precio_objetivo"/>
-                        <div class="o_row">
-                            <field name="precio_objetivo" class="oe_inline"/>
-                            <field name="currency_id" readonly="1" nolabel="1"
-                                   class="oe_inline text-muted"
-                                   options="{'no_open': True}"/>
-                        </div>
+                        <field name="precio_objetivo" widget="monetary"
+                               options="{'currency_field': 'currency_id'}"/>
                         <field name="precio_objetivo_mxn" readonly="1"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                invisible="es_mxn or not precio_objetivo"/>
                         <field name="es_mxn" invisible="1"/>
                         <field name="fx_rate" invisible="es_mxn"/>
@@ -45,6 +42,7 @@
                     💱 <field name="moneda_info" readonly="1" class="oe_inline"/>
                 </div>
                 <field name="moneda_info" invisible="1"/>
+                <field name="company_currency_id" invisible="1"/>
                 <!-- Guardián anti-error de moneda: antes que el semáforo -->
                 <div class="alert alert-warning" role="alert"
                      invisible="not moneda_alerta">
@@ -106,11 +104,15 @@
                 <group string="Para cotizar"
                        invisible="not product_id and not spec_mode">
                     <field name="precio_sugerido"
-                           string="⭐ Precio sugerido $/u MXN"
+                           string="⭐ Precio sugerido / u"
+                           widget="monetary"
+                           options="{'currency_field': 'company_currency_id'}"
                            class="fw-bold text-success"
                            help="El precio con el que arrancar: cubre el costo completo y deja tu margen meta, sin bajar del piso ni del mercado."/>
                     <field name="piso_lleno"
-                           string="Costo total (piso a planta llena) $/u MXN"
+                           string="Costo total (piso a planta llena) / u"
+                           widget="monetary"
+                           options="{'currency_field': 'company_currency_id'}"
                            help="El costo COMPLETO recuperado (margen cero). Debajo de esto, con la planta llena, pierdes."/>
                     <field name="margen_neto_pct"
                            string="Margen neto % (al precio evaluado)"
@@ -124,20 +126,24 @@
                        invisible="not product_id and not spec_mode"/>
                 <!-- Resultados EN VIVO: se recalculan al cambiar cualquier input -->
                 <group invisible="(not product_id and not spec_mode) or not ver_detalle">
-                    <group string="1 · ¿Cuánto cuesta producirlo? ($/u, todo MXN)">
+                    <group string="1 · ¿Cuánto cuesta producirlo? (por unidad)">
                         <field name="product_bucket"/>
                         <field name="kg_per_unit"/>
-                        <field name="mp_unit"
-                               string="Materia prima $/u MXN"
+                        <field name="mp_unit" string="Materia prima / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Receta (BOM) al último costo de compra de cada componente."/>
-                        <field name="energia_unit"
-                               string="+ Energía $/u MXN"
+                        <field name="energia_unit" string="+ Energía / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Luz/gas/agua variables: $/kg × peso."/>
-                        <field name="costo_variable"
-                               string="= Costo variable $/u MXN" class="fw-bold"
+                        <field name="costo_variable" string="= Costo variable / u"
+                               class="fw-bold" widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="MP + energía: lo que sale de la bolsa por cada unidad extra. Piso absoluto."/>
-                        <field name="fab_unit"
-                               string="+ Fabricación $/u MXN"
+                        <field name="fab_unit" string="+ Fabricación / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Parte del gasto fijo de fábrica (sueldos, renta, depreciación, arrendamiento de maquinaria) que le toca a esta unidad."/>
                         <field name="op_pct_display"
                                string="+ Operación % s/venta"
@@ -145,28 +151,37 @@
                     </group>
                     <group string="2 · ¿A cuánto venderlo? (referencias reales)">
                         <field name="precio_mercado_divisa" class="fw-bold"
-                               invisible="es_mxn"
+                               invisible="es_mxn" widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
                                string="Precio de mercado (divisa)"/>
-                        <field name="precio_mercado"
-                               string="Precio de mercado $/u MXN"/>
+                        <field name="precio_mercado" string="Precio de mercado / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"/>
                         <field name="piso_lleno_divisa" invisible="es_mxn"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
                                string="Piso a planta llena (divisa)"/>
                         <field name="piso_ocioso_divisa" invisible="es_mxn"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
                                string="Piso con ociosidad (divisa)"/>
-                        <field name="piso_ocioso"
-                               string="Piso con ociosidad $/u MXN"
+                        <field name="piso_ocioso" string="Piso con ociosidad / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="= costo variable. Con máquinas paradas, arriba de esto ya aporta a fijos. NUNCA vender debajo."/>
                     </group>
                     <group string="3 · ¿Qué gano al precio evaluado?">
-                        <field name="margen_contribucion"
-                               string="Contribución $/u MXN"
+                        <field name="margen_contribucion" string="Contribución / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Precio − costo variable: lo que aporta para pagar los fijos."/>
                         <field name="margen_contribucion_pct"
                                string="Contribución %"/>
                         <field name="margen_bruto_pct"
                                help="(precio − costo de producción) ÷ precio. Antes de admin/ventas."/>
                         <field name="contrib_hora_maquina"
-                               string="Contribución MXN/hora-máquina"
+                               string="Contribución / hora-máquina" widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Para comparar productos cuando las máquinas son el límite."/>
                     </group>
                 </group>

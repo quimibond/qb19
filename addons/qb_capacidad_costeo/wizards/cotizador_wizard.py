@@ -57,6 +57,11 @@ class QbCotizadorWizard(models.TransientModel):
         help='La moneda en la que CAPTURAS el precio objetivo y en la que '
              'se muestran/aplican los precios. Se precarga con la moneda '
              'del pedido. Los COSTOS del modelo siempre son MXN.')
+    company_currency_id = fields.Many2one(
+        'res.currency', string='Moneda de costos (MXN)',
+        default=lambda self: self.env.company.currency_id,
+        help='Moneda de la compañía: los costos y pisos SIEMPRE están aquí '
+             '(el widget monetario muestra el símbolo, sin ambigüedad).')
     precio_objetivo = fields.Float(
         string='Precio objetivo',
         help='El precio que TÚ propones o que el cliente pide, EN LA MONEDA '
