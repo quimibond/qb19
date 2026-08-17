@@ -59,9 +59,19 @@ class TestAlertSource(TransactionCase):
         """El auditor debe poder ver quién apagó la fuente y cuándo."""
         before = len(self.source.message_ids)
         self.source.enabled = not self.source.enabled
-        self.source.flush_recordset()
+        # El tracking de mail.thread se materializa en el precommit del cursor,
+        # no en el flush. En un test no hay commit, así que hay que dispararlo a
+        # mano; y `message_ids` se invalida aparte porque mail.message.res_id es
+        # un entero, no un m2o, y Odoo no puede refrescar el inverso solo.
+        self.env.flush_all()
+        self.env.cr.precommit.run()
+        self.source.invalidate_recordset(['message_ids'])
         self.assertGreater(len(self.source.message_ids), before,
                            "Apagar/encender una fuente debe registrarse en el historial.")
+        self.assertTrue(
+            self.source.message_ids.filtered(lambda m: m.tracking_value_ids),
+            "El historial debe guardar el cambio del interruptor como valor "
+            "rastreado, no una nota suelta: es lo que sustenta la auditoría.")
 
     def test_05_manual_source_disabled_warns_instead_of_silence(self):
         self.manual_source.enabled = False
