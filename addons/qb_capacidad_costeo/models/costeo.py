@@ -94,6 +94,18 @@ class QbCostoProducto(models.Model):
         related='product_id.default_code', store=True, string='Referencia')
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, required=True)
+    company_currency_id = fields.Many2one(
+        'res.currency', related='company_id.currency_id', store=True,
+        string='Moneda', help='Moneda de la compañía. Todos los montos del '
+        'reporte (precio, costos, márgenes) están en ESTA moneda, aunque la '
+        'factura original haya sido en otra divisa.')
+    divisa_venta = fields.Char(
+        string='Facturado en',
+        help='Divisa(s) distintas a la de la compañía en que se facturó el '
+             'producto en el período (p.ej. USD). El precio mostrado es la '
+             'conversión a la moneda de la compañía al tipo de cambio de la '
+             'factura — no el número crudo en dólares. Vacío = solo moneda '
+             'local.')
     product_bucket = fields.Char(string='Clasificación')
     uom_name = fields.Char(string='UoM')
     kg_per_unit = fields.Float(digits=(16, 6))
@@ -535,12 +547,20 @@ class QbCostoProducto(models.Model):
     def _sales_by_product(self, period):
         """{product_id: (qty, revenue)} del período, con dedup del triplete
         (lista+/descuento−/neta+) para qty; revenue suma las 3 líneas
-        (cancelan aritméticamente). out_refund resta."""
+        (cancelan aritméticamente). out_refund resta.
+
+        Revenue en MXN desde ``aml.balance`` (moneda de la compañía), NO desde
+        ``price_subtotal`` (moneda del documento): así una factura en USD entra
+        con su valor real en pesos y no mezcla dólares con pesos. Para una línea
+        de ingreso, balance es crédito (negativo) en venta y débito (positivo)
+        en nota de crédito → ``SUM(-balance)`` suma ventas y resta devoluciones
+        sin necesitar el CASE por move_type. Mismo criterio que el cotizador
+        (``sales_by_customer``)."""
         date_to = period + relativedelta(months=1)
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
-                       aml.price_subtotal, am.move_type
+                       aml.balance, am.move_type, am.currency_id
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
                 WHERE am.move_type IN ('out_invoice', 'out_refund')
@@ -560,12 +580,15 @@ class QbCostoProducto(models.Model):
                    COALESCE((SELECT SUM(CASE WHEN q.move_type = 'out_refund'
                                              THEN -q.quantity ELSE q.quantity END)
                              FROM qty_dedup q WHERE q.product_id = l.product_id), 0) AS qty,
-                   SUM(CASE WHEN l.move_type = 'out_refund'
-                            THEN -l.price_subtotal ELSE l.price_subtotal END) AS revenue
+                   SUM(-l.balance) AS revenue,
+                   string_agg(DISTINCT CASE WHEN l.currency_id != %s
+                                            THEN cur.name END, ', ') AS divisas
             FROM lines l
+            LEFT JOIN res_currency cur ON cur.id = l.currency_id
             GROUP BY l.product_id
-        """, (period, date_to, self.env.company.id))
-        return {row[0]: (row[1] or 0.0, row[2] or 0.0)
+        """, (period, date_to, self.env.company.id,
+              self.env.company.currency_id.id))
+        return {row[0]: (row[1] or 0.0, row[2] or 0.0, row[3] or '')
                 for row in self.env.cr.fetchall()}
 
     # ------------------------------------------------------------------
@@ -653,7 +676,7 @@ class QbCostoProducto(models.Model):
         m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
         uom_name = (product.uom_id.name or '').lower()
         is_kg = uom_name in KG_UOM_NAMES
-        qty, revenue = sales.get(product.id, (0.0, 0.0))
+        qty, revenue, divisa = sales.get(product.id, (0.0, 0.0, ''))
         # qty neta ≤ 0 (devoluciones > ventas en el período) daría un precio
         # negativo que envenena márgenes y alertas: se trata como sin ventas.
         precio = revenue / qty if qty > 0 else 0.0
@@ -693,6 +716,7 @@ class QbCostoProducto(models.Model):
             'm_per_kg': m_per_kg,
             'qty_vendida': qty,
             'precio_prom': precio,
+            'divisa_venta': divisa or False,
             'mp_unit': mp,
             'energia_unit': energia,
             'costo_variable': variable,
