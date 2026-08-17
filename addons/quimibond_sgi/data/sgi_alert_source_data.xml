@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- noupdate="1" es obligatorio: un `odoo-update` NO debe volver a encender una
+     fuente que MAST apagó a propósito. Agregar fuentes nuevas aquí sí funciona
+     (Odoo crea los registros que aún no existen). -->
+<odoo noupdate="1">
+
+    <record id="sgi_alert_source_indicator_red" model="sgi.alert.source">
+        <field name="code">indicador_semaforo_rojo</field>
+        <field name="name">Indicador en semáforo rojo</field>
+        <field name="sequence">10</field>
+        <field name="trigger_type">automatico</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">Una medición validada de un indicador cae en rojo
+contra su objetivo y el indicador tiene marcado «Generar NC en rojo».
+Se puede apagar aquí para todos los indicadores, o indicador por indicador
+con la casilla «Generar NC en rojo» de cada uno.</field>
+    </record>
+
+    <record id="sgi_alert_source_calibration" model="sgi.alert.source">
+        <field name="code">calibracion_fuera_tolerancia</field>
+        <field name="name">Equipo de medición fuera de tolerancia</field>
+        <field name="sequence">20</field>
+        <field name="trigger_type">automatico</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">Se registra una calibración con resultado NO
+conforme (IATF 7.1.5.2.1). Apagar esta fuente NO desbloquea el equipo: el
+instrumento se sigue marcando «No usar», sólo no se abre expediente de NC para
+evaluar el producto medido desde la última calibración.</field>
+    </record>
+
+    <record id="sgi_alert_source_incident" model="sgi.alert.source">
+        <field name="code">incidente_sst_grave</field>
+        <field name="name">Incidente SST grave o fatal</field>
+        <field name="sequence">30</field>
+        <field name="trigger_type">automatico</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">Un incidente de Seguridad y Salud se registra o
+se reclasifica con severidad grave o fatal. La NC es la que sostiene la
+investigación SCAT.</field>
+    </record>
+
+    <record id="sgi_alert_source_audit_finding" model="sgi.alert.source">
+        <field name="code">auditoria_hallazgo</field>
+        <field name="name">Hallazgo de auditoría</field>
+        <field name="sequence">40</field>
+        <field name="trigger_type">manual</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">El auditor pulsa «Generar NC» sobre un hallazgo.
+Al ser manual, apagarla hace que el botón avise en pantalla en vez de no hacer
+nada.</field>
+    </record>
+
+    <record id="sgi_alert_source_complaint" model="sgi.alert.source">
+        <field name="code">reclamacion_cliente</field>
+        <field name="name">Reclamación de cliente</field>
+        <field name="sequence">50</field>
+        <field name="trigger_type">manual</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">Se pulsa «Generar NC» desde un ticket de
+reclamación de cliente.</field>
+    </record>
+
+    <record id="sgi_alert_source_maintenance" model="sgi.alert.source">
+        <field name="code">mantenimiento_falla</field>
+        <field name="name">Falla de mantenimiento</field>
+        <field name="sequence">60</field>
+        <field name="trigger_type">manual</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">Se pulsa «Levantar NC» desde una solicitud
+correctiva de mantenimiento.</field>
+    </record>
+
+</odoo>

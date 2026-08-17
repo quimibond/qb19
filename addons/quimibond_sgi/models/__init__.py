@@ -2,6 +2,7 @@
 from . import sgi_base
 from . import sgi_area
 from . import sgi_norm
+from . import sgi_alert_source
 from . import sgi_process
 from . import sgi_process_procedure
 from . import sgi_document

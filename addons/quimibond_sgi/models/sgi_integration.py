@@ -94,7 +94,7 @@ class MaintenanceRequest(models.Model):
         }
         if team:
             vals['team_id'] = team.id
-        alert = self.env['quality.alert'].create(vals)
+        alert = self.env['quality.alert'].sgi_auto_create('mantenimiento_falla', vals)
         self.sgi_alert_id = alert.id
         self.message_post(body="Se levantó la NC <b>%s</b> por esta falla." % (
             alert.sgi_folio or alert.name))
