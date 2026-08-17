@@ -113,7 +113,9 @@ class SgiIncident(models.Model):
         }
         if team:
             vals['team_id'] = team.id
-        alert = self.env['quality.alert'].create(vals)
+        alert = self.env['quality.alert'].sgi_auto_create('incidente_sst_grave', vals)
+        if not alert:
+            return alert
         self.sgi_alert_id = alert.id
         if manager_id:
             Cron._sgi_schedule(

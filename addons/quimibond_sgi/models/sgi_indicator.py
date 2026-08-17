@@ -625,6 +625,10 @@ class SgiIndicatorMeasure(models.Model):
         ('validado', "Validado"),
     ], string="Estado", default='pendiente', required=True)
     alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True)
+    sgi_nc_suppressed = fields.Boolean(
+        string="NC omitida (fuente apagada)", readonly=True, copy=False,
+        help="La medición ameritaba NC pero la fuente «Indicador en semáforo rojo» "
+             "estaba desactivada. Se reintenta sola en cuanto se reactive.")
 
     _indicator_period_uniq = models.Constraint(
         'unique(indicator_id, period_date)',
@@ -871,8 +875,22 @@ class SgiIndicatorMeasure(models.Model):
             if indicator.responsible_id:
                 vals['user_id'] = indicator.responsible_id.id
                 vals['sgi_responsible_ids'] = [(4, indicator.responsible_id.id)]
-            alert = Alert.create(vals)
+            # El interruptor global de la fuente y el `nc_on_red` de cada
+            # indicador se componen: basta apagar cualquiera de los dos.
+            #
+            # `count_suppression` evita inflar el contador: el cron vuelve a
+            # evaluar esta misma medición en cada corrida, y una omisión ya
+            # contabilizada no es un evento nuevo. Se reintenta igual, así que
+            # al reactivar la fuente la NC se genera sola.
+            alert = Alert.sgi_auto_create(
+                'indicador_semaforo_rojo', vals,
+                count_suppression=not measure.sgi_nc_suppressed)
+            if not alert:
+                measure.sgi_nc_suppressed = True
+                continue
             measure.alert_id = alert.id
+            if measure.sgi_nc_suppressed:
+                measure.sgi_nc_suppressed = False
         return True
 
 

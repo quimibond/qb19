@@ -153,6 +153,58 @@ ACLs completos en `ir.model.access.csv` (fila user y manager por modelo; auditor
 - Pesaje confirmado fuera de tolerancia → alerta (puente pesaje).
 - Aprobación de F-P-G01-06 → versionado de documento + acuses.
 
+### Fuentes de NC automáticas (`sgi.alert.source`)
+
+Toda NC que levanta el sistema pasa por un único punto de entrada. **Nunca llamar
+a `quality.alert.create()` directo desde un automatismo.**
+
+```python
+alert = self.env['quality.alert'].sgi_auto_create('mi_fuente', vals)
+if not alert:
+    return  # fuente apagada por MAST
+```
+
+`sgi_auto_create(code, vals, count_suppression=True)`:
+
+- consulta el registro `sgi.alert.source` por `code`;
+- si está **activa** → crea la NC y la estampa con `sgi_source_id`;
+- si está **apagada** y es `automatico` → devuelve recordset **vacío** y cuenta la
+  omisión (`suppressed_count`, `last_suppressed_on`);
+- si está **apagada** y es `manual` → lanza `UserError` (hay una persona esperando
+  respuesta del botón: no fallar en silencio);
+- si el `code` **no está declarado** → crea igual y avisa al log. *Fail-open*
+  deliberado: perder una NC es peor que registrar una de más.
+
+`count_suppression=False` es para llamadores re-entrantes (un cron que reevalúa el
+mismo hecho cada corrida) y evita que el contador de omisiones pierda sentido. El
+caso vivo es el cron de indicadores, que marca `sgi_nc_suppressed` en la medición.
+
+**Para agregar una fuente nueva** (dos pasos, sin tocar Ajustes ni vistas):
+
+1. Un registro en `data/…` con `noupdate="1"` — obligatorio, para que un
+   `odoo-update` no vuelva a encender lo que MAST apagó a propósito:
+   ```xml
+   <record id="sgi_alert_source_mi_fuente" model="sgi.alert.source">
+       <field name="code">mi_fuente</field>
+       <field name="name">Nombre visible para MAST</field>
+       <field name="trigger_type">automatico</field>   <!-- o manual -->
+       <field name="origin_module">mi_modulo</field>
+       <field name="trigger_note">Qué condición la dispara, en lenguaje de piso.</field>
+   </record>
+   ```
+2. La llamada a `sgi_auto_create` en el disparador.
+
+El interruptor aparece solo en **SGI → Configuración → Fuentes de NC automáticas**.
+Apagar una fuente **no** altera el control operativo de fondo (bloqueo de equipo,
+aviso al operador, semáforo del indicador): sólo deja de abrirse el expediente de
+NC. El cambio queda firmado en el chatter de la fuente (`tracking=True` en
+`enabled`) para sustentarlo en auditoría.
+
+Fuentes declaradas hoy: `indicador_semaforo_rojo`, `calibracion_fuera_tolerancia`,
+`incidente_sst_grave` (automáticas) · `auditoria_hallazgo`, `reclamacion_cliente`,
+`mantenimiento_falla` (manuales) · `pesaje_rollo_fuera_peso` (automática, vive en
+`quimibond_sgi_pesaje`).
+
 ### `calc_mode` de indicadores (fuentes reales)
 
 `otif_ventas` (pickings salida vs fecha compromiso) · `otd_compras` (recepciones vs

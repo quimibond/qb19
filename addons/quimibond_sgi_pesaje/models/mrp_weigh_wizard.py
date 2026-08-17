@@ -76,4 +76,7 @@ class MrpWeighRollWizard(models.TransientModel):
             vals['workorder_id'] = self.workorder_id.id
         if team:
             vals['team_id'] = team.id
-        return Alert.create(vals)
+        # Pasa por el registro de fuentes: si MAST apagó «pesaje_rollo_fuera_peso»
+        # devuelve vacío y el rollo se registra igual (el aviso de piso ±3 kg lo
+        # sigue dando pesaje_rollos_tejido, que no depende del SGI).
+        return Alert.sgi_auto_create('pesaje_rollo_fuera_peso', vals)
