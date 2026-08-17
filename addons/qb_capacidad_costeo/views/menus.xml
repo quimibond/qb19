@@ -22,9 +22,16 @@
     <menuitem id="menu_qb_winloss" name="Win/Loss"
               parent="menu_qb_cotizar_group" action="winloss_action" sequence="30"/>
 
+    <!-- ANÁLISIS: "conoce tus números" — todo lo que produce el mismo motor
+         de costo/capacidad, bajo un solo bloque (antes eran 4 de primer nivel:
+         Costos, Capacidad, Fichas, Histórico). Primeros principios: 3 bloques
+         — Cotizar / Análisis / Configuración. -->
+    <menuitem id="menu_qb_analisis" name="Análisis"
+              parent="menu_qb_costeo_root" sequence="20"/>
+
     <!-- 3. Costos: qué cuesta cada producto y con qué factores -->
     <menuitem id="menu_qb_costos_group" name="Costos"
-              parent="menu_qb_costeo_root" sequence="20"/>
+              parent="menu_qb_analisis" sequence="10"/>
     <menuitem id="menu_qb_costo_producto" name="Costo por producto"
               parent="menu_qb_costos_group" action="costo_producto_action" sequence="10"/>
     <menuitem id="menu_qb_ranking" name="Ranking por hora-máquina"
@@ -36,7 +43,7 @@
 
     <!-- 4. Capacidad: cuánto cabe, dónde está el cuello, cuánto cuesta lo ocioso -->
     <menuitem id="menu_qb_capacidad_group" name="Capacidad"
-              parent="menu_qb_costeo_root" sequence="30"/>
+              parent="menu_qb_analisis" sequence="20"/>
     <menuitem id="menu_qb_balance" name="Balance de línea"
               parent="menu_qb_capacidad_group" action="balance_action" sequence="10"/>
     <menuitem id="menu_qb_capacidad" name="Por máquina"
@@ -50,11 +57,11 @@
 
     <!-- 4.5 Fichas técnicas: la nomenclatura hecha datos -->
     <menuitem id="menu_qb_fichas" name="Fichas técnicas"
-              parent="menu_qb_costeo_root" action="ficha_action" sequence="35"/>
+              parent="menu_qb_analisis" action="ficha_action" sequence="35"/>
 
     <!-- 5. Histórico -->
     <menuitem id="menu_qb_snapshots_group" name="Histórico"
-              parent="menu_qb_costeo_root" sequence="40"/>
+              parent="menu_qb_analisis" sequence="40"/>
     <menuitem id="menu_qb_snapshots" name="Snapshots"
               parent="menu_qb_snapshots_group" action="snapshot_action" sequence="10"/>
     <menuitem id="menu_qb_tendencia" name="Tendencia por centro"
