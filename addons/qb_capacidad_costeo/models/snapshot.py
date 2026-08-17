@@ -27,10 +27,10 @@ class QbCosteoSnapshot(models.Model):
     line_ids = fields.One2many('qb.costeo.snapshot.line', 'snapshot_id')
     notes = fields.Text()
 
-    _sql_constraints = [
-        ('period_company_uniq', 'unique(period, company_id)',
-         'Ya existe un snapshot para ese período.'),
-    ]
+    _period_company_uniq = models.Constraint(
+        'unique(period, company_id)',
+        "Ya existe un snapshot para ese período.",
+    )
 
     @api.model
     def cron_snapshot_monthly(self):

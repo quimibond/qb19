@@ -74,10 +74,10 @@ class QbProductoFicha(models.Model):
         help='Qué no se pudo interpretar de la referencia.')
     notas = fields.Text()
 
-    _sql_constraints = [
-        ('product_uniq', 'unique(product_id)',
-         'Solo una ficha por producto (edítala en lugar de duplicar).'),
-    ]
+    _product_uniq = models.Constraint(
+        'unique(product_id)',
+        "Solo una ficha por producto (edítala en lugar de duplicar).",
+    )
 
     # ------------------------------------------------------------------
     # Parser de nomenclatura

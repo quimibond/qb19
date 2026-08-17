@@ -75,10 +75,10 @@ class QbCostoFactores(models.Model):
              'revisar denominadores o clasificación de cuentas.')
     notes = fields.Text()
 
-    _sql_constraints = [
-        ('period_company_uniq', 'unique(period, company_id)',
-         'Ya existen factores para ese período.'),
-    ]
+    _period_company_uniq = models.Constraint(
+        'unique(period, company_id)',
+        "Ya existen factores para ese período.",
+    )
 
 
 class QbCostoProducto(models.Model):
@@ -143,10 +143,10 @@ class QbCostoProducto(models.Model):
     centro_route = fields.Char(string='Ruta (centros)')
     factores_id = fields.Many2one('qb.costo.factores', string='Factores usados')
 
-    _sql_constraints = [
-        ('period_product_uniq', 'unique(period, product_id, company_id)',
-         'Ya existe el costo de ese producto para ese período.'),
-    ]
+    _period_product_uniq = models.Constraint(
+        'unique(period, product_id, company_id)',
+        "Ya existe el costo de ese producto para ese período.",
+    )
 
     # ------------------------------------------------------------------
     # Pools GL
