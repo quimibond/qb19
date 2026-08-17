@@ -132,6 +132,11 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='Costo variable $/u', digits=(16, 4))
     op_pct_display = fields.Float(
         compute='_compute_cotizacion', string='Operación % s/venta')
+    ver_detalle = fields.Boolean(
+        string='Ver detalle del costo',
+        help='Muestra el desglose completo (capas de costo, pisos, márgenes, '
+             'escalera de volumen). Por defecto oculto: arriba está lo que '
+             'necesitas para cotizar.')
     precio_sugerido = fields.Float(
         compute='_compute_cotizacion', string='Precio sugerido $/u MXN',
         digits=(16, 4),

@@ -100,8 +100,30 @@
                         <field name="spec_centro_ids" widget="many2many_tags"/>
                     </group>
                 </group>
+                <!-- TITULAR: lo único que necesitas para cotizar.
+                     El detalle (capas, pisos, márgenes) va detrás de "ver
+                     detalle" — una pantalla, no 40 campos. -->
+                <group string="Para cotizar"
+                       invisible="not product_id and not spec_mode">
+                    <field name="precio_sugerido"
+                           string="⭐ Precio sugerido $/u MXN"
+                           class="fw-bold text-success"
+                           help="El precio con el que arrancar: cubre el costo completo y deja tu margen meta, sin bajar del piso ni del mercado."/>
+                    <field name="piso_lleno"
+                           string="Costo total (piso a planta llena) $/u MXN"
+                           help="El costo COMPLETO recuperado (margen cero). Debajo de esto, con la planta llena, pierdes."/>
+                    <field name="margen_neto_pct"
+                           string="Margen neto % (al precio evaluado)"
+                           help="Lo que queda después de TODO al precio que se está evaluando (objetivo, o mercado, o el piso)."/>
+                    <field name="capacity_ok" string="¿Cabe en capacidad?"/>
+                    <field name="capacity_detail" nolabel="1" colspan="2"/>
+                    <field name="evaluado_info" readonly="1" colspan="2"
+                           invisible="not evaluado_info"/>
+                </group>
+                <field name="ver_detalle"
+                       invisible="not product_id and not spec_mode"/>
                 <!-- Resultados EN VIVO: se recalculan al cambiar cualquier input -->
-                <group invisible="not product_id and not spec_mode">
+                <group invisible="(not product_id and not spec_mode) or not ver_detalle">
                     <group string="1 · ¿Cuánto cuesta producirlo? ($/u, todo MXN)">
                         <field name="product_bucket"/>
                         <field name="kg_per_unit"/>
@@ -122,10 +144,6 @@
                                help="Gastos de admin y ventas (6xx) como % del precio de venta."/>
                     </group>
                     <group string="2 · ¿A cuánto venderlo? (referencias reales)">
-                        <field name="precio_sugerido"
-                               string="⭐ Precio SUGERIDO $/u MXN"
-                               class="fw-bold text-success"
-                               help="El precio con el que arrancar: cubre el costo completo y deja tu margen meta, sin bajar del piso lleno ni del mercado."/>
                         <field name="precio_mercado_divisa" class="fw-bold"
                                invisible="es_mxn"
                                string="Precio de mercado (divisa)"/>
@@ -133,9 +151,6 @@
                                string="Precio de mercado $/u MXN"/>
                         <field name="piso_lleno_divisa" invisible="es_mxn"
                                string="Piso a planta llena (divisa)"/>
-                        <field name="piso_lleno"
-                               string="Piso a planta llena $/u MXN"
-                               help="Margen CERO cubriendo todo. Con la planta llena, no aceptar debajo."/>
                         <field name="piso_ocioso_divisa" invisible="es_mxn"
                                string="Piso con ociosidad (divisa)"/>
                         <field name="piso_ocioso"
@@ -150,28 +165,16 @@
                                string="Contribución %"/>
                         <field name="margen_bruto_pct"
                                help="(precio − costo de producción) ÷ precio. Antes de admin/ventas."/>
-                        <field name="margen_neto_pct"
-                               help="Margen bruto − %operación: lo que queda después de TODO."/>
                         <field name="contrib_hora_maquina"
                                string="Contribución MXN/hora-máquina"
                                help="Para comparar productos cuando las máquinas son el límite."/>
                     </group>
                 </group>
-                <div class="text-muted" style="font-size:12px;"
-                     invisible="not evaluado_info">
-                    <field name="evaluado_info" readonly="1" nolabel="1"/>
-                    Dudas con un término → pestaña «📖 Glosario».
-                </div>
                 <separator string="📶 Escalera de volumen — opciones estandarizadas"
-                           invisible="not product_id and not spec_mode"/>
+                           invisible="(not product_id and not spec_mode) or not ver_detalle"/>
                 <field name="escalera_html" nolabel="1" readonly="1"
-                       invisible="not product_id and not spec_mode"/>
-                <group string="Capacidad: ¿cabe este volumen en la planta?"
-                       invisible="not product_id and not spec_mode">
-                    <field name="capacity_ok"/>
-                    <field name="capacity_detail" nolabel="1"/>
-                </group>
-                <notebook>
+                       invisible="(not product_id and not spec_mode) or not ver_detalle"/>
+                <notebook invisible="not ver_detalle">
                     <page string="🔍 ¿De dónde viene cada costo?"
                           invisible="not product_id or spec_mode">
                         <field name="explicacion_html" nolabel="1" readonly="1"/>
@@ -189,13 +192,13 @@
                 </div>
                 <footer>
                     <button name="action_aplicar_precio"
-                            string="Guardar y aplicar a la línea" type="object"
+                            string="Guardar y aplicar al pedido" type="object"
                             class="btn-primary" invisible="not sale_line_id"
                             confirm="Escribe el precio calculado en la línea del pedido. ¿Continuar?"/>
                     <button name="action_cotizar" string="Guardar cotización"
                             type="object"
                             class="btn-primary" invisible="sale_line_id"/>
-                    <button name="action_cotizar" string="Solo guardar"
+                    <button name="action_cotizar" string="Solo guardar (sin aplicar)"
                             type="object"
                             class="btn-secondary" invisible="not sale_line_id"/>
                     <button string="Cerrar" special="cancel"/>
