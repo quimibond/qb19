@@ -388,6 +388,7 @@ class QbCostoProducto(models.Model):
         return {
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,
+            'multi_bom_ids': self._multi_bom_ids_set(),
             'peso_cache': {},
             'mp_cache': {},
         }
@@ -398,6 +399,8 @@ class QbCostoProducto(models.Model):
 
         Reglas: subproducto → $0 (su MP ya está en la receta del principal);
         importado → landed (avg de Odoo), sin costo propio → gemelo nacional;
+        receta AMBIGUA (>1 BOM activa) con AVCO válido → costo AVCO de Odoo
+        (evita colapsar el costo eligiendo una receta al azar);
         hoja sin BOM → último costo de compra (fallback avg).
 
         `ctx` (de _engine_ctx) comparte reglas/pol_map/cachés en loops
@@ -428,21 +431,60 @@ class QbCostoProducto(models.Model):
                 if twin:
                     cost = self._mp_cost_unit(twin, cache, seen, ctx)
         else:
-            bom = self.env['mrp.bom']._bom_find(product).get(product)
-            if bom:
-                total = 0.0
-                for line in bom.bom_line_ids:
-                    comp = line.product_id
-                    qty = line.product_uom_id._compute_quantity(
-                        line.product_qty, comp.uom_id, round=False)
-                    total += qty * self._mp_cost_unit(comp, cache, seen, ctx)
-                bom_qty = bom.product_uom_id._compute_quantity(
-                    bom.product_qty, product.uom_id, round=False) or 1.0
-                cost = total / bom_qty
+            std = product.standard_price or 0.0
+            if std > 0.0 and self._has_multiple_boms(product, ctx):
+                # Receta AMBIGUA: el producto tiene VARIAS BOMs activas (típico
+                # de semiterminados genéricos "MUESTRA PILOTO", que llegan a
+                # tener 26 recetas). _bom_find elegiría una al azar y el costo
+                # se colapsa (bug WD080: MP $0.13 en vez de ~$12). En vez de
+                # explotar una receta arbitraria, usa el AVCO que Odoo ya
+                # mantiene para el intermedio: es nativo y confiable.
+                cost = std
             else:
-                cost = self._last_purchase_cost(product, pol_map)
+                bom = self.env['mrp.bom']._bom_find(product).get(product)
+                if bom:
+                    total = 0.0
+                    for line in bom.bom_line_ids:
+                        comp = line.product_id
+                        qty = line.product_uom_id._compute_quantity(
+                            line.product_qty, comp.uom_id, round=False)
+                        total += qty * self._mp_cost_unit(comp, cache, seen, ctx)
+                    bom_qty = bom.product_uom_id._compute_quantity(
+                        bom.product_qty, product.uom_id, round=False) or 1.0
+                    cost = total / bom_qty
+                else:
+                    cost = self._last_purchase_cost(product, pol_map)
         cache[product.id] = cost
         return cost
+
+    @api.model
+    def _multi_bom_ids_set(self):
+        """product.product.id con MÁS DE UNA BOM activa aplicable (receta
+        ambigua). Una sola query para todo el motor; se cachea en el ctx."""
+        self.env.cr.execute("""
+            SELECT p.id
+            FROM product_product p
+            JOIN mrp_bom b
+              ON b.active
+             AND (b.product_id = p.id
+                  OR (b.product_id IS NULL
+                      AND b.product_tmpl_id = p.product_tmpl_id))
+            GROUP BY p.id
+            HAVING count(*) > 1
+        """)
+        return {r[0] for r in self.env.cr.fetchall()}
+
+    @api.model
+    def _has_multiple_boms(self, product, ctx=None):
+        """¿El producto tiene receta ambigua (>1 BOM activa)? Con ctx usa el
+        set precomputado (O(1)); sin él (cotizador) hace un search_count."""
+        if ctx is not None and 'multi_bom_ids' in ctx:
+            return product.id in ctx['multi_bom_ids']
+        return self.env['mrp.bom'].search_count([
+            '|', ('product_id', '=', product.id),
+            '&', ('product_id', '=', False),
+                 ('product_tmpl_id', '=', product.product_tmpl_id.id),
+        ]) > 1
 
     # ------------------------------------------------------------------
     # Ventas del período (qty deduplicada + precio promedio)
@@ -1068,6 +1110,13 @@ class QbCostoProducto(models.Model):
             return [dict(base, unit_cost=cost, total=cost * qty,
                          fuente='Importado: landed cost (promedio Odoo, '
                                 'incluye flete/aduana)')]
+        std = product.standard_price or 0.0
+        if std > 0.0 and self._has_multiple_boms(product):
+            # Receta ambigua (>1 BOM): mismo criterio que _mp_cost_unit —
+            # usa el AVCO del intermedio en vez de explotar una receta al azar.
+            return [dict(base, unit_cost=std, total=std * qty,
+                         fuente='Semiterminado con receta ambigua (varias '
+                                'BOMs) → costo AVCO de Odoo')]
         bom = self.env['mrp.bom']._bom_find(product).get(product)
         if bom:
             rows = []

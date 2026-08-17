@@ -60,6 +60,59 @@ class TestQbCosteo(TransactionCase):
         mp = self.Costo._mp_cost_unit(self.tela)
         self.assertAlmostEqual(mp, 0.072 * 50.0, places=4)
 
+    def test_mp_receta_ambigua_usa_avco(self):
+        """Semiterminado con VARIAS BOMs activas (receta ambigua, como los
+        genéricos 'MUESTRA PILOTO' con 26 recetas): _bom_find elegiría una al
+        azar y el costo se colapsa. Con AVCO válido el modelo usa el
+        standard_price de Odoo en vez de explotar una receta arbitraria
+        (bug WD080: MP $0.13 en vez de ~$12)."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        barato = self.env['product.product'].create({
+            'name': 'INSUMO BARATO', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 1.0,
+        })
+        semi = self.env['product.product'].create({
+            'name': 'MUESTRA PILOTO TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 88.0,
+        })
+        # DOS recetas para el mismo semiterminado → receta ambigua
+        for _i in range(2):
+            self.env['mrp.bom'].create({
+                'product_tmpl_id': semi.product_tmpl_id.id,
+                'product_id': semi.id,
+                'product_qty': 1.0, 'product_uom_id': uom_kg.id,
+                'bom_line_ids': [(0, 0, {
+                    'product_id': barato.id, 'product_qty': 0.01,
+                    'product_uom_id': uom_kg.id})],
+            })
+        self.assertTrue(self.Costo._has_multiple_boms(semi))
+        # Explotar daría ~$0.01/kg (colapsado); el AVCO da $88
+        self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 88.0, places=4)
+        # Un producto final que consume 0.1446 kg del semi → 0.1446 × 88
+        tela2 = self.env['product.product'].create({
+            'name': 'DESAGUJADO TEST', 'default_code': 'WD080Q46JNT161',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True,
+        })
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tela2.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': semi.id, 'product_qty': 0.1446,
+                'product_uom_id': uom_kg.id})],
+        })
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela2), 0.1446 * 88.0, places=3)
+        # El camino batch (ctx precomputa multi_bom_ids) da lo mismo
+        ctx = self.Costo._engine_ctx([tela2.id])
+        self.assertIn(semi.id, ctx['multi_bom_ids'])
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela2, ctx=ctx), 0.1446 * 88.0, places=3)
+        # Receta ÚNICA sigue explotando normal (no se toca ese camino)
+        self.assertFalse(self.Costo._has_multiple_boms(self.tela))
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(self.tela), 0.072 * 50.0, places=4)
+
     def test_subproducto_mp_cero(self):
         """SALDO*: MP $0 — su materia ya está en la receta del principal."""
         bucket, _ = self.Ruteo.resolve(self.saldo)
