@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-    <!-- Tolerancia de peso del rollo (kg). Debe coincidir con la validación ±3 kg
-         del módulo base pesaje_rollos_tejido; si Producción la cambia, ajústese
-         aquí también hasta que el módulo base lea el mismo parámetro. -->
-    <record id="sgi_param_pesaje_tolerance" model="ir.config_parameter">
-        <field name="key">quimibond_sgi.pesaje_tolerance_kg</field>
-        <field name="value">3.0</field>
-    </record>
+    <!-- La tolerancia `quimibond_sgi.pesaje_tolerance_kg` NO se declara aquí.
+         La siembra `sgi.config.seed_parameters()` de quimibond_sgi ya la crea
+         (default 3.0, idempotente), y esa siembra corre al terminar de cargar
+         el módulo padre — es decir, ANTES que este archivo. Declararla también
+         como <record> hacía que en una instalación limpia Odoo intentara un
+         INSERT sobre una clave que la siembra acababa de crear sin xmlid, y
+         `ir_config_parameter_key_uniq` tumbaba el registry entero.
+         Se administra en Ajustes → SGI → Piso. -->
 
     <!-- Interruptor de esta fuente: SGI → Configuración → Fuentes de NC automáticas. -->
     <record id="sgi_alert_source_pesaje" model="sgi.alert.source">

@@ -382,6 +382,21 @@ plans. Detalle completo en el README del módulo.
 
 ## 11. Parámetros del sistema (`ir.config_parameter`)
 
+> **Regla: un parámetro se declara en UN solo lugar.** El default va en
+> `sgi.config._SGI_DEFAULT_PARAMS` y lo crea `seed_parameters()` — nunca además
+> como `<record model="ir.config_parameter">` en un **módulo dependiente**.
+> `seed_parameters()` corre al final de la carga de `quimibond_sgi`, o sea antes
+> de los datos de los puentes, y crea la fila **sin xmlid**: en una instalación
+> limpia el `<record>` del puente intenta insertar una clave que ya existe y
+> `ir_config_parameter_key_uniq` tumba el registry entero (`Failed to load
+> registry`). Le pasó a `pesaje_tolerance_kg`.
+>
+> Dentro de `quimibond_sgi` conviven algunos `<record>` con su entrada en el
+> dict (`nc_escalation_days`, `risk_ryo_*`, `fmea_npr_action`,
+> `waste_subproduct_category`): hoy no truenan sólo porque sus archivos se
+> cargan antes que `data/sgi_parameters.xml`. Es frágil — al mover un archivo
+> de posición en el manifest, revísalo.
+
 | Clave | Default | Uso |
 |---|---|---|
 | `quimibond_sgi.nc_escalation_days` | 5 | días sin acción antes de escalar NC interna |
