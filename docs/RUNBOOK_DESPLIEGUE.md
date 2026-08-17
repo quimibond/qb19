@@ -63,8 +63,9 @@ PR **base `quimibond` ← compare `main`**.
 
 ### 5. Actualizar lo que no se actualiza solo
 
-Odoo.sh corre `-u` **sólo en los módulos cuya versión cambió**. Todo lo demás
-queda en el repo sin llegar a la base:
+No des por hecho qué módulos actualizó Odoo.sh: se ha visto un build de rama
+saltarse un módulo con la versión congelada, y un deploy a producción actualizar
+otro sin bump. Corre a mano lo que no estés seguro de que entró — es idempotente:
 
 ```bash
 odoo-update <cada modulo de tools/no_bump.txt que haya cambiado>
@@ -93,7 +94,7 @@ grep -E "Registry loaded|Failed to load registry" ~/logs/update.log | tail -3
 grep -E "has no table|Missing model" ~/logs/update.log | sort -u
 ```
 
-- **`Model X has no table`** → el módulo no se actualizó: `odoo-update <modulo>`
+- **`Model X has no table`** → ese módulo no se actualizó: `odoo-update <modulo>`
 - **`Missing model X`** → se borró del código y la fila sigue en `ir_model`;
   también lo arregla el `odoo-update` del módulo dueño
 
