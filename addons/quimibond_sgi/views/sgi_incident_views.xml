@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_incident_view_form" model="ir.ui.view">
+        <field name="name">sgi.incident.form</field>
+        <field name="model">sgi.incident</field>
+        <field name="arch" type="xml">
+            <form string="Incidente SST">
+                <header>
+                    <button name="action_set_investigacion" type="object" string="Investigar"
+                            class="btn-primary" invisible="state != 'reportado'"/>
+                    <button name="action_set_acciones" type="object" string="Definir acciones"
+                            class="btn-primary" invisible="state != 'investigacion'"/>
+                    <button name="action_set_cerrado" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state not in ('investigacion', 'acciones')"/>
+                    <button name="action_set_reportado" type="object" string="Reabrir"
+                            invisible="state != 'cerrado'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="reportado,investigacion,acciones,cerrado"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                        <field name="name" placeholder="Título breve del evento"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="incident_type"/>
+                            <field name="severity" widget="badge"
+                                   decoration-danger="severity in ('grave', 'fatal')"
+                                   decoration-warning="severity == 'moderado'"/>
+                            <field name="reporter_id"/>
+                        </group>
+                        <group>
+                            <field name="location"/>
+                            <field name="process_id"/>
+                            <field name="sgi_area_id"/>
+                            <field name="days_lost"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="employee_ids" widget="many2many_tags"/>
+                        <field name="description"/>
+                    </group>
+                    <notebook>
+                        <page string="Análisis SCAT">
+                            <group>
+                                <field name="immediate_causes"
+                                       placeholder="Actos y condiciones subestándar..."/>
+                                <field name="basic_causes"
+                                       placeholder="Factores personales y factores de trabajo..."/>
+                                <field name="lack_of_control"
+                                       placeholder="Deficiencias del sistema de gestión..."/>
+                                <field name="risk_id"/>
+                                <field name="sgi_alert_id" readonly="1"
+                                       invisible="not sgi_alert_id"/>
+                            </group>
+                        </page>
+                        <page string="Acciones">
+                            <field name="action_line_ids" context="{'default_incident_id': id}">
+                                <list editable="bottom"
+                                      decoration-danger="state == 'vencida'"
+                                      decoration-success="state == 'terminada'">
+                                    <field name="action_type"/>
+                                    <field name="name"/>
+                                    <field name="responsible_id"/>
+                                    <field name="date_commit"/>
+                                    <field name="date_done"/>
+                                    <field name="progress"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_incident_view_list" model="ir.ui.view">
+        <field name="name">sgi.incident.list</field>
+        <field name="model">sgi.incident</field>
+        <field name="arch" type="xml">
+            <list string="Incidentes SST"
+                  decoration-danger="severity in ('grave', 'fatal')"
+                  decoration-warning="severity == 'moderado'">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="date"/>
+                <field name="incident_type"/>
+                <field name="severity" widget="badge"/>
+                <field name="process_id"/>
+                <field name="days_lost"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_incident_view_search" model="ir.ui.view">
+        <field name="name">sgi.incident.search</field>
+        <field name="model">sgi.incident</field>
+        <field name="arch" type="xml">
+            <search string="Incidentes SST">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="process_id"/>
+                <filter name="abiertos" string="Abiertos" domain="[('state','!=','cerrado')]"/>
+                <filter name="graves" string="Graves/fatales"
+                        domain="[('severity','in',('grave','fatal'))]"/>
+                <separator/>
+                <filter name="lesion" string="Lesiones" domain="[('incident_type','=','lesion')]"/>
+                <filter name="casi" string="Casi accidentes"
+                        domain="[('incident_type','=','casi_accidente')]"/>
+                <group>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'incident_type'}"/>
+                    <filter name="group_severity" string="Severidad" context="{'group_by': 'severity'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_incident_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.incident.pivot</field>
+        <field name="model">sgi.incident</field>
+        <field name="arch" type="xml">
+            <pivot string="Incidentes SST">
+                <field name="incident_type" type="row"/>
+                <field name="severity" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_incident_action" model="ir.actions.act_window">
+        <field name="name">Incidentes SST</field>
+        <field name="res_model">sgi.incident</field>
+        <field name="view_mode">list,form,pivot</field>
+        <field name="search_view_id" ref="sgi_incident_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Reporta un incidente SST</p>
+            <p>Cualquier empleado puede reportar (lesión, casi-accidente, daño, ambiental). La investigación SCAT exige las 3 capas de causas antes de cerrar.</p>
+        </field>
+    </record>
+</odoo>

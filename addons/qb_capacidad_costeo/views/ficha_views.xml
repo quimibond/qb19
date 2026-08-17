@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ficha_action" model="ir.actions.act_window">
+        <field name="name">Fichas técnicas</field>
+        <field name="res_model">qb.producto.ficha</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Fichas técnicas</p>
+            <p>Genera todas con Configuración → "Generar fichas técnicas":
+            se parsean de la nomenclatura de la referencia + maestro de
+            pesos + gramajes curados. Edita a mano las que necesiten ajuste
+            (quedan protegidas como manuales).</p>
+        </field>
+    </record>
+    <record id="ficha_view_search" model="ir.ui.view">
+        <field name="name">qb.producto.ficha.search</field>
+        <field name="model">qb.producto.ficha</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <field name="familia"/>
+                <field name="color"/>
+                <filter name="con_warning" string="Con advertencia de parser"
+                        domain="[('parse_warning', '!=', False)]"/>
+                <filter name="importados" string="Importados"
+                        domain="[('es_importado', '=', True)]"/>
+                <filter name="group_familia" string="Agrupar por familia"
+                        context="{'group_by': 'familia'}"/>
+                <filter name="group_estado" string="Agrupar por estado"
+                        context="{'group_by': 'estado'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="ficha_view_list" model="ir.ui.view">
+        <field name="name">qb.producto.ficha.list</field>
+        <field name="model">qb.producto.ficha</field>
+        <field name="arch" type="xml">
+            <list decoration-warning="parse_warning">
+                <field name="default_code"/>
+                <field name="product_id"/>
+                <field name="familia"/>
+                <field name="gramaje_g_m2"/>
+                <field name="ancho_m"/>
+                <field name="calidad" optional="show"/>
+                <field name="estado" optional="show"/>
+                <field name="color" optional="show"/>
+                <field name="resina_code" optional="hide"/>
+                <field name="composicion" optional="show"/>
+                <field name="peso_kg_unidad"/>
+                <field name="rendimiento_m_kg" optional="show"/>
+                <field name="presentacion"/>
+                <field name="es_importado" optional="hide"/>
+                <field name="source"/>
+                <field name="parse_warning" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="ficha_view_form" model="ir.ui.view">
+        <field name="name">qb.producto.ficha.form</field>
+        <field name="model">qb.producto.ficha</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="product_id" options="{'no_create': True}"/></h1>
+                        <h3><field name="default_code" readonly="1"/></h3>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not parse_warning">
+                        ⚠️ <field name="parse_warning" readonly="1" class="oe_inline"/>
+                    </div>
+                    <group>
+                        <group string="Especificación">
+                            <field name="familia"/>
+                            <field name="gramaje_g_m2"/>
+                            <field name="ancho_m"/>
+                            <field name="calidad"/>
+                            <field name="estado"/>
+                            <field name="color"/>
+                            <field name="resina_code"/>
+                            <field name="composicion"/>
+                        </group>
+                        <group string="Presentación y peso">
+                            <field name="presentacion"/>
+                            <field name="peso_kg_unidad"/>
+                            <field name="rendimiento_m_kg"/>
+                            <field name="es_importado"/>
+                            <field name="source"/>
+                        </group>
+                    </group>
+                    <field name="notas" placeholder="Notas técnicas, tolerancias, observaciones de calidad..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Generación masiva (menú Configuración) -->
+    <record id="ficha_generar_action" model="ir.actions.server">
+        <field name="name">Generar fichas técnicas (nomenclatura + pesos)</field>
+        <field name="model_id" ref="model_qb_producto_ficha"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_generar_fichas()</field>
+    </record>
+
+    <!-- Botón/acción desde la ficha del producto -->
+    <record id="ficha_from_product_action" model="ir.actions.server">
+        <field name="name">Ficha técnica</field>
+        <field name="model_id" ref="model_qb_producto_ficha"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir_de_producto()</field>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">form,list</field>
+    </record>
+    <record id="ficha_from_variant_action" model="ir.actions.server">
+        <field name="name">Ficha técnica</field>
+        <field name="model_id" ref="model_qb_producto_ficha"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir_de_producto()</field>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">form,list</field>
+    </record>
+
+    <!-- PDF de la ficha técnica (para clientes) -->
+    <record id="action_report_ficha" model="ir.actions.report">
+        <field name="name">Ficha técnica (PDF)</field>
+        <field name="model">qb.producto.ficha</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_capacidad_costeo.report_ficha</field>
+        <field name="print_report_name">'Ficha - %s' % (object.default_code or object.product_id.name)</field>
+        <field name="binding_model_id" ref="model_qb_producto_ficha"/>
+        <field name="binding_type">report</field>
+    </record>
+    <template id="report_ficha">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Ficha técnica</h2>
+                        <h3><span t-field="o.product_id.name"/>
+                            (<span t-field="o.default_code"/>)</h3>
+                        <table class="table table-sm" style="max-width:520px;">
+                            <tbody>
+                                <tr t-if="o.composicion"><td>Composición</td>
+                                    <td><span t-field="o.composicion"/></td></tr>
+                                <tr t-if="o.gramaje_g_m2"><td>Gramaje</td>
+                                    <td><span t-esc="'%.0f g/m²' % o.gramaje_g_m2"/></td></tr>
+                                <tr t-if="o.ancho_m"><td>Ancho</td>
+                                    <td><span t-esc="'%.2f m' % o.ancho_m"/></td></tr>
+                                <tr t-if="o.rendimiento_m_kg"><td>Rendimiento</td>
+                                    <td><span t-esc="'%.2f m/kg' % o.rendimiento_m_kg"/></td></tr>
+                                <tr t-if="o.peso_kg_unidad"><td>Peso</td>
+                                    <td><span t-esc="'%.4f kg por %s' % (o.peso_kg_unidad, dict(o._fields['presentacion'].selection).get(o.presentacion) or 'unidad')"/></td></tr>
+                                <tr t-if="o.calidad"><td>Calidad</td>
+                                    <td><span t-field="o.calidad"/></td></tr>
+                                <tr t-if="o.estado"><td>Estado</td>
+                                    <td><span t-esc="dict(o._fields['estado'].selection).get(o.estado)"/></td></tr>
+                                <tr t-if="o.color"><td>Color</td>
+                                    <td><span t-field="o.color"/></td></tr>
+                                <tr><td>Presentación de venta</td>
+                                    <td><span t-esc="dict(o._fields['presentacion'].selection).get(o.presentacion)"/></td></tr>
+                            </tbody>
+                        </table>
+                        <p t-if="o.notas" style="font-size:11px;">
+                            <span t-field="o.notas"/>
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

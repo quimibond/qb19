@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_policy_view_list" model="ir.ui.view">
+        <field name="name">sgi.policy.list</field>
+        <field name="model">sgi.policy</field>
+        <field name="arch" type="xml">
+            <list string="Política integral"
+                  decoration-success="state == 'vigente'"
+                  decoration-muted="state == 'obsoleta'">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="issue_date"/>
+                <field name="objective_count"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_policy_view_form" model="ir.ui.view">
+        <field name="name">sgi.policy.form</field>
+        <field name="model">sgi.policy</field>
+        <field name="arch" type="xml">
+            <form string="Política integral">
+                <header>
+                    <button name="action_set_vigente" type="object" string="Publicar (Vigente)"
+                            class="btn-primary" invisible="state == 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_set_borrador" type="object" string="A borrador"
+                            invisible="state == 'borrador'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_set_obsoleta" type="object" string="Obsoletar"
+                            invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,vigente,obsoleta"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_objectives" type="object"
+                                class="oe_stat_button" icon="fa-bullseye"
+                                invisible="objective_count == 0">
+                            <field name="objective_count" widget="statinfo"
+                                   string="Objetivos"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                        <field name="name" placeholder="Nombre de la política integral"/>
+                        <field name="health" widget="badge"
+                               decoration-success="health == 'verde'"
+                               decoration-warning="health == 'amarillo'"
+                               decoration-danger="health == 'rojo'"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="issue_date"/>
+                            <field name="document_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Texto de la política">
+                            <field name="policy_text"/>
+                        </page>
+                        <page string="Objetivos integrales">
+                            <field name="objective_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="target_year"/>
+                                    <field name="indicator_count"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_policy_action" model="ir.actions.act_window">
+        <field name="name">Política Integral</field>
+        <field name="res_model">sgi.policy</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Publica la política integral</p>
+            <p>Es la cabeza de la Línea Dorada: de ella se despliegan los objetivos integrales, sus indicadores y los procesos. Solo una política puede estar vigente.</p>
+        </field>
+    </record>
+</odoo>

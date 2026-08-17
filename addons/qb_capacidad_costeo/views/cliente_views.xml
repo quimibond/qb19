@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Rentabilidad por cliente ============ -->
+    <record id="cliente_rentabilidad_view_list" model="ir.ui.view">
+        <field name="name">qb.cliente.rentabilidad.list</field>
+        <field name="model">qb.cliente.rentabilidad</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="contrib_pct &lt; 30"
+                  decoration-success="contrib_pct &gt;= 55">
+                <field name="partner_id"/>
+                <field name="revenue_12m" sum="Total"/>
+                <field name="contrib_12m" sum="Total"/>
+                <field name="contrib_pct"/>
+                <field name="horas_cuello_12m" sum="Total"/>
+                <field name="contrib_por_hora"/>
+                <field name="n_productos"/>
+                <field name="meses_activo"/>
+                <field name="ultima_compra"/>
+            </list>
+        </field>
+    </record>
+    <record id="cliente_rentabilidad_view_graph" model="ir.ui.view">
+        <field name="name">qb.cliente.rentabilidad.graph</field>
+        <field name="model">qb.cliente.rentabilidad</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="partner_id"/>
+                <field name="contrib_12m" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="cliente_rentabilidad_action" model="ir.actions.act_window">
+        <field name="name">Rentabilidad por cliente (12m)</field>
+        <field name="res_model">qb.cliente.rentabilidad</field>
+        <field name="view_mode">list,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Rentabilidad por cliente</p>
+            <p>Contribución real de cada cuenta (facturado − costo variable
+            del período, 12 meses), horas del cuello que ocupa y qué tan
+            bien las paga. La vista para decidir "¿me conviene pelear este
+            cliente?". Requiere costos calculados (Recalcular costeo) de
+            los meses del período.</p>
+        </field>
+    </record>
+
+    <!-- ============ Win/Loss de cotizaciones ============ -->
+    <record id="winloss_view_pivot" model="ir.ui.view">
+        <field name="name">qb.cotizacion.winloss.pivot</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="state" type="row"/>
+                <field name="precio_vs_piso_pct" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="winloss_view_graph" model="ir.ui.view">
+        <field name="name">qb.cotizacion.winloss.graph</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="state"/>
+                <field name="precio_vs_piso_pct" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="winloss_action" model="ir.actions.act_window">
+        <field name="name">Win/Loss: ¿a qué % sobre el piso ganamos?</field>
+        <field name="res_model">qb.cotizacion</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('state', 'in', ('won', 'lost'))]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('winloss_view_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('winloss_view_graph')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Win/Loss</p>
+            <p>Marca tus cotizaciones como Ganada o Perdida (en el statusbar
+            de cada una) y aquí verás a qué % sobre el piso lleno ganas y a
+            cuál pierdes — el margen REAL que el mercado te está pagando.
+            Agrupa por cliente para ver su sensibilidad de precio.</p>
+        </field>
+    </record>
+
+</odoo>

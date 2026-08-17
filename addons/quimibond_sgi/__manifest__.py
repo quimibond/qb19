@@ -1,0 +1,123 @@
+# -*- coding: utf-8 -*-
+{
+    'name': "Quimibond SGI",
+    'summary': "Sistema de Gestión Integral (ISO 9001/14001/45001) sobre apps nativas de Odoo 19",
+    'description': """
+Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ).
+
+SGI completo de PNTQ: mapa de procesos con flujos navegables (el output de un
+proceso es el input del siguiente), control documental con familias y acuses,
+NC con candados, reclamaciones con SLA, mejoras, KPIs automáticos con NC en
+rojo, auditorías, riesgos (5 instrumentos), proveedores, Revisión por la
+Dirección, planes de control, CoA, calibraciones IATF, AMEF, PPAP, incidentes
+SCAT, competencias, claves de formato vivas en pantalla/PDF y migración de
+formatos rastreable.
+
+Extiende apps nativas (Documentos, Aprobaciones, Calidad, Helpdesk, Proyecto,
+Mantenimiento, Encuestas) sin duplicarlas y agrega solo los modelos que Odoo
+no tiene. Toda la lógica vive en este módulo (cero Studio).
+    """,
+    'author': "Quimibond",
+    'website': "https://www.quimibond.com",
+    'category': 'Services/SGI',
+    'version': '19.0.13.12.0',
+    'license': 'LGPL-3',
+    'application': True,
+    'depends': [
+        'base',
+        'mail',
+        'hr',
+        'stock',
+        'purchase',
+        'documents',
+        'approvals',
+        'approvals_purchase',
+        'quality_control',
+        'quality_mrp',
+        'helpdesk',
+        'project',
+        'sale_management',
+        'maintenance',
+        'survey',
+        'hr_skills',
+        'web_grid',
+    ],
+    'data': [
+        # security
+        'security/sgi_security.xml',
+        'security/ir.model.access.csv',
+        # data
+        'data/sgi_sequences.xml',
+        'data/sgi_sequences_fase2.xml',
+        'data/sgi_areas.xml',
+        'data/sgi_norms.xml',
+        'data/sgi_process_data.xml',
+        'data/sgi_stages.xml',
+        'data/sgi_objectives.xml',
+        'data/sgi_indicators_data.xml',
+        'data/sgi_risk_data.xml',
+        'data/sgi_audit_data.xml',
+        'data/sgi_helpdesk_interno.xml',
+        'data/sgi_mgmt_review_data.xml',
+        'data/sgi_cron.xml',
+        'data/sgi_cron_fase2.xml',
+        'data/sgi_sequences_fase3.xml',
+        'data/sgi_sequences_fase6.xml',
+        'data/sgi_ppap_elements.xml',
+        'data/sgi_cron_fase3.xml',
+        'data/sgi_dnc_survey.xml',
+        'data/sgi_control_plans_fase4.xml',
+        'data/sgi_format_map_data.xml',
+        'data/sgi_process_flows_extra.xml',
+        'data/sgi_parameters.xml',
+        # views
+        'views/sgi_area_views.xml',
+        'views/sgi_norm_views.xml',
+        'views/sgi_process_views.xml',
+        'views/sgi_process_procedure_views.xml',
+        'views/sgi_document_views.xml',
+        'views/sgi_doc_change_views.xml',
+        'views/sgi_nonconformity_views.xml',
+        'views/sgi_complaint_views.xml',
+        'views/sgi_improvement_views.xml',
+        'views/sgi_integration_views.xml',
+        'views/sgi_policy_views.xml',
+        'views/sgi_objective_views.xml',
+        'views/sgi_indicator_views.xml',
+        'views/sgi_audit_views.xml',
+        'views/sgi_risk_views.xml',
+        'views/sgi_supplier_eval_views.xml',
+        'views/sgi_res_partner_views.xml',
+        'views/sgi_management_review_views.xml',
+        'views/sgi_control_plan_views.xml',
+        'views/sgi_calibration_views.xml',
+        'views/sgi_fmea_views.xml',
+        'views/sgi_ppap_views.xml',
+        'views/sgi_incident_views.xml',
+        'views/sgi_competence_views.xml',
+        'views/sgi_dashboard_views.xml',
+        'views/sgi_map_hooks_views.xml',
+        'views/sgi_format_map_views.xml',
+        'views/sgi_action_line_views.xml',
+        'views/sgi_sales_budget_views.xml',
+        'views/sgi_settings_views.xml',
+        # reports
+        'report/report_nc.xml',
+        'report/report_news.xml',
+        'report/report_audit.xml',
+        'report/report_mgmt_review.xml',
+        'report/report_coa.xml',
+        'report/report_fmea.xml',
+        'report/report_incident.xml',
+        'report/report_procedure.xml',
+        'report/report_sales_budget.xml',
+        'report/sgi_format_footer.xml',
+        # menus
+        'views/sgi_menus.xml',
+    ],
+    'demo': [
+        'demo/sgi_demo_fase3.xml',
+    ],
+    'post_init_hook': 'post_init_hook',
+    'installable': True,
+}

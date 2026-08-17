@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_supplier_eval_view_list" model="ir.ui.view">
+        <field name="name">sgi.supplier.eval.list</field>
+        <field name="model">sgi.supplier.eval</field>
+        <field name="arch" type="xml">
+            <list string="Evaluaciones de proveedores"
+                  decoration-success="supplier_class == 'acreditado'"
+                  decoration-warning="supplier_class == 'condicionado'"
+                  decoration-danger="supplier_class == 'baja'">
+                <field name="partner_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="otd_pct"/>
+                <field name="nc_count"/>
+                <field name="score"/>
+                <field name="supplier_class" widget="badge"
+                       decoration-success="supplier_class == 'acreditado'"
+                       decoration-warning="supplier_class == 'condicionado'"
+                       decoration-danger="supplier_class == 'baja'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_supplier_eval_view_form" model="ir.ui.view">
+        <field name="name">sgi.supplier.eval.form</field>
+        <field name="model">sgi.supplier.eval</field>
+        <field name="arch" type="xml">
+            <form string="Evaluación de proveedor">
+                <header>
+                    <button name="action_apply_to_partner" type="object"
+                            string="Aplicar al proveedor" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="partner_id" string="Proveedor"/>
+                        <h1><field name="partner_id"/></h1>
+                    </div>
+                    <group>
+                        <group string="Proveedor y periodo">
+                            <field name="partner_id"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Resultado">
+                            <field name="otd_pct"/>
+                            <field name="nc_count"/>
+                            <field name="score"/>
+                            <field name="supplier_class" widget="badge"/>
+                        </group>
+                    </group>
+                    <group string="Notas">
+                        <field name="notes" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_supplier_eval_view_search" model="ir.ui.view">
+        <field name="name">sgi.supplier.eval.search</field>
+        <field name="model">sgi.supplier.eval</field>
+        <field name="arch" type="xml">
+            <search string="Evaluaciones">
+                <field name="partner_id"/>
+                <filter name="acreditado" string="Acreditados" domain="[('supplier_class','=','acreditado')]"/>
+                <filter name="condicionado" string="Condicionados" domain="[('supplier_class','=','condicionado')]"/>
+                <filter name="baja" string="Baja" domain="[('supplier_class','=','baja')]"/>
+                <group>
+                    <filter name="group_partner" string="Proveedor" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_class" string="Clasificación" context="{'group_by': 'supplier_class'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_supplier_eval_action" model="ir.actions.act_window">
+        <field name="name">Evaluaciones de proveedores</field>
+        <field name="res_model">sgi.supplier.eval</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_supplier_eval_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin evaluaciones de proveedores aún</p>
+            <p>El cron trimestral evalúa solo a los proveedores con recepciones: entregas a tiempo + NCs dan la clase Acreditado / Condicionado / Baja.</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Capacidad por máquina ============ -->
+    <record id="capacidad_action" model="ir.actions.act_window">
+        <field name="name">Capacidad por máquina</field>
+        <field name="res_model">qb.capacidad</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="context">{'group_by': ['centro_id']}</field>
+    </record>
+    <record id="capacidad_view_list" model="ir.ui.view">
+        <field name="name">qb.capacidad.list</field>
+        <field name="model">qb.capacidad</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="utilization_hours_pct &gt; 95"
+                  decoration-success="utilization_hours_pct &lt; 60">
+                <field name="workcenter_id"/>
+                <field name="centro_id"/>
+                <field name="hours_week"/>
+                <field name="time_efficiency" optional="hide"/>
+                <field name="hours_month_available" sum="Total"/>
+                <field name="std_output_per_hour" optional="hide"/>
+                <field name="capacity_month_qty" sum="Total"/>
+                <field name="prod_qty_month_avg" sum="Total"/>
+                <field name="prod_hours_month_avg" sum="Total"/>
+                <field name="throughput_real_per_hour"/>
+                <field name="utilization_hours_pct"/>
+                <field name="free_hours_month" sum="Total"/>
+            </list>
+        </field>
+    </record>
+    <record id="capacidad_view_pivot" model="ir.ui.view">
+        <field name="name">qb.capacidad.pivot</field>
+        <field name="model">qb.capacidad</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="centro_id" type="row"/>
+                <field name="capacity_month_qty" type="measure"/>
+                <field name="prod_qty_month_avg" type="measure"/>
+                <field name="free_hours_month" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="capacidad_view_graph" model="ir.ui.view">
+        <field name="name">qb.capacidad.graph</field>
+        <field name="model">qb.capacidad</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="centro_id"/>
+                <field name="utilization_hours_pct" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ============ Balance de línea ============ -->
+    <record id="balance_action" model="ir.actions.act_window">
+        <field name="name">Balance de línea / cuello de botella</field>
+        <field name="res_model">qb.balance</field>
+        <field name="view_mode">list,graph</field>
+    </record>
+    <record id="balance_view_list" model="ir.ui.view">
+        <field name="name">qb.balance.list</field>
+        <field name="model">qb.balance</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="is_bottleneck">
+                <field name="centro_id"/>
+                <field name="nature" optional="hide"/>
+                <field name="driver_principal"/>
+                <field name="capacity_month_units"/>
+                <field name="prod_month_units"/>
+                <field name="capacity_equiv_m"/>
+                <field name="prod_equiv_m"/>
+                <field name="utilization_pct"/>
+                <field name="free_equiv_m"/>
+                <field name="is_bottleneck"/>
+                <field name="capacity_source"/>
+            </list>
+        </field>
+    </record>
+    <record id="balance_view_graph" model="ir.ui.view">
+        <field name="name">qb.balance.graph</field>
+        <field name="model">qb.balance</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="centro_id"/>
+                <field name="capacity_equiv_m" type="measure"/>
+                <field name="prod_equiv_m" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ============ Ociosidad ============ -->
+    <record id="ociosidad_action" model="ir.actions.act_window">
+        <field name="name">Capacidad ociosa (IAS 2)</field>
+        <field name="res_model">qb.ociosidad</field>
+        <field name="view_mode">list,graph</field>
+    </record>
+    <record id="ociosidad_view_list" model="ir.ui.view">
+        <field name="name">qb.ociosidad.list</field>
+        <field name="model">qb.ociosidad</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="idle_pct &gt; 40">
+                <field name="centro_id"/>
+                <field name="fixed_pool_month" sum="Total"/>
+                <field name="capacity_month_units"/>
+                <field name="prod_month_units"/>
+                <field name="utilization_pct"/>
+                <field name="idle_pct"/>
+                <field name="idle_cost_month" sum="Total"/>
+                <field name="fixed_unit_normal"/>
+                <field name="fixed_unit_real"/>
+            </list>
+        </field>
+    </record>
+    <record id="ociosidad_view_graph" model="ir.ui.view">
+        <field name="name">qb.ociosidad.graph</field>
+        <field name="model">qb.ociosidad</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="centro_id"/>
+                <field name="idle_cost_month" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ============ RH por centro ============ -->
+    <record id="rh_centro_action" model="ir.actions.act_window">
+        <field name="name">RH por centro (MOD $/hora)</field>
+        <field name="res_model">qb.rh.centro</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="rh_centro_view_list" model="ir.ui.view">
+        <field name="name">qb.rh.centro.list</field>
+        <field name="model">qb.rh.centro</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false">
+                <field name="centro_id"/>
+                <field name="employee_count" sum="Total"/>
+                <field name="dotacion_ajuste"/>
+                <field name="hours_month"/>
+                <field name="wage_month_total" sum="Total"/>
+                <field name="gl_mod_month" sum="Total"/>
+                <field name="mod_hour_wages"/>
+                <field name="mod_hour_gl"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ Escenario de turnos ============ -->
+    <record id="escenario_turno_action" model="ir.actions.act_window">
+        <field name="name">Escenario de turnos</field>
+        <field name="res_model">qb.escenario.turno.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <record id="escenario_turno_view_form" model="ir.ui.view">
+        <field name="name">qb.escenario.turno.wizard.form</field>
+        <field name="model">qb.escenario.turno.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="centro_id"/>
+                    <field name="hours_per_week_new"/>
+                </group>
+                <field name="resultado" readonly="1"/>
+                <footer>
+                    <button name="action_simular" string="Simular" type="object"
+                            class="btn-primary"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

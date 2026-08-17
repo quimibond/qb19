@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Proyecto donde nacen las tareas de los acuerdos de RxD -->
+    <record id="sgi_project_agreements" model="project.project">
+        <field name="name">Acuerdos RxD</field>
+    </record>
+
+    <!-- ============================================================= -->
+    <!-- Requisición interna: categoría de Aprobaciones que genera RFQ -->
+    <!-- (funcionalidad nativa de approvals_purchase, approval_type).  -->
+    <!-- ============================================================= -->
+    <record id="sgi_approval_category_purchase" model="approval.category">
+        <field name="name">Solicitud de compra SGI</field>
+        <field name="approval_type">purchase</field>
+        <field name="has_product">required</field>
+        <field name="requirer_document">optional</field>
+        <field name="description">Requisición interna que, al aprobarse, genera automáticamente las RFQ (órdenes de compra en borrador) desde las líneas de producto.</field>
+    </record>
+</odoo>

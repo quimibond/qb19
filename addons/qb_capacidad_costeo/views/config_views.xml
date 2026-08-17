@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Centros ============ -->
+    <record id="centro_action" model="ir.actions.act_window">
+        <field name="name">Centros de costo / proceso</field>
+        <field name="res_model">qb.costeo.centro</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="centro_view_list" model="ir.ui.view">
+        <field name="name">qb.costeo.centro.list</field>
+        <field name="model">qb.costeo.centro</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="nature"/>
+                <field name="driver_principal"/>
+                <field name="workcenter_ids" widget="many2many_tags"/>
+                <field name="std_output_per_hour"/>
+                <field name="capacidad_normal"/>
+                <field name="renta_contractual_mxn"/>
+                <field name="es_denominador_kg" optional="hide"/>
+                <field name="es_denominador_m" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="centro_view_form" model="ir.ui.view">
+        <field name="name">qb.costeo.centro.form</field>
+        <field name="model">qb.costeo.centro</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group string="Identidad">
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="nature"/>
+                            <field name="driver_principal"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Capacidad">
+                            <field name="output_uom_id"/>
+                            <field name="std_output_per_hour"/>
+                            <field name="capacidad_normal"/>
+                            <field name="mo_name_pattern"/>
+                            <field name="es_denominador_kg"/>
+                            <field name="es_denominador_m"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Vínculos con Odoo (escalabilidad)">
+                            <field name="workcenter_ids" widget="many2many_tags"/>
+                            <field name="department_ids" widget="many2many_tags"/>
+                        </group>
+                        <group string="Costos">
+                            <field name="renta_contractual_mxn"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Notas..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============ Clasificación de cuentas ============ -->
+    <record id="cuenta_class_action" model="ir.actions.act_window">
+        <field name="name">Clasificación de cuentas</field>
+        <field name="res_model">qb.costeo.cuenta.class</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="cuenta_class_view_list" model="ir.ui.view">
+        <field name="name">qb.costeo.cuenta.class.list</field>
+        <field name="model">qb.costeo.cuenta.class</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="code_pattern"/>
+                <field name="account_id"/>
+                <field name="bucket"/>
+                <field name="es_variable"/>
+                <field name="centro_id"/>
+                <field name="driver"/>
+                <field name="allocation_pct"/>
+                <field name="account_ids" widget="many2many_tags" optional="hide"/>
+                <field name="notes" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="cuenta_map_action" model="ir.actions.act_window">
+        <field name="name">Cuentas mapeadas (resuelto)</field>
+        <field name="res_model">qb.costeo.cuenta.map</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="cuenta_map_view_list" model="ir.ui.view">
+        <field name="name">qb.costeo.cuenta.map.list</field>
+        <field name="model">qb.costeo.cuenta.map</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false">
+                <field name="account_id"/>
+                <field name="bucket"/>
+                <field name="es_variable"/>
+                <field name="centro_id"/>
+                <field name="driver"/>
+                <field name="allocation_pct"/>
+                <field name="class_id"/>
+            </list>
+        </field>
+    </record>
+    <record id="cuentas_pendientes_action" model="ir.actions.server">
+        <field name="name">Cuentas pendientes de clasificar</field>
+        <field name="model_id" ref="model_qb_costeo_cuenta_class"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_unclassified_accounts()</field>
+    </record>
+
+    <!-- ============ Parámetros ============ -->
+    <record id="factor_config_action" model="ir.actions.act_window">
+        <field name="name">Parámetros de costeo</field>
+        <field name="res_model">qb.costeo.factor.config</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="factor_config_view_list" model="ir.ui.view">
+        <field name="name">qb.costeo.factor.config.list</field>
+        <field name="model">qb.costeo.factor.config</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="key"/>
+                <field name="value"/>
+                <field name="value_text"/>
+                <field name="descripcion"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ Pesos por producto ============ -->
+    <record id="producto_peso_action" model="ir.actions.act_window">
+        <field name="name">Peso / conversión por producto</field>
+        <field name="res_model">qb.producto.peso</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="producto_peso_view_list" model="ir.ui.view">
+        <field name="name">qb.producto.peso.list</field>
+        <field name="model">qb.producto.peso</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="product_id"/>
+                <field name="kg_per_unit"/>
+                <field name="m_per_kg"/>
+                <field name="source"/>
+                <field name="notes"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ Ruteo ============ -->
+    <record id="producto_ruteo_action" model="ir.actions.act_window">
+        <field name="name">Ruteo producto → centros</field>
+        <field name="res_model">qb.producto.ruteo</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="producto_ruteo_view_list" model="ir.ui.view">
+        <field name="name">qb.producto.ruteo.list</field>
+        <field name="model">qb.producto.ruteo</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="product_id"/>
+                <field name="categ_id"/>
+                <field name="categ_pattern"/>
+                <field name="name_pattern"/>
+                <field name="product_bucket"/>
+                <field name="centro_ids" widget="many2many_tags"/>
+                <field name="notes" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ Turnos ============ -->
+    <record id="turno_config_action" model="ir.actions.act_window">
+        <field name="name">Turnos / capacidad manual</field>
+        <field name="res_model">qb.turno.config</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="turno_config_view_list" model="ir.ui.view">
+        <field name="name">qb.turno.config.list</field>
+        <field name="model">qb.turno.config</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="centro_id"/>
+                <field name="name"/>
+                <field name="hours_per_week"/>
+                <field name="machine_count"/>
+                <field name="dotacion_ajuste"/>
+                <field name="notes"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ Importar desde Supabase ============ -->
+    <record id="supabase_import_action" model="ir.actions.act_window">
+        <field name="name">Importar configuración desde Supabase</field>
+        <field name="res_model">qb.costeo.supabase.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <record id="supabase_import_view_form" model="ir.ui.view">
+        <field name="name">qb.costeo.supabase.import.form</field>
+        <field name="model">qb.costeo.supabase.import</field>
+        <field name="arch" type="xml">
+            <form>
+                <div class="alert alert-info" role="alert">
+                    Importa TODA la configuración curada en Supabase: centros de
+                    costo con sus departamentos, rentas contractuales por lote,
+                    asignación de cuentas de overhead y energía, fab_weight_share,
+                    el maestro de pesos (~2,758 productos) y las conversiones
+                    kg↔m medidas en planta. Liga los workcenters por patrón de
+                    nombre automáticamente. Idempotente: puedes correrlo las
+                    veces que quieras; además corre solo cada semana (cron).
+                    Los pesos con override manual local NO se pisan.
+                </div>
+                <field name="resultado" readonly="1"
+                       placeholder="El resumen de la importación aparecerá aquí..."/>
+                <footer>
+                    <button name="action_importar" string="Importar ahora"
+                            type="object" class="btn-primary"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============ Factores por período ============ -->
+    <record id="costo_factores_action" model="ir.actions.act_window">
+        <field name="name">Factores por período</field>
+        <field name="res_model">qb.costo.factores</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="costo_factores_view_list" model="ir.ui.view">
+        <field name="name">qb.costo.factores.list</field>
+        <field name="model">qb.costo.factores</field>
+        <field name="arch" type="xml">
+            <list create="false">
+                <field name="period"/>
+                <field name="window_months"/>
+                <field name="fab_pool_month" sum="Total"/>
+                <field name="kg_denom_month"/>
+                <field name="m_denom_month"/>
+                <field name="factor_fab_kg"/>
+                <field name="factor_fab_m"/>
+                <field name="energia_por_kg"/>
+                <field name="op_pct" widget="percentage"/>
+                <field name="entretela_factor_m"/>
+                <field name="cobertura_fab_pct"/>
+            </list>
+        </field>
+    </record>
+
+</odoo>

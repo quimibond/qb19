@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="sgi_seq_policy" model="ir.sequence">
+        <field name="name">Política integral SGI</field>
+        <field name="code">sgi.policy</field>
+        <field name="prefix">POL-%(range_year)s-</field>
+        <field name="padding">2</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+    <record id="sgi_seq_sales_budget" model="ir.sequence">
+        <field name="name">Presupuesto de ventas SGI</field>
+        <field name="code">sgi.sales.budget</field>
+        <field name="prefix">PPV-%(range_year)s-</field>
+        <field name="padding">3</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+</odoo>

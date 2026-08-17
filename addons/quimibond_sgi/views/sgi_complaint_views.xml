@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_helpdesk_ticket_view_form" model="ir.ui.view">
+        <field name="name">sgi.helpdesk.ticket.form.inherit</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_generate_nc" type="object" string="Generar NC"
+                        class="btn-secondary" invisible="sgi_alert_id"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Datos de la reclamación (SGI)">
+                    <group>
+                        <field name="sgi_sale_order_id"/>
+                        <field name="sgi_product_id"/>
+                        <field name="sgi_lot_id"/>
+                    </group>
+                    <group>
+                        <field name="sgi_qty_affected"/>
+                        <field name="sgi_disposition"/>
+                        <field name="sgi_alert_id"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_complaint_action" model="ir.actions.server">
+        <field name="name">Reclamaciones de clientes</field>
+        <field name="model_id" ref="helpdesk.model_helpdesk_ticket"/>
+        <field name="state">code</field>
+        <field name="code">
+team = env.ref('quimibond_sgi.sgi_helpdesk_team_complaints', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Reclamaciones de clientes',
+    'res_model': 'helpdesk.ticket',
+    'view_mode': 'kanban,list,form',
+    'domain': [('team_id', '=', team.id)] if team else [],
+    'context': {'default_team_id': team.id} if team else {},
+}
+        </field>
+    </record>
+</odoo>

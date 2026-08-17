@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Mapeo formato SGI ↔ documento de Odoo. noupdate=1: estos registros son
+         solo la semilla inicial; lo que MAST edite en SGI > Configuración >
+         Formatos en documentos de Odoo SOBREVIVE a los odoo-update. La revisión
+         NO se captura: se lee del documento vigente al mostrar/imprimir. -->
+
+    <record id="format_map_sale_order" model="sgi.format.map">
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="sgi_code">F-P-A28-12</field>
+        <field name="sgi_code_alt">F-P-A28-06</field>
+        <field name="note">Cotización F-P-A28-12 / Pedido F-P-A28-06 (P-A28 Rev.15; la 04 es Reporte de visita y la 03 Solicitud de muestras)</field>
+    </record>
+
+    <record id="format_map_purchase_order" model="sgi.format.map">
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="sgi_code">F-P-A02-01</field>
+        <field name="note">Orden de compra</field>
+    </record>
+
+    <record id="format_map_stock_picking" model="sgi.format.map">
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="sgi_code">F-P-A16-01</field>
+        <field name="note">Remisión / lista de embarque (solo entregas de salida)</field>
+    </record>
+
+    <record id="format_map_mrp_production" model="sgi.format.map">
+        <field name="model_id" ref="mrp.model_mrp_production"/>
+        <field name="sgi_code">F-IT-P-P01-08-01</field>
+        <field name="note">Orden de fabricación / tarjeta viajera</field>
+    </record>
+
+    <record id="format_map_maintenance_request" model="sgi.format.map">
+        <field name="model_id" ref="maintenance.model_maintenance_request"/>
+        <field name="sgi_code">F-P-M01-01</field>
+        <field name="note">Orden de trabajo de mantenimiento</field>
+    </record>
+
+    <record id="format_map_quality_alert" model="sgi.format.map">
+        <field name="model_id" ref="quality.model_quality_alert"/>
+        <field name="sgi_code">F-P-G05-01</field>
+        <field name="note">Reporte de No Conformidad</field>
+    </record>
+
+    <record id="format_map_stock_lot" model="sgi.format.map">
+        <field name="model_id" ref="stock.model_stock_lot"/>
+        <field name="sgi_code">F-P-C07-01</field>
+        <field name="note">Certificado de Calidad (CoA) del lote</field>
+    </record>
+
+    <record id="format_map_mgmt_review" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_management_review"/>
+        <field name="sgi_code">F-P-A10-01</field>
+        <field name="note">Acta de Revisión por la Dirección</field>
+    </record>
+
+    <record id="format_map_sales_budget" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="sgi_code">F-P-A28-18</field>
+        <field name="sgi_code_alt">F-P-A28-13</field>
+        <field name="note">Presupuesto de Ventas General F-P-A28-18 (mensual) / Pronóstico F-P-A28-13 (semanal por cliente); F-P-A28-17 es el comparativo ppto vs real</field>
+    </record>
+</odoo>

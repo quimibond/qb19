@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Siembra idempotente de parámetros: crea SOLO los que no existen (los
+         parámetros pueden pre-existir creados a mano — un <record> duplicaría
+         la clave y rompería el update). Corre en cada odoo-update sin efectos
+         sobre valores ya capturados. -->
+    <function model="sgi.config" name="seed_parameters"/>
+    <!-- KPIs 2.0: fija el calc_mode automático de los indicadores listos, solo
+         donde siguen en 'manual' (idempotente; no pisa decisiones de MAST). -->
+    <function model="sgi.config" name="activate_auto_indicators"/>
+    <function model="sgi.config" name="harden_noupdate"/>
+    <function model="sgi.config" name="seed_process_purposes"/>
+    <!-- H21: siembra el FK de familia documental donde esté vacío, por la
+         nomenclatura (idempotente; no pisa enlaces ya capturados a mano). -->
+    <function model="sgi.config" name="migrate_document_families"/>
+</odoo>

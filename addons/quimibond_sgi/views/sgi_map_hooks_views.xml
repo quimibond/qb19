@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Smart button "NCs del proveedor" en la orden de compra -->
+    <record id="sgi_purchase_order_form" model="ir.ui.view">
+        <field name="name">purchase.order.form.sgi</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
+                        icon="fa-exclamation-triangle">
+                    <field name="sgi_nc_count" widget="statinfo" string="NC proveedor"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Botón "Levantar NC" en solicitudes de mantenimiento correctivas -->
+    <record id="sgi_maintenance_request_form" model="ir.ui.view">
+        <field name="name">maintenance.request.form.sgi</field>
+        <field name="model">maintenance.request</field>
+        <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_raise_nc" type="object" string="Levantar NC"
+                        class="btn-secondary"
+                        invisible="maintenance_type != 'corrective' or sgi_alert_id"/>
+                <button name="action_sgi_raise_nc" type="object" string="Ver NC"
+                        invisible="not sgi_alert_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
