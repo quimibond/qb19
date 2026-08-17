@@ -20,6 +20,9 @@
                         domain="[('margen_absorbido', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
                 <filter name="contribucion_negativa" string="Contribución negativa"
                         domain="[('margen_contribucion', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
+                <filter name="facturado_divisa" string="💱 Facturado en divisa"
+                        domain="[('divisa_venta', '!=', False)]"
+                        help="Productos facturados en una moneda distinta a la de la compañía (p.ej. USD). El precio y los márgenes ya están convertidos a moneda local al tipo de cambio de la factura."/>
                 <separator/>
                 <filter name="alerta_bajo_variable" string="🔴 Bajo costo variable"
                         domain="[('alerta', '=', 'bajo_variable')]"/>
@@ -45,23 +48,34 @@
             <list create="false"
                   decoration-danger="margen_contribucion &lt; 0 and qty_vendida &gt; 0"
                   decoration-warning="margen_absorbido &lt; 0 and margen_contribucion &gt;= 0 and qty_vendida &gt; 0">
+                <field name="company_currency_id" column_invisible="1"/>
                 <field name="period" optional="show"/>
                 <field name="default_code"/>
                 <field name="product_id"/>
                 <field name="product_bucket" optional="hide"/>
                 <field name="uom_name"/>
                 <field name="qty_vendida" sum="Total"/>
-                <field name="precio_prom"/>
-                <field name="mp_unit"/>
-                <field name="energia_unit" optional="hide"/>
-                <field name="costo_variable"/>
-                <field name="fab_unit"/>
-                <field name="op_unit" optional="hide"/>
-                <field name="costo_absorbido"/>
-                <field name="margen_contribucion"/>
+                <field name="precio_prom" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="divisa_venta" optional="show"/>
+                <field name="mp_unit" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="energia_unit" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="costo_variable" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="fab_unit" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="op_unit" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="costo_absorbido" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="margen_contribucion" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="margen_contribucion_pct"/>
                 <field name="margen_absorbido_pct"/>
-                <field name="contrib_hora_maquina"/>
+                <field name="contrib_hora_maquina" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="alerta" widget="badge"
                        decoration-danger="alerta == 'bajo_variable'"
                        decoration-warning="alerta in ('bajo_absorbido', 'peso_estimado')"
@@ -88,26 +102,38 @@
                             <field name="m_per_kg"/>
                         </group>
                         <group string="Venta del período">
+                            <field name="company_currency_id" invisible="1"/>
                             <field name="qty_vendida"/>
-                            <field name="precio_prom"/>
+                            <field name="precio_prom" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="divisa_venta"/>
                             <field name="factores_id"/>
                         </group>
                     </group>
                     <group>
-                        <group string="Costo por capa ($/u)">
-                            <field name="mp_unit"/>
-                            <field name="energia_unit"/>
-                            <field name="costo_variable"/>
-                            <field name="fab_unit"/>
-                            <field name="op_unit"/>
-                            <field name="costo_absorbido"/>
+                        <group string="Costo por capa (por unidad)">
+                            <field name="mp_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="energia_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="costo_variable" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="fab_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="op_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="costo_absorbido" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </group>
                         <group string="Márgenes">
-                            <field name="margen_contribucion"/>
+                            <field name="margen_contribucion" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_contribucion_pct"/>
-                            <field name="margen_absorbido"/>
+                            <field name="margen_absorbido" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_absorbido_pct"/>
-                            <field name="contrib_hora_maquina"/>
+                            <field name="contrib_hora_maquina" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </group>
                     </group>
                 </sheet>
@@ -139,16 +165,21 @@
             <list create="false" default_order="contrib_hora_maquina desc"
                   decoration-success="contrib_hora_maquina &gt;= 1000"
                   decoration-danger="margen_contribucion &lt; 0">
+                <field name="company_currency_id" column_invisible="1"/>
                 <field name="period" optional="show"/>
                 <field name="default_code"/>
                 <field name="product_id"/>
                 <field name="centro_route"/>
-                <field name="contrib_hora_maquina"/>
-                <field name="margen_contribucion"/>
+                <field name="contrib_hora_maquina" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="margen_contribucion" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="margen_contribucion_pct"/>
                 <field name="qty_vendida" sum="Total"/>
-                <field name="contrib_total" sum="Total"/>
-                <field name="precio_prom" optional="hide"/>
+                <field name="contrib_total" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="precio_prom" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
             </list>
         </field>
     </record>

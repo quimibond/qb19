@@ -765,3 +765,51 @@ class TestQbCosteo(TransactionCase):
                 rec.contrib_total,
                 (rec.margen_contribucion * rec.qty_vendida
                  if rec.precio_prom else 0.0), places=2)
+
+    def test_reporte_revenue_en_mxn_no_divisa_cruda(self):
+        """El reporte toma el revenue de aml.balance (MXN), NO de
+        price_subtotal (moneda del documento): una factura en EUR entra con su
+        valor REAL en pesos y marca la divisa. Antes sumaba euros crudos contra
+        pesos y el precio salía basura (~1/TC)."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date.today().replace(day=1)
+        eur = self.env.ref('base.EUR')
+        eur.active = True
+        self.env['res.currency.rate'].create({
+            'currency_id': eur.id,
+            'rate': 0.05,  # 1 cía = 0.05 EUR → 1 EUR = 20 cía
+            'name': period,
+        })
+        partner = self.env['res.partner'].create({'name': 'Cliente Export'})
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': partner.id,
+            'currency_id': eur.id,
+            'invoice_date': period,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.tela.id,
+                'quantity': 100,
+                'price_unit': 5.0,   # 5 EUR = 100 cía por unidad
+            })],
+        })
+        move.action_post()
+
+        sales = self.Costo._sales_by_product(period)
+        qty, revenue, divisa = sales[self.tela.id]
+        self.assertAlmostEqual(qty, 100.0, places=2)
+        # 100 u × 5 EUR × 20 = 10,000 en moneda cía — NO 500 (el crudo EUR)
+        self.assertAlmostEqual(revenue, 10000.0, places=0,
+                               msg='revenue debe venir de balance (MXN)')
+        self.assertIn('EUR', divisa, 'debe marcar la divisa de la factura')
+
+        # El recompute deja precio_prom en moneda cía y puebla divisa_venta
+        self.Costo.action_recompute_period(period)
+        rec = self.Costo.search([('period', '=', period),
+                                 ('product_id', '=', self.tela.id)])
+        self.assertAlmostEqual(rec.precio_prom, 100.0, places=0)
+        self.assertIn('EUR', rec.divisa_venta)
+        self.assertEqual(rec.company_currency_id,
+                         self.env.company.currency_id)
