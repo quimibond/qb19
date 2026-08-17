@@ -2,15 +2,21 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, quimibond, qbtesting]
   pull_request:
-    branches: [main]
+    # También en los merges hacia producción y hacia la rama de pruebas: es
+    # justo donde han entrado los cambios que tumbaron builds de Odoo.sh.
+    branches: [main, quimibond, qbtesting]
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Historia completa: el check de "modelo nuevo sin bump de versión"
+          # compara contra la rama base.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -24,3 +30,21 @@ jobs:
 
       - name: Syntax check
         run: python -m py_compile addons/quimibond_intelligence/models/sync_push.py && python -m py_compile addons/quimibond_intelligence/models/sync_pull.py && python -m py_compile addons/quimibond_intelligence/models/supabase_client.py
+
+      - name: Compilar todos los módulos
+        run: |
+          find . -name '__manifest__.py' -not -path './.git/*' -printf '%h\n' \
+            | sort -u | xargs python -m compileall -q
+
+      - name: Checks estáticos de addons
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # En un PR se compara contra la rama base; en un push directo no hay
+          # contra qué comparar y ese check se omite solo.
+          if [ -n "$BASE_REF" ]; then
+            git fetch --no-tags origin "$BASE_REF"
+            python3 tools/check_addons.py --base-ref "origin/$BASE_REF"
+          else
+            python3 tools/check_addons.py
+          fi
