@@ -198,6 +198,28 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(neto, 30.0, places=1)
         self.assertGreaterEqual(q['precio_sugerido'], q['piso_lleno'])
 
+    def test_maestro_pesos_nativo(self):
+        """El maestro de pesos nativo (CSV, sin Supabase) llena/corrige por
+        código de producto y NO pisa un peso ya autoritativo."""
+        p = self.env['product.product'].create({
+            'name': 'RESINA TEST', 'default_code': 'WM4032OW152',
+            'is_storable': True, 'uom_id': self.tela.uom_id.id,
+            'sale_ok': True})
+        # código de resina (4032) → no da gramaje → sin peso resuelto
+        self.assertEqual(self.Peso.resolve_kg_source(p), 'sin_peso')
+        creados, _corr, _sp = self.Peso.load_weight_master()
+        self.assertGreaterEqual(creados, 1)
+        # tras cargar: peso medido real y fuente confiable
+        self.assertAlmostEqual(
+            self.Peso.resolve_kg_per_unit(p), 0.0654, places=4)
+        self.assertEqual(self.Peso.resolve_kg_source(p), 'manual')
+        self.assertNotIn('manual', self.Peso.PESO_SOURCES_ESTIMADAS)
+        # idempotente: una edición manual del usuario se respeta
+        rec = self.Peso.search([('product_id', '=', p.id)])
+        rec.kg_per_unit = 0.99
+        self.Peso.load_weight_master()
+        self.assertAlmostEqual(rec.kg_per_unit, 0.99, places=2)
+
     def test_subproducto_mp_cero(self):
         """SALDO*: MP $0 — su materia ya está en la receta del principal."""
         bucket, _ = self.Ruteo.resolve(self.saldo)

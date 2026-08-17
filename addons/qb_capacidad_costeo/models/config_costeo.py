@@ -7,9 +7,10 @@ se captura aquí. Los cálculos (vistas SQL y motor de costeo) leen estos
 modelos + los registros nativos, así que "capturar en Odoo" basta para que
 el modelo lo considere sin tocar código.
 """
+import csv
 import re
 
-from odoo import api, fields, models
+from odoo import api, fields, models, tools
 from odoo.exceptions import ValidationError
 
 BUCKETS = [
@@ -389,6 +390,62 @@ class QbProductoPeso(models.Model):
             # Producto en metros: kg = kg/m → m/kg es su inverso.
             return 1.0 / kg
         return self.env['qb.costeo.factor.config'].get_param('m_per_kg_default', 8.0)
+
+    # ------------------------------------------------------------------
+    # Maestro de pesos NATIVO (sin Supabase)
+    # ------------------------------------------------------------------
+    @api.model
+    def load_weight_master(self):
+        """Carga los pesos MEDIDOS/de ingeniería desde el archivo nativo
+        data/product_weights.csv, matcheando por código de producto
+        (default_code — portable entre bases, no depende de ids de Supabase).
+
+        Regla de no-pisado: sólo LLENA o CORRIGE pesos estimados
+        (ref_gramaje/odoo_weight/bom) o faltantes; NUNCA pisa un peso ya
+        autoritativo (manual/cvu) que alguien haya fijado en Odoo.
+        Idempotente. Devuelve (creados, corregidos, sin_producto)."""
+        Product = self.env['product.product']
+        creados = corregidos = sin_producto = 0
+        with tools.file_open(
+                'qb_capacidad_costeo/data/product_weights.csv') as f:
+            for row in csv.DictReader(f):
+                ref = (row.get('ref') or '').strip()
+                try:
+                    kg = float(row.get('kg_per_unit') or 0.0)
+                except (TypeError, ValueError):
+                    continue
+                if not ref or kg <= 0:
+                    continue
+                product = Product.with_context(active_test=False).search(
+                    [('default_code', '=', ref)], limit=1)
+                if not product:
+                    sin_producto += 1
+                    continue
+                src = row.get('source') or 'manual'
+                rec = self.with_context(active_test=False).search(
+                    [('product_id', '=', product.id)], limit=1)
+                if rec:
+                    if rec.source in ('manual', 'cvu'):
+                        continue  # ya autoritativo → respetar
+                    rec.write({'kg_per_unit': kg, 'source': src})
+                    corregidos += 1
+                else:
+                    self.create({'product_id': product.id,
+                                 'kg_per_unit': kg, 'source': src})
+                    creados += 1
+        return creados, corregidos, sin_producto
+
+    def action_load_weight_master(self):
+        """Botón: (re)carga el maestro de pesos nativo y avisa el resultado."""
+        creados, corregidos, sin_prod = self.load_weight_master()
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'title': 'Maestro de pesos cargado',
+                'message': '%s creados, %s corregidos, %s sin producto en '
+                           'esta base.' % (creados, corregidos, sin_prod),
+                'type': 'success', 'sticky': False,
+            }}
 
 
 class QbProductoRuteo(models.Model):
