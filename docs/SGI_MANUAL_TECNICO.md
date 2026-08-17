@@ -341,6 +341,29 @@ Nota `odoo-bin shell`: revierte la transacción al salir → los scripts hacen
 
 ## 8. Tests
 
+### Checks estáticos (`tools/check_addons.py`)
+
+Corren en el CI de GitHub en cada PR hacia `main`, `quimibond` y `qbtesting`.
+Sin Odoo, sin Postgres, sin licencia: por eso cubren también los módulos que
+dependen de Enterprise, donde un CI con Odoo Community no puede entrar.
+
+| Check | Qué caza | De dónde salió |
+|---|---|---|
+| Archivos del manifest | `data:` apuntando a un archivo inexistente | — |
+| XML mal formado | Rompe la carga del módulo | — |
+| `_sql_constraints` | Sintaxis muerta en 19: se ignora en silencio | 7 restricciones inexistentes en `qb_capacidad_costeo` |
+| Clave de config duplicada | `<record>` + siembra ⇒ choque contra `ir_config_parameter_key_uniq`, tumba el registry | `pesaje_tolerance_kg` |
+| `env.ref()` sin destino | Truena en runtime, no al cargar: llega a producción | — |
+| `ir.model.access.csv` huérfano | Permisos a modelos que no existen | — |
+| Modelo nuevo sin bump | Odoo.sh no corre `-u` ⇒ modelo en el registry SIN TABLA | `qb.cotizacion.tramo`, `qb.producto.ficha` |
+
+Local: `python3 tools/check_addons.py [--base-ref origin/main]`. Sin `--base-ref`
+se omite el check de versión (necesita contra qué comparar).
+
+Las advertencias no rompen el CI; los errores sí. Hoy hay 6 advertencias vivas:
+las claves con doble declaración *dentro* de `quimibond_sgi` descritas en §11.
+
+
 ~64 tests `@tagged('post_install', '-at_install')` cubriendo: folios y secuencias,
 candados de NC/mejora/AMEF/PPAP/incidente/auditoría/RxD, unicidad de vigente,
 generación de acuses idempotente, cambios documentales (piloto 90 días, versionado),
