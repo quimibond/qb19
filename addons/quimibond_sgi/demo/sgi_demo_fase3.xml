@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================== -->
+    <!--  DATOS DE PRUEBA — FASE 3 (solo modo demo)                     -->
+    <!--  Cliente + producto piloto para recorrer todos los flujos.     -->
+    <!-- ============================================================== -->
+
+    <record id="sgi_demo_partner" model="res.partner">
+        <field name="name">Continental Demo Automotive</field>
+        <field name="is_company" eval="True"/>
+        <field name="vat">CDA850101AB1</field>
+    </record>
+
+    <record id="sgi_demo_product" model="product.product">
+        <field name="name">Fieltro técnico automotriz SGI-DEMO</field>
+        <field name="default_code">SGI-DEMO-001</field>
+        <field name="type">consu</field>
+    </record>
+
+    <!-- ================= PLAN DE CONTROL (P-C11) ================= -->
+    <record id="sgi_demo_control_plan" model="sgi.control.plan">
+        <field name="name">Plan de control — Fieltro técnico (Continental)</field>
+        <field name="partner_id" ref="sgi_demo_partner"/>
+        <field name="product_tmpl_ids" model="product.template"
+               search="[('name', '=', 'Fieltro técnico automotriz SGI-DEMO')]"/>
+        <field name="phase">produccion</field>
+        <field name="revision">01</field>
+        <field name="state">vigente</field>
+        <field name="notes">Plan de control piloto para revisión de Fase 3.</field>
+    </record>
+
+    <record id="sgi_demo_point_gramaje" model="quality.point">
+        <field name="title">Gramaje (g/m²)</field>
+        <field name="test_type_id" ref="quality_control.test_type_measure"/>
+        <field name="picking_type_ids" eval="[(4, ref('stock.picking_type_in'))]"/>
+        <field name="product_ids" eval="[(4, ref('sgi_demo_product'))]"/>
+        <field name="sgi_control_plan_id" ref="sgi_demo_control_plan"/>
+        <field name="sgi_characteristic">Gramaje nominal</field>
+        <field name="sgi_criticality">s</field>
+        <field name="sgi_cpk_target">1.67</field>
+        <field name="sgi_in_coa" eval="True"/>
+        <field name="norm">250.0</field>
+        <field name="tolerance_min">240.0</field>
+        <field name="tolerance_max">260.0</field>
+        <field name="norm_unit">g/m²</field>
+        <field name="sgi_reaction_plan">Segregar el lote y avisar a Calidad si sale de tolerancia.</field>
+    </record>
+
+    <record id="sgi_demo_point_espesor" model="quality.point">
+        <field name="title">Espesor (mm)</field>
+        <field name="test_type_id" ref="quality_control.test_type_measure"/>
+        <field name="picking_type_ids" eval="[(4, ref('stock.picking_type_in'))]"/>
+        <field name="product_ids" eval="[(4, ref('sgi_demo_product'))]"/>
+        <field name="sgi_control_plan_id" ref="sgi_demo_control_plan"/>
+        <field name="sgi_characteristic">Espesor</field>
+        <field name="sgi_criticality">f</field>
+        <field name="sgi_cpk_target">1.33</field>
+        <field name="sgi_in_coa" eval="True"/>
+        <field name="norm">2.0</field>
+        <field name="tolerance_min">1.8</field>
+        <field name="tolerance_max">2.2</field>
+        <field name="norm_unit">mm</field>
+    </record>
+
+    <!-- Lote + inspecciones para imprimir el CoA (P-C07) -->
+    <record id="sgi_demo_lot" model="stock.lot">
+        <field name="name">LOTE-DEMO-0001</field>
+        <field name="product_id" ref="sgi_demo_product"/>
+    </record>
+
+    <record id="sgi_demo_check_gramaje" model="quality.check">
+        <field name="point_id" ref="sgi_demo_point_gramaje"/>
+        <field name="product_id" ref="sgi_demo_product"/>
+        <field name="lot_ids" eval="[(4, ref('sgi_demo_lot'))]"/>
+        <field name="measure">251.5</field>
+        <field name="quality_state">pass</field>
+    </record>
+
+    <record id="sgi_demo_check_espesor" model="quality.check">
+        <field name="point_id" ref="sgi_demo_point_espesor"/>
+        <field name="product_id" ref="sgi_demo_product"/>
+        <field name="lot_ids" eval="[(4, ref('sgi_demo_lot'))]"/>
+        <field name="measure">2.05</field>
+        <field name="quality_state">pass</field>
+    </record>
+
+    <!-- ================= CALIBRACIÓN (P-C03) ================= -->
+    <record id="sgi_demo_equipment_ok" model="maintenance.equipment">
+        <field name="name">Báscula analítica BA-01</field>
+        <field name="sgi_is_measuring" eval="True"/>
+        <field name="sgi_magnitude">Masa</field>
+        <field name="sgi_range">0-2200 g</field>
+        <field name="sgi_resolution">0.01 g</field>
+        <field name="sgi_calibration_interval_months">12</field>
+    </record>
+
+    <record id="sgi_demo_cal_ok" model="sgi.calibration">
+        <field name="equipment_id" ref="sgi_demo_equipment_ok"/>
+        <field name="date" eval="(datetime.now().date() - relativedelta(months=1))"/>
+        <field name="calibration_type">externa</field>
+        <field name="provider_id" ref="sgi_demo_partner"/>
+        <field name="certificate_ref">CAL-2026-0087</field>
+        <field name="result">conforme</field>
+    </record>
+
+    <!-- Equipo con calibración FUERA DE TOLERANCIA: se bloquea y genera NC -->
+    <record id="sgi_demo_equipment_bad" model="maintenance.equipment">
+        <field name="name">Micrómetro digital MI-07</field>
+        <field name="sgi_is_measuring" eval="True"/>
+        <field name="sgi_magnitude">Longitud</field>
+        <field name="sgi_range">0-25 mm</field>
+        <field name="sgi_resolution">0.001 mm</field>
+        <field name="sgi_calibration_interval_months">6</field>
+    </record>
+
+    <record id="sgi_demo_cal_bad" model="sgi.calibration">
+        <field name="equipment_id" ref="sgi_demo_equipment_bad"/>
+        <field name="date" eval="(datetime.now().date() - relativedelta(days=3))"/>
+        <field name="calibration_type">externa</field>
+        <field name="provider_id" ref="sgi_demo_partner"/>
+        <field name="certificate_ref">CAL-2026-0090</field>
+        <field name="result">fuera_tolerancia</field>
+        <field name="notes">Desviación de +0.008 mm en el patrón de 10 mm.</field>
+    </record>
+
+    <!-- EPP (P-S03) por vencer -->
+    <record id="sgi_demo_ppe" model="maintenance.equipment">
+        <field name="name">Arnés de seguridad AS-03</field>
+        <field name="sgi_is_ppe" eval="True"/>
+        <field name="sgi_ppe_expiry_date" eval="(datetime.now().date() + relativedelta(days=20))"/>
+    </record>
+
+    <!-- ================= AMEF (P-C10) ================= -->
+    <record id="sgi_demo_fmea" model="sgi.fmea">
+        <field name="name">PFMEA — Línea de termofusión</field>
+        <field name="fmea_type">proceso</field>
+        <field name="product_tmpl_id" model="product.template"
+               search="[('name', '=', 'Fieltro técnico automotriz SGI-DEMO')]"/>
+        <field name="revision">01</field>
+    </record>
+
+    <record id="sgi_demo_fmea_line_high" model="sgi.fmea.line">
+        <field name="fmea_id" ref="sgi_demo_fmea"/>
+        <field name="sequence">10</field>
+        <field name="step">Termofusión de capas</field>
+        <field name="failure_mode">Delaminación</field>
+        <field name="effect">Falla estructural en el cliente</field>
+        <field name="severity">10</field>
+        <field name="cause">Temperatura del rodillo por debajo del set point</field>
+        <field name="occurrence">5</field>
+        <field name="current_controls">Control de temperatura por PLC</field>
+        <field name="detection">4</field>
+    </record>
+
+    <record id="sgi_demo_fmea_line_low" model="sgi.fmea.line">
+        <field name="fmea_id" ref="sgi_demo_fmea"/>
+        <field name="sequence">20</field>
+        <field name="step">Corte a medida</field>
+        <field name="failure_mode">Rebaba en el borde</field>
+        <field name="effect">Apariencia</field>
+        <field name="severity">3</field>
+        <field name="cause">Cuchilla desgastada</field>
+        <field name="occurrence">3</field>
+        <field name="current_controls">Inspección visual</field>
+        <field name="detection">2</field>
+    </record>
+
+    <record id="sgi_demo_fmea_action" model="sgi.action.line">
+        <field name="fmea_line_id" ref="sgi_demo_fmea_line_high"/>
+        <field name="action_type">preventiva</field>
+        <field name="name">Poka-yoke: bloqueo de arranque si T &lt; set point</field>
+        <field name="responsible_id" ref="base.user_admin"/>
+        <field name="date_commit" eval="(datetime.now().date() + relativedelta(days=15))"/>
+    </record>
+
+    <!-- ================= PPAP (P-C15) — genera 18 elementos ================= -->
+    <record id="sgi_demo_ppap" model="sgi.ppap">
+        <field name="partner_id" ref="sgi_demo_partner"/>
+        <field name="product_tmpl_id" model="product.template"
+               search="[('name', '=', 'Fieltro técnico automotriz SGI-DEMO')]"/>
+        <field name="level">3</field>
+        <field name="reason">nuevo_producto</field>
+    </record>
+
+    <!-- ================= INCIDENTE SST (P-S02, SCAT) ================= -->
+    <record id="sgi_demo_incident" model="sgi.incident">
+        <field name="name">Casi accidente: montacargas en pasillo peatonal</field>
+        <field name="date" eval="(datetime.now() - relativedelta(days=2))"/>
+        <field name="incident_type">casi_accidente</field>
+        <field name="severity">moderado</field>
+        <field name="location">Almacén de materia prima</field>
+        <field name="description">Un montacargas circuló por el pasillo peatonal sin señalización activa.</field>
+        <field name="immediate_causes">Cruce de tráfico peatonal y montacargas sin delimitación.</field>
+        <field name="basic_causes">Falta de procedimiento de tránsito interno.</field>
+        <field name="lack_of_control">No hay auditorías planeadas de rutas de circulación.</field>
+        <field name="state">investigacion</field>
+    </record>
+
+    <record id="sgi_demo_incident_action" model="sgi.action.line">
+        <field name="incident_id" ref="sgi_demo_incident"/>
+        <field name="action_type">correctiva</field>
+        <field name="name">Delimitar y señalizar pasillo peatonal</field>
+        <field name="responsible_id" ref="base.user_admin"/>
+        <field name="date_commit" eval="(datetime.now().date() + relativedelta(days=10))"/>
+    </record>
+
+    <!-- ================= COMPETENCIAS (P-A01) — brecha DNC ================= -->
+    <record id="sgi_demo_skilltype" model="hr.skill.type">
+        <field name="name">Competencias técnicas SGI-DEMO</field>
+    </record>
+
+    <record id="sgi_demo_level_basic" model="hr.skill.level">
+        <field name="skill_type_id" ref="sgi_demo_skilltype"/>
+        <field name="name">Básico</field>
+        <field name="level_progress">25</field>
+    </record>
+
+    <record id="sgi_demo_level_expert" model="hr.skill.level">
+        <field name="skill_type_id" ref="sgi_demo_skilltype"/>
+        <field name="name">Experto</field>
+        <field name="level_progress">90</field>
+    </record>
+
+    <record id="sgi_demo_skill" model="hr.skill">
+        <field name="name">Operación de línea de termofusión</field>
+        <field name="skill_type_id" ref="sgi_demo_skilltype"/>
+    </record>
+
+    <record id="sgi_demo_job" model="hr.job">
+        <field name="name">Operador de termofusión SGI-DEMO</field>
+    </record>
+
+    <record id="sgi_demo_job_skill" model="hr.job.skill">
+        <field name="job_id" ref="sgi_demo_job"/>
+        <field name="skill_id" ref="sgi_demo_skill"/>
+        <field name="skill_type_id" ref="sgi_demo_skilltype"/>
+        <field name="skill_level_id" ref="sgi_demo_level_expert"/>
+    </record>
+
+    <record id="sgi_demo_employee" model="hr.employee">
+        <field name="name">Operador Demo (brecha de competencia)</field>
+        <field name="job_id" ref="sgi_demo_job"/>
+    </record>
+
+    <record id="sgi_demo_employee_skill" model="hr.employee.skill">
+        <field name="employee_id" ref="sgi_demo_employee"/>
+        <field name="skill_id" ref="sgi_demo_skill"/>
+        <field name="skill_type_id" ref="sgi_demo_skilltype"/>
+        <field name="skill_level_id" ref="sgi_demo_level_basic"/>
+    </record>
+</odoo>

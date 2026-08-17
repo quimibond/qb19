@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ FORM INHERIT quality.alert ============ -->
+    <record id="sgi_quality_alert_view_form" model="ir.ui.view">
+        <field name="name">sgi.quality.alert.form.inherit</field>
+        <field name="model">quality.alert</field>
+        <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_escalate_to_nc" type="object"
+                        string="Escalar a NC del SGI"
+                        class="btn-primary"
+                        groups="quimibond_sgi.group_sgi_auditor"
+                        invisible="sgi_folio"/>
+                <button name="action_sgi_force_close" type="object"
+                        string="Cierre forzado (Jefe MAST)"
+                        groups="quimibond_sgi.group_sgi_manager"
+                        invisible="not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <field name="sgi_stage_is_closing" invisible="1"/>
+                <field name="sgi_stage_is_cancel" invisible="1"/>
+                <field name="sgi_is_recurrent" invisible="1"/>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not sgi_is_recurrent">
+                    <strong>⚠ Reincidente:</strong>
+                    <field name="sgi_recurrence_count" class="oe_inline"/>
+                    caso(s) previo(s) en este proceso. La recurrencia la vuelve
+                    sistémica: al cerrarla se exige una acción correctiva.
+                </div>
+                <group>
+                    <group string="Datos SGI">
+                        <field name="sgi_folio"/>
+                        <field name="sgi_origin_type"/>
+                        <field name="sgi_classification"/>
+                        <field name="sgi_norm_clause_id"/>
+                        <field name="sgi_process_id"/>
+                        <field name="sgi_external_ref" invisible="sgi_origin_type != 'auditoria_externa'"/>
+                        <field name="sgi_complaint_ticket_id" invisible="not sgi_complaint_ticket_id"/>
+                    </group>
+                    <group string="Responsabilidades">
+                        <field name="sgi_requester_id"/>
+                        <field name="sgi_requester_job"/>
+                        <field name="sgi_lead_auditor_id"/>
+                        <field name="sgi_responsible_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <notebook>
+                    <page string="Desviación y análisis">
+                        <group string="Desviación detectada">
+                            <field name="sgi_deviation" nolabel="1"/>
+                        </group>
+                        <group string="5 Porqués">
+                            <field name="sgi_why_1"/>
+                            <field name="sgi_why_2"/>
+                            <field name="sgi_why_3"/>
+                            <field name="sgi_why_4"/>
+                            <field name="sgi_why_5"/>
+                        </group>
+                        <group string="Causa raíz">
+                            <field name="sgi_root_cause" nolabel="1"/>
+                        </group>
+                        <group string="Notas Ishikawa (5-6M)">
+                            <field name="sgi_ishikawa_notes" nolabel="1"/>
+                        </group>
+                    </page>
+                    <page string="Correcciones y acciones">
+                        <field name="sgi_action_line_ids">
+                            <list editable="bottom" decoration-danger="state == 'vencida'"
+                                  decoration-success="state == 'terminada'">
+                                <field name="action_type"/>
+                                <field name="name"/>
+                                <field name="responsible_id"/>
+                                <field name="date_commit"/>
+                                <field name="date_done"/>
+                                <field name="progress"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Ligas SGI" invisible="not sgi_folio">
+                        <group>
+                            <group string="Trazabilidad">
+                                <field name="sgi_fmea_id"/>
+                                <field name="sgi_document_id"/>
+                            </group>
+                            <group string="Riesgos ligados">
+                                <field name="sgi_risk_ids" nolabel="1"
+                                       widget="many2many_tags"/>
+                            </group>
+                        </group>
+                    </page>
+                    <page string="Verificación y cierre">
+                        <group>
+                            <group string="Eficacia">
+                                <field name="sgi_effectiveness_note"/>
+                                <field name="sgi_effectiveness_date"/>
+                                <field name="sgi_effectiveness_by"/>
+                                <field name="sgi_lesson_captured"
+                                       invisible="sgi_classification != 'mayor'"/>
+                            </group>
+                            <group string="Seguimiento">
+                                <field name="sgi_required_capa"/>
+                                <field name="sgi_followup_action"/>
+                                <field name="sgi_followup_comments"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="sgi_verified_by"/>
+                                <field name="sgi_verified_date"/>
+                            </group>
+                            <group>
+                                <field name="sgi_approved_by"/>
+                                <field name="sgi_approved_date"/>
+                            </group>
+                        </group>
+                    </page>
+                </notebook>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============ CONCENTRADO (F-P-G05-02) ============ -->
+    <record id="sgi_nc_concentrado_view_list" model="ir.ui.view">
+        <field name="name">sgi.nc.concentrado.list</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <list string="Concentrado de No Conformidades"
+                  decoration-success="date_close != False">
+                <field name="create_date" string="Fecha"/>
+                <field name="sgi_folio" string="Folio"/>
+                <field name="sgi_deviation" string="Desviación"/>
+                <field name="sgi_classification"/>
+                <field name="sgi_responsible_ids" widget="many2many_tags" string="Responsables"/>
+                <field name="team_id"/>
+                <field name="stage_id"/>
+                <field name="date_close" string="Cierre"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_nc_view_search" model="ir.ui.view">
+        <field name="name">sgi.nc.search</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <search string="No Conformidades">
+                <field name="sgi_folio"/>
+                <field name="sgi_deviation"/>
+                <field name="sgi_process_id"/>
+                <field name="team_id"/>
+                <filter name="sgi_open" string="Abiertas"
+                        domain="[('stage_id.sgi_is_closing_stage','=',False),('stage_id.sgi_is_cancel_stage','=',False)]"/>
+                <filter name="sgi_this_year" string="Este año"
+                        domain="[('create_date','&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group>
+                    <filter name="group_stage" string="Etapa" context="{'group_by': 'stage_id'}"/>
+                    <filter name="group_team" string="Equipo" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_class" string="Clasificación" context="{'group_by': 'sgi_classification'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_nc_action_kanban" model="ir.actions.act_window">
+        <field name="name">No Conformidades</field>
+        <field name="res_model">quality.alert</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="sgi_nc_view_search"/>
+        <field name="context">{'default_sgi_origin_type': 'proceso'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Levanta la primera No Conformidad</p>
+            <p>El folio (NCI-/NCE-) se asigna solo. El sistema no permite cerrar sin causa raíz, acciones terminadas y eficacia verificada — es el candado, no un error.</p>
+        </field>
+    </record>
+
+    <record id="sgi_nc_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.nc.pivot</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis de NC">
+                <field name="sgi_process_id" type="row"/>
+                <field name="create_date" interval="month" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_nc_view_graph" model="ir.ui.view">
+        <field name="name">sgi.nc.graph</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <graph string="NC por mes" type="bar">
+                <field name="create_date" interval="month"/>
+                <field name="sgi_classification"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_nc_action_concentrado" model="ir.actions.act_window">
+        <field name="name">Concentrado de NC</field>
+        <field name="res_model">quality.alert</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="view_id" ref="sgi_nc_concentrado_view_list"/>
+        <field name="search_view_id" ref="sgi_nc_view_search"/>
+        <field name="context">{'search_default_group_stage': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El concentrado se arma solo</p>
+            <p>Todas las NC del año con folio, hallazgo, responsables y estatus — la vista del F-P-G05-02, exportable para el auditor.</p>
+        </field>
+    </record>
+
+    <!-- ============ WIZARD CIERRE FORZADO ============ -->
+    <record id="sgi_nc_force_close_view_form" model="ir.ui.view">
+        <field name="name">sgi.nc.force.close.form</field>
+        <field name="model">sgi.nc.force.close</field>
+        <field name="arch" type="xml">
+            <form string="Cierre forzado de No Conformidad">
+                <field name="alert_id" invisible="1"/>
+                <group>
+                    <field name="reason" placeholder="Explique el motivo del cierre forzado..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Cerrar NC" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

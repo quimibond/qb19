@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_nc" model="ir.actions.report">
+        <field name="name">Reporte de No Conformidad (F-P-G05-01)</field>
+        <field name="model">quality.alert</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_nc_document</field>
+        <field name="report_file">quimibond_sgi.report_nc_document</field>
+        <field name="binding_model_id" ref="quality_control.model_quality_alert"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_nc_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">No Conformidad — F-P-G05-01</h2>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tr>
+                                <td><strong>Folio:</strong> <span t-field="doc.sgi_folio"/></td>
+                                <td><strong>Fecha:</strong> <span t-field="doc.create_date" t-options='{"widget": "date"}'/></td>
+                                <td><strong>Origen:</strong> <span t-field="doc.sgi_origin_type"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clasificación:</strong> <span t-field="doc.sgi_classification"/></td>
+                                <td><strong>Proceso:</strong> <span t-field="doc.sgi_process_id"/></td>
+                                <td><strong>Requisito:</strong> <span t-field="doc.sgi_norm_clause_id"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Solicitante:</strong> <span t-field="doc.sgi_requester_id"/></td>
+                                <td><strong>Auditor líder:</strong> <span t-field="doc.sgi_lead_auditor_id"/></td>
+                                <td><strong>Equipo:</strong> <span t-field="doc.team_id"/></td>
+                            </tr>
+                        </table>
+
+                        <h4>Desviación detectada</h4>
+                        <p t-field="doc.sgi_deviation"/>
+
+                        <h4>Análisis de causa (5 Porqués)</h4>
+                        <ol>
+                            <li t-if="doc.sgi_why_1" t-esc="doc.sgi_why_1"/>
+                            <li t-if="doc.sgi_why_2" t-esc="doc.sgi_why_2"/>
+                            <li t-if="doc.sgi_why_3" t-esc="doc.sgi_why_3"/>
+                            <li t-if="doc.sgi_why_4" t-esc="doc.sgi_why_4"/>
+                            <li t-if="doc.sgi_why_5" t-esc="doc.sgi_why_5"/>
+                        </ol>
+                        <p><strong>Causa raíz:</strong> <span t-field="doc.sgi_root_cause"/></p>
+
+                        <h4>Correcciones y acciones</h4>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th><th>Descripción</th><th>Responsable</th>
+                                    <th>Compromiso</th><th>Terminada</th><th>Avance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.sgi_action_line_ids" t-as="line">
+                                    <td><span t-field="line.action_type"/></td>
+                                    <td><span t-field="line.name"/></td>
+                                    <td><span t-field="line.responsible_id"/></td>
+                                    <td><span t-field="line.date_commit"/></td>
+                                    <td><span t-field="line.date_done"/></td>
+                                    <td><span t-field="line.progress"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Verificación de eficacia</h4>
+                        <p t-field="doc.sgi_effectiveness_note"/>
+                        <p>
+                            <strong>Fecha:</strong> <span t-field="doc.sgi_effectiveness_date"/> —
+                            <strong>Verificó eficacia:</strong> <span t-field="doc.sgi_effectiveness_by"/>
+                        </p>
+
+                        <div class="row mt-5">
+                            <div class="col-4 text-center">
+                                <span t-field="doc.sgi_requester_id"/><hr/>Solicitante
+                            </div>
+                            <div class="col-4 text-center">
+                                <span t-field="doc.sgi_verified_by"/><hr/>Verificó
+                            </div>
+                            <div class="col-4 text-center">
+                                <span t-field="doc.sgi_approved_by"/><hr/>Aprobó
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

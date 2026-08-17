@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_res_partner_supplier_view_form" model="ir.ui.view">
+        <field name="name">sgi.res.partner.supplier.form.inherit</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_evals" type="object" class="oe_stat_button"
+                        icon="fa-star" invisible="sgi_eval_count == 0">
+                    <field name="sgi_eval_count" widget="statinfo" string="Evaluaciones"/>
+                </button>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="SGI Proveedor" name="sgi_supplier"
+                      invisible="not is_company and not supplier_rank">
+                    <group>
+                        <group string="Clasificación SGI">
+                            <field name="sgi_supplier_class"/>
+                            <field name="sgi_supplier_score"/>
+                            <field name="sgi_last_eval_date"/>
+                        </group>
+                    </group>
+                    <field name="sgi_eval_ids">
+                        <list decoration-success="supplier_class == 'acreditado'"
+                              decoration-warning="supplier_class == 'condicionado'"
+                              decoration-danger="supplier_class == 'baja'">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="otd_pct"/>
+                            <field name="nc_count"/>
+                            <field name="score"/>
+                            <field name="supplier_class"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Wizard cotizador ============ -->
+    <record id="cotizador_wizard_action" model="ir.actions.act_window">
+        <field name="name">Cotizador</field>
+        <field name="res_model">qb.cotizador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <record id="cotizador_wizard_view_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.wizard.form</field>
+        <field name="model">qb.cotizador.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group string="Qué cotizar">
+                        <field name="partner_id"/>
+                        <field name="sale_order_id" invisible="not sale_order_id"/>
+                        <field name="sale_line_id" invisible="not sale_order_id"/>
+                        <field name="product_id" invisible="spec_mode"/>
+                        <field name="spec_mode"/>
+                    </group>
+                    <group string="Condiciones">
+                        <field name="volumen"
+                               help="Si el cliente compra este producto de forma regular, se precarga solo con su promedio mensual histórico."/>
+                        <field name="regularidad_info" readonly="1" nolabel="0"/>
+                        <field name="currency_id" options="{'no_create': True}"
+                               help="La moneda en la que capturas el precio objetivo y en la que se muestran los precios al cliente. Los COSTOS del modelo siempre se calculan en MXN."/>
+                        <label for="precio_objetivo"/>
+                        <div class="o_row">
+                            <field name="precio_objetivo" class="oe_inline"/>
+                            <field name="currency_id" readonly="1" nolabel="1"
+                                   class="oe_inline text-muted"
+                                   options="{'no_open': True}"/>
+                        </div>
+                        <field name="precio_objetivo_mxn" readonly="1"
+                               invisible="es_mxn or not precio_objetivo"/>
+                        <field name="es_mxn" invisible="1"/>
+                        <field name="fx_rate" invisible="es_mxn"/>
+                    </group>
+                </group>
+                <div class="alert alert-secondary" role="alert"
+                     invisible="not moneda_info or es_mxn">
+                    💱 <field name="moneda_info" readonly="1" class="oe_inline"/>
+                </div>
+                <field name="moneda_info" invisible="1"/>
+                <!-- Guardián anti-error de moneda: antes que el semáforo -->
+                <div class="alert alert-warning" role="alert"
+                     invisible="not moneda_alerta">
+                    💱⚠️ <b>Revisa la moneda:</b>
+                    <field name="moneda_alerta" readonly="1" class="oe_inline"/>
+                </div>
+                <!-- Semáforo: el criterio de decisión en un color -->
+                <field name="semaforo" invisible="1"/>
+                <div class="alert alert-danger" role="alert"
+                     invisible="semaforo != 'rojo'">
+                    <b>🔴 Precio DEBAJO del costo variable</b> — destruye valor:
+                    ni la materia prima y energía se recuperan. Piso mínimo
+                    absoluto: $<field name="piso_ocioso" readonly="1"
+                    class="oe_inline"/> MXN<span invisible="es_mxn"> (=
+                    <field name="piso_ocioso_divisa" readonly="1"
+                    class="oe_inline"/> <field name="currency_id" readonly="1"
+                    class="oe_inline"/>)</span>.
+                </div>
+                <div class="alert alert-warning" role="alert"
+                     invisible="semaforo != 'ambar'">
+                    <b>🟡 Aporta a fijos</b> — cubre el costo variable y deja
+                    contribución, pero no absorbe toda la fabricación y
+                    operación. Con capacidad OCIOSA conviene tomarlo; con la
+                    planta llena, pedir al menos
+                    $<field name="piso_lleno" readonly="1" class="oe_inline"/>
+                    MXN<span invisible="es_mxn"> (=
+                    <field name="piso_lleno_divisa" readonly="1"
+                    class="oe_inline"/> <field name="currency_id" readonly="1"
+                    class="oe_inline"/>)</span>.
+                </div>
+                <div class="alert alert-success" role="alert"
+                     invisible="semaforo != 'verde'">
+                    <b>🟢 Cubre el costo total</b> — precio arriba del piso a
+                    planta llena: absorbe fabricación, operación y deja margen.
+                </div>
+                <group string="Especificación nueva" invisible="not spec_mode">
+                    <group>
+                        <field name="spec_descripcion"/>
+                        <field name="spec_gramaje"/>
+                        <field name="spec_ancho"/>
+                        <field name="spec_galga"/>
+                    </group>
+                    <group>
+                        <field name="spec_bucket"/>
+                        <field name="spec_mp_unit"/>
+                        <field name="spec_centro_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <!-- Resultados EN VIVO: se recalculan al cambiar cualquier input -->
+                <group invisible="not product_id and not spec_mode">
+                    <group string="1 · ¿Cuánto cuesta producirlo? ($/u, todo MXN)">
+                        <field name="product_bucket"/>
+                        <field name="kg_per_unit"/>
+                        <field name="mp_unit"
+                               string="Materia prima $/u MXN"
+                               help="Receta (BOM) al último costo de compra de cada componente."/>
+                        <field name="energia_unit"
+                               string="+ Energía $/u MXN"
+                               help="Luz/gas/agua variables: $/kg × peso."/>
+                        <field name="costo_variable"
+                               string="= Costo variable $/u MXN" class="fw-bold"
+                               help="MP + energía: lo que sale de la bolsa por cada unidad extra. Piso absoluto."/>
+                        <field name="fab_unit"
+                               string="+ Fabricación $/u MXN"
+                               help="Parte del gasto fijo de fábrica (sueldos, renta, depreciación, arrendamiento de maquinaria) que le toca a esta unidad."/>
+                        <field name="op_pct_display"
+                               string="+ Operación % s/venta"
+                               help="Gastos de admin y ventas (6xx) como % del precio de venta."/>
+                    </group>
+                    <group string="2 · ¿A cuánto venderlo? (referencias reales)">
+                        <field name="precio_mercado_divisa" class="fw-bold"
+                               invisible="es_mxn"
+                               string="⭐ Precio de mercado (divisa)"/>
+                        <field name="precio_mercado"
+                               string="⭐ Precio de mercado $/u MXN"
+                               class="fw-bold"/>
+                        <field name="piso_lleno_divisa" invisible="es_mxn"
+                               string="Piso a planta llena (divisa)"/>
+                        <field name="piso_lleno"
+                               string="Piso a planta llena $/u MXN"
+                               help="Margen CERO cubriendo todo. Con la planta llena, no aceptar debajo."/>
+                        <field name="piso_ocioso_divisa" invisible="es_mxn"
+                               string="Piso con ociosidad (divisa)"/>
+                        <field name="piso_ocioso"
+                               string="Piso con ociosidad $/u MXN"
+                               help="= costo variable. Con máquinas paradas, arriba de esto ya aporta a fijos. NUNCA vender debajo."/>
+                    </group>
+                    <group string="3 · ¿Qué gano al precio evaluado?">
+                        <field name="margen_contribucion"
+                               string="Contribución $/u MXN"
+                               help="Precio − costo variable: lo que aporta para pagar los fijos."/>
+                        <field name="margen_contribucion_pct"
+                               string="Contribución %"/>
+                        <field name="margen_bruto_pct"
+                               help="(precio − costo de producción) ÷ precio. Antes de admin/ventas."/>
+                        <field name="margen_neto_pct"
+                               help="Margen bruto − %operación: lo que queda después de TODO."/>
+                        <field name="contrib_hora_maquina"
+                               string="Contribución MXN/hora-máquina"
+                               help="Para comparar productos cuando las máquinas son el límite."/>
+                    </group>
+                </group>
+                <div class="text-muted" style="font-size:12px;"
+                     invisible="not evaluado_info">
+                    <field name="evaluado_info" readonly="1" nolabel="1"/>
+                    Dudas con un término → pestaña «📖 Glosario».
+                </div>
+                <separator string="📶 Escalera de volumen — opciones estandarizadas"
+                           invisible="not product_id and not spec_mode"/>
+                <field name="escalera_html" nolabel="1" readonly="1"
+                       invisible="not product_id and not spec_mode"/>
+                <group string="Capacidad: ¿cabe este volumen en la planta?"
+                       invisible="not product_id and not spec_mode">
+                    <field name="capacity_ok"/>
+                    <field name="capacity_detail" nolabel="1"/>
+                </group>
+                <notebook>
+                    <page string="🔍 ¿De dónde viene cada costo?"
+                          invisible="not product_id or spec_mode">
+                        <field name="explicacion_html" nolabel="1" readonly="1"/>
+                    </page>
+                    <page string="💲 ¿A cuánto lo vendo hoy?"
+                          invisible="not product_id or spec_mode">
+                        <field name="comparativa_html" nolabel="1" readonly="1"/>
+                    </page>
+                    <page string="📖 Glosario">
+                        <field name="glosario_html" nolabel="1" readonly="1"/>
+                    </page>
+                </notebook>
+                <div class="text-muted" invisible="not factores_info">
+                    <field name="factores_info" readonly="1" nolabel="1"/>
+                </div>
+                <footer>
+                    <button name="action_aplicar_precio"
+                            string="Guardar y aplicar a la línea" type="object"
+                            class="btn-primary" invisible="not sale_line_id"
+                            confirm="Escribe el precio calculado en la línea del pedido. ¿Continuar?"/>
+                    <button name="action_cotizar" string="Guardar cotización"
+                            type="object"
+                            class="btn-primary" invisible="sale_line_id"/>
+                    <button name="action_cotizar" string="Solo guardar"
+                            type="object"
+                            class="btn-secondary" invisible="not sale_line_id"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Cotizar desde la ficha/lista de producto (menú Acción) -->
+    <record id="cotizador_from_product_action" model="ir.actions.act_window">
+        <field name="name">Cotizar costo</field>
+        <field name="res_model">qb.cotizador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">form,list</field>
+    </record>
+    <record id="cotizador_from_template_action" model="ir.actions.act_window">
+        <field name="name">Cotizar costo</field>
+        <field name="res_model">qb.cotizador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">form,list</field>
+    </record>
+
+    <!-- ============ Cotizador de ORDEN completa ============ -->
+    <record id="cotizador_orden_action" model="ir.actions.act_window">
+        <field name="name">Cotizar costos de la orden</field>
+        <field name="res_model">qb.cotizador.orden.wizard</field>
+        <field name="view_mode">form</field>
+        <!-- Página completa (no diálogo): los botones "Detalle" por línea
+             funcionan sin pelearse con el guardado del modal, y queda
+             breadcrumb de regreso al pedido -->
+        <field name="target">current</field>
+    </record>
+    <record id="cotizador_orden_view_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.orden.wizard.form</field>
+        <field name="model">qb.cotizador.orden.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_aplicar_seleccionados"
+                            string="Aplicar precios marcados" type="object"
+                            class="btn-primary"
+                            confirm="Escribe los nuevos precios en las líneas marcadas del pedido. ¿Continuar?"/>
+                    <button name="action_volver_pedido" string="Volver al pedido"
+                            type="object" class="btn-secondary"/>
+                </header>
+                <sheet>
+                <group>
+                    <group>
+                        <field name="sale_order_id"/>
+                        <field name="partner_id"/>
+                        <field name="currency_id"/>
+                    </group>
+                    <group>
+                        <field name="factores_id"/>
+                        <field name="is_foreign" invisible="1"/>
+                        <field name="fx_rate" invisible="not is_foreign"/>
+                        <field name="resumen"/>
+                    </group>
+                </group>
+                <div class="alert alert-info" role="alert"
+                     invisible="not is_foreign">
+                    Pedido en <field name="currency_id" readonly="1"
+                    class="oe_inline"/>: los costos y pisos son MXN; los
+                    precios del pedido se comparan convertidos con el tipo de
+                    cambio de Odoo de hoy, y el "Nuevo precio" se escribe en
+                    la moneda del pedido.
+                </div>
+                <field name="line_ids">
+                    <list editable="bottom" create="false" delete="false"
+                          decoration-danger="semaforo == 'rojo'"
+                          decoration-warning="semaforo == 'ambar'">
+                        <field name="product_id" readonly="1"/>
+                        <field name="qty" readonly="1"/>
+                        <field name="uom_name" readonly="1" optional="hide"/>
+                        <field name="vol_mensual" readonly="1" optional="show"/>
+                        <field name="meses_compra" readonly="1" optional="hide"/>
+                        <field name="precio_actual" readonly="1"/>
+                        <field name="precio_actual_mxn" readonly="1" optional="show"/>
+                        <field name="costo_variable" readonly="1"/>
+                        <field name="fab_unit" readonly="1" optional="hide"/>
+                        <field name="piso_lleno" readonly="1"/>
+                        <field name="precio_mercado" readonly="1"/>
+                        <field name="precio_ref_divisa" readonly="1"
+                               optional="show"/>
+                        <field name="semaforo" widget="badge" readonly="1"
+                               decoration-danger="semaforo == 'rojo'"
+                               decoration-warning="semaforo == 'ambar'"
+                               decoration-success="semaforo == 'verde'"/>
+                        <field name="margen_bruto_pct" readonly="1" optional="show"/>
+                        <field name="margen_neto_pct" readonly="1" optional="show"/>
+                        <field name="contrib_unit" readonly="1" optional="hide"/>
+                        <field name="contrib_hora" readonly="1" optional="hide"/>
+                        <field name="aplicar"/>
+                        <field name="nuevo_precio"/>
+                        <button name="action_detalle" string="Detalle"
+                                type="object" icon="fa-search-plus"/>
+                    </list>
+                </field>
+                <div class="text-muted">
+                    🔴 debajo del costo variable (pre-marcadas para corregir) ·
+                    🟡 aporta a fijos, no absorbe todo · 🟢 cubre costo total.
+                    "Detalle" abre la calculadora individual con capacidad y
+                    escenarios.
+                </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============ Cotizaciones guardadas ============ -->
+    <record id="cotizacion_action" model="ir.actions.act_window">
+        <field name="name">Cotizaciones</field>
+        <field name="res_model">qb.cotizacion</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="cotizacion_view_list" model="ir.ui.view">
+        <field name="name">qb.cotizacion.list</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="not capacity_ok">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="sale_order_id" optional="show"/>
+                <field name="volumen"/>
+                <field name="costo_variable"/>
+                <field name="precio_evaluado"/>
+                <field name="precio_mercado" optional="show"/>
+                <field name="margen_bruto_pct" optional="show"/>
+                <field name="margen_neto_pct" optional="show"/>
+                <field name="margen_contribucion_pct"/>
+                <field name="contrib_hora_maquina" optional="hide"/>
+                <field name="semaforo" widget="badge"
+                       decoration-danger="semaforo == 'rojo'"
+                       decoration-warning="semaforo == 'ambar'"
+                       decoration-success="semaforo == 'verde'"/>
+                <field name="capacity_ok"/>
+                <field name="validez_hasta" optional="show"/>
+                <field name="real_precio_prom" optional="show"/>
+                <field name="delta_precio_pct" optional="show"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+    <record id="cotizacion_view_form" model="ir.ui.view">
+        <field name="name">qb.cotizacion.form</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_recotizar" type="object"
+                            string="↻ Re-cotizar / nuevo escenario"
+                            class="btn-primary"
+                            help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
+                    <button name="action_enviar_correo" type="object"
+                            string="✉ Enviar al cliente"
+                            help="Correo al cliente con el PDF COMERCIAL adjunto (solo producto, precio y condiciones). La hoja interna de costo se imprime aparte desde el menú Imprimir y NO se envía."/>
+                    <field name="state" widget="statusbar"
+                           options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <field name="semaforo" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="semaforo != 'rojo'">
+                        🔴 <b>Debajo del costo variable</b> — destruye valor.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="semaforo != 'ambar'">
+                        🟡 <b>Aporta a fijos</b> — conviene solo con capacidad ociosa.
+                    </div>
+                    <div class="alert alert-success" role="alert"
+                         invisible="semaforo != 'verde'">
+                        🟢 <b>Cubre el costo total</b> + margen.
+                    </div>
+                    <div class="alert alert-light" role="alert"
+                         style="font-size:12px;">
+                        Todos los <b>costos y precios guardados están en MXN</b>.
+                        <span invisible="not es_divisa">La cotización se capturó
+                        en divisa: los campos «(divisa)» usan el TC guardado
+                        (<field name="fx_rate" readonly="1" class="oe_inline"/>
+                        MXN por 1).</span>
+                        Cada término está definido en la pestaña «📖 Glosario».
+                    </div>
+                    <group>
+                        <group string="Qué se cotizó">
+                            <field name="partner_id"/>
+                            <field name="sale_order_id" invisible="not sale_order_id"/>
+                            <field name="product_id"/>
+                            <field name="spec_descripcion"/>
+                            <field name="spec_gramaje"/>
+                            <field name="spec_ancho"/>
+                            <field name="spec_galga"/>
+                            <field name="volumen"/>
+                            <field name="uom_name"/>
+                            <field name="currency_id"/>
+                            <field name="fx_rate"/>
+                        </group>
+                        <group string="1 · Costo de producirlo ($/u, todo MXN)">
+                            <field name="mp_unit" string="Materia prima $/u MXN"/>
+                            <field name="energia_unit" string="+ Energía $/u MXN"/>
+                            <field name="costo_variable"
+                                   string="= Costo variable $/u MXN"
+                                   class="fw-bold"/>
+                            <field name="fab_unit" string="+ Fabricación $/u MXN"/>
+                            <field name="costo_absorbido_sin_op"
+                                   string="= Costo de producción $/u MXN"/>
+                            <field name="op_pct"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="2 · Precios de referencia (MXN y divisa)">
+                            <field name="es_divisa" invisible="1"/>
+                            <field name="precio_evaluado" class="fw-bold"/>
+                            <field name="evaluado_fuente"/>
+                            <field name="precio_objetivo"/>
+                            <field name="precio_mercado_divisa"
+                                   invisible="not es_divisa"/>
+                            <field name="precio_mercado"/>
+                            <field name="piso_lleno_divisa"
+                                   invisible="not es_divisa"/>
+                            <field name="piso_lleno"/>
+                            <field name="piso_ocioso_divisa"
+                                   invisible="not es_divisa"/>
+                            <field name="piso_ocioso"/>
+                        </group>
+                        <group string="3 · Márgenes al precio evaluado">
+                            <field name="margen_contribucion"/>
+                            <field name="margen_contribucion_pct"/>
+                            <field name="margen_bruto_pct"/>
+                            <field name="margen_neto_pct"/>
+                            <field name="contrib_hora_maquina"/>
+                            <field name="precio_vs_piso_pct"/>
+                        </group>
+                    </group>
+                    <group string="📶 Escalera de volumen (foto al cotizar)"
+                           invisible="not tramo_ids">
+                        <field name="tramo_ids" nolabel="1" readonly="1" colspan="2">
+                            <list decoration-success="es_base"
+                                  decoration-muted="not capacity_ok">
+                                <field name="volumen"/>
+                                <field name="multiplo" optional="hide"/>
+                                <field name="es_base" string="Cotizado"/>
+                                <field name="precio_mxn"/>
+                                <field name="precio_divisa" optional="show"/>
+                                <field name="margen_neto_pct"/>
+                                <field name="contrib_total_mes"/>
+                                <field name="semaforo" widget="badge"
+                                       decoration-danger="semaforo == 'rojo'"
+                                       decoration-warning="semaforo == 'ambar'"
+                                       decoration-success="semaforo == 'verde'"/>
+                                <field name="capacity_ok"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Capacidad: ¿cabe este volumen en la planta?">
+                        <field name="capacity_ok"/>
+                        <field name="capacity_detail"/>
+                    </group>
+                    <group>
+                        <group string="¿Qué pasó de verdad? (post-mortem)">
+                            <field name="real_precio_prom"/>
+                            <field name="real_qty"/>
+                            <field name="real_margen_pct"/>
+                            <field name="delta_precio_pct"/>
+                        </group>
+                        <group string="Vigencia">
+                            <field name="validez_hasta"/>
+                            <field name="fx_rate"/>
+                        </group>
+                    </group>
+                    <group string="Supuestos (trazabilidad)">
+                        <field name="factores_id"/>
+                        <field name="supuestos"/>
+                    </group>
+                    <notebook>
+                        <page string="🔍 Desglose explicado (foto al cotizar)">
+                            <field name="desglose_html" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="💲 A cuánto lo vendía (foto al cotizar)"
+                              invisible="not comparativa_html">
+                            <field name="comparativa_html" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="📖 Glosario">
+                            <field name="glosario_html" nolabel="1" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+</odoo>

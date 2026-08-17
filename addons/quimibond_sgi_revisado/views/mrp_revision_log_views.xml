@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pareto de defectos del revisado de tela por causa (etiquetas TEJIDO-*) -->
+    <record id="mrp_revision_log_view_pivot" model="ir.ui.view">
+        <field name="name">mrp.revision.log.pivot.sgi</field>
+        <field name="model">mrp.revision.log</field>
+        <field name="arch" type="xml">
+            <pivot string="Defectos de revisado" sample="1">
+                <field name="causa_id" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="mrp_revision_log_view_graph" model="ir.ui.view">
+        <field name="name">mrp.revision.log.graph.sgi</field>
+        <field name="model">mrp.revision.log</field>
+        <field name="arch" type="xml">
+            <graph string="Defectos de revisado" type="bar" sample="1">
+                <field name="causa_id"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="mrp_revision_log_view_search" model="ir.ui.view">
+        <field name="name">mrp.revision.log.search.sgi</field>
+        <field name="model">mrp.revision.log</field>
+        <field name="arch" type="xml">
+            <search string="Revisado de tela">
+                <field name="production_id"/>
+                <field name="lot_id"/>
+                <field name="causa_id"/>
+                <filter name="con_defecto" string="Con defecto"
+                        domain="[('causa_id', '!=', False)]"/>
+                <group>
+                    <filter name="group_causa" string="Causa (defecto)"
+                            context="{'group_by': 'causa_id'}"/>
+                    <filter name="group_product" string="Producto"
+                            context="{'group_by': 'production_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="mrp_revision_log_action_pareto" model="ir.actions.act_window">
+        <field name="name">Pareto de defectos de revisado</field>
+        <field name="res_model">mrp.revision.log</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="search_view_id" ref="mrp_revision_log_view_search"/>
+        <field name="context">{'search_default_con_defecto': 1, 'search_default_group_causa': 1}</field>
+    </record>
+
+    <menuitem id="menu_sgi_dashboard_defectos" name="Pareto de defectos (revisado)"
+              parent="quimibond_sgi.menu_sgi_dashboards"
+              action="mrp_revision_log_action_pareto" sequence="20"/>
+</odoo>

@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ DOCUMENTO CONTROLADO ============ -->
+    <record id="sgi_document_view_form" model="ir.ui.view">
+        <field name="name">sgi.documents.document.form</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <form string="Documento controlado SGI">
+                <header>
+                    <button name="action_sgi_view_file" type="object" string="Ver archivo"
+                            class="btn-primary" icon="fa-file-pdf-o"/>
+                    <button name="action_generate_acks" type="object" string="Generar acuses"
+                            class="btn-secondary" invisible="sgi_state not in ('piloto','vigente')"/>
+                    <field name="sgi_state" widget="statusbar"
+                           statusbar_visible="borrador,piloto,vigente,obsoleto"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_acks" type="object" class="oe_stat_button" icon="fa-check-square-o">
+                            <div class="o_stat_info">
+                                <field name="sgi_ack_read_pct" widget="statinfo" string="% Difusión"/>
+                            </div>
+                        </button>
+                        <button name="action_sgi_open_in_documents" type="object"
+                                class="oe_stat_button" icon="fa-folder-open-o"
+                                string="Abrir en Documentos"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not sgi_procedure_dirty">
+                        <field name="sgi_procedure_dirty" invisible="1"/>
+                        <strong>Procedimiento vivo modificado tras esta revisión.</strong>
+                        El PDF impreso ya no coincide con la revisión aprobada
+                        (<field name="sgi_procedure_dirty_since" nolabel="1" class="oe_inline"/>,
+                        por <field name="sgi_procedure_dirty_by" nolabel="1" class="oe_inline"/>).
+                        Genere una nueva revisión controlada o confírmelo.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="sgi_code" placeholder="Clave (p.ej. P-G01)"/></h1>
+                        <h2><field name="name" placeholder="Nombre del documento"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sgi_is_controlled"/>
+                            <field name="sgi_doc_type"/>
+                            <field name="sgi_area_id"/>
+                            <field name="sgi_process_id"/>
+                            <field name="type" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="sgi_revision"/>
+                            <field name="sgi_issue_date"/>
+                            <field name="sgi_next_review_date"/>
+                            <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
+                            <field name="sgi_owner_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Migración a Odoo"
+                              invisible="sgi_doc_type not in ('formato', 'formato_it')">
+                            <group>
+                                <group>
+                                    <field name="sgi_migration_class"/>
+                                    <field name="sgi_migration_state"/>
+                                </group>
+                                <group>
+                                    <field name="sgi_migration_target"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Documentos relacionados" invisible="not sgi_is_controlled">
+                            <group string="Familia documental">
+                                <field name="sgi_parent_document_id"
+                                       help="Enlázalo al procedimiento padre (la nomenclatura solo lo sugiere)."/>
+                            </group>
+                            <group string="Familia de la clave">
+                                <field name="sgi_family_document_ids" nolabel="1" readonly="1">
+                                    <list>
+                                        <field name="sgi_code"/>
+                                        <field name="name"/>
+                                        <field name="sgi_doc_type"/>
+                                        <field name="sgi_revision"/>
+                                        <field name="sgi_state" widget="badge"
+                                               decoration-success="sgi_state == 'vigente'"
+                                               decoration-warning="sgi_state == 'piloto'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Referencias a otras familias (P-A22, P-C01… — captura MAST)">
+                                <field name="sgi_reference_ids" nolabel="1"
+                                       domain="[('sgi_is_controlled', '=', True)]">
+                                    <list>
+                                        <field name="sgi_code"/>
+                                        <field name="name"/>
+                                        <field name="sgi_state"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+                        <page string="Puestos que aplican">
+                            <field name="sgi_job_ids"/>
+                        </page>
+                        <page string="Acuses de lectura">
+                            <field name="sgi_ack_ids">
+                                <list>
+                                    <field name="employee_id"/>
+                                    <field name="state"/>
+                                    <field name="ack_date"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                    <field name="attachment_id" widget="many2one"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_document_view_list" model="ir.ui.view">
+        <field name="name">sgi.documents.document.list</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <list string="Documentos SGI"
+                  decoration-muted="sgi_state == 'obsoleto'"
+                  decoration-warning="sgi_state == 'piloto'"
+                  decoration-info="sgi_state == 'borrador'">
+                <field name="sgi_code"/>
+                <field name="name"/>
+                <field name="sgi_doc_type"/>
+                <field name="sgi_area_id" optional="show"/>
+                <field name="sgi_process_id" optional="show"/>
+                <field name="sgi_revision"/>
+                <field name="sgi_state" widget="badge"
+                       decoration-success="sgi_state == 'vigente'"
+                       decoration-warning="sgi_state == 'piloto'"
+                       decoration-info="sgi_state == 'borrador'"/>
+                <field name="sgi_next_review_date" optional="show"/>
+                <field name="sgi_ack_read_pct" widget="percentage" optional="show"/>
+                <field name="sgi_owner_id" optional="hide"/>
+                <field name="sgi_issue_date" optional="hide"/>
+                <button name="action_sgi_view_file" type="object" icon="fa-file-pdf-o"
+                        string="Ver archivo" title="Ver archivo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_document_view_search" model="ir.ui.view">
+        <field name="name">sgi.documents.document.search</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <search string="Documentos SGI">
+                <field name="sgi_code"/>
+                <field name="name"/>
+                <field name="sgi_area_id"/>
+                <field name="sgi_process_id"/>
+                <filter name="sgi_vigente" string="Vigentes" domain="[('sgi_state','=','vigente')]"/>
+                <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
+                <filter name="sgi_por_revisar" string="Por revisar"
+                        domain="[('sgi_next_review_date','&lt;', (context_today() + relativedelta(days=60)).strftime('%Y-%m-%d'))]"/>
+                <group>
+                    <filter name="group_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'sgi_doc_type'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'sgi_state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_document_action" model="ir.actions.act_window">
+        <field name="name">Documentos SGI</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sgi_is_controlled','=',True)]</field>
+        <field name="context">{'default_sgi_is_controlled': True, 'search_default_sgi_vigente': 1}</field>
+        <field name="search_view_id" ref="sgi_document_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_document_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sube el primer documento controlado</p>
+            <p>Con su clave en el nombre (P-A28, F-P-G05-01...). La revisión, vigencia y difusión se controlan desde aquí.</p>
+        </field>
+    </record>
+
+    <record id="sgi_document_action_my_procedures" model="ir.actions.server">
+        <field name="name">Mis procedimientos</field>
+        <field name="model_id" ref="documents.model_documents_document"/>
+        <field name="state">code</field>
+        <field name="code">
+employee = env.user.employee_id
+if employee:
+    action = employee.action_sgi_my_procedures()
+else:
+    list_view = env.ref('quimibond_sgi.sgi_document_view_list', raise_if_not_found=False)
+    form_view = env.ref('quimibond_sgi.sgi_document_view_form', raise_if_not_found=False)
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Mis procedimientos',
+        'res_model': 'documents.document',
+        'view_mode': 'list,form',
+        'views': [
+            (list_view.id if list_view else False, 'list'),
+            (form_view.id if form_view else False, 'form'),
+        ],
+        'domain': [('id', '=', False)],
+    }
+        </field>
+    </record>
+
+    <!-- ============ ACUSES DE LECTURA ============ -->
+    <record id="sgi_document_ack_view_list" model="ir.ui.view">
+        <field name="name">sgi.document.ack.list</field>
+        <field name="model">sgi.document.ack</field>
+        <field name="arch" type="xml">
+            <list string="Acuses de lectura" decoration-warning="state == 'pendiente'" decoration-success="state == 'leido'">
+                <field name="sgi_code"/>
+                <field name="document_id"/>
+                <field name="employee_id"/>
+                <field name="state"/>
+                <field name="ack_date"/>
+                <button name="action_mark_read" type="object" string="Marcar leído y entendido"
+                        icon="fa-check" invisible="state == 'leido'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_document_ack_view_form" model="ir.ui.view">
+        <field name="name">sgi.document.ack.form</field>
+        <field name="model">sgi.document.ack</field>
+        <field name="arch" type="xml">
+            <form string="Acuse de lectura">
+                <header>
+                    <button name="action_mark_read" type="object" string="Marcar leído y entendido"
+                            class="btn-primary" invisible="state == 'leido'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="document_id" string="Documento a leer"/>
+                        <h1><field name="document_id"/></h1>
+                    </div>
+                    <group>
+                        <field name="employee_id"/>
+                        <field name="ack_date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_document_ack_action" model="ir.actions.act_window">
+        <field name="name">Acuses de lectura</field>
+        <field name="res_model">sgi.document.ack</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin acuses de lectura pendientes</p>
+            <p>Se generan al publicar un documento con puestos asignados; cada acuse es la firma de difusión que pide el auditor.</p>
+        </field>
+    </record>
+
+    <!-- ============ MIGRACIÓN DE FORMATOS A ODOO ============ -->
+    <record id="sgi_migration_view_list" model="ir.ui.view">
+        <field name="name">sgi.migration.formatos.list</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <list string="Migración de formatos"
+                  decoration-success="sgi_migration_state in ('migrado', 'baja')"
+                  decoration-info="sgi_migration_state == 'en_curso'"
+                  decoration-muted="sgi_migration_state == 'na'">
+                <field name="sgi_code" string="Clave"/>
+                <field name="name" string="Formato"/>
+                <field name="sgi_area_id" optional="show"/>
+                <field name="sgi_process_id" optional="hide"/>
+                <field name="sgi_migration_class"/>
+                <field name="sgi_migration_target"/>
+                <field name="sgi_migration_state" widget="badge"
+                       decoration-success="sgi_migration_state in ('migrado', 'baja')"
+                       decoration-warning="sgi_migration_state == 'pendiente'"
+                       decoration-info="sgi_migration_state == 'en_curso'"/>
+                <button name="action_sgi_view_file" type="object" icon="fa-file-pdf-o"
+                        string="Ver archivo" title="Ver archivo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_migration_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.migration.formatos.kanban</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="sgi_migration_state" string="Migración de formatos">
+                <field name="sgi_code"/>
+                <field name="sgi_migration_class"/>
+                <field name="sgi_migration_target"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="p-2">
+                            <strong><field name="sgi_code"/></strong>
+                            <div><field name="name"/></div>
+                            <div class="text-muted small">
+                                <field name="sgi_migration_class"/>
+                            </div>
+                            <div class="text-muted small">
+                                <field name="sgi_migration_target"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="sgi_migration_view_search" model="ir.ui.view">
+        <field name="name">sgi.migration.formatos.search</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <search string="Migración de formatos">
+                <field name="sgi_code"/>
+                <field name="name"/>
+                <field name="sgi_migration_target"/>
+                <filter name="mig_pendiente" string="Pendientes"
+                        domain="[('sgi_migration_state', '=', 'pendiente')]"/>
+                <filter name="mig_en_curso" string="En curso"
+                        domain="[('sgi_migration_state', '=', 'en_curso')]"/>
+                <filter name="mig_hechos" string="Migrados / baja"
+                        domain="[('sgi_migration_state', 'in', ('migrado', 'baja'))]"/>
+                <separator/>
+                <filter name="mig_clase_a" string="Clase A" domain="[('sgi_migration_class', '=', 'a')]"/>
+                <filter name="mig_clase_b" string="Clase B" domain="[('sgi_migration_class', '=', 'b')]"/>
+                <filter name="mig_sin_clase" string="Sin clasificar"
+                        domain="[('sgi_migration_class', 'in', (False, 'x'))]"/>
+                <group>
+                    <filter name="group_mig_state" string="Estado" context="{'group_by': 'sgi_migration_state'}"/>
+                    <filter name="group_mig_class" string="Clase" context="{'group_by': 'sgi_migration_class'}"/>
+                    <filter name="group_mig_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_migration_action" model="ir.actions.act_window">
+        <field name="name">Migración de formatos a Odoo</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('sgi_is_controlled', '=', True),
+            ('sgi_doc_type', 'in', ('formato', 'formato_it')),
+            ('sgi_state', '!=', 'obsoleto')]</field>
+        <field name="search_view_id" ref="sgi_migration_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_migration_view_kanban')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_migration_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin formatos por migrar</p>
+            <p>Aquí se da seguimiento a la migración de cada formato del SGI a su
+            sustituto en Odoo (transacción, hoja de trabajo de Calidad, reporte, o
+            permanece como documento).</p>
+        </field>
+    </record>
+</odoo>

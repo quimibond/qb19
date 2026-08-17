@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ============================================================= -->
+    <!-- Voz del cliente y del trabajador                              -->
+    <!-- ============================================================= -->
+    <record id="sgi_helpdesk_team_voice" model="helpdesk.team">
+        <field name="name">Quejas y Sugerencias</field>
+        <field name="use_alias" eval="True"/>
+        <field name="alias_name">quejas-sugerencias</field>
+    </record>
+    <record id="sgi_hd_voice_stage_new" model="helpdesk.stage">
+        <field name="name">Recibida</field><field name="sequence">10</field>
+        <field name="team_ids" eval="[(4, ref('sgi_helpdesk_team_voice'))]"/>
+    </record>
+    <record id="sgi_hd_voice_stage_progress" model="helpdesk.stage">
+        <field name="name">En atención</field><field name="sequence">20</field>
+        <field name="team_ids" eval="[(4, ref('sgi_helpdesk_team_voice'))]"/>
+    </record>
+    <record id="sgi_hd_voice_stage_closed" model="helpdesk.stage">
+        <field name="name">Cerrada</field><field name="sequence">30</field><field name="fold" eval="True"/>
+        <field name="team_ids" eval="[(4, ref('sgi_helpdesk_team_voice'))]"/>
+    </record>
+
+    <record id="sgi_hd_tag_queja" model="helpdesk.tag">
+        <field name="name">Queja</field>
+    </record>
+    <record id="sgi_hd_tag_sugerencia" model="helpdesk.tag">
+        <field name="name">Sugerencia</field>
+    </record>
+    <record id="sgi_hd_tag_condicion_insegura" model="helpdesk.tag">
+        <field name="name">SST-Condición insegura</field>
+    </record>
+
+    <!-- ============================================================= -->
+    <!-- Encuesta de Satisfacción del Cliente                          -->
+    <!-- ============================================================= -->
+    <record id="sgi_survey_satisfaction" model="survey.survey">
+        <field name="title">Encuesta de Satisfacción del Cliente</field>
+        <field name="survey_type">custom</field>
+        <field name="description"><![CDATA[<p>Su opinión nos ayuda a mejorar. Escala 1 (muy malo) a 5 (excelente).</p>]]></field>
+    </record>
+
+    <record id="sgi_sat_q_calidad" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_satisfaction"/>
+        <field name="sequence">10</field>
+        <field name="title">Calidad del producto</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_sat_calidad_1" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_calidad"/><field name="value">1</field><field name="sequence">1</field></record>
+    <record id="sgi_sat_calidad_2" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_calidad"/><field name="value">2</field><field name="sequence">2</field></record>
+    <record id="sgi_sat_calidad_3" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_calidad"/><field name="value">3</field><field name="sequence">3</field></record>
+    <record id="sgi_sat_calidad_4" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_calidad"/><field name="value">4</field><field name="sequence">4</field></record>
+    <record id="sgi_sat_calidad_5" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_calidad"/><field name="value">5</field><field name="sequence">5</field></record>
+
+    <record id="sgi_sat_q_entregas" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_satisfaction"/>
+        <field name="sequence">20</field>
+        <field name="title">Entregas (tiempo y forma)</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_sat_entregas_1" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_entregas"/><field name="value">1</field><field name="sequence">1</field></record>
+    <record id="sgi_sat_entregas_2" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_entregas"/><field name="value">2</field><field name="sequence">2</field></record>
+    <record id="sgi_sat_entregas_3" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_entregas"/><field name="value">3</field><field name="sequence">3</field></record>
+    <record id="sgi_sat_entregas_4" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_entregas"/><field name="value">4</field><field name="sequence">4</field></record>
+    <record id="sgi_sat_entregas_5" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_entregas"/><field name="value">5</field><field name="sequence">5</field></record>
+
+    <record id="sgi_sat_q_atencion" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_satisfaction"/>
+        <field name="sequence">30</field>
+        <field name="title">Atención y servicio</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_sat_atencion_1" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_atencion"/><field name="value">1</field><field name="sequence">1</field></record>
+    <record id="sgi_sat_atencion_2" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_atencion"/><field name="value">2</field><field name="sequence">2</field></record>
+    <record id="sgi_sat_atencion_3" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_atencion"/><field name="value">3</field><field name="sequence">3</field></record>
+    <record id="sgi_sat_atencion_4" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_atencion"/><field name="value">4</field><field name="sequence">4</field></record>
+    <record id="sgi_sat_atencion_5" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_atencion"/><field name="value">5</field><field name="sequence">5</field></record>
+
+    <record id="sgi_sat_q_reclamos" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_satisfaction"/>
+        <field name="sequence">40</field>
+        <field name="title">Respuesta a reclamos</field>
+        <field name="question_type">simple_choice</field>
+    </record>
+    <record id="sgi_sat_reclamos_1" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_reclamos"/><field name="value">1</field><field name="sequence">1</field></record>
+    <record id="sgi_sat_reclamos_2" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_reclamos"/><field name="value">2</field><field name="sequence">2</field></record>
+    <record id="sgi_sat_reclamos_3" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_reclamos"/><field name="value">3</field><field name="sequence">3</field></record>
+    <record id="sgi_sat_reclamos_4" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_reclamos"/><field name="value">4</field><field name="sequence">4</field></record>
+    <record id="sgi_sat_reclamos_5" model="survey.question.answer"><field name="question_id" ref="sgi_sat_q_reclamos"/><field name="value">5</field><field name="sequence">5</field></record>
+
+    <record id="sgi_sat_q_comentario" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_satisfaction"/>
+        <field name="sequence">50</field>
+        <field name="title">Comentarios</field>
+        <field name="question_type">text_box</field>
+    </record>
+</odoo>

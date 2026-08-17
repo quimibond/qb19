@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_sgi" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sgi</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="SGI" string="SGI" name="quimibond_sgi"
+                     logo="/quimibond_sgi/static/description/icon.png">
+                    <block title="Datos de arranque">
+                        <setting string="Presupuesto mensual de ventas (MXN)"
+                                 help="Alimenta los KPIs de cumplimiento y eficiencia del presupuesto (mientras llega el presupuesto por segmento).">
+                            <field name="sgi_monthly_sales_budget"/>
+                        </setting>
+                        <setting string="Usuario de RH"
+                                 help="Recibe las actividades automáticas de RH: competencias por vencer, DNC.">
+                            <field name="sgi_rh_user_id"/>
+                        </setting>
+                    </block>
+                    <block title="KPIs automáticos" name="sgi_auto_kpis">
+                        <setting string="Categoría de requisiciones de compra"
+                                 help="KPI CO-02: categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
+                            <field name="sgi_purchase_approval_category_id"/>
+                        </setting>
+                        <setting string="Capacidad instalada mensual de producción"
+                                 help="KPI MA-02: capacidad mensual en la misma unidad que la producción (kg). Para periodos no mensuales se prorratea por días. 0 = captura manual.">
+                            <field name="sgi_production_monthly_capacity"/>
+                        </setting>
+                        <setting string="Proveedor de energía"
+                                 help="KPI TR-03: proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
+                            <field name="sgi_energy_partner_id"/>
+                        </setting>
+                        <setting string="Umbral de aviso de presupuesto de ventas (%)"
+                                 help="Al cierre de mes, un equipo con presupuesto aprobado por debajo de este % del acumulado del año avisa a su responsable.">
+                            <field name="sgi_sales_budget_alert_pct"/>
+                        </setting>
+                        <setting string="Tipo de cambio presupuestal USD→MXN"
+                                 help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
+                            <field name="sgi_budget_planning_rate"/>
+                        </setting>
+                        <setting string="Lista de precios presupuestal"
+                                 help="Lista con que se valúan las líneas del presupuesto SIN cliente (global). Sin configurar, quedan sin precio (nunca una lista arbitraria).">
+                            <field name="sgi_budget_pricelist_id"/>
+                        </setting>
+                        <setting string="Precio de lista mínimo plausible"
+                                 help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla.">
+                            <field name="sgi_price_min_plausible"/>
+                        </setting>
+                        <setting string="Tolerancia de desviación de precio (%)"
+                                 help="Control de precios: gap facturado vs lista dentro de este % = OK; entre este y el grave = leve.">
+                            <field name="sgi_price_gap_tolerance_pct"/>
+                        </setting>
+                        <setting string="Desviación de precio grave (%)">
+                            <field name="sgi_price_gap_grave_pct"/>
+                        </setting>
+                        <setting string="Cumplimiento mínimo del presupuesto (%)"
+                                 help="P-A28 4.3.6.1: un presupuesto aprobado por debajo de este % pide justificación (banner y actividad al Admin de ventas). No bloquea.">
+                            <field name="sgi_budget_fulfillment_min"/>
+                        </setting>
+                        <setting string="Tolerancia de pronóstico excedido (%)"
+                                 help="P-A28 4.2.2.7: comprometido por encima de 100% + este % = excedido.">
+                            <field name="sgi_forecast_over_tolerance_pct"/>
+                        </setting>
+                        <setting string="Horizonte de captura del pronóstico (semanas)"
+                                 help="Solo se evalúa la cobertura de las semanas dentro de este horizonte (actual + N-1).">
+                            <field name="sgi_forecast_capture_horizon_weeks"/>
+                        </setting>
+                    </block>
+                    <block title="No Conformidades y AMEF">
+                        <setting string="Días para escalar una NC sin acciones"
+                                 help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST.">
+                            <field name="sgi_nc_escalation_days"/>
+                        </setting>
+                        <setting string="Días para escalar una NC externa/cliente"
+                                 help="Auditoría externa y reclamaciones de cliente escalan más rápido que las internas.">
+                            <field name="sgi_nc_escalation_days_external"/>
+                        </setting>
+                        <setting string="Ventana de reincidencia de NC (meses)"
+                                 help="Una NC reincide si en estos meses hubo otra del mismo proceso (misma cláusula pesa doble). Al cerrarla se exige acción correctiva.">
+                            <field name="sgi_nc_recurrence_months"/>
+                        </setting>
+                        <setting string="Escalar acción vencida al jefe (días)"
+                                 help="Acción vencida más de estos días → además del responsable, se avisa a su jefe directo (fallback Jefe MAST).">
+                            <field name="sgi_action_escalation_manager_days"/>
+                        </setting>
+                        <setting string="Escalar acción vencida a Dirección (días)"
+                                 help="Acción vencida más de estos días → además, se avisa a Dirección.">
+                            <field name="sgi_action_escalation_director_days"/>
+                        </setting>
+                        <setting string="NPR que exige acción en el AMEF"
+                                 help="Modos de falla con NPR igual o mayor requieren acción antes de que el AMEF sea vigente.">
+                            <field name="sgi_fmea_npr_action"/>
+                        </setting>
+                    </block>
+                    <block title="Matriz de riesgos (RyO 5×5)">
+                        <setting string="Puntaje para atención Inmediata">
+                            <field name="sgi_risk_ryo_inmediata"/>
+                        </setting>
+                        <setting string="Puntaje para atención Media">
+                            <field name="sgi_risk_ryo_media"/>
+                        </setting>
+                        <setting string="Puntaje para atención Intermedia">
+                            <field name="sgi_risk_ryo_intermedia"/>
+                        </setting>
+                    </block>
+                    <block title="Evaluación de proveedores">
+                        <setting string="Peso de entregas a tiempo (0-1)">
+                            <field name="sgi_supplier_weight_otd"/>
+                        </setting>
+                        <setting string="Peso de calidad (0-1)">
+                            <field name="sgi_supplier_weight_quality"/>
+                        </setting>
+                        <setting string="Puntos que descuenta cada NC">
+                            <field name="sgi_supplier_nc_penalty"/>
+                        </setting>
+                    </block>
+                    <block title="Documental (avisos)">
+                        <setting string="Primer aviso de revisión documental (días)"
+                                 help="Días de anticipación del primer recordatorio de revisión bienal.">
+                            <field name="sgi_doc_review_notice_days"/>
+                        </setting>
+                        <setting string="Segundo aviso de revisión documental (días)"
+                                 help="Días de anticipación del segundo (último) recordatorio de revisión.">
+                            <field name="sgi_doc_review_notice_days_final"/>
+                        </setting>
+                        <setting string="Aviso de piloto por vencer (días)"
+                                 help="Días de anticipación del aviso de vencimiento de una prueba piloto.">
+                            <field name="sgi_doc_pilot_notice_days"/>
+                        </setting>
+                        <setting string="Días para reclamar un acuse pendiente"
+                                 help="Un acuse de lectura sin firmar tras estos días genera recordatorio.">
+                            <field name="sgi_doc_ack_pending_days"/>
+                        </setting>
+                    </block>
+                    <block title="Piso">
+                        <setting string="Tolerancia de peso de rollo (kg)"
+                                 help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.">
+                            <field name="sgi_pesaje_tolerance_kg"/>
+                        </setting>
+                        <setting string="Categoría del byproduct de desperdicio"
+                                 help="Categoría del SALDO para el KPI automático de desperdicio.">
+                            <field name="sgi_waste_categ_id"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_config_settings_action" model="ir.actions.act_window">
+        <field name="name">Ajustes del SGI</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'quimibond_sgi'}</field>
+    </record>
+</odoo>

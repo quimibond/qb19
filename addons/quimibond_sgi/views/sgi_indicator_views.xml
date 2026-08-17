@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= INDICADOR ================= -->
+    <record id="sgi_indicator_view_list" model="ir.ui.view">
+        <field name="name">sgi.indicator.list</field>
+        <field name="model">sgi.indicator</field>
+        <field name="arch" type="xml">
+            <list string="Indicadores"
+                  decoration-success="last_semaphore == 'verde'"
+                  decoration-warning="last_semaphore == 'amarillo'"
+                  decoration-danger="last_semaphore == 'rojo'">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="sgi_area_id"/>
+                <field name="responsible_id"/>
+                <field name="uom"/>
+                <field name="target_objective"/>
+                <field name="target_acceptable"/>
+                <field name="last_value"/>
+                <field name="last_semaphore" widget="badge"
+                       decoration-success="last_semaphore == 'verde'"
+                       decoration-warning="last_semaphore == 'amarillo'"
+                       decoration-danger="last_semaphore == 'rojo'"/>
+                <field name="source_type" widget="badge"
+                       decoration-success="source_type == 'auto'"
+                       decoration-warning="source_type == 'manual'"/>
+                <field name="source_info" optional="show"/>
+                <field name="calc_mode" optional="hide"/>
+                <field name="nc_on_red" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_indicator_view_form" model="ir.ui.view">
+        <field name="name">sgi.indicator.form</field>
+        <field name="model">sgi.indicator</field>
+        <field name="arch" type="xml">
+            <form string="Indicador">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="code"/>
+                        <h1><field name="code" placeholder="VE-01"/></h1>
+                        <field name="name" placeholder="Nombre del indicador"/>
+                    </div>
+                    <group>
+                        <group string="Clasificación">
+                            <field name="objective_id"/>
+                            <field name="process_id"/>
+                            <field name="sgi_area_id"/>
+                            <field name="responsible_id"/>
+                            <field name="frequency"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Meta y cálculo">
+                            <field name="uom"/>
+                            <field name="direction"/>
+                            <field name="target_objective"/>
+                            <field name="target_acceptable"/>
+                            <field name="calc_mode"/>
+                            <field name="monthly_budget"
+                                   invisible="calc_mode != 'presupuesto_ventas'"/>
+                            <field name="nc_on_red"/>
+                        </group>
+                    </group>
+                    <field name="source_type" invisible="1"/>
+                    <div class="alert alert-success mb-0" role="alert"
+                         invisible="source_type != 'auto'">
+                        ⚙️ <b>Automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-warning mb-0" role="alert"
+                         invisible="source_type != 'manual'">
+                        ✍️ <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                    </div>
+                    <notebook>
+                        <page string="Mediciones">
+                            <field name="measure_ids" context="{'default_indicator_id': id}">
+                                <list editable="bottom"
+                                      decoration-success="semaphore == 'verde'"
+                                      decoration-warning="semaphore == 'amarillo'"
+                                      decoration-danger="semaphore == 'rojo'">
+                                    <field name="period_date"/>
+                                    <field name="value"/>
+                                    <field name="uom" column_invisible="1"/>
+                                    <field name="semaphore" widget="badge"
+                                           decoration-success="semaphore == 'verde'"
+                                           decoration-warning="semaphore == 'amarillo'"
+                                           decoration-danger="semaphore == 'rojo'"/>
+                                    <field name="state"/>
+                                    <field name="note" optional="hide"/>
+                                    <field name="alert_id" optional="hide" readonly="1"/>
+                                    <button name="action_validate" type="object"
+                                            string="Validar" icon="fa-check"
+                                            invisible="state == 'validado'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_indicator_view_search" model="ir.ui.view">
+        <field name="name">sgi.indicator.search</field>
+        <field name="model">sgi.indicator</field>
+        <field name="arch" type="xml">
+            <search string="Indicadores">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="sgi_area_id"/>
+                <field name="responsible_id"/>
+                <filter name="automatic" string="Cálculo automático"
+                        domain="[('calc_mode','!=','manual')]"/>
+                <filter name="nc_active" string="NC automática activa"
+                        domain="[('nc_on_red','=',True)]"/>
+                <group>
+                    <filter name="group_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
+                    <filter name="group_objective" string="Objetivo" context="{'group_by': 'objective_id'}"/>
+                    <filter name="group_calc" string="Modo de cálculo" context="{'group_by': 'calc_mode'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_indicator_action" model="ir.actions.act_window">
+        <field name="name">Indicadores</field>
+        <field name="res_model">sgi.indicator</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_indicator_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Da de alta un indicador</p>
+            <p>Los automáticos se calculan solos de los datos reales de Odoo; captura responsable, objetivo y aceptable, y el semáforo sale solo.</p>
+        </field>
+    </record>
+
+    <!-- ================= MEDICIONES ================= -->
+    <record id="sgi_measure_view_list" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.list</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="arch" type="xml">
+            <list string="Mediciones"
+                  decoration-success="semaphore == 'verde'"
+                  decoration-warning="semaphore == 'amarillo'"
+                  decoration-danger="semaphore == 'rojo'">
+                <field name="period_date"/>
+                <field name="indicator_id"/>
+                <field name="value"/>
+                <field name="target_objective"/>
+                <field name="source_type" widget="badge"
+                       decoration-success="source_type == 'auto'"
+                       decoration-warning="source_type == 'manual'"/>
+                <field name="semaphore" widget="badge"
+                       decoration-success="semaphore == 'verde'"
+                       decoration-warning="semaphore == 'amarillo'"
+                       decoration-danger="semaphore == 'rojo'"/>
+                <field name="state"/>
+                <button name="action_view_evidence" type="object" icon="fa-search-plus"
+                        title="Ver evidencia" invisible="source_type == 'manual'"/>
+                <field name="alert_id" readonly="1"/>
+                <button name="action_validate" type="object" string="Validar"
+                        icon="fa-check" invisible="state == 'validado'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_measure_view_form" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.form</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="arch" type="xml">
+            <form string="Medición">
+                <header>
+                    <button name="action_capture" type="object" string="Marcar capturado"
+                            invisible="state != 'pendiente'"/>
+                    <button name="action_validate" type="object" string="Validar"
+                            class="btn-primary" invisible="state == 'validado'"/>
+                    <button name="action_view_evidence" type="object"
+                            string="Ver evidencia" icon="fa-search-plus"
+                            invisible="source_type == 'manual'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="indicator_id" string="Indicador"/>
+                        <h1><field name="indicator_id"/></h1>
+                    </div>
+                    <field name="source_type" invisible="1"/>
+                    <div class="alert alert-success mb-0" role="alert"
+                         invisible="source_type != 'auto'">
+                        ⚙️ <b>Valor automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-warning mb-0" role="alert"
+                         invisible="source_type != 'manual'">
+                        ✍️ <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="period_date"/>
+                            <field name="value"/>
+                            <field name="uom"/>
+                        </group>
+                        <group>
+                            <field name="target_objective"/>
+                            <field name="target_acceptable"/>
+                            <field name="semaphore" widget="badge"/>
+                            <field name="alert_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Nota">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_measure_view_graph" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.graph</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="arch" type="xml">
+            <graph string="Mediciones" type="line">
+                <field name="period_date" interval="month"/>
+                <field name="indicator_id"/>
+                <field name="value" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_measure_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.pivot</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="arch" type="xml">
+            <pivot string="Mediciones">
+                <field name="indicator_id" type="row"/>
+                <field name="period_date" interval="month" type="col"/>
+                <field name="value" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_measure_view_search" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.search</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="arch" type="xml">
+            <search string="Mediciones">
+                <field name="indicator_id"/>
+                <filter name="red" string="En rojo" domain="[('semaphore','=','rojo')]"/>
+                <filter name="pending" string="Pendientes" domain="[('state','=','pendiente')]"/>
+                <group>
+                    <filter name="group_indicator" string="Indicador" context="{'group_by': 'indicator_id'}"/>
+                    <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
+                    <filter name="group_semaphore" string="Semáforo" context="{'group_by': 'semaphore'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_measure_action" model="ir.actions.act_window">
+        <field name="name">Mediciones</field>
+        <field name="res_model">sgi.indicator.measure</field>
+        <field name="view_mode">list,graph,pivot,form</field>
+        <field name="search_view_id" ref="sgi_measure_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>
+            <p>El cron mensual las crea automáticamente; las manuales llegan como actividad a su responsable antes del día 5.</p>
+        </field>
+    </record>
+</odoo>

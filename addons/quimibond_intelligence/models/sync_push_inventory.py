@@ -316,6 +316,11 @@ class QuimibondSyncInventory(models.TransientModel):
         ])
         rows = []
         for l in locs:
+            # Cuentas forzadas de valoración (opcional por ubicación): si están
+            # llenas le GANAN a la cuenta de gastos de la categoría del producto.
+            # Es la capa 2 del comportamiento contable de las operaciones.
+            val_in = getattr(l, 'valuation_in_account_id', False)
+            val_out = getattr(l, 'valuation_out_account_id', False)
             rows.append({
                 'odoo_location_id': l.id,
                 'odoo_company_id': l.company_id.id if l.company_id else None,
@@ -324,11 +329,153 @@ class QuimibondSyncInventory(models.TransientModel):
                 'usage': l.usage or 'internal',
                 'warehouse_name': l.warehouse_id.name if hasattr(l, 'warehouse_id') and l.warehouse_id else None,
                 'active': bool(l.active),
+                'parent_location_id': l.location_id.id if l.location_id else None,
+                'scrap_location': bool(getattr(l, 'scrap_location', False)),
+                'return_location': bool(getattr(l, 'return_location', False)),
+                'valuation_in_account': val_in.code if val_in else None,
+                'valuation_out_account': val_out.code if val_out else None,
+                'synced_at': datetime.now().isoformat(),
             })
         if not rows:
             return 0
         return client.upsert('odoo_stock_locations', rows,
                              on_conflict='odoo_location_id', batch_size=500)
+
+    def _push_stock_config(self, client: SupabaseClient, last_sync=None) -> int:
+        """Push catálogos de configuración logística/contable → Supabase.
+
+        4 modelos chicos, full refresh en cada push (sin incremental) para que
+        el espejo refleje siempre la configuración VIGENTE — esta es la base
+        para auditar el comportamiento contable de las operaciones:
+
+          stock.picking.type  → odoo_picking_types      (tipos de operación)
+          stock.route         → odoo_stock_routes       (rutas)
+          stock.rule          → odoo_stock_rules        (reglas push/pull)
+          product.category    → odoo_product_categories (config contable:
+                                cuenta de gastos, valoración, cuentas 115)
+
+        Se incluyen archivados (active=False) con su flag real, para detectar
+        catálogo basura desde el frontend.
+        """
+        now_iso = datetime.now().isoformat()
+        total = 0
+
+        # --- stock.picking.type → odoo_picking_types ---
+        try:
+            PT = self.env['stock.picking.type'].sudo().with_context(active_test=False)
+            rows = []
+            for pt in PT.search([]):
+                src = pt.default_location_src_id
+                dest = pt.default_location_dest_id
+                rows.append({
+                    'odoo_picking_type_id': pt.id,
+                    'name': pt.name or '',
+                    'code': pt.code or '',
+                    'sequence_code': pt.sequence_code or '',
+                    'sequence_prefix': pt.sequence_id.prefix if pt.sequence_id else None,
+                    'warehouse_name': pt.warehouse_id.name if pt.warehouse_id else None,
+                    'default_location_src_id': src.id if src else None,
+                    'default_location_src': src.complete_name if src else None,
+                    'default_location_dest_id': dest.id if dest else None,
+                    'default_location_dest': dest.complete_name if dest else None,
+                    'active': bool(pt.active),
+                    'synced_at': now_iso,
+                })
+            total += client.upsert('odoo_picking_types', rows,
+                                   on_conflict='odoo_picking_type_id', batch_size=500)
+        except KeyError:
+            pass
+        except Exception as exc:
+            _logger.warning('_push_stock_config picking_types: %s', exc)
+
+        # --- stock.route → odoo_stock_routes (nombre viejo: stock.location.route) ---
+        try:
+            Route = None
+            for model_name in ('stock.route', 'stock.location.route'):
+                if model_name in self.env:
+                    Route = self.env[model_name].sudo().with_context(active_test=False)
+                    break
+            if Route is not None:
+                rows = []
+                for r in Route.search([]):
+                    rows.append({
+                        'odoo_route_id': r.id,
+                        'name': r.name or '',
+                        'active': bool(r.active),
+                        'product_selectable': bool(getattr(r, 'product_selectable', False)),
+                        'product_categ_selectable': bool(getattr(r, 'product_categ_selectable', False)),
+                        'warehouse_selectable': bool(getattr(r, 'warehouse_selectable', False)),
+                        'synced_at': now_iso,
+                    })
+                total += client.upsert('odoo_stock_routes', rows,
+                                       on_conflict='odoo_route_id', batch_size=500)
+        except Exception as exc:
+            _logger.warning('_push_stock_config routes: %s', exc)
+
+        # --- stock.rule → odoo_stock_rules ---
+        try:
+            Rule = self.env['stock.rule'].sudo().with_context(active_test=False)
+            rows = []
+            for ru in Rule.search([]):
+                rows.append({
+                    'odoo_rule_id': ru.id,
+                    'name': ru.name or '',
+                    'action': ru.action or '',
+                    'picking_type_id': ru.picking_type_id.id if ru.picking_type_id else None,
+                    'picking_type': ru.picking_type_id.name if ru.picking_type_id else None,
+                    'location_src_id': ru.location_src_id.id if ru.location_src_id else None,
+                    'location_src': ru.location_src_id.complete_name if ru.location_src_id else None,
+                    'location_dest_id': ru.location_dest_id.id if ru.location_dest_id else None,
+                    'location_dest': ru.location_dest_id.complete_name if ru.location_dest_id else None,
+                    'route_id': ru.route_id.id if ru.route_id else None,
+                    'route': ru.route_id.name if ru.route_id else None,
+                    'procure_method': getattr(ru, 'procure_method', None) or None,
+                    'active': bool(ru.active),
+                    'synced_at': now_iso,
+                })
+            total += client.upsert('odoo_stock_rules', rows,
+                                   on_conflict='odoo_rule_id', batch_size=500)
+        except KeyError:
+            pass
+        except Exception as exc:
+            _logger.warning('_push_stock_config rules: %s', exc)
+
+        # --- product.category → odoo_product_categories (config contable) ---
+        # Los property_* son company-dependent; el sudo() lee la compañía
+        # activa del cron (Quimibond). getattr con guardas porque algunos
+        # campos cambian entre versiones de Odoo (property_valuation).
+        try:
+            Cat = self.env['product.category'].sudo()
+
+            def _acc_code(rec, fname):
+                acc = getattr(rec, fname, False)
+                return acc.code if acc else None
+
+            rows = []
+            for c in Cat.search([]):
+                journal = getattr(c, 'property_stock_journal', False)
+                rows.append({
+                    'odoo_category_id': c.id,
+                    'complete_name': c.complete_name or c.name or '',
+                    'parent_id': c.parent_id.id if c.parent_id else None,
+                    'cost_method': getattr(c, 'property_cost_method', None) or None,
+                    'valuation': getattr(c, 'property_valuation', None) or None,
+                    'expense_account': _acc_code(c, 'property_account_expense_categ_id'),
+                    'income_account': _acc_code(c, 'property_account_income_categ_id'),
+                    'stock_valuation_account': _acc_code(c, 'property_stock_valuation_account_id'),
+                    'stock_input_account': _acc_code(c, 'property_stock_account_input_categ_id'),
+                    'stock_output_account': _acc_code(c, 'property_stock_account_output_categ_id'),
+                    'stock_journal': journal.name if journal else None,
+                    'synced_at': now_iso,
+                })
+            total += client.upsert('odoo_product_categories', rows,
+                                   on_conflict='odoo_category_id', batch_size=500)
+        except KeyError:
+            pass
+        except Exception as exc:
+            _logger.warning('_push_stock_config categories: %s', exc)
+
+        return total
 
     def _push_stock_moves(self, client: SupabaseClient, last_sync=None) -> int:
         """Push stock.move → odoo_stock_moves.
@@ -466,8 +613,12 @@ class QuimibondSyncInventory(models.TransientModel):
           Purchase:  504% (costo compras, vendor bill counterpart)
         NOTE: 116.003 es Cuenta Transitoria BBVA (bancaria) — NO incluir 116%.
         2026-07-03: se agrega 999% (Ganancias/pérdidas no distribuidas) para
-        auditar reclasificaciones manuales a equity detectadas en la auditoría
-        de inventario — el war room /contabilidad/cierre-inventario las vigila.
+        vigilar asientos manuales a equity — el war room
+        /contabilidad/cierre-inventario los levanta como issue crítico.
+        OJO: la fila mensual de 999998 en odoo_account_balances es SINTÉTICA
+        (la fabrica _push_account_balances como utilidad neta del período,
+        SP5 §14.2); la evidencia de asientos reales es lines_stock. Verificado
+        2026-07-03 tras re-push completo: 0 líneas reales de 999998 all-time.
 
         SP11.8 (2026-04-23): evidencia empírica (sample 5+5 ene-feb) mostró que
         el link real stock.move ↔ account.move vive principalmente en:

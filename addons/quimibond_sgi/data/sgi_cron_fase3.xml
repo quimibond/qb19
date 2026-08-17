@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <data noupdate="1">
+        <record id="sgi_param_fmea_npr_action" model="ir.config_parameter">
+            <field name="key">quimibond_sgi.fmea_npr_action</field>
+            <field name="value">100</field>
+        </record>
+    </data>
+
+    <record id="sgi_cron_calibrations" model="ir.cron">
+        <field name="name">SGI: Vencimientos de calibración y EPP</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_calibrations()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="sgi_cron_competences" model="ir.cron">
+        <field name="name">SGI: Competencias y certificaciones por vencer</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_competences()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- P-A28 Nota 1: revaluación del S2 (el método se protege con guarda de mes
+         == junio, así que correr mensual es idempotente y robusto ante el drift
+         de nextcall). -->
+    <record id="sgi_cron_budget_revaluation" model="ir.cron">
+        <field name="name">SGI: Revaluación del S2 del presupuesto (junio, P-A28 Nota 1)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_budget_revaluation()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- P-A28 4.2.2.7: cobertura del pronóstico (semanas descubiertas y pedidos
+         fuera de pronóstico). Semanal; idempotente por resumen de actividad. -->
+    <record id="sgi_cron_forecast_coverage" model="ir.cron">
+        <field name="name">SGI: Cobertura del pronóstico (semanal, P-A28 4.2.2.7)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_forecast_coverage()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

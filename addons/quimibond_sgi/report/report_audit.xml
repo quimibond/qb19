@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= PLAN DE AUDITORÍA (F-P-G03-03) ================= -->
+    <record id="action_report_audit_plan" model="ir.actions.report">
+        <field name="name">Plan de auditoría (F-P-G03-03)</field>
+        <field name="model">sgi.audit</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_audit_plan_document</field>
+        <field name="report_file">quimibond_sgi.report_audit_plan_document</field>
+        <field name="binding_model_id" ref="model_sgi_audit"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_audit_plan_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Plan de Auditoría — F-P-G03-03</h2>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tr>
+                                <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
+                                <td><strong>Tipo:</strong> <span t-field="doc.audit_type"/></td>
+                                <td><strong>Fecha planificada:</strong> <span t-field="doc.date_planned"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Auditor líder:</strong> <span t-field="doc.lead_auditor_id"/></td>
+                                <td colspan="2"><strong>Equipo:</strong>
+                                    <span t-esc="', '.join(doc.auditor_ids.mapped('name'))"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Normas:</strong>
+                                    <span t-esc="', '.join(doc.norm_ids.mapped('code'))"/></td>
+                                <td colspan="2"><strong>Procesos:</strong>
+                                    <span t-esc="', '.join(doc.process_ids.mapped('name'))"/></td>
+                            </tr>
+                        </table>
+                        <h4>Auditados</h4>
+                        <p t-esc="', '.join(doc.auditee_ids.mapped('name'))"/>
+                        <h4>Checklist</h4>
+                        <p t-field="doc.survey_id"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- ================= INFORME DE AUDITORÍA ================= -->
+    <record id="action_report_audit_report" model="ir.actions.report">
+        <field name="name">Informe de auditoría</field>
+        <field name="model">sgi.audit</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_audit_report_document</field>
+        <field name="report_file">quimibond_sgi.report_audit_report_document</field>
+        <field name="binding_model_id" ref="model_sgi_audit"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_audit_report_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Informe de Auditoría</h2>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tr>
+                                <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
+                                <td><strong>Tipo:</strong> <span t-field="doc.audit_type"/></td>
+                                <td><strong>Auditor líder:</strong> <span t-field="doc.lead_auditor_id"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Inicio:</strong> <span t-field="doc.date_start"/></td>
+                                <td><strong>Fin:</strong> <span t-field="doc.date_end"/></td>
+                                <td><strong>Estado:</strong> <span t-field="doc.state"/></td>
+                            </tr>
+                        </table>
+
+                        <h4>Hallazgos</h4>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th><th>Cláusula</th><th>Proceso</th>
+                                    <th>Descripción</th><th>Disposición</th><th>NC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.finding_ids" t-as="finding">
+                                    <td><span t-field="finding.finding_type"/></td>
+                                    <td><span t-field="finding.norm_clause_id"/></td>
+                                    <td><span t-field="finding.process_id"/></td>
+                                    <td><span t-field="finding.description"/></td>
+                                    <td><span t-field="finding.disposition"/></td>
+                                    <td><span t-field="finding.alert_id.sgi_folio"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Conclusión</h4>
+                        <p t-field="doc.conclusion"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

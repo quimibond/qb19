@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====== Detalle de una actividad del procedimiento (modal) ====== -->
+    <record id="sgi_process_activity_view_form" model="ir.ui.view">
+        <field name="name">sgi.process.activity.form</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <form string="Actividad del procedimiento">
+                <header>
+                    <button name="action_open_odoo" type="object"
+                            string="Abrir en Odoo" icon="fa-external-link"
+                            invisible="not odoo_menu_id"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="number" string="Numeral"/>
+                        <h2><field name="number" placeholder="4.2.3.1"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="block"/>
+                            <field name="section" placeholder="4.2.3 Cotización de productos"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="responsible_role" placeholder="Administrador de ventas y marketing"/>
+                            <field name="responsible_job_ids" widget="many2many_tags"/>
+                            <field name="odoo_menu_id"/>
+                            <field name="odoo_ref" placeholder="Ventas &gt; Pedidos"/>
+                        </group>
+                    </group>
+                    <group string="Resumen">
+                        <field name="name" nolabel="1" placeholder="Resumen corto de la actividad"/>
+                    </group>
+                    <group string="Descripción (texto del numeral)">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                    <group>
+                        <group string="Formatos referenciados">
+                            <field name="format_document_ids" nolabel="1"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group string="Procedimiento relacionado">
+                            <field name="related_procedure_id" nolabel="1"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <group string="Nota">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_view_list" model="ir.ui.view">
+        <field name="name">sgi.process.activity.list</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <list string="Actividades" default_order="process_id, sequence, number">
+                <field name="process_id" optional="show"/>
+                <field name="number"/>
+                <field name="section" optional="show"/>
+                <field name="name"/>
+                <field name="responsible_role" optional="show"/>
+                <field name="responsible_job_ids" widget="many2many_tags" optional="show"/>
+                <field name="format_document_ids" widget="many2many_tags" optional="show"/>
+                <field name="odoo_ref" optional="hide"/>
+                <field name="odoo_menu_id" optional="show"/>
+                <button name="action_open_odoo" type="object"
+                        string="Abrir en Odoo" icon="fa-external-link"
+                        invisible="not odoo_menu_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_view_search" model="ir.ui.view">
+        <field name="name">sgi.process.activity.search</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <search string="Actividades de procedimiento">
+                <field name="name" string="Resumen / descripción"
+                       filter_domain="['|', '|', ('name', 'ilike', self), ('description', 'ilike', self), ('number', 'ilike', self)]"/>
+                <field name="number"/>
+                <field name="responsible_role"/>
+                <field name="process_id"/>
+                <separator/>
+                <filter name="my_activities" string="Mis actividades"
+                        domain="[('responsible_job_ids.employee_ids.user_id', '=', uid)]"/>
+                <filter name="no_responsible" string="Sin responsable"
+                        domain="[('responsible_job_ids', '=', False), ('responsible_role', '=', False)]"/>
+                <filter name="no_format" string="Sin formato ligado"
+                        domain="[('format_document_ids', '=', False)]"/>
+                <filter name="no_menu" string="Sin menú de Odoo"
+                        domain="[('odoo_menu_id', '=', False)]"/>
+                <group>
+                    <filter name="group_process" string="Proceso"
+                            context="{'group_by': 'process_id'}"/>
+                    <filter name="group_block" string="Bloque"
+                            context="{'group_by': 'block'}"/>
+                    <filter name="group_section" string="Sección"
+                            context="{'group_by': 'section'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_action" model="ir.actions.act_window">
+        <field name="name">Actividades de procedimiento</field>
+        <field name="res_model">sgi.process.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
+        <field name="context">{'search_default_group_process': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El Desarrollo de los procedimientos, como datos</p>
+            <p>Cada actividad es un numeral vivo: su rol, sus formatos y el menú de
+            Odoo donde se ejecuta. Se editan desde la ficha del proceso.</p>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_action_mine" model="ir.actions.act_window">
+        <field name="name">Mis actividades de procedimiento</field>
+        <field name="res_model">sgi.process.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
+        <field name="context">{'search_default_my_activities': 1, 'search_default_group_process': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Las actividades que le tocan a tu puesto</p>
+            <p>Filtradas por el puesto del empleado ligado a tu usuario.</p>
+        </field>
+    </record>
+
+    <!-- ====== Pestaña "Procedimiento" en la ficha del proceso ====== -->
+    <record id="sgi_process_view_form_procedure" model="ir.ui.view">
+        <field name="name">sgi.process.form.procedure</field>
+        <field name="model">sgi.process</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_print_procedure" type="object"
+                        class="oe_stat_button" icon="fa-print"
+                        invisible="activity_count == 0">
+                    <field name="activity_count" widget="statinfo" string="Actividades"/>
+                </button>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Procedimiento" name="procedimiento">
+                    <group string="Alcance">
+                        <field name="scope" nolabel="1"
+                               placeholder="A qué áreas/actividades aplica el procedimiento…"/>
+                    </group>
+                    <separator string="Responsabilidades de las áreas"/>
+                    <field name="job_responsibility_ids">
+                        <list string="Responsabilidades" editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="job_id"/>
+                            <field name="responsibilities"/>
+                        </list>
+                    </field>
+                    <separator string="Desarrollo (actividades)"/>
+                    <field name="activity_ids" context="{'default_process_id': id}">
+                        <list string="Actividades" default_order="sequence, number">
+                            <field name="sequence" widget="handle"/>
+                            <field name="block"/>
+                            <field name="number"/>
+                            <field name="section" optional="show"/>
+                            <field name="name"/>
+                            <field name="responsible_role" optional="show"/>
+                            <field name="format_document_ids" widget="many2many_tags" optional="show"/>
+                            <field name="odoo_ref" optional="hide"/>
+                            <field name="odoo_menu_id" column_invisible="1"/>
+                            <button name="action_open_odoo" type="object"
+                                    string="Abrir en Odoo" icon="fa-external-link"
+                                    invisible="not odoo_menu_id"/>
+                        </list>
+                    </field>
+                    <group>
+                        <group string="Descripción de aspectos ambientales">
+                            <field name="env_aspects" nolabel="1"/>
+                        </group>
+                        <group string="Marco normativo">
+                            <field name="norm_ids" nolabel="1" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

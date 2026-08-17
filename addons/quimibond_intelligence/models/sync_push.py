@@ -447,6 +447,7 @@ class QuimibondSync(models.TransientModel):
                 ('currency_rates', self._push_currency_rates),
                 ('boms', self._push_boms),
                 ('stock_locations', self._push_stock_locations),
+                ('stock_config', self._push_stock_config),
             ]
             totals = {}
             skipped = []

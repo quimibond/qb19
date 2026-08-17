@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_sales_budget" model="ir.actions.report">
+        <field name="name">Presupuesto de ventas (F-P-A28-17/18)</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_sales_budget_document</field>
+        <field name="report_file">quimibond_sgi.report_sales_budget_document</field>
+        <field name="print_report_name">'PPV-%s-%s' % (object.team_id.name or '', object.year or '')</field>
+    </record>
+
+    <template id="report_sales_budget_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-if="doc.kind == 'pronostico'">
+                        <t t-call="quimibond_sgi.report_sales_forecast_page">
+                            <t t-set="doc" t-value="doc"/>
+                        </t>
+                    </t>
+                    <t t-else="">
+                    <t t-set="matrix" t-value="doc._report_matrix()"/>
+                    <div class="page">
+                        <h2 class="text-center">
+                            Presupuesto de Ventas (F-P-A28-17/18)<br/>
+                            <small t-out="doc.name"/>
+                        </h2>
+                        <p class="text-muted text-center" style="font-size:11px;">
+                            Cantidades por unidad (no se suman entre unidades distintas);
+                            el total global es solo en pesos (<span t-out="doc.currency_id.name"/>).
+                        </p>
+                        <table class="table table-sm table-bordered" style="font-size:9px;">
+                            <thead>
+                                <tr class="table-active">
+                                    <th>Producto / Cliente</th>
+                                    <th>Unidad</th>
+                                    <th t-foreach="matrix['months']" t-as="m" class="text-end"
+                                        t-out="m"/>
+                                    <th class="text-end">Total cant.</th>
+                                    <th class="text-end">P. unit. ppto</th>
+                                    <th class="text-end">P. prom. real</th>
+                                    <th class="text-end">Importe</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="matrix['groups']" t-as="grp">
+                                    <tr t-foreach="grp['rows']" t-as="row">
+                                        <td>
+                                            <span t-if="row_index == 0" class="fw-bold"
+                                                  t-out="grp['product']"/>
+                                            <span t-if="grp['by_client']" class="text-muted ps-2"
+                                                  t-out="row['client']"/>
+                                        </td>
+                                        <td t-out="row['uom']"/>
+                                        <td t-foreach="matrix['months']" t-as="m" class="text-end"
+                                            t-out="'{:,.0f}'.format(row['cells'][m]) if row['cells'][m] else ''"/>
+                                        <td class="text-end fw-bold"
+                                            t-out="'{:,.2f}'.format(row['qty_total'])"/>
+                                        <td class="text-end">
+                                            <span t-out="row['price_budget']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            <span t-out="row['price_real']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-out="row['amount_total']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                            <t t-if="row['list_currency'] and row['list_currency'] != doc.currency_id">
+                                                <br/>
+                                                <span class="text-muted" t-out="row['amount_currency']"
+                                                      t-options="{'widget': 'monetary', 'display_currency': row['list_currency']}"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="grp['by_client']" class="table-light">
+                                        <td colspan="17" class="text-end">
+                                            Subtotal <span t-out="grp['product']"/>:
+                                        </td>
+                                        <td class="text-end fw-bold">
+                                            <span t-out="grp['subtotal_amount']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-active">
+                                    <td colspan="17" class="text-end fw-bold">
+                                        Subtotal de cantidad por unidad:
+                                        <span t-out="matrix['qty_by_uom']"/>
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <span t-out="matrix['amount_total']"
+                                              t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
+                    </div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_sales_forecast_page">
+        <t t-set="fc" t-value="doc._report_forecast_matrix()"/>
+        <div class="page">
+            <h2 class="text-center">
+                Pronóstico de Ventas (F-P-A28-13)<br/>
+                <small t-out="doc.name"/>
+            </h2>
+            <p class="text-muted text-center" style="font-size:11px;">
+                Cliente: <span t-out="fc['partner']"/> · Cantidad presupuestada y
+                (2ª fila) comprometida real por semana. Los pedidos se ven en Odoo
+                (drill-down «Ver pedidos de la semana»).
+            </p>
+            <table class="table table-sm table-bordered" style="font-size:8px;">
+                <thead>
+                    <tr class="table-active">
+                        <th>Producto / Código cliente</th>
+                        <th>Unidad</th>
+                        <th> </th>
+                        <th t-foreach="fc['weeks']" t-as="w" class="text-end">
+                            <span t-out="'S%s' % w['num']"/><br/>
+                            <span class="text-muted" t-out="'m%s' % w['month']"/>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="fc['rows']" t-as="row">
+                        <tr>
+                            <td rowspan="3">
+                                <span class="fw-bold" t-out="row['product']"/>
+                                <span t-if="row['code']" class="text-muted"
+                                      t-out="' [%s]' % row['code']"/>
+                            </td>
+                            <td rowspan="3" t-out="row['uom']"/>
+                            <td>Ppto</td>
+                            <td t-foreach="fc['weeks']" t-as="w" class="text-end"
+                                t-out="'{:,.0f}'.format(row['budget'].get(w['num'], 0)) if row['budget'].get(w['num']) else ''"/>
+                        </tr>
+                        <tr class="text-muted">
+                            <td>Real</td>
+                            <td t-foreach="fc['weeks']" t-as="w" class="text-end"
+                                t-out="'{:,.0f}'.format(row['real'].get(w['num'], 0)) if row['real'].get(w['num']) else ''"/>
+                        </tr>
+                        <tr class="fw-bold">
+                            <td>Neta</td>
+                            <td t-foreach="fc['weeks']" t-as="w" class="text-end"
+                                t-out="'{:,.0f}'.format(row['net'].get(w['num'], 0)) if row['net'].get(w['num']) else ''"/>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+            <t t-call="quimibond_sgi.sgi_format_footer">
+                <t t-set="sgi_rec" t-value="doc"/>
+            </t>
+        </div>
+    </template>
+</odoo>
