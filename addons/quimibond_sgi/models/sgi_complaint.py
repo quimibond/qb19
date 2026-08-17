@@ -34,7 +34,7 @@ class HelpdeskTicket(models.Model):
         }
         if team:
             vals['team_id'] = team.id
-        alert = self.env['quality.alert'].create(vals)
+        alert = self.env['quality.alert'].sgi_auto_create('reclamacion_cliente', vals)
         self.sgi_alert_id = alert.id
         return {
             'type': 'ir.actions.act_window',

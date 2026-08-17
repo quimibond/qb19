@@ -27,14 +27,11 @@
                         <field name="regularidad_info" readonly="1" nolabel="0"/>
                         <field name="currency_id" options="{'no_create': True}"
                                help="La moneda en la que capturas el precio objetivo y en la que se muestran los precios al cliente. Los COSTOS del modelo siempre se calculan en MXN."/>
-                        <label for="precio_objetivo"/>
-                        <div class="o_row">
-                            <field name="precio_objetivo" class="oe_inline"/>
-                            <field name="currency_id" readonly="1" nolabel="1"
-                                   class="oe_inline text-muted"
-                                   options="{'no_open': True}"/>
-                        </div>
+                        <field name="precio_objetivo" widget="monetary"
+                               options="{'currency_field': 'currency_id'}"/>
                         <field name="precio_objetivo_mxn" readonly="1"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                invisible="es_mxn or not precio_objetivo"/>
                         <field name="es_mxn" invisible="1"/>
                         <field name="fx_rate" invisible="es_mxn"/>
@@ -45,11 +42,19 @@
                     💱 <field name="moneda_info" readonly="1" class="oe_inline"/>
                 </div>
                 <field name="moneda_info" invisible="1"/>
+                <field name="company_currency_id" invisible="1"/>
                 <!-- Guardián anti-error de moneda: antes que el semáforo -->
                 <div class="alert alert-warning" role="alert"
                      invisible="not moneda_alerta">
                     💱⚠️ <b>Revisa la moneda:</b>
                     <field name="moneda_alerta" readonly="1" class="oe_inline"/>
+                </div>
+                <!-- Aviso de peso estimado: el costo puede estar mal -->
+                <field name="peso_estimado" invisible="1"/>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not peso_alerta">
+                    ⚖️⚠️ <b>Peso estimado:</b>
+                    <field name="peso_alerta" readonly="1" class="oe_inline"/>
                 </div>
                 <!-- Semáforo: el criterio de decisión en un color -->
                 <field name="semaforo" invisible="1"/>
@@ -93,22 +98,52 @@
                         <field name="spec_centro_ids" widget="many2many_tags"/>
                     </group>
                 </group>
+                <!-- TITULAR: lo único que necesitas para cotizar.
+                     El detalle (capas, pisos, márgenes) va detrás de "ver
+                     detalle" — una pantalla, no 40 campos. -->
+                <group string="Para cotizar"
+                       invisible="not product_id and not spec_mode">
+                    <field name="precio_sugerido"
+                           string="⭐ Precio sugerido / u"
+                           widget="monetary"
+                           options="{'currency_field': 'company_currency_id'}"
+                           class="fw-bold text-success"
+                           help="El precio con el que arrancar: cubre el costo completo y deja tu margen meta, sin bajar del piso ni del mercado."/>
+                    <field name="piso_lleno"
+                           string="Costo total (piso a planta llena) / u"
+                           widget="monetary"
+                           options="{'currency_field': 'company_currency_id'}"
+                           help="El costo COMPLETO recuperado (margen cero). Debajo de esto, con la planta llena, pierdes."/>
+                    <field name="margen_neto_pct"
+                           string="Margen neto % (al precio evaluado)"
+                           help="Lo que queda después de TODO al precio que se está evaluando (objetivo, o mercado, o el piso)."/>
+                    <field name="capacity_ok" string="¿Cabe en capacidad?"/>
+                    <field name="capacity_detail" nolabel="1" colspan="2"/>
+                    <field name="evaluado_info" readonly="1" colspan="2"
+                           invisible="not evaluado_info"/>
+                </group>
+                <field name="ver_detalle"
+                       invisible="not product_id and not spec_mode"/>
                 <!-- Resultados EN VIVO: se recalculan al cambiar cualquier input -->
-                <group invisible="not product_id and not spec_mode">
-                    <group string="1 · ¿Cuánto cuesta producirlo? ($/u, todo MXN)">
+                <group invisible="(not product_id and not spec_mode) or not ver_detalle">
+                    <group string="1 · ¿Cuánto cuesta producirlo? (por unidad)">
                         <field name="product_bucket"/>
                         <field name="kg_per_unit"/>
-                        <field name="mp_unit"
-                               string="Materia prima $/u MXN"
+                        <field name="mp_unit" string="Materia prima / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Receta (BOM) al último costo de compra de cada componente."/>
-                        <field name="energia_unit"
-                               string="+ Energía $/u MXN"
+                        <field name="energia_unit" string="+ Energía / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Luz/gas/agua variables: $/kg × peso."/>
-                        <field name="costo_variable"
-                               string="= Costo variable $/u MXN" class="fw-bold"
+                        <field name="costo_variable" string="= Costo variable / u"
+                               class="fw-bold" widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="MP + energía: lo que sale de la bolsa por cada unidad extra. Piso absoluto."/>
-                        <field name="fab_unit"
-                               string="+ Fabricación $/u MXN"
+                        <field name="fab_unit" string="+ Fabricación / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Parte del gasto fijo de fábrica (sueldos, renta, depreciación, arrendamiento de maquinaria) que le toca a esta unidad."/>
                         <field name="op_pct_display"
                                string="+ Operación % s/venta"
@@ -116,52 +151,45 @@
                     </group>
                     <group string="2 · ¿A cuánto venderlo? (referencias reales)">
                         <field name="precio_mercado_divisa" class="fw-bold"
-                               invisible="es_mxn"
-                               string="⭐ Precio de mercado (divisa)"/>
-                        <field name="precio_mercado"
-                               string="⭐ Precio de mercado $/u MXN"
-                               class="fw-bold"/>
+                               invisible="es_mxn" widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               string="Precio de mercado (divisa)"/>
+                        <field name="precio_mercado" string="Precio de mercado / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"/>
                         <field name="piso_lleno_divisa" invisible="es_mxn"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
                                string="Piso a planta llena (divisa)"/>
-                        <field name="piso_lleno"
-                               string="Piso a planta llena $/u MXN"
-                               help="Margen CERO cubriendo todo. Con la planta llena, no aceptar debajo."/>
                         <field name="piso_ocioso_divisa" invisible="es_mxn"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
                                string="Piso con ociosidad (divisa)"/>
-                        <field name="piso_ocioso"
-                               string="Piso con ociosidad $/u MXN"
+                        <field name="piso_ocioso" string="Piso con ociosidad / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="= costo variable. Con máquinas paradas, arriba de esto ya aporta a fijos. NUNCA vender debajo."/>
                     </group>
                     <group string="3 · ¿Qué gano al precio evaluado?">
-                        <field name="margen_contribucion"
-                               string="Contribución $/u MXN"
+                        <field name="margen_contribucion" string="Contribución / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Precio − costo variable: lo que aporta para pagar los fijos."/>
                         <field name="margen_contribucion_pct"
                                string="Contribución %"/>
                         <field name="margen_bruto_pct"
                                help="(precio − costo de producción) ÷ precio. Antes de admin/ventas."/>
-                        <field name="margen_neto_pct"
-                               help="Margen bruto − %operación: lo que queda después de TODO."/>
                         <field name="contrib_hora_maquina"
-                               string="Contribución MXN/hora-máquina"
+                               string="Contribución / hora-máquina" widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
                                help="Para comparar productos cuando las máquinas son el límite."/>
                     </group>
                 </group>
-                <div class="text-muted" style="font-size:12px;"
-                     invisible="not evaluado_info">
-                    <field name="evaluado_info" readonly="1" nolabel="1"/>
-                    Dudas con un término → pestaña «📖 Glosario».
-                </div>
                 <separator string="📶 Escalera de volumen — opciones estandarizadas"
-                           invisible="not product_id and not spec_mode"/>
+                           invisible="(not product_id and not spec_mode) or not ver_detalle"/>
                 <field name="escalera_html" nolabel="1" readonly="1"
-                       invisible="not product_id and not spec_mode"/>
-                <group string="Capacidad: ¿cabe este volumen en la planta?"
-                       invisible="not product_id and not spec_mode">
-                    <field name="capacity_ok"/>
-                    <field name="capacity_detail" nolabel="1"/>
-                </group>
-                <notebook>
+                       invisible="(not product_id and not spec_mode) or not ver_detalle"/>
+                <notebook invisible="not ver_detalle">
                     <page string="🔍 ¿De dónde viene cada costo?"
                           invisible="not product_id or spec_mode">
                         <field name="explicacion_html" nolabel="1" readonly="1"/>
@@ -179,13 +207,13 @@
                 </div>
                 <footer>
                     <button name="action_aplicar_precio"
-                            string="Guardar y aplicar a la línea" type="object"
+                            string="Guardar y aplicar al pedido" type="object"
                             class="btn-primary" invisible="not sale_line_id"
                             confirm="Escribe el precio calculado en la línea del pedido. ¿Continuar?"/>
                     <button name="action_cotizar" string="Guardar cotización"
                             type="object"
                             class="btn-primary" invisible="sale_line_id"/>
-                    <button name="action_cotizar" string="Solo guardar"
+                    <button name="action_cotizar" string="Solo guardar (sin aplicar)"
                             type="object"
                             class="btn-secondary" invisible="not sale_line_id"/>
                     <button string="Cerrar" special="cancel"/>
@@ -340,15 +368,24 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_recotizar" type="object"
-                            string="↻ Re-cotizar / nuevo escenario"
-                            class="btn-primary"
-                            help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
                     <button name="action_enviar_correo" type="object"
-                            string="✉ Enviar al cliente"
+                            string="✉ Enviar al cliente" class="btn-primary"
+                            invisible="state not in ('draft', 'done')"
                             help="Correo al cliente con el PDF COMERCIAL adjunto (solo producto, precio y condiciones). La hoja interna de costo se imprime aparte desde el menú Imprimir y NO se envía."/>
+                    <button name="action_marcar_presentada" type="object"
+                            string="Marcar presentada" invisible="state != 'draft'"/>
+                    <button name="action_marcar_ganada" type="object"
+                            string="✓ Ganada" class="btn-success"
+                            invisible="state not in ('draft', 'done')"/>
+                    <button name="action_marcar_perdida" type="object"
+                            string="Perdida" invisible="state not in ('draft', 'done')"/>
+                    <button name="action_recotizar" type="object"
+                            string="↻ Re-cotizar"
+                            help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
+                    <button name="action_reabrir" type="object"
+                            string="Reabrir" invisible="state in ('draft',)"/>
                     <field name="state" widget="statusbar"
-                           options="{'clickable': '1'}"/>
+                           statusbar_visible="draft,done,won"/>
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>

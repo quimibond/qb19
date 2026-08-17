@@ -68,6 +68,14 @@
                         </setting>
                     </block>
                     <block title="No Conformidades y AMEF">
+                        <setting string="Fuentes de NC automáticas"
+                                 help="Enciende o apaga cada automatismo que levanta NC solo: rollo fuera de peso, equipo descalibrado, indicador en rojo, incidente SST…">
+                            <div class="mt8">
+                                <button name="%(quimibond_sgi.sgi_alert_source_action)d"
+                                        type="action" string="Ver fuentes de NC"
+                                        class="btn-link" icon="fa-arrow-right"/>
+                            </div>
+                        </setting>
                         <setting string="Días para escalar una NC sin acciones"
                                  help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST.">
                             <field name="sgi_nc_escalation_days"/>

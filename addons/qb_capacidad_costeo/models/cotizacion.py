@@ -12,7 +12,7 @@ from .glosario import GLOSARIO_HTML
 class QbCotizacion(models.Model):
     _name = 'qb.cotizacion'
     _description = 'Cotización de capacidad y costo'
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'create_date DESC'
 
     name = fields.Char(required=True, default='Nueva cotización')
@@ -336,6 +336,21 @@ class QbCotizacion(models.Model):
                 'default_composition_mode': 'comment',
             },
         }
+
+    # ------------------------------------------------------------------
+    # Ciclo de vida (botones explícitos; el chatter registra cada paso)
+    # ------------------------------------------------------------------
+    def action_marcar_presentada(self):
+        self.filtered(lambda c: c.state == 'draft').write({'state': 'done'})
+
+    def action_marcar_ganada(self):
+        self.write({'state': 'won'})
+
+    def action_marcar_perdida(self):
+        self.write({'state': 'lost'})
+
+    def action_reabrir(self):
+        self.write({'state': 'draft'})
 
 
 class QbCotizacionTramo(models.Model):

@@ -8,7 +8,6 @@ from . import ociosidad
 from . import costeo
 from . import cotizacion
 from . import snapshot
-from . import supabase_import
 from . import panel
 from . import ficha
 from . import cliente_rentabilidad

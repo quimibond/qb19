@@ -7,4 +7,17 @@
         <field name="key">quimibond_sgi.pesaje_tolerance_kg</field>
         <field name="value">3.0</field>
     </record>
+
+    <!-- Interruptor de esta fuente: SGI → Configuración → Fuentes de NC automáticas. -->
+    <record id="sgi_alert_source_pesaje" model="sgi.alert.source">
+        <field name="code">pesaje_rollo_fuera_peso</field>
+        <field name="name">Rollo pesado fuera de tolerancia</field>
+        <field name="sequence">70</field>
+        <field name="trigger_type">automatico</field>
+        <field name="origin_module">quimibond_sgi_pesaje</field>
+        <field name="trigger_note">El operador confirma un rollo PESE a estar fuera
+de la tolerancia contra el Tamaño de Rollo Estándar. Apagarla no cambia el piso:
+pesaje_rollos_tejido sigue advirtiendo ±3 kg y pidiendo confirmación; sólo se
+deja de abrir la NC.</field>
+    </record>
 </odoo>

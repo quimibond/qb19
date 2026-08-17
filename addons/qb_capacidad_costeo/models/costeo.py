@@ -75,10 +75,10 @@ class QbCostoFactores(models.Model):
              'revisar denominadores o clasificación de cuentas.')
     notes = fields.Text()
 
-    _sql_constraints = [
-        ('period_company_uniq', 'unique(period, company_id)',
-         'Ya existen factores para ese período.'),
-    ]
+    _period_company_uniq = models.Constraint(
+        'unique(period, company_id)',
+        "Ya existen factores para ese período.",
+    )
 
 
 class QbCostoProducto(models.Model):
@@ -127,18 +127,26 @@ class QbCostoProducto(models.Model):
         ('bajo_variable', 'Vendido bajo costo variable'),
         ('bajo_absorbido', 'No cubre costo absorbido'),
         ('sin_peso', 'Sin peso resuelto'),
+        ('peso_estimado', 'Peso ESTIMADO — verificar'),
         ('ok', 'OK'),
     ], string='Alerta',
         help='bajo_variable = destruye valor (rojo); bajo_absorbido = aporta '
              'a fijos pero no cubre todo (ámbar); sin_peso = falta el peso '
-             'kg/u, la fabricación no se puede repartir.')
+             'kg/u, la fabricación no se puede repartir; peso_estimado = el '
+             'peso se adivinó del código o del campo weight de Odoo (no es '
+             'medido) → energía y fabricación pueden estar mal, hay que '
+             'capturar el peso real.')
+    peso_source = fields.Char(
+        string='Fuente del peso',
+        help='De dónde salió el kg/u: manual/cvu/kg_native/record/import_twin '
+             '= confiable; ref_gramaje/odoo_weight = estimado.')
     centro_route = fields.Char(string='Ruta (centros)')
     factores_id = fields.Many2one('qb.costo.factores', string='Factores usados')
 
-    _sql_constraints = [
-        ('period_product_uniq', 'unique(period, product_id, company_id)',
-         'Ya existe el costo de ese producto para ese período.'),
-    ]
+    _period_product_uniq = models.Constraint(
+        'unique(period, product_id, company_id)',
+        "Ya existe el costo de ese producto para ese período.",
+    )
 
     # ------------------------------------------------------------------
     # Pools GL
@@ -248,8 +256,12 @@ class QbCostoProducto(models.Model):
         entretela_pool = 0.0
         entretela_m = 0.0
         if ent_centros:
-            ent_mod = self._smooth(self._pool_by_month(
-                ('mod',), date_from, date_to, centro_id=ent_centros[0].id))
+            # MOD sumado sobre TODOS los centros de entretela (antes tomaba
+            # sólo el primero mientras la renta sí sumaba todos → asimétrico).
+            ent_mod = sum(
+                self._smooth(self._pool_by_month(
+                    ('mod',), date_from, date_to, centro_id=c.id))
+                for c in ent_centros)
             entretela_pool = (
                 ent_mod
                 + sum(ent_centros.mapped('renta_contractual_mxn'))
@@ -362,8 +374,11 @@ class QbCostoProducto(models.Model):
         pol_uom = pol.product_uom_id if 'product_uom_id' in pol._fields \
             else pol.product_uom
         if pol_uom and pol_uom != product.uom_id:
+            # raise_if_failure=False: si la compra y el producto están en
+            # categorías de UoM distintas (kg vs m en textil), Odoo NO truena;
+            # deja el precio sin convertir en vez de tumbar el costeo.
             qty_in_product_uom = pol_uom._compute_quantity(
-                1.0, product.uom_id, round=False)
+                1.0, product.uom_id, round=False, raise_if_failure=False)
             if qty_in_product_uom:
                 price = price / qty_in_product_uom
         return price
@@ -432,7 +447,8 @@ class QbCostoProducto(models.Model):
                     cost = self._mp_cost_unit(twin, cache, seen, ctx)
         else:
             std = product.standard_price or 0.0
-            if std > 0.0 and self._has_multiple_boms(product, ctx):
+            is_multi = self._has_multiple_boms(product, ctx)
+            if std > 0.0 and is_multi:
                 # Receta AMBIGUA: el producto tiene VARIAS BOMs activas (típico
                 # de semiterminados genéricos "MUESTRA PILOTO", que llegan a
                 # tener 26 recetas). _bom_find elegiría una al azar y el costo
@@ -440,22 +456,48 @@ class QbCostoProducto(models.Model):
                 # explotar una receta arbitraria, usa el AVCO que Odoo ya
                 # mantiene para el intermedio: es nativo y confiable.
                 cost = std
+            elif is_multi:
+                # Varias recetas y SIN AVCO confiable: no hay una "correcta".
+                # En vez de explotar una al azar (que colapsaría el costo),
+                # explota TODAS y toma la MÁS CARA — conservador para cotizar.
+                boms = self._applicable_boms(product)
+                costs = [self._explode_bom(b, product, cache, seen, ctx)
+                         for b in boms]
+                cost = max(costs) if costs else \
+                    self._last_purchase_cost(product, pol_map)
             else:
                 bom = self.env['mrp.bom']._bom_find(product).get(product)
-                if bom:
-                    total = 0.0
-                    for line in bom.bom_line_ids:
-                        comp = line.product_id
-                        qty = line.product_uom_id._compute_quantity(
-                            line.product_qty, comp.uom_id, round=False)
-                        total += qty * self._mp_cost_unit(comp, cache, seen, ctx)
-                    bom_qty = bom.product_uom_id._compute_quantity(
-                        bom.product_qty, product.uom_id, round=False) or 1.0
-                    cost = total / bom_qty
-                else:
-                    cost = self._last_purchase_cost(product, pol_map)
+                cost = self._explode_bom(bom, product, cache, seen, ctx) \
+                    if bom else self._last_purchase_cost(product, pol_map)
         cache[product.id] = cost
         return cost
+
+    @api.model
+    def _applicable_boms(self, product):
+        """BOMs activas aplicables a un producto (por variante o por
+        plantilla). Se usa para detectar/resolver recetas ambiguas."""
+        return self.env['mrp.bom'].search([
+            '|', ('product_id', '=', product.id),
+            '&', ('product_id', '=', False),
+                 ('product_tmpl_id', '=', product.product_tmpl_id.id),
+        ])
+
+    @api.model
+    def _explode_bom(self, bom, product, cache, seen, ctx):
+        """Costo MP/unidad explotando UNA receta: Σ(qty × costo_hoja) ÷ salida.
+        raise_if_failure=False evita que una conversión entre categorías de
+        UoM (kg vs m) tumbe el costeo — deja la cantidad sin convertir."""
+        total = 0.0
+        for line in bom.bom_line_ids:
+            comp = line.product_id
+            qty = line.product_uom_id._compute_quantity(
+                line.product_qty, comp.uom_id, round=False,
+                raise_if_failure=False)
+            total += qty * self._mp_cost_unit(comp, cache, seen, ctx)
+        bom_qty = bom.product_uom_id._compute_quantity(
+            bom.product_qty, product.uom_id, round=False,
+            raise_if_failure=False) or 1.0
+        return total / bom_qty
 
     @api.model
     def _multi_bom_ids_set(self):
@@ -607,11 +649,14 @@ class QbCostoProducto(models.Model):
         (vals, fab_absorbida × qty) para el acumulado de cobertura."""
         bucket, centros = Ruteo.resolve(product, ctx['rules'])
         kg = Peso.resolve_kg_per_unit(product, ctx['peso_cache'])
+        peso_source = Peso.resolve_kg_source(product, ctx['peso_cache'])
         m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
         uom_name = (product.uom_id.name or '').lower()
         is_kg = uom_name in KG_UOM_NAMES
         qty, revenue = sales.get(product.id, (0.0, 0.0))
-        precio = revenue / qty if qty else 0.0
+        # qty neta ≤ 0 (devoluciones > ventas en el período) daría un precio
+        # negativo que envenena márgenes y alertas: se trata como sin ventas.
+        precio = revenue / qty if qty > 0 else 0.0
 
         mp = self._mp_cost_unit(product, ctx=ctx)
         energia = 0.0 if bucket in ('importado', 'subproducto') \
@@ -623,13 +668,18 @@ class QbCostoProducto(models.Model):
         contrib = precio - variable
         hours_per_unit = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
 
+        peso_relevante = not is_kg and bucket in (
+            'tela', 'entretela_tejida', 'entretela_carda')
         if qty and precio and precio < variable:
             alerta = 'bajo_variable'
         elif qty and precio and precio < absorbido:
             alerta = 'bajo_absorbido'
-        elif not kg and not is_kg and bucket in (
-                'tela', 'entretela_tejida', 'entretela_carda'):
+        elif not kg and peso_relevante:
             alerta = 'sin_peso'
+        elif peso_relevante and peso_source in Peso.PESO_SOURCES_ESTIMADAS:
+            # El peso es una adivinanza (código o weight de Odoo), no medido:
+            # energía/fabricación pueden estar mal → hay que verificarlo.
+            alerta = 'peso_estimado'
         else:
             alerta = 'ok'
 
@@ -639,6 +689,7 @@ class QbCostoProducto(models.Model):
             'product_bucket': bucket,
             'uom_name': product.uom_id.name,
             'kg_per_unit': kg,
+            'peso_source': peso_source,
             'm_per_kg': m_per_kg,
             'qty_vendida': qty,
             'precio_prom': precio,
@@ -727,6 +778,7 @@ class QbCostoProducto(models.Model):
             return None
         bucket, centros = self.env['qb.producto.ruteo'].resolve(product)
         kg = Peso.resolve_kg_per_unit(product)
+        peso_source = Peso.resolve_kg_source(product)
         m_per_kg = Peso.resolve_m_per_kg(product)
         is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
         mp = self._mp_cost_unit(product)
@@ -737,16 +789,42 @@ class QbCostoProducto(models.Model):
         op = factores.op_pct
         piso_lleno = (variable + fab) / (1.0 - op) if op < 1 else 0.0
         hours = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
+        mercado = self.market_price(product)
+        # ¿el peso es estimado (adivinanza) y relevante para el costo?
+        peso_estimado = (not is_kg
+                         and bucket in ('tela', 'entretela_tejida',
+                                        'entretela_carda')
+                         and peso_source in Peso.PESO_SOURCES_ESTIMADAS)
         return {
             'bucket': bucket, 'centros': centros, 'kg': kg,
+            'peso_source': peso_source, 'peso_estimado': peso_estimado,
             'm_per_kg': m_per_kg, 'is_kg': is_kg,
             'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
             'op_pct': op,
             'piso_ocioso': variable, 'piso_lleno': piso_lleno,
-            'precio_mercado': self.market_price(product),
+            'precio_mercado': mercado,
+            'precio_sugerido': self._precio_sugerido(
+                variable, fab, op, piso_lleno, mercado),
+            'target_margin': self.env['qb.costeo.factor.config'].get_param(
+                'target_margin', 0.0),
             'hours_per_unit': hours,
             'factores': factores,
         }
+
+    @api.model
+    def _precio_sugerido(self, variable, fab, op, piso_lleno, mercado):
+        """Precio que da el margen NETO meta y nunca queda por debajo del piso
+        lleno ni del mercado:  costo_producción ÷ (1 − op% − margen_meta),
+        con piso en el piso lleno y en el precio de mercado real.
+
+        La operación va en el denominador porque es % sobre venta (depende del
+        precio). Con margen meta 0 el sugerido colapsa al piso lleno.
+        """
+        target = self.env['qb.costeo.factor.config'].get_param(
+            'target_margin', 0.0) or 0.0
+        denom = 1.0 - op - target
+        base = (variable + fab) / denom if denom > 0 else piso_lleno
+        return max(base, piso_lleno, mercado)
 
     @api.model
     def market_price(self, product, months=12):
@@ -1121,11 +1199,13 @@ class QbCostoProducto(models.Model):
         if bom:
             rows = []
             bom_qty = bom.product_uom_id._compute_quantity(
-                bom.product_qty, product.uom_id, round=False) or 1.0
+                bom.product_qty, product.uom_id, round=False,
+                raise_if_failure=False) or 1.0
             for line in bom.bom_line_ids:
                 comp = line.product_id
                 qty_comp = line.product_uom_id._compute_quantity(
-                    line.product_qty, comp.uom_id, round=False)
+                    line.product_qty, comp.uom_id, round=False,
+                    raise_if_failure=False)
                 rows.extend(self.mp_breakdown(
                     comp, qty * qty_comp / bom_qty, _depth + 1))
             return rows
