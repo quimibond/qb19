@@ -355,7 +355,7 @@ dependen de Enterprise, donde un CI con Odoo Community no puede entrar.
 | Clave de config duplicada | `<record>` + siembra ⇒ choque contra `ir_config_parameter_key_uniq`, tumba el registry | `pesaje_tolerance_kg` |
 | `env.ref()` sin destino | Truena en runtime, no al cargar: llega a producción | — |
 | `ir.model.access.csv` huérfano | Permisos a modelos que no existen | — |
-| Modelo nuevo sin bump | Odoo.sh no corre `-u` ⇒ modelo en el registry SIN TABLA | `qb.cotizacion.tramo`, `qb.producto.ficha` |
+| Modelo nuevo sin bump | Un build reportó «Model X has no table» en ese escenario | `qb.cotizacion.tramo`, `qb.producto.ficha` |
 
 Local: `python3 tools/check_addons.py [--base-ref origin/main]`. Sin `--base-ref`
 se omite el check de versión (necesita contra qué comparar).

@@ -74,15 +74,15 @@ Procedimiento completo con verificaciones: **`docs/RUNBOOK_DESPLIEGUE.md`**. Res
 
 **Las ramas se mantienen como superconjuntos:** `main` ⊇ `quimibond`, y `qbtesting` ⊇ `quimibond`. Una rama de desarrollo a la que le faltan modulos que produccion SI tiene revienta al rebuildear, porque la BD es copia de produccion y el codigo no esta (`KeyError: 'sgi.indicator'`).
 
-## Version del manifest: subela, salvo excepcion escrita
+## Version del manifest: subela por default
 
-Odoo.sh ejecuta `-u` **solo cuando cambia la version**. Si no la subes, tu cambio se queda en el repo y **nunca llega a la base de datos**: vistas viejas, datos sin sembrar, restricciones sin crear, modelos borrados que siguen en `ir_model`.
+Subir la version hace el despliegue determinista y rastreable. **Cuando exactamente Odoo.sh corre `-u` no esta confirmado**, y conviene no asumirlo: se observo un build de rama que NO actualizo un modulo con archivos cambiados y version congelada (`Model X has no table` sobre los modelos nuevos), y tambien un deploy a produccion que SI lo actualizo sin bump.
 
-`qb_capacidad_costeo` acumulo 43 commits sin bump y de ahi salieron, todas juntas: `qb.cotizacion.tramo` y `qb.producto.ficha` sin tabla, el modelo huerfano `qb.costeo.supabase.import`, y 7 restricciones de unicidad declaradas que nunca se aplicaron.
+Por eso la regla practica no es "el bump garantiza el update", sino: **sube la version, y verifica despues de desplegar** (el runbook trae las consultas). Lo que si se sabe seguro es que sin verificar no te enteras: cuando una restriccion no se puede crear, Odoo la registra en el log y se la salta.
 
-**Excepciones:** solo las de `tools/no_bump.txt`, cada una con su motivo escrito. Hoy: `quimibond_intelligence`, porque el update automatico destapa errores pre-existentes de Odoo Studio y pinta el build en rojo. Es una deuda, no una politica — al limpiar las vistas de Studio invalidas se saca de la lista.
+**Excepciones:** anotalas en `tools/no_bump.txt` con su motivo. Hoy: `quimibond_intelligence`, porque el update automatico destapa errores pre-existentes de Odoo Studio y pinta el build en rojo. Es una deuda, no una politica — al limpiar las vistas de Studio invalidas se saca de la lista.
 
-El CI lo verifica (`tools/check_addons.py`): cambiar archivos de un modulo sin bump y sin exencion es error.
+El CI lo revisa (`tools/check_addons.py`): cambiar archivos sin bump es **advertencia**; agregar un **modelo nuevo** sin bump es error, porque ahi si hay evidencia directa de tablas sin crear.
 
 ## Odoo.sh config
 
