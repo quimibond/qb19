@@ -240,6 +240,63 @@ def check_access_models(mods):
                   "da permisos a '%s', que ningún modelo del repo define" % ref)
 
 
+
+# ---------------------------------------------------------------------------
+# Check 7 — cambios en un módulo sin subir la versión del manifest
+#   Odoo.sh sólo corre `-u` cuando cambia la versión. Sin bump, el cambio queda
+#   en el repo y NUNCA llega a la base: vistas viejas, datos sin sembrar,
+#   restricciones sin crear, modelos borrados que siguen en ir_model.
+#   qb_capacidad_costeo acumuló 43 commits así, y de ahí salieron las tablas
+#   faltantes, el modelo huérfano de Supabase y las 7 constraints sin aplicar.
+#   Exenciones deliberadas y con motivo escrito: tools/no_bump.txt
+# ---------------------------------------------------------------------------
+
+def load_no_bump(root='.'):
+    path = os.path.join(root, 'tools', 'no_bump.txt')
+    if not os.path.exists(path):
+        return set()
+    return {ln.strip() for ln in open(path, encoding='utf-8')
+            if ln.strip() and not ln.startswith('#')}
+
+
+def check_version_bump(mods, base_ref, exempt):
+    changed = subprocess.run(
+        ['git', 'diff', '--name-only', '%s...HEAD' % base_ref],
+        capture_output=True, text=True).stdout.split()
+    touched = defaultdict(list)
+    for f in changed:
+        for name, path in mods.items():
+            rel = os.path.relpath(path, '.')
+            if f.startswith(rel + '/'):
+                touched[name].append(f)
+
+    for name, files in sorted(touched.items()):
+        path = mods[name]
+        man_rel = os.path.join(os.path.relpath(path, '.'), '__manifest__.py')
+        old_man = subprocess.run(['git', 'show', '%s:%s' % (base_ref, man_rel)],
+                                 capture_output=True, text=True)
+        if old_man.returncode:
+            continue                     # módulo nuevo: se instala, no se actualiza
+        old_v = re.search(r"""'version'\s*:\s*['"]([^'"]+)['"]""", old_man.stdout)
+        new_v = re.search(r"""'version'\s*:\s*['"]([^'"]+)['"]""",
+                          open(os.path.join(path, '__manifest__.py'), encoding='utf-8').read())
+        if not (old_v and new_v) or old_v.group(1) != new_v.group(1):
+            continue                     # subió versión: todo bien
+        if name in exempt:
+            warn(man_rel,
+                 "cambia %d archivo(s) sin subir la versión (%s). Está exento en "
+                 "tools/no_bump.txt, así que ACUÉRDATE de correr `odoo-update %s` "
+                 "al desplegar: si no, el cambio no llega a la base."
+                 % (len(files), new_v.group(1), name))
+            continue
+        error(man_rel,
+              "cambia %d archivo(s) sin subir la versión (%s). Odoo.sh sólo corre "
+              "`-u` al cambiar la versión: así, este cambio NO llega a la base de "
+              "datos. Sube la versión, o agrega '%s' a tools/no_bump.txt con el "
+              "motivo y despliégalo con `odoo-update %s`."
+              % (len(files), new_v.group(1), name, name))
+
+
 # ---------------------------------------------------------------------------
 # Check 6 — modelos nuevos sin subir la versión del manifest
 #   Odoo.sh sólo corre `-u` cuando cambia la versión. Un modelo nuevo sin bump
@@ -302,8 +359,9 @@ def main():
     check_access_models(mods)
     if args.base_ref:
         check_new_models_need_bump(mods, args.base_ref)
+        check_version_bump(mods, args.base_ref, load_no_bump('.'))
     else:
-        print("(check de versión omitido: sin --base-ref)\n")
+        print("(checks de versión omitidos: sin --base-ref)\n")
 
     errors = [p for p in PROBLEMS if p[0] == 'ERROR']
     warns = [p for p in PROBLEMS if p[0] == 'WARN']
