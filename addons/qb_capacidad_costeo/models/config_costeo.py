@@ -101,10 +101,10 @@ class QbCosteoCentro(models.Model):
              'para el factor de fabricación por largo.')
     notes = fields.Text()
 
-    _sql_constraints = [
-        ('code_company_uniq', 'unique(code, company_id)',
-         'El código del centro debe ser único por compañía.'),
-    ]
+    _code_company_uniq = models.Constraint(
+        'unique(code, company_id)',
+        "El código del centro debe ser único por compañía.",
+    )
 
 
 class QbCosteoCuentaClass(models.Model):
@@ -232,10 +232,10 @@ class QbCosteoFactorConfig(models.Model):
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, required=True)
 
-    _sql_constraints = [
-        ('key_company_uniq', 'unique(key, company_id)',
-         'Cada parámetro es único por compañía.'),
-    ]
+    _key_company_uniq = models.Constraint(
+        'unique(key, company_id)',
+        "Cada parámetro es único por compañía.",
+    )
 
     @api.model
     def _get_record(self, key):
@@ -283,10 +283,10 @@ class QbProductoPeso(models.Model):
     active = fields.Boolean(default=True)
     notes = fields.Char()
 
-    _sql_constraints = [
-        ('product_uniq', 'unique(product_id)',
-         'Solo un registro de peso por producto (edítalo en lugar de duplicar).'),
-    ]
+    _product_uniq = models.Constraint(
+        'unique(product_id)',
+        "Solo un registro de peso por producto (edítalo en lugar de duplicar).",
+    )
 
     # Prioridad de fuentes: menor = gana.
     _SOURCE_PRIORITY = {
