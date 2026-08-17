@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api, _
+from odoo import models, fields, api, _, tools
 from odoo.exceptions import UserError
 
 class ProductTemplate(models.Model):
@@ -185,3 +185,70 @@ class MrpWorkcenter(models.Model):
         help="Número de rollos que el sistema exigirá pesar en este Centro de Trabajo."
     )
     consecutivo_maquina = fields.Integer(string="Rollo Circular", default=0)
+
+
+class MrpRevisionReport(models.Model):
+    """
+    Vista SQL de solo lectura para el "Reporte de Revisión de Rollos".
+
+    Deliberadamente NO es una tabla física (_auto = False): no guarda nada,
+    no necesita recomputo ni backfill al hacer -u. Cada vez que se abre el
+    reporte, PostgreSQL resuelve la consulta contra los datos actuales de
+    mrp_revision_log / mrp_production / mrp_workorder. Los registros
+    históricos y los nuevos se comportan exactamente igual, sin pasos
+    manuales ni hooks de instalación.
+
+    El centro de trabajo se toma de mrp_workorder.workcenter_id (primera
+    orden de trabajo con centro de trabajo asignado). mrp_production.
+    workcenter_id NO se usa: en esta instancia es un campo calculado sin
+    columna física en la base de datos (confirmado por error UndefinedColumn
+    al intentar leerlo directo en SQL), así que la única fuente confiable a
+    nivel de tabla es mrp_workorder.
+    """
+    _name = 'mrp.revision.report'
+    _description = 'Reporte de Revisión de Rollos'
+    _auto = False
+    _order = 'production_date_finished desc, create_date desc'
+
+    production_id = fields.Many2one('mrp.production', string="Orden de Fabricación", readonly=True)
+    production_date_finished = fields.Datetime(string="Fecha de Terminación de la Orden", readonly=True)
+    product_id = fields.Many2one('product.product', string="Producto", readonly=True)
+    workcenter_id = fields.Many2one('mrp.workcenter', string="Centro de Trabajo", readonly=True)
+    create_date = fields.Datetime(string="Fecha de Revisión", readonly=True)
+    lot_id = fields.Many2one('stock.lot', string="Rollo", readonly=True)
+    user_id = fields.Many2one('res.users', string="Usuario", readonly=True)
+    inspector = fields.Char(string="Inspector", readonly=True)
+    peso_original = fields.Float(string="Peso Inicial", digits=(12, 4), readonly=True)
+    peso_final = fields.Float(string="Peso Revisado", digits=(12, 4), readonly=True)
+    diferencia = fields.Float(string="Diferencia", digits=(12, 4), readonly=True)
+    causa_id = fields.Many2one('quality.tag', string="Causa de la Desviación", readonly=True)
+
+    def init(self):
+        tools.drop_view_if_exists(self.env.cr, self._table)
+        self.env.cr.execute(f"""
+            CREATE OR REPLACE VIEW {self._table} AS (
+                SELECT
+                    l.id                                    AS id,
+                    l.production_id                         AS production_id,
+                    mp.date_finished                        AS production_date_finished,
+                    mp.product_id                            AS product_id,
+                    wo.workcenter_id                         AS workcenter_id,
+                    l.create_date                           AS create_date,
+                    l.lot_id                                AS lot_id,
+                    l.user_id                                AS user_id,
+                    l.inspector                              AS inspector,
+                    l.peso_original                          AS peso_original,
+                    l.peso_final                             AS peso_final,
+                    l.diferencia                             AS diferencia,
+                    l.causa_id                               AS causa_id
+                FROM mrp_revision_log l
+                JOIN mrp_production mp ON mp.id = l.production_id
+                LEFT JOIN LATERAL (
+                    SELECT w.workcenter_id
+                    FROM mrp_workorder w
+                    WHERE w.production_id = mp.id AND w.workcenter_id IS NOT NULL
+                    ORDER BY w.id
+                    LIMIT 1
+                ) wo ON true
+            )
+        """)
