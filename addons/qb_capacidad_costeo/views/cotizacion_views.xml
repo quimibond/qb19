@@ -350,15 +350,24 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_recotizar" type="object"
-                            string="↻ Re-cotizar / nuevo escenario"
-                            class="btn-primary"
-                            help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
                     <button name="action_enviar_correo" type="object"
-                            string="✉ Enviar al cliente"
+                            string="✉ Enviar al cliente" class="btn-primary"
+                            invisible="state not in ('draft', 'done')"
                             help="Correo al cliente con el PDF COMERCIAL adjunto (solo producto, precio y condiciones). La hoja interna de costo se imprime aparte desde el menú Imprimir y NO se envía."/>
+                    <button name="action_marcar_presentada" type="object"
+                            string="Marcar presentada" invisible="state != 'draft'"/>
+                    <button name="action_marcar_ganada" type="object"
+                            string="✓ Ganada" class="btn-success"
+                            invisible="state not in ('draft', 'done')"/>
+                    <button name="action_marcar_perdida" type="object"
+                            string="Perdida" invisible="state not in ('draft', 'done')"/>
+                    <button name="action_recotizar" type="object"
+                            string="↻ Re-cotizar"
+                            help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
+                    <button name="action_reabrir" type="object"
+                            string="Reabrir" invisible="state in ('draft',)"/>
                     <field name="state" widget="statusbar"
-                           options="{'clickable': '1'}"/>
+                           statusbar_visible="draft,done,won"/>
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>

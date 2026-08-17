@@ -220,6 +220,29 @@ class TestQbCosteo(TransactionCase):
         self.Peso.load_weight_master()
         self.assertAlmostEqual(rec.kg_per_unit, 0.99, places=2)
 
+    def test_cotizacion_ciclo_de_vida(self):
+        """La cotización es un documento nativo: estados borrador→presentada→
+        ganada/perdida por botón, con actividades y chatter (mixins)."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2027, 2, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'precio_objetivo': 100.0})
+        cot = self.env['qb.cotizacion'].browse(
+            wiz.action_cotizar()['res_id'])
+        self.assertEqual(cot.state, 'draft')
+        # mixins nativos presentes
+        self.assertTrue(hasattr(cot, 'activity_ids'))
+        self.assertTrue(hasattr(cot, 'message_ids'))
+        cot.action_marcar_presentada()
+        self.assertEqual(cot.state, 'done')
+        cot.action_marcar_ganada()
+        self.assertEqual(cot.state, 'won')
+        cot.action_reabrir()
+        self.assertEqual(cot.state, 'draft')
+
     def test_subproducto_mp_cero(self):
         """SALDO*: MP $0 — su materia ya está en la receta del principal."""
         bucket, _ = self.Ruteo.resolve(self.saldo)
