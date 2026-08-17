@@ -87,8 +87,6 @@
     <menuitem id="menu_qb_config" name="Configuración"
               parent="menu_qb_costeo_root" sequence="90"
               groups="mrp.group_mrp_manager,base.group_system"/>
-    <menuitem id="menu_qb_supabase_import" name="Importar desde Supabase"
-              parent="menu_qb_config" action="supabase_import_action" sequence="5"/>
     <menuitem id="menu_qb_recompute" name="Recalcular costeo (mes anterior)"
               parent="menu_qb_config" action="costo_recompute_action" sequence="8"/>
     <menuitem id="menu_qb_centros" name="Centros de costo"
