@@ -65,13 +65,24 @@ Ver mapeo completo de campos en `quimibond-intelligence/CLAUDE.md`.
 
 ## Deploy a produccion
 
-1. Push a `main`
-2. Merge `main` → `quimibond` en GitHub
-3. Shell Odoo.sh: `odoo-update quimibond_intelligence && odoosh-restart http && odoosh-restart cron`
+Procedimiento completo con verificaciones: **`docs/RUNBOOK_DESPLIEGUE.md`**. Resumen:
 
-## IMPORTANTE: NO cambiar version del manifest
+1. `main` al dia con `quimibond` (PR `quimibond` → `main`)
+2. PR `main` → `quimibond`
+3. Shell Odoo.sh: `odoo-update <modulos sin bump> && odoosh-restart http && odoosh-restart cron`
+4. Verificar (el runbook trae las consultas)
 
-Odoo.sh ejecuta `-u` cuando detecta cambio de version. El update detecta errores pre-existentes de Odoo Studio y marca el build como Failed. Dejar en `19.0.30.0.0` y hacer `odoo-update` manual.
+**Las ramas se mantienen como superconjuntos:** `main` ⊇ `quimibond`, y `qbtesting` ⊇ `quimibond`. Una rama de desarrollo a la que le faltan modulos que produccion SI tiene revienta al rebuildear, porque la BD es copia de produccion y el codigo no esta (`KeyError: 'sgi.indicator'`).
+
+## Version del manifest: subela, salvo excepcion escrita
+
+Odoo.sh ejecuta `-u` **solo cuando cambia la version**. Si no la subes, tu cambio se queda en el repo y **nunca llega a la base de datos**: vistas viejas, datos sin sembrar, restricciones sin crear, modelos borrados que siguen en `ir_model`.
+
+`qb_capacidad_costeo` acumulo 43 commits sin bump y de ahi salieron, todas juntas: `qb.cotizacion.tramo` y `qb.producto.ficha` sin tabla, el modelo huerfano `qb.costeo.supabase.import`, y 7 restricciones de unicidad declaradas que nunca se aplicaron.
+
+**Excepciones:** solo las de `tools/no_bump.txt`, cada una con su motivo escrito. Hoy: `quimibond_intelligence`, porque el update automatico destapa errores pre-existentes de Odoo Studio y pinta el build en rojo. Es una deuda, no una politica — al limpiar las vistas de Studio invalidas se saca de la lista.
+
+El CI lo verifica (`tools/check_addons.py`): cambiar archivos de un modulo sin bump y sin exencion es error.
 
 ## Odoo.sh config
 
