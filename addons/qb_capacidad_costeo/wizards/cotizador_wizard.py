@@ -116,6 +116,12 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='Familia detectada')
     kg_per_unit = fields.Float(
         compute='_compute_cotizacion', string='Peso (kg/u)', digits=(16, 4))
+    peso_estimado = fields.Boolean(compute='_compute_cotizacion')
+    peso_alerta = fields.Char(
+        compute='_compute_cotizacion', string='Aviso de peso',
+        help='Se llena cuando el peso es ESTIMADO (adivinado del código o del '
+             'campo weight de Odoo) en vez de medido: energía y fabricación '
+             'pueden estar mal y hay que capturar el peso real.')
     mp_unit = fields.Float(
         compute='_compute_cotizacion', string='MP $/u', digits=(16, 4))
     energia_unit = fields.Float(
@@ -435,6 +441,8 @@ class QbCotizadorWizard(models.TransientModel):
             'name': name, 'bucket': q['bucket'], 'centros': centros,
             'is_kg': q['is_kg'],
             'factores': factores, 'kg': q['kg'], 'm_per_kg': q['m_per_kg'],
+            'peso_estimado': q.get('peso_estimado', False),
+            'peso_source': q.get('peso_source', ''),
             'uom_name': uom_name, 'mp': q['mp'], 'energia': q['energia'],
             'fab': q['fab'], 'variable': q['variable'],
             'op_pct': q['op_pct'],
@@ -598,6 +606,8 @@ class QbCotizadorWizard(models.TransientModel):
             zero['moneda_alerta'] = False
             zero['evaluado_info'] = False
             zero['escalera_html'] = False
+            zero['peso_estimado'] = False
+            zero['peso_alerta'] = False
             try:
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
@@ -664,6 +674,13 @@ class QbCotizadorWizard(models.TransientModel):
                                      res['op_pct'] * 100.0),
                 'product_bucket': res['bucket'],
                 'kg_per_unit': res['kg'],
+                'peso_estimado': res.get('peso_estimado', False),
+                'peso_alerta': (
+                    'El peso %.4f kg/u es ESTIMADO (%s), no medido. Energía y '
+                    'fabricación pueden estar mal. Captura el peso real en '
+                    'Configuración → Pesos de producto.' % (
+                        res['kg'], res.get('peso_source') or 'adivinado')
+                    if res.get('peso_estimado') else False),
                 'mp_unit': res['mp'],
                 'energia_unit': res['energia'],
                 'fab_unit': res['fab'],

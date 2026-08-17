@@ -311,42 +311,68 @@ class QbProductoPeso(models.Model):
         """
         if cache is not None and product.id in cache:
             return cache[product.id]
-        kg = self._resolve_kg_per_unit(product, cache)
+        kg, _src = self._resolve_kg_source(product, cache)
         if cache is not None:
             cache[product.id] = kg
         return kg
 
+    # Fuentes de peso que NO son medidas: son adivinanzas del código o
+    # placeholders de Odoo. El motor las marca como 'peso_estimado' para que
+    # el usuario sepa que hay que verificar ese peso (no fingir que es 'ok').
+    PESO_SOURCES_ESTIMADAS = ('ref_gramaje', 'odoo_weight')
+
     @api.model
-    def _resolve_kg_per_unit(self, product, cache=None):
+    def resolve_kg_source(self, product, cache=None):
+        """Fuente del peso resuelto. Confiables: manual/cvu/kg_native/record/
+        import_twin. ESTIMADAS (adivinanza): ref_gramaje, odoo_weight.
+        Falta: sin_peso. Se usa para levantar la alerta 'peso_estimado'."""
+        _kg, src = self._resolve_kg_source(product, cache)
+        return src
+
+    @api.model
+    def _resolve_kg_source(self, product, cache=None):
+        """Resuelve (kg, fuente) en una pasada. La fuente de un registro del
+        maestro es su propio `source` (un registro con source='ref_gramaje'
+        SIGUE siendo estimado — caso WD080)."""
         rec = self.search([('product_id', '=', product.id)], limit=1)
         if rec and rec.kg_per_unit:
-            return rec.kg_per_unit
+            return rec.kg_per_unit, (rec.source or 'record')
         uom_name = (product.uom_id.name or '').lower()
         if uom_name in ('kg', 'kgs', 'kilogramo', 'kilogramos'):
-            return 1.0
+            return 1.0, 'kg_native'
         ref = product.default_code or ''
         if ref.endswith(' I'):
             twin = self.env['product.product'].search(
                 [('default_code', '=', ref[:-2].strip())], limit=1)
             if twin:
-                return self.resolve_kg_per_unit(twin, cache)
+                kg, _src = self._resolve_kg_source(twin, cache)
+                return kg, 'import_twin'
         gramaje = self._gramaje_from_ref(ref)
         if gramaje:
-            return gramaje
+            return gramaje, 'ref_gramaje'
         weight = product.weight or 0.0
         if 0.01 <= weight <= 1.5:
-            return weight
-        return 0.0
+            return weight, 'odoo_weight'
+        return 0.0, 'sin_peso'
+
+    @api.model
+    def _resolve_kg_per_unit(self, product, cache=None):
+        kg, _src = self._resolve_kg_source(product, cache)
+        return kg
 
     @api.model
     def _gramaje_from_ref(self, ref):
         """WJ045NT160 → 45 g/m² × 1.60 m = 0.072 kg/m. Solo bloques de
         exactamente 3 dígitos (4 dígitos = código de resina)."""
-        m = re.match(r'^[A-Za-z]+(\d{3})(?!\d)', ref or '')
+        ref = ref or ''
+        m = re.match(r'^[A-Za-z]+(\d{3})(?!\d)', ref)
         if not m:
             return 0.0
         gramaje = int(m.group(1))
-        ancho_m = re.search(r'(\d{2,3})\s*I?$', ref or '')
+        # El ancho debe ser un bloque DISTINTO del gramaje: se busca sólo en
+        # lo que va DESPUÉS del gramaje. Así 'WD080' (sin ancho explícito) no
+        # toma sus propios '080' como ancho 0.80 m (hallazgo #3).
+        ancho_m = re.search(r'(\d{2,3})\s*I?$', ref[m.end():])
         ancho = int(ancho_m.group(1)) / 100.0 if ancho_m else 1.5
         if not 0.3 <= ancho <= 3.5:
             ancho = 1.5

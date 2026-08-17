@@ -51,6 +51,13 @@
                     💱⚠️ <b>Revisa la moneda:</b>
                     <field name="moneda_alerta" readonly="1" class="oe_inline"/>
                 </div>
+                <!-- Aviso de peso estimado: el costo puede estar mal -->
+                <field name="peso_estimado" invisible="1"/>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not peso_alerta">
+                    ⚖️⚠️ <b>Peso estimado:</b>
+                    <field name="peso_alerta" readonly="1" class="oe_inline"/>
+                </div>
                 <!-- Semáforo: el criterio de decisión en un color -->
                 <field name="semaforo" invisible="1"/>
                 <div class="alert alert-danger" role="alert"
