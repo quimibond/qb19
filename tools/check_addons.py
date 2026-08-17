@@ -243,12 +243,13 @@ def check_access_models(mods):
 
 # ---------------------------------------------------------------------------
 # Check 7 — cambios en un módulo sin subir la versión del manifest
-#   Odoo.sh sólo corre `-u` cuando cambia la versión. Sin bump, el cambio queda
-#   en el repo y NUNCA llega a la base: vistas viejas, datos sin sembrar,
-#   restricciones sin crear, modelos borrados que siguen en ir_model.
-#   qb_capacidad_costeo acumuló 43 commits así, y de ahí salieron las tablas
-#   faltantes, el modelo huérfano de Supabase y las 7 constraints sin aplicar.
-#   Exenciones deliberadas y con motivo escrito: tools/no_bump.txt
+#   ADVERTENCIA, no error: cuándo exactamente Odoo.sh corre `-u` no está
+#   confirmado. Se observó un build de rama que NO actualizó un módulo con
+#   archivos cambiados y version congelada (modelos sin tabla), y también un
+#   deploy a producción que SÍ lo actualizó sin bump. Hasta tener el mecanismo
+#   claro, esto informa; no frena el merge.
+#   Subir la versión sigue siendo lo recomendable: hace el deploy determinista.
+#   Exenciones anotadas con motivo: tools/no_bump.txt
 # ---------------------------------------------------------------------------
 
 def load_no_bump(root='.'):
@@ -285,23 +286,24 @@ def check_version_bump(mods, base_ref, exempt):
         if name in exempt:
             warn(man_rel,
                  "cambia %d archivo(s) sin subir la versión (%s). Está exento en "
-                 "tools/no_bump.txt, así que ACUÉRDATE de correr `odoo-update %s` "
-                 "al desplegar: si no, el cambio no llega a la base."
+                 "tools/no_bump.txt: acuérdate de correr `odoo-update %s` al "
+                 "desplegar y de verificar el resultado."
                  % (len(files), new_v.group(1), name))
             continue
-        error(man_rel,
-              "cambia %d archivo(s) sin subir la versión (%s). Odoo.sh sólo corre "
-              "`-u` al cambiar la versión: así, este cambio NO llega a la base de "
-              "datos. Sube la versión, o agrega '%s' a tools/no_bump.txt con el "
-              "motivo y despliégalo con `odoo-update %s`."
-              % (len(files), new_v.group(1), name, name))
+        warn(man_rel,
+             "cambia %d archivo(s) sin subir la versión (%s). Considera subirla: "
+             "hace el deploy determinista y se ha visto algún build no actualizar "
+             "un módulo con la versión congelada. Si es deliberado, anótalo en "
+             "tools/no_bump.txt y verifica el módulo tras desplegar."
+             % (len(files), new_v.group(1)))
 
 
 # ---------------------------------------------------------------------------
 # Check 6 — modelos nuevos sin subir la versión del manifest
-#   Odoo.sh sólo corre `-u` cuando cambia la versión. Un modelo nuevo sin bump
-#   queda en el registry SIN TABLA, y sólo truena cuando alguien lo usa.
-#   Es lo que pasó con qb.cotizacion.tramo y qb.producto.ficha.
+#   ERROR (a diferencia del check 7) porque hay evidencia directa: un build de
+#   rama reportó "Model X has no table" justo sobre los modelos agregados sin
+#   bump (qb.cotizacion.tramo, qb.producto.ficha). Un modelo sin tabla sólo
+#   truena cuando alguien lo usa, así que puede llegar lejos sin que se note.
 #   Sólo corre cuando hay rama base contra la que comparar.
 # ---------------------------------------------------------------------------
 
@@ -334,10 +336,11 @@ def check_new_models_need_bump(mods, base_ref):
                           open(os.path.join(path, '__manifest__.py'), encoding='utf-8').read())
         if old_v and new_v and old_v.group(1) == new_v.group(1):
             error(man_rel,
-                  "agrega modelo(s) nuevo(s) [%s] sin subir la versión (%s). Odoo.sh "
-                  "sólo corre `-u` al cambiar la versión: sin bump, esos modelos quedan "
-                  "en el registry SIN TABLA. Sube la versión o corre `odoo-update %s` a "
-                  "mano al desplegar."
+                  "agrega modelo(s) nuevo(s) [%s] sin subir la versión (%s). Se ha "
+                  "observado un build reportar «Model X has no table» exactamente en "
+                  "este escenario, y un modelo sin tabla sólo truena cuando alguien lo "
+                  "usa. Sube la versión, o corre `odoo-update %s` al desplegar y "
+                  "verifica que la tabla exista."
                   % (', '.join(sorted(new_models)), new_v.group(1), name))
 
 
