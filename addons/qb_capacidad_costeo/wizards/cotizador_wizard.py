@@ -132,6 +132,13 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='Costo variable $/u', digits=(16, 4))
     op_pct_display = fields.Float(
         compute='_compute_cotizacion', string='Operación % s/venta')
+    precio_sugerido = fields.Float(
+        compute='_compute_cotizacion', string='Precio sugerido $/u MXN',
+        digits=(16, 4),
+        help='El precio recomendado: cubre el costo completo y deja tu margen '
+             'meta (Configuración → margen meta). Nunca queda por debajo del '
+             'piso a planta llena ni del precio de mercado real. Es el número '
+             'con el que arrancar a cotizar.')
     precio_mercado = fields.Float(
         compute='_compute_cotizacion', string='Precio de mercado $/u MXN',
         digits=(16, 4),
@@ -405,6 +412,9 @@ class QbCotizadorWizard(models.TransientModel):
                 'piso_ocioso': variable,
                 'piso_lleno': (variable + fab) / (1.0 - op) if op < 1 else 0.0,
                 'precio_mercado': 0.0,
+                'precio_sugerido': Costo._precio_sugerido(
+                    variable, fab, op,
+                    (variable + fab) / (1.0 - op) if op < 1 else 0.0, 0.0),
                 'hours_per_unit': 0.0,
                 'factores': factores,
             }
@@ -447,6 +457,7 @@ class QbCotizadorWizard(models.TransientModel):
             'fab': q['fab'], 'variable': q['variable'],
             'op_pct': q['op_pct'],
             'precio_mercado': q['precio_mercado'],
+            'precio_sugerido': q.get('precio_sugerido', 0.0),
             'piso_ocioso': q['piso_ocioso'], 'piso_lleno': q['piso_lleno'],
             'precio_ref': precio_ref, 'evaluado_fuente': fuente,
             'contrib': contrib, 'contrib_hora': contrib_hora,
@@ -596,6 +607,7 @@ class QbCotizadorWizard(models.TransientModel):
             zero = dict.fromkeys([
                 'kg_per_unit', 'mp_unit', 'energia_unit', 'fab_unit',
                 'costo_variable', 'op_pct_display', 'precio_mercado',
+                'precio_sugerido',
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
                 'margen_contribucion_pct', 'contrib_hora_maquina',
                 'precio_mercado_divisa', 'piso_ocioso_divisa',
@@ -687,6 +699,7 @@ class QbCotizadorWizard(models.TransientModel):
                 'costo_variable': res['variable'],
                 'op_pct_display': res['op_pct'] * 100.0,
                 'precio_mercado': res['precio_mercado'],
+                'precio_sugerido': res.get('precio_sugerido', 0.0),
                 'evaluado_info': 'Semáforo y márgenes evaluados al %s: '
                                  '$%.2f MXN.' % (res['evaluado_fuente'],
                                                  precio_ref),

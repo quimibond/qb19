@@ -179,6 +179,25 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(vals['precio_prom'], 0.0)
         self.assertNotEqual(vals['alerta'], 'bajo_variable')
 
+    def test_precio_sugerido_con_margen_meta(self):
+        """El precio sugerido = costo_producción ÷ (1 − op − margen_meta),
+        nunca por debajo del piso lleno ni del mercado. Revive target_margin."""
+        Config = self.env['qb.costeo.factor.config']
+        Config.set_param('target_margin', 0.30)
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2027, 1, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        q = self.Costo.quote_product(self.tela, factores)
+        prod = q['variable'] + q['fab']
+        esperado = prod / (1.0 - 0.18 - 0.30)  # op + margen meta al denominador
+        self.assertAlmostEqual(q['precio_sugerido'], esperado, places=3)
+        # a ese precio el margen NETO ≈ el meta (30%)
+        neto = 100.0 * (q['precio_sugerido'] - q['variable'] - q['fab']
+                        - 0.18 * q['precio_sugerido']) / q['precio_sugerido']
+        self.assertAlmostEqual(neto, 30.0, places=1)
+        self.assertGreaterEqual(q['precio_sugerido'], q['piso_lleno'])
+
     def test_subproducto_mp_cero(self):
         """SALDO*: MP $0 — su materia ya está en la receta del principal."""
         bucket, _ = self.Ruteo.resolve(self.saldo)

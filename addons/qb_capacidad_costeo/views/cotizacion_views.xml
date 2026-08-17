@@ -122,12 +122,15 @@
                                help="Gastos de admin y ventas (6xx) como % del precio de venta."/>
                     </group>
                     <group string="2 · ¿A cuánto venderlo? (referencias reales)">
+                        <field name="precio_sugerido"
+                               string="⭐ Precio SUGERIDO $/u MXN"
+                               class="fw-bold text-success"
+                               help="El precio con el que arrancar: cubre el costo completo y deja tu margen meta, sin bajar del piso lleno ni del mercado."/>
                         <field name="precio_mercado_divisa" class="fw-bold"
                                invisible="es_mxn"
-                               string="⭐ Precio de mercado (divisa)"/>
+                               string="Precio de mercado (divisa)"/>
                         <field name="precio_mercado"
-                               string="⭐ Precio de mercado $/u MXN"
-                               class="fw-bold"/>
+                               string="Precio de mercado $/u MXN"/>
                         <field name="piso_lleno_divisa" invisible="es_mxn"
                                string="Piso a planta llena (divisa)"/>
                         <field name="piso_lleno"

@@ -789,6 +789,7 @@ class QbCostoProducto(models.Model):
         op = factores.op_pct
         piso_lleno = (variable + fab) / (1.0 - op) if op < 1 else 0.0
         hours = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
+        mercado = self.market_price(product)
         # ¿el peso es estimado (adivinanza) y relevante para el costo?
         peso_estimado = (not is_kg
                          and bucket in ('tela', 'entretela_tejida',
@@ -801,10 +802,29 @@ class QbCostoProducto(models.Model):
             'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
             'op_pct': op,
             'piso_ocioso': variable, 'piso_lleno': piso_lleno,
-            'precio_mercado': self.market_price(product),
+            'precio_mercado': mercado,
+            'precio_sugerido': self._precio_sugerido(
+                variable, fab, op, piso_lleno, mercado),
+            'target_margin': self.env['qb.costeo.factor.config'].get_param(
+                'target_margin', 0.0),
             'hours_per_unit': hours,
             'factores': factores,
         }
+
+    @api.model
+    def _precio_sugerido(self, variable, fab, op, piso_lleno, mercado):
+        """Precio que da el margen NETO meta y nunca queda por debajo del piso
+        lleno ni del mercado:  costo_producción ÷ (1 − op% − margen_meta),
+        con piso en el piso lleno y en el precio de mercado real.
+
+        La operación va en el denominador porque es % sobre venta (depende del
+        precio). Con margen meta 0 el sugerido colapsa al piso lleno.
+        """
+        target = self.env['qb.costeo.factor.config'].get_param(
+            'target_margin', 0.0) or 0.0
+        denom = 1.0 - op - target
+        base = (variable + fab) / denom if denom > 0 else piso_lleno
+        return max(base, piso_lleno, mercado)
 
     @api.model
     def market_price(self, product, months=12):
