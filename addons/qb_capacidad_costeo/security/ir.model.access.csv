@@ -39,8 +39,6 @@ access_qb_costo_producto_sys,qb.costo.producto.sys,model_qb_costo_producto,base.
 access_qb_snapshot_sys,qb.costeo.snapshot.sys,model_qb_costeo_snapshot,base.group_system,1,1,1,1
 access_qb_snapshot_line_sys,qb.costeo.snapshot.line.sys,model_qb_costeo_snapshot_line,base.group_system,1,1,1,1
 access_qb_cotizacion_sys,qb.cotizacion.sys,model_qb_cotizacion,base.group_system,1,1,1,1
-access_qb_supabase_import_mgr,qb.costeo.supabase.import.mgr,model_qb_costeo_supabase_import,mrp.group_mrp_manager,1,1,1,1
-access_qb_supabase_import_sys,qb.costeo.supabase.import.sys,model_qb_costeo_supabase_import,base.group_system,1,1,1,1
 access_qb_panel,qb.costeo.panel,model_qb_costeo_panel,base.group_user,1,1,1,1
 access_qb_cotizador_orden,qb.cotizador.orden.wizard,model_qb_cotizador_orden_wizard,base.group_user,1,1,1,1
 access_qb_cotizador_orden_linea,qb.cotizador.orden.linea,model_qb_cotizador_orden_linea,base.group_user,1,1,1,1

@@ -33,7 +33,13 @@ def wo_qty_sql(env, alias='wo'):
     field = env['mrp.workorder']._fields.get('qty_produced')
     if field and field.store and field.column_type:
         return '%s.qty_produced' % alias
+    # Fallback sin columna qty_produced: la orden REPARTIDA entre sus
+    # workorders (antes devolvía la orden COMPLETA por cada workorder →
+    # una MO con N workorders contaba N× su producción). Al sumar los
+    # workorders se recupera la producción de la MO una sola vez.
     return ('(SELECT COALESCE(NULLIF(p.qty_producing, 0), p.product_qty) '
+            '/ NULLIF((SELECT COUNT(*) FROM mrp_workorder w2 '
+            'WHERE w2.production_id = p.id), 0) '
             'FROM mrp_production p WHERE p.id = %s.production_id)' % alias)
 
 
