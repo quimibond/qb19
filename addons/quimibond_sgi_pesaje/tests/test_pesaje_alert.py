@@ -35,3 +35,25 @@ class TestPesajeAlert(TransactionCase):
         self.assertEqual(len(alerts), 1, "Debe crearse una sola alerta por rollo.")
         self.assertEqual(alerts.product_id, self.product)
         self.assertEqual(alerts.production_id, self.mo)
+
+    def test_03_alert_stamped_with_its_source(self):
+        self._wizard(50.0)._sgi_create_weight_alert()
+        alert = self.env['quality.alert'].search([('production_id', '=', self.mo.id)])
+        self.assertEqual(
+            alert.sgi_source_id,
+            self.env.ref('quimibond_sgi_pesaje.sgi_alert_source_pesaje'),
+            "La NC debe quedar estampada con la fuente de pesaje.")
+
+    def test_04_source_disabled_stops_the_nc(self):
+        """Apagar la fuente deja de generar NC sin desinstalar el módulo."""
+        source = self.env.ref('quimibond_sgi_pesaje.sgi_alert_source_pesaje')
+        source.enabled = False
+        wizard = self._wizard(50.0)
+        # La condición de fuera de tolerancia se sigue detectando: lo que se
+        # apaga es el expediente de NC, no el control de piso.
+        self.assertTrue(wizard._sgi_weight_out_of_tolerance())
+        self.assertFalse(wizard._sgi_create_weight_alert())
+        self.assertFalse(
+            self.env['quality.alert'].search([('production_id', '=', self.mo.id)]),
+            "Con la fuente apagada no debe crearse NC por peso.")
+        self.assertEqual(source.suppressed_count, 1)

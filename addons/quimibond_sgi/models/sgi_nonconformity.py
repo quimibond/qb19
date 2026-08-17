@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class MailActivity(models.Model):
@@ -48,6 +52,10 @@ class QualityAlert(models.Model):
         ('reclamacion', "Reclamación de cliente"),
         ('indicador', "Indicador incumplido"),
     ], string="Origen", default='proceso', tracking=True)
+    sgi_source_id = fields.Many2one(
+        'sgi.alert.source', string="Fuente automática", readonly=True, copy=False,
+        index=True, ondelete='set null',
+        help="Automatismo que levantó esta NC. Vacío si se capturó a mano.")
     sgi_classification = fields.Selection([
         ('mayor', "Mayor"),
         ('menor', "Menor"),
@@ -177,6 +185,43 @@ class QualityAlert(models.Model):
                 "Revise si aplica el mismo modo de falla en este AMEF.")
         for fmea in peers:
             fmea._sgi_schedule_activity(manager_id, summary, note)
+
+    @api.model
+    def sgi_auto_create(self, source_code, vals, count_suppression=True):
+        """Punto ÚNICO de entrada de las NC que levanta el sistema.
+
+        Todo automatismo del SGI debe crear su NC por aquí en vez de llamar a
+        `create()` directo: así el Jefe de MAST puede apagar la fuente desde
+        Configuración → Fuentes de NC, y así queda estampado de dónde salió cada
+        NC (`sgi_source_id`).
+
+        Devuelve la NC creada, o un recordset VACÍO si la fuente está apagada —
+        el llamador debe contemplarlo (`if not alert: return`).
+
+        Si la clave no está declarada en el registro se crea igual y se avisa al
+        log: en un sistema de calidad es peor perder una NC por un dato faltante
+        que registrar una de más.
+
+        `count_suppression=False` lo usan los llamadores re-entrantes (un cron
+        que reevalúa el mismo hecho en cada corrida) para no contar veinte veces
+        una sola omisión. La fecha de última omisión sí se actualiza siempre.
+        """
+        source = self.env['sgi.alert.source']._get_by_code(source_code)
+        if not source:
+            _logger.warning(
+                "SGI: la fuente de NC «%s» no está declarada en sgi.alert.source; "
+                "se crea la NC de todos modos.", source_code)
+        elif not source.enabled:
+            source._register_suppression(count=count_suppression)
+            if source.trigger_type == 'manual':
+                # Hay una persona esperando respuesta del botón: avisarle en vez
+                # de no hacer nada y dejarla adivinando.
+                raise UserError(
+                    "La generación de No Conformidades desde «%s» está "
+                    "desactivada.\n\nSi debe volver a generarse, actívela en "
+                    "SGI → Configuración → Fuentes de NC automáticas." % source.name)
+            return self.browse()
+        return self.create(dict(vals, sgi_source_id=source.id if source else False))
 
     def _sgi_check_can_close(self):
         """Valida los candados de cierre de una NC."""

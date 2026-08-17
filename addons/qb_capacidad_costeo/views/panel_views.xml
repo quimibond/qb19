@@ -22,8 +22,8 @@
                                     type="object" class="btn-secondary me-2"/>
                             <button name="action_ranking" string="Ranking $/hora-máquina"
                                     type="object" class="btn-secondary me-2"/>
-                            <button name="action_importar_supabase"
-                                    string="Importar config de Supabase"
+                            <button name="action_cargar_pesos"
+                                    string="Cargar maestro de pesos"
                                     type="object" class="btn-secondary me-2"/>
                             <button name="action_recalcular"
                                     string="Recalcular costeo (mes anterior)"

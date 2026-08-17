@@ -31,14 +31,15 @@ class QbCosteoPanel(models.TransientModel):
         env = self.env
         checks = []
 
-        # 1. Credenciales Supabase (para el import automático)
-        icp = env['ir.config_parameter'].sudo()
-        has_creds = bool(icp.get_param('quimibond_intelligence.supabase_url')
-                         and icp.get_param('quimibond_intelligence.supabase_service_key'))
-        checks.append((OK if has_creds else WARN,
-                       'Credenciales de Supabase',
-                       'listas (import automático disponible)' if has_creds
-                       else 'faltan los ir.config_parameter del sync'))
+        # 1. Maestro de pesos medidos/ingeniería cargado (nativo, sin Supabase)
+        n_pesos = env['qb.producto.peso'].search_count(
+            [('source', 'in', ('manual', 'cvu'))])
+        checks.append((OK if n_pesos else WARN,
+                       'Pesos medidos capturados',
+                       '%s productos con peso medido/ingeniería' % n_pesos
+                       if n_pesos else
+                       'corre "Cargar maestro de pesos" en Configuración '
+                       '(sin esto el peso se estima del código)'))
 
         # 2. Workcenters ligados a centros
         total_wc = env['mrp.workcenter'].search_count([])
@@ -205,8 +206,10 @@ class QbCosteoPanel(models.TransientModel):
             'qb_capacidad_costeo.%s' % xmlid)
         return action
 
-    def action_importar_supabase(self):
-        return self._open('supabase_import_action')
+    def action_cargar_pesos(self):
+        """Carga el maestro de pesos nativo (sin Supabase) y abre la lista."""
+        self.env['qb.producto.peso'].load_weight_master()
+        return self._open('producto_peso_action')
 
     def action_recalcular(self):
         self.env['qb.costo.producto'].action_recompute_period()

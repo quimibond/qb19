@@ -7,10 +7,14 @@ se captura aquí. Los cálculos (vistas SQL y motor de costeo) leen estos
 modelos + los registros nativos, así que "capturar en Odoo" basta para que
 el modelo lo considere sin tocar código.
 """
+import csv
+import logging
 import re
 
-from odoo import api, fields, models
+from odoo import api, fields, models, tools
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 BUCKETS = [
     ('mp', 'Materia prima'),
@@ -101,10 +105,10 @@ class QbCosteoCentro(models.Model):
              'para el factor de fabricación por largo.')
     notes = fields.Text()
 
-    _sql_constraints = [
-        ('code_company_uniq', 'unique(code, company_id)',
-         'El código del centro debe ser único por compañía.'),
-    ]
+    _code_company_uniq = models.Constraint(
+        'unique(code, company_id)',
+        "El código del centro debe ser único por compañía.",
+    )
 
 
 class QbCosteoCuentaClass(models.Model):
@@ -232,10 +236,10 @@ class QbCosteoFactorConfig(models.Model):
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, required=True)
 
-    _sql_constraints = [
-        ('key_company_uniq', 'unique(key, company_id)',
-         'Cada parámetro es único por compañía.'),
-    ]
+    _key_company_uniq = models.Constraint(
+        'unique(key, company_id)',
+        "Cada parámetro es único por compañía.",
+    )
 
     @api.model
     def _get_record(self, key):
@@ -283,10 +287,10 @@ class QbProductoPeso(models.Model):
     active = fields.Boolean(default=True)
     notes = fields.Char()
 
-    _sql_constraints = [
-        ('product_uniq', 'unique(product_id)',
-         'Solo un registro de peso por producto (edítalo en lugar de duplicar).'),
-    ]
+    _product_uniq = models.Constraint(
+        'unique(product_id)',
+        "Solo un registro de peso por producto (edítalo en lugar de duplicar).",
+    )
 
     # Prioridad de fuentes: menor = gana.
     _SOURCE_PRIORITY = {
@@ -311,42 +315,68 @@ class QbProductoPeso(models.Model):
         """
         if cache is not None and product.id in cache:
             return cache[product.id]
-        kg = self._resolve_kg_per_unit(product, cache)
+        kg, _src = self._resolve_kg_source(product, cache)
         if cache is not None:
             cache[product.id] = kg
         return kg
 
+    # Fuentes de peso que NO son medidas: son adivinanzas del código o
+    # placeholders de Odoo. El motor las marca como 'peso_estimado' para que
+    # el usuario sepa que hay que verificar ese peso (no fingir que es 'ok').
+    PESO_SOURCES_ESTIMADAS = ('ref_gramaje', 'odoo_weight')
+
     @api.model
-    def _resolve_kg_per_unit(self, product, cache=None):
+    def resolve_kg_source(self, product, cache=None):
+        """Fuente del peso resuelto. Confiables: manual/cvu/kg_native/record/
+        import_twin. ESTIMADAS (adivinanza): ref_gramaje, odoo_weight.
+        Falta: sin_peso. Se usa para levantar la alerta 'peso_estimado'."""
+        _kg, src = self._resolve_kg_source(product, cache)
+        return src
+
+    @api.model
+    def _resolve_kg_source(self, product, cache=None):
+        """Resuelve (kg, fuente) en una pasada. La fuente de un registro del
+        maestro es su propio `source` (un registro con source='ref_gramaje'
+        SIGUE siendo estimado — caso WD080)."""
         rec = self.search([('product_id', '=', product.id)], limit=1)
         if rec and rec.kg_per_unit:
-            return rec.kg_per_unit
+            return rec.kg_per_unit, (rec.source or 'record')
         uom_name = (product.uom_id.name or '').lower()
         if uom_name in ('kg', 'kgs', 'kilogramo', 'kilogramos'):
-            return 1.0
+            return 1.0, 'kg_native'
         ref = product.default_code or ''
         if ref.endswith(' I'):
             twin = self.env['product.product'].search(
                 [('default_code', '=', ref[:-2].strip())], limit=1)
             if twin:
-                return self.resolve_kg_per_unit(twin, cache)
+                kg, _src = self._resolve_kg_source(twin, cache)
+                return kg, 'import_twin'
         gramaje = self._gramaje_from_ref(ref)
         if gramaje:
-            return gramaje
+            return gramaje, 'ref_gramaje'
         weight = product.weight or 0.0
         if 0.01 <= weight <= 1.5:
-            return weight
-        return 0.0
+            return weight, 'odoo_weight'
+        return 0.0, 'sin_peso'
+
+    @api.model
+    def _resolve_kg_per_unit(self, product, cache=None):
+        kg, _src = self._resolve_kg_source(product, cache)
+        return kg
 
     @api.model
     def _gramaje_from_ref(self, ref):
         """WJ045NT160 → 45 g/m² × 1.60 m = 0.072 kg/m. Solo bloques de
         exactamente 3 dígitos (4 dígitos = código de resina)."""
-        m = re.match(r'^[A-Za-z]+(\d{3})(?!\d)', ref or '')
+        ref = ref or ''
+        m = re.match(r'^[A-Za-z]+(\d{3})(?!\d)', ref)
         if not m:
             return 0.0
         gramaje = int(m.group(1))
-        ancho_m = re.search(r'(\d{2,3})\s*I?$', ref or '')
+        # El ancho debe ser un bloque DISTINTO del gramaje: se busca sólo en
+        # lo que va DESPUÉS del gramaje. Así 'WD080' (sin ancho explícito) no
+        # toma sus propios '080' como ancho 0.80 m (hallazgo #3).
+        ancho_m = re.search(r'(\d{2,3})\s*I?$', ref[m.end():])
         ancho = int(ancho_m.group(1)) / 100.0 if ancho_m else 1.5
         if not 0.3 <= ancho <= 3.5:
             ancho = 1.5
@@ -363,6 +393,68 @@ class QbProductoPeso(models.Model):
             # Producto en metros: kg = kg/m → m/kg es su inverso.
             return 1.0 / kg
         return self.env['qb.costeo.factor.config'].get_param('m_per_kg_default', 8.0)
+
+    # ------------------------------------------------------------------
+    # Maestro de pesos NATIVO (sin Supabase)
+    # ------------------------------------------------------------------
+    @api.model
+    def load_weight_master(self):
+        """Carga los pesos MEDIDOS/de ingeniería desde el archivo nativo
+        data/product_weights.csv, matcheando por código de producto
+        (default_code — portable entre bases, no depende de ids de Supabase).
+
+        Regla de no-pisado: sólo LLENA o CORRIGE pesos estimados
+        (ref_gramaje/odoo_weight/bom) o faltantes; NUNCA pisa un peso ya
+        autoritativo (manual/cvu) que alguien haya fijado en Odoo.
+        Idempotente. Devuelve (creados, corregidos, sin_producto)."""
+        Product = self.env['product.product']
+        creados = corregidos = sin_producto = 0
+        try:
+            fh = tools.file_open('qb_capacidad_costeo/data/product_weights.csv')
+        except Exception:
+            _logger.warning(
+                'No se pudo abrir data/product_weights.csv; el maestro de '
+                'pesos nativo no se cargó (el motor sigue estimando el peso).')
+            return creados, corregidos, sin_producto
+        with fh as f:
+            for row in csv.DictReader(f):
+                ref = (row.get('ref') or '').strip()
+                try:
+                    kg = float(row.get('kg_per_unit') or 0.0)
+                except (TypeError, ValueError):
+                    continue
+                if not ref or kg <= 0:
+                    continue
+                product = Product.with_context(active_test=False).search(
+                    [('default_code', '=', ref)], limit=1)
+                if not product:
+                    sin_producto += 1
+                    continue
+                src = row.get('source') or 'manual'
+                rec = self.with_context(active_test=False).search(
+                    [('product_id', '=', product.id)], limit=1)
+                if rec:
+                    if rec.source in ('manual', 'cvu'):
+                        continue  # ya autoritativo → respetar
+                    rec.write({'kg_per_unit': kg, 'source': src})
+                    corregidos += 1
+                else:
+                    self.create({'product_id': product.id,
+                                 'kg_per_unit': kg, 'source': src})
+                    creados += 1
+        return creados, corregidos, sin_producto
+
+    def action_load_weight_master(self):
+        """Botón: (re)carga el maestro de pesos nativo y avisa el resultado."""
+        creados, corregidos, sin_prod = self.load_weight_master()
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'title': 'Maestro de pesos cargado',
+                'message': '%s creados, %s corregidos, %s sin producto en '
+                           'esta base.' % (creados, corregidos, sin_prod),
+                'type': 'success', 'sticky': False,
+            }}
 
 
 class QbProductoRuteo(models.Model):

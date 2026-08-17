@@ -27,6 +27,9 @@
                         domain="[('alerta', '=', 'bajo_absorbido')]"/>
                 <filter name="alerta_sin_peso" string="⚪ Sin peso resuelto"
                         domain="[('alerta', '=', 'sin_peso')]"/>
+                <filter name="alerta_peso_estimado" string="⚖️ Peso estimado (verificar)"
+                        domain="[('alerta', '=', 'peso_estimado')]"
+                        help="Productos costeados con un peso ADIVINADO (del código o del weight de Odoo), no medido. Su energía/fabricación/margen puede estar mal — captura su peso real en Configuración → Pesos por producto."/>
                 <separator/>
                 <filter name="group_period" string="Agrupar por período"
                         context="{'group_by': 'period'}"/>
@@ -61,8 +64,9 @@
                 <field name="contrib_hora_maquina"/>
                 <field name="alerta" widget="badge"
                        decoration-danger="alerta == 'bajo_variable'"
-                       decoration-warning="alerta == 'bajo_absorbido'"
+                       decoration-warning="alerta in ('bajo_absorbido', 'peso_estimado')"
                        decoration-info="alerta == 'sin_peso'"/>
+                <field name="peso_source" optional="hide"/>
             </list>
         </field>
     </record>

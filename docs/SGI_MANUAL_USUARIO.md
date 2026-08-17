@@ -89,6 +89,27 @@ responsable y aviso a MAST.
 responsables, estatus, cierre) con filtros por año y equipo. Se arma sola; exportable
 para el auditor.
 
+### 3.6 Apagar un automatismo que levanta NC (solo MAST)
+Algunas NC las abre el sistema solo: rollo pesado fuera de tolerancia, equipo de
+medición descalibrado, indicador en rojo, incidente SST grave. Si uno de esos motivos
+ya no debe generar NC, **no hay que desinstalar nada ni pedir desarrollo**:
+
+**SGI → Configuración → Fuentes de NC automáticas** → baja el interruptor de la fuente.
+
+Tres cosas que conviene saber antes de apagar una:
+- **No se apaga el control, sólo el expediente.** El operador sigue viendo su aviso de
+  rollo fuera de rango, el equipo descalibrado sigue marcado "No usar" y el indicador
+  sigue en rojo. Lo único que deja de pasar es que se abra la No Conformidad.
+- **Queda firmado.** El historial de la fuente guarda quién la apagó y cuándo, y el
+  sistema cuenta cuántas NC se omitieron desde entonces. Eso es exactamente lo que te
+  va a pedir el auditor cuando pregunte por qué se cortó la serie.
+- **Los indicadores se pueden apagar uno por uno.** Si sólo te estorba un indicador y
+  no todos, quítale la casilla "Generar NC en rojo" a ese indicador en vez de apagar
+  la fuente completa.
+
+Volver a encenderla es el mismo interruptor. En los indicadores, las mediciones rojas
+que quedaron sin NC se reintentan solas en la siguiente corrida.
+
 ---
 
 ## 4. Reclamaciones de clientes

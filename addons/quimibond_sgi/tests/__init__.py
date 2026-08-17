@@ -29,3 +29,4 @@ from . import test_ola_b
 from . import test_view_file
 from . import test_kpi20
 from . import test_sales_budget
+from . import test_alert_source

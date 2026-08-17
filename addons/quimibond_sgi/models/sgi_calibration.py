@@ -194,7 +194,12 @@ class SgiCalibration(models.Model):
         }
         if team:
             vals['team_id'] = team.id
-        alert = self.env['quality.alert'].create(vals)
+        alert = self.env['quality.alert'].sgi_auto_create(
+            'calibracion_fuera_tolerancia', vals)
+        if not alert:
+            # Fuente apagada: el equipo igual queda bloqueado (sgi_do_not_use),
+            # sólo no se abre expediente de NC.
+            return alert
         self.sgi_alert_id = alert.id
         if manager_id:
             Cron._sgi_schedule(

@@ -56,11 +56,6 @@
             <field name="value">8.0</field>
             <field name="descripcion">Factor kg↔m default cuando el producto no tiene peso resuelto (balance de línea en metros-equivalentes).</field>
         </record>
-        <record id="factor_fx_buffer" model="qb.costeo.factor.config">
-            <field name="key">fx_buffer_pct</field>
-            <field name="value">0.03</field>
-            <field name="descripcion">Colchón cambiario para cotizaciones en divisa (fracción): protege el margen si el peso se aprecia durante la vigencia.</field>
-        </record>
         <record id="factor_quote_validity" model="qb.costeo.factor.config">
             <field name="key">quote_validity_days</field>
             <field name="value">15</field>

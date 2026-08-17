@@ -284,7 +284,7 @@ class SgiAuditFinding(models.Model):
         }
         if team:
             vals['team_id'] = team.id
-        alert = self.env['quality.alert'].create(vals)
+        alert = self.env['quality.alert'].sgi_auto_create('auditoria_hallazgo', vals)
         self.write({'disposition': 'genera_nc', 'alert_id': alert.id})
         return {
             'type': 'ir.actions.act_window',

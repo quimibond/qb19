@@ -113,6 +113,136 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(
             self.Costo._mp_cost_unit(self.tela), 0.072 * 50.0, places=4)
 
+    def test_peso_estimado_se_marca(self):
+        """El peso adivinado del código (ref_gramaje) o del weight de Odoo se
+        marca como estimado; un peso capturado a mano NO. Cierra #1/#2."""
+        # self.tela = WJ045NT160, sin registro de peso → gramaje del código
+        self.assertEqual(self.Peso.resolve_kg_source(self.tela), 'ref_gramaje')
+        self.assertIn('ref_gramaje', self.Peso.PESO_SOURCES_ESTIMADAS)
+        # capturar el peso real a mano → fuente 'manual', ya no estimado
+        self.Peso.create({
+            'product_id': self.tela.id, 'kg_per_unit': 0.30,
+            'source': 'manual'})
+        self.assertEqual(self.Peso.resolve_kg_source(self.tela), 'manual')
+        self.assertNotIn('manual', self.Peso.PESO_SOURCES_ESTIMADAS)
+        self.assertAlmostEqual(
+            self.Peso.resolve_kg_per_unit(self.tela), 0.30, places=4)
+
+    def test_gramaje_ancho_distinto_del_gramaje(self):
+        """El ancho se busca sólo DESPUÉS del gramaje: 'WD080' sin ancho
+        explícito usa el default 1.5 m, no toma sus propios '080'. Cierra #3."""
+        # sin ancho → default 1.5 m (no 0.80)
+        self.assertAlmostEqual(
+            self.Peso._gramaje_from_ref('WD080'), 0.080 * 1.5, places=4)
+        # con ancho explícito → lo respeta
+        self.assertAlmostEqual(
+            self.Peso._gramaje_from_ref('WD080Q46JNT160'), 0.080 * 1.60,
+            places=4)
+
+    def test_receta_ambigua_sin_avco_toma_la_mas_cara(self):
+        """Semiterminado con varias BOMs y SIN AVCO: en vez de explotar una al
+        azar (colapso), toma la receta MÁS CARA (conservador). Cierra #6."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        barato = self.env['product.product'].create({
+            'name': 'INSUMO BARATO 2', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 10.0})
+        caro = self.env['product.product'].create({
+            'name': 'INSUMO CARO', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 100.0})
+        semi = self.env['product.product'].create({
+            'name': 'SEMI SIN AVCO', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 0.0})  # sin AVCO
+        for comp in (barato, caro):
+            self.env['mrp.bom'].create({
+                'product_tmpl_id': semi.product_tmpl_id.id,
+                'product_id': semi.id, 'product_qty': 1.0,
+                'product_uom_id': uom_kg.id,
+                'bom_line_ids': [(0, 0, {
+                    'product_id': comp.id, 'product_qty': 1.0,
+                    'product_uom_id': uom_kg.id})]})
+        self.assertTrue(self.Costo._has_multiple_boms(semi))
+        # 1×10 vs 1×100 → toma la más cara (100), no una al azar
+        self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 100.0, places=4)
+
+    def test_qty_neta_negativa_no_da_precio_negativo(self):
+        """Devoluciones > ventas (qty neta ≤ 0) → precio 0, sin alerta falsa
+        de 'bajo costo variable'. Cierra #10."""
+        period = date(2026, 12, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        sales = {self.tela.id: (-5.0, -100.0)}  # qty neta negativa
+        vals, _ = self.Costo._compute_product_vals(
+            self.tela, period, factores, sales, ctx, self.Ruteo, self.Peso)
+        self.assertEqual(vals['precio_prom'], 0.0)
+        self.assertNotEqual(vals['alerta'], 'bajo_variable')
+
+    def test_precio_sugerido_con_margen_meta(self):
+        """El precio sugerido = costo_producción ÷ (1 − op − margen_meta),
+        nunca por debajo del piso lleno ni del mercado. Revive target_margin."""
+        Config = self.env['qb.costeo.factor.config']
+        Config.set_param('target_margin', 0.30)
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2027, 1, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        q = self.Costo.quote_product(self.tela, factores)
+        prod = q['variable'] + q['fab']
+        esperado = prod / (1.0 - 0.18 - 0.30)  # op + margen meta al denominador
+        self.assertAlmostEqual(q['precio_sugerido'], esperado, places=3)
+        # a ese precio el margen NETO ≈ el meta (30%)
+        neto = 100.0 * (q['precio_sugerido'] - q['variable'] - q['fab']
+                        - 0.18 * q['precio_sugerido']) / q['precio_sugerido']
+        self.assertAlmostEqual(neto, 30.0, places=1)
+        self.assertGreaterEqual(q['precio_sugerido'], q['piso_lleno'])
+
+    def test_maestro_pesos_nativo(self):
+        """El maestro de pesos nativo (CSV, sin Supabase) llena/corrige por
+        código de producto y NO pisa un peso ya autoritativo."""
+        p = self.env['product.product'].create({
+            'name': 'RESINA TEST', 'default_code': 'WM4032OW152',
+            'is_storable': True, 'uom_id': self.tela.uom_id.id,
+            'sale_ok': True})
+        # código de resina (4032) → no da gramaje → sin peso resuelto
+        self.assertEqual(self.Peso.resolve_kg_source(p), 'sin_peso')
+        creados, _corr, _sp = self.Peso.load_weight_master()
+        self.assertGreaterEqual(creados, 1)
+        # tras cargar: peso medido real y fuente confiable
+        self.assertAlmostEqual(
+            self.Peso.resolve_kg_per_unit(p), 0.0654, places=4)
+        self.assertEqual(self.Peso.resolve_kg_source(p), 'manual')
+        self.assertNotIn('manual', self.Peso.PESO_SOURCES_ESTIMADAS)
+        # idempotente: una edición manual del usuario se respeta
+        rec = self.Peso.search([('product_id', '=', p.id)])
+        rec.kg_per_unit = 0.99
+        self.Peso.load_weight_master()
+        self.assertAlmostEqual(rec.kg_per_unit, 0.99, places=2)
+
+    def test_cotizacion_ciclo_de_vida(self):
+        """La cotización es un documento nativo: estados borrador→presentada→
+        ganada/perdida por botón, con actividades y chatter (mixins)."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2027, 2, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'precio_objetivo': 100.0})
+        cot = self.env['qb.cotizacion'].browse(
+            wiz.action_cotizar()['res_id'])
+        self.assertEqual(cot.state, 'draft')
+        # mixins nativos presentes
+        self.assertTrue(hasattr(cot, 'activity_ids'))
+        self.assertTrue(hasattr(cot, 'message_ids'))
+        cot.action_marcar_presentada()
+        self.assertEqual(cot.state, 'done')
+        cot.action_marcar_ganada()
+        self.assertEqual(cot.state, 'won')
+        cot.action_reabrir()
+        self.assertEqual(cot.state, 'draft')
+
     def test_subproducto_mp_cero(self):
         """SALDO*: MP $0 — su materia ya está en la receta del principal."""
         bucket, _ = self.Ruteo.resolve(self.saldo)

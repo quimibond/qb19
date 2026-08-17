@@ -57,6 +57,11 @@ class QbCotizadorWizard(models.TransientModel):
         help='La moneda en la que CAPTURAS el precio objetivo y en la que '
              'se muestran/aplican los precios. Se precarga con la moneda '
              'del pedido. Los COSTOS del modelo siempre son MXN.')
+    company_currency_id = fields.Many2one(
+        'res.currency', string='Moneda de costos (MXN)',
+        default=lambda self: self.env.company.currency_id,
+        help='Moneda de la compañía: los costos y pisos SIEMPRE están aquí '
+             '(el widget monetario muestra el símbolo, sin ambigüedad).')
     precio_objetivo = fields.Float(
         string='Precio objetivo',
         help='El precio que TÚ propones o que el cliente pide, EN LA MONEDA '
@@ -116,6 +121,12 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='Familia detectada')
     kg_per_unit = fields.Float(
         compute='_compute_cotizacion', string='Peso (kg/u)', digits=(16, 4))
+    peso_estimado = fields.Boolean(compute='_compute_cotizacion')
+    peso_alerta = fields.Char(
+        compute='_compute_cotizacion', string='Aviso de peso',
+        help='Se llena cuando el peso es ESTIMADO (adivinado del código o del '
+             'campo weight de Odoo) en vez de medido: energía y fabricación '
+             'pueden estar mal y hay que capturar el peso real.')
     mp_unit = fields.Float(
         compute='_compute_cotizacion', string='MP $/u', digits=(16, 4))
     energia_unit = fields.Float(
@@ -126,6 +137,18 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='Costo variable $/u', digits=(16, 4))
     op_pct_display = fields.Float(
         compute='_compute_cotizacion', string='Operación % s/venta')
+    ver_detalle = fields.Boolean(
+        string='Ver detalle del costo',
+        help='Muestra el desglose completo (capas de costo, pisos, márgenes, '
+             'escalera de volumen). Por defecto oculto: arriba está lo que '
+             'necesitas para cotizar.')
+    precio_sugerido = fields.Float(
+        compute='_compute_cotizacion', string='Precio sugerido $/u MXN',
+        digits=(16, 4),
+        help='El precio recomendado: cubre el costo completo y deja tu margen '
+             'meta (Configuración → margen meta). Nunca queda por debajo del '
+             'piso a planta llena ni del precio de mercado real. Es el número '
+             'con el que arrancar a cotizar.')
     precio_mercado = fields.Float(
         compute='_compute_cotizacion', string='Precio de mercado $/u MXN',
         digits=(16, 4),
@@ -399,6 +422,9 @@ class QbCotizadorWizard(models.TransientModel):
                 'piso_ocioso': variable,
                 'piso_lleno': (variable + fab) / (1.0 - op) if op < 1 else 0.0,
                 'precio_mercado': 0.0,
+                'precio_sugerido': Costo._precio_sugerido(
+                    variable, fab, op,
+                    (variable + fab) / (1.0 - op) if op < 1 else 0.0, 0.0),
                 'hours_per_unit': 0.0,
                 'factores': factores,
             }
@@ -435,10 +461,13 @@ class QbCotizadorWizard(models.TransientModel):
             'name': name, 'bucket': q['bucket'], 'centros': centros,
             'is_kg': q['is_kg'],
             'factores': factores, 'kg': q['kg'], 'm_per_kg': q['m_per_kg'],
+            'peso_estimado': q.get('peso_estimado', False),
+            'peso_source': q.get('peso_source', ''),
             'uom_name': uom_name, 'mp': q['mp'], 'energia': q['energia'],
             'fab': q['fab'], 'variable': q['variable'],
             'op_pct': q['op_pct'],
             'precio_mercado': q['precio_mercado'],
+            'precio_sugerido': q.get('precio_sugerido', 0.0),
             'piso_ocioso': q['piso_ocioso'], 'piso_lleno': q['piso_lleno'],
             'precio_ref': precio_ref, 'evaluado_fuente': fuente,
             'contrib': contrib, 'contrib_hora': contrib_hora,
@@ -588,6 +617,7 @@ class QbCotizadorWizard(models.TransientModel):
             zero = dict.fromkeys([
                 'kg_per_unit', 'mp_unit', 'energia_unit', 'fab_unit',
                 'costo_variable', 'op_pct_display', 'precio_mercado',
+                'precio_sugerido',
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
                 'margen_contribucion_pct', 'contrib_hora_maquina',
                 'precio_mercado_divisa', 'piso_ocioso_divisa',
@@ -598,6 +628,8 @@ class QbCotizadorWizard(models.TransientModel):
             zero['moneda_alerta'] = False
             zero['evaluado_info'] = False
             zero['escalera_html'] = False
+            zero['peso_estimado'] = False
+            zero['peso_alerta'] = False
             try:
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
@@ -664,12 +696,20 @@ class QbCotizadorWizard(models.TransientModel):
                                      res['op_pct'] * 100.0),
                 'product_bucket': res['bucket'],
                 'kg_per_unit': res['kg'],
+                'peso_estimado': res.get('peso_estimado', False),
+                'peso_alerta': (
+                    'El peso %.4f kg/u es ESTIMADO (%s), no medido. Energía y '
+                    'fabricación pueden estar mal. Captura el peso real en '
+                    'Configuración → Pesos de producto.' % (
+                        res['kg'], res.get('peso_source') or 'adivinado')
+                    if res.get('peso_estimado') else False),
                 'mp_unit': res['mp'],
                 'energia_unit': res['energia'],
                 'fab_unit': res['fab'],
                 'costo_variable': res['variable'],
                 'op_pct_display': res['op_pct'] * 100.0,
                 'precio_mercado': res['precio_mercado'],
+                'precio_sugerido': res.get('precio_sugerido', 0.0),
                 'evaluado_info': 'Semáforo y márgenes evaluados al %s: '
                                  '$%.2f MXN.' % (res['evaluado_fuente'],
                                                  precio_ref),

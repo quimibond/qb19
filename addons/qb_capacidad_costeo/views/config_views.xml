@@ -198,38 +198,6 @@
         </field>
     </record>
 
-    <!-- ============ Importar desde Supabase ============ -->
-    <record id="supabase_import_action" model="ir.actions.act_window">
-        <field name="name">Importar configuración desde Supabase</field>
-        <field name="res_model">qb.costeo.supabase.import</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
-    <record id="supabase_import_view_form" model="ir.ui.view">
-        <field name="name">qb.costeo.supabase.import.form</field>
-        <field name="model">qb.costeo.supabase.import</field>
-        <field name="arch" type="xml">
-            <form>
-                <div class="alert alert-info" role="alert">
-                    Importa TODA la configuración curada en Supabase: centros de
-                    costo con sus departamentos, rentas contractuales por lote,
-                    asignación de cuentas de overhead y energía, fab_weight_share,
-                    el maestro de pesos (~2,758 productos) y las conversiones
-                    kg↔m medidas en planta. Liga los workcenters por patrón de
-                    nombre automáticamente. Idempotente: puedes correrlo las
-                    veces que quieras; además corre solo cada semana (cron).
-                    Los pesos con override manual local NO se pisan.
-                </div>
-                <field name="resultado" readonly="1"
-                       placeholder="El resumen de la importación aparecerá aquí..."/>
-                <footer>
-                    <button name="action_importar" string="Importar ahora"
-                            type="object" class="btn-primary"/>
-                    <button string="Cerrar" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
 
     <!-- ============ Factores por período ============ -->
     <record id="costo_factores_action" model="ir.actions.act_window">
