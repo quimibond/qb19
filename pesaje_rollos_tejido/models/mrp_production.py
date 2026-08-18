@@ -71,6 +71,18 @@ class MrpProduction(models.Model):
                 'picked': True,
             })
 
+            # Sincronizar también el picked de cabecera del move -- stock.move
+            # tiene su propio campo 'picked' independiente del de sus líneas
+            # (mrp.weigh.roll.wizard las crea una por una, así que este campo
+            # de cabecera puede quedar en False aunque cada línea individual
+            # ya esté en True). El core evalúa el picked del MOVE, no solo el
+            # de sus líneas, en pre_button_mark_done()/_action_done() para
+            # decidir si el move sobrevive al cierre -- si queda en False ahí,
+            # el move completo se cancela y sus líneas se eliminan pese a que
+            # cada línea individual sí tenía picked=True.
+            if not finished_move.picked:
+                finished_move.picked = True
+
             self.qty_producing += weight
             if current_wo:
                 current_wo.qty_produced += weight
