@@ -341,6 +341,29 @@ Nota `odoo-bin shell`: revierte la transacción al salir → los scripts hacen
 
 ## 8. Tests
 
+### Checks estáticos (`tools/check_addons.py`)
+
+Corren en el CI de GitHub en cada PR hacia `main`, `quimibond` y `qbtesting`.
+Sin Odoo, sin Postgres, sin licencia: por eso cubren también los módulos que
+dependen de Enterprise, donde un CI con Odoo Community no puede entrar.
+
+| Check | Qué caza | De dónde salió |
+|---|---|---|
+| Archivos del manifest | `data:` apuntando a un archivo inexistente | — |
+| XML mal formado | Rompe la carga del módulo | — |
+| `_sql_constraints` | Sintaxis muerta en 19: se ignora en silencio | 7 restricciones inexistentes en `qb_capacidad_costeo` |
+| Clave de config duplicada | `<record>` + siembra ⇒ choque contra `ir_config_parameter_key_uniq`, tumba el registry | `pesaje_tolerance_kg` |
+| `env.ref()` sin destino | Truena en runtime, no al cargar: llega a producción | — |
+| `ir.model.access.csv` huérfano | Permisos a modelos que no existen | — |
+| Modelo nuevo sin bump | Un build reportó «Model X has no table» en ese escenario | `qb.cotizacion.tramo`, `qb.producto.ficha` |
+
+Local: `python3 tools/check_addons.py [--base-ref origin/main]`. Sin `--base-ref`
+se omite el check de versión (necesita contra qué comparar).
+
+Las advertencias no rompen el CI; los errores sí. Hoy hay 6 advertencias vivas:
+las claves con doble declaración *dentro* de `quimibond_sgi` descritas en §11.
+
+
 ~64 tests `@tagged('post_install', '-at_install')` cubriendo: folios y secuencias,
 candados de NC/mejora/AMEF/PPAP/incidente/auditoría/RxD, unicidad de vigente,
 generación de acuses idempotente, cambios documentales (piloto 90 días, versionado),
@@ -381,6 +404,21 @@ hojas de cálculo; portal del auditor (permiso con caducidad); Frontdesk; onboar
 plans. Detalle completo en el README del módulo.
 
 ## 11. Parámetros del sistema (`ir.config_parameter`)
+
+> **Regla: un parámetro se declara en UN solo lugar.** El default va en
+> `sgi.config._SGI_DEFAULT_PARAMS` y lo crea `seed_parameters()` — nunca además
+> como `<record model="ir.config_parameter">` en un **módulo dependiente**.
+> `seed_parameters()` corre al final de la carga de `quimibond_sgi`, o sea antes
+> de los datos de los puentes, y crea la fila **sin xmlid**: en una instalación
+> limpia el `<record>` del puente intenta insertar una clave que ya existe y
+> `ir_config_parameter_key_uniq` tumba el registry entero (`Failed to load
+> registry`). Le pasó a `pesaje_tolerance_kg`.
+>
+> Dentro de `quimibond_sgi` conviven algunos `<record>` con su entrada en el
+> dict (`nc_escalation_days`, `risk_ryo_*`, `fmea_npr_action`,
+> `waste_subproduct_category`): hoy no truenan sólo porque sus archivos se
+> cargan antes que `data/sgi_parameters.xml`. Es frágil — al mover un archivo
+> de posición en el manifest, revísalo.
 
 | Clave | Default | Uso |
 |---|---|---|

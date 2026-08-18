@@ -8,10 +8,13 @@ modelos + los registros nativos, así que "capturar en Odoo" basta para que
 el modelo lo considere sin tocar código.
 """
 import csv
+import logging
 import re
 
 from odoo import api, fields, models, tools
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 BUCKETS = [
     ('mp', 'Materia prima'),
@@ -406,8 +409,14 @@ class QbProductoPeso(models.Model):
         Idempotente. Devuelve (creados, corregidos, sin_producto)."""
         Product = self.env['product.product']
         creados = corregidos = sin_producto = 0
-        with tools.file_open(
-                'qb_capacidad_costeo/data/product_weights.csv') as f:
+        try:
+            fh = tools.file_open('qb_capacidad_costeo/data/product_weights.csv')
+        except Exception:
+            _logger.warning(
+                'No se pudo abrir data/product_weights.csv; el maestro de '
+                'pesos nativo no se cargó (el motor sigue estimando el peso).')
+            return creados, corregidos, sin_producto
+        with fh as f:
             for row in csv.DictReader(f):
                 ref = (row.get('ref') or '').strip()
                 try:

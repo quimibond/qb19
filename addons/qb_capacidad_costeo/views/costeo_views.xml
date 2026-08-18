@@ -20,6 +20,9 @@
                         domain="[('margen_absorbido', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
                 <filter name="contribucion_negativa" string="Contribución negativa"
                         domain="[('margen_contribucion', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
+                <filter name="facturado_divisa" string="💱 Facturado en divisa"
+                        domain="[('divisa_venta', '!=', False)]"
+                        help="Productos facturados en una moneda distinta a la de la compañía (p.ej. USD). El precio y los márgenes ya están convertidos a moneda local al tipo de cambio de la factura."/>
                 <separator/>
                 <filter name="alerta_bajo_variable" string="🔴 Bajo costo variable"
                         domain="[('alerta', '=', 'bajo_variable')]"/>
@@ -31,6 +34,8 @@
                         domain="[('alerta', '=', 'peso_estimado')]"
                         help="Productos costeados con un peso ADIVINADO (del código o del weight de Odoo), no medido. Su energía/fabricación/margen puede estar mal — captura su peso real en Configuración → Pesos por producto."/>
                 <separator/>
+                <filter name="group_year" string="Agrupar por año"
+                        context="{'group_by': 'period:year'}"/>
                 <filter name="group_period" string="Agrupar por período"
                         context="{'group_by': 'period'}"/>
                 <filter name="group_bucket" string="Agrupar por clasificación"
@@ -45,23 +50,34 @@
             <list create="false"
                   decoration-danger="margen_contribucion &lt; 0 and qty_vendida &gt; 0"
                   decoration-warning="margen_absorbido &lt; 0 and margen_contribucion &gt;= 0 and qty_vendida &gt; 0">
+                <field name="company_currency_id" column_invisible="1"/>
                 <field name="period" optional="show"/>
                 <field name="default_code"/>
                 <field name="product_id"/>
                 <field name="product_bucket" optional="hide"/>
                 <field name="uom_name"/>
                 <field name="qty_vendida" sum="Total"/>
-                <field name="precio_prom"/>
-                <field name="mp_unit"/>
-                <field name="energia_unit" optional="hide"/>
-                <field name="costo_variable"/>
-                <field name="fab_unit"/>
-                <field name="op_unit" optional="hide"/>
-                <field name="costo_absorbido"/>
-                <field name="margen_contribucion"/>
+                <field name="precio_prom" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="divisa_venta" optional="show"/>
+                <field name="mp_unit" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="energia_unit" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="costo_variable" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="fab_unit" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="op_unit" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="costo_absorbido" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="margen_contribucion" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="margen_contribucion_pct"/>
                 <field name="margen_absorbido_pct"/>
-                <field name="contrib_hora_maquina"/>
+                <field name="contrib_hora_maquina" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="alerta" widget="badge"
                        decoration-danger="alerta == 'bajo_variable'"
                        decoration-warning="alerta in ('bajo_absorbido', 'peso_estimado')"
@@ -88,26 +104,38 @@
                             <field name="m_per_kg"/>
                         </group>
                         <group string="Venta del período">
+                            <field name="company_currency_id" invisible="1"/>
                             <field name="qty_vendida"/>
-                            <field name="precio_prom"/>
+                            <field name="precio_prom" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="divisa_venta"/>
                             <field name="factores_id"/>
                         </group>
                     </group>
                     <group>
-                        <group string="Costo por capa ($/u)">
-                            <field name="mp_unit"/>
-                            <field name="energia_unit"/>
-                            <field name="costo_variable"/>
-                            <field name="fab_unit"/>
-                            <field name="op_unit"/>
-                            <field name="costo_absorbido"/>
+                        <group string="Costo por capa (por unidad)">
+                            <field name="mp_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="energia_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="costo_variable" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="fab_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="op_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="costo_absorbido" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </group>
                         <group string="Márgenes">
-                            <field name="margen_contribucion"/>
+                            <field name="margen_contribucion" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_contribucion_pct"/>
-                            <field name="margen_absorbido"/>
+                            <field name="margen_absorbido" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_absorbido_pct"/>
-                            <field name="contrib_hora_maquina"/>
+                            <field name="contrib_hora_maquina" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </group>
                     </group>
                 </sheet>
@@ -119,10 +147,14 @@
         <field name="model">qb.costo.producto</field>
         <field name="arch" type="xml">
             <pivot>
-                <field name="product_bucket" type="row"/>
+                <!-- Medidas ADITIVAS: se pueden sumar entre meses para ver el
+                     año completo por producto (qty total y contribución total).
+                     Los $/unidad NO se suman entre meses — por eso van qty y
+                     contrib_total, no mp_unit ni margen_contribucion. -->
+                <field name="default_code" type="row"/>
                 <field name="period" type="col"/>
                 <field name="qty_vendida" type="measure"/>
-                <field name="margen_contribucion" type="measure"/>
+                <field name="contrib_total" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -139,16 +171,21 @@
             <list create="false" default_order="contrib_hora_maquina desc"
                   decoration-success="contrib_hora_maquina &gt;= 1000"
                   decoration-danger="margen_contribucion &lt; 0">
+                <field name="company_currency_id" column_invisible="1"/>
                 <field name="period" optional="show"/>
                 <field name="default_code"/>
                 <field name="product_id"/>
                 <field name="centro_route"/>
-                <field name="contrib_hora_maquina"/>
-                <field name="margen_contribucion"/>
+                <field name="contrib_hora_maquina" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="margen_contribucion" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="margen_contribucion_pct"/>
                 <field name="qty_vendida" sum="Total"/>
-                <field name="contrib_total" sum="Total"/>
-                <field name="precio_prom" optional="hide"/>
+                <field name="contrib_total" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="precio_prom" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
             </list>
         </field>
     </record>
@@ -180,12 +217,63 @@
         </field>
     </record>
 
+    <!-- ============ Comparador de productos ============ -->
+    <record id="comparador_wizard_form" model="ir.ui.view">
+        <field name="name">qb.comparador.wizard.form</field>
+        <field name="model">qb.comparador.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Comparar productos">
+                <field name="company_currency_id" invisible="1"/>
+                <group>
+                    <field name="product_ids" widget="many2many_tags"
+                           options="{'no_create': True}"
+                           placeholder="Elige 2 a 6 productos…"/>
+                    <field name="period"/>
+                    <field name="margen_objetivo"
+                           help="Opcional: a cuánto vender cada producto para dejar ese margen neto. Vacío usa el margen meta global."/>
+                </group>
+                <field name="comparativa_html" readonly="1" nolabel="1"/>
+                <footer>
+                    <button string="Cerrar" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="comparador_action" model="ir.actions.act_window">
+        <field name="name">Comparar productos</field>
+        <field name="res_model">qb.comparador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <!-- Acción de contexto en el reporte: compara los productos seleccionados -->
+    <record id="costo_comparar_server" model="ir.actions.server">
+        <field name="name">Comparar costos (selección)</field>
+        <field name="model_id" ref="model_qb_costo_producto"/>
+        <field name="binding_model_id" ref="model_qb_costo_producto"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = {
+    'type': 'ir.actions.act_window',
+    'res_model': 'qb.comparador.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {'active_model': 'qb.costo.producto', 'active_ids': records.ids},
+}</field>
+    </record>
+
     <!-- Recalcular el mes anterior a demanda -->
     <record id="costo_recompute_action" model="ir.actions.server">
         <field name="name">Recalcular costeo (mes anterior)</field>
         <field name="model_id" ref="model_qb_costo_producto"/>
         <field name="state">code</field>
         <field name="code">model.action_recompute_period()</field>
+    </record>
+    <!-- Recalcular TODO el año en curso (enero → mes actual) -->
+    <record id="costo_recompute_year_action" model="ir.actions.server">
+        <field name="name">Recalcular costeo (año en curso)</field>
+        <field name="model_id" ref="model_qb_costo_producto"/>
+        <field name="state">code</field>
+        <field name="code">model.action_recompute_year()</field>
     </record>
 
 </odoo>

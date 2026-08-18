@@ -34,6 +34,8 @@
               parent="menu_qb_analisis" sequence="10"/>
     <menuitem id="menu_qb_costo_producto" name="Costo por producto"
               parent="menu_qb_costos_group" action="costo_producto_action" sequence="10"/>
+    <menuitem id="menu_qb_comparador" name="Comparar productos"
+              parent="menu_qb_costos_group" action="comparador_action" sequence="12"/>
     <menuitem id="menu_qb_ranking" name="Ranking por hora-máquina"
               parent="menu_qb_costos_group" action="costo_ranking_action" sequence="15"/>
     <menuitem id="menu_qb_clientes" name="Rentabilidad por cliente"
@@ -89,6 +91,8 @@
               groups="mrp.group_mrp_manager,base.group_system"/>
     <menuitem id="menu_qb_recompute" name="Recalcular costeo (mes anterior)"
               parent="menu_qb_config" action="costo_recompute_action" sequence="8"/>
+    <menuitem id="menu_qb_recompute_year" name="Recalcular costeo (año en curso)"
+              parent="menu_qb_config" action="costo_recompute_year_action" sequence="9"/>
     <menuitem id="menu_qb_centros" name="Centros de costo"
               parent="menu_qb_config" action="centro_action" sequence="10"/>
     <menuitem id="menu_qb_cuentas" name="Clasificación de cuentas"

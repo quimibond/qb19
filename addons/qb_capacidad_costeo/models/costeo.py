@@ -94,6 +94,18 @@ class QbCostoProducto(models.Model):
         related='product_id.default_code', store=True, string='Referencia')
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, required=True)
+    company_currency_id = fields.Many2one(
+        'res.currency', related='company_id.currency_id', store=True,
+        string='Moneda', help='Moneda de la compañía. Todos los montos del '
+        'reporte (precio, costos, márgenes) están en ESTA moneda, aunque la '
+        'factura original haya sido en otra divisa.')
+    divisa_venta = fields.Char(
+        string='Facturado en',
+        help='Divisa(s) distintas a la de la compañía en que se facturó el '
+             'producto en el período (p.ej. USD). El precio mostrado es la '
+             'conversión a la moneda de la compañía al tipo de cambio de la '
+             'factura — no el número crudo en dólares. Vacío = solo moneda '
+             'local.')
     product_bucket = fields.Char(string='Clasificación')
     uom_name = fields.Char(string='UoM')
     kg_per_unit = fields.Float(digits=(16, 6))
@@ -202,7 +214,30 @@ class QbCostoProducto(models.Model):
         # ventana completa subestima el denominador ×4 e infla energía y
         # factores de fabricación en la misma proporción.
         by_month = {}
-        wc_ids = centros.mapped('workcenter_ids').ids
+        # Producción a nivel ORDEN (mrp.production) es la fuente confiable:
+        # la cantidad por workorder está mal registrada (p.ej. tejido abril
+        # colapsa a ~1/5 de lo real). Por eso el patrón de orden MANDA; el
+        # conteo por workorder queda sólo como fallback para centros con
+        # workcenters pero SIN patrón de orden.
+        pattern_centros = centros.filtered('mo_name_pattern')
+        for centro in pattern_centros:
+            # mo_name_pattern admite varios patrones separados por coma
+            # (p.ej. acabado = 'TL/OP-ACA%,TL/OP-V10%'): matchea cualquiera.
+            self.env.cr.execute("""
+                SELECT date_trunc('month', mp.date_finished)::date,
+                       COALESCE(SUM(%s), 0)
+                FROM mrp_production mp
+                WHERE mp.name LIKE ANY(string_to_array(%%s, ','))
+                  AND mp.state = 'done'
+                  AND mp.date_finished >= %%s AND mp.date_finished < %%s
+                GROUP BY 1
+            """ % mo_qty_sql(self.env),
+                (centro.mo_name_pattern, date_from, date_to))
+            for mes, qty in self.env.cr.fetchall():
+                by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
+        wc_ids = centros.filtered(
+            lambda c: c.workcenter_ids and not c.mo_name_pattern
+        ).mapped('workcenter_ids').ids
         if wc_ids:
             self.env.cr.execute("""
                 SELECT date_trunc('month', wo.date_finished)::date,
@@ -212,19 +247,6 @@ class QbCostoProducto(models.Model):
                   AND wo.date_finished >= %%s AND wo.date_finished < %%s
                 GROUP BY 1
             """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
-            for mes, qty in self.env.cr.fetchall():
-                by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
-        for centro in centros.filtered(
-                lambda c: c.mo_name_pattern and not c.workcenter_ids):
-            self.env.cr.execute("""
-                SELECT date_trunc('month', mp.date_finished)::date,
-                       COALESCE(SUM(%s), 0)
-                FROM mrp_production mp
-                WHERE mp.name LIKE %%s AND mp.state = 'done'
-                  AND mp.date_finished >= %%s AND mp.date_finished < %%s
-                GROUP BY 1
-            """ % mo_qty_sql(self.env),
-                (centro.mo_name_pattern, date_from, date_to))
             for mes, qty in self.env.cr.fetchall():
                 by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
         activos = [q for q in by_month.values() if q > 0]
@@ -535,12 +557,20 @@ class QbCostoProducto(models.Model):
     def _sales_by_product(self, period):
         """{product_id: (qty, revenue)} del período, con dedup del triplete
         (lista+/descuento−/neta+) para qty; revenue suma las 3 líneas
-        (cancelan aritméticamente). out_refund resta."""
+        (cancelan aritméticamente). out_refund resta.
+
+        Revenue en MXN desde ``aml.balance`` (moneda de la compañía), NO desde
+        ``price_subtotal`` (moneda del documento): así una factura en USD entra
+        con su valor real en pesos y no mezcla dólares con pesos. Para una línea
+        de ingreso, balance es crédito (negativo) en venta y débito (positivo)
+        en nota de crédito → ``SUM(-balance)`` suma ventas y resta devoluciones
+        sin necesitar el CASE por move_type. Mismo criterio que el cotizador
+        (``sales_by_customer``)."""
         date_to = period + relativedelta(months=1)
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
-                       aml.price_subtotal, am.move_type
+                       aml.balance, am.move_type, am.currency_id
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
                 WHERE am.move_type IN ('out_invoice', 'out_refund')
@@ -560,12 +590,15 @@ class QbCostoProducto(models.Model):
                    COALESCE((SELECT SUM(CASE WHEN q.move_type = 'out_refund'
                                              THEN -q.quantity ELSE q.quantity END)
                              FROM qty_dedup q WHERE q.product_id = l.product_id), 0) AS qty,
-                   SUM(CASE WHEN l.move_type = 'out_refund'
-                            THEN -l.price_subtotal ELSE l.price_subtotal END) AS revenue
+                   SUM(-l.balance) AS revenue,
+                   string_agg(DISTINCT CASE WHEN l.currency_id != %s
+                                            THEN cur.name END, ', ') AS divisas
             FROM lines l
+            LEFT JOIN res_currency cur ON cur.id = l.currency_id
             GROUP BY l.product_id
-        """, (period, date_to, self.env.company.id))
-        return {row[0]: (row[1] or 0.0, row[2] or 0.0)
+        """, (period, date_to, self.env.company.id,
+              self.env.company.currency_id.id))
+        return {row[0]: (row[1] or 0.0, row[2] or 0.0, row[3] or '')
                 for row in self.env.cr.fetchall()}
 
     # ------------------------------------------------------------------
@@ -643,6 +676,30 @@ class QbCostoProducto(models.Model):
         return True
 
     @api.model
+    def cron_recompute_current_month(self):
+        """Mantiene fresco el mes EN CURSO sin esperar al cierre. El cron
+        mensual (día 1) cierra el mes anterior; éste refresca el actual, para
+        que el reporte no requiera 'Recalcular' a mano entre cierres."""
+        today = fields.Date.today()
+        self.action_recompute_period(date(today.year, today.month, 1))
+        return True
+
+    @api.model
+    def action_recompute_year(self, year=None):
+        """Recalcula el costo por producto de TODOS los meses del año, de enero
+        al mes en curso (o a diciembre para un año pasado). Corre
+        action_recompute_period por cada mes; idempotente. Útil para ver el
+        reporte del año completo (luego el pivote suma por producto)."""
+        today = fields.Date.today()
+        year = int(year) if year else today.year
+        last_month = today.month if year == today.year else 12
+        for m in range(1, last_month + 1):
+            self.action_recompute_period(date(year, m, 1))
+        _logger.info('qb.costo.producto: recalculado el año %s (meses 1-%s)',
+                     year, last_month)
+        return True
+
+    @api.model
     def _compute_product_vals(self, product, period, factores, sales, ctx,
                               Ruteo, Peso):
         """Vals de qb.costo.producto para UN producto. Devuelve
@@ -653,7 +710,7 @@ class QbCostoProducto(models.Model):
         m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
         uom_name = (product.uom_id.name or '').lower()
         is_kg = uom_name in KG_UOM_NAMES
-        qty, revenue = sales.get(product.id, (0.0, 0.0))
+        qty, revenue, divisa = sales.get(product.id, (0.0, 0.0, ''))
         # qty neta ≤ 0 (devoluciones > ventas en el período) daría un precio
         # negativo que envenena márgenes y alertas: se trata como sin ventas.
         precio = revenue / qty if qty > 0 else 0.0
@@ -693,6 +750,7 @@ class QbCostoProducto(models.Model):
             'm_per_kg': m_per_kg,
             'qty_vendida': qty,
             'precio_prom': precio,
+            'divisa_venta': divisa or False,
             'mp_unit': mp,
             'energia_unit': energia,
             'costo_variable': variable,
@@ -812,16 +870,21 @@ class QbCostoProducto(models.Model):
         }
 
     @api.model
-    def _precio_sugerido(self, variable, fab, op, piso_lleno, mercado):
+    def _precio_sugerido(self, variable, fab, op, piso_lleno, mercado,
+                         target=None):
         """Precio que da el margen NETO meta y nunca queda por debajo del piso
         lleno ni del mercado:  costo_producción ÷ (1 − op% − margen_meta),
         con piso en el piso lleno y en el precio de mercado real.
 
         La operación va en el denominador porque es % sobre venta (depende del
         precio). Con margen meta 0 el sugerido colapsa al piso lleno.
+
+        `target` (fracción, p.ej. 0.30 = 30%) permite pedir un margen puntual
+        al cotizar; si es None se usa el margen meta global de Configuración.
         """
-        target = self.env['qb.costeo.factor.config'].get_param(
-            'target_margin', 0.0) or 0.0
+        if target is None:
+            target = self.env['qb.costeo.factor.config'].get_param(
+                'target_margin', 0.0) or 0.0
         denom = 1.0 - op - target
         base = (variable + fab) / denom if denom > 0 else piso_lleno
         return max(base, piso_lleno, mercado)

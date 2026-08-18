@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Pesaje de Rollos y Subproductos Tejido',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.4.1',
     'category': 'Manufacturing',
     'summary': 'Control de pesaje de rollos, subproductos, lotes automáticos y etiquetas ZPL',
     'description': """

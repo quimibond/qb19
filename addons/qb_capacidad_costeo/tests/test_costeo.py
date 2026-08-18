@@ -765,3 +765,164 @@ class TestQbCosteo(TransactionCase):
                 rec.contrib_total,
                 (rec.margen_contribucion * rec.qty_vendida
                  if rec.precio_prom else 0.0), places=2)
+
+    def test_margen_objetivo_fija_precio(self):
+        """Cotizar por MARGEN objetivo: el precio sugerido = costo_producción
+        ÷ (1 − op − margen), y se usa como precio evaluado (sin precio
+        objetivo capturado)."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 9, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'margen_objetivo': 25.0,
+        })
+        calc = wiz._calc()
+        esperado = (calc['variable'] + calc['fab']) / (1 - calc['op_pct'] - 0.25)
+        esperado = max(esperado, calc['piso_lleno'], calc['precio_mercado'])
+        self.assertAlmostEqual(calc['precio_sugerido'], esperado, places=3)
+        self.assertAlmostEqual(calc['precio_ref'], esperado, places=3)
+        self.assertIn('margen objetivo', calc['evaluado_fuente'])
+        # El margen neto realizado a ese precio ≈ 25% (no clampeado)
+        neto = 100.0 * (esperado - calc['variable'] - calc['fab']
+                        - calc['op_pct'] * esperado) / esperado
+        self.assertAlmostEqual(neto, 25.0, places=1)
+        # Precio objetivo captura manda sobre el margen
+        wiz.precio_objetivo = 999.0
+        calc2 = wiz._calc()
+        self.assertAlmostEqual(calc2['precio_ref'], 999.0, places=2)
+
+    def test_tejido_produccion_por_orden_no_workorder(self):
+        """El centro TEJIDO mide producción por patrón de ORDEN (TL/OP-TE),
+        no por workorder (mal registrado): así el promedio no lo arrastra un
+        mes con workorders sin cerrar. La migración/seed le pone el patrón."""
+        tejido = self.env.ref('qb_capacidad_costeo.centro_tejido')
+        tint = self.env.ref('qb_capacidad_costeo.centro_tintoreria')
+        acab = self.env.ref('qb_capacidad_costeo.centro_acabado')
+        ent = self.env.ref('qb_capacidad_costeo.centro_entretelas')
+        self.assertEqual(tejido.mo_name_pattern, 'TL/OP-TE%',
+                         'TEJIDO debe medirse por orden, no por workorder')
+        # Tintorería tenía producción CERO (sin patrón); ahora TL/OP-TIN.
+        self.assertEqual(tint.mo_name_pattern, 'TL/OP-TIN%')
+        # V10 es entretelas/resina, NO acabado: acabado solo TL/OP-ACA.
+        self.assertNotIn('V10', acab.mo_name_pattern or '')
+        # Entretelas suma la resina V10 (patrón múltiple por coma).
+        self.assertIn('TL/OP-V10%', ent.mo_name_pattern)
+        self.assertIn('TL/OP-CAR%', ent.mo_name_pattern)
+        # Con patrón, _production_month_avg NO usa el conteo por workorder
+        # para este centro (que tenga o no workcenters ligados). El patrón
+        # múltiple (coma) tampoco truena.
+        Costo = self.env['qb.costo.producto']
+        from datetime import date as _d
+        for c in (tejido, tint, acab, ent):
+            avg = Costo._production_month_avg(c, _d(2026, 1, 1), _d(2026, 8, 1))
+            self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
+
+    def test_rentabilidad_cliente_lee_sin_error(self):
+        """La vista SQL de rentabilidad por cliente compila y expone la
+        cobertura de costo (revenue en MXN vía balance, no price_subtotal)."""
+        Rent = self.env['qb.cliente.rentabilidad']
+        # No debe tronar aunque no haya facturas en la DB de test.
+        recs = Rent.search([], limit=5)
+        self.assertIn('costo_cobertura_pct', Rent._fields)
+        for r in recs:
+            # cobertura es un %; el revenue en MXN no explota a negativos raros
+            self.assertGreaterEqual(r.costo_cobertura_pct, -0.01)
+
+    def test_cron_refresca_mes_en_curso(self):
+        """El cron semanal recalcula el mes EN CURSO (sin esperar al cierre),
+        así el reporte no requiere 'Recalcular' a mano entre cierres."""
+        from datetime import date as _d
+        self.Costo.cron_recompute_current_month()
+        today = _d.today()
+        recs = self.Costo.search([('period', '=', _d(today.year, today.month, 1))])
+        self.assertTrue(recs, 'debe existir el mes en curso tras el cron')
+
+    def test_recompute_year_todos_los_meses(self):
+        """Recalcular año en curso genera filas de varios meses (enero → mes
+        actual), no sólo uno — para ver el reporte del año completo."""
+        from datetime import date as _d
+        today = _d.today()
+        self.Costo.action_recompute_year(today.year)
+        periods = self.Costo.search([]).mapped('period')
+        meses = {p.month for p in periods if p and p.year == today.year}
+        # Al menos enero y el mes en curso (si estamos en enero, sólo uno).
+        self.assertIn(1, meses)
+        if today.month > 1:
+            self.assertGreaterEqual(len(meses), 2,
+                                    'debe cubrir varios meses del año')
+
+    def test_comparador_productos(self):
+        """El comparador pone productos lado a lado: uno con fila del período
+        (del reporte) y uno sin ventas (costo en vivo)."""
+        period = date.today().replace(day=1)
+        self.Costo.action_recompute_period(period)
+        wiz = self.env['qb.comparador.wizard'].create({
+            'period': period,
+            'product_ids': [(6, 0, [self.tela.id, self.importado.id])],
+        })
+        html = wiz.comparativa_html
+        self.assertIn('Costo variable', html)
+        self.assertIn('Costo absorbido', html)
+        self.assertIn('Precio sugerido', html)
+        self.assertIn(self.tela.default_code, html)
+        self.assertIn(self.importado.default_code, html)
+        # Con margen objetivo la fila cambia de etiqueta y muestra el precio
+        wiz.margen_objetivo = 30.0
+        self.assertIn('margen 30%', wiz.comparativa_html)
+        # El precio sugerido de la tela deja ~30% neto (no clampeado por piso)
+        m = wiz._metrics(self.tela)
+        self.assertAlmostEqual(m['sug_neto'], 30.0, delta=0.5)
+        # Menos de 2 productos → mensaje, no tabla
+        wiz.product_ids = [(6, 0, [self.tela.id])]
+        self.assertIn('al menos 2', wiz.comparativa_html)
+
+    def test_reporte_revenue_en_mxn_no_divisa_cruda(self):
+        """El reporte toma el revenue de aml.balance (MXN), NO de
+        price_subtotal (moneda del documento): una factura en EUR entra con su
+        valor REAL en pesos y marca la divisa. Antes sumaba euros crudos contra
+        pesos y el precio salía basura (~1/TC)."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date.today().replace(day=1)
+        eur = self.env.ref('base.EUR')
+        eur.active = True
+        self.env['res.currency.rate'].create({
+            'currency_id': eur.id,
+            'rate': 0.05,  # 1 cía = 0.05 EUR → 1 EUR = 20 cía
+            'name': period,
+        })
+        partner = self.env['res.partner'].create({'name': 'Cliente Export'})
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': partner.id,
+            'currency_id': eur.id,
+            'invoice_date': period,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.tela.id,
+                'quantity': 100,
+                'price_unit': 5.0,   # 5 EUR = 100 cía por unidad
+            })],
+        })
+        move.action_post()
+
+        sales = self.Costo._sales_by_product(period)
+        qty, revenue, divisa = sales[self.tela.id]
+        self.assertAlmostEqual(qty, 100.0, places=2)
+        # 100 u × 5 EUR × 20 = 10,000 en moneda cía — NO 500 (el crudo EUR)
+        self.assertAlmostEqual(revenue, 10000.0, places=0,
+                               msg='revenue debe venir de balance (MXN)')
+        self.assertIn('EUR', divisa, 'debe marcar la divisa de la factura')
+
+        # El recompute deja precio_prom en moneda cía y puebla divisa_venta
+        self.Costo.action_recompute_period(period)
+        rec = self.Costo.search([('period', '=', period),
+                                 ('product_id', '=', self.tela.id)])
+        self.assertAlmostEqual(rec.precio_prom, 100.0, places=0)
+        self.assertIn('EUR', rec.divisa_venta)
+        self.assertEqual(rec.company_currency_id,
+                         self.env.company.currency_id)
