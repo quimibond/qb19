@@ -75,6 +75,14 @@ class QbCotizadorWizard(models.TransientModel):
         help='El precio objetivo convertido a pesos con el TC de hoy — este '
              'es el número que se compara contra los costos y pisos (que '
              'siempre son MXN).')
+    margen_objetivo = fields.Float(
+        string='Margen objetivo %',
+        help='Si en vez de un precio prefieres fijar el MARGEN, escríbelo aquí '
+             '(p.ej. 25 = 25%). El sistema calcula el precio que deja ese '
+             'margen NETO (después de MP, energía, fabricación y operación) y '
+             'lo usa como precio evaluado. Nunca baja del piso a planta llena '
+             'ni del precio de mercado real. Si capturas un precio objetivo '
+             'arriba, ese manda sobre el margen.')
     fx_rate = fields.Float(
         string='TC (MXN por 1 de la moneda)', digits=(16, 4), readonly=True,
         compute='_compute_fx_rate',
@@ -435,13 +443,24 @@ class QbCotizadorWizard(models.TransientModel):
             q['hours_per_unit'] = Costo._hours_per_unit(
                 centros, q['is_kg'], q['kg'], q['m_per_kg'])
 
+        # Margen objetivo puntual: recalcula el precio sugerido para ESE margen
+        # (en vez del margen meta global), respetando pisos y mercado.
+        if self.margen_objetivo:
+            q['precio_sugerido'] = Costo._precio_sugerido(
+                q['variable'], q['fab'], q['op_pct'], q['piso_lleno'],
+                q['precio_mercado'], target=self.margen_objetivo / 100.0)
+
         # El precio objetivo viene EN LA MONEDA elegida → a MXN para comparar.
-        # Sin objetivo se evalúa el precio de MERCADO (a lo que ya se vende);
-        # sin ventas, el piso a planta llena (margen cero).
+        # Prioridad: precio objetivo capturado > precio para margen objetivo >
+        # precio de mercado (a lo que ya se vende) > piso a planta llena.
         fx = self.env['qb.costo.producto'].to_mxn_rate(self.currency_id)
         if self.precio_objetivo:
             precio_ref = self.precio_objetivo * fx
             fuente = 'precio objetivo capturado'
+        elif self.margen_objetivo:
+            precio_ref = q['precio_sugerido']
+            fuente = ('precio para margen objetivo %g%%'
+                      % self.margen_objetivo)
         elif q['precio_mercado']:
             precio_ref = q['precio_mercado']
             fuente = 'precio de mercado (promedio real 12m)'
@@ -611,7 +630,7 @@ class QbCotizadorWizard(models.TransientModel):
 
     @api.depends('product_id', 'spec_mode', 'spec_gramaje', 'spec_ancho',
                  'spec_bucket', 'spec_mp_unit', 'spec_centro_ids',
-                 'volumen', 'precio_objetivo')
+                 'volumen', 'precio_objetivo', 'margen_objetivo', 'currency_id')
     def _compute_cotizacion(self):
         for wiz in self:
             zero = dict.fromkeys([
@@ -778,9 +797,12 @@ class QbCotizadorWizard(models.TransientModel):
             'costo_variable': res['variable'],
             'costo_absorbido_sin_op': res['variable'] + res['fab'],
             # Todo lo guardado es MXN (consistencia histórica); el TC y la
-            # moneda capturada quedan en fx_rate/supuestos
-            'precio_objetivo': self.precio_objetivo * res['fx']
-                               if self.precio_objetivo else 0.0,
+            # moneda capturada quedan en fx_rate/supuestos. Si se cotizó por
+            # MARGEN objetivo (sin precio), se guarda el precio que da ese
+            # margen (res['precio_ref'] ya es MXN) como precio objetivo.
+            'precio_objetivo':
+                (self.precio_objetivo * res['fx']) if self.precio_objetivo
+                else (res['precio_ref'] if self.margen_objetivo else 0.0),
             'precio_mercado': res['precio_mercado'],
             'piso_ocioso': res['piso_ocioso'],
             'piso_lleno': res['piso_lleno'],

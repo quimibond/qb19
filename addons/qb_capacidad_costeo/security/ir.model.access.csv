@@ -28,6 +28,7 @@ access_qb_snapshot_line_user,qb.costeo.snapshot.line.user,model_qb_costeo_snapsh
 access_qb_snapshot_line_mgr,qb.costeo.snapshot.line.mgr,model_qb_costeo_snapshot_line,mrp.group_mrp_manager,1,1,1,1
 access_qb_cotizador_wizard,qb.cotizador.wizard,model_qb_cotizador_wizard,base.group_user,1,1,1,1
 access_qb_escenario_wizard,qb.escenario.turno.wizard,model_qb_escenario_turno_wizard,base.group_user,1,1,1,1
+access_qb_comparador_wizard,qb.comparador.wizard,model_qb_comparador_wizard,base.group_user,1,1,1,1
 access_qb_costeo_centro_sys,qb.costeo.centro.sys,model_qb_costeo_centro,base.group_system,1,1,1,1
 access_qb_cuenta_class_sys,qb.costeo.cuenta.class.sys,model_qb_costeo_cuenta_class,base.group_system,1,1,1,1
 access_qb_factor_config_sys,qb.costeo.factor.config.sys,model_qb_costeo_factor_config,base.group_system,1,1,1,1

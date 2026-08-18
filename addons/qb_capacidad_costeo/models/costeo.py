@@ -836,16 +836,21 @@ class QbCostoProducto(models.Model):
         }
 
     @api.model
-    def _precio_sugerido(self, variable, fab, op, piso_lleno, mercado):
+    def _precio_sugerido(self, variable, fab, op, piso_lleno, mercado,
+                         target=None):
         """Precio que da el margen NETO meta y nunca queda por debajo del piso
         lleno ni del mercado:  costo_producción ÷ (1 − op% − margen_meta),
         con piso en el piso lleno y en el precio de mercado real.
 
         La operación va en el denominador porque es % sobre venta (depende del
         precio). Con margen meta 0 el sugerido colapsa al piso lleno.
+
+        `target` (fracción, p.ej. 0.30 = 30%) permite pedir un margen puntual
+        al cotizar; si es None se usa el margen meta global de Configuración.
         """
-        target = self.env['qb.costeo.factor.config'].get_param(
-            'target_margin', 0.0) or 0.0
+        if target is None:
+            target = self.env['qb.costeo.factor.config'].get_param(
+                'target_margin', 0.0) or 0.0
         denom = 1.0 - op - target
         base = (variable + fab) / denom if denom > 0 else piso_lleno
         return max(base, piso_lleno, mercado)

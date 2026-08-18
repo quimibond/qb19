@@ -211,6 +211,48 @@
         </field>
     </record>
 
+    <!-- ============ Comparador de productos ============ -->
+    <record id="comparador_wizard_form" model="ir.ui.view">
+        <field name="name">qb.comparador.wizard.form</field>
+        <field name="model">qb.comparador.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Comparar productos">
+                <field name="company_currency_id" invisible="1"/>
+                <group>
+                    <field name="product_ids" widget="many2many_tags"
+                           options="{'no_create': True}"
+                           placeholder="Elige 2 a 6 productos…"/>
+                    <field name="period"/>
+                </group>
+                <field name="comparativa_html" readonly="1" nolabel="1"/>
+                <footer>
+                    <button string="Cerrar" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="comparador_action" model="ir.actions.act_window">
+        <field name="name">Comparar productos</field>
+        <field name="res_model">qb.comparador.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <!-- Acción de contexto en el reporte: compara los productos seleccionados -->
+    <record id="costo_comparar_server" model="ir.actions.server">
+        <field name="name">Comparar costos (selección)</field>
+        <field name="model_id" ref="model_qb_costo_producto"/>
+        <field name="binding_model_id" ref="model_qb_costo_producto"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = {
+    'type': 'ir.actions.act_window',
+    'res_model': 'qb.comparador.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {'active_model': 'qb.costo.producto', 'active_ids': records.ids},
+}</field>
+    </record>
+
     <!-- Recalcular el mes anterior a demanda -->
     <record id="costo_recompute_action" model="ir.actions.server">
         <field name="name">Recalcular costeo (mes anterior)</field>

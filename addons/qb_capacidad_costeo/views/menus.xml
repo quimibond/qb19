@@ -34,6 +34,8 @@
               parent="menu_qb_analisis" sequence="10"/>
     <menuitem id="menu_qb_costo_producto" name="Costo por producto"
               parent="menu_qb_costos_group" action="costo_producto_action" sequence="10"/>
+    <menuitem id="menu_qb_comparador" name="Comparar productos"
+              parent="menu_qb_costos_group" action="comparador_action" sequence="12"/>
     <menuitem id="menu_qb_ranking" name="Ranking por hora-máquina"
               parent="menu_qb_costos_group" action="costo_ranking_action" sequence="15"/>
     <menuitem id="menu_qb_clientes" name="Rentabilidad por cliente"
