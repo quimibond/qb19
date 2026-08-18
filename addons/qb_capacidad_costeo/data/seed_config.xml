@@ -98,9 +98,9 @@
             <field name="driver_principal">largo</field>
             <field name="std_output_per_hour">1779</field>
             <field name="renta_contractual_mxn">178467</field>
-            <field name="mo_name_pattern">TL/OP-ACA%,TL/OP-V10%</field>
+            <field name="mo_name_pattern">TL/OP-ACA%</field>
             <field name="es_denominador_m" eval="True"/>
-            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA + TL/OP-V10 (segunda línea, ~9% del acabado) mientras no haya workcenters.</field>
+            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA (tela). V10 NO es acabado — es entretelas/resina, va en su centro.</field>
         </record>
         <record id="centro_entretelas" model="qb.costeo.centro">
             <field name="sequence">40</field>
@@ -109,8 +109,8 @@
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">largo</field>
             <field name="renta_contractual_mxn">352062</field>
-            <field name="mo_name_pattern">TL/OP-CAR%</field>
-            <field name="notes">Carda, puntos (resina), espolvoreo, perfoquim, impregnación, termofijado. Lote 10. Factor propio $/m.</field>
+            <field name="mo_name_pattern">TL/OP-CAR%,TL/OP-V10%</field>
+            <field name="notes">Carda, puntos (resina), espolvoreo, perfoquim, impregnación, termofijado. Lote 10. Factor propio $/m. Producción TL/OP-CAR (carda) + TL/OP-V10 (aplicación de resina / fusionable) — antes V10 no se contaba en ningún centro.</field>
         </record>
         <record id="centro_insp" model="qb.costeo.centro">
             <field name="sequence">50</field>

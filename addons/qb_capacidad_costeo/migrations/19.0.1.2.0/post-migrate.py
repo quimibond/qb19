@@ -6,8 +6,9 @@ workorder ni dejándola en cero.
   ~1/5). Patrón de orden TL/OP-TE → promedio 2026 ~84 t (workorder) → ~96 t.
 - TINTORERÍA: no tenía patrón ni workcenters → salía en CERO (100% ociosa,
   falso). Patrón TL/OP-TIN (~90 t/mes reales).
-- ACABADO: su patrón TL/OP-ACA no incluía la segunda línea TL/OP-V10 (~9% del
-  acabado). Se agrega, separado por coma (mo_name_pattern admite varios).
+- ENTRETELAS: TL/OP-V10 (aplicación de resina / fusionable) es entretelas —
+  antes NO se contaba en ningún centro. Se agrega a su patrón, separado por
+  coma (mo_name_pattern admite varios). (V10 NO es acabado.)
 
 El seed es noupdate, así que los centros ya instalados no toman los patrones
 nuevos solos: se los ponemos aquí. Idempotente."""
@@ -28,11 +29,18 @@ def migrate(cr, version):
          WHERE code = 'TINTORERIA'
            AND (mo_name_pattern IS NULL OR mo_name_pattern = '')
     """)
-    # ACABADO — sumar la segunda línea V10 si aún no está.
+    # ENTRETELAS — sumar la resina V10 si aún no está.
     cr.execute("""
         UPDATE qb_costeo_centro
-           SET mo_name_pattern = 'TL/OP-ACA%,TL/OP-V10%'
-         WHERE code = 'ACABADO'
+           SET mo_name_pattern = 'TL/OP-CAR%,TL/OP-V10%'
+         WHERE code = 'ENTRETELAS'
            AND mo_name_pattern IS NOT NULL
            AND mo_name_pattern NOT LIKE '%V10%'
+    """)
+    # ACABADO — asegurar que NO cargue V10 (es entretelas, no acabado).
+    cr.execute("""
+        UPDATE qb_costeo_centro
+           SET mo_name_pattern = 'TL/OP-ACA%'
+         WHERE code = 'ACABADO'
+           AND mo_name_pattern LIKE '%V10%'
     """)
