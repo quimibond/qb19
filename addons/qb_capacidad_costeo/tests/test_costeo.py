@@ -766,6 +766,52 @@ class TestQbCosteo(TransactionCase):
                 (rec.margen_contribucion * rec.qty_vendida
                  if rec.precio_prom else 0.0), places=2)
 
+    def test_margen_objetivo_fija_precio(self):
+        """Cotizar por MARGEN objetivo: el precio sugerido = costo_producción
+        ÷ (1 − op − margen), y se usa como precio evaluado (sin precio
+        objetivo capturado)."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2026, 9, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'margen_objetivo': 25.0,
+        })
+        calc = wiz._calc()
+        esperado = (calc['variable'] + calc['fab']) / (1 - calc['op_pct'] - 0.25)
+        esperado = max(esperado, calc['piso_lleno'], calc['precio_mercado'])
+        self.assertAlmostEqual(calc['precio_sugerido'], esperado, places=3)
+        self.assertAlmostEqual(calc['precio_ref'], esperado, places=3)
+        self.assertIn('margen objetivo', calc['evaluado_fuente'])
+        # El margen neto realizado a ese precio ≈ 25% (no clampeado)
+        neto = 100.0 * (esperado - calc['variable'] - calc['fab']
+                        - calc['op_pct'] * esperado) / esperado
+        self.assertAlmostEqual(neto, 25.0, places=1)
+        # Precio objetivo captura manda sobre el margen
+        wiz.precio_objetivo = 999.0
+        calc2 = wiz._calc()
+        self.assertAlmostEqual(calc2['precio_ref'], 999.0, places=2)
+
+    def test_comparador_productos(self):
+        """El comparador pone productos lado a lado: uno con fila del período
+        (del reporte) y uno sin ventas (costo en vivo)."""
+        period = date.today().replace(day=1)
+        self.Costo.action_recompute_period(period)
+        wiz = self.env['qb.comparador.wizard'].create({
+            'period': period,
+            'product_ids': [(6, 0, [self.tela.id, self.importado.id])],
+        })
+        html = wiz.comparativa_html
+        self.assertIn('Costo variable', html)
+        self.assertIn('Costo absorbido', html)
+        self.assertIn(self.tela.default_code, html)
+        self.assertIn(self.importado.default_code, html)
+        # Menos de 2 productos → mensaje, no tabla
+        wiz.product_ids = [(6, 0, [self.tela.id])]
+        self.assertIn('al menos 2', wiz.comparativa_html)
+
     def test_reporte_revenue_en_mxn_no_divisa_cruda(self):
         """El reporte toma el revenue de aml.balance (MXN), NO de
         price_subtotal (moneda del documento): una factura en EUR entra con su
