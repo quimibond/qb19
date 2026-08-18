@@ -68,6 +68,7 @@ class MrpProduction(models.Model):
                 'location_dest_id': finished_move.location_dest_id.id,
                 'workorder_id': current_wo.id if current_wo else False,
                 'production_id': self.id,
+                'picked': True,
             })
 
             self.qty_producing += weight
