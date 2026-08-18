@@ -806,8 +806,15 @@ class TestQbCosteo(TransactionCase):
         html = wiz.comparativa_html
         self.assertIn('Costo variable', html)
         self.assertIn('Costo absorbido', html)
+        self.assertIn('Precio sugerido', html)
         self.assertIn(self.tela.default_code, html)
         self.assertIn(self.importado.default_code, html)
+        # Con margen objetivo la fila cambia de etiqueta y muestra el precio
+        wiz.margen_objetivo = 30.0
+        self.assertIn('margen 30%', wiz.comparativa_html)
+        # El precio sugerido de la tela deja ~30% neto (no clampeado por piso)
+        m = wiz._metrics(self.tela)
+        self.assertAlmostEqual(m['sug_neto'], 30.0, delta=0.5)
         # Menos de 2 productos → mensaje, no tabla
         wiz.product_ids = [(6, 0, [self.tela.id])]
         self.assertIn('al menos 2', wiz.comparativa_html)

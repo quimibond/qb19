@@ -22,6 +22,11 @@ class QbComparadorWizard(models.TransientModel):
         string='Período', required=True,
         help='Mes del que se toman las ventas y factores. Por defecto el '
              'último calculado.')
+    margen_objetivo = fields.Float(
+        string='Margen objetivo %',
+        help='Si lo pones (p.ej. 25), la fila "Precio sugerido" muestra a '
+             'cuánto vender CADA producto para dejar ese margen neto. Vacío = '
+             'usa el margen meta global de Configuración.')
     company_currency_id = fields.Many2one(
         'res.currency', default=lambda self: self.env.company.currency_id)
     comparativa_html = fields.Html(
@@ -46,6 +51,18 @@ class QbComparadorWizard(models.TransientModel):
         return res
 
     # ------------------------------------------------------------------
+    def _sugerido(self, variable, fab, op_pct, piso_lleno):
+        """Precio para el margen objetivo del wizard (o el meta global), sin
+        piso de mercado (aquí queremos la guía cost-plus pura). Devuelve
+        (precio_sugerido, margen_neto_% a ese precio)."""
+        Costo = self.env['qb.costo.producto']
+        target = (self.margen_objetivo / 100.0) if self.margen_objetivo else None
+        sug = Costo._precio_sugerido(variable, fab, op_pct, piso_lleno, 0.0,
+                                     target=target)
+        neto = (100.0 * (sug - variable - fab - op_pct * sug) / sug
+                if sug else 0.0)
+        return sug, neto
+
     def _metrics(self, product):
         """Métricas de UN producto para el período: primero del reporte
         guardado; si no hay fila, se calculan en vivo (precio = mercado)."""
@@ -54,6 +71,13 @@ class QbComparadorWizard(models.TransientModel):
                             ('product_id', '=', product.id),
                             ('company_id', '=', self.env.company.id)], limit=1)
         if rec:
+            op_pct = (rec.factores_id.op_pct if rec.factores_id
+                      else (rec.op_unit / rec.precio_prom
+                            if rec.precio_prom else 0.0))
+            piso_lleno = ((rec.costo_variable + rec.fab_unit) / (1.0 - op_pct)
+                          if op_pct < 1 else 0.0)
+            sug, sug_neto = self._sugerido(
+                rec.costo_variable, rec.fab_unit, op_pct, piso_lleno)
             return {
                 'ref': rec.default_code or product.name,
                 'uom': rec.uom_name or '',
@@ -62,6 +86,7 @@ class QbComparadorWizard(models.TransientModel):
                 'mp': rec.mp_unit, 'energia': rec.energia_unit,
                 'variable': rec.costo_variable, 'fab': rec.fab_unit,
                 'op': rec.op_unit, 'absorbido': rec.costo_absorbido,
+                'piso_lleno': piso_lleno, 'sugerido': sug, 'sug_neto': sug_neto,
                 'contrib': rec.margen_contribucion,
                 'contrib_pct': rec.margen_contribucion_pct,
                 'abs_pct': rec.margen_absorbido_pct,
@@ -78,6 +103,8 @@ class QbComparadorWizard(models.TransientModel):
         variable = q['variable']
         absorbido = variable + q['fab'] + q['op_pct'] * precio
         contrib = precio - variable if precio else 0.0
+        sug, sug_neto = self._sugerido(
+            variable, q['fab'], q['op_pct'], q['piso_lleno'])
         return {
             'ref': product.default_code or product.name,
             'uom': q.get('uom_name', product.uom_id.name or ''),
@@ -86,6 +113,7 @@ class QbComparadorWizard(models.TransientModel):
             'mp': q['mp'], 'energia': q['energia'],
             'variable': variable, 'fab': q['fab'],
             'op': q['op_pct'] * precio, 'absorbido': absorbido,
+            'piso_lleno': q['piso_lleno'], 'sugerido': sug, 'sug_neto': sug_neto,
             'contrib': contrib,
             'contrib_pct': 100.0 * contrib / precio if precio else 0.0,
             'abs_pct': 100.0 * (precio - absorbido) / precio if precio else 0.0,
@@ -93,7 +121,7 @@ class QbComparadorWizard(models.TransientModel):
             'alerta': '',
         }
 
-    @api.depends('product_ids', 'period')
+    @api.depends('product_ids', 'period', 'margen_objetivo')
     def _compute_comparativa(self):
         for wiz in self:
             prods = wiz.product_ids[:6]
@@ -115,6 +143,9 @@ class QbComparadorWizard(models.TransientModel):
         def pct(v):
             return '{:,.1f}%'.format(v or 0.0)
 
+        sug_label = ('⭐ Precio p/ margen %g%% / u' % self.margen_objetivo
+                     if self.margen_objetivo else '⭐ Precio sugerido / u')
+
         # Filas: (etiqueta, key, formato, ¿resaltar?)
         filas = [
             ('Unidad', 'uom', 'raw', False),
@@ -129,6 +160,9 @@ class QbComparadorWizard(models.TransientModel):
             ('Contribución / u', 'contrib', 'money', False),
             ('Contribución %', 'contrib_pct', 'pct', True),
             ('Margen absorbido %', 'abs_pct', 'pct', True),
+            ('Piso a planta llena / u', 'piso_lleno', 'money', False),
+            (sug_label, 'sugerido', 'money', True),
+            ('Margen al sugerido %', 'sug_neto', 'pct', False),
         ]
         th = ''.join(
             '<th class="text-end" style="padding:6px 10px;">%s%s</th>'

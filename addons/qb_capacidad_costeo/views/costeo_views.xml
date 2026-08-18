@@ -223,6 +223,8 @@
                            options="{'no_create': True}"
                            placeholder="Elige 2 a 6 productos…"/>
                     <field name="period"/>
+                    <field name="margen_objetivo"
+                           help="Opcional: a cuánto vender cada producto para dejar ese margen neto. Vacío usa el margen meta global."/>
                 </group>
                 <field name="comparativa_html" readonly="1" nolabel="1"/>
                 <footer>
