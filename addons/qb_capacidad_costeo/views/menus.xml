@@ -91,6 +91,8 @@
               groups="mrp.group_mrp_manager,base.group_system"/>
     <menuitem id="menu_qb_recompute" name="Recalcular costeo (mes anterior)"
               parent="menu_qb_config" action="costo_recompute_action" sequence="8"/>
+    <menuitem id="menu_qb_recompute_year" name="Recalcular costeo (año en curso)"
+              parent="menu_qb_config" action="costo_recompute_year_action" sequence="9"/>
     <menuitem id="menu_qb_centros" name="Centros de costo"
               parent="menu_qb_config" action="centro_action" sequence="10"/>
     <menuitem id="menu_qb_cuentas" name="Clasificación de cuentas"

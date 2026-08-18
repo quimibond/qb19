@@ -13,6 +13,9 @@
                 <field name="revenue_12m" sum="Total"/>
                 <field name="contrib_12m" sum="Total"/>
                 <field name="contrib_pct"/>
+                <field name="costo_cobertura_pct"
+                       decoration-warning="costo_cobertura_pct &lt; 95"
+                       optional="show"/>
                 <field name="horas_cuello_12m" sum="Total"/>
                 <field name="contrib_por_hora"/>
                 <field name="n_productos"/>
