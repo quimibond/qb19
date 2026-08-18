@@ -28,11 +28,15 @@
                         <field name="currency_id" options="{'no_create': True}"
                                help="La moneda en la que capturas el precio objetivo y en la que se muestran los precios al cliente. Los COSTOS del modelo siempre se calculan en MXN."/>
                         <field name="precio_objetivo" widget="monetary"
-                               options="{'currency_field': 'currency_id'}"/>
+                               options="{'currency_field': 'currency_id'}"
+                               help="Fija un PRECIO. Si lo capturas, manda sobre el margen objetivo."/>
                         <field name="precio_objetivo_mxn" readonly="1"
                                widget="monetary"
                                options="{'currency_field': 'company_currency_id'}"
                                invisible="es_mxn or not precio_objetivo"/>
+                        <field name="margen_objetivo"
+                               invisible="precio_objetivo"
+                               help="…o fija un MARGEN (%) y el sistema calcula el precio que lo deja."/>
                         <field name="es_mxn" invisible="1"/>
                         <field name="fx_rate" invisible="es_mxn"/>
                     </group>
