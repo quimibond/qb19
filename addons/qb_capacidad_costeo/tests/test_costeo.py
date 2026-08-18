@@ -820,6 +820,20 @@ class TestQbCosteo(TransactionCase):
             avg = Costo._production_month_avg(c, _d(2026, 1, 1), _d(2026, 8, 1))
             self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
 
+    def test_recompute_year_todos_los_meses(self):
+        """Recalcular año en curso genera filas de varios meses (enero → mes
+        actual), no sólo uno — para ver el reporte del año completo."""
+        from datetime import date as _d
+        today = _d.today()
+        self.Costo.action_recompute_year(today.year)
+        periods = self.Costo.search([]).mapped('period')
+        meses = {p.month for p in periods if p and p.year == today.year}
+        # Al menos enero y el mes en curso (si estamos en enero, sólo uno).
+        self.assertIn(1, meses)
+        if today.month > 1:
+            self.assertGreaterEqual(len(meses), 2,
+                                    'debe cubrir varios meses del año')
+
     def test_comparador_productos(self):
         """El comparador pone productos lado a lado: uno con fila del período
         (del reporte) y uno sin ventas (costo en vivo)."""
