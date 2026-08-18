@@ -394,10 +394,10 @@ class MrpProduction(models.Model):
                                 smove.write({'product_uom_qty': smove.product_uom.round(total_smove)})
 
         # DIAGNOSTICO TEMPORAL - solo lectura, no cambia ningún comportamiento, quitar después
-          for production in self:
-                if production.roll_count > 0:
-                    finished_move = production.move_finished_ids.filtered(
-                        lambda x: x.product_id == production.product_id and x.state not in ('done', 'cancel')
+        for production in self:
+            if production.roll_count > 0:
+                finished_move = production.move_finished_ids.filtered(
+                    lambda x: x.product_id == production.product_id and x.state not in ('done', 'cancel')
                 )[:1]
                 _logger.warning(
                     "DIAGNOSTICO QTY: MO %s | qty_producing=%s | qty_produced=%s | product_qty=%s | "
