@@ -214,20 +214,13 @@ class QbCostoProducto(models.Model):
         # ventana completa subestima el denominador ×4 e infla energía y
         # factores de fabricación en la misma proporción.
         by_month = {}
-        wc_ids = centros.mapped('workcenter_ids').ids
-        if wc_ids:
-            self.env.cr.execute("""
-                SELECT date_trunc('month', wo.date_finished)::date,
-                       COALESCE(SUM(%s), 0)
-                FROM mrp_workorder wo
-                WHERE wo.workcenter_id IN %%s AND wo.state = 'done'
-                  AND wo.date_finished >= %%s AND wo.date_finished < %%s
-                GROUP BY 1
-            """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
-            for mes, qty in self.env.cr.fetchall():
-                by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
-        for centro in centros.filtered(
-                lambda c: c.mo_name_pattern and not c.workcenter_ids):
+        # Producción a nivel ORDEN (mrp.production) es la fuente confiable:
+        # la cantidad por workorder está mal registrada (p.ej. tejido abril
+        # colapsa a ~1/5 de lo real). Por eso el patrón de orden MANDA; el
+        # conteo por workorder queda sólo como fallback para centros con
+        # workcenters pero SIN patrón de orden.
+        pattern_centros = centros.filtered('mo_name_pattern')
+        for centro in pattern_centros:
             self.env.cr.execute("""
                 SELECT date_trunc('month', mp.date_finished)::date,
                        COALESCE(SUM(%s), 0)
@@ -237,6 +230,20 @@ class QbCostoProducto(models.Model):
                 GROUP BY 1
             """ % mo_qty_sql(self.env),
                 (centro.mo_name_pattern, date_from, date_to))
+            for mes, qty in self.env.cr.fetchall():
+                by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
+        wc_ids = centros.filtered(
+            lambda c: c.workcenter_ids and not c.mo_name_pattern
+        ).mapped('workcenter_ids').ids
+        if wc_ids:
+            self.env.cr.execute("""
+                SELECT date_trunc('month', wo.date_finished)::date,
+                       COALESCE(SUM(%s), 0)
+                FROM mrp_workorder wo
+                WHERE wo.workcenter_id IN %%s AND wo.state = 'done'
+                  AND wo.date_finished >= %%s AND wo.date_finished < %%s
+                GROUP BY 1
+            """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
             for mes, qty in self.env.cr.fetchall():
                 by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
         activos = [q for q in by_month.values() if q > 0]

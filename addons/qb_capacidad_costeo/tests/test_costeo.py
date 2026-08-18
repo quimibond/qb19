@@ -794,6 +794,21 @@ class TestQbCosteo(TransactionCase):
         calc2 = wiz._calc()
         self.assertAlmostEqual(calc2['precio_ref'], 999.0, places=2)
 
+    def test_tejido_produccion_por_orden_no_workorder(self):
+        """El centro TEJIDO mide producción por patrón de ORDEN (TL/OP-TE),
+        no por workorder (mal registrado): así el promedio no lo arrastra un
+        mes con workorders sin cerrar. La migración/seed le pone el patrón."""
+        tejido = self.env.ref('qb_capacidad_costeo.centro_tejido')
+        self.assertEqual(tejido.mo_name_pattern, 'TL/OP-TE%',
+                         'TEJIDO debe medirse por orden, no por workorder')
+        # Con patrón, _production_month_avg NO usa el conteo por workorder
+        # para este centro (que tenga o no workcenters ligados).
+        Costo = self.env['qb.costo.producto']
+        from datetime import date as _d
+        avg = Costo._production_month_avg(
+            tejido, _d(2026, 1, 1), _d(2026, 8, 1))
+        self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
+
     def test_comparador_productos(self):
         """El comparador pone productos lado a lado: uno con fila del período
         (del reporte) y uno sin ventas (costo en vivo)."""

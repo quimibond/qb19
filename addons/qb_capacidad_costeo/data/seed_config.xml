@@ -77,7 +77,8 @@
             <field name="std_output_per_hour">11</field>
             <field name="renta_contractual_mxn">284269</field>
             <field name="es_denominador_kg" eval="True"/>
-            <field name="notes">36 máquinas circulares. Ligar aquí los mrp.workcenter de tejido. Throughput 11 kg/h/máquina (rango real 8.3-12.6 según galga).</field>
+            <field name="mo_name_pattern">TL/OP-TE%</field>
+            <field name="notes">36 máquinas circulares. Ligar aquí los mrp.workcenter de tejido. Throughput 11 kg/h/máquina (rango real 8.3-12.6 según galga). Producción medida por orden (TL/OP-TE), no por workorder: la cantidad por workorder está mal registrada (abril colapsa a ~1/5).</field>
         </record>
         <record id="centro_tintoreria" model="qb.costeo.centro">
             <field name="sequence">20</field>
