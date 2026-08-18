@@ -104,7 +104,8 @@ class QbBalance(models.Model):
                 SELECT ctr.id AS centro_id,
                        SUM(%(mo_qty)s) / (SELECT window_months FROM cfg) AS qty_month
                 FROM qb_costeo_centro ctr
-                JOIN mrp_production mp ON mp.name LIKE ctr.mo_name_pattern
+                JOIN mrp_production mp
+                     ON mp.name LIKE ANY(string_to_array(ctr.mo_name_pattern, ','))
                 JOIN cfg ON TRUE
                 WHERE ctr.mo_name_pattern IS NOT NULL
                   AND mp.state = 'done'

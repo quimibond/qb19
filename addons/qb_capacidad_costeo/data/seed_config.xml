@@ -87,7 +87,8 @@
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">peso</field>
             <field name="renta_contractual_mxn">178467</field>
-            <field name="notes">5 jets. Aún sin workcenters: capturar turnos en Turnos/Capacidad manual, o dar de alta los jets como workcenters y ligarlos aquí — entran solos.</field>
+            <field name="mo_name_pattern">TL/OP-TIN%</field>
+            <field name="notes">5 jets. Producción medida por orden (TL/OP-TIN, kg) — sin patrón salía en CERO. Sin workcenters: capturar turnos en Turnos/Capacidad manual, o dar de alta los jets como workcenters y ligarlos aquí.</field>
         </record>
         <record id="centro_acabado" model="qb.costeo.centro">
             <field name="sequence">30</field>
@@ -97,9 +98,9 @@
             <field name="driver_principal">largo</field>
             <field name="std_output_per_hour">1779</field>
             <field name="renta_contractual_mxn">178467</field>
-            <field name="mo_name_pattern">TL/OP-ACA%</field>
+            <field name="mo_name_pattern">TL/OP-ACA%,TL/OP-V10%</field>
             <field name="es_denominador_m" eval="True"/>
-            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA mientras no haya workcenters.</field>
+            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA + TL/OP-V10 (segunda línea, ~9% del acabado) mientras no haya workcenters.</field>
         </record>
         <record id="centro_entretelas" model="qb.costeo.centro">
             <field name="sequence">40</field>

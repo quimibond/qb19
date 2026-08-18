@@ -221,11 +221,14 @@ class QbCostoProducto(models.Model):
         # workcenters pero SIN patrón de orden.
         pattern_centros = centros.filtered('mo_name_pattern')
         for centro in pattern_centros:
+            # mo_name_pattern admite varios patrones separados por coma
+            # (p.ej. acabado = 'TL/OP-ACA%,TL/OP-V10%'): matchea cualquiera.
             self.env.cr.execute("""
                 SELECT date_trunc('month', mp.date_finished)::date,
                        COALESCE(SUM(%s), 0)
                 FROM mrp_production mp
-                WHERE mp.name LIKE %%s AND mp.state = 'done'
+                WHERE mp.name LIKE ANY(string_to_array(%%s, ','))
+                  AND mp.state = 'done'
                   AND mp.date_finished >= %%s AND mp.date_finished < %%s
                 GROUP BY 1
             """ % mo_qty_sql(self.env),

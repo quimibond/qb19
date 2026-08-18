@@ -799,15 +799,23 @@ class TestQbCosteo(TransactionCase):
         no por workorder (mal registrado): así el promedio no lo arrastra un
         mes con workorders sin cerrar. La migración/seed le pone el patrón."""
         tejido = self.env.ref('qb_capacidad_costeo.centro_tejido')
+        tint = self.env.ref('qb_capacidad_costeo.centro_tintoreria')
+        acab = self.env.ref('qb_capacidad_costeo.centro_acabado')
         self.assertEqual(tejido.mo_name_pattern, 'TL/OP-TE%',
                          'TEJIDO debe medirse por orden, no por workorder')
+        # Tintorería tenía producción CERO (sin patrón); ahora TL/OP-TIN.
+        self.assertEqual(tint.mo_name_pattern, 'TL/OP-TIN%')
+        # Acabado suma su segunda línea V10 (patrón múltiple por coma).
+        self.assertIn('TL/OP-V10%', acab.mo_name_pattern)
+        self.assertIn('TL/OP-ACA%', acab.mo_name_pattern)
         # Con patrón, _production_month_avg NO usa el conteo por workorder
-        # para este centro (que tenga o no workcenters ligados).
+        # para este centro (que tenga o no workcenters ligados). El patrón
+        # múltiple (coma) tampoco truena.
         Costo = self.env['qb.costo.producto']
         from datetime import date as _d
-        avg = Costo._production_month_avg(
-            tejido, _d(2026, 1, 1), _d(2026, 8, 1))
-        self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
+        for c in (tejido, tint, acab):
+            avg = Costo._production_month_avg(c, _d(2026, 1, 1), _d(2026, 8, 1))
+            self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
 
     def test_comparador_productos(self):
         """El comparador pone productos lado a lado: uno con fila del período
