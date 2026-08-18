@@ -360,6 +360,16 @@ class MrpProduction(models.Model):
                             'qty_producing': total_rollos,  # El progreso visual es solo sobre el principal
                         })
 
+                        # Restaurar la demanda que action_register_roll_with_weight dejó
+                        # en 0: desde odoo/odoo@1e661df (19.0, en prod ~15-ago-2026)
+                        # _post_inventory escribe quantity = qty_producing * unit_factor,
+                        # y con demanda 0 el unit_factor es 0, la cantidad queda en 0 y
+                        # _action_done cancela el movimiento del terminado (la MO entera
+                        # acaba en 'cancel' cuando no hay subproducto que sobreviva).
+                        # Con demanda = product_qty el unit_factor es 1 y el core escribe
+                        # quantity = total_rollos, igual que antes del cambio del core.
+                        finished_move.write({'product_uom_qty': total_producido_real})
+
                         # AJUSTE DE HILOS (Componentes): Evita residuos en el consumo
                         for raw_move in production.move_raw_ids:
                             if raw_move.state not in ('done', 'cancel'):
