@@ -34,6 +34,8 @@
                         domain="[('alerta', '=', 'peso_estimado')]"
                         help="Productos costeados con un peso ADIVINADO (del código o del weight de Odoo), no medido. Su energía/fabricación/margen puede estar mal — captura su peso real en Configuración → Pesos por producto."/>
                 <separator/>
+                <filter name="group_year" string="Agrupar por año"
+                        context="{'group_by': 'period:year'}"/>
                 <filter name="group_period" string="Agrupar por período"
                         context="{'group_by': 'period'}"/>
                 <filter name="group_bucket" string="Agrupar por clasificación"
@@ -145,10 +147,14 @@
         <field name="model">qb.costo.producto</field>
         <field name="arch" type="xml">
             <pivot>
-                <field name="product_bucket" type="row"/>
+                <!-- Medidas ADITIVAS: se pueden sumar entre meses para ver el
+                     año completo por producto (qty total y contribución total).
+                     Los $/unidad NO se suman entre meses — por eso van qty y
+                     contrib_total, no mp_unit ni margen_contribucion. -->
+                <field name="default_code" type="row"/>
                 <field name="period" type="col"/>
                 <field name="qty_vendida" type="measure"/>
-                <field name="margen_contribucion" type="measure"/>
+                <field name="contrib_total" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -261,6 +267,13 @@
         <field name="model_id" ref="model_qb_costo_producto"/>
         <field name="state">code</field>
         <field name="code">model.action_recompute_period()</field>
+    </record>
+    <!-- Recalcular TODO el año en curso (enero → mes actual) -->
+    <record id="costo_recompute_year_action" model="ir.actions.server">
+        <field name="name">Recalcular costeo (año en curso)</field>
+        <field name="model_id" ref="model_qb_costo_producto"/>
+        <field name="state">code</field>
+        <field name="code">model.action_recompute_year()</field>
     </record>
 
 </odoo>

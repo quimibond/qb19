@@ -820,6 +820,40 @@ class TestQbCosteo(TransactionCase):
             avg = Costo._production_month_avg(c, _d(2026, 1, 1), _d(2026, 8, 1))
             self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
 
+    def test_rentabilidad_cliente_lee_sin_error(self):
+        """La vista SQL de rentabilidad por cliente compila y expone la
+        cobertura de costo (revenue en MXN vía balance, no price_subtotal)."""
+        Rent = self.env['qb.cliente.rentabilidad']
+        # No debe tronar aunque no haya facturas en la DB de test.
+        recs = Rent.search([], limit=5)
+        self.assertIn('costo_cobertura_pct', Rent._fields)
+        for r in recs:
+            # cobertura es un %; el revenue en MXN no explota a negativos raros
+            self.assertGreaterEqual(r.costo_cobertura_pct, -0.01)
+
+    def test_cron_refresca_mes_en_curso(self):
+        """El cron semanal recalcula el mes EN CURSO (sin esperar al cierre),
+        así el reporte no requiere 'Recalcular' a mano entre cierres."""
+        from datetime import date as _d
+        self.Costo.cron_recompute_current_month()
+        today = _d.today()
+        recs = self.Costo.search([('period', '=', _d(today.year, today.month, 1))])
+        self.assertTrue(recs, 'debe existir el mes en curso tras el cron')
+
+    def test_recompute_year_todos_los_meses(self):
+        """Recalcular año en curso genera filas de varios meses (enero → mes
+        actual), no sólo uno — para ver el reporte del año completo."""
+        from datetime import date as _d
+        today = _d.today()
+        self.Costo.action_recompute_year(today.year)
+        periods = self.Costo.search([]).mapped('period')
+        meses = {p.month for p in periods if p and p.year == today.year}
+        # Al menos enero y el mes en curso (si estamos en enero, sólo uno).
+        self.assertIn(1, meses)
+        if today.month > 1:
+            self.assertGreaterEqual(len(meses), 2,
+                                    'debe cubrir varios meses del año')
+
     def test_comparador_productos(self):
         """El comparador pone productos lado a lado: uno con fila del período
         (del reporte) y uno sin ventas (costo en vivo)."""
