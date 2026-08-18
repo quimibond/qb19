@@ -27,6 +27,12 @@ class QbClienteRentabilidad(models.Model):
         help='Σ (facturado − qty × costo variable del período). Lo que este '
              'cliente aportó a fijos en 12 meses.')
     contrib_pct = fields.Float(string='Contribución %', readonly=True)
+    costo_cobertura_pct = fields.Float(
+        string='Cobertura de costo %', readonly=True,
+        help='% de las ventas del cliente cuyo mes SÍ tenía costo calculado. '
+             'Si es <100%, parte de la contribución está inflada (se tomó '
+             'costo cero por falta de cálculo): corre "Recalcular costeo (año '
+             'en curso)" para completar los meses.')
     horas_cuello_12m = fields.Float(
         string='Horas-máquina 12m', readonly=True,
         help='Horas del centro más lento de cada producto consumidas por lo '
@@ -48,7 +54,7 @@ class QbClienteRentabilidad(models.Model):
                        aml.product_id,
                        date_trunc('month', am.invoice_date)::date AS mes,
                        am.invoice_date,
-                       aml.move_id, aml.quantity, aml.price_subtotal,
+                       aml.move_id, aml.quantity, aml.balance,
                        am.move_type, aml.company_id
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
@@ -69,10 +75,13 @@ class QbClienteRentabilidad(models.Model):
                 ORDER BY move_id, product_id, ABS(quantity)
             ),
             revenue AS (
+                -- Revenue en MXN desde balance (moneda de la compañía), NO
+                -- price_subtotal (moneda del documento): un cliente facturado
+                -- en USD entra con su valor real en pesos. SUM(-balance) suma
+                -- ventas y resta devoluciones por el signo contable, y el
+                -- triplete lista/descuento/neta cancela igual que con subtotal.
                 SELECT partner_id, product_id, mes,
-                       SUM(CASE WHEN move_type = 'out_refund'
-                                THEN -price_subtotal
-                                ELSE price_subtotal END) AS rev
+                       SUM(-balance) AS rev
                 FROM lines GROUP BY 1, 2, 3
             ),
             qty AS (
@@ -102,6 +111,10 @@ class QbClienteRentabilidad(models.Model):
                      THEN 100.0 * SUM(j.rev - j.qty * COALESCE(j.costo_variable, 0))
                           / SUM(j.rev)
                      ELSE 0 END AS contrib_pct,
+                CASE WHEN SUM(j.rev) > 0
+                     THEN 100.0 * SUM(CASE WHEN j.costo_variable IS NOT NULL
+                                           THEN j.rev ELSE 0 END) / SUM(j.rev)
+                     ELSE 0 END AS costo_cobertura_pct,
                 SUM(j.qty * j.horas_por_unidad) AS horas_cuello_12m,
                 CASE WHEN SUM(j.qty * j.horas_por_unidad) > 0
                      THEN SUM(j.rev - j.qty * COALESCE(j.costo_variable, 0))

@@ -820,6 +820,17 @@ class TestQbCosteo(TransactionCase):
             avg = Costo._production_month_avg(c, _d(2026, 1, 1), _d(2026, 8, 1))
             self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
 
+    def test_rentabilidad_cliente_lee_sin_error(self):
+        """La vista SQL de rentabilidad por cliente compila y expone la
+        cobertura de costo (revenue en MXN vía balance, no price_subtotal)."""
+        Rent = self.env['qb.cliente.rentabilidad']
+        # No debe tronar aunque no haya facturas en la DB de test.
+        recs = Rent.search([], limit=5)
+        self.assertIn('costo_cobertura_pct', Rent._fields)
+        for r in recs:
+            # cobertura es un %; el revenue en MXN no explota a negativos raros
+            self.assertGreaterEqual(r.costo_cobertura_pct, -0.01)
+
     def test_cron_refresca_mes_en_curso(self):
         """El cron semanal recalcula el mes EN CURSO (sin esperar al cierre),
         así el reporte no requiere 'Recalcular' a mano entre cierres."""
