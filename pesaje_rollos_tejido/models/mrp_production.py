@@ -393,16 +393,8 @@ class MrpProduction(models.Model):
         # Ejecutamos el cierre estándar de Odoo sobre TODO el recordset original.
         # Como 'product_qty' ahora es igual a lo producido en cada MO afectada,
         # cerrará sin generar rollos fantasma, y sigue soportando cierres en lote.
-        #
-        # skip_consumption=True: nuestro propio ajuste de move_raw_ids (arriba) ya
-        # reconcilia demanda vs. consumo real de forma deliberada. La verificación
-        # nativa de Odoo (_get_consumption_issues) usa una fórmula distinta
-        # (qty_producing/product_qty tras nuestro write, en vez del factor que
-        # nosotros calculamos antes del write), lo que genera falsos positivos
-        # cuando la producción real se desvía bastante de lo planeado originalmente
-        # -- disparando mrp.consumption.warning, que al confirmarse borra líneas
-        # de consumo ya capturadas por el operador.
-        return super(MrpProduction, self.with_context(skip_consumption=True)).button_mark_done()
+        # Revertir a:
+        return super(MrpProduction, self).button_mark_done()
 
 class MrpWeighingLog(models.Model):
     _name = 'mrp.weighing.log'
