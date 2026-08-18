@@ -820,6 +820,15 @@ class TestQbCosteo(TransactionCase):
             avg = Costo._production_month_avg(c, _d(2026, 1, 1), _d(2026, 8, 1))
             self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
 
+    def test_cron_refresca_mes_en_curso(self):
+        """El cron semanal recalcula el mes EN CURSO (sin esperar al cierre),
+        así el reporte no requiere 'Recalcular' a mano entre cierres."""
+        from datetime import date as _d
+        self.Costo.cron_recompute_current_month()
+        today = _d.today()
+        recs = self.Costo.search([('period', '=', _d(today.year, today.month, 1))])
+        self.assertTrue(recs, 'debe existir el mes en curso tras el cron')
+
     def test_recompute_year_todos_los_meses(self):
         """Recalcular año en curso genera filas de varios meses (enero → mes
         actual), no sólo uno — para ver el reporte del año completo."""

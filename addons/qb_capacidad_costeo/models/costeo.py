@@ -676,6 +676,15 @@ class QbCostoProducto(models.Model):
         return True
 
     @api.model
+    def cron_recompute_current_month(self):
+        """Mantiene fresco el mes EN CURSO sin esperar al cierre. El cron
+        mensual (día 1) cierra el mes anterior; éste refresca el actual, para
+        que el reporte no requiera 'Recalcular' a mano entre cierres."""
+        today = fields.Date.today()
+        self.action_recompute_period(date(today.year, today.month, 1))
+        return True
+
+    @api.model
     def action_recompute_year(self, year=None):
         """Recalcula el costo por producto de TODOS los meses del año, de enero
         al mes en curso (o a diciembre para un año pasado). Corre

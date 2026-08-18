@@ -15,6 +15,19 @@
             <field name="priority">10</field>
         </record>
 
+        <!-- Mes en curso fresco sin esperar al cierre (semanal) -->
+        <record id="cron_recompute_current_month" model="ir.cron">
+            <field name="name">Capacidad &amp; Costeo - Refrescar mes en curso (semanal)</field>
+            <field name="model_id" ref="model_qb_costo_producto"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_recompute_current_month()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=3, minute=30, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="priority">15</field>
+        </record>
+
         <!-- Snapshot mensual + recálculo de costos del mes cerrado -->
         <record id="cron_snapshot_monthly" model="ir.cron">
             <field name="name">Capacidad &amp; Costeo - Snapshot y costeo mensual (día 1)</field>
