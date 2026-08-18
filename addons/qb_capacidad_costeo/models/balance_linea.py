@@ -104,7 +104,8 @@ class QbBalance(models.Model):
                 SELECT ctr.id AS centro_id,
                        SUM(%(mo_qty)s) / (SELECT window_months FROM cfg) AS qty_month
                 FROM qb_costeo_centro ctr
-                JOIN mrp_production mp ON mp.name LIKE ctr.mo_name_pattern
+                JOIN mrp_production mp
+                     ON mp.name LIKE ANY(string_to_array(ctr.mo_name_pattern, ','))
                 JOIN cfg ON TRUE
                 WHERE ctr.mo_name_pattern IS NOT NULL
                   AND mp.state = 'done'
@@ -124,7 +125,9 @@ class QbBalance(models.Model):
                          ELSE COALESCE(NULLIF(wc_cap.hours_month, 0), turno_cap.hours_month, 0)
                               * COALESCE(ctr.std_output_per_hour, 0)
                     END AS capacity_month_units,
-                    COALESCE(NULLIF(wo_prod.qty_month, 0), mo_prod.qty_month, 0) AS prod_month_units,
+                    -- Producción a nivel ORDEN manda (workorder está mal
+                    -- registrado); workorder sólo como fallback.
+                    COALESCE(NULLIF(mo_prod.qty_month, 0), wo_prod.qty_month, 0) AS prod_month_units,
                     CASE WHEN COALESCE(wc_cap.hours_month, 0) > 0 THEN 'workcenters'
                          WHEN COALESCE(turno_cap.hours_month, 0) > 0 THEN 'turnos'
                          ELSE 'sin datos' END AS capacity_source,

@@ -77,7 +77,8 @@
             <field name="std_output_per_hour">11</field>
             <field name="renta_contractual_mxn">284269</field>
             <field name="es_denominador_kg" eval="True"/>
-            <field name="notes">36 máquinas circulares. Ligar aquí los mrp.workcenter de tejido. Throughput 11 kg/h/máquina (rango real 8.3-12.6 según galga).</field>
+            <field name="mo_name_pattern">TL/OP-TE%</field>
+            <field name="notes">36 máquinas circulares. Ligar aquí los mrp.workcenter de tejido. Throughput 11 kg/h/máquina (rango real 8.3-12.6 según galga). Producción medida por orden (TL/OP-TE), no por workorder: la cantidad por workorder está mal registrada (abril colapsa a ~1/5).</field>
         </record>
         <record id="centro_tintoreria" model="qb.costeo.centro">
             <field name="sequence">20</field>
@@ -86,7 +87,8 @@
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">peso</field>
             <field name="renta_contractual_mxn">178467</field>
-            <field name="notes">5 jets. Aún sin workcenters: capturar turnos en Turnos/Capacidad manual, o dar de alta los jets como workcenters y ligarlos aquí — entran solos.</field>
+            <field name="mo_name_pattern">TL/OP-TIN%</field>
+            <field name="notes">5 jets. Producción medida por orden (TL/OP-TIN, kg) — sin patrón salía en CERO. Sin workcenters: capturar turnos en Turnos/Capacidad manual, o dar de alta los jets como workcenters y ligarlos aquí.</field>
         </record>
         <record id="centro_acabado" model="qb.costeo.centro">
             <field name="sequence">30</field>
@@ -98,7 +100,7 @@
             <field name="renta_contractual_mxn">178467</field>
             <field name="mo_name_pattern">TL/OP-ACA%</field>
             <field name="es_denominador_m" eval="True"/>
-            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA mientras no haya workcenters.</field>
+            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA (tela). V10 NO es acabado — es entretelas/resina, va en su centro.</field>
         </record>
         <record id="centro_entretelas" model="qb.costeo.centro">
             <field name="sequence">40</field>
@@ -107,8 +109,8 @@
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">largo</field>
             <field name="renta_contractual_mxn">352062</field>
-            <field name="mo_name_pattern">TL/OP-CAR%</field>
-            <field name="notes">Carda, puntos (resina), espolvoreo, perfoquim, impregnación, termofijado. Lote 10. Factor propio $/m.</field>
+            <field name="mo_name_pattern">TL/OP-CAR%,TL/OP-V10%</field>
+            <field name="notes">Carda, puntos (resina), espolvoreo, perfoquim, impregnación, termofijado. Lote 10. Factor propio $/m. Producción TL/OP-CAR (carda) + TL/OP-V10 (aplicación de resina / fusionable) — antes V10 no se contaba en ningún centro.</field>
         </record>
         <record id="centro_insp" model="qb.costeo.centro">
             <field name="sequence">50</field>
