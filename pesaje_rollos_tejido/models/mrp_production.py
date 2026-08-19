@@ -3,9 +3,6 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 import datetime
 from odoo.tools import float_round, float_compare
-import logging
-
-_logger = logging.getLogger(__name__)
 
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
@@ -393,27 +390,10 @@ class MrpProduction(models.Model):
                             if total_smove > 0:
                                 smove.write({'product_uom_qty': smove.product_uom.round(total_smove)})
 
-        # DIAGNOSTICO TEMPORAL - solo lectura, no cambia ningún comportamiento, quitar después
-        for production in self:
-            if production.roll_count > 0:
-                finished_move = production.move_finished_ids.filtered(
-                    lambda x: x.product_id == production.product_id and x.state not in ('done', 'cancel')
-                )[:1]
-                _logger.warning(
-                    "DIAGNOSTICO QTY: MO %s | qty_producing=%s | qty_produced=%s | product_qty=%s | "
-                    "finished_move.quantity=%s | finished_move.state=%s",
-                    production.name,
-                    production.qty_producing,
-                    production.qty_produced,
-                    production.product_qty,
-                    finished_move.quantity if finished_move else 'N/A',
-                    finished_move.state if finished_move else 'N/A',
-                )
-
         # Ejecutamos el cierre estándar de Odoo sobre TODO el recordset original.
         # Como 'product_qty' ahora es igual a lo producido en cada MO afectada,
         # cerrará sin generar rollos fantasma, y sigue soportando cierres en lote.
-        # Revertir a:
+
         return super(MrpProduction, self).button_mark_done()
 
 class MrpWeighingLog(models.Model):
