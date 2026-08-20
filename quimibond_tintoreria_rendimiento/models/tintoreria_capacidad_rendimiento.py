@@ -41,10 +41,10 @@ class TintoreriaCapacidadRendimiento(models.Model):
 
     notas = fields.Text(string='Notas')
 
-    _sql_constraints = [
-        ('codigo_uniq', 'unique(codigo)',
-         'Ya existe un centro de trabajo de tintorería con ese código.'),
-    ]
+    _codigo_uniq = models.Constraint(
+        'unique(codigo)',
+        'Ya existe un centro de trabajo de tintorería con ese código.',
+    )
 
     def capacidad_para_rendimiento(self, rendimiento):
         """Devuelve la capacidad en kg (banda de rendimiento) aplicable para un

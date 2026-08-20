@@ -100,10 +100,10 @@ class FichaTecnicaTela(models.Model):
 
     notas = fields.Text(string='Notas')
 
-    _sql_constraints = [
-        ('articulo_revision_uniq', 'unique(articulo, revision)',
-         'Ya existe una ficha técnica con ese artículo y esa revisión.'),
-    ]
+    _articulo_revision_uniq = models.Constraint(
+        'unique(articulo, revision)',
+        'Ya existe una ficha técnica con ese artículo y esa revisión.',
+    )
 
 
 class FichaTecnicaTelaHilo(models.Model):

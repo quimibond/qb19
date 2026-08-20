@@ -15,7 +15,8 @@ cada artículo de tela, cubriendo:
   espesor, encogimiento (largo/ancho) y elongación (largo/ancho).
 
 Incluye:
-- Vínculo con el producto de "Tela en Proceso" (kg) y "Tela Acabada" (m).
+- Vínculo con el producto de "Tela en Proceso" (kg) y "Tela Acabada"
+  (m, varios colores/variantes que comparten la misma ficha).
 - Wizard de importación masiva desde Excel (formato de ficha técnica de
   tejido, tal como se genera hoy en Quimibond).
 - Validaciones de tolerancia (ej. encogimiento máximo 5%).
