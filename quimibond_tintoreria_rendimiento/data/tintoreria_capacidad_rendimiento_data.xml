@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="tintoreria_cap_htj1" model="tintoreria.capacidad.rendimiento">
+        <field name="codigo">HTJ1</field>
+        <field name="nombre">TINTORERIA 1</field>
+        <field name="capacidad_kg">1000</field>
+        <field name="capacidad_grupo_a">900</field>
+        <field name="capacidad_grupo_b">600</field>
+        <field name="capacidad_grupo_c">450</field>
+        <field name="relacion_bano">10</field>
+    </record>
+
+    <record id="tintoreria_cap_htj2" model="tintoreria.capacidad.rendimiento">
+        <field name="codigo">HTJ2</field>
+        <field name="nombre">TINTORERIA 2</field>
+        <field name="capacidad_kg">950</field>
+        <field name="capacidad_grupo_a">450</field>
+        <field name="capacidad_grupo_b">300</field>
+        <field name="capacidad_grupo_c">300</field>
+        <field name="relacion_bano">7</field>
+    </record>
+
+    <record id="tintoreria_cap_htj3" model="tintoreria.capacidad.rendimiento">
+        <field name="codigo">HTJ3</field>
+        <field name="nombre">TINTORERIA 3</field>
+        <field name="capacidad_kg">600</field>
+        <field name="capacidad_grupo_a">600</field>
+        <field name="capacidad_grupo_b">0</field>
+        <field name="capacidad_grupo_c">0</field>
+        <field name="relacion_bano">6</field>
+        <field name="notas">Grupo B y C: N/A en archivo de origen.</field>
+    </record>
+
+    <record id="tintoreria_cap_htj4" model="tintoreria.capacidad.rendimiento">
+        <field name="codigo">HTJ4</field>
+        <field name="nombre">TINTORERIA 4</field>
+        <field name="capacidad_kg">300</field>
+        <field name="capacidad_grupo_a">300</field>
+        <field name="capacidad_grupo_b">150</field>
+        <field name="capacidad_grupo_c">150</field>
+        <field name="relacion_bano">6</field>
+    </record>
+
+    <record id="tintoreria_cap_htj5" model="tintoreria.capacidad.rendimiento">
+        <field name="codigo">HTJ5</field>
+        <field name="nombre">TINTORERIA 5</field>
+        <field name="capacidad_kg">1200</field>
+        <field name="capacidad_grupo_a">900</field>
+        <field name="capacidad_grupo_b">600</field>
+        <field name="capacidad_grupo_c">450</field>
+        <field name="relacion_bano">7</field>
+    </record>
+
+</odoo>
