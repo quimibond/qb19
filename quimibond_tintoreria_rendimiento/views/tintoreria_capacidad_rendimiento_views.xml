@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_tintoreria_capacidad_rendimiento_list" model="ir.ui.view">
+        <field name="name">tintoreria.capacidad.rendimiento.list</field>
+        <field name="model">tintoreria.capacidad.rendimiento</field>
+        <field name="arch" type="xml">
+            <list string="Tabla de Rendimientos y RB Tintorería" editable="bottom">
+                <field name="codigo"/>
+                <field name="nombre"/>
+                <field name="workcenter_id" optional="hide"/>
+                <field name="capacidad_kg" string="Capacidad (kg)"/>
+                <field name="capacidad_grupo_a" string="Grupo A (3-6 m/kg)"/>
+                <field name="capacidad_grupo_b" string="Grupo B (7-10 m/kg)"/>
+                <field name="capacidad_grupo_c" string="Grupo C (11-15 m/kg)"/>
+                <field name="relacion_bano" string="RB (L/kg)"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tintoreria_capacidad_rendimiento_form" model="ir.ui.view">
+        <field name="name">tintoreria.capacidad.rendimiento.form</field>
+        <field name="model">tintoreria.capacidad.rendimiento</field>
+        <field name="arch" type="xml">
+            <form string="Tabla de Rendimientos y RB Tintorería">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="codigo" placeholder="Ej. HTJ1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="nombre"/>
+                            <field name="workcenter_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="capacidad_kg"/>
+                            <field name="relacion_bano"/>
+                        </group>
+                    </group>
+                    <group string="Capacidad por banda de rendimiento (m/kg)">
+                        <group>
+                            <field name="capacidad_grupo_a"/>
+                            <field name="capacidad_grupo_b"/>
+                            <field name="capacidad_grupo_c"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notas" placeholder="0 = No aplica (N/A) para ese centro"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tintoreria_capacidad_rendimiento" model="ir.actions.act_window">
+        <field name="name">Tabla de Rendimientos y RB Tintorería</field>
+        <field name="res_model">tintoreria.capacidad.rendimiento</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea el primer centro de trabajo de tintorería
+            </p>
+            <p>
+                Define, por centro de trabajo de Tintorería, la capacidad máxima,
+                la capacidad por banda de rendimiento (3-6, 7-10, 11-15 m/kg) y la
+                Relación de Baño (litros por kg) usada para calcular el tamaño de
+                orden y los químicos/agua necesarios.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_tintoreria_capacidad_rendimiento"
+              name="Tabla de Rendimientos y RB Tintorería"
+              parent="mrp.menu_mrp_configuration"
+              action="action_tintoreria_capacidad_rendimiento"
+              sequence="60"/>
+
+</odoo>

@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ficha_tecnica_tela_user,ficha.tecnica.tela.user,model_ficha_tecnica_tela,base.group_user,1,1,1,0
+access_ficha_tecnica_tela_manager,ficha.tecnica.tela.manager,model_ficha_tecnica_tela,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_tela_hilo_user,ficha.tecnica.tela.hilo.user,model_ficha_tecnica_tela_hilo,base.group_user,1,1,1,0
+access_ficha_tecnica_tela_hilo_manager,ficha.tecnica.tela.hilo.manager,model_ficha_tecnica_tela_hilo,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_import_wizard,ficha.tecnica.import.wizard,model_ficha_tecnica_import_wizard,base.group_user,1,1,1,1

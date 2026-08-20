@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tintoreria_capacidad_rendimiento_user,tintoreria.capacidad.rendimiento.user,model_tintoreria_capacidad_rendimiento,base.group_user,1,0,0,0
+access_tintoreria_capacidad_rendimiento_manager,tintoreria.capacidad.rendimiento.manager,model_tintoreria_capacidad_rendimiento,mrp.group_mrp_manager,1,1,1,1
