@@ -32,6 +32,17 @@ class TestAuditChecklist(TransactionCase):
         })
         return user_input
 
+    def test_00_answer_checklist_links_input(self):
+        audit = self.env['sgi.audit'].create({'survey_id': self.survey.id})
+        action = audit.action_answer_checklist()
+        self.assertEqual(action['type'], 'ir.actions.act_url')
+        self.assertIn('/survey/', action['url'])
+        self.assertEqual(len(audit.survey_input_ids), 1)
+        # Sin encuesta asignada -> error claro.
+        bare = self.env['sgi.audit'].create({})
+        with self.assertRaises(UserError):
+            bare.action_answer_checklist()
+
     def test_01_checklist_generates_findings(self):
         audit = self.env['sgi.audit'].create({'survey_id': self.survey.id})
         # Sin respuestas ligadas -> error claro.

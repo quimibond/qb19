@@ -216,6 +216,26 @@ class SgiAudit(models.Model):
                 "No se puede cerrar la auditoría %s:\n%s" % (
                     self.folio or self.name, "\n".join(problems)))
 
+    def action_answer_checklist(self):
+        """Contestar el checklist sin salir de la auditoría: crea la respuesta
+        de la encuesta ligada, la enlaza aquí mismo y abre el cuestionario en
+        una pestaña. Antes el auditor debía ir a la app Encuestas, compartir,
+        contestar y volver a ligar la respuesta a mano."""
+        self.ensure_one()
+        if not self.survey_id:
+            raise UserError(
+                "La auditoría no tiene checklist (encuesta) asignado. "
+                "Seleccione uno en el grupo «Checklist» — la plantilla "
+                "ISO 9001 viene incluida.")
+        answer = self.survey_id.sudo()._create_answer(user=self.env.user)
+        self.write({'survey_input_ids': [(4, answer.id)]})
+        if hasattr(answer, 'get_start_url'):
+            url = answer.get_start_url()
+        else:
+            url = '/survey/start/%s?answer_token=%s' % (
+                self.survey_id.access_token, answer.access_token)
+        return {'type': 'ir.actions.act_url', 'url': url, 'target': 'new'}
+
     def action_generate_findings_from_checklist(self):
         """Convierte las respuestas del checklist (encuesta) en hallazgos:
         «No conforme» → NC menor, «Observación» → observación. Cierra la doble
