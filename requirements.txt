@@ -2,3 +2,7 @@ anthropic>=0.40,<1.0
 google-auth>=2.0,<3.0
 google-api-python-client>=2.0,<3.0
 httpx>=0.24,<1.0
+# mcp_server (external_dependencies)
+authlib>=1.6.12,<1.7.0
+defusedxml
+packaging
