@@ -1,4 +1,4 @@
-# quimibond_sgi — Sistema de Gestión Integral (Fases 1–7)
+# quimibond_sgi — Sistema de Gestión Integral (Fases 1–8)
 
 Addon de Odoo 19 Enterprise que lleva el SGI documental de PNTQ (ISO 9001:2015 +
 14001:2015, 45001 en preparación) a Odoo **extendiendo apps nativas** (Documentos,
@@ -374,6 +374,25 @@ Sale de la evaluación `docs/SGI_EVALUACION_ESTRUCTURA.md` (pasos 3–8):
   Gage R&R con veredicto AIAG automático (<10% aceptable / 10-30% marginal /
   >30% inaceptable); inaceptable → actividad al Jefe MAST (el bloqueo del
   equipo es decisión humana). Smart button MSA en el equipo.
+
+## Fase 8 — Señales operativas y checklist de auditoría (v19.0.15.1.0)
+
+Aprovecha lo que Odoo ya registra, sin captura adicional:
+
+- **Checklist → hallazgos**: el botón «Hallazgos del checklist» de la auditoría
+  convierte las respuestas de la encuesta en hallazgos (No conforme → NC
+  menor, Observación → observación), idempotente por respuesta. Se acabó la
+  doble captura del auditor.
+- **Devolución de cliente → NC automática**: validar una recepción que
+  devuelve una entrega a cliente levanta una NC de origen Reclamación con
+  cliente, producto y remisión ligados (fuente `devolucion_cliente`,
+  apagable). Una devolución a proveedor NO dispara nada.
+- **Señales operativas** (cron diario): ≥3 correctivas del mismo equipo en 90
+  días → actividad a MAST sugiriendo NC y revisión del preventivo;
+  reclamación abierta con SLA vencido → actividad de escalamiento.
+- **Lecciones aprendidas (7.1.6)**: menú bajo Mejora continua con las NC
+  cerradas con lección aplicada — causa raíz, eficacia y proceso. La memoria
+  del sistema, que ya existía pero no se podía consultar.
 
 ## Alcance multiempresa (decisión de arquitectura)
 

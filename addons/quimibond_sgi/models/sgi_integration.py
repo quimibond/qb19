@@ -24,6 +24,58 @@ class StockPicking(models.Model):
             'context': {'default_picking_id': self.id, 'default_sgi_origin_type': 'proceso'},
         }
 
+    # ----- Devolución de cliente → NC automática (aprovecha el flujo de
+    # devoluciones que Odoo ya registra: una devolución validada de una
+    # entrega a cliente es la señal de calidad más dura que existe). -----
+    sgi_return_alert_id = fields.Many2one('quality.alert', string="NC de devolución",
+                                          readonly=True, copy=False)
+
+    def _sgi_is_customer_return(self):
+        """Recepción validada cuyos movimientos devuelven una ENTREGA a
+        cliente (no una devolución a proveedor, que es un picking saliente)."""
+        self.ensure_one()
+        if self.picking_type_id.code != 'incoming':
+            return False
+        return any(
+            move.origin_returned_move_id.picking_id.picking_type_id.code == 'outgoing'
+            for move in self.move_ids if move.origin_returned_move_id)
+
+    def _sgi_create_return_alert(self):
+        for picking in self:
+            if picking.sgi_return_alert_id or not picking._sgi_is_customer_return():
+                continue
+            partner = picking.partner_id.commercial_partner_id
+            returned = picking.move_ids.filtered('origin_returned_move_id')
+            product = returned[:1].product_id
+            team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
+                                raise_if_not_found=False)
+            vals = {
+                'title': "Devolución de cliente: %s" % (partner.display_name or ''),
+                'sgi_origin_type': 'reclamacion',
+                'partner_id': partner.id,
+                'product_id': product.id or False,
+                'product_tmpl_id': product.product_tmpl_id.id or False,
+                'picking_id': picking.id,
+                'sgi_deviation': "Devolución de cliente validada (%s). Productos: %s. "
+                                 "Investigue la causa y la disposición del material."
+                                 % (picking.name,
+                                    ", ".join(returned.mapped('product_id.display_name'))),
+            }
+            if team:
+                vals['team_id'] = team.id
+            alert = self.env['quality.alert'].sgi_auto_create(
+                'devolucion_cliente', vals)
+            if alert:
+                picking.sgi_return_alert_id = alert.id
+                picking.message_post(
+                    body="Devolución de cliente: se levantó la NC <b>%s</b>."
+                         % (alert.sgi_folio or alert.title))
+
+    def _action_done(self):
+        res = super()._action_done()
+        self._sgi_create_return_alert()
+        return res
+
 
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
