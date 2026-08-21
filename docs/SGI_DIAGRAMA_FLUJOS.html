@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flujos del SGI Quimibond</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --surface2:#eef2f0; --ink:#1a2422; --muted:#5a6b67;
+  --accent:#0e7c6b; --accent-ink:#0a5c50; --border:#d9e2de; --border-strong:#b9c8c3;
+  --code-bg:#eaf0ee; --code-ink:#14443c;
+  --ok:#1e7d3c; --ok-bg:#e3f2e7; --warn:#9a6a00; --warn-bg:#fdf3d7; --bad:#b3372b; --bad-bg:#fbe7e3;
+  --info:#28607f; --info-bg:#e5eff6; --paper:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1513; --surface:#171f1c; --surface2:#1e2925; --ink:#e4ece9; --muted:#95a5a0;
+    --accent:#3fbfa8; --accent-ink:#6ad3bf; --border:#2a3733; --border-strong:#3c4c47;
+    --code-bg:#1e2c28; --code-ink:#9fdccd;
+    --ok:#5cc47c; --ok-bg:#173322; --warn:#e0b350; --warn-bg:#332a12; --bad:#e5766a; --bad-bg:#3a1c18;
+    --info:#6aaed2; --info-bg:#162833; --paper:#f4f6f5;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1513; --surface:#171f1c; --surface2:#1e2925; --ink:#e4ece9; --muted:#95a5a0;
+  --accent:#3fbfa8; --accent-ink:#6ad3bf; --border:#2a3733; --border-strong:#3c4c47;
+  --code-bg:#1e2c28; --code-ink:#9fdccd;
+  --ok:#5cc47c; --ok-bg:#173322; --warn:#e0b350; --warn-bg:#332a12; --bad:#e5766a; --bad-bg:#3a1c18;
+  --info:#6aaed2; --info-bg:#162833; --paper:#f4f6f5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:0 24px 96px}
+header.hero{padding:56px 0 8px;border-bottom:3px solid var(--accent);margin-bottom:40px}
+.kicker{font:600 12px/1 "IBM Plex Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+h1{font:700 44px/1.08 "Saira",sans-serif;margin:0 0 14px;text-wrap:balance;letter-spacing:-.01em}
+.lede{max-width:70ch;color:var(--muted);margin:0 0 26px;font-size:17px}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px}
+.chip{font:500 12.5px/1 "IBM Plex Mono",monospace;padding:7px 12px;border:1px solid var(--border-strong);border-radius:999px;color:var(--muted);background:var(--surface)}
+h2{font:600 29px/1.15 "Saira",sans-serif;margin:64px 0 6px;padding-top:18px;border-top:1px solid var(--border);text-wrap:balance;scroll-margin-top:24px}
+h2 .sec{color:var(--accent);font:600 15px "IBM Plex Mono",monospace;display:block;margin-bottom:6px;letter-spacing:.08em}
+h3{font:600 19px/1.3 "Saira",sans-serif;margin:34px 0 10px}
+h4{font:600 15.5px/1.3 "IBM Plex Sans",sans-serif;margin:26px 0 8px}
+p{max-width:76ch}
+.sub{color:var(--muted);margin:0 0 20px;max-width:80ch}
+code{font:500 13.5px "IBM Plex Mono",monospace;background:var(--code-bg);color:var(--code-ink);padding:1.5px 6px;border-radius:5px;white-space:nowrap}
+td code, li code{white-space:normal;word-break:break-word}
+.tbl{overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin:14px 0 26px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:600 11.5px/1.3 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:2px solid var(--border-strong);background:var(--surface2)}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td:first-child{white-space:nowrap;font-weight:600}
+.diagram{background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:18px 12px 8px;margin:16px 0 10px;overflow-x:auto}
+.diagram pre.mermaid{margin:0;display:flex;justify-content:center}
+figure{margin:16px 0 28px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:8px;max-width:80ch}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin:16px 0 24px}
+.card.rule{border-left:4px solid var(--bad)}
+.card.note{border-left:4px solid var(--info)}
+.card.auto{border-left:4px solid var(--accent)}
+.card h4{margin-top:0}
+.card ul{margin:8px 0 2px;padding-left:20px}
+.card li{margin:5px 0}
+ul.plain{padding-left:20px}
+ul.plain li{margin:6px 0;max-width:80ch}
+.tag{display:inline-block;font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.05em;padding:4px 8px;border-radius:5px;vertical-align:1px}
+.tag.ok{background:var(--ok-bg);color:var(--ok)} .tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.bad{background:var(--bad-bg);color:var(--bad)} .tag.info{background:var(--info-bg);color:var(--info)}
+.tag.acc{background:var(--code-bg);color:var(--accent-ink)}
+nav.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 26px;margin:0 0 8px;columns:2;column-gap:40px}
+nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 0;font-size:14.5px;border-bottom:1px dotted transparent;break-inside:avoid}
+nav.toc a:hover{color:var(--accent)}
+nav.toc .n{color:var(--accent);font:600 12px "IBM Plex Mono",monospace;margin-right:8px}
+nav.toc .grp{font:600 11px "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:12px 0 4px;break-inside:avoid}
+nav.toc .grp:first-child{margin-top:0}
+.menu-tree{font:400 14px/1.85 "IBM Plex Mono",monospace;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 26px;overflow-x:auto}
+.menu-tree b{color:var(--accent-ink);font-weight:600}
+.menu-tree i{color:var(--muted);font-style:normal}
+.menu-tree .lock{color:var(--warn)}
+a{color:var(--accent-ink)}
+@media (max-width:760px){ nav.toc{columns:1} h1{font-size:34px} }
+@media (prefers-reduced-motion: no-preference){ html{scroll-behavior:smooth} }
+</style>
+
+<div class="wrap">
+<header class="hero">
+  <p class="kicker">Quimibond · Odoo 19 Enterprise · addon <b>quimibond_sgi</b> v19.0.15.0.0</p>
+  <h1>Flujos del SGI Quimibond</h1>
+  <p class="lede">Mapa exhaustivo de cada click y cada acción del Sistema de Gestión Integral: estados exactos, botones con su método Python y condición de visibilidad, candados de cierre, automatizaciones (crons y NC automáticas), wizards, reportes y navegación. Extraído directamente del código fuente.</p>
+  <div class="hero-meta">
+    <span class="chip">ISO 9001 · 14001 · 45001 · IATF</span>
+    <span class="chip">30 modelos + 9 apps nativas extendidas</span>
+    <span class="chip">13 crons · 11 secuencias · 11 reportes QWeb</span>
+    <span class="chip">3 satélites: pesaje · plm · revisado</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="grp">Fundamentos</div>
+  <a href="#arquitectura"><span class="n">01</span>Arquitectura y seguridad</a>
+  <a href="#menus"><span class="n">02</span>Mapa de navegación (menús)</a>
+  <a href="#maestro"><span class="n">03</span>Diagrama maestro de NC</a>
+  <div class="grp">Mejora continua</div>
+  <a href="#nc"><span class="n">04</span>No Conformidades</a>
+  <a href="#acciones"><span class="n">05</span>Acciones (CAPA)</a>
+  <a href="#incidentes"><span class="n">06</span>Incidentes SST (SCAT)</a>
+  <a href="#reclamaciones"><span class="n">07</span>Reclamaciones y mejoras</a>
+  <div class="grp">Gestión y medición</div>
+  <a href="#auditorias"><span class="n">08</span>Auditorías</a>
+  <a href="#rxd"><span class="n">09</span>Revisión por la Dirección</a>
+  <a href="#indicadores"><span class="n">10</span>Indicadores y mediciones</a>
+  <a href="#politica"><span class="n">11</span>Política y objetivos</a>
+  <div class="grp">Documental</div>
+  <a href="#documental"><span class="n">12</span>Documentos controlados</a>
+  <a href="#cambio-doc"><span class="n">13</span>Cambio documental y acuses</a>
+  <div class="grp">Riesgos y automotriz</div>
+  <a href="#riesgos"><span class="n">14</span>Riesgos y oportunidades</a>
+  <a href="#amef"><span class="n">15</span>AMEF</a>
+  <a href="#plan-control"><span class="n">16</span>Plan de control y CoA</a>
+  <a href="#ppap"><span class="n">17</span>PPAP</a>
+  <a href="#calibracion"><span class="n">18</span>Metrología y calibración</a>
+  <div class="grp">Soporte y planeación</div>
+  <a href="#proveedores"><span class="n">19</span>Evaluación de proveedores</a>
+  <a href="#competencias"><span class="n">20</span>Competencias (DNC)</a>
+  <a href="#presupuesto"><span class="n">21</span>Presupuesto y pronóstico</a>
+  <a href="#procesos"><span class="n">22</span>Mapa de procesos y salud</a>
+  <div class="grp">Automatización</div>
+  <a href="#crons"><span class="n">23</span>Los 13 crons</a>
+  <a href="#reportes"><span class="n">24</span>Reportes y formatos</a>
+  <a href="#satelites"><span class="n">25</span>Addons satélite</a>
+  <a href="#fase7"><span class="n">26</span>Fase 7 — bucles cerrados</a>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="arquitectura"><span class="sec">01</span>Arquitectura y seguridad</h2>
+<p class="sub">El SGI no reinventa Odoo: extiende las apps nativas (Calidad, Documentos, Aprobaciones, Helpdesk, Proyecto, Mantenimiento, Encuestas, RRHH) y crea solo lo que no existe. Cero Studio, cero automation rules — toda la lógica vive en el módulo.</p>
+
+<h3>Cimiento común: <code>sgi.base.mixin</code></h3>
+<ul class="plain">
+  <li><b>Folio automático</b>: al crear un registro, si el modelo declara <code>_sgi_sequence_code</code>, se asigna folio por <code>ir.sequence</code> (NCI-, NCE-, AUD-, RSG-, RD-, PC-, AMEF-, PPAP-, INC-, POL-, PPV-, todos con año).</li>
+  <li><b>Candado de evidencia</b>: <code>write()</code> bloquea cualquier edición (y la reapertura) de un registro cuyo estado esté en <code>_sgi_locked_states</code>. Solo el <b>Jefe MAST</b> (<code>group_sgi_manager</code>), superusuario o contexto <code>sgi_bypass_lock</code> pueden tocarlo. Mensaje: <i>"Este registro del SGI está cerrado y es evidencia…"</i>. El candado evalúa el estado anterior: entrar al estado cerrado sí se permite; salir de él, no.</li>
+  <li><b>Actividades</b>: helpers <code>_sgi_schedule_activity</code> / <code>_sgi_done_activities</code> sobre el chatter nativo.</li>
+</ul>
+
+<h3>Grupos de seguridad (cadena lineal, cada uno implica al anterior)</h3>
+<div class="tbl"><table>
+<tr><th>Grupo</th><th>Nombre visible</th><th>Qué puede hacer</th></tr>
+<tr><td><code>group_sgi_user</code></td><td>Usuario SGI</td><td>Lee catálogos; crea/edita (sin borrar) acuses, acciones, mediciones, riesgos, evaluaciones, planes, calibraciones, AMEF, PPAP, incidentes. Implica usuario de Quality, Documents, Helpdesk, Project y Approvals.</td></tr>
+<tr><td><code>group_sgi_auditor</code></td><td>Auditor SGI</td><td>+ crea programas, auditorías y hallazgos (borra hallazgos). Ve el botón «Escalar a NC del SGI».</td></tr>
+<tr><td><code>group_sgi_manager</code></td><td>Jefe MAST y SGI</td><td>Control total (CRUD en todo), único que reabre evidencia cerrada, cierra NC de forma forzada y ve Configuración, Migración, RxD y Tableros. Implica manager de las 5 apps nativas.</td></tr>
+<tr><td><code>group_sgi_director</code></td><td>Dirección de Operaciones</td><td>Hereda todo lo anterior; único grupo (junto con manager) que <b>aprueba presupuestos de ventas</b> y recibe escalamientos de nivel 3.</td></tr>
+</table></div>
+<p class="card note"><b>No hay record rules</b> (<code>ir.rule</code>) en el addon: la segmentación es por dominios de acción, filtros de búsqueda y candados Python. "Mis acciones" es un filtro removible, no una restricción.</p>
+
+<!-- ============================================================ -->
+<h2 id="menus"><span class="sec">02</span>Mapa de navegación — qué abre cada click del menú</h2>
+<p class="sub">App raíz <b>SGI</b> (visible a todo Usuario SGI). 10 grupos ordenados persona → operación diaria → gestión → dirección → configuración. 🔒 = solo Jefe MAST (⚙️ = solo admin del sistema).</p>
+<div class="menu-tree">
+<b>SGI</b><br>
+├─ <b>Panel</b> → kanban de procesos por macroproceso (semáforo de salud)<br>
+│&nbsp;&nbsp;├─ Política Integral → <i>sgi.policy</i><br>
+│&nbsp;&nbsp;├─ Objetivos Integrales → <i>sgi.objective</i> (la cascada Política → Objetivos → KPIs vive junta)<br>
+│&nbsp;&nbsp;└─ <span class="lock">🔒 Tableros</span> → Pareto de alertas de calidad · Pareto de defectos (revisado)<br>
+├─ <b>Procesos</b> → mapa de procesos · Flujos entre procesos · Actividades de procedimiento<br>
+├─ <b>Mi trabajo</b><br>
+│&nbsp;&nbsp;├─ Mis acciones → <i>sgi.action.line</i> (filtros: mías + abiertas + vencidas)<br>
+│&nbsp;&nbsp;├─ Mis procedimientos → documentos vigentes de mi puesto<br>
+│&nbsp;&nbsp;└─ Mis actividades de procedimiento → <i>sgi.process.activity</i><br>
+├─ <b>Mejora continua</b> <i>(el ciclo reactivo completo)</i><br>
+│&nbsp;&nbsp;├─ No Conformidades → Tablero (kanban) · Concentrado F-P-G05-02<br>
+│&nbsp;&nbsp;├─ <span class="lock">🔒 Acciones (todas)</span> → CAPA transversal: NC + riesgos + AMEF + incidentes<br>
+│&nbsp;&nbsp;├─ Incidentes SST → <i>sgi.incident</i> (SCAT)<br>
+│&nbsp;&nbsp;├─ Reclamaciones → tickets del equipo "Reclamaciones de clientes"<br>
+│&nbsp;&nbsp;├─ Quejas y sugerencias → canal interno (voz del trabajador, 45001 5.4)<br>
+│&nbsp;&nbsp;└─ Mejoras → tareas del proyecto "Mejora Continua SGI"<br>
+├─ <b>Documental</b><br>
+│&nbsp;&nbsp;├─ Documentos → <i>documents.document</i> controlados (filtro Vigentes)<br>
+│&nbsp;&nbsp;├─ Cambios documentales → <i>approval.request</i> SGI<br>
+│&nbsp;&nbsp;└─ <span class="lock">🔒 Migración de formatos</span> → kanban por estado de migración<br>
+├─ <b>Medición</b><br>
+│&nbsp;&nbsp;├─ Indicadores · Mediciones (list/graph/pivot)<br>
+│&nbsp;&nbsp;├─ Evaluación de proveedores · Brechas de competencia (DNC)<br>
+│&nbsp;&nbsp;└─ Presupuesto y pronóstico → Presupuestos · Pronósticos · Análisis (×4)<br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(este submenú se espeja dentro de la app Ventas, seq 6)</i><br>
+├─ <b>Riesgos y auditorías</b> → Riesgos y oportunidades <i>(planificar 6.1)</i> · Programa anual · Auditorías <i>(verificar 9.2)</i><br>
+├─ <b>Calidad preventiva</b> <i>(antes "Automotriz": evita el defecto antes de producir)</i> → Planes de control · AMEF · PPAP ·<br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Metrología → Equipos de medición · Calibraciones · Estudios MSA<br>
+├─ <span class="lock">🔒 <b>Revisión por la Dirección</b></span> → <i>sgi.management.review</i><br>
+└─ <span class="lock">🔒 <b>Configuración</b></span> → ⚙️ Ajustes · Áreas · Normas · Cláusulas · Acuses de lectura ·<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Categorías de riesgo · Elementos PPAP · Formatos en documentos de Odoo · Fuentes de NC automáticas
+</div>
+
+<!-- ============================================================ -->
+<h2 id="maestro"><span class="sec">03</span>Diagrama maestro — todo camino lleva a la NC</h2>
+<p class="sub">La No Conformidad (<code>quality.alert</code>) es el corazón del sistema. Seis fuentes la alimentan por la puerta única <code>sgi_auto_create(código_fuente, vals)</code>, cada una con un interruptor apagable en <b>Configuración → Fuentes de NC automáticas</b>.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  subgraph AUTO["Fuentes automáticas"]
+    IND["Medición de KPI<br>validada en ROJO<br><i>(si nc_on_red)</i>"]
+    CAL["Calibración<br>fuera de tolerancia"]
+    INC["Incidente SST<br>grave / fatal"]
+    PES["Rollo fuera de<br>tolerancia de peso<br><i>(satélite pesaje)</i>"]
+  end
+  subgraph MAN["Fuentes manuales (botón)"]
+    AUD["Hallazgo de auditoría<br><b>Generar NC</b>"]
+    REC["Reclamación de cliente<br><b>Generar NC</b>"]
+    MTO["Falla de mantenimiento<br><b>Levantar NC</b>"]
+    ESC["Alerta de piso<br><b>Escalar a NC del SGI</b>"]
+  end
+  GATE{{"sgi_auto_create()<br>fuente habilitada?"}}
+  IND --> GATE
+  CAL --> GATE
+  INC --> GATE
+  PES --> GATE
+  AUD --> GATE
+  REC --> GATE
+  MTO --> GATE
+  GATE -- "automática apagada" --> SUP["NC omitida<br>(contador + fecha)"]
+  GATE -- "manual apagada" --> ERR["UserError<br>en pantalla"]
+  GATE -- "habilitada" --> NC["NO CONFORMIDAD<br>quality.alert<br>folio NCI- / NCE-"]
+  ESC -- "asigna folio directo" --> NC
+  NC --> ACC["Acciones sgi.action.line<br>corrección / correctiva / preventiva"]
+  ACC --> ACT["Actividad espejo<br>al responsable"]
+  NC -- "cerrar exige" --> CAND["Causa raíz + acciones<br>terminadas + eficacia<br>(+5 porqués si mayor)"]
+  NC -- "mayor cerrada" --> FMEA["Actividad: actualizar<br>AMEF y plan de control"]
+  NC -- "reincidente cerrada" --> RA["Read-across a los AMEF<br>del mismo proceso"]
+</pre></div>
+<figcaption>Toda NC nace por una de 8 vías; el cierre siempre pasa por los candados de <code>_sgi_check_can_close()</code>, y una NC mayor o reincidente dispara la actualización del conocimiento (AMEF / plan de control).</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<tr><th>Fuente (código)</th><th>Disparo</th><th>Quién la invoca</th><th>Si está apagada</th></tr>
+<tr><td><code>indicador_semaforo_rojo</code></td><td>Automático</td><td>Cron de indicadores al validar medición roja con <code>nc_on_red</code></td><td>Silencio; marca <code>sgi_nc_suppressed</code> y reintenta cada mes</td></tr>
+<tr><td><code>calibracion_fuera_tolerancia</code></td><td>Automático</td><td>Crear calibración con resultado "fuera de tolerancia"</td><td>Sin NC, pero el equipo <b>igual queda bloqueado</b></td></tr>
+<tr><td><code>incidente_sst_grave</code></td><td>Automático</td><td>Crear/reclasificar incidente a grave o fatal</td><td>Silencio; el incidente sigue su flujo</td></tr>
+<tr><td><code>pesaje_rollo_fuera_peso</code></td><td>Automático</td><td>Confirmación forzada del wizard de pesaje (±3 kg)</td><td>Silencio; el rollo se registra igual</td></tr>
+<tr><td><code>auditoria_hallazgo</code></td><td>Manual</td><td>Botón "Generar NC" en el hallazgo</td><td><span class="tag bad">UserError</span> en pantalla</td></tr>
+<tr><td><code>reclamacion_cliente</code></td><td>Manual</td><td>Botón "Generar NC" en el ticket</td><td><span class="tag bad">UserError</span> en pantalla</td></tr>
+<tr><td><code>mantenimiento_falla</code></td><td>Manual</td><td>Botón "Levantar NC" en la solicitud correctiva</td><td><span class="tag bad">UserError</span> en pantalla</td></tr>
+</table></div>
+<p class="card note">Un código de fuente <b>no declarado</b> no bloquea: la NC se crea igual y queda un warning en el log ("es peor perder una NC que registrar una de más").</p>
+
+<!-- ============================================================ -->
+<h2 id="nc"><span class="sec">04</span>No Conformidades — <code>quality.alert</code> extendido</h2>
+<p class="sub">No hay campo <code>state</code>: el flujo va por etapas kanban (<code>stage_id</code>) de dos equipos — <b>NC Internas</b> (folio <code>NCI-AAAA-0001</code>) y <b>NC Externas</b> (<code>NCE-AAAA-0001</code>). Las etapas "Cerrada" y "Cancelada" llevan banderas SGI que activan los candados.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Abierta : crear / escalar (folio automático)
+  Abierta --> Seguimiento : arrastrar kanban
+  Seguimiento --> Cerrada : arrastrar kanban<br>→ _sgi_check_can_close()
+  Abierta --> Cerrada : arrastrar kanban<br>→ _sgi_check_can_close()
+  Abierta --> Cancelada
+  Seguimiento --> Cancelada
+  Cerrada --> Abierta : solo Jefe MAST<br>(candado de evidencia)
+  note right of Cerrada
+    Al entrar a Cerrada
+    · NC mayor → actividad AMEF/plan
+    · NC reincidente → read-across
+  end note
+</pre></div>
+<figcaption>Mover la tarjeta a la etapa de cierre es el "click" que dispara la validación completa; el cierre forzado del Jefe MAST la salta con contexto <code>sgi_force_close</code>.</figcaption>
+</figure>
+
+<h3>Botones en el formulario de la alerta</h3>
+<div class="tbl"><table>
+<tr><th>Botón</th><th>Método</th><th>Visible cuando</th><th>Qué hace, paso a paso</th></tr>
+<tr><td>Escalar a NC del SGI</td><td><code>action_sgi_escalate_to_nc</code></td><td>Sin folio · grupo Auditor SGI · <span class="tag acc">btn-primary</span></td><td>Mueve la alerta al equipo NC Internas, etapa Abierta, origen "Proceso", asigna folio <code>NCI-</code> y postea en el chatter. Conserva producto/orden/picking. Si ya tiene folio → UserError.</td></tr>
+<tr><td>Cierre forzado (Jefe MAST)</td><td><code>action_sgi_force_close</code></td><td>Con folio, no cerrada ni cancelada · grupo Jefe MAST</td><td>Abre el wizard <code>sgi.nc.force.close</code> (motivo obligatorio). Su botón <b>Cerrar NC</b> valida el grupo, postea "Cierre forzado por X. Motivo: …" y escribe la etapa de cierre saltando los candados (pero no las notificaciones de mayor / read-across).</td></tr>
+</table></div>
+
+<div class="card rule">
+<h4>Candados de cierre — <code>_sgi_check_can_close()</code> (un solo UserError con viñetas)</h4>
+<ul>
+<li>Falta la <b>causa raíz</b>.</li>
+<li>La NC no tiene <b>ninguna</b> corrección/acción registrada (ISO 10.2).</li>
+<li>Hay acciones sin <b>fecha de terminación</b>.</li>
+<li>Falta la <b>verificación de eficacia</b> (nota y fecha).</li>
+<li>NC <b>mayor</b>: faltan los <b>5 porqués</b> completos, o falta confirmar "Lección aplicada a AMEF / plan de control / documento".</li>
+<li>NC mayor <b>o reincidente</b>: se exige al menos una <b>acción correctiva terminada</b> (una corrección inmediata no basta).</li>
+</ul>
+</div>
+
+<div class="card auto">
+<h4>Automatizaciones al cerrar y en el día a día</h4>
+<ul>
+<li><b>NC mayor cerrada</b> → actividad al Jefe MAST "NC mayor cerrada: actualizar AMEF y plan de control", colgada del AMEF ligado (o de la NC).</li>
+<li><b>NC reincidente cerrada</b> (recurrencia: NCs del mismo proceso en 12 meses; misma cláusula pesa doble) → actividad de <b>read-across</b> en cada AMEF vigente del mismo proceso.</li>
+<li><b>Cron diario</b>: NC sin acción tras 5 días (3 si viene de auditoría externa o reclamación) → actividad de escalamiento; todas las acciones terminadas sin eficacia registrada → actividad "Verificar eficacia".</li>
+</ul>
+</div>
+
+<p>Navegación: menú <b>Tablero</b> (kanban), <b>Concentrado</b> (lista F-P-G05-02 + pivot/graph agrupado por etapa) y reporte imprimible <b>F-P-G05-01</b> desde el menú Imprimir. La pestaña "Ligas SGI" (visible con folio) conecta la NC con riesgos, AMEF y documento controlado.</p>
+
+<!-- ============================================================ -->
+<h2 id="acciones"><span class="sec">05</span>Acciones (CAPA) — <code>sgi.action.line</code></h2>
+<p class="sub">Modelo único de acciones con origen XOR: exactamente uno entre NC, riesgo, línea de AMEF o incidente SST. No tiene botones — todo es edición inline; su estado se calcula solo.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Abierta : crear (responsable + fecha compromiso)
+  Abierta --> Vencida : fecha compromiso &lt; hoy<br>(cron diario recalcula)
+  Abierta --> Terminada : capturar fecha de terminación
+  Vencida --> Terminada : capturar fecha de terminación
+  Terminada --> Abierta : borrar la fecha<br>(re-agenda actividad)
+  note right of Vencida
+    Escalamiento del cron
+    +7 días → jefe directo
+    +15 días → Dirección
+  end note
+</pre></div>
+<figcaption>El estado es un compute almacenado sobre <code>date_commit</code>/<code>date_done</code>; "Terminada" gana sobre "Vencida".</figcaption>
+</figure>
+
+<ul class="plain">
+<li><b>Actividad espejo</b>: cada acción con responsable y compromiso genera/actualiza una actividad "Por hacer" sobre su registro origen. Terminar la acción cierra la actividad con feedback; <b>marcar la actividad como hecha desde el chatter también termina la acción</b> (sincronización bidireccional vía <code>mail.activity._action_done</code>).</li>
+<li><b>Regla de causa raíz</b>: en una NC con folio no se puede registrar acción <i>correctiva</i> o <i>preventiva</i> sin causa raíz capturada; la corrección (contención) sí.</li>
+<li><b>Avance</b>: 0% / 50% / 100% — el cron de NC usa "algún avance ≠ 0" para decidir si escala por inacción.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="incidentes"><span class="sec">06</span>Incidentes SST — <code>sgi.incident</code> (P-S02, SCAT)</h2>
+<p class="sub">Folio <code>INC-AAAA-01</code>. Estado bloqueado: <code>cerrado</code> (evidencia).</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Reportado
+  Reportado --> Investigacion : ▶ Investigar
+  Investigacion --> Acciones : ▶ Definir acciones
+  Investigacion --> Cerrado : ▶ Cerrar (candados SCAT)
+  Acciones --> Cerrado : ▶ Cerrar (candados SCAT)
+  Cerrado --> Reportado : ▶ Reabrir (solo Jefe MAST)
+  state "En investigación" as Investigacion
+</pre></div>
+<figcaption>Los 4 botones del header son primarios salvo Reabrir; se puede cerrar directo desde investigación.</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<tr><th>Botón</th><th>Método</th><th>Visible cuando</th><th>Qué hace</th></tr>
+<tr><td>Investigar</td><td><code>action_set_investigacion</code></td><td>estado = reportado</td><td>Pasa a "En investigación".</td></tr>
+<tr><td>Definir acciones</td><td><code>action_set_acciones</code></td><td>estado = investigación</td><td>Pasa a "Acciones".</td></tr>
+<tr><td>Cerrar</td><td><code>action_set_cerrado</code></td><td>investigación o acciones</td><td>Valida candados y cierra.</td></tr>
+<tr><td>Reabrir</td><td><code>action_set_reportado</code></td><td>estado = cerrado</td><td>Vuelve a "Reportado" — el candado de evidencia exige Jefe MAST.</td></tr>
+</table></div>
+
+<div class="card rule"><h4>Candados de cierre</h4><ul>
+<li>Las <b>3 capas SCAT</b> completas: causas inmediatas, causas básicas y falta de control.</li>
+<li>Al menos una acción registrada, y ninguna sin fecha de terminación.</li>
+<li>Incidente <b>grave/fatal</b>: ligar el riesgo <b>IPER</b> del que surge.</li>
+</ul></div>
+
+<div class="card auto"><h4>Automatizaciones al crear o reclasificar</h4><ul>
+<li>Severidad <b>grave/fatal</b> → NC <b>mayor</b> automática (fuente <code>incidente_sst_grave</code>) con liga bidireccional, + actividad "Investigar incidente" sobre la NC al Jefe MAST.</li>
+<li>Actividades de aviso inmediato al Jefe MAST <b>y a toda la Dirección</b>: "Se registró un incidente grave. Inicie la investigación SCAT de inmediato."</li>
+<li>Subir la severidad después (leve → grave) dispara lo mismo, sin duplicar.</li>
+</ul></div>
+
+<!-- ============================================================ -->
+<h2 id="reclamaciones"><span class="sec">07</span>Reclamaciones y mejora continua</h2>
+<h3>Reclamaciones — <code>helpdesk.ticket</code> extendido</h3>
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["Nueva"] --> B["Contención<br><i>SLA: 1a respuesta ≤ 3 días</i>"] --> C["Análisis"] --> D["Respuesta<br>al cliente"] --> E["Cerrada"]
+  C -. "▶ Generar NC (si no hay)" .-> NC["NC origen<br>Reclamación"]
+</pre></div>
+<figcaption>Etapas del equipo "Reclamaciones de clientes"; el botón <b>Generar NC</b> (<code>action_sgi_generate_nc</code>, oculto si ya hay NC) crea la NC con cliente, producto, lote y metros afectados, y navega directo a ella.</figcaption>
+</figure>
+<p>Campos SGI del ticket: pedido, producto, lote, metros afectados y <b>disposición</b> (devolución / reposición / nota de crédito / concesión / N/A). Además existe el canal interno "Quejas y Sugerencias" (alias <code>quejas-sugerencias</code>) con etapas Recibida → En atención → Cerrada, para voz del trabajador.</p>
+
+<h3>Mejora continua — <code>project.task</code> del proyecto "Mejora Continua SGI"</h3>
+<p>Etapas: <b>Propuesta → En ejecución → Terminada</b>. Sin botones propios: al arrastrar la tarjeta a la etapa marcada como cierre, el candado exige <b>fecha límite</b> y <b>al menos un adjunto como evidencia</b>. Campos SGI: tipo de mejora (ambiental / proceso / recurso / otros), área y proceso.</p>
+
+<!-- ============================================================ -->
+<h2 id="auditorias"><span class="sec">08</span>Auditorías — programa, ejecución y hallazgos (P-G03)</h2>
+<p class="sub">Tres niveles: programa anual (uno por año) → líneas planificadas → auditoría con folio <code>AUD-AAAA-01</code>. Estado bloqueado: <code>cerrada</code>.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+  subgraph PROG["Programa anual (borrador → ▶Aprobar → aprobado → ▶Cerrar)"]
+    L["Línea: proceso + mes + tipo + auditor líder"]
+  end
+  L -- "▶ Crear auditoría (botón de línea)" --> A
+  subgraph AUD["Auditoría AUD-AAAA-NN"]
+    A["Borrador"] -- "▶ Planificar" --> B["Planificada"]
+    B -- "▶ Iniciar (sella fecha inicio)" --> C["En ejecución"]
+    C -- "▶ Elaborar informe (sella fecha fin)" --> D["Informe"]
+    D -- "▶ Cerrar (candados)" --> E["Cerrada 🔒"]
+  end
+  C --> H["Hallazgos (lista editable):<br>conformidad · observación · NC menor ·<br>NC mayor · oportunidad"]
+  H -- "▶ Generar NC (por hallazgo)" --> NC["NC clasificada<br>mayor/menor/observación<br>origen auditoría int/ext"]
+  CRON["Cron diario: aviso al auditor líder<br>15 días antes del mes planificado"] -.-> PROG
+</pre></div>
+<figcaption>El botón "Generar NC" del hallazgo se oculta si ya tiene NC o si el hallazgo es conformidad/oportunidad. El checklist se apoya en la encuesta "Checklist Auditoría Interna ISO 9001:2015" (7 secciones, respuestas Conforme / No conforme / Observación).</figcaption>
+</figure>
+
+<div class="card rule"><h4>Candados</h4><ul>
+<li><b>Independencia</b>: el auditor (líder o equipo) no puede ser dueño de un proceso auditado (ValidationError al guardar).</li>
+<li><b>Cierre</b>: todo hallazgo <b>NC mayor</b> debe tener NC ligada; todo hallazgo necesita disposición; "Genera NC" exige la NC creada; "Sin acción" exige justificación.</li>
+<li>Los hallazgos de una auditoría cerrada <b>no se pueden borrar</b> (solo Jefe MAST reabriendo).</li>
+</ul></div>
+<p>Smart button <b>Hallazgos</b> (statinfo) en la auditoría. Reportes imprimibles: <b>Plan de auditoría F-P-G03-03</b> e <b>Informe de auditoría</b> (menú Imprimir).</p>
+
+<!-- ============================================================ -->
+<h2 id="rxd"><span class="sec">09</span>Revisión por la Dirección — <code>sgi.management.review</code> (IT-P-A10-01)</h2>
+<p class="sub">Folio <code>RD-AAAA-01</code>. Estado bloqueado: <code>cerrada</code>. Menú visible solo al Jefe MAST.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Borrador
+  Borrador --> Borrador : ▶ Cargar entradas<br>(llena las 10 entradas 9.3.2)
+  Borrador --> Realizada : ▶ Marcar realizada<br>(TODO acuerdo con<br>responsable y fecha)
+  Realizada --> Cerrada : ▶ Cerrar
+  Cerrada --> Borrador : ▶ Volver a borrador<br>(solo Jefe MAST)
+  note right of Realizada
+    Cada acuerdo se vuelve
+    tarea del proyecto
+    "Acuerdos RxD"
+  end note
+</pre></div>
+<figcaption>"Cargar entradas" toma una foto real del periodo; "Marcar realizada" convierte los acuerdos en tareas rastreables con responsable y deadline.</figcaption>
+</figure>
+
+<div class="card note"><h4>Las 10 entradas que llena "Cargar entradas" (solo en borrador)</h4><ul>
+<li><b>1</b> Acuerdos previos con % de cierre (tareas de la RxD anterior) · <b>2</b> NCs abiertas/seguimiento/cerradas por equipo · <b>3</b> Reclamaciones + cumplimiento SLA · <b>4</b> Auditorías y hallazgos por tipo · <b>5</b> Mediciones de KPI en rojo (M2M) · <b>6</b> Proveedores por clase · <b>7</b> Riesgos de atención alta/inmediata (M2M) · <b>8</b> Scrap por motivo · <b>9</b> Recursos (única entrada manual) · <b>10</b> Cambios documentales aprobados.</li>
+</ul></div>
+<p>El acta formal es el PDF <b>F-IT-P-A10-01-01</b> desde el menú Imprimir. El formato del acta estampa su clave/revisión viva vía el mapa de formatos.</p>
+
+<!-- ============================================================ -->
+<h2 id="indicadores"><span class="sec">10</span>Indicadores y mediciones — el semáforo del SGI</h2>
+<p class="sub">El indicador (<code>sgi.indicator</code>) no tiene estados: define meta, dirección, frecuencia y <b>modo de cálculo</b> (26 modos: 22 automáticos desde datos reales de Odoo + captura manual). La medición mensual/semanal (<code>sgi.indicator.measure</code>) es la que fluye.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Pendiente : cron mensual/semanal<br>(sin valor automático)
+  [*] --> Capturado : cron con valor automático
+  Pendiente --> Capturado : ▶ Marcar capturado<br>(capturó el responsable)
+  Capturado --> Validado : ▶ Validar<br>(responsable del KPI o Jefe MAST)
+  note right of Pendiente
+    Actividad al responsable
+    "Capturar indicador X"
+    con fecha límite (día 5 / +2d)
+  end note
+  note right of Validado
+    · Campos bloqueados (evidencia)
+    · Si semáforo ROJO y nc_on_red
+      → NC automática (1 por medición)
+  end note
+</pre></div>
+<figcaption>El semáforo (verde/amarillo/rojo) se calcula contra objetivo y aceptable según la dirección del KPI; una medición pendiente no se pinta. La NC en rojo es idempotente por medición.</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<tr><th>Botón</th><th>Método</th><th>Dónde / visible</th><th>Qué hace</th></tr>
+<tr><td>Marcar capturado</td><td><code>action_capture</code></td><td>Form, estado pendiente</td><td>Pasa a capturado.</td></tr>
+<tr><td>Validar</td><td><code>action_validate</code></td><td>Form y listas, oculto si ya validado</td><td>Verifica que valides tú (responsable) o MAST; valida y evalúa la NC automática.</td></tr>
+<tr><td>Ver evidencia</td><td><code>action_view_evidence</code></td><td>Oculto en KPIs manuales</td><td>Abre los registros reales que explican el valor: embarques con devolución, OCs, facturas, brechas de competencia, MOs, scrap… (11 destinos según el modo de cálculo).</td></tr>
+<tr><td>Regresar a pendiente</td><td><code>action_reset</code></td><td>Solo Jefe MAST, con confirmación</td><td>Devuelve la medición a Pendiente (deja de contar como evidencia validada).</td></tr>
+</table></div>
+
+<ul class="plain">
+<li><b>Cron mensual</b> crea la medición del mes anterior de cada KPI mensual (idempotente, no recalcula existentes); el semanal hace lo propio con la semana anterior. Los automáticos llegan ya "capturados" con su valor; los manuales llegan "pendientes" con actividad y deadline al responsable.</li>
+<li>Ejemplos de modos automáticos: OTIF ventas, OTD compras, producido vs programado, desperdicio (subproducto SALDO TEJIDO D), calidad PQ (revisado de telas), cierre de NC, reclamos, preventivo cumplido, rotación RH, cumplimiento de presupuesto de ventas, crecimiento anual, requisiciones aprobadas, embarques sin error, consumo de energía, capacitación (brechas), inventario cíclico.</li>
+<li>El plan de activación es gradual: cada KPI se valida un mes contra el Excel F-P-A10-03 antes de encender <code>nc_on_red</code>.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="politica"><span class="sec">11</span>Política Integral y Objetivos</h2>
+<h3><code>sgi.policy</code> — folio <code>POL-AAAA-01</code></h3>
+<p>Estados <b>borrador → vigente → obsoleta</b>. Un índice único en BD garantiza <b>a lo sumo una política vigente</b>: publicar una nueva obsoleta automáticamente la anterior (con mensaje en su chatter). Botones (solo Jefe MAST): <b>Publicar (Vigente)</b> · <b>A borrador</b> · <b>Obsoletar</b>. Smart button "Objetivos". El texto publicado con firma vive en el documento controlado MIID ligado.</p>
+<h3><code>sgi.objective</code> — los 9 objetivos 2030 del ANEXO 6</h3>
+<p>Sin estados ni flujo: cada objetivo agrega la <b>salud de los procesos</b> de sus indicadores (peor color gana) y muestra un smart button "Indicadores". La cascada ISO es: Política → Objetivos → Indicadores → Mediciones → NC.</p>
+
+<!-- ============================================================ -->
+<h2 id="documental"><span class="sec">12</span>Documentos controlados — <code>documents.document</code> extendido</h2>
+<p class="sub">Cada documento controlado lleva clave validada por nomenclatura (P-A28, F-P-G05-01, IT-, DAT, ANEXO…), revisión, área, puestos a los que aplica y ciclo de vida propio. Índice único en BD: una sola revisión <b>vigente</b> por clave.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Borrador
+  Borrador --> Piloto : cambio documental aprobado<br>con prueba piloto (≤90 días)
+  Borrador --> Vigente : cambio documental aprobado
+  Piloto --> Vigente : cambio documental aprobado
+  Vigente --> Obsoleto : nueva revisión entra en vigor<br>(automático) o baja aprobada
+  note right of Vigente
+    Al entrar en vigor
+    · obsoleta la revisión previa
+    · re-apunta la familia documental
+    · limpia la divergencia G14
+    · genera acuses de lectura
+  end note
+</pre></div>
+<figcaption>El documento no tiene botones de transición: los estados los mueve la solicitud de cambio documental aprobada (sección 13). Cada revisión de procedimiento es un registro nuevo; el viejo queda obsoleto.</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<tr><th>Botón</th><th>Método</th><th>Visible cuando</th><th>Qué hace</th></tr>
+<tr><td>Ver archivo</td><td><code>action_sgi_view_file</code></td><td>Siempre (form y fila de lista)</td><td>Abre el PDF adjunto o la URL en pestaña nueva; sin archivo → UserError.</td></tr>
+<tr><td>Generar acuses</td><td><code>action_generate_acks</code></td><td>Estado piloto o vigente</td><td>Crea un acuse por cada empleado cuyo puesto esté en "Puestos a los que aplica" (idempotente: solo los faltantes).</td></tr>
+<tr><td>% Difusión (smart)</td><td><code>action_open_acks</code></td><td>Siempre</td><td>Abre los acuses del documento con el % leído.</td></tr>
+<tr><td>Abrir en Documentos (smart)</td><td><code>action_sgi_open_in_documents</code></td><td>Siempre</td><td>Salta a la app nativa Documentos.</td></tr>
+</table></div>
+
+<div class="card auto"><h4>Vigilancia automática (cron diario de vencimientos documentales)</h4><ul>
+<li><b>Revisión bienal</b>: aviso al dueño del documento 60 y 30 días antes de la próxima revisión.</li>
+<li><b>Piloto por vencer</b>: aviso 7 días antes del fin del piloto.</li>
+<li><b>Acuses pendientes</b> &gt;7 días: actividad al empleado sobre el documento.</li>
+<li><b>Divergencia G14</b>: si el procedimiento vivo (alcance, actividades, responsabilidades) cambia después de la revisión vigente, el documento se marca "pendiente de revisión documental" con banner ámbar y actividad al dueño — se limpia al aprobar la nueva revisión.</li>
+</ul></div>
+
+<h3>El procedimiento vivo (F-P-G01-02)</h3>
+<p>El procedimiento dejó de ser un PDF adjunto: alcance, responsabilidades por rol y actividades numeradas (con su formato en rojo, el menú de Odoo donde se ejecuta y botón <b>Abrir en Odoo</b>) viven como datos del proceso. El smart button con contador de actividades <b>imprime el PDF completo</b> con caja de control ISO, secciones 1–8, riesgos ambientales e IPER del proceso y bloque de firmas — copia no controlada.</p>
+
+<!-- ============================================================ -->
+<h2 id="cambio-doc"><span class="sec">13</span>Cambio documental (F-P-G01-06) y acuses de lectura</h2>
+<p class="sub">Implementado sobre la app <b>Aprobaciones</b>: categoría "Modificación de documento SGI" con <b>2 aprobadores en secuencia</b>. Los botones son los nativos (Confirmar / Aprobar / Rechazar); el efecto SGI se engancha al aprobar.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+  REQ["Solicitud de cambio<br>alta / modificación / baja<br>+ piloto opcional (≤90 días)"]
+  REQ -- "Confirmar → 2 aprobaciones" --> APR{"Aprobada"}
+  APR -- "modificación" --> MOD["Documento: nueva revisión,<br>emisión hoy, próxima revisión +2 años,<br>estado vigente (o piloto)"]
+  MOD --> OBS["Obsoleta la revisión anterior<br>+ re-apunta la familia"]
+  MOD --> ACK["Genera acuses de lectura<br>a los puestos que aplican"]
+  APR -- "baja" --> BAJA["Documento → obsoleto"]
+  APR -- "alta" --> ALTA["Actividad al Jefe MAST:<br>crear el documento"]
+  ACK --> READ["Empleado: ▶ Marcar leído y entendido<br>(solo el propio empleado o MAST)"]
+  APR --> NEWS["Cron mensual: Boletín NEWS<br>F-P-G01-16 en PDF con todos los<br>cambios aprobados del mes"]
+</pre></div>
+<figcaption>Validaciones del piloto: fin ≥ inicio, máximo 90 días naturales, inicio no anterior a 15 días hábiles. Modificación/baja exigen seleccionar el documento afectado.</figcaption>
+</figure>
+
+<p>El acuse (<code>sgi.document.ack</code>) tiene dos estados — <b>Pendiente → Leído y entendido</b> — y un solo botón, <code>action_mark_read</code>, que sella fecha/hora y rechaza que alguien firme por otro. Los empleados ven sus pendientes en el smart button "Acuses pendientes" de su ficha.</p>
+
+<h3>Formatos en documentos de Odoo — <code>sgi.format.map</code></h3>
+<p>Mapeo de qué formato controlado sustituye cada documento nativo: la cotización porta <code>F-P-A28-12</code> (y al confirmarse cambia a <code>F-P-A28-06</code>), la OC <code>F-P-A02-01</code>, la remisión <code>F-P-A16-01</code>, la OF <code>F-IT-P-P01-08-01</code>, la NC <code>F-P-G05-01</code>, el CoA <code>F-P-C07-01</code>, el acta RxD <code>F-P-A10-01</code>, el presupuesto <code>F-P-A28-18/13</code>. La <b>revisión nunca se captura</b>: se lee en vivo del documento vigente y se estampa como banner 📋 en pantalla y como pie en el PDF.</p>
+
+<!-- ============================================================ -->
+<h2 id="riesgos"><span class="sec">14</span>Riesgos y oportunidades — <code>sgi.risk</code></h2>
+<p class="sub">Folio <code>RSG-AAAA-01</code>. Cinco instrumentos con escalas propias: <b>RyO</b> 5×5, <b>IPER</b> 3×3, <b>Ambiental</b>, <b>Patrimonial</b> 5×5 y <b>FODA</b> (sin puntuación). Estado bloqueado: <code>cerrado</code>.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Identificado
+  Identificado --> EnTratamiento : ▶ Iniciar tratamiento
+  EnTratamiento --> Controlado : ▶ Marcar controlado<br>candado si atención alta
+  Controlado --> Cerrado : ▶ Cerrar<br>candado si atención alta
+  Cerrado --> Identificado : ▶ Reabrir (solo Jefe MAST)
+  state "En tratamiento" as EnTratamiento
+  note right of Controlado
+    Riesgo inmediata/alto exige
+    · ≥1 acción de tratamiento TERMINADA
+    · residual &lt; inicial, o justificación
+    Reabrir o borrar la acción de un
+    riesgo controlado revalida el candado.
+  end note
+</pre></div>
+<figcaption>Botones explícitos de transición (el statusbar también funciona); el candado vive en <code>write()</code> y se revalida si se reabre o borra la acción de tratamiento.</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<tr><th>Instrumento</th><th>Escala</th><th>Nivel de atención (score = P × I)</th></tr>
+<tr><td>RyO / Ambiental</td><td>1–5 × 1–5</td><td>≥16 <span class="tag bad">Inmediata</span> · ≥9 <span class="tag warn">Media</span> · ≥4 <span class="tag info">Intermedia</span> · resto <span class="tag ok">Baja</span> (umbrales configurables)</td></tr>
+<tr><td>IPER (SST)</td><td>1–3 × 1–3 (validado)</td><td>≥6 <span class="tag bad">Alto</span> · ≥3 <span class="tag warn">Medio</span> · resto <span class="tag ok">Bajo</span></td></tr>
+<tr><td>Patrimonial</td><td>1–5 × 1–5</td><td>≥15 <span class="tag bad">Alto</span> · ≥6 <span class="tag warn">Medio</span> · resto <span class="tag ok">Bajo</span></td></tr>
+<tr><td>FODA</td><td>—</td><td>Sin score; exige tipo F/O/D/A</td></tr>
+</table></div>
+<p>El grupo "Residual" solo aparece cuando hay acciones terminadas. Vistas: kanban agrupado por nivel de atención, mapa de calor (pivot proceso × nivel), smart button "NCs ligadas". El cron diario avisa al dueño del proceso cuando vence la próxima revisión del riesgo. Los riesgos ambientales e IPER del proceso se imprimen en las secciones 5 y 6 del procedimiento.</p>
+
+<!-- ============================================================ -->
+<h2 id="amef"><span class="sec">15</span>AMEF — <code>sgi.fmea</code> (P-C10)</h2>
+<p class="sub">Folio <code>AMEF-AAAA-01</code>. PFMEA (proceso) o DFMEA (diseño); líneas con NPR = S × O × D (escala 1–10) y umbral de acción configurable (default 100).</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Borrador
+  Borrador --> Vigente : ▶ Marcar vigente<br>candado NPR
+  Vigente --> Obsoleto : ▶ Marcar obsoleto
+  Vigente --> Borrador : ▶ Regresar a borrador
+  Obsoleto --> Borrador : ▶ Regresar a borrador
+  note right of Vigente
+    Candado: todo modo de falla
+    con NPR ≥ 100 necesita una
+    acción TERMINADA (no solo
+    registrada). Líneas de AMEF
+    vigente/obsoleto no se borran.
+    Obsoletar avisa al Jefe MAST
+    para verificar cobertura.
+  end note
+</pre></div>
+<figcaption>Cada línea admite re-evaluación post-acción (S/O/D post → NPR post). Las acciones de la línea cuelgan del modelo único CAPA y su actividad espejo se agenda sobre el AMEF.</figcaption>
+</figure>
+
+<p>Entradas automáticas al AMEF: cierre de <b>NC mayor</b> (actividad "actualizar AMEF y plan de control") y <b>read-across</b> de NC reincidentes del mismo proceso. Smart button "NCs ligadas". Reporte imprimible <b>AMEF (P-C10)</b> en horizontal.</p>
+
+<!-- ============================================================ -->
+<h2 id="plan-control"><span class="sec">16</span>Plan de control (P-C11) y Certificado de Calidad</h2>
+<p class="sub">Folio <code>PC-AAAA-01</code>. El plan envuelve <b>puntos de control reales</b> (<code>quality.point</code> de la app Calidad) enriquecidos con: característica de la Master Spec, criticidad <b>F / R / S</b>, Cpk objetivo, plan de reacción, equipo de medición y bandera "aparece en el CoA".</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  subgraph PLAN["Plan de control (borrador → ▶Vigente → ▶Obsoleto)"]
+    QP["quality.point<br>característica · F/R/S · Cpk ·<br>equipo de medición · en CoA"]
+  end
+  QP --> QC["quality.check<br>inspección del piso<br>(bloqueada si el equipo está<br>vencido o 'No usar')"]
+  QC --> LOT["stock.lot"]
+  LOT -- "▶ Certificado de Calidad (CoA)" --> PDF["PDF F-P-C07-01<br>solo características 'en CoA'"]
+  LOT -- "▶ Publicar CoA en portal (confirma)" --> PORTAL["Adjunta el PDF a las entregas<br>salientes del lote → portal del cliente"]
+</pre></div>
+<figcaption>Marcar vigente exige al menos un punto de control. Obsoletar no desactiva los puntos: agenda actividad al Jefe MAST para revisarlos. Sin inspecciones "en CoA", los botones del lote lanzan UserError.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2 id="ppap"><span class="sec">17</span>PPAP — <code>sgi.ppap</code> (P-C15)</h2>
+<p class="sub">Folio <code>PPAP-AAAA-01</code>. Al crear el expediente se generan automáticamente los <b>18 elementos AIAG</b> (registros de diseño… PSW). Estado bloqueado: <code>aprobado</code>.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Preparacion
+  Preparacion --> Enviado : ▶ Marcar enviado<br>candado sin pendientes
+  Enviado --> Aprobado : ▶ Aprobar<br>candado PSW listo/aprobado
+  Enviado --> Interino : ▶ Interino
+  Enviado --> Rechazado : ▶ Rechazar
+  Interino --> Rechazado : ▶ Rechazar
+  Interino --> Preparacion : ▶ Regresar a preparación
+  Rechazado --> Preparacion : ▶ Regresar a preparación
+  Aprobado --> Preparacion : ▶ Regresar (solo Jefe MAST)
+  state "Preparación" as Preparacion
+</pre></div>
+<figcaption>"Marcar enviado" sella la fecha de envío y falla si algún elemento sigue Pendiente (N/A, Listo y Aprobado pasan). "Aprobar" sella la decisión y exige el <b>elemento 18 (PSW)</b> en Listo o Aprobado — N/A no basta. Los elementos de un PPAP aprobado no se borran.</figcaption>
+</figure>
+
+<p>Cada elemento se liga a su evidencia: AMEF (elementos 4 y 6), plan de control (7) o documento. Smart buttons "PPAP" en la ficha del <b>cliente</b> y del <b>producto</b>. El satélite PLM crea el PPAP automáticamente al aplicar un ECO (sección 25).</p>
+
+<!-- ============================================================ -->
+<h2 id="calibracion"><span class="sec">18</span>Metrología y calibración — <code>sgi.calibration</code> (P-C03, IATF 7.1.5)</h2>
+<p class="sub">El registro de calibración no tiene estados ni botones: el efecto ocurre <b>al crearlo</b>, y el estado vive en el equipo (vigente / por vencer / vencido + bandera "No usar").</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+  REG["Registrar calibración<br>(fecha, tipo, proveedor, certificado)"]
+  REG --> R{"Resultado"}
+  R -- "Conforme" --> OK["Actualiza últimas fechas del equipo<br>y DESBLOQUEA si estaba 'No usar'"]
+  R -- "Fuera de tolerancia" --> BLK["Equipo → 'No usar' 🔒<br>+ NC MAYOR automática:<br>evaluar producto medido<br>desde la última calibración<br>+ actividad al Jefe MAST"]
+  CRON["Cron diario"] --> PV["Por vencer (≤30 días)<br>→ actividad al técnico"]
+  CRON --> VC["Vencido → bloquea 'No usar'<br>→ actividad al Jefe MAST"]
+  CRON --> EPP["EPP por vencer/vencido (≤30 días)<br>→ actividad de reposición"]
+  BLK --> GATE["quality.check: no se puede<br>dictaminar pass/fail con equipo<br>bloqueado o vencido (ValidationError)"]
+  VC --> GATE
+</pre></div>
+<figcaption>El bloqueo metrológico es una constraint dura evaluada en línea (no depende del cron): la inspección hereda el equipo del punto de control y valida su calibración al dictaminar.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2 id="proveedores"><span class="sec">19</span>Evaluación de proveedores — <code>sgi.supplier.eval</code> (ISO 8.4)</h2>
+<p class="sub">Score = <b>OTD × 0.7 + Calidad × 0.3</b>, donde Calidad = 100 − (NCs del proveedor en el periodo × 10). Pesos y penalización configurables en Ajustes.</p>
+<div class="tbl"><table>
+<tr><th>Score</th><th>Clase</th><th>Consecuencia</th></tr>
+<tr><td>≥ 85</td><td><span class="tag ok">Acreditado</span></td><td>—</td></tr>
+<tr><td>≥ 70</td><td><span class="tag warn">Condicionado</span></td><td>Actividad automática al Gerente de Compras</td></tr>
+<tr><td>&lt; 70</td><td><span class="tag bad">Baja</span></td><td>Actividad automática al Gerente de Compras</td></tr>
+</table></div>
+<p>Botones: <b>Recalcular</b> (<code>action_recompute</code>, refresca OTD/NC/score con los datos de hoy — las métricas son una foto) y <b>Aplicar al proveedor</b> (<code>action_apply_to_partner</code>) — escribe clase, score y fecha en la ficha del partner. Las alertas <b>canceladas no penalizan</b>. El <b>cron trimestral</b> evalúa automáticamente a todos los proveedores con recepciones del trimestre anterior, recalcula y aplica el resultado. La ficha del proveedor muestra pestaña "SGI Proveedor" y smart buttons "Evaluaciones", "NC" y "Reclamaciones"; la OC muestra "NC proveedor".</p>
+
+<!-- ============================================================ -->
+<h2 id="competencias"><span class="sec">20</span>Competencias y DNC — <code>sgi.competence.gap</code> (P-A01)</h2>
+<p>La brecha es una <b>vista SQL de solo lectura</b>: competencias requeridas por el puesto (<code>hr.job.skill</code>) vs las vigentes del empleado (<code>hr.employee.skill</code>, filtrando caducadas). Solo aparece lo que está por debajo del nivel requerido. Se consulta en <b>Medición → Brechas de competencia</b> (pivot por departamento) o con el smart button "Brechas" del empleado; alimenta el KPI de capacitación (RH-02).</p>
+<p>El <b>cron diario de competencias</b> vigila certificaciones: vencida → actividad al empleado + RH + Jefe MAST; por vencer (≤30 días) → empleado + RH; formaciones por concluir → empleado. La <b>encuesta DNC F-P-A01-17</b> (autopercepción + temas solicitados) se envía manualmente desde la app Encuestas — no tiene automatización ligada.</p>
+
+<!-- ============================================================ -->
+<h2 id="presupuesto"><span class="sec">21</span>Presupuesto y pronóstico de ventas — <code>sgi.sales.budget</code> (P-A28)</h2>
+<p class="sub">Un mismo par de modelos sirve dos documentos: el <b>presupuesto mensual por mercado</b> (F-P-A28-18, matriz producto × mes, se aprueba y congela) y el <b>pronóstico semanal por cliente</b> (F-P-A28-13, matriz producto × semana, documento vivo que nunca se aprueba). Folio <code>PPV-AAAA-001</code>. La celda ES la línea; el precio jamás se captura: sale de la lista de precios.</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> Borrador
+  Borrador --> Revisado : ▶ Enviar a revisión / Marcar revisado<br>(Gerente de ventas o Jefe MAST)
+  Revisado --> Aprobado : ▶ Aprobar — solo presupuesto<br>(Dirección; bloquea sin precios de lista)
+  Revisado --> Borrador : automático al editar líneas<br>o ▶ Regresar a borrador
+  Aprobado --> Obsoleto : ▶ Revisar nueva Rev.<br>(copia todo a Rev+1 en borrador)
+  Aprobado --> Borrador : ▶ Regresar a borrador<br>(solo Jefe MAST)
+  note right of Aprobado
+    Presupuesto aprobado = congelado
+    (candado de cabecera y de líneas).
+    El pronóstico vive en
+    borrador ⇄ revisado.
+  end note
+</pre></div>
+<figcaption>Editar celdas de un documento "revisado" lo regresa solo a borrador con mensaje en el chatter — garantiza que lo revisado siempre refleje lo capturado.</figcaption>
+</figure>
+
+<h3>Los 17 botones del encabezado (flujo de trabajo numerado)</h3>
+<div class="tbl"><table>
+<tr><th>Botón</th><th>Método</th><th>Visible cuando</th><th>Qué hace</th></tr>
+<tr><td>1. Descargar plantilla</td><td><code>action_download_template</code></td><td>Borrador</td><td>Genera el Excel con filas pre-llenadas (pares cliente/producto facturados en 24 meses) y columnas de los 12 meses o las 52 semanas.</td></tr>
+<tr><td>2. Importar</td><td><code>action_open_import</code></td><td>Borrador</td><td>Abre el wizard de importación (abajo).</td></tr>
+<tr><td>2. Capturar en la matriz</td><td><code>action_open_grid_qty</code></td><td>Borrador</td><td>Grid producto × mes editable; las celdas suman/crean líneas globales (solo cantidades — el importe lo pone la lista de precios).</td></tr>
+<tr><td>Precargar desde pedidos</td><td><code>action_preload_from_orders</code></td><td>Pronóstico en borrador</td><td>Crea celdas con lo comprometido de pedidos confirmados por semana (nunca pisa lo existente).</td></tr>
+<tr><td>Precargar (pronóstico + real)</td><td><code>action_preload_from_orders</code></td><td>Presupuesto en borrador</td><td>Propuesta = máx(pronóstico vigente, facturado 12 meses) por producto/cliente/mes.</td></tr>
+<tr><td>3. Actualizar</td><td><code>action_refresh_actuals</code></td><td>Siempre</td><td>Refresca la foto de facturado (contabilidad), pedido y cobertura; el precio solo se refresca en borradores.</td></tr>
+<tr><td>Enviar a revisión / Marcar revisado</td><td><code>action_send_to_review</code></td><td>Borrador (uno por tipo)</td><td>Valida líneas; avisa (sin bloquear) si hay productos sin precio de lista.</td></tr>
+<tr><td>Aprobar (Dirección)</td><td><code>action_approve</code></td><td>Presupuesto revisado · grupos Dirección/MAST</td><td>Bloquea si hay líneas sin precio de lista (salvo excepción explícita con constancia); congela el documento.</td></tr>
+<tr><td>Revisar (nueva Rev.)</td><td><code>action_revise</code></td><td>Presupuesto aprobado · Jefe MAST</td><td>Obsoleta la revisión vigente y abre la Rev+1 en borrador con todas las líneas copiadas.</td></tr>
+<tr><td>Regresar a borrador</td><td><code>action_set_borrador</code></td><td>Revisado o aprobado</td><td>Reabre (aprobado exige Jefe MAST).</td></tr>
+<tr><td>Enviar demanda al MPS</td><td><code>action_send_to_mps</code></td><td>Pronóstico revisado / presupuesto aprobado (si hay MPS)</td><td>Pronóstico envía la demanda neta (máx entre ppto y comprometido); el presupuesto envía lo suyo excluyendo productos ya cubiertos por pronóstico. Idempotente.</td></tr>
+<tr><td>Comparación / Análisis / Curva</td><td><code>action_open_*</code></td><td>Siempre</td><td>Pivots ppto vs facturado vs pedido, análisis por cliente y curva acumulada para Dirección.</td></tr>
+<tr><td>Conciliar facturado</td><td><code>action_reconcile_invoiced</code></td><td>Presupuesto</td><td>Cuadra el facturado contable del equipo contra las líneas y publica la tabla de partidas (no presupuestado, sin producto, otros clientes, residual).</td></tr>
+<tr><td>Imprimir</td><td><code>action_print_budget</code></td><td>Siempre</td><td>PDF F-P-A28-17/18 (matriz mensual) o F-P-A28-13 (semanal con filas Ppto/Real/Neta).</td></tr>
+</table></div>
+
+<h3>Wizard de importación (2 pantallas)</h3>
+<ul class="plain">
+<li><b>Paso 1</b>: subir el .xlsx → un onchange lista las hojas del libro y preselecciona la primera; se elige el modo de conflicto (<b>Reemplazar</b> las líneas del producto o <b>Sumar</b>).</li>
+<li><b>Paso 2</b>: al pulsar <b>Importar</b> se procesa (encabezado flexible: busca "PRODUCTO"/"SEMANA"; matching de producto por referencia interna → nombre; cliente ambiguo o no encontrado ⇒ fila omitida con aviso, nunca importada como global) y el mismo wizard se reabre mostrando el resultado: líneas importadas, productos sin match y avisos. Errores de dato no abortan la hoja (savepoint por línea); las columnas de importe ($) se ignoran a propósito.</li>
+</ul>
+
+<div class="card auto"><h4>Vigilancia automática del plan de ventas</h4><ul>
+<li><b>Cierre de mes</b> (cron mensual): presupuesto &lt;80% al cierre → actividad al responsable del mercado con el top 5 de brechas; incumplimiento sin justificación → actividad "Justificar incumplimiento (P-A28 4.3.6.1)".</li>
+<li><b>Cobertura semanal</b> (cron): semanas descubiertas del pronóstico + pedidos fuera de pronóstico → una actividad por cliente al responsable del equipo. Desde la línea: "Ver pedidos de la semana", "Crear cotización (borrador)" por el faltante y "Ver facturas del mes".</li>
+<li><b>Revaluación S2</b> (junio): actividad para revisar las cantidades del segundo semestre y generar la siguiente revisión.</li>
+<li>Semáforos por línea: desviación de precio vs lista (ok ≤3% / leve ≤10% / grave) y cobertura (sin pedido / parcial / cubierto / excedido / fuera de horizonte).</li>
+</ul></div>
+
+<!-- ============================================================ -->
+<h2 id="procesos"><span class="sec">22</span>Mapa de procesos y semáforo de salud — <code>sgi.process</code></h2>
+<p class="sub">5 macroprocesos y 17 procesos nivel 2 con la cadena COP completa (CxC → Ventas → Planeación → Producción → Inspección → Almacén PT → Logística → Facturación) y 22 flujos ligados a objetos vivos de Odoo (pedidos, OFs, pickings, checks, tickets…).</p>
+
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  P["Proceso"] --> H{"Salud"}
+  H -- "riesgo alto/inmediato abierto<br>o NC abierta + KPI en rojo" --> R["🔴 Rojo"]
+  H -- "algo abierto<br>(NC, acción vencida, KPI rojo)" --> Y["🟡 Amarillo"]
+  H -- "nada abierto" --> G["🟢 Verde"]
+</pre></div>
+<figcaption>El Panel (portada del SGI) es este kanban agrupado por macroproceso. La salud del proceso alimenta a su vez la salud de los Objetivos Integrales.</figcaption>
+</figure>
+
+<p>El formulario del proceso concentra la navegación con 7 smart buttons: <b>NC abiertas · Acciones vencidas · KPIs en rojo · Riesgos altos · Documentos · Indicadores · Riesgos</b> — cada uno abre la lista filtrada del proceso. Cada flujo de entrada/salida tiene botón <b>Ver registros</b> que abre el modelo de Odoo donde se ejecuta ese entregable (oculto en entregables documentales).</p>
+
+<!-- ============================================================ -->
+<h2 id="crons"><span class="sec">23</span>Los 13 crons — el pulso del sistema</h2>
+<p class="sub">Todos idempotentes: no duplican actividades (dedupe por registro + resumen + destinatario). Fallback universal de destinatario: el Jefe MAST.</p>
+<div class="tbl"><table>
+<tr><th>Cron</th><th>Frecuencia</th><th>Qué hace</th></tr>
+<tr><td>Seguimiento de NC</td><td>Diario</td><td>Recalcula acciones vencidas; escala NC sin acción (5 días, 3 si externa/reclamación); pide verificación de eficacia cuando todas las acciones terminaron.</td></tr>
+<tr><td>Escalamiento de acciones</td><td>Diario</td><td>Acción vencida +7 días → jefe directo; +15 días → Dirección.</td></tr>
+<tr><td>Vencimientos documentales</td><td>Diario</td><td>Revisión bienal (avisos a 60 y 30 días), pilotos por vencer (7 días), acuses pendientes (&gt;7 días).</td></tr>
+<tr><td>Boletín NEWS</td><td>Mensual</td><td>PDF F-P-G01-16 con los cambios documentales aprobados del mes + actividad "Revisar y difundir".</td></tr>
+<tr><td>Mediciones de indicadores</td><td>Mensual</td><td>Crea las mediciones del mes anterior (automáticas con valor; manuales con actividad y deadline); evalúa NC en rojo; cierra el mes del presupuesto de ventas y refresca reales.</td></tr>
+<tr><td>Mediciones semanales</td><td>Semanal</td><td>Lo mismo para los KPIs semanales (OTIF).</td></tr>
+<tr><td>Avisos de programa de auditorías</td><td>Diario</td><td>Aviso al auditor líder 15 días antes del mes planificado.</td></tr>
+<tr><td>Revisión de riesgos</td><td>Diario</td><td>Riesgo con revisión vencida → actividad al dueño del proceso.</td></tr>
+<tr><td>Evaluación de proveedores</td><td>Trimestral</td><td>Evalúa el trimestre anterior de cada proveedor con recepciones; aplica clase al partner; escala condicionados/baja a Compras.</td></tr>
+<tr><td>Calibraciones y EPP</td><td>Diario</td><td>Por vencer → técnico; vencido → bloquea el equipo y avisa a MAST; EPP a 30 días.</td></tr>
+<tr><td>Revaluación S2 del presupuesto</td><td>Mensual (solo actúa en junio)</td><td>Actividad de revaluar el segundo semestre (P-A28 Nota 1).</td></tr>
+<tr><td>Competencias y certificaciones</td><td>Diario</td><td>Certificaciones vencidas/por vencer y formaciones por concluir → empleado + RH (+ MAST si venció).</td></tr>
+<tr><td>Cobertura del pronóstico</td><td>Semanal</td><td>Refresca cobertura; semanas descubiertas + pedidos fuera de pronóstico → actividad al responsable del mercado.</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="reportes"><span class="sec">24</span>Reportes y formatos controlados</h2>
+<div class="tbl"><table>
+<tr><th>Reporte</th><th>Modelo</th><th>Desde dónde se imprime</th></tr>
+<tr><td>Reporte de NC (F-P-G05-01)</td><td>quality.alert</td><td>Menú Imprimir de la alerta</td></tr>
+<tr><td>Plan de auditoría (F-P-G03-03)</td><td>sgi.audit</td><td>Menú Imprimir</td></tr>
+<tr><td>Informe de auditoría</td><td>sgi.audit</td><td>Menú Imprimir</td></tr>
+<tr><td>Acta de RxD (F-IT-P-A10-01-01)</td><td>sgi.management.review</td><td>Menú Imprimir</td></tr>
+<tr><td>Certificado de Calidad / CoA (P-C07)</td><td>stock.lot</td><td>Botones del lote (imprimir / publicar en portal)</td></tr>
+<tr><td>AMEF (P-C10)</td><td>sgi.fmea</td><td>Menú Imprimir</td></tr>
+<tr><td>Investigación de incidente (P-S02)</td><td>sgi.incident</td><td>Menú Imprimir</td></tr>
+<tr><td>Procedimiento (F-P-G01-02)</td><td>sgi.process</td><td>Smart button con contador de actividades</td></tr>
+<tr><td>Presupuesto de ventas (F-P-A28-17/18 · 13)</td><td>sgi.sales.budget</td><td>Botón "Imprimir" del encabezado</td></tr>
+<tr><td>Boletín NEWS (F-P-G01-16)</td><td>approval.request</td><td>Solo el cron mensual (adjunto PDF)</td></tr>
+</table></div>
+<p>Además, el pie de "formato controlado" (clave + revisión viva) se inyecta por herencia en los PDFs nativos de cotización/pedido, orden de compra y remisión, y en los propios de NC, CoA y acta RxD.</p>
+
+<!-- ============================================================ -->
+<h2 id="satelites"><span class="sec">25</span>Addons satélite (auto-instalables)</h2>
+
+<h3><code>quimibond_sgi_pesaje</code> — puente con el pesaje de rollos</h3>
+<p>Extiende el wizard de pesaje: en la <b>confirmación forzada</b> de un rollo cuyo peso neto queda fuera de la tolerancia ±3 kg contra el Rollo Estándar, crea una alerta de calidad en el equipo "Revisado de Tela" (una sola por rollo, idempotente por título) vía la fuente <code>pesaje_rollo_fuera_peso</code>. La primera confirmación fuera de rango solo advierte; la alerta nace en la segunda (forzada).</p>
+
+<h3><code>quimibond_sgi_plm</code> — puente con ingeniería (ECO)</h3>
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  ECO["mrp.eco con<br>'Requiere PPAP' marcado"] -- "▶ Aplicar (ECO hecho)" --> H{"¿cliente y<br>producto?"}
+  H -- "sí" --> PPAP["Crea sgi.ppap<br>motivo: cambio de ingeniería<br>+ liga AMEF (elem. 6) y<br>plan de control (elem. 7) en 'Listo'"]
+  H -- "no" --> ACT["Actividad al Jefe MAST:<br>crear el PPAP a mano"]
+  ECO -- "'Requiere aviso al cliente'" --> SALES["Actividad a Ventas:<br>aviso por cambio de ingeniería"]
+</pre></div>
+<figcaption>La pestaña "SGI - Control de cambios" del ECO captura cliente, AMEF y planes impactados; el smart button "PPAP" abre el expediente creado.</figcaption>
+</figure>
+
+<h3><code>quimibond_sgi_revisado</code> — Pareto de defectos</h3>
+<p>Solo vistas (cero Python): pivot y gráfica del registro de revisado de telas agrupado por causa (etiquetas TEJIDO-*), colgado en <b>Panel → Tableros → Pareto de defectos (revisado)</b>. Alimenta el KPI de Calidad PQ.</p>
+
+<!-- ============================================================ -->
+<h2 id="fase7"><span class="sec">26</span>Fase 7 — los bucles que faltaban (v19.0.15.0.0)</h2>
+<p class="sub">Resultado de la evaluación ISO (<code>docs/SGI_EVALUACION_ESTRUCTURA.md</code>): los cinco bucles que no cerraban, cerrados.</p>
+
+<h3>Emergencias y simulacros — <code>sgi.emergency.plan</code> / <code>sgi.emergency.drill</code> (14001/45001 §8.2)</h3>
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  PLAN["Plan de emergencia PE-<br>escenario + brigada + frecuencia<br>+ riesgos IPER/ambientales"]
+  PLAN -- "▶ Marcar vigente (exige responsable)" --> VIG["Vigente"]
+  VIG --> DRILL["Simulacro SIM-<br>programado"]
+  DRILL -- "▶ Marcar realizado" --> GATE{"Resultado"}
+  GATE -- "satisfactorio" --> OK["Realizado 🔒 evidencia"]
+  GATE -- "con observaciones /<br>no satisfactorio" --> CAPA["Exige hallazgos +<br>≥1 acción CAPA<br>(5º origen del XOR)"]
+  CAPA --> OK
+  CRON["Cron diario"] -. "primer simulacro pendiente ·<br>por vencer ≤30d · vencido ·<br>programado sin realizar" .-> PLAN
+</pre></div>
+<figcaption>El simulacro realizado se bloquea como evidencia; sus acciones usan el modelo CAPA único con actividad espejo y escalamiento (7/15 días) igual que las NC.</figcaption>
+</figure>
+
+<h3>Los otros cuatro cierres</h3>
+<div class="tbl"><table>
+<tr><th>Bucle</th><th>Qué se agregó</th><th>Click / automatización</th></tr>
+<tr><td>Satisfacción (9.1.2)</td><td>KPI <b>CA-02</b> automático: promedio 1–5 de las respuestas de la encuesta → % (meta 90/80). Menú "Satisfacción del cliente" bajo Medición con las respuestas.</td><td>Cron trimestral: actividad al Admin de Ventas "Enviar encuesta de satisfacción" — el envío a clientes siempre es acción humana. "Ver evidencia" abre las respuestas del periodo.</td></tr>
+<tr><td>DNC (P-A01)</td><td>Menú "Encuesta DNC" (antes huérfana) bajo Medición.</td><td>Cron trimestral: cuenta brechas abiertas y agenda a RH distribuir la F-P-A01-17 y armar el plan de capacitación.</td></tr>
+<tr><td>Alta documental</td><td>Botón <b>Crear documento</b> (Jefe MAST) en la solicitud de alta aprobada.</td><td>El documento nace ligado a la solicitud (<code>sgi_document_id</code>) con mensajes cruzados en ambos chatters.</td></tr>
+<tr><td>Alta de proveedores (8.4.1)</td><td>Estatus <b>Nuevo / Aprobado / Bloqueado</b> en la pestaña "SGI Proveedor", con botones del Jefe MAST y sello de quién/cuándo aprobó.</td><td>Un proveedor <b>bloqueado no puede recibir OCs confirmadas</b> (UserError en <code>button_confirm</code>). Sin estatus = fuera del alcance, nada se bloquea.</td></tr>
+<tr><td>MSA (IATF 7.1.5.1.1)</td><td><code>sgi.msa.study</code> (folio MSA-) por equipo: Gage R&amp;R, atributos, sesgo/linealidad, estabilidad. Smart button "MSA" en el equipo; menú Metrología → Estudios MSA.</td><td>Veredicto AIAG automático: %GRR &lt;10 <span class="tag ok">aceptable</span> · 10–30 <span class="tag warn">marginal</span> · &gt;30 <span class="tag bad">inaceptable</span> → actividad al Jefe MAST (bloquear el equipo es decisión humana).</td></tr>
+</table></div>
+<p class="card note"><b>Decisión de arquitectura documentada:</b> el SGI es exclusivo de PNTQ — sus modelos no llevan <code>company_id</code> (salvo el presupuesto). Si otra compañía lo adopta, se agrega por fases (README).</p>
+
+<p style="margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px">Generado a partir del código fuente de <code>quimibond_sgi</code> v19.0.15.0.0 y sus satélites (agosto 2026), incluidas las mejoras de los lotes 1–3 y la reorganización de menús. Cada botón, estado, candado y cron citado corresponde a un método real del addon. Evaluación ISO y deuda técnica: <code>docs/SGI_EVALUACION_ESTRUCTURA.md</code> · <code>docs/SGI_DEUDA_TECNICA.md</code>.</p>
+</div>
+
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+</script>
+</html>

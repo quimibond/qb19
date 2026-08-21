@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.14.0.0',
+    'version': '19.0.15.2.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -71,6 +71,8 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_process_flows_extra.xml',
         'data/sgi_parameters.xml',
         'data/sgi_alert_source_data.xml',
+        'data/sgi_fase7_data.xml',
+        'data/sgi_fase8_data.xml',
         # views
         'views/sgi_area_views.xml',
         'views/sgi_norm_views.xml',
@@ -92,6 +94,8 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_management_review_views.xml',
         'views/sgi_control_plan_views.xml',
         'views/sgi_calibration_views.xml',
+        'views/sgi_emergency_views.xml',
+        'views/sgi_msa_views.xml',
         'views/sgi_fmea_views.xml',
         'views/sgi_ppap_views.xml',
         'views/sgi_incident_views.xml',

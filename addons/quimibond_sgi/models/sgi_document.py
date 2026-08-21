@@ -184,12 +184,16 @@ class DocumentsDocument(models.Model):
 
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_state')
     def _check_unique_vigente(self):
+        # Mismo alcance que el índice único parcial de BD (init): solo aplica
+        # a documentos CONTROLADOS — antes Python rechazaba duplicados que la
+        # BD sí permitía en documentos no controlados.
         for doc in self:
-            if doc.sgi_state == 'vigente' and doc.sgi_code:
+            if doc.sgi_state == 'vigente' and doc.sgi_code and doc.sgi_is_controlled:
                 dup = self.search_count([
                     ('id', '!=', doc.id),
                     ('sgi_code', '=', doc.sgi_code),
                     ('sgi_state', '=', 'vigente'),
+                    ('sgi_is_controlled', '=', True),
                 ])
                 if dup:
                     raise ValidationError(
@@ -244,6 +248,20 @@ class DocumentsDocument(models.Model):
         docs = super().create(vals_list)
         docs.filtered(
             lambda d: d.sgi_state == 'vigente' and d.sgi_code)._sgi_reparent_family()
+        # Trazabilidad del alta documental: el documento creado desde la
+        # solicitud aprobada (botón «Crear documento») queda ligado a ella.
+        request_id = self.env.context.get('sgi_alta_request_id')
+        if request_id and docs:
+            request = self.env['approval.request'].browse(request_id).exists()
+            if request and not request.sgi_document_id:
+                doc = docs[0]
+                request.sudo().write({'sgi_document_id': doc.id})
+                doc.message_post(
+                    body="Documento creado desde la solicitud de alta aprobada "
+                         "<b>%s</b>." % (request.name or ''))
+                request.message_post(
+                    body="Documento del alta creado: <b>%s</b>."
+                         % (doc.sgi_code or doc.name))
         return docs
 
     def write(self, vals):

@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-    <data noupdate="1">
-        <record id="sgi_param_nc_escalation_days" model="ir.config_parameter">
-            <field name="key">quimibond_sgi.nc_escalation_days</field>
-            <field name="value">5</field>
-        </record>
-    </data>
+    <!-- El default de quimibond_sgi.nc_escalation_days lo siembra
+         sgi.config.seed_parameters() (fuente única; declararlo también aquí
+         era frágil por depender del orden de carga del manifest). -->
 
     <record id="sgi_cron_nonconformities" model="ir.cron">
         <field name="name">SGI: Seguimiento de No Conformidades</field>

@@ -42,4 +42,42 @@ action = {
 }
         </field>
     </record>
+
+    <!-- Voz del cliente (9001 9.1.2): respuestas de la Encuesta de
+         Satisfacción. Alimentan el KPI CA-02 automáticamente. -->
+    <record id="sgi_satisfaction_action" model="ir.actions.server">
+        <field name="name">Satisfacción del cliente</field>
+        <field name="model_id" ref="survey.model_survey_user_input"/>
+        <field name="state">code</field>
+        <field name="code">
+survey = env.ref('quimibond_sgi.sgi_survey_satisfaction', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Satisfacción del cliente (respuestas)',
+    'res_model': 'survey.user_input',
+    'view_mode': 'list,form',
+    'domain': [('survey_id', '=', survey.id)] if survey else [('id', '=', False)],
+}
+        </field>
+    </record>
+
+    <!-- Voz del trabajador (45001 5.4): canal interno de quejas y sugerencias.
+         El equipo existe desde Fase 4 (alias quejas-sugerencias) pero no tenía
+         entrada en el menú del SGI. -->
+    <record id="sgi_internal_complaint_action" model="ir.actions.server">
+        <field name="name">Quejas y sugerencias</field>
+        <field name="model_id" ref="helpdesk.model_helpdesk_ticket"/>
+        <field name="state">code</field>
+        <field name="code">
+team = env.ref('quimibond_sgi.sgi_helpdesk_team_voice', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Quejas y sugerencias',
+    'res_model': 'helpdesk.ticket',
+    'view_mode': 'kanban,list,form',
+    'domain': [('team_id', '=', team.id)] if team else [],
+    'context': {'default_team_id': team.id} if team else {},
+}
+        </field>
+    </record>
 </odoo>

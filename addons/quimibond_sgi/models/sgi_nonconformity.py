@@ -361,6 +361,7 @@ class SgiActionLine(models.Model):
     fmea_line_id = fields.Many2one('sgi.fmea.line', string="Modo de falla (AMEF)",
                                    ondelete='cascade')
     incident_id = fields.Many2one('sgi.incident', string="Incidente SST", ondelete='cascade')
+    drill_id = fields.Many2one('sgi.emergency.drill', string="Simulacro", ondelete='cascade')
     action_type = fields.Selection([
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
@@ -384,15 +385,16 @@ class SgiActionLine(models.Model):
     activity_id = fields.Many2one('mail.activity', string="Actividad",
                                   readonly=True, copy=False, index=True)
 
-    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'name')
+    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'drill_id', 'name')
     def _check_parent_xor(self):
         for line in self:
-            parents = [line.alert_id, line.risk_id, line.fmea_line_id, line.incident_id]
+            parents = [line.alert_id, line.risk_id, line.fmea_line_id,
+                       line.incident_id, line.drill_id]
             if sum(1 for p in parents if p) != 1:
                 raise ValidationError(
                     "Una acción debe pertenecer exactamente a un origen: una No "
-                    "Conformidad, un Riesgo, un modo de falla de AMEF o un incidente "
-                    "SST (exactamente uno, no varios ni ninguno).")
+                    "Conformidad, un Riesgo, un modo de falla de AMEF, un incidente "
+                    "SST o un simulacro (exactamente uno, no varios ni ninguno).")
 
     @api.constrains('action_type', 'alert_id')
     def _sgi_check_root_cause_before_capa(self):
@@ -437,6 +439,8 @@ class SgiActionLine(models.Model):
             return self.risk_id
         if self.incident_id:
             return self.incident_id
+        if self.drill_id:
+            return self.drill_id
         if self.fmea_line_id:
             return self.fmea_line_id.fmea_id
         return self.env['sgi.action.line'].browse()
@@ -509,6 +513,22 @@ class SgiActionLine(models.Model):
             resync = True
         if resync:
             self.filtered(lambda l: not l.date_done)._sgi_sync_activity()
+        # Reabrir la acción de un riesgo ya controlado/cerrado puede dejarlo
+        # sin tratamiento terminado: se revalida el candado (H11). Solo aplica
+        # a riesgos de atención alta (el check se auto-filtra).
+        if 'date_done' in vals and not vals.get('date_done'):
+            self.mapped('risk_id').filtered(
+                lambda r: r.state in ('controlado', 'cerrado')
+            )._sgi_check_can_close()
+        return res
+
+    def unlink(self):
+        risks = self.mapped('risk_id').filtered(
+            lambda r: r.state in ('controlado', 'cerrado'))
+        res = super().unlink()
+        # Borrar la última acción terminada de un riesgo controlado/cerrado de
+        # atención alta invalida su cierre: el candado lo detecta aquí mismo.
+        risks._sgi_check_can_close()
         return res
 
 

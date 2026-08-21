@@ -28,6 +28,18 @@
         <field name="arch" type="xml">
             <form string="Riesgo / Oportunidad">
                 <header>
+                    <button name="action_set_en_tratamiento" type="object"
+                            string="Iniciar tratamiento" class="btn-primary"
+                            invisible="state != 'identificado'"/>
+                    <button name="action_set_controlado" type="object"
+                            string="Marcar controlado" class="btn-primary"
+                            invisible="state != 'en_tratamiento'"/>
+                    <button name="action_set_cerrado" type="object"
+                            string="Cerrar"
+                            invisible="state != 'controlado'"/>
+                    <button name="action_set_identificado" type="object"
+                            string="Reabrir"
+                            invisible="state != 'cerrado'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="identificado,en_tratamiento,controlado,cerrado"/>
                 </header>
@@ -201,11 +213,27 @@
     <record id="sgi_risk_action" model="ir.actions.act_window">
         <field name="name">Riesgos y oportunidades</field>
         <field name="res_model">sgi.risk</field>
-        <field name="view_mode">kanban,list,pivot,form</field>
+        <field name="view_mode">kanban,list,pivot,form,activity</field>
         <field name="search_view_id" ref="sgi_risk_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Captura el primer riesgo u oportunidad</p>
             <p>Los 5 instrumentos en un solo lugar: RyO 5×5, IPER de SST, aspectos ambientales, patrimonial y FODA — con revisión programada.</p>
+        </field>
+    </record>
+
+    <!-- Vista de actividades: el motor del SGI corre sobre actividades y esta
+         vista nativa permite gestionarlas por registro y responsable. -->
+    <record id="sgi_risk_view_activity" model="ir.ui.view">
+        <field name="name">sgi.risk.activity</field>
+        <field name="model">sgi.risk</field>
+        <field name="arch" type="xml">
+            <activity string="Riesgos">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
         </field>
     </record>
 </odoo>
