@@ -63,6 +63,10 @@ action = {
     'res_model': 'survey.user_input',
     'view_mode': 'list,form',
     'domain': [('survey_id', '=', survey.id)] if survey else [('id', '=', False)],
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Aún no hay respuestas de clientes&lt;/p&gt;
+&lt;p&gt;La encuesta se comparte desde la app Encuestas (el cron trimestral se lo
+recuerda al Admin de Ventas). Cada respuesta alimenta AUTOMÁTICAMENTE el KPI
+CA-02 (Satisfacción del cliente): promedio 1-5 convertido a %.&lt;/p&gt;""",
 }
         </field>
     </record>
