@@ -178,6 +178,56 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line('ok', "Estrategia y planificación en orden."))
         section("Estrategia y planificación", lines)
 
+        # ---- 4b. Calidad preventiva y piso --------------------------------
+        lines = []
+        empty_plans = env['sgi.control.plan'].search(
+            [('state', '=', 'vigente')]).filtered(lambda p: not p.point_ids)
+        if empty_plans:
+            lines.append(self._sgi_line(
+                'bad', "%d plan(es) de control vigentes con 0 puntos: %s — sin puntos ligados no hay CoA ni cadena IATF." % (
+                    len(empty_plans), ", ".join(empty_plans.mapped('folio'))),
+                "botón «Ligar puntos sueltos» en el plan"))
+        orphan_points = env['quality.point'].search_count(
+            [('sgi_control_plan_id', '=', False)])
+        if orphan_points:
+            lines.append(self._sgi_line(
+                'warn', "%d punto(s) de calidad del piso sin plan de control." % orphan_points,
+                "campo «SGI - Plan de control» del punto"))
+        measuring = env['maintenance.equipment'].search_count(
+            [('sgi_is_measuring', '=', True)])
+        if not measuring:
+            lines.append(self._sgi_line(
+                'bad', "Cero equipos marcados como «de medición»: metrología vacía — sin calibraciones vigiladas, la constraint IATF no protege ninguna inspección y los MSA no tienen equipo.",
+                "marcar «Equipo de medición» en Mantenimiento → Equipos"))
+        Maint = env['maintenance.request']
+        since90 = fields.Datetime.now() - relativedelta(days=90)
+        corr_total = Maint.search_count(
+            [('maintenance_type', '=', 'corrective'), ('create_date', '>=', since90)])
+        corr_no_eq = Maint.search_count(
+            [('maintenance_type', '=', 'corrective'), ('create_date', '>=', since90),
+             ('equipment_id', '=', False)])
+        if corr_total and corr_no_eq / corr_total > 0.5:
+            lines.append(self._sgi_line(
+                'warn', "%d de %d correctivas de los últimos 90 días sin equipo asignado: la señal de falla repetitiva no puede detectarlas." % (corr_no_eq, corr_total),
+                "capturar el equipo en la solicitud de mantenimiento"))
+        floor_alerts = env['quality.alert'].search_count([('sgi_folio', '=', False)])
+        if 'mrp.revision.log' in env:
+            month_ago_dt = fields.Datetime.now() - relativedelta(days=30)
+            revision_logs = env['mrp.revision.log'].search_count(
+                [('create_date', '>=', month_ago_dt)])
+            if revision_logs and not floor_alerts:
+                lines.append(self._sgi_line(
+                    'warn', "El revisado registró %d defectos en 30 días pero hay CERO alertas de calidad de piso: el pareto de alertas está vacío (¿fuentes apagadas?)." % revision_logs))
+            ma03 = env['sgi.indicator'].search(
+                [('code', '=', 'MA-03'), ('calc_mode', '=', 'manual')], limit=1)
+            if ma03 and revision_logs:
+                lines.append(self._sgi_line(
+                    'warn', "MA-03 (Calidad PQ) sigue en captura manual con el revisado ya operando: puede automatizarse (calc_mode «calidad_pq») y validarse un mes contra el Excel.",
+                    "ficha del indicador MA-03"))
+        if not lines:
+            lines.append(self._sgi_line('ok', "Calidad preventiva conectada al piso."))
+        section("Calidad preventiva y piso", lines)
+
         # ---- 5. Mejora continua ------------------------------------------
         lines = []
         if not env['sgi.action.line'].search_count([]):

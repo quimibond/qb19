@@ -73,8 +73,24 @@ class TestDiagnostic(TransactionCase):
         wizard = self.env['sgi.diagnostic'].create({})
         self.assertTrue(wizard.result)
         for fragment in ('Diagnóstico', 'Procesos', 'Indicadores y mediciones',
-                         'Documental', 'Mejora continua', 'Ajustes clave'):
+                         'Documental', 'Calidad preventiva y piso', 'Mejora continua', 'Ajustes clave'):
             self.assertIn(fragment, wizard.result)
+
+    def test_02b_detects_empty_control_plan_and_orphan_points(self):
+        plan = self.env['sgi.control.plan'].create({'name': 'Plan vacío diag'})
+        plan.state = 'vigente'  # data seed bypass: el candado solo corre en el botón
+        self.env['quality.point'].create({
+            'title': 'Punto suelto diag',
+            'picking_type_ids': [(4, self.env.ref('stock.picking_type_in').id)],
+        })
+        wizard = self.env['sgi.diagnostic'].create({})
+        self.assertIn('0 puntos', wizard.result)
+        self.assertIn('sin plan de control', wizard.result)
+        # El botón del plan abre los puntos sueltos con el plan como default.
+        action = plan.action_open_orphan_points()
+        self.assertEqual(action['res_model'], 'quality.point')
+        self.assertEqual(
+            action['context']['default_sgi_control_plan_id'], plan.id)
 
     def test_02_detects_indicator_without_responsible(self):
         self.env['sgi.indicator'].create({
