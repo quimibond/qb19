@@ -13,7 +13,7 @@ automáticamente cuando conviven ambos módulos.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Manufacturing/SGI',
-    'version': '19.0.4.0.0',
+    'version': '19.0.4.1.0',
     'license': 'LGPL-3',
     'depends': [
         'quimibond_sgi',

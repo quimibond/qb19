@@ -165,7 +165,7 @@
     <record id="sgi_nc_action_kanban" model="ir.actions.act_window">
         <field name="name">No Conformidades</field>
         <field name="res_model">quality.alert</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">kanban,list,form,activity</field>
         <field name="search_view_id" ref="sgi_nc_view_search"/>
         <field name="context">{'default_sgi_origin_type': 'proceso'}</field>
         <field name="help" type="html">
@@ -224,6 +224,22 @@
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
+        </field>
+    </record>
+
+    <!-- Vista de actividades: el motor del SGI corre sobre actividades y esta
+         vista nativa permite gestionarlas por registro y responsable. -->
+    <record id="sgi_nc_view_activity" model="ir.ui.view">
+        <field name="name">quality.alert.activity</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <activity string="No Conformidades">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
         </field>
     </record>
 </odoo>

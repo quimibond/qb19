@@ -247,3 +247,22 @@ class SgiRisk(models.Model):
                 lambda r: r.state in self._SGI_CLOSING_STATES
             )._sgi_check_can_close()
         return res
+
+    # Botones explícitos de transición (consistencia con el resto del SGI:
+    # antes solo se podía avanzar clicando el statusbar). El candado H11 vive
+    # en write(), así que aplica igual por cualquiera de las dos vías.
+    def action_set_en_tratamiento(self):
+        self.write({'state': 'en_tratamiento'})
+        return True
+
+    def action_set_controlado(self):
+        self.write({'state': 'controlado'})
+        return True
+
+    def action_set_cerrado(self):
+        self.write({'state': 'cerrado'})
+        return True
+
+    def action_set_identificado(self):
+        self.write({'state': 'identificado'})
+        return True

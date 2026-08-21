@@ -126,7 +126,7 @@
     <record id="sgi_indicator_action" model="ir.actions.act_window">
         <field name="name">Indicadores</field>
         <field name="res_model">sgi.indicator</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,form,activity</field>
         <field name="search_view_id" ref="sgi_indicator_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Da de alta un indicador</p>
@@ -177,6 +177,11 @@
                     <button name="action_view_evidence" type="object"
                             string="Ver evidencia" icon="fa-search-plus"
                             invisible="source_type == 'manual'"/>
+                    <button name="action_reset" type="object"
+                            string="Regresar a pendiente"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            invisible="state == 'pendiente'"
+                            confirm="La medición volverá a Pendiente y dejará de contar como evidencia validada. ¿Continuar?"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -263,6 +268,22 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>
             <p>El cron mensual las crea automáticamente; las manuales llegan como actividad a su responsable antes del día 5.</p>
+        </field>
+    </record>
+
+    <!-- Vista de actividades: el motor del SGI corre sobre actividades y esta
+         vista nativa permite gestionarlas por registro y responsable. -->
+    <record id="sgi_indicator_view_activity" model="ir.ui.view">
+        <field name="name">sgi.indicator.activity</field>
+        <field name="model">sgi.indicator</field>
+        <field name="arch" type="xml">
+            <activity string="Indicadores">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
         </field>
     </record>
 </odoo>

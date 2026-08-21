@@ -175,7 +175,7 @@
     <record id="sgi_audit_action" model="ir.actions.act_window">
         <field name="name">Auditorías</field>
         <field name="res_model">sgi.audit</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,form,activity</field>
         <field name="search_view_id" ref="sgi_audit_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Programa la primera auditoría</p>
@@ -207,6 +207,20 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin hallazgos de auditoría</p>
             <p>Los hallazgos se capturan dentro de cada auditoría; la auditoría no cierra hasta que todos tengan disposición.</p>
+        </field>
+    </record>
+
+    <record id="sgi_audit_view_activity" model="ir.ui.view">
+        <field name="name">sgi.audit.activity</field>
+        <field name="model">sgi.audit</field>
+        <field name="arch" type="xml">
+            <activity string="Auditorías">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
         </field>
     </record>
 </odoo>

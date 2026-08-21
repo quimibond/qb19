@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 
 class StockPicking(models.Model):
@@ -69,6 +70,18 @@ class PurchaseOrder(models.Model):
             'domain': [('partner_id', '=', partner.id)],
             'context': {'default_partner_id': partner.id, 'default_sgi_origin_type': 'proceso'},
         }
+
+    def button_confirm(self):
+        # 8.4.1: un proveedor BLOQUEADO por el SGI no recibe órdenes de compra.
+        # Un proveedor sin estatus (fuera del alcance SGI) no se bloquea.
+        for order in self:
+            partner = order.partner_id.commercial_partner_id
+            if partner.sgi_supplier_status == 'bloqueado':
+                raise UserError(
+                    "El proveedor %s está BLOQUEADO por el SGI (8.4.1): no se "
+                    "pueden confirmar órdenes de compra. Pida al Jefe de MAST "
+                    "revisar su aprobación." % partner.display_name)
+        return super().button_confirm()
 
 
 class MaintenanceRequest(models.Model):

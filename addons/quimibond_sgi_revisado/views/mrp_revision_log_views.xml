@@ -34,7 +34,7 @@
                 <group>
                     <filter name="group_causa" string="Causa (defecto)"
                             context="{'group_by': 'causa_id'}"/>
-                    <filter name="group_product" string="Producto"
+                    <filter name="group_product" string="Orden de producción"
                             context="{'group_by': 'production_id'}"/>
                 </group>
             </search>

@@ -47,10 +47,10 @@ class TestOlaASecurity(TransactionCase):
 
     def test_02_fmea_line_locked_when_vigente(self):
         fmea, line = self._fmea_with_line()
-        # Añade acción para poder pasar a vigente (candado H-AMEF).
+        # Añade acción TERMINADA para poder pasar a vigente (candado H-AMEF).
         self.env['sgi.action.line'].create({
             'fmea_line_id': line.id, 'name': 'acc', 'responsible_id': self.mast.id,
-            'date_commit': fields.Date.today()})
+            'date_commit': fields.Date.today(), 'date_done': fields.Date.today()})
         fmea.action_set_vigente()
         self.assertEqual(fmea.state, 'vigente')
         with self.assertRaises(UserError):
@@ -60,7 +60,7 @@ class TestOlaASecurity(TransactionCase):
         fmea, line = self._fmea_with_line()
         self.env['sgi.action.line'].create({
             'fmea_line_id': line.id, 'name': 'acc', 'responsible_id': self.mast.id,
-            'date_commit': fields.Date.today()})
+            'date_commit': fields.Date.today(), 'date_done': fields.Date.today()})
         fmea.action_set_vigente()
         line.with_user(self.mast).unlink()
         self.assertFalse(line.exists(), "MAST sí puede borrar evidencia.")

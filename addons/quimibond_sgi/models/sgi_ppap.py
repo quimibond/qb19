@@ -116,7 +116,10 @@ class SgiPpap(models.Model):
         return True
 
     def action_reset(self):
-        self.write({'state': 'preparacion'})
+        # Limpia las fechas del ciclo anterior: un PPAP regresado a preparación
+        # no debe conservar el sello de un envío/decisión que ya no aplica.
+        self.write({'state': 'preparacion',
+                    'date_submitted': False, 'date_decision': False})
         return True
 
     @api.depends('folio', 'product_tmpl_id')

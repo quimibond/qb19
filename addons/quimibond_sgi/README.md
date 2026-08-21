@@ -1,4 +1,4 @@
-# quimibond_sgi — Sistema de Gestión Integral (Fases 1, 2, 3 y 4)
+# quimibond_sgi — Sistema de Gestión Integral (Fases 1–7)
 
 Addon de Odoo 19 Enterprise que lleva el SGI documental de PNTQ (ISO 9001:2015 +
 14001:2015, 45001 en preparación) a Odoo **extendiendo apps nativas** (Documentos,
@@ -324,6 +324,66 @@ Ganchos que este bloque NO configura (los captura el equipo en la instancia):
 14. **Propiedades custom del lote** (ancho/gramaje/tono) y **motivos de pérdida en CRM**.
 15. **Resto de flujos de soporte** del mapa (además de los 5 ya cargados): ligarlos a su
     modelo desde *SGI → Flujos* o el formulario del proceso.
+
+## Fases 5 y 6 — Política integral y Presupuesto/Pronóstico de ventas (v19.0.13.x)
+
+Documentadas a detalle en `docs/SGI_DIAGRAMA_FLUJOS.html` (flujos completos con
+cada botón y candado). Resumen:
+
+- **Política Integral** (`sgi.policy`, folio `POL-`): borrador → vigente →
+  obsoleta, con índice único de UNA política vigente (publicar obsoleta la
+  anterior). Objetivos Integrales del ANEXO 6 ligados a indicadores; la salud
+  del objetivo agrega la de los procesos de sus KPIs.
+- **Presupuesto de ventas P-A28** (`sgi.sales.budget`, folio `PPV-`): un mismo
+  par de modelos sirve el presupuesto mensual por mercado (F-P-A28-18, se
+  aprueba y congela; revisiones con `action_revise`) y el pronóstico semanal
+  por cliente (F-P-A28-13, documento vivo: solo borrador ⇄ revisado — mini-fase
+  5.5, migración 19.0.13.7.0). Captura por plantilla Excel + wizard de
+  importación, grid producto × mes, precarga desde pedidos/facturado; el precio
+  SIEMPRE sale de la lista de precios. Aprobación exclusiva de Dirección con
+  candado de cobertura de precios; envío de demanda neta al MPS; crons de
+  cierre de mes, cobertura semanal y revaluación S2 (junio); reporte QWeb con
+  ambas matrices. Menú espejado dentro de la app Ventas.
+- **Diagrama de flujos y deuda técnica**: `docs/SGI_DIAGRAMA_FLUJOS.html` y
+  `docs/SGI_DEUDA_TECNICA.md` en la raíz del repo.
+
+## Fase 7 — Cierre de bucles ISO (v19.0.15.0.0)
+
+Sale de la evaluación `docs/SGI_EVALUACION_ESTRUCTURA.md` (pasos 3–8):
+
+- **Satisfacción del cliente (9001 9.1.2)**: KPI CA-02 automático desde las
+  respuestas de la Encuesta de Satisfacción (promedio 1-5 → %), menú de
+  respuestas bajo Medición, y cron trimestral que recuerda al Admin de Ventas
+  distribuirla. El módulo NUNCA manda correos a clientes por sí solo.
+- **DNC (P-A01)**: cron trimestral que cuenta las brechas abiertas y agenda a
+  RH la distribución de la encuesta F-P-A01-17 (ahora con menú propio) y el
+  plan de capacitación.
+- **Alta documental ligada**: botón «Crear documento» en la solicitud de alta
+  aprobada; el documento nace ligado a la solicitud (trazabilidad completa).
+- **Emergencias (14001/45001 8.2)**: `sgi.emergency.plan` (PE-) con brigada,
+  frecuencia y riesgos IPER/ambientales ligados; `sgi.emergency.drill` (SIM-)
+  con candado: un simulacro con observaciones o no satisfactorio exige
+  hallazgos y al menos una acción CAPA (`sgi.action.line.drill_id`, quinto
+  origen del XOR). Cron diario de vencimientos. Menú: Riesgos y auditorías →
+  Emergencias.
+- **Alta de proveedores (8.4.1)**: estatus Nuevo/Aprobado/Bloqueado en el
+  partner (pestaña SGI Proveedor, botones solo Jefe MAST). Un proveedor
+  BLOQUEADO no puede recibir órdenes de compra confirmadas. Sin estatus =
+  fuera del alcance SGI (no se bloquea nada — compatibilidad total).
+- **MSA (IATF 7.1.5.1.1)**: `sgi.msa.study` (MSA-) por equipo de medición;
+  Gage R&R con veredicto AIAG automático (<10% aceptable / 10-30% marginal /
+  >30% inaceptable); inaceptable → actividad al Jefe MAST (el bloqueo del
+  equipo es decisión humana). Smart button MSA en el equipo.
+
+## Alcance multiempresa (decisión de arquitectura)
+
+La instancia tiene varias compañías; **el SGI es exclusivo de PRODUCTORA DE NO
+TEJIDOS QUIMIBOND (PNTQ)** y sus modelos NO llevan `company_id` (salvo el
+presupuesto de ventas, que sí lo necesita para valuar). Es una decisión
+consciente: los registros SGI son globales de la planta. Si otra compañía
+adoptara el SGI, la Fase correspondiente deberá añadir `company_id` por etapas
+(evidencia primero: NC ya lo hereda de quality; luego riesgos, auditorías,
+documental) — no intentar hacerlo de golpe.
 
 ## Herramientas de shell (`tools/`)
 

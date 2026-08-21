@@ -93,11 +93,6 @@ class SgiAlertSource(models.Model):
                 vals['suppressed_count'] = source.suppressed_count + 1
             source.write(vals)
 
-    def action_toggle_enabled(self):
-        for source in self:
-            source.enabled = not source.enabled
-        return True
-
     def action_view_alerts(self):
         self.ensure_one()
         return {

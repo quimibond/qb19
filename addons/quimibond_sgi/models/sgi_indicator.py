@@ -31,6 +31,7 @@ CALC_MODES = [
     ('consumo_energia', "Consumo de energía (facturado por el proveedor)"),
     ('compras_sin_devolucion', "Compras sin devolución a proveedor (proxy de errores en OC)"),
     ('capacitacion', "Capacitación (competencias vigentes vs requeridas)"),
+    ('satisfaccion_cliente', "Satisfacción del cliente (encuesta)"),
 ]
 
 
@@ -104,6 +105,7 @@ class SgiIndicator(models.Model):
         'consumo_energia': "Contabilidad → total facturado del periodo por el proveedor de energía configurado en Ajustes.",
         'compras_sin_devolucion': "PROXY (a validar por MAST): órdenes de compra confirmadas del periodo sin devolución a proveedor vs total. No mide directamente los 'errores en OC'; MAST debe validar la definición antes de fiarse del dato.",
         'capacitacion': "Empleados → competencias del puesto vigentes (certificación al día) vs requeridas.",
+        'satisfaccion_cliente': "Encuestas → respuestas de la Encuesta de Satisfacción del Cliente (promedio 1-5 → %).",
     }
 
     @api.depends('calc_mode')
@@ -504,10 +506,12 @@ class SgiIndicator(models.Model):
     def _calc_consumo_energia(self, date_from, date_to):
         """Total facturado del periodo por el proveedor de energía (facturas de
         proveedor menos notas de crédito, sin impuestos). Sin proveedor
-        configurado, la medición queda en 0 con una nota (ver _note_*)."""
+        configurado devuelve None: la medición queda PENDIENTE con la nota que
+        pide configurarlo (un 0 "capturado" pintaría verde un KPI lower_better
+        sin haber medido nada)."""
         partner = self._sgi_energy_partner()
         if not partner:
-            return 0.0
+            return None
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('in_invoice', 'in_refund')),
             ('state', '=', 'posted'),
@@ -560,6 +564,41 @@ class SgiIndicator(models.Model):
         gaps = self.env['sgi.competence.gap'].search_count(
             [('employee_id', 'in', employees.ids)])
         return round((required - gaps) / required * 100.0, 2)
+
+    def _sgi_satisfaction_survey(self):
+        return self.env.ref('quimibond_sgi.sgi_survey_satisfaction',
+                            raise_if_not_found=False)
+
+    def _calc_satisfaccion_cliente(self, date_from, date_to):
+        """Promedio de las respuestas 1-5 de la Encuesta de Satisfacción del
+        Cliente contestadas en el periodo, convertido a %. Sin respuestas (o
+        sin encuesta instalada) → None: la medición queda pendiente."""
+        survey = self._sgi_satisfaction_survey()
+        if not survey:
+            return None
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        inputs = self.env['survey.user_input'].sudo().search([
+            ('survey_id', '=', survey.id), ('state', '=', 'done'),
+            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
+        ])
+        if not inputs:
+            return None
+        lines = self.env['survey.user_input.line'].sudo().search([
+            ('user_input_id', 'in', inputs.ids),
+            ('answer_type', '=', 'suggestion'),
+        ])
+        values = [float(line.suggested_answer_id.value)
+                  for line in lines
+                  if (line.suggested_answer_id.value or '').strip().isdigit()]
+        if not values:
+            return None
+        return round(sum(values) / len(values) / 5.0 * 100.0, 2)
+
+    def _note_satisfaccion_cliente(self, date_from, date_to):
+        if not self._sgi_satisfaction_survey():
+            return ("La Encuesta de Satisfacción del Cliente no está instalada: "
+                    "reinstale los datos del módulo o capture el valor a mano.")
+        return ''
 
     def _sgi_compute_note(self, date_from, date_to):
         """Nota opcional que acompaña la medición generada por el cron (p.ej.
@@ -744,6 +783,18 @@ class SgiIndicatorMeasure(models.Model):
                 'domain': [('budget_id.kind', '=', 'presupuesto'),
                            ('budget_id.state', '=', 'aprobado'),
                            ('date', '>=', date_from), ('date', '<=', date_to)],
+            }
+        if mode == 'satisfaccion_cliente':
+            survey = indicator._sgi_satisfaction_survey()
+            dt_from, dt_to = indicator._sgi_dt_bounds(date_from, date_to)
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Respuestas de satisfacción — evidencia de %s" % indicator.name,
+                'res_model': 'survey.user_input',
+                'view_mode': 'list,form',
+                'domain': [('survey_id', '=', survey.id if survey else False),
+                           ('state', '=', 'done'),
+                           ('create_date', '>=', dt_from), ('create_date', '<', dt_to)],
             }
         if mode == 'capacitacion':
             # Evidencia = las brechas de competencia (foto a hoy; sin cota de periodo).

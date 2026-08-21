@@ -46,12 +46,17 @@ class TestFmea(TransactionCase):
         with self.assertRaises(UserError):
             fmea.action_set_vigente()
 
-        # Con una acción registrada, sí puede pasar a vigente.
-        self.env['sgi.action.line'].create({
+        # Una acción registrada pero SIN terminar tampoco basta (IATF).
+        action = self.env['sgi.action.line'].create({
             'fmea_line_id': line.id,
             'name': 'Poka-yoke de sellado',
             'responsible_id': self.env.user.id,
             'date_commit': date.today(),
         })
+        with self.assertRaises(UserError):
+            fmea.action_set_vigente()
+
+        # Con la acción TERMINADA, sí pasa a vigente.
+        action.write({'date_done': date.today()})
         fmea.action_set_vigente()
         self.assertEqual(fmea.state, 'vigente')

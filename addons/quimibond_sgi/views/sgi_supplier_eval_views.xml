@@ -28,6 +28,8 @@
         <field name="arch" type="xml">
             <form string="Evaluación de proveedor">
                 <header>
+                    <button name="action_recompute" type="object"
+                            string="Recalcular" icon="fa-refresh"/>
                     <button name="action_apply_to_partner" type="object"
                             string="Aplicar al proveedor" class="btn-primary"/>
                 </header>

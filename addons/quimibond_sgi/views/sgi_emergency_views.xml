@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= PLAN DE EMERGENCIA ================= -->
+    <record id="sgi_emergency_plan_view_form" model="ir.ui.view">
+        <field name="name">sgi.emergency.plan.form</field>
+        <field name="model">sgi.emergency.plan</field>
+        <field name="arch" type="xml">
+            <form string="Plan de emergencia">
+                <header>
+                    <button name="action_set_vigente" type="object" string="Marcar vigente"
+                            class="btn-primary" invisible="state == 'vigente'"/>
+                    <button name="action_set_obsoleto" type="object" string="Marcar obsoleto"
+                            invisible="state != 'vigente'"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            invisible="state == 'borrador'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,vigente,obsoleto"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_drills" type="object" class="oe_stat_button"
+                                icon="fa-bullhorn">
+                            <field name="drill_count" widget="statinfo" string="Simulacros"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                        <field name="name" placeholder="Escenario (ej. Incendio en almacén PT)"/>
+                    </div>
+                    <group>
+                        <group string="Escenario">
+                            <field name="plan_type"/>
+                            <field name="location"/>
+                            <field name="responsible_id"/>
+                            <field name="document_id"/>
+                        </group>
+                        <group string="Simulacros">
+                            <field name="drill_frequency_months"/>
+                            <field name="last_drill_date"/>
+                            <field name="next_drill_date"/>
+                        </group>
+                    </group>
+                    <group string="Riesgos ligados (IPER / ambiental)">
+                        <field name="risk_ids" nolabel="1" widget="many2many_tags"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_plan_view_list" model="ir.ui.view">
+        <field name="name">sgi.emergency.plan.list</field>
+        <field name="model">sgi.emergency.plan</field>
+        <field name="arch" type="xml">
+            <list string="Planes de emergencia"
+                  decoration-success="state == 'vigente'"
+                  decoration-muted="state == 'obsoleto'">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="plan_type"/>
+                <field name="responsible_id"/>
+                <field name="last_drill_date"/>
+                <field name="next_drill_date"/>
+                <field name="drill_count"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'vigente'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_plan_view_search" model="ir.ui.view">
+        <field name="name">sgi.emergency.plan.search</field>
+        <field name="model">sgi.emergency.plan</field>
+        <field name="arch" type="xml">
+            <search string="Planes de emergencia">
+                <field name="folio"/>
+                <field name="name"/>
+                <filter name="vigentes" string="Vigentes" domain="[('state','=','vigente')]"/>
+                <group>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'plan_type'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_plan_view_activity" model="ir.ui.view">
+        <field name="name">sgi.emergency.plan.activity</field>
+        <field name="model">sgi.emergency.plan</field>
+        <field name="arch" type="xml">
+            <activity string="Planes de emergencia">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_plan_action" model="ir.actions.act_window">
+        <field name="name">Planes de emergencia</field>
+        <field name="res_model">sgi.emergency.plan</field>
+        <field name="view_mode">list,form,activity</field>
+        <field name="search_view_id" ref="sgi_emergency_plan_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Da de alta un plan de emergencia</p>
+            <p>ISO 14001/45001 8.2: cada escenario con su brigada, frecuencia de simulacro y riesgos ligados. El cron diario avisa cuando el simulacro vence.</p>
+        </field>
+    </record>
+
+    <!-- ================= SIMULACRO ================= -->
+    <record id="sgi_emergency_drill_view_form" model="ir.ui.view">
+        <field name="name">sgi.emergency.drill.form</field>
+        <field name="model">sgi.emergency.drill</field>
+        <field name="arch" type="xml">
+            <form string="Simulacro">
+                <header>
+                    <button name="action_set_realizado" type="object" string="Marcar realizado"
+                            class="btn-primary" invisible="state != 'programado'"/>
+                    <button name="action_set_cancelado" type="object" string="Cancelar"
+                            invisible="state != 'programado'"/>
+                    <button name="action_set_programado" type="object" string="Reabrir"
+                            invisible="state == 'programado'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="programado,realizado"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Programación">
+                            <field name="plan_id"/>
+                            <field name="plan_type"/>
+                            <field name="date_planned"/>
+                            <field name="date_done"/>
+                        </group>
+                        <group string="Ejecución">
+                            <field name="participants_count"/>
+                            <field name="duration_minutes"/>
+                            <field name="result" widget="badge"
+                                   decoration-success="result == 'satisfactorio'"
+                                   decoration-warning="result == 'con_observaciones'"
+                                   decoration-danger="result == 'no_satisfactorio'"/>
+                        </group>
+                    </group>
+                    <group string="Hallazgos">
+                        <field name="findings" nolabel="1"
+                               placeholder="Observaciones del simulacro: tiempos, rutas, fallas detectadas…"/>
+                    </group>
+                    <notebook>
+                        <page string="Acciones">
+                            <field name="action_line_ids" context="{'default_drill_id': id}">
+                                <list editable="bottom"
+                                      decoration-danger="state == 'vencida'"
+                                      decoration-success="state == 'terminada'">
+                                    <field name="action_type"/>
+                                    <field name="name"/>
+                                    <field name="responsible_id"/>
+                                    <field name="date_commit"/>
+                                    <field name="date_done"/>
+                                    <field name="progress"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_drill_view_list" model="ir.ui.view">
+        <field name="name">sgi.emergency.drill.list</field>
+        <field name="model">sgi.emergency.drill</field>
+        <field name="arch" type="xml">
+            <list string="Simulacros"
+                  decoration-success="state == 'realizado'"
+                  decoration-muted="state == 'cancelado'">
+                <field name="folio"/>
+                <field name="plan_id"/>
+                <field name="date_planned"/>
+                <field name="date_done"/>
+                <field name="participants_count"/>
+                <field name="result" widget="badge"
+                       decoration-success="result == 'satisfactorio'"
+                       decoration-warning="result == 'con_observaciones'"
+                       decoration-danger="result == 'no_satisfactorio'"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_drill_view_search" model="ir.ui.view">
+        <field name="name">sgi.emergency.drill.search</field>
+        <field name="model">sgi.emergency.drill</field>
+        <field name="arch" type="xml">
+            <search string="Simulacros">
+                <field name="folio"/>
+                <field name="plan_id"/>
+                <filter name="programados" string="Programados"
+                        domain="[('state','=','programado')]"/>
+                <filter name="no_satisfactorios" string="No satisfactorios"
+                        domain="[('result','=','no_satisfactorio')]"/>
+                <group>
+                    <filter name="group_plan" string="Plan" context="{'group_by': 'plan_id'}"/>
+                    <filter name="group_result" string="Resultado" context="{'group_by': 'result'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_drill_action" model="ir.actions.act_window">
+        <field name="name">Simulacros</field>
+        <field name="res_model">sgi.emergency.drill</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_emergency_drill_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Programa un simulacro</p>
+            <p>Un simulacro con observaciones o no satisfactorio exige hallazgos y al menos una acción de mejora antes de marcarse realizado.</p>
+        </field>
+    </record>
+</odoo>

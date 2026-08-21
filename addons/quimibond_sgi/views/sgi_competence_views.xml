@@ -78,4 +78,31 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Acceso directo a la encuesta DNC (F-P-A01-17): antes estaba huérfana
+         (solo alcanzable buceando en la app Encuestas). -->
+    <record id="sgi_dnc_survey_action" model="ir.actions.server">
+        <field name="name">Encuesta DNC</field>
+        <field name="model_id" ref="survey.model_survey_survey"/>
+        <field name="state">code</field>
+        <field name="code">
+survey = env.ref('quimibond_sgi.sgi_survey_dnc', raise_if_not_found=False)
+if survey:
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Encuesta DNC (F-P-A01-17)',
+        'res_model': 'survey.survey',
+        'res_id': survey.id,
+        'view_mode': 'form',
+    }
+else:
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Encuesta DNC',
+        'res_model': 'survey.survey',
+        'view_mode': 'list,form',
+        'domain': [('id', '=', False)],
+    }
+        </field>
+    </record>
 </odoo>

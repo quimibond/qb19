@@ -323,24 +323,24 @@ class TestKpi20Step2(TransactionCase):
         self.assertEqual(action['res_model'], 'account.move')
         self.assertEqual(len(self.env['account.move'].search(action['domain'])), 2)
 
-    def test_02b_energia_sin_proveedor_queda_en_cero_con_nota(self):
-        # Patrón del presupuesto: sin proveedor la medición del cron queda en 0
-        # con una nota que pide configurarlo.
+    def test_02b_energia_sin_proveedor_queda_pendiente_con_nota(self):
+        # Sin proveedor NO hay valor (un 0 "capturado" pintaría verde un KPI
+        # lower_better): la medición del cron queda PENDIENTE con la nota que
+        # pide configurarlo.
         self.Param.set_param('quimibond_sgi.energy_partner_id', '0')
         ind = self._indicator('consumo_energia', direction='lower_better')
-        self.assertEqual(
-            ind._calc_consumo_energia(date(2040, 6, 1), date(2040, 6, 30)), 0.0)
+        self.assertIsNone(
+            ind._calc_consumo_energia(date(2040, 6, 1), date(2040, 6, 30)))
         self.assertIn('proveedor de energía',
                       ind._note_consumo_energia(date(2040, 6, 1), date(2040, 6, 30)))
-        # La medición generada por el cron: value 0, capturada, con la nota.
         Cron = self.env['sgi.cron']
         Cron._sgi_generate_measures(
             ind, date(2040, 6, 1), date(2040, 6, 1), date(2040, 6, 30),
             date(2040, 7, 5), '06/2040')
         measure = self.Measure.search(
             [('indicator_id', '=', ind.id), ('period_date', '=', date(2040, 6, 1))])
-        self.assertEqual(measure.value, 0.0)
-        self.assertEqual(measure.state, 'capturado')
+        self.assertEqual(measure.state, 'pendiente')
+        self.assertFalse(measure.semaphore)
         self.assertIn('proveedor de energía', measure.note or '')
 
     # ---------------- CO-03 compras_sin_devolucion (proxy) ----------------

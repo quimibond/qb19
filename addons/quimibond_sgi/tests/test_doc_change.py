@@ -83,3 +83,35 @@ class TestComplaintToNc(TransactionCase):
         self.assertEqual(alert.sgi_origin_type, 'reclamacion')
         self.assertEqual(alert.sgi_complaint_ticket_id, ticket)
         self.assertEqual(alert.partner_id, partner)
+
+
+@tagged('post_install', '-at_install')
+class TestDocChangeRevisionSuggestion(TransactionCase):
+
+    def test_01_onchange_suggests_next_revision(self):
+        doc = self.env['documents.document'].create({
+            'name': 'Procedimiento rev', 'type': 'binary',
+            'sgi_is_controlled': True, 'sgi_doc_type': 'procedimiento',
+            'sgi_code': 'P-A02', 'sgi_revision': '03', 'sgi_state': 'vigente',
+        })
+        category = self.env['approval.category'].create({
+            'name': 'Cambio rev', 'sgi_is_doc_change': True,
+            'approval_minimum': 1})
+        req = self.env['approval.request'].new({
+            'name': 'Cambio', 'category_id': category.id,
+            'sgi_change_kind': 'modificacion', 'sgi_document_id': doc.id,
+        })
+        req._onchange_sgi_suggest_revision()
+        self.assertEqual(req.sgi_new_revision, '04')
+        # No pisa lo capturado a mano.
+        req.sgi_new_revision = '07'
+        req._onchange_sgi_suggest_revision()
+        self.assertEqual(req.sgi_new_revision, '07')
+        # Revisión no numérica: no sugiere nada.
+        doc.sgi_revision = 'A'
+        req2 = self.env['approval.request'].new({
+            'name': 'Cambio 2', 'category_id': category.id,
+            'sgi_change_kind': 'modificacion', 'sgi_document_id': doc.id,
+        })
+        req2._onchange_sgi_suggest_revision()
+        self.assertFalse(req2.sgi_new_revision)

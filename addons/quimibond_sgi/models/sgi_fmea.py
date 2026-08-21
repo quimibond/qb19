@@ -67,6 +67,16 @@ class SgiFmea(models.Model):
                 raise UserError(
                     "El AMEF %s no puede pasar a Vigente: hay %d modo(s) de falla con "
                     "NPR alto sin acción registrada." % (fmea.folio or fmea.name, len(pending)))
+            # IATF: la acción del modo de falla con NPR alto debe estar
+            # TERMINADA, no solo registrada (deuda declarada en Fase 3).
+            unfinished = fmea.line_ids.filtered(
+                lambda l: l.requires_action and l.action_line_ids
+                and not l.action_line_ids.filtered('date_done'))
+            if unfinished:
+                raise UserError(
+                    "El AMEF %s no puede pasar a Vigente: hay %d modo(s) de falla con "
+                    "NPR alto cuya acción no está TERMINADA (fecha de terminación)."
+                    % (fmea.folio or fmea.name, len(unfinished)))
             fmea.state = 'vigente'
         return True
 
@@ -75,7 +85,19 @@ class SgiFmea(models.Model):
         return True
 
     def action_set_obsoleto(self):
-        self.write({'state': 'obsoleto'})
+        Cron = self.env['sgi.cron']
+        manager_id = Cron._sgi_manager_user_id()
+        for fmea in self:
+            fmea.state = 'obsoleto'
+            # Paridad con el plan de control: al obsoletar se avisa al Jefe
+            # MAST para revisar si el proceso queda sin AMEF vigente.
+            if manager_id:
+                Cron._sgi_schedule(
+                    fmea,
+                    "Revisar cobertura del AMEF obsoleto %s" % (fmea.folio or fmea.name),
+                    "El AMEF pasó a obsoleto. Verifique que el proceso/producto "
+                    "tenga un AMEF vigente que lo cubra.",
+                    manager_id)
         return True
 
     @api.depends('folio', 'name')
