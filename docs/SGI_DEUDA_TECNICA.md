@@ -11,8 +11,13 @@ B.13 (botón «Recalcular» + recálculo en el cron trimestral), B.14 (las alert
 canceladas ya no penalizan; el filtro por origen queda a criterio de MAST),
 B.15 (reabrir/borrar la acción de un riesgo controlado revalida el candado),
 B.17 (constraint alineada con el índice de BD) y B.20 (sugerencia de siguiente
-revisión en el cambio documental). Pendientes: B.16, B.18, B.19 y los lotes
-C (candados IATF — requieren aviso a MAST) y D (funcionalidad).
+revisión en el cambio documental). Lote 3 parcial: C.21 (AMEF vigente exige
+acción TERMINADA) y C.23 (AMEF obsoleto avisa a MAST). **Fase 7** (pasos 3–8
+de `SGI_EVALUACION_ESTRUCTURA.md`): satisfacción del cliente (KPI CA-02 +
+cron), DNC (cron + menú de encuesta), alta documental ligada, emergencias y
+simulacros (modelos nuevos), alta/bloqueo de proveedores 8.4.1 y estudios MSA.
+Pendientes: B.16, B.18, B.19, C.22 (npr_post a la baja) y C.24 (elementos
+PPAP por nivel AIAG) — ambos requieren decisión de negocio de MAST.
 
 ---
 

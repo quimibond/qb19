@@ -85,7 +85,7 @@ a{color:var(--accent-ink)}
 
 <div class="wrap">
 <header class="hero">
-  <p class="kicker">Quimibond · Odoo 19 Enterprise · addon <b>quimibond_sgi</b> v19.0.14.1.0</p>
+  <p class="kicker">Quimibond · Odoo 19 Enterprise · addon <b>quimibond_sgi</b> v19.0.15.0.0</p>
   <h1>Flujos del SGI Quimibond</h1>
   <p class="lede">Mapa exhaustivo de cada click y cada acción del Sistema de Gestión Integral: estados exactos, botones con su método Python y condición de visibilidad, candados de cierre, automatizaciones (crons y NC automáticas), wizards, reportes y navegación. Extraído directamente del código fuente.</p>
   <div class="hero-meta">
@@ -129,6 +129,7 @@ a{color:var(--accent-ink)}
   <a href="#crons"><span class="n">23</span>Los 13 crons</a>
   <a href="#reportes"><span class="n">24</span>Reportes y formatos</a>
   <a href="#satelites"><span class="n">25</span>Addons satélite</a>
+  <a href="#fase7"><span class="n">26</span>Fase 7 — bucles cerrados</a>
 </nav>
 
 <!-- ============================================================ -->
@@ -821,7 +822,38 @@ flowchart LR
 <h3><code>quimibond_sgi_revisado</code> — Pareto de defectos</h3>
 <p>Solo vistas (cero Python): pivot y gráfica del registro de revisado de telas agrupado por causa (etiquetas TEJIDO-*), colgado en <b>Panel → Tableros → Pareto de defectos (revisado)</b>. Alimenta el KPI de Calidad PQ.</p>
 
-<p style="margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px">Generado a partir del código fuente de <code>quimibond_sgi</code> v19.0.14.1.0 y sus satélites (agosto 2026), incluidas las mejoras de los lotes 1–3 y la reorganización de menús. Cada botón, estado, candado y cron citado corresponde a un método real del addon. Evaluación ISO y deuda técnica: <code>docs/SGI_EVALUACION_ESTRUCTURA.md</code> · <code>docs/SGI_DEUDA_TECNICA.md</code>.</p>
+<!-- ============================================================ -->
+<h2 id="fase7"><span class="sec">26</span>Fase 7 — los bucles que faltaban (v19.0.15.0.0)</h2>
+<p class="sub">Resultado de la evaluación ISO (<code>docs/SGI_EVALUACION_ESTRUCTURA.md</code>): los cinco bucles que no cerraban, cerrados.</p>
+
+<h3>Emergencias y simulacros — <code>sgi.emergency.plan</code> / <code>sgi.emergency.drill</code> (14001/45001 §8.2)</h3>
+<figure>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  PLAN["Plan de emergencia PE-<br>escenario + brigada + frecuencia<br>+ riesgos IPER/ambientales"]
+  PLAN -- "▶ Marcar vigente (exige responsable)" --> VIG["Vigente"]
+  VIG --> DRILL["Simulacro SIM-<br>programado"]
+  DRILL -- "▶ Marcar realizado" --> GATE{"Resultado"}
+  GATE -- "satisfactorio" --> OK["Realizado 🔒 evidencia"]
+  GATE -- "con observaciones /<br>no satisfactorio" --> CAPA["Exige hallazgos +<br>≥1 acción CAPA<br>(5º origen del XOR)"]
+  CAPA --> OK
+  CRON["Cron diario"] -. "primer simulacro pendiente ·<br>por vencer ≤30d · vencido ·<br>programado sin realizar" .-> PLAN
+</pre></div>
+<figcaption>El simulacro realizado se bloquea como evidencia; sus acciones usan el modelo CAPA único con actividad espejo y escalamiento (7/15 días) igual que las NC.</figcaption>
+</figure>
+
+<h3>Los otros cuatro cierres</h3>
+<div class="tbl"><table>
+<tr><th>Bucle</th><th>Qué se agregó</th><th>Click / automatización</th></tr>
+<tr><td>Satisfacción (9.1.2)</td><td>KPI <b>CA-02</b> automático: promedio 1–5 de las respuestas de la encuesta → % (meta 90/80). Menú "Satisfacción del cliente" bajo Medición con las respuestas.</td><td>Cron trimestral: actividad al Admin de Ventas "Enviar encuesta de satisfacción" — el envío a clientes siempre es acción humana. "Ver evidencia" abre las respuestas del periodo.</td></tr>
+<tr><td>DNC (P-A01)</td><td>Menú "Encuesta DNC" (antes huérfana) bajo Medición.</td><td>Cron trimestral: cuenta brechas abiertas y agenda a RH distribuir la F-P-A01-17 y armar el plan de capacitación.</td></tr>
+<tr><td>Alta documental</td><td>Botón <b>Crear documento</b> (Jefe MAST) en la solicitud de alta aprobada.</td><td>El documento nace ligado a la solicitud (<code>sgi_document_id</code>) con mensajes cruzados en ambos chatters.</td></tr>
+<tr><td>Alta de proveedores (8.4.1)</td><td>Estatus <b>Nuevo / Aprobado / Bloqueado</b> en la pestaña "SGI Proveedor", con botones del Jefe MAST y sello de quién/cuándo aprobó.</td><td>Un proveedor <b>bloqueado no puede recibir OCs confirmadas</b> (UserError en <code>button_confirm</code>). Sin estatus = fuera del alcance, nada se bloquea.</td></tr>
+<tr><td>MSA (IATF 7.1.5.1.1)</td><td><code>sgi.msa.study</code> (folio MSA-) por equipo: Gage R&amp;R, atributos, sesgo/linealidad, estabilidad. Smart button "MSA" en el equipo; menú Metrología → Estudios MSA.</td><td>Veredicto AIAG automático: %GRR &lt;10 <span class="tag ok">aceptable</span> · 10–30 <span class="tag warn">marginal</span> · &gt;30 <span class="tag bad">inaceptable</span> → actividad al Jefe MAST (bloquear el equipo es decisión humana).</td></tr>
+</table></div>
+<p class="card note"><b>Decisión de arquitectura documentada:</b> el SGI es exclusivo de PNTQ — sus modelos no llevan <code>company_id</code> (salvo el presupuesto). Si otra compañía lo adopta, se agrega por fases (README).</p>
+
+<p style="margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px">Generado a partir del código fuente de <code>quimibond_sgi</code> v19.0.15.0.0 y sus satélites (agosto 2026), incluidas las mejoras de los lotes 1–3 y la reorganización de menús. Cada botón, estado, candado y cron citado corresponde a un método real del addon. Evaluación ISO y deuda técnica: <code>docs/SGI_EVALUACION_ESTRUCTURA.md</code> · <code>docs/SGI_DEUDA_TECNICA.md</code>.</p>
 </div>
 
 <script type="module">
