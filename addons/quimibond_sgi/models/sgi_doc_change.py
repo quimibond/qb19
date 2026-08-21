@@ -36,6 +36,18 @@ class ApprovalRequest(models.Model):
     sgi_affected_process_ids = fields.Many2many('sgi.process', string="Procesos afectados")
     sgi_applied = fields.Boolean(string="Cambio aplicado al documento", copy=False)
 
+    @api.onchange('sgi_document_id', 'sgi_change_kind')
+    def _onchange_sgi_suggest_revision(self):
+        """Sugiere la siguiente revisión (vigente + 1, con ceros a la
+        izquierda). Solo propone: no pisa lo que el solicitante ya capturó."""
+        for req in self:
+            if (req.sgi_change_kind != 'modificacion' or not req.sgi_document_id
+                    or req.sgi_new_revision):
+                continue
+            current = (req.sgi_document_id.sgi_revision or '').strip()
+            if current.isdigit():
+                req.sgi_new_revision = str(int(current) + 1).zfill(max(2, len(current)))
+
     @api.constrains('sgi_is_doc_change', 'sgi_change_kind', 'sgi_document_id')
     def _check_document_required(self):
         for req in self:

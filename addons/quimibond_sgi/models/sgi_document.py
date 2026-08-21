@@ -184,12 +184,16 @@ class DocumentsDocument(models.Model):
 
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_state')
     def _check_unique_vigente(self):
+        # Mismo alcance que el índice único parcial de BD (init): solo aplica
+        # a documentos CONTROLADOS — antes Python rechazaba duplicados que la
+        # BD sí permitía en documentos no controlados.
         for doc in self:
-            if doc.sgi_state == 'vigente' and doc.sgi_code:
+            if doc.sgi_state == 'vigente' and doc.sgi_code and doc.sgi_is_controlled:
                 dup = self.search_count([
                     ('id', '!=', doc.id),
                     ('sgi_code', '=', doc.sgi_code),
                     ('sgi_state', '=', 'vigente'),
+                    ('sgi_is_controlled', '=', True),
                 ])
                 if dup:
                     raise ValidationError(

@@ -6,6 +6,14 @@ verificado contra el código; se indica archivo y, cuando aplica, el método.
 
 Prioridad: 🔴 puede morder en operación · 🟡 inconsistencia/asimetría · 🟢 cosmético o decisión a documentar.
 
+**Estado (este mismo PR):** ✅ Lote 1 completo (A.1–A.12) y Lote 2 completo:
+B.13 (botón «Recalcular» + recálculo en el cron trimestral), B.14 (las alertas
+canceladas ya no penalizan; el filtro por origen queda a criterio de MAST),
+B.15 (reabrir/borrar la acción de un riesgo controlado revalida el candado),
+B.17 (constraint alineada con el índice de BD) y B.20 (sugerencia de siguiente
+revisión en el cambio documental). Pendientes: B.16, B.18, B.19 y los lotes
+C (candados IATF — requieren aviso a MAST) y D (funcionalidad).
+
 ---
 
 ## A. Quick wins (bajo riesgo, alto retorno)

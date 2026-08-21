@@ -109,10 +109,19 @@ class SgiSupplierEval(models.Model):
         self.ensure_one()
         dt_from = fields.Datetime.to_datetime(self.date_from)
         dt_to = fields.Datetime.to_datetime(self.date_to) + relativedelta(days=1)
+        # Las alertas canceladas no son evidencia de mala calidad: no penalizan.
         return self.env['quality.alert'].search_count([
             ('partner_id', 'child_of', self.partner_id.commercial_partner_id.id),
             ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
+            ('stage_id.sgi_is_cancel_stage', '=', False),
         ])
+
+    def action_recompute(self):
+        """Recalcula OTD/NC/score con los datos de HOY: las métricas son
+        computes almacenados cuyos depends (partner/fechas) no cambian cuando
+        llegan recepciones o NCs posteriores a la creación de la evaluación."""
+        self._compute_metrics()
+        return True
 
     def action_apply_to_partner(self):
         for ev in self:

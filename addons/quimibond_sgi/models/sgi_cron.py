@@ -572,6 +572,9 @@ class SgiCron(models.AbstractModel):
                     'date_from': prev_q_start,
                     'date_to': prev_q_end,
                 })
+            # Refresca las métricas antes de aplicar: pudieron llegar
+            # recepciones o NCs después de creada la evaluación.
+            existing.action_recompute()
             existing.action_apply_to_partner()
             if existing.supplier_class in ('condicionado', 'baja') and purchase_user_id:
                 self._sgi_schedule(

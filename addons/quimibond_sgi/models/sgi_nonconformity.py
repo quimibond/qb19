@@ -509,6 +509,22 @@ class SgiActionLine(models.Model):
             resync = True
         if resync:
             self.filtered(lambda l: not l.date_done)._sgi_sync_activity()
+        # Reabrir la acción de un riesgo ya controlado/cerrado puede dejarlo
+        # sin tratamiento terminado: se revalida el candado (H11). Solo aplica
+        # a riesgos de atención alta (el check se auto-filtra).
+        if 'date_done' in vals and not vals.get('date_done'):
+            self.mapped('risk_id').filtered(
+                lambda r: r.state in ('controlado', 'cerrado')
+            )._sgi_check_can_close()
+        return res
+
+    def unlink(self):
+        risks = self.mapped('risk_id').filtered(
+            lambda r: r.state in ('controlado', 'cerrado'))
+        res = super().unlink()
+        # Borrar la última acción terminada de un riesgo controlado/cerrado de
+        # atención alta invalida su cierre: el candado lo detecta aquí mismo.
+        risks._sgi_check_can_close()
         return res
 
 

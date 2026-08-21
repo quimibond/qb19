@@ -85,3 +85,34 @@ class TestRisk(TransactionCase):
                 'name': 'Ninguno', 'responsible_id': self.env.user.id,
                 'date_commit': date.today(),
             })
+
+    def test_06_reopen_or_delete_action_revalidates_closed_risk(self):
+        from odoo.exceptions import UserError
+        risk = self.Risk.create({
+            'name': 'Riesgo alto controlado', 'instrument': 'ryo',
+            'eval_probability': '5', 'eval_impact': '5',
+            'residual_probability': '1', 'residual_impact': '1'})
+        line = self.env['sgi.action.line'].create({
+            'risk_id': risk.id, 'name': 'Tratamiento',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(), 'date_done': date.today(),
+        })
+        risk.state = 'controlado'
+        # Reabrir la única acción terminada invalida el cierre (H11).
+        with self.assertRaises(UserError):
+            line.write({'date_done': False})
+        # Borrar la única acción terminada también.
+        with self.assertRaises(UserError):
+            line.unlink()
+        # Un riesgo de atención baja no se ve afectado.
+        low = self.Risk.create({
+            'name': 'Riesgo bajo', 'instrument': 'ryo',
+            'eval_probability': '1', 'eval_impact': '1'})
+        low_line = self.env['sgi.action.line'].create({
+            'risk_id': low.id, 'name': 'Menor',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(), 'date_done': date.today(),
+        })
+        low.state = 'controlado'
+        low_line.write({'date_done': False})
+        low_line.unlink()
