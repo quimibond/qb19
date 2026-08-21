@@ -35,8 +35,14 @@
                         Genere una nueva revisión controlada o confírmelo.
                     </div>
                     <div class="oe_title">
-                        <h1><field name="sgi_code" placeholder="Clave (p.ej. P-G01)"/></h1>
+                        <h1><field name="sgi_code" placeholder="Clave (P-A28 · F-P-G05-01 · IT-P-P01-08 · DAT… · ANEXO 6)"/></h1>
                         <h2><field name="name" placeholder="Nombre del documento"/></h2>
+                        <div class="text-muted" invisible="not sgi_is_controlled">
+                            La clave sigue la nomenclatura PNTQ (P-Xnn, F-P-Xnn-nn,
+                            IT-P-Xnn-nn, F-IT-P-Xnn-nn-nn, DAT, PROT-nn, ANEXO n;
+                            X = área G/A/C/D/E/I/M/P/S/V). Solo puede haber UNA
+                            revisión vigente por clave.
+                        </div>
                     </div>
                     <group>
                         <group>
@@ -53,6 +59,14 @@
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
                         </group>
+                    </group>
+                    <group string="Archivo">
+                        <field name="type" widget="radio" options="{'horizontal': true}"
+                               string="Tipo de archivo"/>
+                        <field name="datas" filename="name" string="PDF / archivo"
+                               invisible="type != 'binary'"/>
+                        <field name="url" widget="url" placeholder="https://…"
+                               invisible="type != 'url'"/>
                     </group>
                     <notebook>
                         <page string="Migración a Odoo"
@@ -97,19 +111,29 @@
                             </group>
                         </page>
                         <page string="Puestos que aplican">
-                            <field name="sgi_job_ids"/>
+                            <div class="alert alert-info mb-3" role="status">
+                                <b>La difusión depende de esto:</b> el botón
+                                «Generar acuses» crea un acuse por cada empleado
+                                de estos puestos, y «Mis procedimientos» filtra
+                                por puesto. Un documento vigente sin puestos no
+                                se difunde a nadie.
+                            </div>
+                            <field name="sgi_job_ids" widget="many2many_tags"/>
                         </page>
                         <page string="Acuses de lectura">
                             <field name="sgi_ack_ids">
-                                <list>
+                                <list decoration-warning="state == 'pendiente'"
+                                      decoration-success="state == 'leido'">
                                     <field name="employee_id"/>
-                                    <field name="state"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'leido'"
+                                           decoration-warning="state == 'pendiente'"/>
                                     <field name="ack_date"/>
                                 </list>
                             </field>
                         </page>
                     </notebook>
-                    <field name="attachment_id" widget="many2one"/>
+                    <field name="attachment_id" invisible="1"/>
                 </sheet>
                 <chatter/>
             </form>

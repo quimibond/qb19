@@ -72,7 +72,7 @@
     <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
               action="sgi_document_action" sequence="10"/>
     <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_documental"
-              action="sgi_doc_change_action" sequence="20"/>
+              action="sgi_doc_change_board_action" sequence="20"/>
     <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_documental"
               action="sgi_migration_action" sequence="30"
               groups="quimibond_sgi.group_sgi_manager"/>
