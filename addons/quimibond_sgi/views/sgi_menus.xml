@@ -132,7 +132,7 @@
          de lo general (el mapa del sistema) a lo particular (cada flujo). -->
     <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
               action="sgi_process_action" sequence="15"/>
-    <menuitem id="menu_sgi_flows" name="Flujos" parent="menu_sgi_processes"
+    <menuitem id="menu_sgi_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
               action="sgi_process_flow_action" sequence="10"/>
     <menuitem id="menu_sgi_activities" name="Actividades de procedimiento"
               parent="menu_sgi_processes" action="sgi_process_activity_action"
@@ -156,8 +156,12 @@
     <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
               parent="menu_sgi_emergency" action="sgi_emergency_drill_action" sequence="20"/>
 
-    <!-- 8. Calidad automotriz: herramientas IATF + metrología -->
-    <menuitem id="menu_sgi_automotive" name="Automotriz" parent="menu_sgi_root" sequence="80"/>
+    <!-- 8. Calidad preventiva: las herramientas que evitan el defecto ANTES
+         de producir (AMEF, plan de control, PPAP) + metrología/MSA. Nacieron
+         en la fase "automotriz" (IATF), pero aplican a todos los clientes y
+         la calibración es requisito universal de 9001 (7.1.5) — el nombre
+         del menú refleja la función, no la industria. El xmlid no cambia. -->
+    <menuitem id="menu_sgi_automotive" name="Calidad preventiva" parent="menu_sgi_root" sequence="80"/>
     <menuitem id="menu_sgi_control_plans" name="Planes de control" parent="menu_sgi_automotive"
               action="sgi_control_plan_action" sequence="10"/>
     <menuitem id="menu_sgi_fmea" name="AMEF" parent="menu_sgi_automotive"
