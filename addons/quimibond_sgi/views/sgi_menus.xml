@@ -38,11 +38,22 @@
               action="sgi_nc_action_kanban" sequence="10"/>
     <menuitem id="menu_sgi_nc_concentrado" name="Concentrado" parent="menu_sgi_nc"
               action="sgi_nc_action_concentrado" sequence="20"/>
-    <menuitem id="menu_sgi_nc_all_actions" name="Todas las acciones" parent="menu_sgi_nc"
-              action="sgi_action_line_action_all" sequence="30"
+    <!-- Las acciones CAPA son transversales (NC, riesgos, AMEF, incidentes):
+         viven al nivel de Mejora continua, no dentro de No Conformidades. -->
+    <menuitem id="menu_sgi_nc_all_actions" name="Acciones (todas)"
+              parent="menu_sgi_improvement_group"
+              action="sgi_action_line_action_all" sequence="15"
               groups="quimibond_sgi.group_sgi_manager"/>
+    <!-- El incidente SST es un evento operativo, par de la NC: su ciclo
+         reactivo (SCAT → acciones → NC) pertenece a Mejora continua. -->
+    <menuitem id="menu_sgi_incidents" name="Incidentes SST"
+              parent="menu_sgi_improvement_group"
+              action="sgi_incident_action" sequence="18"/>
     <menuitem id="menu_sgi_complaints" name="Reclamaciones" parent="menu_sgi_improvement_group"
               action="sgi_complaint_action" sequence="20"/>
+    <menuitem id="menu_sgi_internal_complaints" name="Quejas y sugerencias"
+              parent="menu_sgi_improvement_group"
+              action="sgi_internal_complaint_action" sequence="25"/>
     <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_improvement_group"
               action="sgi_improvement_action" sequence="30"/>
 
@@ -62,8 +73,10 @@
               action="sgi_indicator_action" sequence="10"/>
     <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_measurement"
               action="sgi_measure_action" sequence="20"/>
-    <menuitem id="menu_sgi_objectives" name="Objetivos Integrales" parent="menu_sgi_measurement"
-              action="sgi_objective_action" sequence="30"/>
+    <!-- La cascada Política → Objetivos → Indicadores arranca en el Panel:
+         los Objetivos Integrales viven junto a la Política. -->
+    <menuitem id="menu_sgi_objectives" name="Objetivos Integrales" parent="menu_sgi_panel"
+              action="sgi_objective_action" sequence="7"/>
     <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores" parent="menu_sgi_measurement"
               action="sgi_supplier_eval_action" sequence="40"/>
     <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
@@ -118,18 +131,16 @@
               parent="menu_sgi_processes" action="sgi_process_activity_action"
               sequence="20"/>
 
-    <!-- 7. Auditorías y riesgos: la vigilancia del sistema -->
-    <menuitem id="menu_sgi_audits" name="Auditorías y riesgos" parent="menu_sgi_root"
+    <!-- 7. Riesgos y auditorías: planificar (6.1) antes de verificar (9.2).
+         Los incidentes SST se movieron a Mejora continua (ciclo reactivo). -->
+    <menuitem id="menu_sgi_audits" name="Riesgos y auditorías" parent="menu_sgi_root"
               sequence="70"/>
+    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_audits"
+              action="sgi_risk_action" sequence="5"/>
     <menuitem id="menu_sgi_audit_programs" name="Programa anual" parent="menu_sgi_audits"
               action="sgi_audit_program_action" sequence="10"/>
     <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
-    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_audits"
-              action="sgi_risk_action" sequence="30"/>
-    <menuitem id="menu_sgi_sst" name="SST" parent="menu_sgi_audits" sequence="40"/>
-    <menuitem id="menu_sgi_incidents" name="Incidentes" parent="menu_sgi_sst"
-              action="sgi_incident_action" sequence="10"/>
 
     <!-- 8. Calidad automotriz: herramientas IATF + metrología -->
     <menuitem id="menu_sgi_automotive" name="Automotriz" parent="menu_sgi_root" sequence="80"/>

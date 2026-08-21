@@ -42,4 +42,24 @@ action = {
 }
         </field>
     </record>
+
+    <!-- Voz del trabajador (45001 5.4): canal interno de quejas y sugerencias.
+         El equipo existe desde Fase 4 (alias quejas-sugerencias) pero no tenía
+         entrada en el menú del SGI. -->
+    <record id="sgi_internal_complaint_action" model="ir.actions.server">
+        <field name="name">Quejas y sugerencias</field>
+        <field name="model_id" ref="helpdesk.model_helpdesk_ticket"/>
+        <field name="state">code</field>
+        <field name="code">
+team = env.ref('quimibond_sgi.sgi_helpdesk_team_voice', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Quejas y sugerencias',
+    'res_model': 'helpdesk.ticket',
+    'view_mode': 'kanban,list,form',
+    'domain': [('team_id', '=', team.id)] if team else [],
+    'context': {'default_team_id': team.id} if team else {},
+}
+        </field>
+    </record>
 </odoo>

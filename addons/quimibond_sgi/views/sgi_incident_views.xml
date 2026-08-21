@@ -136,11 +136,27 @@
     <record id="sgi_incident_action" model="ir.actions.act_window">
         <field name="name">Incidentes SST</field>
         <field name="res_model">sgi.incident</field>
-        <field name="view_mode">list,form,pivot</field>
+        <field name="view_mode">list,form,pivot,activity</field>
         <field name="search_view_id" ref="sgi_incident_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Reporta un incidente SST</p>
             <p>Cualquier empleado puede reportar (lesión, casi-accidente, daño, ambiental). La investigación SCAT exige las 3 capas de causas antes de cerrar.</p>
+        </field>
+    </record>
+
+    <!-- Vista de actividades: el motor del SGI corre sobre actividades y esta
+         vista nativa permite gestionarlas por registro y responsable. -->
+    <record id="sgi_incident_view_activity" model="ir.ui.view">
+        <field name="name">sgi.incident.activity</field>
+        <field name="model">sgi.incident</field>
+        <field name="arch" type="xml">
+            <activity string="Incidentes SST">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
         </field>
     </record>
 </odoo>
