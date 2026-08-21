@@ -33,6 +33,12 @@ action = {
     'view_mode': 'kanban,list,form',
     'domain': [('project_id', '=', project.id)] if project else [('sgi_is_improvement', '=', True)],
     'context': {'default_project_id': project.id} if project else {},
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Propón la primera mejora&lt;/p&gt;
+&lt;p&gt;Una tarjeta por mejora: Propuesta → En ejecución → Terminada. Para
+cerrarla el sistema exige &lt;b&gt;fecha límite&lt;/b&gt; y &lt;b&gt;al menos un adjunto
+como evidencia&lt;/b&gt; (foto del antes/después, minuta, medición) — es el
+candado, no un error. Clasifícala en la pestaña Mejora continua (SGI):
+ambiental, proceso o recurso.&lt;/p&gt;""",
 }
         </field>
     </record>

@@ -110,6 +110,23 @@ class SgiControlPlan(models.Model):
             'context': {'default_sgi_control_plan_id': self.id},
         }
 
+    def action_open_orphan_points(self):
+        """Puntos de calidad reales del piso que no pertenecen a ningún plan.
+
+        En producción la retro-vinculación por nombre de equipo puede no
+        encontrar nada (los equipos se renombran): este botón abre los puntos
+        sueltos con el plan actual como default para ligarlos en un paso —
+        sin un punto ligado no hay CoA ni cadena IATF."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Puntos sin plan — ligar a %s" % (self.folio or self.name),
+            'res_model': 'quality.point',
+            'view_mode': 'list,form',
+            'domain': [('sgi_control_plan_id', '=', False)],
+            'context': {'default_sgi_control_plan_id': self.id},
+        }
+
 
 class StockLot(models.Model):
     _inherit = 'stock.lot'

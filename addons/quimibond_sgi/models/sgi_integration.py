@@ -223,6 +223,12 @@ class HrEmployee(models.Model):
                 (form_view.id if form_view else False, 'form'),
             ],
             'domain': [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.job_id.ids)],
+            'help': "<p class='o_view_nocontent_smiling_face'>Sin procedimientos "
+                    "asignados a tu puesto</p><p>Aquí aparecen los documentos "
+                    "VIGENTES que aplican a tu puesto — tu referencia de cómo se "
+                    "hace el trabajo (botón «Ver archivo»). Si está vacío y no "
+                    "debería, pide a RH que asigne tu puesto en tu ficha de "
+                    "empleado y a MAST que ligue los puestos al documento.</p>",
         }
 
     def action_sgi_pending_acks(self):

@@ -249,8 +249,12 @@
         <field name="arch" type="xml">
             <search string="Mediciones">
                 <field name="indicator_id"/>
+                <filter name="mine" string="Mis mediciones"
+                        domain="[('indicator_id.responsible_id', '=', uid)]"/>
                 <filter name="red" string="En rojo" domain="[('semaphore','=','rojo')]"/>
                 <filter name="pending" string="Pendientes" domain="[('state','=','pendiente')]"/>
+                <filter name="to_validate" string="Por validar"
+                        domain="[('state','=','capturado')]"/>
                 <group>
                     <filter name="group_indicator" string="Indicador" context="{'group_by': 'indicator_id'}"/>
                     <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
@@ -268,6 +272,21 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>
             <p>El cron mensual las crea automáticamente; las manuales llegan como actividad a su responsable antes del día 5.</p>
+        </field>
+    </record>
+
+    <!-- Mi trabajo → Mis mediciones: lo que el responsable de KPI debe
+         capturar y validar. Sin esto, la validación (el paso que hoy nadie
+         da) exigía navegar Medición → Mediciones → filtrar a mano. -->
+    <record id="sgi_measure_action_mine" model="ir.actions.act_window">
+        <field name="name">Mis mediciones</field>
+        <field name="res_model">sgi.indicator.measure</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_measure_view_search"/>
+        <field name="context">{'search_default_mine': 1, 'search_default_pending': 1, 'search_default_to_validate': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin mediciones pendientes 🎉</p>
+            <p>Aquí llegan las mediciones de los KPIs de los que eres responsable: captura el valor de las <b>pendientes</b> y da clic en <b>Validar</b> en las capturadas — solo las mediciones validadas cuentan para la salud del proceso y las NC automáticas.</p>
         </field>
     </record>
 

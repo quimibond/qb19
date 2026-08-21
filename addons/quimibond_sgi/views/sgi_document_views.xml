@@ -218,6 +218,8 @@ else:
                 <field name="employee_id"/>
                 <field name="state"/>
                 <field name="ack_date"/>
+                <button name="action_view_file" type="object"
+                        icon="fa-file-pdf-o" title="Leer el documento"/>
                 <button name="action_mark_read" type="object" string="Marcar leído y entendido"
                         icon="fa-check" invisible="state == 'leido'"/>
             </list>
@@ -230,6 +232,8 @@ else:
         <field name="arch" type="xml">
             <form string="Acuse de lectura">
                 <header>
+                    <button name="action_view_file" type="object"
+                            string="Leer el documento" icon="fa-file-pdf-o"/>
                     <button name="action_mark_read" type="object" string="Marcar leído y entendido"
                             class="btn-primary" invisible="state == 'leido'"/>
                     <field name="state" widget="statusbar"/>
@@ -248,10 +252,51 @@ else:
         </field>
     </record>
 
+    <record id="sgi_document_ack_view_search" model="ir.ui.view">
+        <field name="name">sgi.document.ack.search</field>
+        <field name="model">sgi.document.ack</field>
+        <field name="arch" type="xml">
+            <search string="Acuses de lectura">
+                <field name="document_id"/>
+                <field name="employee_id"/>
+                <field name="sgi_code"/>
+                <filter name="mine" string="Míos"
+                        domain="[('user_id', '=', uid)]"/>
+                <filter name="pending" string="Pendientes"
+                        domain="[('state', '=', 'pendiente')]"/>
+                <filter name="read" string="Leídos"
+                        domain="[('state', '=', 'leido')]"/>
+                <group>
+                    <filter name="group_document" string="Documento"
+                            context="{'group_by': 'document_id'}"/>
+                    <filter name="group_employee" string="Empleado"
+                            context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Mi trabajo → Mis acuses de lectura: leer (botón PDF) y firmar, en la
+         misma pantalla. Antes el empleado solo llegaba aquí por su ficha. -->
+    <record id="sgi_document_ack_action_mine" model="ir.actions.act_window">
+        <field name="name">Mis acuses de lectura</field>
+        <field name="res_model">sgi.document.ack</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_document_ack_view_search"/>
+        <field name="context">{'search_default_mine': 1, 'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin acuses pendientes 🎉</p>
+            <p>Cuando un documento de tu puesto se publique o cambie de revisión, aquí te aparecerá: léelo con el botón del PDF y firma con <b>Marcar leído y entendido</b>. Quita el filtro «Pendientes» para ver tu historial.</p>
+        </field>
+    </record>
+
     <record id="sgi_document_ack_action" model="ir.actions.act_window">
         <field name="name">Acuses de lectura</field>
         <field name="res_model">sgi.document.ack</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_document_ack_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin acuses de lectura pendientes</p>
             <p>Se generan al publicar un documento con puestos asignados; cada acuse es la firma de difusión que pide el auditor.</p>

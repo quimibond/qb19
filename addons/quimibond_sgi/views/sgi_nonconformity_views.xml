@@ -17,6 +17,16 @@
                         groups="quimibond_sgi.group_sgi_manager"
                         invisible="not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel"/>
             </xpath>
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="status" invisible="not sgi_folio">
+                    📌 <b>NC del SGI</b> — folio
+                    <field name="sgi_folio" readonly="1" class="oe_inline fw-bold"/>.
+                    Para cerrarla: causa raíz + acciones terminadas + verificación
+                    de eficacia (las mayores además piden los 5 porqués y la
+                    lección aplicada). Arrastra la tarjeta a «Cerrada» cuando todo
+                    esté completo.
+                </div>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <field name="sgi_stage_is_closing" invisible="1"/>
                 <field name="sgi_stage_is_cancel" invisible="1"/>
@@ -153,7 +163,14 @@
                         domain="[('stage_id.sgi_is_closing_stage','=',False),('stage_id.sgi_is_cancel_stage','=',False)]"/>
                 <filter name="sgi_this_year" string="Este año"
                         domain="[('create_date','&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="sgi_mayores" string="Mayores"
+                        domain="[('sgi_classification','=','mayor')]"/>
+                <filter name="sgi_recurrentes" string="Reincidentes"
+                        domain="[('sgi_is_recurrent','=',True)]"/>
                 <group>
+                    <filter name="group_origin" string="Origen"
+                            context="{'group_by': 'sgi_origin_type'}"/>
                     <filter name="group_stage" string="Etapa" context="{'group_by': 'stage_id'}"/>
                     <filter name="group_team" string="Equipo" context="{'group_by': 'team_id'}"/>
                     <filter name="group_class" string="Clasificación" context="{'group_by': 'sgi_classification'}"/>
@@ -162,15 +179,35 @@
         </field>
     </record>
 
-    <record id="sgi_nc_action_kanban" model="ir.actions.act_window">
+    <!-- Tablero de NC como acción de servidor: inyecta el equipo NC Internas
+         por default y acota a los equipos SGI. Sin el default de equipo, una
+         NC creada desde este menú caía en las etapas nativas de Calidad
+         («Nuevo»), fuera de los candados — pasó con 10 NCs en producción. -->
+    <record id="sgi_nc_board_action" model="ir.actions.server">
         <field name="name">No Conformidades</field>
-        <field name="res_model">quality.alert</field>
-        <field name="view_mode">kanban,list,form,activity</field>
-        <field name="search_view_id" ref="sgi_nc_view_search"/>
-        <field name="context">{'default_sgi_origin_type': 'proceso'}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Levanta la primera No Conformidad</p>
-            <p>El folio (NCI-/NCE-) se asigna solo. El sistema no permite cerrar sin causa raíz, acciones terminadas y eficacia verificada — es el candado, no un error.</p>
+        <field name="model_id" ref="quality_control.model_quality_alert"/>
+        <field name="state">code</field>
+        <field name="code">
+team_int = env.ref('quimibond_sgi.sgi_quality_team_internal', raise_if_not_found=False)
+team_ext = env.ref('quimibond_sgi.sgi_quality_team_external', raise_if_not_found=False)
+teams = [t.id for t in (team_int, team_ext) if t]
+search_view = env.ref('quimibond_sgi.sgi_nc_view_search', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'No Conformidades',
+    'res_model': 'quality.alert',
+    'view_mode': 'kanban,list,form,activity',
+    'domain': [('team_id', 'in', teams)] if teams else [],
+    'context': {
+        'default_team_id': team_int.id if team_int else False,
+        'default_sgi_origin_type': 'proceso',
+        'search_default_sgi_open': 1,
+    },
+    'search_view_id': search_view and [search_view.id, 'search'] or False,
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Levanta la primera No Conformidad&lt;/p&gt;
+&lt;p&gt;El folio (NCI-/NCE-) se asigna solo al guardar. El sistema no permite cerrar sin
+causa raíz, acciones terminadas y eficacia verificada — es el candado, no un error.&lt;/p&gt;""",
+}
         </field>
     </record>
 
@@ -202,6 +239,9 @@
         <field name="view_mode">list,pivot,graph,form</field>
         <field name="view_id" ref="sgi_nc_concentrado_view_list"/>
         <field name="search_view_id" ref="sgi_nc_view_search"/>
+        <!-- El concentrado F-P-G05-02 es SOLO de NCs formales: sin este dominio
+             mezclaba las alertas de piso sin folio. -->
+        <field name="domain">[('sgi_folio', '!=', False)]</field>
         <field name="context">{'search_default_group_stage': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">El concentrado se arma solo</p>

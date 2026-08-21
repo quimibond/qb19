@@ -26,8 +26,12 @@
     <menuitem id="menu_sgi_mywork" name="Mi trabajo" parent="menu_sgi_root" sequence="20"/>
     <menuitem id="menu_sgi_my_actions" name="Mis acciones" parent="menu_sgi_mywork"
               action="sgi_action_line_action_mine" sequence="10"/>
+    <menuitem id="menu_sgi_my_acks" name="Mis acuses de lectura" parent="menu_sgi_mywork"
+              action="sgi_document_ack_action_mine" sequence="15"/>
     <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_mywork"
               action="sgi_document_action_my_procedures" sequence="20"/>
+    <menuitem id="menu_sgi_my_measures" name="Mis mediciones" parent="menu_sgi_mywork"
+              action="sgi_measure_action_mine" sequence="25"/>
     <menuitem id="menu_sgi_my_activities" name="Mis actividades de procedimiento"
               parent="menu_sgi_mywork" action="sgi_process_activity_action_mine"
               sequence="30"/>
@@ -38,7 +42,7 @@
     <menuitem id="menu_sgi_nc" name="No Conformidades" parent="menu_sgi_improvement_group"
               sequence="10"/>
     <menuitem id="menu_sgi_nc_kanban" name="Tablero" parent="menu_sgi_nc"
-              action="sgi_nc_action_kanban" sequence="10"/>
+              action="sgi_nc_board_action" sequence="10"/>
     <menuitem id="menu_sgi_nc_concentrado" name="Concentrado" parent="menu_sgi_nc"
               action="sgi_nc_action_concentrado" sequence="20"/>
     <!-- Las acciones CAPA son transversales (NC, riesgos, AMEF, incidentes):

@@ -39,6 +39,12 @@ action = {
     'view_mode': 'kanban,list,form',
     'domain': [('team_id', '=', team.id)] if team else [],
     'context': {'default_team_id': team.id} if team else {},
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Registra la primera reclamación&lt;/p&gt;
+&lt;p&gt;Captura cliente, producto, lote y metros afectados en la pestaña SGI del
+ticket; el SLA de primera respuesta corre solo. Si procede, el botón
+&lt;b&gt;Generar NC&lt;/b&gt; abre la No Conformidad ya ligada. Importante: las
+reclamaciones deben entrar por ESTE equipo — en otros equipos no hay SLA
+SGI, ni NC, ni cuentan para el KPI CA-01.&lt;/p&gt;""",
 }
         </field>
     </record>
@@ -77,6 +83,10 @@ action = {
     'view_mode': 'kanban,list,form',
     'domain': [('team_id', '=', team.id)] if team else [],
     'context': {'default_team_id': team.id} if team else {},
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;La voz del trabajador (45001 5.4)&lt;/p&gt;
+&lt;p&gt;Cualquier queja, sugerencia o condición insegura entra aquí — también por
+correo al alias &lt;b&gt;quejas-sugerencias&lt;/b&gt;. Usa las etiquetas Queja /
+Sugerencia / SST-Condición insegura para clasificarla.&lt;/p&gt;""",
 }
         </field>
     </record>
