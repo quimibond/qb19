@@ -42,7 +42,7 @@
     <menuitem id="menu_sgi_nc" name="No Conformidades" parent="menu_sgi_improvement_group"
               sequence="10"/>
     <menuitem id="menu_sgi_nc_kanban" name="Tablero" parent="menu_sgi_nc"
-              action="sgi_nc_action_kanban" sequence="10"/>
+              action="sgi_nc_board_action" sequence="10"/>
     <menuitem id="menu_sgi_nc_concentrado" name="Concentrado" parent="menu_sgi_nc"
               action="sgi_nc_action_concentrado" sequence="20"/>
     <!-- Las acciones CAPA son transversales (NC, riesgos, AMEF, incidentes):
