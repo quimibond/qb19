@@ -81,6 +81,29 @@
                         <field name="consequence" placeholder="Consecuencia..."/>
                         <field name="existing_controls" placeholder="Controles existentes..."/>
                     </group>
+                    <div class="text-muted mb-2" invisible="instrument not in ('ryo', 'ambiental')">
+                        Escala 1–5 × 1–5. Nivel de atención: ≥16 Inmediata ·
+                        ≥9 Media · ≥4 Intermedia · resto Baja. Un riesgo de
+                        atención Inmediata solo se controla/cierra con una
+                        acción TERMINADA y el residual a la baja (o justificado).
+                    </div>
+                    <div class="text-muted mb-2" invisible="instrument != 'iper'">
+                        IPER usa escala 1–3 × 1–3 (valores mayores se rechazan).
+                        Nivel: ≥6 Alto · ≥3 Medio · resto Bajo. Los riesgos Alto
+                        exigen acción terminada y residual a la baja para cerrar.
+                    </div>
+                    <div class="text-muted mb-2" invisible="instrument != 'patrimonial'">
+                        Escala 1–5 × 1–5. Nivel: ≥15 Alto · ≥6 Medio · resto Bajo.
+                    </div>
+                    <div class="text-muted mb-2" invisible="not next_review_date">
+                        El cron diario avisará al dueño del proceso cuando venza
+                        la próxima revisión.
+                    </div>
+                    <div class="alert alert-info mb-2" role="status"
+                         invisible="next_review_date or instrument == 'foda'">
+                        💡 Captura la <b>Próxima revisión</b>: sin ella nadie
+                        recibirá el recordatorio de revalorar este riesgo.
+                    </div>
                     <group string="Evaluación" invisible="instrument == 'foda'">
                         <group string="Inicial">
                             <field name="eval_probability"/>
