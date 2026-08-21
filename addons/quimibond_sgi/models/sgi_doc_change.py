@@ -116,3 +116,22 @@ class ApprovalRequest(models.Model):
             if req.sgi_is_doc_change and req.request_status == 'approved' and not req.sgi_applied:
                 req._sgi_apply_doc_change()
         return res
+
+    def action_sgi_create_document(self):
+        """Alta documental aprobada: abre el formulario del documento nuevo con
+        el contexto que lo liga de vuelta a esta solicitud (trazabilidad del
+        alta — antes el documento se creaba suelto en la app Documentos)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Nuevo documento SGI — %s" % (self.name or ''),
+            'res_model': 'documents.document',
+            'view_mode': 'form',
+            'view_id': self.env.ref('quimibond_sgi.sgi_document_view_form').id,
+            'target': 'current',
+            'context': {
+                'default_sgi_is_controlled': True,
+                'default_sgi_state': 'borrador',
+                'sgi_alta_request_id': self.id,
+            },
+        }

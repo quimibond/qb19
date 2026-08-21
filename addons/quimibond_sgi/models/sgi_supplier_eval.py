@@ -12,6 +12,18 @@ class ResPartner(models.Model):
         ('condicionado', "Condicionado"),
         ('baja', "Baja"),
     ], string="Clasificación SGI", tracking=True)
+    # Aprobación inicial del proveedor (ISO 9001 8.4.1) — distinta de la
+    # evaluación de desempeño. Sin valor = fuera del alcance del SGI (no se
+    # bloquea nada); 'bloqueado' impide confirmar órdenes de compra.
+    sgi_supplier_status = fields.Selection([
+        ('nuevo', "Nuevo (sin aprobar)"),
+        ('aprobado', "Aprobado"),
+        ('bloqueado', "Bloqueado"),
+    ], string="Aprobación SGI (8.4.1)", tracking=True, copy=False)
+    sgi_supplier_approved_by = fields.Many2one('res.users', string="Aprobado por",
+                                               readonly=True, copy=False)
+    sgi_supplier_approved_date = fields.Date(string="Fecha de aprobación",
+                                             readonly=True, copy=False)
     sgi_supplier_score = fields.Float(string="Calificación SGI")
     sgi_last_eval_date = fields.Date(string="Última evaluación")
     sgi_eval_ids = fields.One2many('sgi.supplier.eval', 'partner_id', string="Evaluaciones SGI")
@@ -23,6 +35,26 @@ class ResPartner(models.Model):
         mapped = {partner.id: count for partner, count in data}
         for partner in self:
             partner.sgi_eval_count = mapped.get(partner.id, 0)
+
+    def action_sgi_approve_supplier(self):
+        for partner in self:
+            partner.write({
+                'sgi_supplier_status': 'aprobado',
+                'sgi_supplier_approved_by': self.env.user.id,
+                'sgi_supplier_approved_date': fields.Date.context_today(partner),
+            })
+            partner.message_post(
+                body="Proveedor <b>aprobado</b> para el SGI (8.4.1) por %s."
+                     % self.env.user.name)
+        return True
+
+    def action_sgi_block_supplier(self):
+        for partner in self:
+            partner.write({'sgi_supplier_status': 'bloqueado'})
+            partner.message_post(
+                body="Proveedor <b>BLOQUEADO</b> por el SGI (8.4.1) por %s: no se "
+                     "podrán confirmar órdenes de compra." % self.env.user.name)
+        return True
 
     def action_sgi_open_evals(self):
         self.ensure_one()

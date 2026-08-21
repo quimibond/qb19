@@ -248,6 +248,20 @@ class DocumentsDocument(models.Model):
         docs = super().create(vals_list)
         docs.filtered(
             lambda d: d.sgi_state == 'vigente' and d.sgi_code)._sgi_reparent_family()
+        # Trazabilidad del alta documental: el documento creado desde la
+        # solicitud aprobada (botón «Crear documento») queda ligado a ella.
+        request_id = self.env.context.get('sgi_alta_request_id')
+        if request_id and docs:
+            request = self.env['approval.request'].browse(request_id).exists()
+            if request and not request.sgi_document_id:
+                doc = docs[0]
+                request.sudo().write({'sgi_document_id': doc.id})
+                doc.message_post(
+                    body="Documento creado desde la solicitud de alta aprobada "
+                         "<b>%s</b>." % (request.name or ''))
+                request.message_post(
+                    body="Documento del alta creado: <b>%s</b>."
+                         % (doc.sgi_code or doc.name))
         return docs
 
     def write(self, vals):

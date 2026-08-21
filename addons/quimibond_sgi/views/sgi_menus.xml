@@ -79,8 +79,12 @@
               action="sgi_objective_action" sequence="7"/>
     <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores" parent="menu_sgi_measurement"
               action="sgi_supplier_eval_action" sequence="40"/>
+    <menuitem id="menu_sgi_satisfaction" name="Satisfacción del cliente"
+              parent="menu_sgi_measurement" action="sgi_satisfaction_action" sequence="45"/>
     <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
               parent="menu_sgi_measurement" action="sgi_competence_gap_action" sequence="50"/>
+    <menuitem id="menu_sgi_dnc_survey" name="Encuesta DNC"
+              parent="menu_sgi_measurement" action="sgi_dnc_survey_action" sequence="55"/>
     <!-- SGI → Medición: padre "Presupuesto y pronóstico" con 3 hijos (se
          reutilizan los xmlids existentes como hijos renombrados; no rompe favoritos). -->
     <menuitem id="menu_sgi_planning" name="Presupuesto y pronóstico"
@@ -141,6 +145,13 @@
               action="sgi_audit_program_action" sequence="10"/>
     <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
+    <!-- Preparación y respuesta ante emergencias (14001/45001 8.2) -->
+    <menuitem id="menu_sgi_emergency" name="Emergencias" parent="menu_sgi_audits"
+              sequence="30"/>
+    <menuitem id="menu_sgi_emergency_plans" name="Planes de emergencia"
+              parent="menu_sgi_emergency" action="sgi_emergency_plan_action" sequence="10"/>
+    <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
+              parent="menu_sgi_emergency" action="sgi_emergency_drill_action" sequence="20"/>
 
     <!-- 8. Calidad automotriz: herramientas IATF + metrología -->
     <menuitem id="menu_sgi_automotive" name="Automotriz" parent="menu_sgi_root" sequence="80"/>
@@ -156,6 +167,8 @@
               parent="menu_sgi_metrology" action="sgi_equipment_action_measuring" sequence="10"/>
     <menuitem id="menu_sgi_calibrations" name="Calibraciones" parent="menu_sgi_metrology"
               action="sgi_calibration_action" sequence="20"/>
+    <menuitem id="menu_sgi_msa" name="Estudios MSA" parent="menu_sgi_metrology"
+              action="sgi_msa_study_action" sequence="30"/>
 
     <!-- 9. Revisión por la Dirección (solo MAST/Dirección) -->
     <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección" parent="menu_sgi_root"

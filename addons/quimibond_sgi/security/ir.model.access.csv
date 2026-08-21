@@ -78,3 +78,9 @@ access_sgi_sales_budget_import_sale_mgr,sgi.sales.budget.import.sale.mgr,model_s
 access_sgi_sales_budget_import_manager,sgi.sales.budget.import.manager,model_sgi_sales_budget_import,group_sgi_manager,1,1,1,1
 access_sgi_alert_source_user,sgi.alert.source.user,model_sgi_alert_source,group_sgi_user,1,0,0,0
 access_sgi_alert_source_manager,sgi.alert.source.manager,model_sgi_alert_source,group_sgi_manager,1,1,0,0
+access_sgi_emergency_plan_user,sgi.emergency.plan.user,model_sgi_emergency_plan,group_sgi_user,1,1,1,0
+access_sgi_emergency_plan_manager,sgi.emergency.plan.manager,model_sgi_emergency_plan,group_sgi_manager,1,1,1,1
+access_sgi_emergency_drill_user,sgi.emergency.drill.user,model_sgi_emergency_drill,group_sgi_user,1,1,1,0
+access_sgi_emergency_drill_manager,sgi.emergency.drill.manager,model_sgi_emergency_drill,group_sgi_manager,1,1,1,1
+access_sgi_msa_study_user,sgi.msa.study.user,model_sgi_msa_study,group_sgi_user,1,1,1,0
+access_sgi_msa_study_manager,sgi.msa.study.manager,model_sgi_msa_study,group_sgi_manager,1,1,1,1

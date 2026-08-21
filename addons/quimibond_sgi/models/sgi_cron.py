@@ -696,3 +696,102 @@ class SgiCron(models.AbstractModel):
                 "La formación registrada concluye el %s." % line.date_end,
                 employee.user_id.id or rh_id)
         return True
+
+    # ------------------------------------------------------------------
+    # Fase 7 — Voz del cliente, DNC y emergencias
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_quarter_label(self, day):
+        return "T%d %d" % ((day.month - 1) // 3 + 1, day.year)
+
+    @api.model
+    def cron_satisfaction_survey(self):
+        """Cron trimestral: recuerda al Admin de Ventas distribuir la Encuesta
+        de Satisfacción del Cliente (9001 9.1.2). Las respuestas alimentan el
+        KPI CA-02 automáticamente. No envía correos a clientes por sí solo:
+        el envío es una acción humana desde la app Encuestas."""
+        survey = self.env.ref('quimibond_sgi.sgi_survey_satisfaction',
+                              raise_if_not_found=False)
+        user_id = self._sgi_sales_admin_user_id()
+        if not survey or not user_id:
+            return True
+        label = self._sgi_quarter_label(fields.Date.context_today(self))
+        self._sgi_schedule(
+            survey,
+            "Enviar encuesta de satisfacción del cliente (%s)" % label,
+            "Comparta la encuesta con los clientes activos desde la app "
+            "Encuestas (botón Compartir). Las respuestas del periodo alimentan "
+            "el KPI CA-02 (Satisfacción del cliente) automáticamente.",
+            user_id)
+        return True
+
+    @api.model
+    def cron_dnc(self):
+        """Cron trimestral: cierra el ciclo de la DNC (P-A01). Cuenta las
+        brechas de competencia abiertas y agenda al coordinador de RH la
+        distribución de la encuesta DNC (F-P-A01-17) y el plan de
+        capacitación. Idempotente por trimestre."""
+        survey = self.env.ref('quimibond_sgi.sgi_survey_dnc',
+                              raise_if_not_found=False)
+        rh_id = self._sgi_rh_user_id()
+        if not survey or not rh_id:
+            return True
+        gaps = self.env['sgi.competence.gap'].search_count([])
+        label = self._sgi_quarter_label(fields.Date.context_today(self))
+        self._sgi_schedule(
+            survey,
+            "Revisar DNC y plan de capacitación (%s)" % label,
+            "Hay %d brecha(s) de competencia abiertas (SGI → Medición → "
+            "Brechas de competencia). Distribuya la encuesta DNC (F-P-A01-17) "
+            "desde la app Encuestas y arme el plan de capacitación del "
+            "periodo." % gaps,
+            rh_id)
+        return True
+
+    @api.model
+    def cron_emergency_drills(self):
+        """Cron diario: vigila los simulacros de los planes de emergencia
+        vigentes (14001/45001 8.2). Idempotente por resumen."""
+        today = fields.Date.context_today(self)
+        soon = today + relativedelta(days=30)
+        manager_id = self._sgi_manager_user_id()
+        plans = self.env['sgi.emergency.plan'].search([('state', '=', 'vigente')])
+        for plan in plans:
+            user_id = plan.responsible_id.id or manager_id
+            if not user_id:
+                continue
+            if not plan.next_drill_date:
+                self._sgi_schedule(
+                    plan,
+                    "Programar el primer simulacro: %s" % (plan.folio or plan.name),
+                    "El plan de emergencia está vigente y no tiene ningún "
+                    "simulacro realizado. Programe y ejecute el primero.",
+                    user_id)
+            elif plan.next_drill_date < today:
+                self._sgi_schedule(
+                    plan,
+                    "Simulacro VENCIDO: %s" % (plan.folio or plan.name),
+                    "El simulacro venció el %s (frecuencia: cada %d meses)."
+                    % (plan.next_drill_date, plan.drill_frequency_months or 12),
+                    manager_id or user_id)
+            elif plan.next_drill_date <= soon:
+                self._sgi_schedule(
+                    plan,
+                    "Simulacro por vencer: %s" % (plan.folio or plan.name),
+                    "El próximo simulacro vence el %s. Prográmelo."
+                    % plan.next_drill_date,
+                    user_id)
+        overdue_drills = self.env['sgi.emergency.drill'].search([
+            ('state', '=', 'programado'),
+            ('date_planned', '<', today),
+        ])
+        for drill in overdue_drills:
+            user_id = drill.plan_id.responsible_id.id or manager_id
+            if user_id:
+                self._sgi_schedule(
+                    drill,
+                    "Simulacro no realizado: %s" % (drill.folio or ''),
+                    "El simulacro estaba programado para el %s y sigue sin "
+                    "realizarse." % drill.date_planned,
+                    user_id)
+        return True

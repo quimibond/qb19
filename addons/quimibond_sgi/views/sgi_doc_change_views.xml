@@ -10,6 +10,14 @@
                 <field name="sgi_applied" invisible="1"/>
                 <notebook invisible="not sgi_is_doc_change">
                     <page string="Cambio documental SGI">
+                        <div class="mb-2"
+                             invisible="sgi_change_kind != 'alta' or request_status != 'approved' or sgi_document_id">
+                            <button name="action_sgi_create_document" type="object"
+                                    string="Crear documento" class="btn-primary"
+                                    icon="fa-file-o"
+                                    groups="quimibond_sgi.group_sgi_manager"/>
+                            <span class="text-muted ms-2">El documento quedará ligado a esta solicitud de alta.</span>
+                        </div>
                         <group>
                             <group>
                                 <field name="sgi_change_kind"/>
