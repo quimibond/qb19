@@ -48,14 +48,86 @@
         </field>
     </record>
 
-    <record id="sgi_doc_change_action" model="ir.actions.act_window">
+    <!-- Lista propia: la nativa de Aprobaciones no muestra qué documento se
+         toca ni qué tipo de cambio es — lo único que MAST necesita ver. -->
+    <record id="sgi_doc_change_view_list" model="ir.ui.view">
+        <field name="name">approval.request.sgi.doc.change.list</field>
+        <field name="model">approval.request</field>
+        <field name="arch" type="xml">
+            <list string="Cambios documentales"
+                  decoration-muted="request_status in ('refused', 'cancel')"
+                  decoration-success="request_status == 'approved'">
+                <field name="name"/>
+                <field name="sgi_change_kind"/>
+                <field name="sgi_document_id"/>
+                <field name="sgi_current_revision" optional="show"/>
+                <field name="sgi_new_revision" optional="show"/>
+                <field name="sgi_pilot" optional="hide"/>
+                <field name="request_owner_id" optional="show"/>
+                <field name="request_status" widget="badge"
+                       decoration-success="request_status == 'approved'"
+                       decoration-info="request_status == 'pending'"
+                       decoration-danger="request_status == 'refused'"/>
+                <field name="sgi_applied" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_doc_change_view_search" model="ir.ui.view">
+        <field name="name">approval.request.sgi.doc.change.search</field>
+        <field name="model">approval.request</field>
+        <field name="arch" type="xml">
+            <search string="Cambios documentales">
+                <field name="name"/>
+                <field name="sgi_document_id"/>
+                <field name="request_owner_id"/>
+                <filter name="por_aprobar" string="Por aprobar"
+                        domain="[('request_status', 'in', ('new', 'pending'))]"/>
+                <filter name="aprobadas" string="Aprobadas"
+                        domain="[('request_status', '=', 'approved')]"/>
+                <separator/>
+                <filter name="altas" string="Altas"
+                        domain="[('sgi_change_kind', '=', 'alta')]"/>
+                <filter name="modificaciones" string="Modificaciones"
+                        domain="[('sgi_change_kind', '=', 'modificacion')]"/>
+                <filter name="bajas" string="Bajas"
+                        domain="[('sgi_change_kind', '=', 'baja')]"/>
+                <group>
+                    <filter name="group_kind" string="Tipo de cambio"
+                            context="{'group_by': 'sgi_change_kind'}"/>
+                    <filter name="group_status" string="Estado"
+                            context="{'group_by': 'request_status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción de servidor: inyecta la categoría SGI por default. Sin ella,
+         una solicitud creada desde este menú nacía como aprobación genérica
+         SIN la pestaña de cambio documental (mismo patrón que el Tablero NC). -->
+    <record id="sgi_doc_change_board_action" model="ir.actions.server">
         <field name="name">Cambios documentales</field>
-        <field name="res_model">approval.request</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('sgi_is_doc_change','=',True)]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin solicitudes de cambio documental</p>
-            <p>Se crean en la app Aprobaciones (Modificación de documento SGI). Al aprobarse, el documento se versiona automáticamente y sale en el NEWS del mes.</p>
+        <field name="model_id" ref="approvals.model_approval_request"/>
+        <field name="state">code</field>
+        <field name="code">
+category = env.ref('quimibond_sgi.sgi_approval_category_doc_change', raise_if_not_found=False)
+list_view = env.ref('quimibond_sgi.sgi_doc_change_view_list', raise_if_not_found=False)
+search_view = env.ref('quimibond_sgi.sgi_doc_change_view_search', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Cambios documentales',
+    'res_model': 'approval.request',
+    'view_mode': 'list,form',
+    'views': [(list_view.id if list_view else False, 'list'), (False, 'form')],
+    'search_view_id': search_view and [search_view.id, 'search'] or False,
+    'domain': [('sgi_is_doc_change', '=', True)],
+    'context': {'default_category_id': category.id} if category else {},
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Solicita el primer cambio documental&lt;/p&gt;
+&lt;p&gt;Alta, modificación o baja de un documento controlado (F-P-G01-06). Al
+aprobarse (2 aprobadores en secuencia) el documento se versiona SOLO: nueva
+revisión, obsolescencia de la anterior, acuses generados y salida en el NEWS
+del mes. La revisión nueva se sugiere automáticamente.&lt;/p&gt;""",
+}
         </field>
     </record>
 </odoo>
