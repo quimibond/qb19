@@ -13,6 +13,9 @@
               action="sgi_process_action_panel" sequence="10"/>
     <menuitem id="menu_sgi_policy" name="Política Integral" parent="menu_sgi_panel"
               action="sgi_policy_action" sequence="5"/>
+    <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_panel"
+              action="sgi_diagnostic_action" sequence="9"
+              groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_dashboards" name="Tableros" parent="menu_sgi_panel"
               sequence="10" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"

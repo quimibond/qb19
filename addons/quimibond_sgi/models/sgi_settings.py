@@ -70,6 +70,11 @@ class ResConfigSettings(models.TransientModel):
     sgi_supplier_nc_penalty = fields.Float(
         string="Puntos que descuenta cada NC al proveedor",
         config_parameter='quimibond_sgi.supplier_nc_penalty')
+    sgi_supplier_otd_tolerance_days = fields.Integer(
+        string="Tolerancia OTD de proveedores (días)",
+        config_parameter='quimibond_sgi.supplier_otd_tolerance_days',
+        help="Días de gracia sobre la fecha compromiso para contar una "
+             "recepción como a tiempo (comparación por día calendario).")
     sgi_pesaje_tolerance_kg = fields.Float(
         string="Tolerancia de peso de rollo (kg)",
         config_parameter='quimibond_sgi.pesaje_tolerance_kg',

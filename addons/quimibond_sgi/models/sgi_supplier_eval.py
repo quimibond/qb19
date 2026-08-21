@@ -118,7 +118,20 @@ class SgiSupplierEval(models.Model):
         return 'baja'
 
     def _sgi_compute_otd(self):
+        """OTD por DÍA CALENDARIO con tolerancia configurable.
+
+        La versión anterior comparaba datetime al segundo: recibir el mismo
+        día a las 18:50 con compromiso a las 14:02 contaba como tarde, y con
+        fechas compromiso salidas del lead time (que nadie mantiene) el OTD
+        real de la planta salía en 2-30%% y 84/87 proveedores caían en «Baja».
+        Regla nueva: a tiempo si la FECHA de recepción es a más tardar la
+        fecha compromiso + tolerancia en días (parámetro
+        quimibond_sgi.supplier_otd_tolerance_days, default 1). Las recepciones
+        sin ninguna fecha compromiso se excluyen del cálculo en vez de contar
+        como tarde."""
         self.ensure_one()
+        tolerance = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.supplier_otd_tolerance_days', 1))
         dt_from = fields.Datetime.to_datetime(self.date_from)
         dt_to = fields.Datetime.to_datetime(self.date_to) + relativedelta(days=1)
         pickings = self.env['stock.picking'].search([
@@ -127,15 +140,19 @@ class SgiSupplierEval(models.Model):
             ('partner_id', 'child_of', self.partner_id.commercial_partner_id.id),
             ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
         ])
-        if not pickings:
-            return 0.0
-        on_time = 0
+        on_time = counted = 0
         for pick in pickings:
             po = pick.purchase_id if 'purchase_id' in pick._fields else False
             deadline = (po and po.date_planned) or pick.date_deadline or pick.scheduled_date
-            if deadline and pick.date_done and pick.date_done <= deadline:
+            if not deadline or not pick.date_done:
+                continue
+            counted += 1
+            limit = deadline.date() + relativedelta(days=tolerance)
+            if pick.date_done.date() <= limit:
                 on_time += 1
-        return round(on_time / len(pickings) * 100.0, 2)
+        if not counted:
+            return 0.0
+        return round(on_time / counted * 100.0, 2)
 
     def _sgi_count_ncs(self):
         self.ensure_one()
