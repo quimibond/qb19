@@ -795,3 +795,59 @@ class SgiCron(models.AbstractModel):
                     "realizarse." % drill.date_planned,
                     user_id)
         return True
+
+    # ------------------------------------------------------------------
+    # Fase 8 — Señales operativas: lo que Odoo ya registra alimenta la
+    # mejora continua sin captura adicional.
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_operational_signals(self):
+        """Cron diario. (a) Falla repetitiva: ≥3 correctivas del mismo equipo
+        en 90 días → actividad al Jefe MAST sugiriendo levantar NC y revisar
+        el plan de mantenimiento. (b) Reclamación abierta con SLA vencido →
+        actividad al Jefe MAST. Idempotente por resumen."""
+        now = fields.Datetime.now()
+        manager_id = self._sgi_manager_user_id()
+        if not manager_id:
+            return True
+        # (a) Mantenimiento repetitivo (los datos ya están en la app nativa).
+        since = now - relativedelta(days=90)
+        requests = self.env['maintenance.request'].search([
+            ('maintenance_type', '=', 'corrective'),
+            ('create_date', '>=', since),
+            ('equipment_id', '!=', False),
+        ])
+        by_equipment = {}
+        for request in requests:
+            by_equipment.setdefault(request.equipment_id, 0)
+            by_equipment[request.equipment_id] += 1
+        for equipment, count in by_equipment.items():
+            if count < 3:
+                continue
+            self._sgi_schedule(
+                equipment,
+                "Falla repetitiva: %s (%d correctivas en 90 días)"
+                % (equipment.name, count),
+                "El equipo acumula %d solicitudes correctivas en 90 días. "
+                "Evalúe levantar una NC (botón «Levantar NC» en la solicitud) "
+                "y revisar su plan de mantenimiento preventivo." % count,
+                manager_id)
+        # (b) Reclamaciones con SLA vencido que siguen abiertas.
+        team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
+                            raise_if_not_found=False)
+        Ticket = self.env['helpdesk.ticket']
+        if team and 'sla_deadline' in Ticket._fields:
+            tickets = Ticket.search([
+                ('team_id', '=', team.id),
+                ('stage_id.fold', '=', False),
+                ('sla_deadline', '!=', False),
+                ('sla_deadline', '<', now),
+            ])
+            for ticket in tickets:
+                self._sgi_schedule(
+                    ticket,
+                    "SLA vencido: reclamación %s" % (ticket.name or ticket.id),
+                    "La reclamación superó su SLA de respuesta y sigue "
+                    "abierta. Escale la respuesta al cliente.",
+                    manager_id)
+        return True

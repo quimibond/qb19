@@ -216,6 +216,49 @@ class SgiAudit(models.Model):
                 "No se puede cerrar la auditoría %s:\n%s" % (
                     self.folio or self.name, "\n".join(problems)))
 
+    def action_generate_findings_from_checklist(self):
+        """Convierte las respuestas del checklist (encuesta) en hallazgos:
+        «No conforme» → NC menor, «Observación» → observación. Cierra la doble
+        captura del auditor: lo que contestó en el survey aparece como
+        hallazgo listo para disposición. Idempotente por respuesta
+        (survey_line_id)."""
+        self.ensure_one()
+        if not self.survey_input_ids:
+            raise UserError(
+                "La auditoría no tiene respuestas de checklist ligadas. "
+                "Conteste la encuesta y ligue la respuesta en la pestaña "
+                "«Checklist» (campo Respuestas).")
+        lines = self.env['survey.user_input.line'].search([
+            ('user_input_id', 'in', self.survey_input_ids.ids),
+            ('answer_type', '=', 'suggestion'),
+        ])
+        existing = self.finding_ids.mapped('survey_line_id')
+        Finding = self.env['sgi.audit.finding']
+        created = 0
+        for line in lines:
+            if line in existing:
+                continue
+            label = (line.suggested_answer_id.value or '').strip().lower()
+            if label.startswith('no conforme'):
+                finding_type = 'nc_menor'
+            elif label.startswith('observa'):
+                finding_type = 'observacion'
+            else:
+                continue  # «Conforme» no genera hallazgo
+            Finding.create({
+                'audit_id': self.id,
+                'finding_type': finding_type,
+                'survey_line_id': line.id,
+                'description': "Checklist — %s: %s" % (
+                    line.question_id.title or '',
+                    line.suggested_answer_id.value or ''),
+            })
+            created += 1
+        self.message_post(
+            body="Checklist procesado: <b>%d</b> hallazgo(s) nuevo(s) "
+                 "generado(s) de las respuestas." % created)
+        return True
+
     def action_open_findings(self):
         self.ensure_one()
         return {
@@ -243,6 +286,9 @@ class SgiAuditFinding(models.Model):
         ('oportunidad', "Oportunidad de mejora"),
     ], string="Tipo", default='observacion', required=True)
     norm_clause_id = fields.Many2one('sgi.norm.clause', string="Cláusula")
+    survey_line_id = fields.Many2one('survey.user_input.line',
+                                     string="Respuesta del checklist",
+                                     readonly=True, copy=False)
     process_id = fields.Many2one('sgi.process', string="Proceso")
     description = fields.Text(string="Descripción")
     evidence = fields.Text(string="Evidencia")

@@ -242,4 +242,36 @@
             </activity>
         </field>
     </record>
+
+    <!-- Lecciones aprendidas (7.1.6): las NC mayores cerradas con lección
+         aplicada son la base de conocimiento del sistema — ya existían, solo
+         faltaba una vista para consultarlas. -->
+    <record id="sgi_nc_lessons_view_list" model="ir.ui.view">
+        <field name="name">quality.alert.sgi.lessons.list</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <list string="Lecciones aprendidas" create="false" edit="false">
+                <field name="sgi_folio"/>
+                <field name="title"/>
+                <field name="sgi_process_id"/>
+                <field name="sgi_classification" widget="badge"
+                       decoration-danger="sgi_classification == 'mayor'"/>
+                <field name="sgi_root_cause"/>
+                <field name="sgi_effectiveness_note" optional="show"/>
+                <field name="date_close" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_nc_lessons_action" model="ir.actions.act_window">
+        <field name="name">Lecciones aprendidas</field>
+        <field name="res_model">quality.alert</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="sgi_nc_lessons_view_list"/>
+        <field name="domain">[('sgi_folio', '!=', False), ('sgi_lesson_captured', '=', True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay lecciones aprendidas</p>
+            <p>Cada NC mayor cerrada con «Lección aplicada a AMEF / plan de control / documento» aparece aquí: causa raíz, eficacia y proceso. Es la memoria del sistema (ISO 7.1.6).</p>
+        </field>
+    </record>
 </odoo>

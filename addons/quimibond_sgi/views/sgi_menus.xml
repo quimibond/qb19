@@ -56,6 +56,9 @@
               action="sgi_internal_complaint_action" sequence="25"/>
     <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_improvement_group"
               action="sgi_improvement_action" sequence="30"/>
+    <menuitem id="menu_sgi_lessons" name="Lecciones aprendidas"
+              parent="menu_sgi_improvement_group"
+              action="sgi_nc_lessons_action" sequence="40"/>
 
     <!-- 4. Documental: la biblioteca controlada y su ciclo de vida -->
     <menuitem id="menu_sgi_documental" name="Documental" parent="menu_sgi_root" sequence="40"/>
