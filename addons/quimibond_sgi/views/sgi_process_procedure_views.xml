@@ -12,21 +12,30 @@
                             invisible="not odoo_menu_id"/>
                 </header>
                 <sheet>
+                    <div class="alert alert-info mb-3" role="status">
+                        <b>¿Qué es una actividad?</b> Un <b>paso numerado</b> del
+                        procedimiento vivo del proceso (sección 4 del F-P-G01-02):
+                        qué se hace, quién lo hace, con qué formato (sale en
+                        <span class="text-danger">rojo</span> en el PDF) y en qué
+                        menú de Odoo se ejecuta (botón <b>Abrir en Odoo</b>).
+                        Editarla marca el procedimiento como <b>pendiente de
+                        revisión documental</b> y avisa a su dueño.
+                    </div>
                     <div class="oe_title">
                         <label for="number" string="Numeral"/>
                         <h2><field name="number" placeholder="4.2.3.1"/></h2>
                     </div>
                     <group>
-                        <group>
+                        <group string="Dónde va en el procedimiento (PDF)">
                             <field name="block"/>
                             <field name="section" placeholder="4.2.3 Cotización de productos"/>
                             <field name="sequence"/>
                         </group>
-                        <group>
+                        <group string="Quién lo hace y dónde se ejecuta">
                             <field name="responsible_role" placeholder="Administrador de ventas y marketing"/>
                             <field name="responsible_job_ids" widget="many2many_tags"/>
                             <field name="odoo_menu_id"/>
-                            <field name="odoo_ref" placeholder="Ventas &gt; Pedidos"/>
+                            <field name="odoo_ref" placeholder="Se llena solo al elegir el menú (ej. Ventas &gt; Pedidos)"/>
                         </group>
                     </group>
                     <group string="Resumen">
@@ -113,9 +122,8 @@
         <field name="search_view_id" ref="sgi_process_activity_view_search"/>
         <field name="context">{'search_default_group_process': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">El Desarrollo de los procedimientos, como datos</p>
-            <p>Cada actividad es un numeral vivo: su rol, sus formatos y el menú de
-            Odoo donde se ejecuta. Se editan desde la ficha del proceso.</p>
+            <p class="o_view_nocontent_smiling_face">El Desarrollo de los procedimientos, como datos vivos</p>
+            <p>El procedimiento dejó de ser un PDF muerto: cada <b>actividad</b> es un numeral (4.2.3.1) con su <b>rol responsable</b>, sus <b>formatos</b> (en rojo en el PDF) y el <b>menú de Odoo</b> donde se ejecuta — el botón <i>Abrir en Odoo</i> te lleva ahí. Se capturan en la pestaña <i>Procedimiento</i> de cada proceso; el PDF F-P-G01-02 se imprime desde el botón con el contador de actividades. Editar una actividad marca el procedimiento como pendiente de revisión documental (candado G14).</p>
         </field>
     </record>
 
@@ -126,8 +134,8 @@
         <field name="search_view_id" ref="sgi_process_activity_view_search"/>
         <field name="context">{'search_default_my_activities': 1, 'search_default_group_process': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Las actividades que le tocan a tu puesto</p>
-            <p>Filtradas por el puesto del empleado ligado a tu usuario.</p>
+            <p class="o_view_nocontent_smiling_face">Los pasos de procedimiento que le tocan a tu puesto</p>
+            <p>Aquí ves <b>qué te toca hacer y dónde</b>: cada línea es un numeral de procedimiento asignado a tu puesto, con su formato y el botón <i>Abrir en Odoo</i> que te lleva directo al menú donde se ejecuta. Si está vacío, pide a RH que asigne tu puesto (hr.job) a tu ficha de empleado.</p>
         </field>
     </record>
 
@@ -146,6 +154,15 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Procedimiento" name="procedimiento">
+                    <div class="alert alert-info mb-3" role="status">
+                        <b>Esta pestaña ES el procedimiento vivo</b> (F-P-G01-02):
+                        alcance, responsabilidades y actividades numeradas viven
+                        aquí como datos, y el <b>PDF se imprime</b> con el botón
+                        de arriba (contador «Actividades»). Cualquier cambio marca
+                        el documento controlado como <b>pendiente de revisión
+                        documental</b> y avisa a su dueño — la nueva revisión se
+                        aprueba por <i>Documental → Cambios documentales</i>.
+                    </div>
                     <group string="Alcance">
                         <field name="scope" nolabel="1"
                                placeholder="A qué áreas/actividades aplica el procedimiento…"/>

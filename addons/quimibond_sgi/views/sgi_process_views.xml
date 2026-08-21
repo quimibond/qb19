@@ -28,25 +28,56 @@
                             invisible="not odoo_model_id"/>
                 </header>
                 <sheet>
+                    <div class="alert alert-info mb-3" role="status">
+                        <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>:
+                        qué se entrega, quién lo entrega, quién lo recibe, con qué
+                        formato controlado y con qué criterio se acepta. Si el
+                        entregable vive en Odoo (un pedido, una OF, una remisión…),
+                        liga el modelo y el botón <b>Ver registros</b> abre las
+                        entregas reales; si es documental, déjalo sin modelo.
+                    </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
                         <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal F-P-A12-01)"/></h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="from_process_id"/>
-                            <field name="to_process_id"/>
+                        <group string="La entrega">
+                            <field name="from_process_id" string="Lo entrega (origen)"/>
+                            <field name="to_process_id" string="Lo recibe (destino)"/>
                         </group>
-                        <group>
-                            <field name="document_id"/>
-                            <field name="odoo_model_id"/>
+                        <group string="Con qué">
+                            <field name="document_id" string="Formato de entrega"/>
+                            <field name="odoo_model_id" string="Dónde vive en Odoo"/>
                         </group>
                     </group>
-                    <group string="Criterio de aceptación">
-                        <field name="acceptance_criteria" nolabel="1"/>
+                    <group string="Criterio de aceptación (¿cuándo se recibe como buena la entrega?)">
+                        <field name="acceptance_criteria" nolabel="1"
+                               placeholder="Ej. MP sin liberar no se surte a producción; primera respuesta al cliente en ≤ 3 días…"/>
                     </group>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <record id="sgi_process_flow_view_search" model="ir.ui.view">
+        <field name="name">sgi.process.flow.search</field>
+        <field name="model">sgi.process.flow</field>
+        <field name="arch" type="xml">
+            <search string="Flujos entre procesos">
+                <field name="name"/>
+                <field name="from_process_id"/>
+                <field name="to_process_id"/>
+                <filter name="con_modelo" string="Viven en Odoo"
+                        domain="[('odoo_model_id', '!=', False)]"/>
+                <filter name="documentales" string="Documentales (sin modelo)"
+                        domain="[('odoo_model_id', '=', False)]"/>
+                <group>
+                    <filter name="group_from" string="Proceso que entrega"
+                            context="{'group_by': 'from_process_id'}"/>
+                    <filter name="group_to" string="Proceso que recibe"
+                            context="{'group_by': 'to_process_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -54,9 +85,11 @@
         <field name="name">Flujos entre procesos</field>
         <field name="res_model">sgi.process.flow</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_process_flow_view_search"/>
+        <field name="context">{'search_default_group_from': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Cada flecha del mapa es un entregable real</p>
-            <p>Liga el formato con que se entrega y el modelo de Odoo donde vive: el botón Ver registros abre los registros reales que fluyen por ella.</p>
+            <p class="o_view_nocontent_smiling_face">Cada flecha del mapa de procesos es una entrega real</p>
+            <p>Un flujo dice <b>qué</b> entrega un proceso a otro, <b>con qué formato</b> y <b>cuándo se acepta</b>. Si el entregable vive en Odoo (pedido, OF, remisión, inspección…), el botón <i>Ver registros</i> abre las entregas reales; los flujos sin modelo son entregables documentales. También se editan desde las pestañas <i>Entradas</i> y <i>Salidas</i> de cada proceso.</p>
         </field>
     </record>
 
@@ -197,6 +230,15 @@
                             </field>
                         </page>
                         <page string="Cómo se opera">
+                            <div class="alert alert-info mb-3" role="status">
+                                <b>Dos niveles:</b> los <b>procedimientos e
+                                instructivos vigentes</b> son el «cómo» aprobado
+                                (el procedimiento vivo se edita en la pestaña
+                                <i>Procedimiento</i> y se imprime desde el botón
+                                «Actividades»); abajo están <b>todos los
+                                documentos</b> del proceso (formatos, DATs,
+                                anexos) con su estado.
+                            </div>
                             <group string="Procedimientos e instructivos vigentes">
                                 <field name="procedure_ids" nolabel="1" readonly="1">
                                     <list>
