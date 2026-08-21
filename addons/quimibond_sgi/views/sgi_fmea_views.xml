@@ -43,6 +43,15 @@
                     </group>
                     <notebook>
                         <page string="Modos de falla">
+                            <div class="text-muted mb-2">
+                                Escalas AIAG 1–10: <b>S</b>everidad ·
+                                <b>O</b>currencia · <b>D</b>etección.
+                                NPR = S × O × D. Un NPR ≥ 100 marca la línea
+                                en rojo y exige una acción <b>TERMINADA</b>
+                                antes de marcar el AMEF vigente; después de
+                                actuar, captura la re-evaluación (NPR post)
+                                dentro de la línea.
+                            </div>
                             <field name="line_ids">
                                 <list editable="bottom" decoration-danger="requires_action == True">
                                     <field name="sequence" widget="handle"/>
@@ -148,7 +157,7 @@
         <field name="search_view_id" ref="sgi_fmea_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea el primer AMEF</p>
-            <p>El NPR se calcula solo; un NPR alto exige acción antes de que el AMEF sea vigente.</p>
+            <p>El NPR se calcula solo (S × O × D); un NPR ≥ 100 exige una acción TERMINADA antes de que el AMEF pueda marcarse vigente.</p>
         </field>
     </record>
 
