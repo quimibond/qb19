@@ -384,6 +384,36 @@ class SgiActionLine(models.Model):
     # Actividad nativa que hace accionable la acción en el registro origen.
     activity_id = fields.Many2one('mail.activity', string="Actividad",
                                   readonly=True, copy=False, index=True)
+    origin_display = fields.Char(string="Origen", compute='_compute_origin_display')
+
+    @api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id', 'fmea_line_id')
+    def _compute_origin_display(self):
+        for line in self:
+            origin = line._sgi_origin()
+            line.origin_display = origin.display_name if origin else ''
+
+    def action_mark_done(self):
+        """El click más usado del empleado: terminar su acción. Sella la fecha
+        de hoy y el avance al 100%; el write cierra la actividad espejo y
+        revalida el candado del riesgo si aplica."""
+        today = fields.Date.context_today(self)
+        self.filtered(lambda l: not l.date_done).write(
+            {'date_done': today, 'progress': '100'})
+        return True
+
+    def action_open_origin(self):
+        """Abre el registro que originó la acción (NC, riesgo, incidente,
+        simulacro o AMEF): el contexto completo de QUÉ hay que resolver."""
+        self.ensure_one()
+        origin = self._sgi_origin()
+        if not origin:
+            raise UserError("Esta acción no tiene un registro origen ligado.")
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': origin._name,
+            'res_id': origin.id,
+            'view_mode': 'form',
+        }
 
     @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'drill_id', 'name')
     def _check_parent_xor(self):

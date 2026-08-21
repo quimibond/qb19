@@ -378,3 +378,8 @@ class SgiDocumentAck(models.Model):
                 raise UserError("Solo el propio empleado puede marcar su acuse como leído.")
             ack.write({'state': 'leido', 'ack_date': fields.Datetime.now()})
         return True
+
+    def action_view_file(self):
+        """Leer antes de firmar: abre el PDF/enlace del documento del acuse."""
+        self.ensure_one()
+        return self.document_id.action_sgi_view_file()
