@@ -85,7 +85,7 @@ a{color:var(--accent-ink)}
 
 <div class="wrap">
 <header class="hero">
-  <p class="kicker">Quimibond · Odoo 19 Enterprise · addon <b>quimibond_sgi</b> v19.0.14.0.0</p>
+  <p class="kicker">Quimibond · Odoo 19 Enterprise · addon <b>quimibond_sgi</b> v19.0.14.1.0</p>
   <h1>Flujos del SGI Quimibond</h1>
   <p class="lede">Mapa exhaustivo de cada click y cada acción del Sistema de Gestión Integral: estados exactos, botones con su método Python y condición de visibilidad, candados de cierre, automatizaciones (crons y NC automáticas), wizards, reportes y navegación. Extraído directamente del código fuente.</p>
   <div class="hero-meta">
@@ -159,26 +159,30 @@ a{color:var(--accent-ink)}
 <b>SGI</b><br>
 ├─ <b>Panel</b> → kanban de procesos por macroproceso (semáforo de salud)<br>
 │&nbsp;&nbsp;├─ Política Integral → <i>sgi.policy</i><br>
+│&nbsp;&nbsp;├─ Objetivos Integrales → <i>sgi.objective</i> (la cascada Política → Objetivos → KPIs vive junta)<br>
 │&nbsp;&nbsp;└─ <span class="lock">🔒 Tableros</span> → Pareto de alertas de calidad · Pareto de defectos (revisado)<br>
+├─ <b>Procesos</b> → mapa de procesos · Flujos · Actividades de procedimiento <i>(lo general antes que lo particular)</i><br>
 ├─ <b>Mi trabajo</b><br>
 │&nbsp;&nbsp;├─ Mis acciones → <i>sgi.action.line</i> (filtros: mías + abiertas + vencidas)<br>
 │&nbsp;&nbsp;├─ Mis procedimientos → documentos vigentes de mi puesto<br>
 │&nbsp;&nbsp;└─ Mis actividades de procedimiento → <i>sgi.process.activity</i><br>
-├─ <b>Mejora continua</b><br>
-│&nbsp;&nbsp;├─ No Conformidades → Tablero (kanban) · Concentrado F-P-G05-02 · <span class="lock">🔒 Todas las acciones</span><br>
+├─ <b>Mejora continua</b> <i>(el ciclo reactivo completo)</i><br>
+│&nbsp;&nbsp;├─ No Conformidades → Tablero (kanban) · Concentrado F-P-G05-02<br>
+│&nbsp;&nbsp;├─ <span class="lock">🔒 Acciones (todas)</span> → CAPA transversal: NC + riesgos + AMEF + incidentes<br>
+│&nbsp;&nbsp;├─ Incidentes SST → <i>sgi.incident</i> (SCAT)<br>
 │&nbsp;&nbsp;├─ Reclamaciones → tickets del equipo "Reclamaciones de clientes"<br>
+│&nbsp;&nbsp;├─ Quejas y sugerencias → canal interno (voz del trabajador, 45001 5.4)<br>
 │&nbsp;&nbsp;└─ Mejoras → tareas del proyecto "Mejora Continua SGI"<br>
 ├─ <b>Documental</b><br>
 │&nbsp;&nbsp;├─ Documentos → <i>documents.document</i> controlados (filtro Vigentes)<br>
 │&nbsp;&nbsp;├─ Cambios documentales → <i>approval.request</i> SGI<br>
 │&nbsp;&nbsp;└─ <span class="lock">🔒 Migración de formatos</span> → kanban por estado de migración<br>
 ├─ <b>Medición</b><br>
-│&nbsp;&nbsp;├─ Indicadores · Mediciones (list/graph/pivot) · Objetivos Integrales<br>
+│&nbsp;&nbsp;├─ Indicadores · Mediciones (list/graph/pivot)<br>
 │&nbsp;&nbsp;├─ Evaluación de proveedores · Brechas de competencia (DNC)<br>
 │&nbsp;&nbsp;└─ Presupuesto y pronóstico → Presupuestos · Pronósticos · Análisis (×4)<br>
 │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(este submenú se espeja dentro de la app Ventas, seq 6)</i><br>
-├─ <b>Procesos</b> → mapa de procesos · Flujos · Actividades de procedimiento<br>
-├─ <b>Auditorías y riesgos</b> → Programa anual · Auditorías · Riesgos y oportunidades · SST → Incidentes<br>
+├─ <b>Riesgos y auditorías</b> → Riesgos y oportunidades <i>(planificar 6.1)</i> · Programa anual · Auditorías <i>(verificar 9.2)</i><br>
 ├─ <b>Automotriz</b> → Planes de control · AMEF · PPAP · Metrología → Equipos de medición · Calibraciones<br>
 ├─ <span class="lock">🔒 <b>Revisión por la Dirección</b></span> → <i>sgi.management.review</i><br>
 └─ <span class="lock">🔒 <b>Configuración</b></span> → ⚙️ Ajustes · Áreas · Normas · Cláusulas · Acuses de lectura ·<br>
@@ -415,7 +419,7 @@ stateDiagram-v2
   direction LR
   [*] --> Borrador
   Borrador --> Borrador : ▶ Cargar entradas<br>(llena las 10 entradas 9.3.2)
-  Borrador --> Realizada : ▶ Marcar realizada<br>(exige ≥1 acuerdo con<br>responsable y fecha)
+  Borrador --> Realizada : ▶ Marcar realizada<br>(TODO acuerdo con<br>responsable y fecha)
   Realizada --> Cerrada : ▶ Cerrar
   Cerrada --> Borrador : ▶ Volver a borrador<br>(solo Jefe MAST)
   note right of Realizada
@@ -463,6 +467,7 @@ stateDiagram-v2
 <tr><td>Marcar capturado</td><td><code>action_capture</code></td><td>Form, estado pendiente</td><td>Pasa a capturado.</td></tr>
 <tr><td>Validar</td><td><code>action_validate</code></td><td>Form y listas, oculto si ya validado</td><td>Verifica que valides tú (responsable) o MAST; valida y evalúa la NC automática.</td></tr>
 <tr><td>Ver evidencia</td><td><code>action_view_evidence</code></td><td>Oculto en KPIs manuales</td><td>Abre los registros reales que explican el valor: embarques con devolución, OCs, facturas, brechas de competencia, MOs, scrap… (11 destinos según el modo de cálculo).</td></tr>
+<tr><td>Regresar a pendiente</td><td><code>action_reset</code></td><td>Solo Jefe MAST, con confirmación</td><td>Devuelve la medición a Pendiente (deja de contar como evidencia validada).</td></tr>
 </table></div>
 
 <ul class="plain">
@@ -554,18 +559,20 @@ flowchart TB
 stateDiagram-v2
   direction LR
   [*] --> Identificado
-  Identificado --> EnTratamiento : click en el statusbar
-  EnTratamiento --> Controlado : statusbar → candado si atención alta
-  Controlado --> Cerrado : statusbar → candado si atención alta
-  Cerrado --> Identificado : solo Jefe MAST
+  Identificado --> EnTratamiento : ▶ Iniciar tratamiento
+  EnTratamiento --> Controlado : ▶ Marcar controlado<br>candado si atención alta
+  Controlado --> Cerrado : ▶ Cerrar<br>candado si atención alta
+  Cerrado --> Identificado : ▶ Reabrir (solo Jefe MAST)
   state "En tratamiento" as EnTratamiento
   note right of Controlado
     Riesgo inmediata/alto exige
     · ≥1 acción de tratamiento TERMINADA
     · residual &lt; inicial, o justificación
+    Reabrir o borrar la acción de un
+    riesgo controlado revalida el candado.
   end note
 </pre></div>
-<figcaption>No hay botones: las transiciones se hacen clicando el statusbar; el candado vive en <code>write()</code>.</figcaption>
+<figcaption>Botones explícitos de transición (el statusbar también funciona); el candado vive en <code>write()</code> y se revalida si se reabre o borra la acción de tratamiento.</figcaption>
 </figure>
 
 <div class="tbl"><table>
@@ -591,11 +598,13 @@ stateDiagram-v2
   Vigente --> Borrador : ▶ Regresar a borrador
   Obsoleto --> Borrador : ▶ Regresar a borrador
   note right of Vigente
-    Candado: ningún modo de falla
-    con NPR ≥ 100 puede quedar
-    sin acción registrada.
-    Líneas de AMEF vigente/obsoleto
-    no se borran (evidencia).
+    Candado: todo modo de falla
+    con NPR ≥ 100 necesita una
+    acción TERMINADA (no solo
+    registrada). Líneas de AMEF
+    vigente/obsoleto no se borran.
+    Obsoletar avisa al Jefe MAST
+    para verificar cobertura.
   end note
 </pre></div>
 <figcaption>Cada línea admite re-evaluación post-acción (S/O/D post → NPR post). Las acciones de la línea cuelgan del modelo único CAPA y su actividad espejo se agenda sobre el AMEF.</figcaption>
@@ -674,7 +683,7 @@ flowchart TB
 <tr><td>≥ 70</td><td><span class="tag warn">Condicionado</span></td><td>Actividad automática al Gerente de Compras</td></tr>
 <tr><td>&lt; 70</td><td><span class="tag bad">Baja</span></td><td>Actividad automática al Gerente de Compras</td></tr>
 </table></div>
-<p>Único botón: <b>Aplicar al proveedor</b> (<code>action_apply_to_partner</code>) — escribe clase, score y fecha en la ficha del partner. El <b>cron trimestral</b> evalúa automáticamente a todos los proveedores con recepciones del trimestre anterior y aplica el resultado. La ficha del proveedor muestra pestaña "SGI Proveedor" y smart buttons "Evaluaciones", "NC" y "Reclamaciones"; la OC muestra "NC proveedor".</p>
+<p>Botones: <b>Recalcular</b> (<code>action_recompute</code>, refresca OTD/NC/score con los datos de hoy — las métricas son una foto) y <b>Aplicar al proveedor</b> (<code>action_apply_to_partner</code>) — escribe clase, score y fecha en la ficha del partner. Las alertas <b>canceladas no penalizan</b>. El <b>cron trimestral</b> evalúa automáticamente a todos los proveedores con recepciones del trimestre anterior, recalcula y aplica el resultado. La ficha del proveedor muestra pestaña "SGI Proveedor" y smart buttons "Evaluaciones", "NC" y "Reclamaciones"; la OC muestra "NC proveedor".</p>
 
 <!-- ============================================================ -->
 <h2 id="competencias"><span class="sec">20</span>Competencias y DNC — <code>sgi.competence.gap</code> (P-A01)</h2>
@@ -812,7 +821,7 @@ flowchart LR
 <h3><code>quimibond_sgi_revisado</code> — Pareto de defectos</h3>
 <p>Solo vistas (cero Python): pivot y gráfica del registro de revisado de telas agrupado por causa (etiquetas TEJIDO-*), colgado en <b>Panel → Tableros → Pareto de defectos (revisado)</b>. Alimenta el KPI de Calidad PQ.</p>
 
-<p style="margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px">Generado a partir del código fuente de <code>quimibond_sgi</code> v19.0.14.0.0 y sus satélites (rama de análisis, agosto 2026). Cada botón, estado, candado y cron citado corresponde a un método real del addon.</p>
+<p style="margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px">Generado a partir del código fuente de <code>quimibond_sgi</code> v19.0.14.1.0 y sus satélites (agosto 2026), incluidas las mejoras de los lotes 1–3 y la reorganización de menús. Cada botón, estado, candado y cron citado corresponde a un método real del addon. Evaluación ISO y deuda técnica: <code>docs/SGI_EVALUACION_ESTRUCTURA.md</code> · <code>docs/SGI_DEUDA_TECNICA.md</code>.</p>
 </div>
 
 <script type="module">
