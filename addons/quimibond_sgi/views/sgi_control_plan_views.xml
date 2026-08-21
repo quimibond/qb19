@@ -112,7 +112,7 @@
         <field name="search_view_id" ref="sgi_control_plan_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea el primer plan de control</p>
-            <p>Las características a inspeccionar por producto, con criticidad F/R/S. Lo rechazado en inspección se va solo a cuarentena.</p>
+            <p>Las características a inspeccionar por producto, con criticidad F/R/S. Cada punto del plan genera las inspecciones de Calidad en piso y alimenta el CoA del lote; lo rechazado se va solo a cuarentena. Si ya hay puntos de calidad sin plan, úsalos con «Ligar puntos sueltos» dentro del plan.</p>
         </field>
     </record>
 
