@@ -51,3 +51,11 @@ class TestMyWork(TransactionCase):
         ack.action_mark_read()
         self.assertEqual(ack.state, 'leido')
         self.assertTrue(ack.ack_date)
+
+    def test_03_indicator_trend_action(self):
+        ind = self.env['sgi.indicator'].create({
+            'code': 'TST-TREND', 'name': 'KPI tendencia', 'calc_mode': 'manual'})
+        action = ind.action_view_trend()
+        self.assertEqual(action['res_model'], 'sgi.indicator.measure')
+        self.assertIn('graph', action['view_mode'])
+        self.assertEqual(action['domain'], [('indicator_id', '=', ind.id)])

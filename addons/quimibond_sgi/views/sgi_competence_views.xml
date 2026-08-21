@@ -59,8 +59,8 @@
         <field name="search_view_id" ref="sgi_competence_gap_view_search"/>
         <field name="context">{'search_default_group_department': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin brechas de competencia</p>
-            <p>Se calculan comparando las habilidades esperadas del puesto contra las del empleado.</p>
+            <p class="o_view_nocontent_smiling_face">Sin brechas de competencia 🎉</p>
+            <p>La brecha se calcula sola: competencias que el <b>puesto</b> exige (Empleados → Puestos → Habilidades) vs las <b>vigentes</b> del empleado (las certificaciones caducadas cuentan como brecha). Se cierra registrando la competencia en la ficha del empleado tras la capacitación — el cron trimestral avisa a RH y la encuesta DNC (menú de abajo) levanta las necesidades percibidas.</p>
         </field>
     </record>
 
