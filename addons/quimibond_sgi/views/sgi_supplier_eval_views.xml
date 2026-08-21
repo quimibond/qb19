@@ -86,4 +86,15 @@
             <p>El cron trimestral evalúa solo a los proveedores con recepciones: entregas a tiempo + NCs dan la clase Acreditado / Condicionado / Baja.</p>
         </field>
     </record>
+
+    <!-- Recálculo masivo (menú Acción de la lista): tras cambiar la regla de
+         OTD o la tolerancia, selecciona las evaluaciones y recalcula. -->
+    <record id="sgi_supplier_eval_recompute_action" model="ir.actions.server">
+        <field name="name">Recalcular métricas (SGI)</field>
+        <field name="model_id" ref="model_sgi_supplier_eval"/>
+        <field name="binding_model_id" ref="model_sgi_supplier_eval"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">records.action_recompute()</field>
+    </record>
 </odoo>

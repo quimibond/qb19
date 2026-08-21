@@ -84,3 +84,4 @@ access_sgi_emergency_drill_user,sgi.emergency.drill.user,model_sgi_emergency_dri
 access_sgi_emergency_drill_manager,sgi.emergency.drill.manager,model_sgi_emergency_drill,group_sgi_manager,1,1,1,1
 access_sgi_msa_study_user,sgi.msa.study.user,model_sgi_msa_study,group_sgi_user,1,1,1,0
 access_sgi_msa_study_manager,sgi.msa.study.manager,model_sgi_msa_study,group_sgi_manager,1,1,1,1
+access_sgi_diagnostic_manager,sgi.diagnostic.manager,model_sgi_diagnostic,group_sgi_manager,1,1,1,1

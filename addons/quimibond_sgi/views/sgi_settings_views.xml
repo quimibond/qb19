@@ -122,6 +122,9 @@
                         <setting string="Puntos que descuenta cada NC">
                             <field name="sgi_supplier_nc_penalty"/>
                         </setting>
+                        <setting string="Tolerancia OTD (días de gracia sobre la fecha compromiso)">
+                            <field name="sgi_supplier_otd_tolerance_days"/>
+                        </setting>
                     </block>
                     <block title="Documental (avisos)">
                         <setting string="Primer aviso de revisión documental (días)"

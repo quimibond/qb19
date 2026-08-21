@@ -32,3 +32,4 @@ from . import test_sales_budget
 from . import test_alert_source
 from . import test_fase7
 from . import test_fase8
+from . import test_diagnostic_otd

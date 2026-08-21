@@ -86,6 +86,8 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.supplier_weight_otd': '0.7',
         'quimibond_sgi.supplier_weight_quality': '0.3',
         'quimibond_sgi.supplier_nc_penalty': '10.0',
+        # Días de gracia del OTD de proveedores (comparación por día calendario).
+        'quimibond_sgi.supplier_otd_tolerance_days': '1',
         'quimibond_sgi.pesaje_tolerance_kg': '3.0',
         'quimibond_sgi.waste_subproduct_category': 'SubProducto',
         'quimibond_sgi.monthly_sales_budget': '0',
