@@ -227,12 +227,18 @@ class SgiManagementReview(models.Model):
     # ------------------------------------------------------------------
     def action_mark_done(self):
         for review in self:
-            valid = review.agreement_ids.filtered(
-                lambda a: a.responsible_id and a.deadline)
-            if not valid:
+            if not review.agreement_ids:
                 raise UserError(
                     "No se puede marcar como Realizada sin al menos un acuerdo "
                     "con responsable y fecha límite.")
+            incomplete = review.agreement_ids.filtered(
+                lambda a: not a.responsible_id or not a.deadline)
+            if incomplete:
+                raise UserError(
+                    "Todo acuerdo de la Revisión por la Dirección debe tener "
+                    "responsable y fecha límite (ISO 9.3.3: las salidas son "
+                    "accionables). Completa: %s" % ", ".join(
+                        incomplete.mapped('name')))
             project = self.env.ref('quimibond_sgi.sgi_project_agreements',
                                    raise_if_not_found=False)
             for agr in review.agreement_ids:

@@ -271,8 +271,6 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="owner_id"/>
-                <filter name="con_nc" string="Con NC abiertas" domain="[('id', '!=', False)]"
-                        invisible="1"/>
                 <filter name="tipo_cop" string="COP (operativos)" domain="[('process_type', '=', 'cop')]"/>
                 <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>
                 <filter name="macros" string="Solo macroprocesos" domain="[('parent_id', '=', False)]"/>

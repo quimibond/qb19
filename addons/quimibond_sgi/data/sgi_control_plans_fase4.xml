@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-    <!-- Categoría del subproducto de desperdicio (SALDO TEJIDO D) usada por el
-         KPI de desperdicio. Parametrizable por si cambia el nombre. -->
-    <record id="sgi_param_waste_category" model="ir.config_parameter">
-        <field name="key">quimibond_sgi.waste_subproduct_category</field>
-        <field name="value">SubProducto</field>
-    </record>
+    <!-- La categoría del subproducto de desperdicio (SALDO TEJIDO D) del KPI
+         de desperdicio la siembra sgi.config.seed_parameters() (fuente única;
+         declararla también aquí chocaba con ir_config_parameter_key_uniq en
+         instalación limpia — mismo caso documentado en el puente de pesaje). -->
 
     <!-- Planes de control SGI que envuelven los puntos de calidad reales del
          piso (Recepción de MP y Revisado de Tela). El enlace de los puntos se

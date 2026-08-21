@@ -19,7 +19,7 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_points" type="object" class="oe_stat_button"
-                                icon="fa-list-ul">
+                                icon="fa-list-ul" invisible="point_count == 0">
                             <field name="point_count" widget="statinfo" string="Puntos"/>
                         </button>
                     </div>

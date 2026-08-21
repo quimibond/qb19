@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-    <data noupdate="1">
-        <record id="sgi_param_fmea_npr_action" model="ir.config_parameter">
-            <field name="key">quimibond_sgi.fmea_npr_action</field>
-            <field name="value">100</field>
-        </record>
-    </data>
+    <!-- El default de quimibond_sgi.fmea_npr_action lo siembra
+         sgi.config.seed_parameters() (fuente única de defaults). -->
 
     <record id="sgi_cron_calibrations" model="ir.cron">
         <field name="name">SGI: Vencimientos de calibración y EPP</field>

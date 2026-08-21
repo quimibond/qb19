@@ -504,10 +504,12 @@ class SgiIndicator(models.Model):
     def _calc_consumo_energia(self, date_from, date_to):
         """Total facturado del periodo por el proveedor de energía (facturas de
         proveedor menos notas de crédito, sin impuestos). Sin proveedor
-        configurado, la medición queda en 0 con una nota (ver _note_*)."""
+        configurado devuelve None: la medición queda PENDIENTE con la nota que
+        pide configurarlo (un 0 "capturado" pintaría verde un KPI lower_better
+        sin haber medido nada)."""
         partner = self._sgi_energy_partner()
         if not partner:
-            return 0.0
+            return None
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('in_invoice', 'in_refund')),
             ('state', '=', 'posted'),

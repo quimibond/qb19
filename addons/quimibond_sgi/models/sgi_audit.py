@@ -149,6 +149,7 @@ class SgiAudit(models.Model):
             audit.name = audit.folio or ("Auditoría %s" % dict(
                 self._fields['audit_type'].selection).get(audit.audit_type, ''))
 
+    @api.depends('finding_ids')
     def _compute_finding_count(self):
         for audit in self:
             audit.finding_count = len(audit.finding_ids)

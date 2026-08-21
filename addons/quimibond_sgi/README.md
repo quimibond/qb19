@@ -1,4 +1,4 @@
-# quimibond_sgi — Sistema de Gestión Integral (Fases 1, 2, 3 y 4)
+# quimibond_sgi — Sistema de Gestión Integral (Fases 1–6)
 
 Addon de Odoo 19 Enterprise que lleva el SGI documental de PNTQ (ISO 9001:2015 +
 14001:2015, 45001 en preparación) a Odoo **extendiendo apps nativas** (Documentos,
@@ -324,6 +324,28 @@ Ganchos que este bloque NO configura (los captura el equipo en la instancia):
 14. **Propiedades custom del lote** (ancho/gramaje/tono) y **motivos de pérdida en CRM**.
 15. **Resto de flujos de soporte** del mapa (además de los 5 ya cargados): ligarlos a su
     modelo desde *SGI → Flujos* o el formulario del proceso.
+
+## Fases 5 y 6 — Política integral y Presupuesto/Pronóstico de ventas (v19.0.13.x)
+
+Documentadas a detalle en `docs/SGI_DIAGRAMA_FLUJOS.html` (flujos completos con
+cada botón y candado). Resumen:
+
+- **Política Integral** (`sgi.policy`, folio `POL-`): borrador → vigente →
+  obsoleta, con índice único de UNA política vigente (publicar obsoleta la
+  anterior). Objetivos Integrales del ANEXO 6 ligados a indicadores; la salud
+  del objetivo agrega la de los procesos de sus KPIs.
+- **Presupuesto de ventas P-A28** (`sgi.sales.budget`, folio `PPV-`): un mismo
+  par de modelos sirve el presupuesto mensual por mercado (F-P-A28-18, se
+  aprueba y congela; revisiones con `action_revise`) y el pronóstico semanal
+  por cliente (F-P-A28-13, documento vivo: solo borrador ⇄ revisado — mini-fase
+  5.5, migración 19.0.13.7.0). Captura por plantilla Excel + wizard de
+  importación, grid producto × mes, precarga desde pedidos/facturado; el precio
+  SIEMPRE sale de la lista de precios. Aprobación exclusiva de Dirección con
+  candado de cobertura de precios; envío de demanda neta al MPS; crons de
+  cierre de mes, cobertura semanal y revaluación S2 (junio); reporte QWeb con
+  ambas matrices. Menú espejado dentro de la app Ventas.
+- **Diagrama de flujos y deuda técnica**: `docs/SGI_DIAGRAMA_FLUJOS.html` y
+  `docs/SGI_DEUDA_TECNICA.md` en la raíz del repo.
 
 ## Herramientas de shell (`tools/`)
 

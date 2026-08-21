@@ -177,6 +177,11 @@
                     <button name="action_view_evidence" type="object"
                             string="Ver evidencia" icon="fa-search-plus"
                             invisible="source_type == 'manual'"/>
+                    <button name="action_reset" type="object"
+                            string="Regresar a pendiente"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            invisible="state == 'pendiente'"
+                            confirm="La medición volverá a Pendiente y dejará de contar como evidencia validada. ¿Continuar?"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>

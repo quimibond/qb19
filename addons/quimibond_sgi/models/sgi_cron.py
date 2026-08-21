@@ -190,7 +190,7 @@ class SgiCron(models.AbstractModel):
             self._sgi_schedule(
                 ack.document_id,
                 "Acuse pendiente: %s" % (ack.employee_id.name),
-                "El acuse de lectura lleva más de 7 días pendiente.",
+                "El acuse de lectura lleva más de %d días pendiente." % ack_days,
                 user_id)
         return True
 
@@ -462,6 +462,9 @@ class SgiCron(models.AbstractModel):
                         vals['note'] = note
                 else:
                     vals['state'] = 'pendiente'
+                    note = indicator._sgi_compute_note(date_from, date_to)
+                    if note:
+                        vals['note'] = note
                 measure = Measure.create(vals)
                 if measure.state == 'pendiente':
                     user_id = indicator.responsible_id.id or manager_id

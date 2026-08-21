@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.14.0.0',
+    'version': '19.0.14.1.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
