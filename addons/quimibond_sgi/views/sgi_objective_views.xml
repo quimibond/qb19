@@ -8,6 +8,10 @@
                 <field name="name"/>
                 <field name="target_year"/>
                 <field name="indicator_count"/>
+                <field name="health" widget="badge"
+                       decoration-success="health == 'verde'"
+                       decoration-warning="health == 'amarillo'"
+                       decoration-danger="health == 'rojo'"/>
             </list>
         </field>
     </record>
@@ -48,7 +52,7 @@
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Registra los objetivos integrales</p>
-            <p>Los del ANEXO 6 (Planeación Estratégica). Cada indicador del SGI se liga a uno de estos objetivos.</p>
+            <p>Los del ANEXO 6 (Planeación Estratégica). Cada indicador del SGI se liga a uno de estos objetivos, y el semáforo del objetivo hereda el peor color de los procesos de sus indicadores — la Línea Dorada se lee de abajo hacia arriba.</p>
         </field>
     </record>
 </odoo>

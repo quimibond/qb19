@@ -101,6 +101,8 @@
             <kanban default_group_by="parent_id" class="o_kanban_small_column">
                 <field name="nc_count"/>
                 <field name="overdue_action_count"/>
+                <field name="red_kpi_count"/>
+                <field name="open_high_risk_count"/>
                 <field name="health"/>
                 <templates>
                     <t t-name="card">
@@ -113,12 +115,18 @@
                             <div class="o_kanban_record_subtitle">
                                 <field name="process_type"/>
                             </div>
-                            <div class="o_kanban_record_bottom">
-                                <span class="text-danger" t-if="record.nc_count.raw_value">
+                            <div class="o_kanban_record_bottom flex-wrap">
+                                <span class="text-danger me-2" t-if="record.nc_count.raw_value">
                                     NC abiertas: <field name="nc_count"/>
                                 </span>
-                                <span class="text-warning" t-if="record.overdue_action_count.raw_value">
+                                <span class="text-warning me-2" t-if="record.overdue_action_count.raw_value">
                                     Acciones vencidas: <field name="overdue_action_count"/>
+                                </span>
+                                <span class="text-danger me-2" t-if="record.red_kpi_count.raw_value">
+                                    KPIs en rojo: <field name="red_kpi_count"/>
+                                </span>
+                                <span class="text-danger me-2" t-if="record.open_high_risk_count.raw_value">
+                                    Riesgos altos: <field name="open_high_risk_count"/>
                                 </span>
                             </div>
                         </div>
@@ -342,7 +350,9 @@
         <field name="context">{'search_default_group_parent': 1}</field>
         <field name="search_view_id" ref="sgi_process_view_search"/>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Panel de salud de procesos</p>
-            <p>Los procesos agrupados por macroproceso, con sus NC abiertas y
-            acciones vencidas a la vista.</p></field>
+            <p>Los procesos agrupados por macroproceso. El semáforo se calcula solo:
+            <b>rojo</b> = riesgo alto abierto, o NC abiertas con KPI en rojo;
+            <b>amarillo</b> = alguna NC, acción vencida o KPI en rojo;
+            <b>verde</b> = nada abierto. La tarjeta muestra el porqué del color.</p></field>
     </record>
 </odoo>
