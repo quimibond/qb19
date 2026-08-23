@@ -85,3 +85,26 @@ class TestViewFile(TransactionCase):
             'sgi_doc_type': 'formulario_odoo'})
         with self.assertRaises(UserError):
             bare.action_sgi_open_odoo_form()
+
+    def test_06_resolve_menu_from_migration_target(self):
+        """El menú se resuelve desde el texto «Destino en Odoo», ignorando
+        paréntesis aclaratorios — sin exponer ir.ui.menu por MCP."""
+        act = self.env['ir.actions.act_window'].create({
+            'name': 'Prueba resolución', 'res_model': 'res.partner'})
+        root = self.env['ir.ui.menu'].create({'name': 'AppResuelve'})
+        menu = self.env['ir.ui.menu'].create({
+            'name': 'MenuResuelve', 'parent_id': root.id,
+            'action': 'ir.actions.act_window,%d' % act.id})
+        doc = self.Doc.create({
+            'name': 'Formulario por resolver', 'type': 'binary',
+            'sgi_doc_type': 'formulario_odoo',
+            'sgi_migration_target': 'AppResuelve > MenuResuelve (nativo)'})
+        doc.action_sgi_resolve_odoo_menu()
+        self.assertEqual(doc.sgi_odoo_menu_id, menu)
+        # Sin coincidencia, no truena y queda vacío.
+        miss = self.Doc.create({
+            'name': 'Sin destino real', 'type': 'binary',
+            'sgi_doc_type': 'formulario_odoo',
+            'sgi_migration_target': 'App Inexistente > Nada'})
+        miss.action_sgi_resolve_odoo_menu()
+        self.assertFalse(miss.sgi_odoo_menu_id)

@@ -122,6 +122,47 @@ class DocumentsDocument(models.Model):
             'view_mode': 'form',
         }
 
+    def action_sgi_resolve_odoo_menu(self):
+        """Resuelve el «Menú de Odoo» desde el texto de «Destino en Odoo»:
+        convierte «SGI > No Conformidades» en el menú real, igual que las
+        actividades del procedimiento (los ir.* no se exponen por MCP, así
+        que la liga se resuelve aquí, en el servidor). Ignora los
+        paréntesis aclaratorios («Fabricación > Plan Maestro (MPS)»)."""
+        Menu = self.env['ir.ui.menu'].sudo()
+        resolved = self.env['documents.document']
+        for doc in self:
+            target = (doc.sgi_migration_target or '').split('·')[0]
+            target = re.sub(r'\([^)]*\)', '', target).strip()
+            if not target or doc.sgi_odoo_menu_id:
+                continue
+            path = '/'.join(p.strip() for p in target.replace('→', '/')
+                            .replace('>', '/').split('/') if p.strip())
+            menu = Menu.search([
+                ('complete_name', '=ilike', path),
+                ('action', '!=', False)], limit=1)
+            if not menu and '/' in path:
+                first, last = path.split('/')[0], path.split('/')[-1]
+                menu = Menu.search([
+                    ('name', '=ilike', last),
+                    ('complete_name', '=ilike', first + '/%'),
+                    ('action', '!=', False)], limit=1)
+            if not menu and '/' not in path:
+                menu = Menu.search([
+                    ('name', '=ilike', path),
+                    ('action', '!=', False)], limit=1)
+            if menu:
+                doc.sgi_odoo_menu_id = menu
+                resolved |= doc
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'success' if resolved else 'warning',
+                'message': "Menú resuelto en %d de %d documento(s)." % (
+                    len(resolved), len(self)),
+            },
+        }
+
     def action_sgi_open_odoo_form(self):
         """Abre el formulario de Odoo que sustituye al documento: el menú
         ligado o, en su defecto, el worksheet destino de la migración."""
