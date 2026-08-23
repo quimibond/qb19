@@ -112,9 +112,13 @@ class QbClienteRentabilidad(models.Model):
                        q.ultima, r.rev,
                        cp.costo_variable,
                        cp.fab_unit,
-                       -- op% del período: el margen neto del cliente usa SU
-                       -- facturado (rev × op%), no el op_unit del producto
-                       -- (que va sobre el precio promedio de TODOS).
+                       -- Operacion del periodo (op_pct de qb_costo_factores):
+                       -- el margen neto del cliente usa SU facturado
+                       -- (rev x op_pct), no el op_unit del producto (que va
+                       -- sobre el precio promedio de TODOS los clientes).
+                       -- OJO: nada de caracteres de porcentaje en este SQL —
+                       -- _table_query pasa por formateo estilo printf de
+                       -- Python y un porcentaje literal lo revienta.
                        COALESCE(f.op_pct, 0) AS op_pct,
                        CASE WHEN cp.contrib_hora_maquina > 0
                             THEN cp.margen_contribucion / cp.contrib_hora_maquina
