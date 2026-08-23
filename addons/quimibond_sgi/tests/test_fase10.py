@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import fields
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError
@@ -135,6 +137,55 @@ class TestActivityMeasurement(TransactionCase):
             self.env['sgi.activity.link'].create({
                 'from_activity_id': a.id, 'to_activity_id': a.id,
                 'name': 'Ciclo'})
+
+    def test_12_chain_flow_and_auto_nc(self):
+        """El eslabón atorado avisa al dueño y, si persiste 7 días, levanta
+        NC automática; al fluir, se limpia."""
+        marker = 'Evidencia fase3 cadena'
+        self.env['res.partner'].create({'name': marker})
+        frm = self._activity(
+            name='Paso que entrega',
+            measure_domain="[('name', '=', '%s')]" % marker)
+        to = self._activity(
+            name='Paso que no ejecuta',
+            measure_domain="[('name', '=', 'nada-fase3-xyz')]")
+        (frm | to)._sgi_measure()
+        link = self.env['sgi.activity.link'].create({
+            'from_activity_id': frm.id, 'to_activity_id': to.id,
+            'name': 'Entregable atorable'})
+        link._sgi_evaluate_chain()
+        self.assertEqual(link.chain_state, 'atorado')
+        self.assertTrue(link.atorado_since)
+        self.assertFalse(link.nc_alert_id)
+        self.assertEqual(self.process.chain_stuck_count, 1)
+        # Aviso al dueño (actividad sobre el proceso destino), una sola vez.
+        acts = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.process'),
+            ('res_id', '=', self.process.id),
+            ('summary', 'like', 'Eslabón atorado%')])
+        link._sgi_evaluate_chain()
+        acts2 = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.process'),
+            ('res_id', '=', self.process.id),
+            ('summary', 'like', 'Eslabón atorado%')])
+        self.assertEqual(len(acts), len(acts2))
+        # Persistente 8 días -> NC automática en NC Internas, idempotente.
+        link.write({'atorado_since':
+                    fields.Datetime.now() - timedelta(days=8)})
+        link._sgi_evaluate_chain()
+        self.assertTrue(link.nc_alert_id)
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal')
+        self.assertEqual(link.nc_alert_id.team_id, team)
+        self.assertTrue(link.nc_alert_id.sgi_folio)
+        nc = link.nc_alert_id
+        link._sgi_evaluate_chain()
+        self.assertEqual(link.nc_alert_id, nc)
+        # Cuando el destino ejecuta, el eslabón fluye y se resetea.
+        to.write({'measure_domain': "[('name', '=', '%s')]" % marker})
+        to._sgi_measure()
+        link._sgi_evaluate_chain()
+        self.assertEqual(link.chain_state, 'fluye')
+        self.assertFalse(link.atorado_since)
 
     def test_11_inbound_references(self):
         """Si otro proceso menciona mi procedimiento o usa mi formato, yo lo

@@ -221,6 +221,11 @@
                 <field name="to_activity_id"/>
                 <field name="to_process_id" optional="show"/>
                 <field name="is_cross_process" string="Cruza procesos" optional="show"/>
+                <field name="chain_state" widget="badge" optional="show"
+                       decoration-success="chain_state == 'fluye'"
+                       decoration-danger="chain_state == 'atorado'"/>
+                <field name="lag_days" optional="show"/>
+                <field name="nc_alert_id" optional="hide"/>
             </list>
         </field>
     </record>
@@ -239,6 +244,11 @@
                         domain="[('is_cross_process', '=', True)]"/>
                 <filter name="internal" string="Dentro del proceso"
                         domain="[('is_cross_process', '=', False)]"/>
+                <separator/>
+                <filter name="stuck" string="Atorados"
+                        domain="[('chain_state', '=', 'atorado')]"/>
+                <filter name="flowing" string="Fluyen"
+                        domain="[('chain_state', '=', 'fluye')]"/>
                 <group>
                     <filter name="group_from" string="Proceso origen"
                             context="{'group_by': 'from_process_id'}"/>
@@ -258,6 +268,41 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">El hilo conductor de la operación</p>
             <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Se capturan en la actividad (Recibe de / Entrega a) y se imprimen en el F-P-G01-02.</p>
+        </field>
+    </record>
+
+    <!-- ====== Tablero de cumplimiento: por proceso y por puesto ====== -->
+    <record id="sgi_activity_compliance_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.process.activity.pivot.compliance</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <pivot string="Cumplimiento de procedimientos">
+                <field name="process_id" type="row"/>
+                <field name="measure_state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_activity_compliance_view_graph" model="ir.ui.view">
+        <field name="name">sgi.process.activity.graph.compliance</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <graph string="Cumplimiento de procedimientos" type="bar" stacked="1">
+                <field name="process_id"/>
+                <field name="measure_state"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_activity_compliance_action" model="ir.actions.act_window">
+        <field name="name">Cumplimiento de procedimientos</field>
+        <field name="res_model">sgi.process.activity</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('measure_model_id', '!=', False)]</field>
+        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El procedimiento medido con acciones reales</p>
+            <p>Cada actividad medible contra su cadencia: verde con evidencia en su periodo, rojo sin ella. Agrupa por <b>proceso</b> o por <b>puesto responsable</b> para ver quién cumple su procedimiento — la base de la mejora continua.</p>
         </field>
     </record>
 
