@@ -889,6 +889,22 @@ class TestQbCosteo(TransactionCase):
         # Tampoco al precio de mercado / ventas por cliente del cotizador
         self.assertEqual(self.Costo.sales_by_customer(maquina), [])
         self.assertEqual(self.Costo.market_price(maquina), 0.0)
+        # Una fila VIEJA de la máquina (calculada antes del filtro) no debe
+        # sobrevivir el recálculo: el upsert solo tocaba productos en alcance
+        # y la huérfana se quedaba con sus millones (rama Icomatex 2026-03).
+        self.Costo.create({
+            'period': period, 'product_id': maquina.id,
+            'qty_vendida': 1, 'precio_prom': 1000000.0,
+            'contrib_total': 1000000.0})
+        self.Costo.action_recompute_period(period)
+        self.assertFalse(
+            self.Costo.search([('period', '=', period),
+                               ('product_id', '=', maquina.id)]),
+            'la fila huérfana debe eliminarse en el recálculo')
+        # y el producto con venta válida conserva su fila
+        self.assertTrue(
+            self.Costo.search([('period', '=', period),
+                               ('product_id', '=', self.tela.id)]))
 
     def test_rentabilidad_cliente_lee_sin_error(self):
         """La vista SQL de rentabilidad por cliente compila y expone la
