@@ -162,8 +162,7 @@ a{color:var(--accent-ink)}
 ├─ <b>Panel</b> → kanban de procesos por macroproceso (semáforo con sus 4 señales a la vista)<br>
 │&nbsp;&nbsp;├─ Política Integral → <i>sgi.policy</i> (lista con semáforo)<br>
 │&nbsp;&nbsp;├─ Objetivos Integrales → <i>sgi.objective</i> (la cascada Política → Objetivos → KPIs vive junta, con semáforo)<br>
-│&nbsp;&nbsp;├─ <span class="lock">🔒 Diagnóstico del SGI</span> → <i>sgi.diagnostic</i> (autoauditoría de configuración y datos)<br>
-│&nbsp;&nbsp;└─ <span class="lock">🔒 Tableros</span> → Pareto de alertas de calidad · Pareto de defectos (revisado)<br>
+│&nbsp;&nbsp;└─ <span class="lock">🔒 Diagnóstico del SGI</span> → <i>sgi.diagnostic</i> (autoauditoría de configuración y datos)<br>
 ├─ <b>Procesos</b> → mapa de procesos · Flujos entre procesos · Actividades de procedimiento<br>
 ├─ <b>Mi trabajo</b> <i>(lo que le toca a cada persona, todo filtrado a "mío")</i><br>
 │&nbsp;&nbsp;├─ Mis acciones → <i>sgi.action.line</i> (filtros: mías + abiertas + vencidas)<br>
@@ -199,6 +198,7 @@ a{color:var(--accent-ink)}
 <b>Ventas</b> → Presupuesto y pronóstico → Presupuestos · Pronósticos · Análisis (×4)<br>
 <b>Calidad</b> → Calidad preventiva → Planes de control · AMEF · PPAP ·<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Metrología → Equipos de medición · Calibraciones · Estudios MSA<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;· Tableros (SGI) → Pareto de alertas de calidad · Pareto de defectos (revisado)<br>
 <b>Empleados</b> → Competencias (SGI) → Brechas de competencia (DNC) · Encuesta DNC
 </div>
 
@@ -841,7 +841,7 @@ flowchart LR
 </figure>
 
 <h3><code>quimibond_sgi_revisado</code> — Pareto de defectos</h3>
-<p>Solo vistas (cero Python): pivot y gráfica del registro de revisado de telas agrupado por causa (etiquetas TEJIDO-*), colgado en <b>Panel → Tableros → Pareto de defectos (revisado)</b>. Alimenta el KPI de Calidad PQ.</p>
+<p>Solo vistas (cero Python): pivot y gráfica del registro de revisado de telas agrupado por causa (etiquetas TEJIDO-*), colgado en <b>Calidad → Tableros (SGI) → Pareto de defectos (revisado)</b>. Alimenta el KPI de Calidad PQ.</p>
 
 <!-- ============================================================ -->
 <h2 id="fase7"><span class="sec">26</span>Fase 7 — los bucles que faltaban (v19.0.15.0.0)</h2>
