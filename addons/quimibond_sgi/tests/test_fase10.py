@@ -106,3 +106,20 @@ class TestActivityMeasurement(TransactionCase):
             'process_id': self.process.id, 'name': 'Sin medición'})
         with self.assertRaises(UserError):
             bare.action_view_measure_records()
+
+    def test_09_menu_resolution_from_text(self):
+        """El texto «App → Menú» se resuelve al menú real, y sin menú el
+        paso abre la evidencia (nunca se queda en texto plano)."""
+        action = self.env['ir.actions.act_window'].create({
+            'name': 'Prueba fase10', 'res_model': 'res.partner'})
+        root = self.env['ir.ui.menu'].create({'name': 'AppFase10'})
+        menu = self.env['ir.ui.menu'].create({
+            'name': 'PasoFase10', 'parent_id': root.id,
+            'action': 'ir.actions.act_window,%d' % action.id})
+        act = self._activity(odoo_ref='AppFase10 → PasoFase10')
+        act._sgi_resolve_menu()
+        self.assertEqual(act.odoo_menu_id, menu)
+        # Fallback: sin menú pero con medición, abrir lleva a la evidencia.
+        fallback = self._activity(odoo_ref='Ruta → Inexistente')
+        result = fallback.action_open_odoo()
+        self.assertEqual(result['res_model'], 'res.partner')

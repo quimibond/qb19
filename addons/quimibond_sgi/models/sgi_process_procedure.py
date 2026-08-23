@@ -377,8 +377,35 @@ class SgiProcessActivity(models.Model):
                 pass
             activity.write(vals)
 
+    def _sgi_resolve_menu(self):
+        """Resuelve odoo_menu_id desde el texto de odoo_ref: convierte
+        «Compras → Órdenes de compra» en el menú real. Solo menús con acción.
+        Con varias rutas separadas por «·» se usa la primera."""
+        Menu = self.env['ir.ui.menu'].sudo()
+        for activity in self:
+            ref = (activity.odoo_ref or '').split('·')[0].strip()
+            if not ref or activity.odoo_menu_id:
+                continue
+            path = '/'.join(p.strip() for p in ref.replace('→', '/')
+                            .replace('>', '/').split('/') if p.strip())
+            menu = Menu.search([
+                ('complete_name', '=ilike', path),
+                ('action', '!=', False)], limit=1)
+            if not menu and '/' in path:
+                first, last = path.split('/')[0], path.split('/')[-1]
+                menu = Menu.search([
+                    ('name', '=ilike', last),
+                    ('complete_name', '=ilike', first + '/%'),
+                    ('action', '!=', False)], limit=1)
+            if menu:
+                activity.odoo_menu_id = menu
+
     @api.model
     def cron_measure_activities(self):
+        # Primero intenta resolver menús pendientes desde su texto; después
+        # mide. Así el paso queda navegable sin captura manual.
+        self.search([('odoo_menu_id', '=', False),
+                     ('odoo_ref', '!=', False)])._sgi_resolve_menu()
         self.search([('measure_model_id', '!=', False)])._sgi_measure()
         return True
 
@@ -411,13 +438,19 @@ class SgiProcessActivity(models.Model):
             self.odoo_ref = self.odoo_menu_id.complete_name
 
     def action_open_odoo(self):
-        """Abre el menú real de Odoo donde se ejecuta la actividad, respetando el
-        dominio/contexto/vistas de su acción original."""
+        """Abre el menú real de Odoo donde se ejecuta la actividad, respetando
+        el dominio/contexto/vistas de su acción original. Sin menú ligado
+        intenta resolverlo del texto y, si tampoco, abre la evidencia — el
+        paso siempre es navegable, nunca texto plano."""
         self.ensure_one()
+        if not self.odoo_menu_id and self.odoo_ref:
+            self._sgi_resolve_menu()
         action = self.odoo_menu_id.action if self.odoo_menu_id else False
-        if not action or action._name != 'ir.actions.act_window':
-            raise UserError("Esta actividad no tiene menú de Odoo ligado.")
-        return action.read()[0]
+        if action and action._name == 'ir.actions.act_window':
+            return action.read()[0]
+        if self.measure_model_id:
+            return self.action_view_measure_records()
+        raise UserError("Esta actividad no tiene menú de Odoo ni medición ligada.")
 
     @api.model_create_multi
     def create(self, vals_list):

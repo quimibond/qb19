@@ -9,7 +9,7 @@
                 <header>
                     <button name="action_open_odoo" type="object"
                             string="Abrir en Odoo" icon="fa-external-link"
-                            invisible="not odoo_menu_id"/>
+                            invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                     <button name="action_view_measure_records" type="object"
                             string="Ver evidencia" icon="fa-check-square-o"
                             invisible="not measure_model_id"/>
@@ -108,12 +108,13 @@
                 <field name="odoo_menu_id" optional="show"/>
                 <field name="measure_cadence" optional="hide"/>
                 <field name="measure_count_30d" optional="hide"/>
+                <field name="measure_model_id" column_invisible="1"/>
                 <field name="measure_state" optional="show" widget="badge"
                        decoration-success="measure_state == 'verde'"
                        decoration-danger="measure_state == 'rojo'"/>
                 <button name="action_open_odoo" type="object"
                         string="Abrir en Odoo" icon="fa-external-link"
-                        invisible="not odoo_menu_id"/>
+                        invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                 <button name="action_view_measure_records" type="object"
                         string="Evidencia" icon="fa-check-square-o"
                         invisible="not measure_model_id"/>
@@ -247,7 +248,7 @@
                                    decoration-danger="measure_state == 'rojo'"/>
                             <button name="action_open_odoo" type="object"
                                     string="Abrir en Odoo" icon="fa-external-link"
-                                    invisible="not odoo_menu_id"/>
+                                    invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                             <button name="action_view_measure_records" type="object"
                                     string="Evidencia" icon="fa-check-square-o"
                                     invisible="not measure_model_id"/>
