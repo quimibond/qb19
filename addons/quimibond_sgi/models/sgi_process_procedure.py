@@ -16,7 +16,7 @@ reales, no con texto.
 from datetime import datetime, timedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 
@@ -267,6 +267,42 @@ class SgiProcessActivity(models.Model):
     note = fields.Text(
         string="Nota", help="Notas resaltadas del procedimiento.")
 
+    # --- Encadenamiento: de qué actividad viene y a cuál sigue ---
+    out_link_ids = fields.One2many(
+        'sgi.activity.link', 'from_activity_id', string="Entrega a")
+    in_link_ids = fields.One2many(
+        'sgi.activity.link', 'to_activity_id', string="Recibe de")
+    next_activity_ids = fields.Many2many(
+        'sgi.process.activity', string="Siguientes pasos",
+        compute='_compute_chain')
+    prev_activity_ids = fields.Many2many(
+        'sgi.process.activity', string="Pasos anteriores",
+        compute='_compute_chain')
+
+    @api.depends('out_link_ids.to_activity_id', 'in_link_ids.from_activity_id')
+    def _compute_chain(self):
+        for activity in self:
+            activity.next_activity_ids = activity.out_link_ids.to_activity_id
+            activity.prev_activity_ids = activity.in_link_ids.from_activity_id
+
+    def action_open_next(self):
+        """Navega al siguiente paso de la cadena (o a la lista si hay varios)."""
+        self.ensure_one()
+        nxt = self.next_activity_ids
+        if not nxt:
+            raise UserError("Esta actividad no tiene un siguiente paso ligado.")
+        action = {
+            'type': 'ir.actions.act_window',
+            'res_model': 'sgi.process.activity',
+            'name': "Siguiente paso",
+        }
+        if len(nxt) == 1:
+            action.update({'view_mode': 'form', 'res_id': nxt.id})
+        else:
+            action.update({'view_mode': 'list,form',
+                           'domain': [('id', 'in', nxt.ids)]})
+        return action
+
     # --- Medición: la actividad ligada a las acciones reales de Odoo ---
     measure_model_id = fields.Many2one(
         'ir.model', string="Modelo que la materializa", ondelete='set null',
@@ -468,6 +504,68 @@ class SgiProcessActivity(models.Model):
 
     def unlink(self):
         processes = self.process_id
+        res = super().unlink()
+        processes._sgi_flag_procedure_dirty()
+        return res
+
+
+class SgiActivityLink(models.Model):
+    """Liga entre dos actividades de procedimiento: qué ENTREGABLE pasa de un
+    paso al siguiente. Puede cruzar procesos (el pedido de Ventas alimenta el
+    programa de Planeación): es el hilo conductor de la operación al nivel de
+    paso, no solo entre procesos (sgi.process.flow)."""
+    _name = 'sgi.activity.link'
+    _description = "Encadenamiento entre actividades"
+    _order = 'from_activity_id, id'
+
+    from_activity_id = fields.Many2one(
+        'sgi.process.activity', string="Actividad origen", required=True,
+        ondelete='cascade', index=True)
+    to_activity_id = fields.Many2one(
+        'sgi.process.activity', string="Actividad destino", required=True,
+        ondelete='cascade', index=True)
+    name = fields.Char(
+        string="Entregable / condición", required=True,
+        help="Qué pasa de un paso al otro: el pedido confirmado, el programa "
+             "semanal, el lote liberado…")
+    from_process_id = fields.Many2one(
+        related='from_activity_id.process_id', string="Proceso origen",
+        store=True)
+    to_process_id = fields.Many2one(
+        related='to_activity_id.process_id', string="Proceso destino",
+        store=True)
+    is_cross_process = fields.Boolean(
+        string="Cruza procesos", compute='_compute_cross', store=True)
+
+    @api.depends('from_process_id', 'to_process_id')
+    def _compute_cross(self):
+        for link in self:
+            link.is_cross_process = (
+                link.from_process_id != link.to_process_id)
+
+    @api.constrains('from_activity_id', 'to_activity_id')
+    def _check_not_self(self):
+        for link in self:
+            if link.from_activity_id == link.to_activity_id:
+                raise ValidationError(
+                    "Una actividad no puede encadenarse consigo misma.")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        (records.from_activity_id.process_id
+         | records.to_activity_id.process_id)._sgi_flag_procedure_dirty()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        (self.from_activity_id.process_id
+         | self.to_activity_id.process_id)._sgi_flag_procedure_dirty()
+        return res
+
+    def unlink(self):
+        processes = (self.from_activity_id.process_id
+                     | self.to_activity_id.process_id)
         res = super().unlink()
         processes._sgi_flag_procedure_dirty()
         return res
