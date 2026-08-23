@@ -136,6 +136,34 @@ class TestActivityMeasurement(TransactionCase):
                 'from_activity_id': a.id, 'to_activity_id': a.id,
                 'name': 'Ciclo'})
 
+    def test_11_inbound_references(self):
+        """Si otro proceso menciona mi procedimiento o usa mi formato, yo lo
+        veo en «Me referencian» sin capturar nada dos veces."""
+        mine = self.env['sgi.process'].create({
+            'code': 'P-TST-REF', 'name': 'Proceso citado'})
+        my_proc_doc = self.env['documents.document'].create({
+            'name': 'P-TST-REF PROCEDIMIENTO', 'type': 'binary',
+            'sgi_doc_type': 'procedimiento', 'sgi_process_id': mine.id})
+        my_format = self.env['documents.document'].create({
+            'name': 'F-P-TST-REF-01', 'type': 'binary',
+            'sgi_doc_type': 'formato', 'sgi_process_id': mine.id})
+        citing = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'name': 'Cita procedimiento ajeno',
+            'related_procedure_id': my_proc_doc.id})
+        using = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'name': 'Usa formato ajeno',
+            'format_document_ids': [(6, 0, [my_format.id])]})
+        self.assertEqual(mine.inbound_reference_count, 2)
+        self.assertEqual(set(mine.inbound_reference_ids.ids),
+                         {citing.id, using.id})
+        action = mine.action_view_inbound_references()
+        self.assertEqual(action['res_model'], 'sgi.process.activity')
+        # Las actividades del propio proceso no cuentan como referencia.
+        self.env['sgi.process.activity'].create({
+            'process_id': mine.id, 'name': 'Auto-cita',
+            'related_procedure_id': my_proc_doc.id})
+        self.assertEqual(mine.inbound_reference_count, 2)
+
     def test_09_menu_resolution_from_text(self):
         """El texto «App → Menú» se resuelve al menú real, y sin menú el
         paso abre la evidencia (nunca se queda en texto plano)."""

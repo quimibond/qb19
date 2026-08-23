@@ -278,6 +278,12 @@
                         invisible="chain_link_count == 0">
                     <field name="chain_link_count" widget="statinfo" string="Cadena"/>
                 </button>
+                <button name="action_view_inbound_references" type="object"
+                        class="oe_stat_button" icon="fa-quote-right"
+                        invisible="inbound_reference_count == 0">
+                    <field name="inbound_reference_count" widget="statinfo"
+                           string="Me referencian"/>
+                </button>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Procedimiento" name="procedimiento">
