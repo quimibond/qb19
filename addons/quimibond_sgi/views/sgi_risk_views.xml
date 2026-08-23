@@ -52,9 +52,11 @@
                                    string="NCs ligadas"/>
                         </button>
                     </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
-                        <field name="name" placeholder="Aspecto / peligro / situación"/>
+                        <h1><field name="name" placeholder="Aspecto / peligro / situación"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group string="Clasificación">

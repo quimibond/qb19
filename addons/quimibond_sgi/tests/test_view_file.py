@@ -58,3 +58,30 @@ class TestViewFile(TransactionCase):
         self.assertEqual(action['type'], 'ir.actions.act_window')
         self.assertEqual(action['res_model'], 'documents.document')
         self.assertEqual(action['res_id'], doc.id)
+
+    def test_05_formulario_odoo_opens_menu_action(self):
+        """El «documento» tipo Formulario de Odoo no es un archivo: abre la
+        vista real de su menú, no exige clave PNTQ y «Ver archivo» redirige."""
+        act = self.env['ir.actions.act_window'].create({
+            'name': 'Prueba formulario', 'res_model': 'res.partner'})
+        root = self.env['ir.ui.menu'].create({'name': 'AppFormulario'})
+        menu = self.env['ir.ui.menu'].create({
+            'name': 'MenuFormulario', 'parent_id': root.id,
+            'action': 'ir.actions.act_window,%d' % act.id})
+        doc = self.Doc.create({
+            'name': 'Alta de clientes (vista de Odoo)', 'type': 'binary',
+            'sgi_is_controlled': True,  # sin clave: el tipo lo exime del regex
+            'sgi_doc_type': 'formulario_odoo',
+            'sgi_odoo_menu_id': menu.id,
+        })
+        action = doc.action_sgi_open_odoo_form()
+        self.assertEqual(action['res_model'], 'res.partner')
+        # Ver archivo también lleva a la vista (no hay archivo que abrir).
+        action2 = doc.action_sgi_view_file()
+        self.assertEqual(action2['res_model'], 'res.partner')
+        # Sin menú ni worksheet ligado, avisa en vez de romper.
+        bare = self.Doc.create({
+            'name': 'Formulario sin liga', 'type': 'binary',
+            'sgi_doc_type': 'formulario_odoo'})
+        with self.assertRaises(UserError):
+            bare.action_sgi_open_odoo_form()

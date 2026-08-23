@@ -39,8 +39,7 @@
                         <h1><field name="partner_id"/></h1>
                     </div>
                     <group>
-                        <group string="Proveedor y periodo">
-                            <field name="partner_id"/>
+                        <group string="Periodo evaluado">
                             <field name="date_from"/>
                             <field name="date_to"/>
                         </group>

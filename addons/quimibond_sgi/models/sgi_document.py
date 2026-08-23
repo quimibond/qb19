@@ -37,7 +37,15 @@ class DocumentsDocument(models.Model):
         ('reglamento', "Reglamento (R)"),
         ('anexo', "Anexo"),
         ('externo', "Documento externo"),
+        ('formulario_odoo', "Formulario de Odoo (vista)"),
     ], string="Tipo de documento")
+    # El «documento» que ya no es un archivo: el formato migrado vive como
+    # vista/transacción de Odoo y este registro solo lo controla (clave,
+    # revisión, difusión) y lo abre con un clic.
+    sgi_odoo_menu_id = fields.Many2one(
+        'ir.ui.menu', string="Menú de Odoo",
+        help="Menú donde vive el formulario que sustituye a este documento. "
+             "El botón «Abrir en Odoo» salta directo a él.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
     sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI")
     sgi_revision = fields.Char(string="Revisión", default="00")
@@ -113,6 +121,19 @@ class DocumentsDocument(models.Model):
             'res_id': self.sgi_migration_point_id.id,
             'view_mode': 'form',
         }
+
+    def action_sgi_open_odoo_form(self):
+        """Abre el formulario de Odoo que sustituye al documento: el menú
+        ligado o, en su defecto, el worksheet destino de la migración."""
+        self.ensure_one()
+        action = self.sgi_odoo_menu_id.action if self.sgi_odoo_menu_id else False
+        if action and action._name == 'ir.actions.act_window':
+            return action.read()[0]
+        if self.sgi_migration_point_id:
+            return self.action_sgi_open_migration_point()
+        raise UserError(
+            "Este documento no tiene ligado su formulario de Odoo. "
+            "Selecciona el «Menú de Odoo» (o el worksheet destino) en la ficha.")
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats')
@@ -195,7 +216,9 @@ class DocumentsDocument(models.Model):
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type')
     def _check_sgi_code(self):
         for doc in self:
-            if not doc.sgi_is_controlled or doc.sgi_doc_type == 'externo':
+            # Externos y formularios de Odoo pueden no tener clave PNTQ (el
+            # formulario nativo de Odoo no siempre sustituye a un formato F-).
+            if not doc.sgi_is_controlled or doc.sgi_doc_type in ('externo', 'formulario_odoo'):
                 continue
             if not doc.sgi_code or not SGI_CODE_REGEX.match(doc.sgi_code.strip()):
                 raise ValidationError(
@@ -340,8 +363,11 @@ class DocumentsDocument(models.Model):
 
         Si el documento tiene adjunto binario, sirve su contenido inline (sin
         download=true, para que el visor del navegador lo muestre); si es de tipo
-        enlace (URL), abre la URL; si no tiene nada, avisa amablemente."""
+        enlace (URL), abre la URL; si no tiene nada, avisa amablemente. Un
+        «Formulario de Odoo» no tiene archivo: abre la vista real."""
         self.ensure_one()
+        if self.sgi_doc_type == 'formulario_odoo':
+            return self.action_sgi_open_odoo_form()
         if self.attachment_id:
             return {
                 'type': 'ir.actions.act_url',
