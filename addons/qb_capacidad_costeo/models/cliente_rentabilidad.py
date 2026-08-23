@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 """Rentabilidad por cliente (vista SQL read-only, 12 meses).
 
-La pregunta que responde: "¿me conviene pelear este cliente?" — su
-contribución REAL (precio facturado − costo variable del modelo, mes a
-mes), cuántas horas del cuello de botella ocupa y con qué mezcla.
+La pregunta que responde: "¿me conviene pelear este cliente?" — sus tres
+márgenes REALES (precio facturado vs costos del modelo, mes a mes),
+cuántas horas del cuello de botella ocupa y con qué mezcla:
+
+- Contribución = facturado − costo variable (MP + energía).
+- Margen bruto = facturado − costo de producción (variable + fabricación).
+- Margen neto  = bruto − operación (op% del período × facturado).
 
 Cruce: líneas de factura (dedup del triplete) × qb.costo.producto del
-MISMO período — así la contribución usa el costo variable vigente en el
-mes en que se facturó, no el de hoy.
+MISMO período — así cada margen usa el costo vigente en el mes en que se
+facturó, no el de hoy.
 """
 from odoo import fields, models
 
@@ -26,7 +30,21 @@ class QbClienteRentabilidad(models.Model):
         string='Contribución 12m (MXN)', readonly=True,
         help='Σ (facturado − qty × costo variable del período). Lo que este '
              'cliente aportó a fijos en 12 meses.')
-    contrib_pct = fields.Float(string='Contribución %', readonly=True)
+    contrib_pct = fields.Float(
+        string='Contribución %', readonly=True,
+        help='Contribución ÷ ventas. Lo que este cliente deja para pagar '
+             'fijos por cada peso vendido — todavía no es utilidad.')
+    margen_bruto_12m = fields.Float(
+        string='Margen bruto 12m (MXN)', readonly=True,
+        help='Σ (facturado − qty × costo de producción del período). '
+             'Utilidad después de fabricar, ANTES de administración y ventas.')
+    margen_bruto_pct = fields.Float(string='Margen bruto %', readonly=True)
+    margen_neto_12m = fields.Float(
+        string='Margen neto 12m (MXN)', readonly=True,
+        help='Margen bruto − operación (admin y ventas como % de las ventas, '
+             'con el op% vigente en cada mes). Lo que este cliente deja de '
+             'verdad después de TODOS los costos asignables.')
+    margen_neto_pct = fields.Float(string='Margen neto %', readonly=True)
     costo_cobertura_pct = fields.Float(
         string='Cobertura de costo %', readonly=True,
         help='% de las ventas del cliente cuyo mes SÍ tenía costo calculado. '
@@ -93,6 +111,11 @@ class QbClienteRentabilidad(models.Model):
                 SELECT q.partner_id, q.product_id, q.mes, q.qty, q.company_id,
                        q.ultima, r.rev,
                        cp.costo_variable,
+                       cp.fab_unit,
+                       -- op% del período: el margen neto del cliente usa SU
+                       -- facturado (rev × op%), no el op_unit del producto
+                       -- (que va sobre el precio promedio de TODOS).
+                       COALESCE(f.op_pct, 0) AS op_pct,
                        CASE WHEN cp.contrib_hora_maquina > 0
                             THEN cp.margen_contribucion / cp.contrib_hora_maquina
                             ELSE 0 END AS horas_por_unidad
@@ -101,6 +124,7 @@ class QbClienteRentabilidad(models.Model):
                              AND r.product_id = q.product_id AND r.mes = q.mes
                 LEFT JOIN qb_costo_producto cp
                        ON cp.product_id = q.product_id AND cp.period = q.mes
+                LEFT JOIN qb_costo_factores f ON f.id = cp.factores_id
             )
             SELECT
                 j.partner_id AS id,
@@ -111,6 +135,24 @@ class QbClienteRentabilidad(models.Model):
                      THEN 100.0 * SUM(j.rev - j.qty * COALESCE(j.costo_variable, 0))
                           / SUM(j.rev)
                      ELSE 0 END AS contrib_pct,
+                SUM(j.rev - j.qty * (COALESCE(j.costo_variable, 0)
+                                     + COALESCE(j.fab_unit, 0)))
+                    AS margen_bruto_12m,
+                CASE WHEN SUM(j.rev) > 0
+                     THEN 100.0 * SUM(j.rev - j.qty * (COALESCE(j.costo_variable, 0)
+                                                       + COALESCE(j.fab_unit, 0)))
+                          / SUM(j.rev)
+                     ELSE 0 END AS margen_bruto_pct,
+                SUM(j.rev * (1 - j.op_pct)
+                    - j.qty * (COALESCE(j.costo_variable, 0)
+                               + COALESCE(j.fab_unit, 0)))
+                    AS margen_neto_12m,
+                CASE WHEN SUM(j.rev) > 0
+                     THEN 100.0 * SUM(j.rev * (1 - j.op_pct)
+                                      - j.qty * (COALESCE(j.costo_variable, 0)
+                                                 + COALESCE(j.fab_unit, 0)))
+                          / SUM(j.rev)
+                     ELSE 0 END AS margen_neto_pct,
                 CASE WHEN SUM(j.rev) > 0
                      THEN 100.0 * SUM(CASE WHEN j.costo_variable IS NOT NULL
                                            THEN j.rev ELSE 0 END) / SUM(j.rev)
