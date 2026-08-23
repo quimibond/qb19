@@ -2,6 +2,17 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
+# Tabla S/R de AIAG (PPAP 4a edición) por elemento (secuencia 1-18) y nivel:
+# las 3 letras son los niveles 1, 2 y 3 (S = presentar al cliente,
+# R = retener en planta a disposición). El nivel 4 lo define el cliente
+# (se parte del mapa del nivel 3 y se ajusta por elemento) y el nivel 5
+# retiene todo (revisión en las instalaciones del proveedor).
+AIAG_SUBMISSION_MAP = {
+    1: 'RSS', 2: 'RSS', 3: 'RRS', 4: 'RRS', 5: 'RRS', 6: 'RRS',
+    7: 'RRS', 8: 'RRS', 9: 'RSS', 10: 'RSS', 11: 'RRS', 12: 'RSS',
+    13: 'SSS', 14: 'RSS', 15: 'RRR', 16: 'RRR', 17: 'RRS', 18: 'SSS',
+}
+
 
 class SgiPpapElementTemplate(models.Model):
     _name = 'sgi.ppap.element.template'
@@ -64,6 +75,15 @@ class SgiPpap(models.Model):
             ppap._sgi_generate_elements()
         return ppaps
 
+    @api.model
+    def _sgi_submission_for(self, sequence, level):
+        """S/R del elemento `sequence` para el nivel AIAG del expediente."""
+        lvl = int(level or 3)
+        if lvl == 5:
+            return 'retain'
+        code = AIAG_SUBMISSION_MAP.get(sequence, 'SSS')[min(lvl, 3) - 1]
+        return 'submit' if code == 'S' else 'retain'
+
     def _sgi_generate_elements(self):
         """Genera (idempotente) los 18 elementos AIAG desde el catálogo."""
         Template = self.env['sgi.ppap.element.template']
@@ -78,16 +98,34 @@ class SgiPpap(models.Model):
                         'sequence': tmpl.sequence,
                         'name': tmpl.name,
                         'state': 'pendiente',
+                        'submission': self._sgi_submission_for(
+                            tmpl.sequence, ppap.level),
                     })
         return True
 
+    def write(self, vals):
+        res = super().write(vals)
+        # Cambiar el nivel en preparación re-aplica la tabla AIAG a los
+        # elementos del catálogo (los ajustes manuales se rehacen después,
+        # elemento por elemento, si el cliente pide algo distinto).
+        if 'level' in vals:
+            for ppap in self.filtered(lambda p: p.state == 'preparacion'):
+                for element in ppap.element_ids.filtered('template_id'):
+                    element.submission = self._sgi_submission_for(
+                        element.template_id.sequence, ppap.level)
+        return res
+
     def action_mark_enviado(self):
         for ppap in self:
-            pending = ppap.element_ids.filtered(lambda e: e.state == 'pendiente')
+            pending = ppap.element_ids.filtered(
+                lambda e: e.state == 'pendiente' and e.submission == 'submit')
             if pending:
                 raise UserError(
                     "No se puede marcar como Enviado el PPAP %s: hay %d elemento(s) "
-                    "en estado Pendiente." % (ppap.folio, len(pending)))
+                    "A PRESENTAR (S) en estado Pendiente para el nivel %s.\n\n"
+                    "Los elementos a retener (R) no bloquean el envío, pero deben "
+                    "quedar disponibles en planta." % (
+                        ppap.folio, len(pending), ppap.level))
             ppap.write({
                 'state': 'enviado',
                 'date_submitted': fields.Date.context_today(ppap),
@@ -209,6 +247,13 @@ class SgiPpapElement(models.Model):
         ('listo', "Listo"),
         ('aprobado', "Aprobado"),
     ], string="Estado", default='pendiente', required=True)
+    submission = fields.Selection([
+        ('submit', "Presentar (S)"),
+        ('retain', "Retener (R)"),
+    ], string="S/R", default='submit', required=True,
+        help="Según el nivel AIAG del expediente: S se presenta al cliente y "
+             "bloquea el envío si está pendiente; R se retiene en planta a "
+             "disposición. Editable por elemento (p. ej. nivel 4).")
     fmea_id = fields.Many2one('sgi.fmea', string="AMEF")
     control_plan_id = fields.Many2one('sgi.control.plan', string="Plan de control")
     document_id = fields.Many2one('documents.document', string="Documento")

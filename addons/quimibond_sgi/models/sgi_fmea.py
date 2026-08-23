@@ -77,6 +77,27 @@ class SgiFmea(models.Model):
                     "El AMEF %s no puede pasar a Vigente: hay %d modo(s) de falla con "
                     "NPR alto cuya acción no está TERMINADA (fecha de terminación)."
                     % (fmea.folio or fmea.name, len(unfinished)))
+            # AIAG: la acción terminada debe demostrarse con la re-evaluación
+            # (S/O/D post). Sin NPR post, "la acción funcionó" es una
+            # afirmación sin dato.
+            no_reeval = fmea.line_ids.filtered(
+                lambda l: l.requires_action and not l.npr_post)
+            if no_reeval:
+                raise UserError(
+                    "El AMEF %s no puede pasar a Vigente: hay %d modo(s) de falla con "
+                    "NPR alto sin la re-evaluación post-acción (S/O/D post)."
+                    % (fmea.folio or fmea.name, len(no_reeval)))
+            # Mismo patrón que el residual de riesgos: el NPR post debe bajar,
+            # o quedar la justificación escrita de por qué no baja.
+            not_improved = fmea.line_ids.filtered(
+                lambda l: l.requires_action and l.npr_post >= l.npr
+                and not (l.post_note or '').strip())
+            if not_improved:
+                raise UserError(
+                    "El AMEF %s no puede pasar a Vigente: hay %d modo(s) de falla "
+                    "cuyo NPR post NO bajó respecto al inicial y no tienen "
+                    "justificación escrita (campo «Justificación NPR post»)."
+                    % (fmea.folio or fmea.name, len(not_improved)))
             fmea.state = 'vigente'
         return True
 
@@ -130,6 +151,11 @@ class SgiFmeaLine(models.Model):
     occurrence_post = fields.Selection(SCALE_1_10, string="Ocurrencia post")
     detection_post = fields.Selection(SCALE_1_10, string="Detección post")
     npr_post = fields.Integer(string="NPR post", compute='_compute_npr_post', store=True)
+    post_note = fields.Char(
+        string="Justificación NPR post",
+        help="Obligatoria para marcar el AMEF vigente cuando el NPR post de "
+             "un modo de falla con NPR alto no baja respecto al inicial "
+             "(p. ej. la severidad no puede reducirse por diseño).")
 
     def _sgi_npr_threshold(self):
         return int(self.env['ir.config_parameter'].sudo().get_param(
