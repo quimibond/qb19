@@ -34,3 +34,4 @@ from . import test_fase7
 from . import test_fase8
 from . import test_diagnostic_otd
 from . import test_mywork
+from . import test_fase9

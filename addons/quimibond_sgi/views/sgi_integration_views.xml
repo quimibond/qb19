@@ -12,6 +12,12 @@
                     <field name="sgi_nc_count" widget="statinfo" string="NC"/>
                 </button>
             </xpath>
+            <!-- Sello del transporte (sustituye F-IT-P-A07-01-07/08): solo en
+                 embarques de salida; se imprime en la remisión. -->
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sgi_seal_number"
+                       invisible="picking_type_code != 'outgoing'"/>
+            </xpath>
         </field>
     </record>
 

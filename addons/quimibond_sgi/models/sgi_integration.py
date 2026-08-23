@@ -29,6 +29,13 @@ class StockPicking(models.Model):
     # entrega a cliente es la señal de calidad más dura que existe). -----
     sgi_return_alert_id = fields.Many2one('quality.alert', string="NC de devolución",
                                           readonly=True, copy=False)
+    # Sello del transporte en embarques de salida. Sustituye los formatos
+    # F-IT-P-A07-01-07 (nacional) y -08 (exportación): un solo campo, la
+    # entrega ya sabe si es nacional o exportación por su destino.
+    sgi_seal_number = fields.Char(
+        string="Sello de embarque", copy=False,
+        help="Número de sello del transporte. Se imprime en la remisión. "
+             "Sustituye F-IT-P-A07-01-07/08.")
 
     def _sgi_is_customer_return(self):
         """Recepción validada cuyos movimientos devuelven una ENTREGA a
