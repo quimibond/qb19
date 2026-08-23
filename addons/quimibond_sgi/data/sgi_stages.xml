@@ -10,44 +10,27 @@
         <field name="sgi_sequence_id" ref="sgi_seq_nc_external"/>
     </record>
 
-    <!-- Etapas NC Internas -->
+    <!-- Etapas NC: UN solo juego compartido por ambos equipos (team_ids es
+         many2many). Dos juegos idénticos por equipo se veían duplicados en la
+         configuración sin aportar nada; el código las localiza por xmlid o por
+         dominio team_ids, así que compartirlas es transparente. -->
     <record id="sgi_nc_int_stage_open" model="quality.alert.stage">
         <field name="name">Abierta</field><field name="sequence">10</field>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_internal'))]"/>
+        <field name="team_ids" eval="[(6, 0, [ref('sgi_quality_team_internal'), ref('sgi_quality_team_external')])]"/>
     </record>
     <record id="sgi_nc_int_stage_followup" model="quality.alert.stage">
         <field name="name">Seguimiento</field><field name="sequence">20</field>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_internal'))]"/>
+        <field name="team_ids" eval="[(6, 0, [ref('sgi_quality_team_internal'), ref('sgi_quality_team_external')])]"/>
     </record>
     <record id="sgi_nc_int_stage_closed" model="quality.alert.stage">
         <field name="name">Cerrada</field><field name="sequence">30</field>
         <field name="done" eval="True"/><field name="sgi_is_closing_stage" eval="True"/>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_internal'))]"/>
+        <field name="team_ids" eval="[(6, 0, [ref('sgi_quality_team_internal'), ref('sgi_quality_team_external')])]"/>
     </record>
     <record id="sgi_nc_int_stage_cancel" model="quality.alert.stage">
         <field name="name">Cancelada</field><field name="sequence">40</field>
         <field name="folded" eval="True"/><field name="sgi_is_cancel_stage" eval="True"/>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_internal'))]"/>
-    </record>
-
-    <!-- Etapas NC Externas -->
-    <record id="sgi_nc_ext_stage_open" model="quality.alert.stage">
-        <field name="name">Abierta</field><field name="sequence">10</field>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_external'))]"/>
-    </record>
-    <record id="sgi_nc_ext_stage_followup" model="quality.alert.stage">
-        <field name="name">Seguimiento</field><field name="sequence">20</field>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_external'))]"/>
-    </record>
-    <record id="sgi_nc_ext_stage_closed" model="quality.alert.stage">
-        <field name="name">Cerrada</field><field name="sequence">30</field>
-        <field name="done" eval="True"/><field name="sgi_is_closing_stage" eval="True"/>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_external'))]"/>
-    </record>
-    <record id="sgi_nc_ext_stage_cancel" model="quality.alert.stage">
-        <field name="name">Cancelada</field><field name="sequence">40</field>
-        <field name="folded" eval="True"/><field name="sgi_is_cancel_stage" eval="True"/>
-        <field name="team_ids" eval="[(4, ref('sgi_quality_team_external'))]"/>
+        <field name="team_ids" eval="[(6, 0, [ref('sgi_quality_team_internal'), ref('sgi_quality_team_external')])]"/>
     </record>
 
     <!-- ================= HELPDESK — RECLAMACIONES ================= -->

@@ -108,9 +108,11 @@ class SgiManagementReview(models.Model):
         dt_from, dt_to = self._sgi_bounds()
         Alert = self.env['quality.alert']
         result = []
+        # La etapa "Seguimiento" es una sola compartida por ambos equipos NC;
+        # el conteo por equipo lo hace el dominio team_id.
         teams = [
             ('Internas', 'sgi_quality_team_internal', 'sgi_nc_int_stage_followup'),
-            ('Externas', 'sgi_quality_team_external', 'sgi_nc_ext_stage_followup'),
+            ('Externas', 'sgi_quality_team_external', 'sgi_nc_int_stage_followup'),
         ]
         for label, team_xmlid, followup_xmlid in teams:
             team = self.env.ref('quimibond_sgi.%s' % team_xmlid, raise_if_not_found=False)
