@@ -177,3 +177,11 @@ class TestQualityMenuRelocation(TransactionCase):
                 menu.parent_id, sgi_root,
                 "%s debe colgar del raíz de la app Calidad, no del SGI "
                 "(quality_control está instalado en este entorno)." % xmlid)
+            # Y antes del menú nativo de Configuración de Calidad.
+            config = self.env['ir.ui.menu'].search([
+                ('parent_id', '=', menu.parent_id.id),
+                ('name', 'ilike', 'onfig')], limit=1)
+            if config:
+                self.assertLess(
+                    menu.sequence, config.sequence,
+                    "%s debe aparecer antes de Configuración." % xmlid)

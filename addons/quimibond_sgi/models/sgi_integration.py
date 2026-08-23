@@ -29,6 +29,13 @@ class StockPicking(models.Model):
     # entrega a cliente es la señal de calidad más dura que existe). -----
     sgi_return_alert_id = fields.Many2one('quality.alert', string="NC de devolución",
                                           readonly=True, copy=False)
+    # Sello del transporte en embarques de salida. Sustituye los formatos
+    # F-IT-P-A07-01-07 (nacional) y -08 (exportación): un solo campo, la
+    # entrega ya sabe si es nacional o exportación por su destino.
+    sgi_seal_number = fields.Char(
+        string="Sello de embarque", copy=False,
+        help="Número de sello del transporte. Se imprime en la remisión. "
+             "Sustituye F-IT-P-A07-01-07/08.")
 
     def _sgi_is_customer_return(self):
         """Recepción validada cuyos movimientos devuelven una ENTREGA a
@@ -181,6 +188,51 @@ class HrJob(models.Model):
 
     sgi_document_ids = fields.Many2many('documents.document', 'sgi_document_job_rel',
                                         'job_id', 'document_id', string="Documentos aplicables")
+    # Determinación del EPP por puesto (sustituye F-P-S03-01): la fuente
+    # única vive en el puesto; la ficha del empleado la muestra en solo
+    # lectura. La responsiva de entrega (S03-02) sigue documental.
+    sgi_epp_required = fields.Text(
+        string="EPP requerido (S03-01)",
+        help="Equipo de protección personal que exige este puesto. "
+             "Sustituye el formato F-P-S03-01; fuente única para RH y SST.")
+
+
+class ProductTemplateSgiSpec(models.Model):
+    _inherit = 'product.template'
+
+    # Especificaciones controladas del producto (sustituyen F-P-C04-06 hoja
+    # de especificación de MP y F-P-C14-02 manejo y empaque): la spec ES un
+    # documento controlado; aquí solo se liga para tenerla a un clic desde
+    # el producto y las inspecciones.
+    sgi_spec_document_id = fields.Many2one(
+        'documents.document', string="Especificación (C04-06)",
+        domain="[('sgi_code', '!=', False)]",
+        help="Documento controlado con la especificación del material "
+             "(sustituye F-P-C04-06). La inspección de recepción valida "
+             "contra esta spec.")
+    sgi_packaging_notes = fields.Text(
+        string="Manejo y empaque (C14-02)",
+        help="Indicaciones de manejo y empaque del producto (sustituye "
+             "F-P-C14-02). Visible para inspección y almacén.")
+
+    def action_sgi_open_spec(self):
+        self.ensure_one()
+        if not self.sgi_spec_document_id:
+            raise UserError(
+                "El producto no tiene ligada su especificación (C04-06). "
+                "Selecciónala en la pestaña SGI.")
+        return self.sgi_spec_document_id.action_sgi_view_file()
+
+
+class ProductProductSgiSpec(models.Model):
+    """El formulario de variante hereda la vista de la plantilla (mismo caso
+    documentado en el smart button de PPAP): el botón de la spec también debe
+    resolver en product.product."""
+    _inherit = 'product.product'
+
+    def action_sgi_open_spec(self):
+        self.ensure_one()
+        return self.product_tmpl_id.action_sgi_open_spec()
 
 
 class HrEmployee(models.Model):
@@ -318,9 +370,24 @@ class IrUiMenu(models.Model):
             root = candidates.filtered(lambda m: not m.parent_id)[:1]
         if not root:
             return False
-        for xmlid in ('quimibond_sgi.menu_sgi_automotive',
-                      'quimibond_sgi.menu_sgi_dashboards'):
+        # Acomodarlos ANTES del menú nativo de Configuración de la app
+        # Calidad: los menús conservaban la secuencia del SGI (80/85) y en
+        # Calidad eso los mandaba hasta después de Configuración. La
+        # secuencia del vecino también se descubre en runtime.
+        config = self.sudo().search([
+            ('parent_id', '=', root.id), ('name', 'ilike', 'onfig')], limit=1)
+        base_seq = max(config.sequence - 2, 0) if config else 50
+        for offset, xmlid in enumerate((
+                'quimibond_sgi.menu_sgi_automotive',
+                'quimibond_sgi.menu_sgi_dashboards')):
             menu = self.env.ref(xmlid, raise_if_not_found=False)
-            if menu and menu.parent_id != root:
-                menu.parent_id = root
+            if not menu:
+                continue
+            vals = {}
+            if menu.parent_id != root:
+                vals['parent_id'] = root.id
+            if menu.sequence != base_seq + offset:
+                vals['sequence'] = base_seq + offset
+            if vals:
+                menu.write(vals)
         return True

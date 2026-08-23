@@ -29,6 +29,9 @@
 
     <template id="report_delivery_document_sgi" inherit_id="stock.report_delivery_document">
         <xpath expr="//div[hasclass('page')]" position="inside">
+            <p t-if="o.sgi_seal_number" style="margin-top:8px">
+                <strong>Sello de embarque:</strong> <span t-field="o.sgi_seal_number"/>
+            </p>
             <t t-call="quimibond_sgi.sgi_format_footer">
                 <t t-set="sgi_rec" t-value="o"/>
             </t>
