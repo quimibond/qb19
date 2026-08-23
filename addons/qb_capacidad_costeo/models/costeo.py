@@ -706,6 +706,19 @@ class QbCostoProducto(models.Model):
         if to_create:
             self.create(to_create)
 
+        # Filas huérfanas: quedaron de una corrida anterior y su producto ya
+        # no está en el alcance del período (sin venta válida y sin BOM
+        # vendible). Pasa cuando una regla nueva excluye ventas — el filtro
+        # de cuentas 'income' sacó la venta de la rama Icomatex ($11.3M,
+        # 2026-03) pero el upsert nunca tocaba su fila vieja y el monto
+        # sobrevivía cada recálculo.
+        stale = self.browse([
+            rec.id for pid, rec in existing.items() if pid not in product_ids])
+        if stale:
+            _logger.info('qb.costo.producto: %s filas huérfanas eliminadas '
+                         'para %s', len(stale), period)
+            stale.unlink()
+
         if factores.fab_pool_month:
             factores.cobertura_fab_pct = (
                 100.0 * fab_absorbida_total
