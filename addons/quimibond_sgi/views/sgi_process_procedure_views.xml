@@ -66,6 +66,8 @@
                     <group string="Medición — la actividad como acciones reales de Odoo">
                         <group>
                             <field name="measure_model_id" options="{'no_create': True}"/>
+                            <field name="measure_model_name"
+                                   placeholder="o escribe el nombre técnico: sale.order"/>
                             <field name="measure_domain"
                                    invisible="not measure_model_id"
                                    placeholder="[('state', '=', 'done')]"/>
