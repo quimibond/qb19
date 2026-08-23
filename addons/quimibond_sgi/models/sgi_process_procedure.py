@@ -514,6 +514,13 @@ class SgiProcessActivity(models.Model):
         # mide, y con la medición fresca evalúa el flujo de la cadena.
         self.search([('odoo_menu_id', '=', False),
                      ('odoo_ref', '!=', False)])._sgi_resolve_menu()
+        # Los «Formularios de Odoo» del control documental también resuelven
+        # su menú desde el texto del destino de migración.
+        self.env['documents.document'].search([
+            ('sgi_doc_type', '=', 'formulario_odoo'),
+            ('sgi_odoo_menu_id', '=', False),
+            ('sgi_migration_target', '!=', False),
+        ]).action_sgi_resolve_odoo_menu()
         self.search([('measure_model_id', '!=', False)])._sgi_measure()
         self.env['sgi.activity.link'].search([])._sgi_evaluate_chain()
         return True
