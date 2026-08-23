@@ -848,6 +848,48 @@ class TestQbCosteo(TransactionCase):
             avg = Costo._production_month_avg(c, _d(2026, 1, 1), _d(2026, 8, 1))
             self.assertGreaterEqual(avg, 0.0)  # no truena; sin datos MO → 0
 
+    def test_ventas_solo_cuentas_income(self):
+        """Una factura contra una cuenta que NO es de ventas de producto
+        (utilidad en venta de activo fijo = income_other, como la rama
+        Icomatex de $11.3M; o anticipos = liability) NO entra al costeo:
+        no infla qty, precio ni contribución del mes."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date.today().replace(day=1)
+        cuenta_activo = self.env['account.account'].create({
+            'code': '704.23.T99', 'name': 'UTILIDAD VENTA ACTIVO TEST',
+            'account_type': 'income_other'})
+        maquina = self.env['product.product'].create({
+            'name': 'RAMA TEST', 'is_storable': False, 'sale_ok': True})
+        partner = self.env['res.partner'].create({'name': 'Leasing Test'})
+        # Venta de la máquina contra la cuenta de activo fijo
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': period,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': maquina.id, 'quantity': 1,
+                'price_unit': 1000000.0,
+                'account_id': cuenta_activo.id})]})
+        move.action_post()
+        # Venta normal de producto (cuenta income por defecto del diario)
+        move2 = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': period,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.tela.id, 'quantity': 5,
+                'price_unit': 10.0})]})
+        move2.action_post()
+        sales = self.Costo._sales_by_product(period)
+        self.assertNotIn(maquina.id, sales,
+                         'venta de activo fijo no debe entrar al costeo')
+        self.assertIn(self.tela.id, sales,
+                      'la venta normal sí debe entrar')
+        # Tampoco al precio de mercado / ventas por cliente del cotizador
+        self.assertEqual(self.Costo.sales_by_customer(maquina), [])
+        self.assertEqual(self.Costo.market_price(maquina), 0.0)
+
     def test_rentabilidad_cliente_lee_sin_error(self):
         """La vista SQL de rentabilidad por cliente compila y expone la
         cobertura de costo (revenue en MXN vía balance, no price_subtotal)."""

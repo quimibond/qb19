@@ -37,10 +37,22 @@
                     </group>
                     <notebook>
                         <page string="Elementos (18)">
+                            <div class="text-muted mb-2">
+                                El <b>nivel AIAG</b> define qué se presenta al
+                                cliente (<b>S</b>) y qué se retiene en planta
+                                (<b>R</b>): solo los elementos S pendientes
+                                bloquean «Marcar enviado». Cambiar el nivel en
+                                preparación re-aplica la tabla; la columna S/R
+                                se puede ajustar por elemento (p. ej. nivel 4,
+                                donde el cliente define qué pide).
+                            </div>
                             <field name="element_ids">
                                 <list editable="bottom" default_order="sequence">
                                     <field name="sequence"/>
                                     <field name="name"/>
+                                    <field name="submission" widget="badge"
+                                           decoration-info="submission == 'submit'"
+                                           decoration-muted="submission == 'retain'"/>
                                     <field name="state"/>
                                     <field name="fmea_id"/>
                                     <field name="control_plan_id"/>
@@ -106,7 +118,7 @@
         <field name="search_view_id" ref="sgi_ppap_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea el primer PPAP</p>
-            <p>Los 18 elementos AIAG se generan solos. No se puede marcar Enviado con elementos pendientes ni Aprobado sin el PSW.</p>
+            <p>Los 18 elementos AIAG se generan solos, marcados Presentar (S) o Retener (R) según el nivel 1–5 del expediente. No se puede marcar Enviado con elementos S pendientes ni Aprobado sin el PSW.</p>
         </field>
     </record>
 

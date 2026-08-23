@@ -85,7 +85,7 @@ a{color:var(--accent-ink)}
 
 <div class="wrap">
 <header class="hero">
-  <p class="kicker">Quimibond · Odoo 19 Enterprise · addon <b>quimibond_sgi</b> v19.0.16.8.0</p>
+  <p class="kicker">Quimibond · Odoo 19 Enterprise · addon <b>quimibond_sgi</b> v19.0.18.0.0</p>
   <h1>Flujos del SGI Quimibond</h1>
   <p class="lede">Mapa exhaustivo de cada click y cada acción del Sistema de Gestión Integral: estados exactos, botones con su método Python y condición de visibilidad, candados de cierre, automatizaciones (crons y NC automáticas), wizards, reportes y navegación. Extraído directamente del código fuente.</p>
   <div class="hero-meta">
@@ -183,19 +183,23 @@ a{color:var(--accent-ink)}
 │&nbsp;&nbsp;├─ Documentos → <i>documents.document</i> controlados (filtro Vigentes, guía de nomenclatura)<br>
 │&nbsp;&nbsp;├─ Cambios documentales → <i>approval.request</i> SGI (nace en la categoría correcta)<br>
 │&nbsp;&nbsp;└─ <span class="lock">🔒 Migración de formatos</span> → kanban por estado de migración<br>
-├─ <b>Medición</b><br>
+├─ <b>Medición</b> <i>(solo gestión: KPIs y voz del cliente)</i><br>
 │&nbsp;&nbsp;├─ Indicadores (con botón Tendencia) · Mediciones (list/graph/pivot)<br>
-│&nbsp;&nbsp;├─ Evaluación de proveedores · Satisfacción del cliente<br>
-│&nbsp;&nbsp;├─ Brechas de competencia (DNC) · Encuesta DNC<br>
-│&nbsp;&nbsp;└─ Presupuesto y pronóstico → Presupuestos · Pronósticos · Análisis (×4)<br>
-│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(este submenú se espeja dentro de la app Ventas, seq 6)</i><br>
+│&nbsp;&nbsp;└─ Satisfacción del cliente<br>
 ├─ <b>Riesgos y auditorías</b> → Riesgos y oportunidades <i>(planificar 6.1)</i> · Programa anual · Auditorías <i>(verificar 9.2)</i> ·<br>
 │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Emergencias → Planes de emergencia · Simulacros <i>(8.2)</i><br>
-├─ <b>Calidad preventiva</b> <i>(antes "Automotriz": evita el defecto antes de producir)</i> → Planes de control · AMEF · PPAP ·<br>
-│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Metrología → Equipos de medición · Calibraciones · Estudios MSA<br>
 ├─ <span class="lock">🔒 <b>Revisión por la Dirección</b></span> → <i>sgi.management.review</i><br>
 └─ <span class="lock">🔒 <b>Configuración</b></span> → ⚙️ Ajustes · Áreas · Normas · Cláusulas · Acuses de lectura ·<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Categorías de riesgo · Elementos PPAP · Formatos en documentos de Odoo · Fuentes de NC automáticas
+</div>
+
+<p class="card note"><b>La operación vive en su app</b> (el SGI planea, mide y mejora; lo que se opera a diario está donde trabaja cada quien — los modelos son los mismos, así que KPIs, RxD, candados y Diagnóstico siguen leyendo todo):</p>
+<div class="menu-tree">
+<b>Compras</b> → Evaluación de proveedores <i>(ISO 8.4: el comprador recalcula, aprueba y bloquea)</i><br>
+<b>Ventas</b> → Presupuesto y pronóstico → Presupuestos · Pronósticos · Análisis (×4)<br>
+<b>Calidad</b> → Calidad preventiva → Planes de control · AMEF · PPAP ·<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Metrología → Equipos de medición · Calibraciones · Estudios MSA<br>
+<b>Empleados</b> → Competencias (SGI) → Brechas de competencia (DNC) · Encuesta DNC
 </div>
 
 <!-- ============================================================ -->
@@ -697,16 +701,16 @@ flowchart TB
 <tr><td>≥ 70</td><td><span class="tag warn">Condicionado</span></td><td>Actividad automática al Gerente de Compras</td></tr>
 <tr><td>&lt; 70</td><td><span class="tag bad">Baja</span></td><td>Actividad automática al Gerente de Compras</td></tr>
 </table></div>
-<p>Botones: <b>Recalcular</b> (<code>action_recompute</code>, refresca OTD/NC/score con los datos de hoy — las métricas son una foto) y <b>Aplicar al proveedor</b> (<code>action_apply_to_partner</code>) — escribe clase, score y fecha en la ficha del partner. Las alertas <b>canceladas no penalizan</b>. El <b>cron trimestral</b> evalúa automáticamente a todos los proveedores con recepciones del trimestre anterior, recalcula y aplica el resultado. La ficha del proveedor muestra pestaña "SGI Proveedor" y smart buttons "Evaluaciones", "NC" y "Reclamaciones"; la OC muestra "NC proveedor".</p>
+<p>Botones: <b>Recalcular</b> (<code>action_recompute</code>, refresca OTD/NC/score con los datos de hoy — las métricas son una foto) y <b>Aplicar al proveedor</b> (<code>action_apply_to_partner</code>) — escribe clase, score y fecha en la ficha del partner. Las alertas <b>canceladas no penalizan</b>. El <b>cron trimestral</b> evalúa automáticamente a todos los proveedores con recepciones del trimestre anterior, recalcula y aplica el resultado. La ficha del proveedor muestra pestaña "SGI Proveedor" y smart buttons "Evaluaciones", "NC" y "Reclamaciones"; la OC muestra "NC proveedor". El menú vive en la app <b>Compras</b> (la evaluación la opera el comprador); el SGI la lee para el KPI y la entrada 6 de la RxD.</p>
 
 <!-- ============================================================ -->
 <h2 id="competencias"><span class="sec">20</span>Competencias y DNC — <code>sgi.competence.gap</code> (P-A01)</h2>
-<p>La brecha es una <b>vista SQL de solo lectura</b>: competencias requeridas por el puesto (<code>hr.job.skill</code>) vs las vigentes del empleado (<code>hr.employee.skill</code>, filtrando caducadas). Solo aparece lo que está por debajo del nivel requerido. Se consulta en <b>Medición → Brechas de competencia</b> (pivot por departamento) o con el smart button "Brechas" del empleado; alimenta el KPI de capacitación (RH-02).</p>
+<p>La brecha es una <b>vista SQL de solo lectura</b>: competencias requeridas por el puesto (<code>hr.job.skill</code>) vs las vigentes del empleado (<code>hr.employee.skill</code>, filtrando caducadas). Solo aparece lo que está por debajo del nivel requerido. Se consulta en <b>Empleados → Competencias (SGI)</b> (pivot por departamento, junto a la Encuesta DNC) o con el smart button "Brechas" del empleado; alimenta el KPI de capacitación (RH-02) del SGI.</p>
 <p>El <b>cron diario de competencias</b> vigila certificaciones: vencida → actividad al empleado + RH + Jefe MAST; por vencer (≤30 días) → empleado + RH; formaciones por concluir → empleado. La <b>encuesta DNC F-P-A01-17</b> (autopercepción + temas solicitados) se envía manualmente desde la app Encuestas — no tiene automatización ligada.</p>
 
 <!-- ============================================================ -->
 <h2 id="presupuesto"><span class="sec">21</span>Presupuesto y pronóstico de ventas — <code>sgi.sales.budget</code> (P-A28)</h2>
-<p class="sub">Un mismo par de modelos sirve dos documentos: el <b>presupuesto mensual por mercado</b> (F-P-A28-18, matriz producto × mes, se aprueba y congela) y el <b>pronóstico semanal por cliente</b> (F-P-A28-13, matriz producto × semana, documento vivo que nunca se aprueba). Folio <code>PPV-AAAA-001</code>. La celda ES la línea; el precio jamás se captura: sale de la lista de precios.</p>
+<p class="sub">Un mismo par de modelos sirve dos documentos: el <b>presupuesto mensual por mercado</b> (F-P-A28-18, matriz producto × mes, se aprueba y congela) y el <b>pronóstico semanal por cliente</b> (F-P-A28-13, matriz producto × semana, documento vivo que nunca se aprueba). Folio <code>PPV-AAAA-001</code>. La celda ES la línea; el precio jamás se captura: sale de la lista de precios. El menú vive en la app <b>Ventas</b> (Presupuesto y pronóstico); el SGI conserva el KPI de cumplimiento y la entrada de la RxD.</p>
 
 <figure>
 <div class="diagram"><pre class="mermaid">
@@ -900,7 +904,7 @@ flowchart LR
 <li><b>RxD</b>: guía del flujo (periodo → Cargar entradas → Acuerdos → Realizada → Cerrar).</li>
 </ul>
 
-<p style="margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px">Generado a partir del código fuente de <code>quimibond_sgi</code> v19.0.16.8.0 y sus satélites (agosto 2026), incluidas las fases 7 y 8 y el tour completo de UX menú por menú. Cada botón, estado, candado y cron citado corresponde a un método real del addon. Evaluación ISO y deuda técnica: <code>docs/SGI_EVALUACION_ESTRUCTURA.md</code> · <code>docs/SGI_DEUDA_TECNICA.md</code>.</p>
+<p style="margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13.5px">Generado a partir del código fuente de <code>quimibond_sgi</code> v19.0.18.0.0 y sus satélites (agosto 2026), incluidas las fases 7 y 8 y el tour completo de UX menú por menú. Cada botón, estado, candado y cron citado corresponde a un método real del addon. Evaluación ISO y deuda técnica: <code>docs/SGI_EVALUACION_ESTRUCTURA.md</code> · <code>docs/SGI_DEUDA_TECNICA.md</code>.</p>
 </div>
 
 <script type="module">

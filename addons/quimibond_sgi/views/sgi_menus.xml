@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Navegación SGI: máx. 9 grupos de primer nivel, ordenados por frecuencia
-         de uso (persona -> operación diaria -> gestión -> dirección -> config).
+    <!-- Navegación SGI: SOLO gestión (planear, medir, mejorar). Lo que se
+         opera a diario vive en su app: evaluación de proveedores en Compras,
+         presupuesto/pronóstico en Ventas, calidad preventiva en Calidad y
+         competencias en Empleados — ver la sección "OPERACIÓN EN SU APP".
          Los xmlids NO cambian: solo padres, secuencias y agrupación. -->
 
     <menuitem id="menu_sgi_root" name="SGI" sequence="90"
@@ -77,7 +79,9 @@
               action="sgi_migration_action" sequence="30"
               groups="quimibond_sgi.group_sgi_manager"/>
 
-    <!-- 5. Medición: KPIs, objetivos, proveedores y competencias -->
+    <!-- 5. Medición: KPIs y satisfacción — SOLO gestión. Lo operativo vive
+         en su app: evaluación de proveedores en Compras, presupuesto y
+         pronóstico en Ventas, competencias en Empleados (ver abajo). -->
     <menuitem id="menu_sgi_measurement" name="Medición" parent="menu_sgi_root" sequence="50"/>
     <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_measurement"
               action="sgi_indicator_action" sequence="10"/>
@@ -87,36 +91,35 @@
          los Objetivos Integrales viven junto a la Política. -->
     <menuitem id="menu_sgi_objectives" name="Objetivos Integrales" parent="menu_sgi_panel"
               action="sgi_objective_action" sequence="7"/>
-    <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores" parent="menu_sgi_measurement"
-              action="sgi_supplier_eval_action" sequence="40"/>
     <menuitem id="menu_sgi_satisfaction" name="Satisfacción del cliente"
               parent="menu_sgi_measurement" action="sgi_satisfaction_action" sequence="45"/>
-    <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
-              parent="menu_sgi_measurement" action="sgi_competence_gap_action" sequence="50"/>
-    <menuitem id="menu_sgi_dnc_survey" name="Encuesta DNC"
-              parent="menu_sgi_measurement" action="sgi_dnc_survey_action" sequence="55"/>
-    <!-- SGI → Medición: padre "Presupuesto y pronóstico" con 3 hijos (se
-         reutilizan los xmlids existentes como hijos renombrados; no rompe favoritos). -->
-    <menuitem id="menu_sgi_planning" name="Presupuesto y pronóstico"
-              parent="menu_sgi_measurement" sequence="60"/>
-    <menuitem id="menu_sgi_sales_budget" name="Presupuestos"
-              parent="menu_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
-    <menuitem id="menu_sgi_sales_forecast" name="Pronósticos"
-              parent="menu_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
-    <!-- "Análisis" ahora es un submenú con 4 vistas preconfiguradas. -->
-    <menuitem id="menu_sgi_sales_analysis" name="Análisis"
-              parent="menu_sgi_planning" sequence="30"/>
-    <menuitem id="menu_sgi_analysis_mercado" name="Por mercado"
-              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_mercado_action" sequence="10"/>
-    <menuitem id="menu_sgi_analysis_cliente" name="Por cliente"
-              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_cliente_action" sequence="20"/>
-    <menuitem id="menu_sgi_analysis_producto" name="Por producto"
-              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_producto_action" sequence="30"/>
-    <menuitem id="menu_sgi_analysis_global" name="Global (Dirección)"
-              parent="menu_sgi_sales_analysis" action="sgi_sales_analysis_global_action" sequence="40"/>
 
-    <!-- Espejo en la app Ventas, tras Pedidos: mismo padre con los 3 hijos
-         (se reutilizan los xmlids de los hijos de Ventas ya existentes). -->
+    <!-- ============================================================
+         OPERACIÓN EN SU APP (criterio: el SGI planea, mide y mejora;
+         lo que se opera a diario vive donde trabaja cada quien).
+         Los xmlids NO cambian: solo se reparenta. El SGI sigue leyendo
+         los modelos (KPIs, RxD, candados) sin depender de estos menús. -->
+
+    <!-- Compras: la evaluación ISO 8.4 la opera el comprador. -->
+    <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores"
+              parent="purchase.menu_purchase_root"
+              action="sgi_supplier_eval_action" sequence="30"
+              groups="purchase.group_purchase_user,quimibond_sgi.group_sgi_user"/>
+
+    <!-- Empleados: la DNC y las brechas las opera RRHH. -->
+    <menuitem id="menu_hr_sgi_competences" name="Competencias (SGI)"
+              parent="hr.menu_hr_root" sequence="70"
+              groups="hr.group_hr_user,quimibond_sgi.group_sgi_user"/>
+    <menuitem id="menu_sgi_competences" name="Brechas de competencia (DNC)"
+              parent="menu_hr_sgi_competences"
+              action="sgi_competence_gap_action" sequence="10"/>
+    <menuitem id="menu_sgi_dnc_survey" name="Encuesta DNC"
+              parent="menu_hr_sgi_competences" action="sgi_dnc_survey_action"
+              sequence="20"/>
+
+    <!-- Ventas: el presupuesto/pronóstico se captura y da seguimiento en la
+         app Ventas (menú de abajo). El SGI conserva el KPI de cumplimiento
+         y la entrada de la RxD, que leen el modelo directamente. -->
     <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
               parent="sale.sale_menu_root" sequence="6"
               groups="quimibond_sgi.group_sgi_user"/>
@@ -164,11 +167,14 @@
               parent="menu_sgi_emergency" action="sgi_emergency_drill_action" sequence="20"/>
 
     <!-- 8. Calidad preventiva: las herramientas que evitan el defecto ANTES
-         de producir (AMEF, plan de control, PPAP) + metrología/MSA. Nacieron
-         en la fase "automotriz" (IATF), pero aplican a todos los clientes y
-         la calibración es requisito universal de 9001 (7.1.5) — el nombre
-         del menú refleja la función, no la industria. El xmlid no cambia. -->
-    <menuitem id="menu_sgi_automotive" name="Calidad preventiva" parent="menu_sgi_root" sequence="80"/>
+         de producir (AMEF, plan de control, PPAP) + metrología/MSA. Las
+         opera el ingeniero de calidad a diario, así que viven en la app
+         CALIDAD (los planes de control ya envuelven quality.point de esa
+         app). El SGI conserva las señales: NC de calibración, Diagnóstico
+         y actividades al MAST. El xmlid no cambia: solo se reparenta. -->
+    <menuitem id="menu_sgi_automotive" name="Calidad preventiva"
+              parent="quality.menu_quality_root" sequence="50"
+              groups="quality.group_quality_user,quimibond_sgi.group_sgi_user"/>
     <menuitem id="menu_sgi_control_plans" name="Planes de control" parent="menu_sgi_automotive"
               action="sgi_control_plan_action" sequence="10"/>
     <menuitem id="menu_sgi_fmea" name="AMEF" parent="menu_sgi_automotive"
