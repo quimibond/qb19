@@ -21,6 +21,25 @@ class TestNcFlow(TransactionCase):
         base.update(vals)
         return self.Alert.create(base)
 
+    def test_00_shared_stage_set(self):
+        """Un solo juego de etapas NC compartido por ambos equipos: nada de
+        columnas duplicadas ni etapas de cancelación/cierre ambiguas."""
+        for xmlid in ('sgi_nc_int_stage_open', 'sgi_nc_int_stage_followup',
+                      'sgi_nc_int_stage_closed', 'sgi_nc_int_stage_cancel'):
+            stage = self.env.ref('quimibond_sgi.%s' % xmlid)
+            self.assertIn(self.team_int, stage.team_ids)
+            self.assertIn(self.team_ext, stage.team_ids)
+        Stage = self.env['quality.alert.stage']
+        self.assertEqual(Stage.search_count(
+            [('sgi_is_cancel_stage', '=', True)]), 1)
+        self.assertEqual(Stage.search_count(
+            [('sgi_is_closing_stage', '=', True)]), 1)
+        # Sin nombres repetidos entre las etapas visibles para los equipos NC.
+        nc_stages = Stage.search([('team_ids', 'in', (self.team_int | self.team_ext).ids)])
+        names = nc_stages.mapped('name')
+        self.assertEqual(len(names), len(set(names)),
+                         "Etapas duplicadas para los equipos NC: %s" % names)
+
     def test_01_sequences(self):
         year = date.today().year
         a1 = self._new_alert(self.team_int)

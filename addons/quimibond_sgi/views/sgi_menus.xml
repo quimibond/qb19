@@ -148,7 +148,11 @@
     <!-- 6. Procesos: el mapa y sus flujos. Va justo después del Panel:
          de lo general (el mapa del sistema) a lo particular (cada flujo). -->
     <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
-              action="sgi_process_action" sequence="15"/>
+              sequence="15"/>
+    <!-- El padre tiene hijos, así que Odoo abre el primer hijo: el mapa de
+         procesos debe ser un hijo explícito ANTES de los flujos, o no se ve. -->
+    <menuitem id="menu_sgi_process_map" name="Mapa de procesos" parent="menu_sgi_processes"
+              action="sgi_process_action" sequence="5"/>
     <menuitem id="menu_sgi_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
               action="sgi_process_flow_action" sequence="10"/>
     <menuitem id="menu_sgi_activities" name="Actividades de procedimiento"
