@@ -931,6 +931,26 @@ class TestQbCosteo(TransactionCase):
             self.assertGreaterEqual(
                 r.margen_bruto_12m + 0.01, r.margen_neto_12m)
 
+    def test_cuenta_especifica_gana_sobre_patron(self):
+        """Una clase de CUENTA ESPECIFICA gana sobre una de patrón para la
+        misma cuenta. Antes '(c.account_id = rel.account_id) DESC' daba
+        NULL para las clases de patrón y Postgres ordena NULL antes que
+        TRUE en DESC → el patrón ganaba (bug real: reclasificar la renta
+        de planta 603.45.0001 a overhead_fab no surtía efecto porque el
+        patrón '603 por ciento' → operación seguía mandando)."""
+        cuenta = self.env['account.account'].create({
+            'code': '603.99.T88', 'name': 'RENTA PLANTA TEST',
+            'account_type': 'expense'})
+        self.env['qb.costeo.cuenta.class'].create({
+            'code_pattern': '603.99%', 'bucket': 'operacion'})
+        self.env['qb.costeo.cuenta.class'].create({
+            'account_id': cuenta.id, 'bucket': 'overhead_fab'})
+        row = self.env['qb.costeo.cuenta.map'].search(
+            [('account_id', '=', cuenta.id)])
+        self.assertEqual(len(row), 1, 'una sola fila por cuenta')
+        self.assertEqual(row.bucket, 'overhead_fab',
+                         'la cuenta específica debe ganar sobre el patrón')
+
     def test_rh_mod_prorrateo_por_nomina(self):
         """El MOD por centro sale del GL (la nómina que de verdad se pagó)
         repartido por masa salarial de RH normalizada a mensual: un sueldo

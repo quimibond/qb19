@@ -58,7 +58,11 @@ CUENTA_MAP_SQL = """
     JOIN qb_costeo_cuenta_class c ON c.id = rel.class_id
     WHERE c.active
     ORDER BY rel.account_id,
-        (c.account_id = rel.account_id) DESC,
+        -- COALESCE: para una clase de PATRON c.account_id es NULL y
+        -- "NULL = x" da NULL; con DESC a secas Postgres pone NULL antes
+        -- que TRUE y el patron le ganaba a la cuenta especifica (al reves
+        -- de lo documentado: especifica > patron).
+        COALESCE(c.account_id = rel.account_id, FALSE) DESC,
         char_length(COALESCE(c.code_pattern, '')) DESC,
         c.id
 """
