@@ -16,8 +16,10 @@
                 <field name="product_bucket"/>
                 <filter name="vendidos" string="Vendidos en el período"
                         domain="[('qty_vendida', '&gt;', 0)]"/>
-                <filter name="margen_negativo" string="Margen absorbido negativo"
+                <filter name="margen_negativo" string="Margen neto negativo"
                         domain="[('margen_absorbido', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
+                <filter name="margen_bruto_negativo" string="Margen bruto negativo"
+                        domain="[('margen_bruto', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
                 <filter name="contribucion_negativa" string="Contribución negativa"
                         domain="[('margen_contribucion', '&lt;', 0), ('qty_vendida', '&gt;', 0)]"/>
                 <filter name="facturado_divisa" string="💱 Facturado en divisa"
@@ -75,6 +77,11 @@
                 <field name="margen_contribucion" widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
                 <field name="margen_contribucion_pct"/>
+                <field name="margen_bruto" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="margen_bruto_pct"/>
+                <field name="margen_absorbido" optional="hide" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="margen_absorbido_pct"/>
                 <field name="contrib_hora_maquina" widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
@@ -122,6 +129,8 @@
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="fab_unit" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="costo_produccion" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="op_unit" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="costo_absorbido" widget="monetary"
@@ -131,6 +140,9 @@
                             <field name="margen_contribucion" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_contribucion_pct"/>
+                            <field name="margen_bruto" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="margen_bruto_pct"/>
                             <field name="margen_absorbido" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_absorbido_pct"/>
@@ -155,6 +167,8 @@
                 <field name="period" type="col"/>
                 <field name="qty_vendida" type="measure"/>
                 <field name="contrib_total" type="measure"/>
+                <field name="margen_bruto_total" type="measure"/>
+                <field name="margen_neto_total" type="measure"/>
             </pivot>
         </field>
     </record>

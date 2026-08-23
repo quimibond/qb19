@@ -89,6 +89,7 @@ class QbComparadorWizard(models.TransientModel):
                 'piso_lleno': piso_lleno, 'sugerido': sug, 'sug_neto': sug_neto,
                 'contrib': rec.margen_contribucion,
                 'contrib_pct': rec.margen_contribucion_pct,
+                'bruto_pct': rec.margen_bruto_pct,
                 'abs_pct': rec.margen_absorbido_pct,
                 'vendido': bool(rec.qty_vendida),
                 'alerta': rec.alerta,
@@ -116,6 +117,8 @@ class QbComparadorWizard(models.TransientModel):
             'piso_lleno': q['piso_lleno'], 'sugerido': sug, 'sug_neto': sug_neto,
             'contrib': contrib,
             'contrib_pct': 100.0 * contrib / precio if precio else 0.0,
+            'bruto_pct': (100.0 * (precio - variable - q['fab']) / precio
+                          if precio else 0.0),
             'abs_pct': 100.0 * (precio - absorbido) / precio if precio else 0.0,
             'vendido': False,
             'alerta': '',
@@ -159,7 +162,8 @@ class QbComparadorWizard(models.TransientModel):
             ('= Costo absorbido', 'absorbido', 'money', True),
             ('Contribución / u', 'contrib', 'money', False),
             ('Contribución %', 'contrib_pct', 'pct', True),
-            ('Margen absorbido %', 'abs_pct', 'pct', True),
+            ('Margen bruto %', 'bruto_pct', 'pct', True),
+            ('Margen neto %', 'abs_pct', 'pct', True),
             ('Piso a planta llena / u', 'piso_lleno', 'money', False),
             (sug_label, 'sugerido', 'money', True),
             ('Margen al sugerido %', 'sug_neto', 'pct', False),
@@ -185,7 +189,7 @@ class QbComparadorWizard(models.TransientModel):
                 else:
                     txt = v or '—'
                 color = ''
-                if key in ('contrib_pct', 'abs_pct'):
+                if key in ('contrib_pct', 'bruto_pct', 'abs_pct'):
                     color = ('color:#c0392b;' if (v or 0) < 0
                              else 'color:#27ae60;')
                 tds += ('<td class="text-end" style="padding:5px 10px;%s%s">%s</td>'
@@ -203,6 +207,9 @@ class QbComparadorWizard(models.TransientModel):
             '(moneda de la compañía). Los productos facturados en otra divisa '
             'ya están convertidos al TC de la factura. "Costo variable" = MP + '
             'energía (lo que sale de la bolsa por unidad extra). "Costo '
-            'absorbido" = variable + fabricación + operación (costo completo).'
+            'absorbido" = variable + fabricación + operación (costo completo). '
+            'Márgenes: contribución = precio − variable (aporte a fijos, aún '
+            'no es utilidad); bruto = precio − (variable + fabricación); '
+            'neto = después de TODO, incluida operación.'
             '</p></div>'
             % (th, body, self.company_currency_id.name or 'MXN'))
