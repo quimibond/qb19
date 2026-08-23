@@ -6,9 +6,18 @@ actividades viven como datos estructurados del proceso, y el PDF se genera
 desde Odoo con el layout del F-P-G01-02 (ver report/report_procedure.xml).
 
 Son LÍNEAS (no evidencia), así que NO usan el mixin de folio/inmutabilidad.
+
+Medición (fase 10): una actividad puede declarar el modelo de Odoo cuyos
+registros son la EVIDENCIA de que se ejecutó (cotización creada, OC enviada,
+MO cerrada). Un cron evalúa cada actividad contra su cadencia esperada y
+pinta el semáforo de cumplimiento — el procedimiento se mide con acciones
+reales, no con texto.
 """
+from datetime import datetime, timedelta
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+from odoo.tools.safe_eval import safe_eval
 
 
 class SgiProcessProcedure(models.Model):
@@ -34,6 +43,17 @@ class SgiProcessProcedure(models.Model):
     activity_count = fields.Integer(
         string="# Actividades", compute='_compute_activity_count')
 
+    # Cumplimiento del procedimiento: agregado de las actividades medibles.
+    measurable_activity_count = fields.Integer(
+        string="Actividades medibles", compute='_compute_measure_stats')
+    measure_red_count = fields.Integer(
+        string="Sin evidencia en su periodo", compute='_compute_measure_stats')
+    procedure_compliance = fields.Integer(
+        string="% Cumplimiento del procedimiento",
+        compute='_compute_measure_stats',
+        help="Porcentaje de actividades medibles con evidencia dentro de su "
+             "cadencia esperada (lo calcula el cron de medición).")
+
     # Firmas del procedimiento (bloque del F-P-G01-02). Se imprimen como
     # nombre + cargo; el PDF generado es copia NO controlada, sin imagen de firma.
     doc_owner_id = fields.Many2one(
@@ -53,6 +73,18 @@ class SgiProcessProcedure(models.Model):
     def _compute_activity_count(self):
         for process in self:
             process.activity_count = len(process.activity_ids)
+
+    @api.depends('activity_ids.measure_state', 'activity_ids.measure_model_id')
+    def _compute_measure_stats(self):
+        for process in self:
+            acts = process.activity_ids.filtered(
+                lambda a: a.measure_model_id and a.measure_state)
+            reds = acts.filtered(lambda a: a.measure_state == 'rojo')
+            process.measurable_activity_count = len(acts)
+            process.measure_red_count = len(reds)
+            process.procedure_compliance = (
+                int(round((len(acts) - len(reds)) * 100.0 / len(acts)))
+                if acts else 0)
 
     def _sgi_flag_procedure_dirty(self):
         """Marca el procedimiento controlado VIGENTE como 'pendiente de revisión'
@@ -235,6 +267,115 @@ class SgiProcessActivity(models.Model):
     note = fields.Text(
         string="Nota", help="Notas resaltadas del procedimiento.")
 
+    # --- Medición: la actividad ligada a las acciones reales de Odoo ---
+    measure_model_id = fields.Many2one(
+        'ir.model', string="Modelo que la materializa", ondelete='set null',
+        help="Modelo de Odoo cuyos registros son la evidencia de que la "
+             "actividad se ejecutó (sale.order para cotizar, mrp.production "
+             "para cerrar una orden, quality.check para inspeccionar…).")
+    measure_model_name = fields.Char(
+        related='measure_model_id.model', string="Modelo técnico")
+    measure_domain = fields.Char(
+        string="Filtro de evidencia", default='[]',
+        help="Dominio sobre el modelo para acotar qué registros cuentan, "
+             "ej. [('state', '=', 'done')].")
+    measure_date_field = fields.Char(
+        string="Campo de fecha", default='create_date',
+        help="Campo del modelo que fecha la ejecución (create_date, "
+             "date_done, date_approve…). Si no existe, se usa create_date.")
+    measure_cadence = fields.Selection([
+        ('evento', "Por evento (solo conteo)"),
+        ('diaria', "Diaria"),
+        ('semanal', "Semanal"),
+        ('quincenal', "Quincenal"),
+        ('mensual', "Mensual"),
+        ('trimestral', "Trimestral"),
+        ('semestral', "Semestral"),
+        ('anual', "Anual"),
+    ], string="Cadencia esperada", default='evento',
+        help="Cada cuánto DEBE haber evidencia. «Por evento» solo cuenta, "
+             "sin juzgar cumplimiento (actividades que dependen de demanda).")
+    measure_last_date = fields.Datetime("Última ejecución", readonly=True)
+    measure_count_30d = fields.Integer("Ejecuciones (30 días)", readonly=True)
+    measure_state = fields.Selection([
+        ('verde', "En cumplimiento"),
+        ('rojo', "Sin evidencia en su periodo"),
+    ], string="Cumplimiento", readonly=True)
+
+    # Ventana de tolerancia por cadencia (días naturales): holgura para fines
+    # de semana y cierres sin falsos rojos.
+    _SGI_CADENCE_DAYS = {
+        'diaria': 2, 'semanal': 9, 'quincenal': 18, 'mensual': 35,
+        'trimestral': 100, 'semestral': 190, 'anual': 380,
+    }
+    # Campos de medición: configurarlos o que el cron los actualice NO es un
+    # cambio al cuerpo del procedimiento (no dispara el candado G14).
+    _SGI_MEASURE_FIELDS = {
+        'measure_model_id', 'measure_domain', 'measure_date_field',
+        'measure_cadence', 'measure_last_date', 'measure_count_30d',
+        'measure_state'}
+
+    def _sgi_measure_domain(self):
+        self.ensure_one()
+        try:
+            domain = safe_eval(self.measure_domain or '[]')
+            return domain if isinstance(domain, list) else []
+        except Exception:
+            return []
+
+    def _sgi_measure(self):
+        """Recalcula la evidencia de cada actividad medible."""
+        now = fields.Datetime.now()
+        for activity in self:
+            vals = {'measure_last_date': False, 'measure_count_30d': 0,
+                    'measure_state': False}
+            model_name = activity.measure_model_id.model
+            Model = self.env.get(model_name) if model_name else None
+            if Model is None or Model._transient or Model._abstract:
+                activity.write(vals)
+                continue
+            Model = Model.sudo()
+            date_field = activity.measure_date_field or 'create_date'
+            if date_field not in Model._fields:
+                date_field = 'create_date'
+            domain = activity._sgi_measure_domain()
+            last = Model.search(domain, order='%s desc, id desc' % date_field,
+                                limit=1)
+            last_date = last and last[date_field] or False
+            if last_date and not isinstance(last_date, datetime):
+                last_date = fields.Datetime.to_datetime(last_date)
+            vals['measure_last_date'] = last_date
+            vals['measure_count_30d'] = Model.search_count(
+                domain + [(date_field, '>=', now - timedelta(days=30))])
+            days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
+            if days:
+                in_window = Model.search_count(
+                    domain + [(date_field, '>=', now - timedelta(days=days))])
+                vals['measure_state'] = 'verde' if in_window else 'rojo'
+            elif last_date:
+                vals['measure_state'] = 'verde'
+            activity.write(vals)
+
+    @api.model
+    def cron_measure_activities(self):
+        self.search([('measure_model_id', '!=', False)])._sgi_measure()
+        return True
+
+    def action_view_measure_records(self):
+        """Abre los registros reales que son la evidencia de la actividad."""
+        self.ensure_one()
+        if not self.measure_model_id:
+            raise UserError(
+                "Esta actividad no tiene modelo de medición ligado.")
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "%s — evidencia" % (
+                self.name or self.number or self.section or 'Actividad'),
+            'res_model': self.measure_model_id.model,
+            'view_mode': 'list,form',
+            'domain': self._sgi_measure_domain(),
+        }
+
     @api.depends('number', 'name', 'section')
     def _compute_display_name(self):
         for activity in self:
@@ -265,7 +406,10 @@ class SgiProcessActivity(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        self.process_id._sgi_flag_procedure_dirty()
+        # La medición (configuración o refresco del cron) no es un cambio al
+        # cuerpo del procedimiento: no dispara revisión documental (G14).
+        if set(vals) - self._SGI_MEASURE_FIELDS:
+            self.process_id._sgi_flag_procedure_dirty()
         return res
 
     def unlink(self):
