@@ -19,18 +19,18 @@ class TestFase9Forms(TransactionCase):
         self.assertTrue(audit.opening_minutes and audit.closing_minutes)
 
     def test_03_auditor_eval_survey(self):
-        survey = self.env.ref('quimibond_sgi.sgi_survey_auditor_eval')
-        self.assertGreaterEqual(len(survey.question_ids), 5,
-                                "La evaluación del auditor trae sus preguntas.")
+        # La encuesta vive en producción (creada por MCP, editable por MAST):
+        # el botón la localiza por la clave en el título.
         audit = self.env['sgi.audit'].create({})
+        from odoo.exceptions import UserError as UE
+        with self.assertRaises(UE):
+            audit.action_evaluate_auditors()  # sin encuesta -> error claro
+        self.env['survey.survey'].create({
+            'title': "Evaluación del comportamiento del auditor (F-IT-P-G03-01-01)",
+            'survey_type': 'custom'})
         action = audit.action_evaluate_auditors()
         self.assertEqual(action['type'], 'ir.actions.act_url')
         self.assertIn('/survey/', action['url'])
-
-    def test_04_consulta_survey_seeded(self):
-        survey = self.env.ref('quimibond_sgi.sgi_survey_consulta')
-        self.assertGreaterEqual(len(survey.question_ids), 5,
-                                "La consulta y participación (F-P-A10-05) trae sus preguntas.")
 
     def test_05_product_spec_and_job_epp(self):
         # Spec del producto (C04-06/C14-02) y EPP por puesto (S03-01).

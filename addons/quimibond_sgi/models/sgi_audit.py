@@ -249,14 +249,20 @@ class SgiAudit(models.Model):
     def action_evaluate_auditors(self):
         """Abre la encuesta de evaluación del comportamiento del auditor
         (sustituye F-IT-P-G03-01-01): el auditado la contesta al terminar la
-        auditoría y el resultado queda en Encuestas, consultable por MAST."""
+        auditoría y el resultado queda en Encuestas, consultable por MAST.
+        La encuesta se creó directamente en producción (MCP, 2026-08-23) y
+        MAST puede editarla; se localiza por su clave en el título, con
+        fallback al xmlid por si alguna instalación la siembra."""
         self.ensure_one()
         survey = self.env.ref(
             'quimibond_sgi.sgi_survey_auditor_eval', raise_if_not_found=False)
         if not survey:
+            survey = self.env['survey.survey'].sudo().search(
+                [('title', 'like', 'F-IT-P-G03-01-01')], limit=1)
+        if not survey:
             raise UserError(
-                "No está sembrada la encuesta de evaluación del auditor "
-                "(actualice el módulo SGI).")
+                "No existe la encuesta de evaluación del auditor. Cree en "
+                "Encuestas una con la clave F-IT-P-G03-01-01 en el título.")
         answer = survey.sudo()._create_answer(user=self.env.user)
         if hasattr(answer, 'get_start_url'):
             url = answer.get_start_url()
