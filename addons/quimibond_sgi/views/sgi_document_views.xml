@@ -8,7 +8,11 @@
             <form string="Documento controlado SGI">
                 <header>
                     <button name="action_sgi_view_file" type="object" string="Ver archivo"
-                            class="btn-primary" icon="fa-file-pdf-o"/>
+                            class="btn-primary" icon="fa-file-pdf-o"
+                            invisible="sgi_doc_type == 'formulario_odoo'"/>
+                    <button name="action_sgi_open_odoo_form" type="object" string="Abrir en Odoo"
+                            class="btn-primary" icon="fa-external-link"
+                            invisible="sgi_doc_type != 'formulario_odoo'"/>
                     <button name="action_generate_acks" type="object" string="Generar acuses"
                             class="btn-secondary" invisible="sgi_state not in ('piloto','vigente')"/>
                     <field name="sgi_state" widget="statusbar"
@@ -60,7 +64,7 @@
                             <field name="sgi_owner_id"/>
                         </group>
                     </group>
-                    <group string="Archivo">
+                    <group string="Archivo" invisible="sgi_doc_type == 'formulario_odoo'">
                         <field name="type" widget="radio" options="{'horizontal': true}"
                                string="Tipo de archivo"/>
                         <field name="datas" filename="name" string="PDF / archivo"
@@ -68,9 +72,20 @@
                         <field name="url" widget="url" placeholder="https://…"
                                invisible="type != 'url'"/>
                     </group>
+                    <group string="Dónde vive en Odoo (este «documento» es una vista, no un archivo)"
+                           invisible="sgi_doc_type != 'formulario_odoo'">
+                        <field name="sgi_odoo_menu_id" options="{'no_create': True}"/>
+                        <field name="sgi_migration_point_id" string="…o el worksheet de Calidad"/>
+                        <div class="text-muted" colspan="2">
+                            El formato ya no se llena en papel ni en PDF: se captura
+                            directo en Odoo. Liga aquí su menú (o su worksheet) y el
+                            botón <b>Abrir en Odoo</b> lleva a la vista real; la
+                            clave, revisión y difusión se siguen controlando aquí.
+                        </div>
+                    </group>
                     <notebook>
                         <page string="Migración a Odoo"
-                              invisible="sgi_doc_type not in ('formato', 'formato_it')">
+                              invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo')">
                             <group>
                                 <group>
                                     <field name="sgi_migration_class"/>
@@ -79,12 +94,20 @@
                                 <group>
                                     <field name="sgi_migration_target"/>
                                     <field name="sgi_migration_point_id"/>
+                                    <field name="sgi_odoo_menu_id"
+                                           string="Menú de Odoo destino"
+                                           options="{'no_create': True}"/>
                                     <button name="action_sgi_open_migration_point"
                                             type="object" string="Abrir worksheet"
                                             icon="fa-external-link" class="btn-secondary"
                                             invisible="not sgi_migration_point_id"/>
                                 </group>
                             </group>
+                            <div class="text-muted" invisible="sgi_migration_state != 'migrado'">
+                                Ya migrado: cambia el <b>Tipo de documento</b> a
+                                «Formulario de Odoo (vista)» para que deje de pedir
+                                archivo y el botón principal abra la vista real.
+                            </div>
                         </page>
                         <page string="Documentos relacionados" invisible="not sgi_is_controlled">
                             <group string="Familia documental">
@@ -168,7 +191,11 @@
                 <field name="sgi_owner_id" optional="hide"/>
                 <field name="sgi_issue_date" optional="hide"/>
                 <button name="action_sgi_view_file" type="object" icon="fa-file-pdf-o"
-                        string="Ver archivo" title="Ver archivo"/>
+                        string="Ver archivo" title="Ver archivo"
+                        invisible="sgi_doc_type == 'formulario_odoo'"/>
+                <button name="action_sgi_open_odoo_form" type="object" icon="fa-external-link"
+                        string="Abrir en Odoo" title="Abrir en Odoo"
+                        invisible="sgi_doc_type != 'formulario_odoo'"/>
             </list>
         </field>
     </record>
@@ -184,6 +211,8 @@
                 <field name="sgi_process_id"/>
                 <filter name="sgi_vigente" string="Vigentes" domain="[('sgi_state','=','vigente')]"/>
                 <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
+                <filter name="sgi_formularios" string="Formularios de Odoo (vistas)"
+                        domain="[('sgi_doc_type','=','formulario_odoo')]"/>
                 <filter name="sgi_por_revisar" string="Por revisar"
                         domain="[('sgi_next_review_date','&lt;', (context_today() + relativedelta(days=60)).strftime('%Y-%m-%d'))]"/>
                 <group>
@@ -420,7 +449,7 @@ else:
         <field name="res_model">documents.document</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="domain">[('sgi_is_controlled', '=', True),
-            ('sgi_doc_type', 'in', ('formato', 'formato_it')),
+            ('sgi_doc_type', 'in', ('formato', 'formato_it', 'formulario_odoo')),
             ('sgi_state', '!=', 'obsoleto')]</field>
         <field name="search_view_id" ref="sgi_migration_view_search"/>
         <field name="view_ids" eval="[(5, 0, 0),

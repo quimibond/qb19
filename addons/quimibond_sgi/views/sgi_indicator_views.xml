@@ -50,10 +50,11 @@
                         cuentan en la salud del Panel. Es la causa de que un
                         proceso se vea «verde» con KPIs en rojo.
                     </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
                     <div class="oe_title">
-                        <label for="code"/>
-                        <h1><field name="code" placeholder="VE-01"/></h1>
-                        <field name="name" placeholder="Nombre del indicador"/>
+                        <h1><field name="name" placeholder="Nombre del indicador"/></h1>
+                        <h3><field name="code" placeholder="VE-01"/></h3>
                     </div>
                     <group>
                         <group string="Clasificación">
