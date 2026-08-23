@@ -11,7 +11,8 @@ cuántas horas del cuello de botella ocupa y con qué mezcla:
 
 Cruce: líneas de factura (dedup del triplete) × qb.costo.producto del
 MISMO período — así cada margen usa el costo vigente en el mes en que se
-facturó, no el de hoy.
+facturó, no el de hoy. Solo cuentas de tipo 'income' (ventas/rebajas de
+producto): ventas de activo fijo y anticipos NO cuentan como venta.
 """
 from odoo import fields, models
 
@@ -76,9 +77,15 @@ class QbClienteRentabilidad(models.Model):
                        am.move_type, aml.company_id
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
+                -- Solo cuentas de tipo 'income' (ventas y rebajas de
+                -- producto): la utilidad en venta de activo fijo
+                -- (income_other) y los anticipos de clientes (liability)
+                -- no son venta de producto y contaminaban al cliente.
+                JOIN account_account aa ON aa.id = aml.account_id
                 WHERE am.move_type IN ('out_invoice', 'out_refund')
                   AND am.state = 'posted'
                   AND aml.display_type = 'product'
+                  AND aa.account_type = 'income'
                   AND aml.product_id IS NOT NULL
                   AND am.invoice_date >= (date_trunc('month', CURRENT_DATE)
                                           - INTERVAL '12 months')

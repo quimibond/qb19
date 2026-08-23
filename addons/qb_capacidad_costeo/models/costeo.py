@@ -599,7 +599,13 @@ class QbCostoProducto(models.Model):
         de ingreso, balance es crédito (negativo) en venta y débito (positivo)
         en nota de crédito → ``SUM(-balance)`` suma ventas y resta devoluciones
         sin necesitar el CASE por move_type. Mismo criterio que el cotizador
-        (``sales_by_customer``)."""
+        (``sales_by_customer``).
+
+        Solo cuentas de tipo 'income' (401.x ventas, 402.x rebajas/dev):
+        una factura contra 'utilidad en venta de activo fijo' (income_other,
+        p.ej. la venta de una rama Icomatex por $11.3M en 2026-03) o contra
+        anticipos de clientes (liability) NO es venta de producto y antes
+        contaminaba precio y contribución del mes."""
         date_to = period + relativedelta(months=1)
         self.env.cr.execute("""
             WITH lines AS (
@@ -607,10 +613,12 @@ class QbCostoProducto(models.Model):
                        aml.balance, am.move_type, am.currency_id
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
+                JOIN account_account aa ON aa.id = aml.account_id
                 WHERE am.move_type IN ('out_invoice', 'out_refund')
                   AND am.state = 'posted'
                   AND aml.display_type = 'product'
                   AND aml.product_id IS NOT NULL
+                  AND aa.account_type = 'income'
                   AND am.invoice_date >= %s AND am.invoice_date < %s
                   AND aml.company_id = %s
             ),
@@ -962,9 +970,11 @@ class QbCostoProducto(models.Model):
                        aml.move_id, aml.quantity, am.move_type, am.invoice_date
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
+                JOIN account_account aa ON aa.id = aml.account_id
                 WHERE am.move_type IN ('out_invoice', 'out_refund')
                   AND am.state = 'posted'
                   AND aml.display_type = 'product'
+                  AND aa.account_type = 'income'
                   AND aml.product_id = %%s
                   AND am.invoice_date >= %%s AND am.invoice_date < %%s
                   AND aml.company_id = %%s
@@ -1001,9 +1011,11 @@ class QbCostoProducto(models.Model):
                        am.commercial_partner_id, am.currency_id
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
+                JOIN account_account aa ON aa.id = aml.account_id
                 WHERE am.move_type IN ('out_invoice', 'out_refund')
                   AND am.state = 'posted'
                   AND aml.display_type = 'product'
+                  AND aa.account_type = 'income'
                   AND aml.product_id = %s
                   AND am.invoice_date >= %s
                   AND aml.company_id = %s
