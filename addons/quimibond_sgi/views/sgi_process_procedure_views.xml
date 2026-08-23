@@ -9,10 +9,13 @@
                 <header>
                     <button name="action_open_odoo" type="object"
                             string="Abrir en Odoo" icon="fa-external-link"
-                            invisible="not odoo_menu_id"/>
+                            invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                     <button name="action_view_measure_records" type="object"
                             string="Ver evidencia" icon="fa-check-square-o"
                             invisible="not measure_model_id"/>
+                    <button name="action_open_next" type="object"
+                            string="Siguiente paso" icon="fa-arrow-right"
+                            invisible="not next_activity_ids"/>
                     <field name="measure_state" widget="statusbar"
                            invisible="not measure_state"/>
                 </header>
@@ -63,6 +66,27 @@
                     <group string="Nota">
                         <field name="note" nolabel="1"/>
                     </group>
+                    <group string="Encadenamiento — de dónde viene y a dónde va">
+                        <group string="Recibe de">
+                            <field name="in_link_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="from_activity_id"/>
+                                    <field name="name"/>
+                                    <field name="is_cross_process" string="Cruza" optional="show"/>
+                                </list>
+                            </field>
+                        </group>
+                        <group string="Entrega a">
+                            <field name="out_link_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="to_activity_id"/>
+                                    <field name="name"/>
+                                    <field name="is_cross_process" string="Cruza" optional="show"/>
+                                </list>
+                            </field>
+                        </group>
+                        <field name="next_activity_ids" invisible="1"/>
+                    </group>
                     <group string="Medición — la actividad como acciones reales de Odoo">
                         <group>
                             <field name="measure_model_id" options="{'no_create': True}"/>
@@ -108,12 +132,13 @@
                 <field name="odoo_menu_id" optional="show"/>
                 <field name="measure_cadence" optional="hide"/>
                 <field name="measure_count_30d" optional="hide"/>
+                <field name="measure_model_id" column_invisible="1"/>
                 <field name="measure_state" optional="show" widget="badge"
                        decoration-success="measure_state == 'verde'"
                        decoration-danger="measure_state == 'rojo'"/>
                 <button name="action_open_odoo" type="object"
                         string="Abrir en Odoo" icon="fa-external-link"
-                        invisible="not odoo_menu_id"/>
+                        invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                 <button name="action_view_measure_records" type="object"
                         string="Evidencia" icon="fa-check-square-o"
                         invisible="not measure_model_id"/>
@@ -247,7 +272,7 @@
                                    decoration-danger="measure_state == 'rojo'"/>
                             <button name="action_open_odoo" type="object"
                                     string="Abrir en Odoo" icon="fa-external-link"
-                                    invisible="not odoo_menu_id"/>
+                                    invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                             <button name="action_view_measure_records" type="object"
                                     string="Evidencia" icon="fa-check-square-o"
                                     invisible="not measure_model_id"/>
