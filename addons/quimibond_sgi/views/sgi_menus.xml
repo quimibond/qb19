@@ -20,9 +20,12 @@
               groups="quimibond_sgi.group_sgi_manager"/>
     <!-- Los Paretos de calidad son análisis operativo: viven en la app
          CALIDAD (ver "OPERACIÓN EN SU APP"). El Panel se queda con la
-         gestión pura: salud, Política, Objetivos y Diagnóstico. -->
+         gestión pura: salud, Política, Objetivos y Diagnóstico.
+         El parent declarado es un fallback: la función del final del
+         archivo lo recuelga del raíz de Calidad en runtime (el xmlid de
+         ese menú es Enterprise y una ref dura rompería la carga). -->
     <menuitem id="menu_sgi_dashboards" name="Tableros (SGI)"
-              parent="quality.menu_quality_root" sequence="60"
+              parent="menu_sgi_root" sequence="85"
               groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"
               parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto"
@@ -176,8 +179,10 @@
          CALIDAD (los planes de control ya envuelven quality.point de esa
          app). El SGI conserva las señales: NC de calibración, Diagnóstico
          y actividades al MAST. El xmlid no cambia: solo se reparenta. -->
+    <!-- Parent fallback (SGI): la función del final del archivo lo
+         recuelga del raíz de la app Calidad en runtime. -->
     <menuitem id="menu_sgi_automotive" name="Calidad preventiva"
-              parent="quality.menu_quality_root" sequence="50"
+              parent="menu_sgi_root" sequence="80"
               groups="quality.group_quality_user,quimibond_sgi.group_sgi_user"/>
     <menuitem id="menu_sgi_control_plans" name="Planes de control" parent="menu_sgi_automotive"
               action="sgi_control_plan_action" sequence="10"/>
@@ -221,4 +226,8 @@
               action="sgi_format_map_action" sequence="70"/>
     <menuitem id="menu_sgi_config_alert_sources" name="Fuentes de NC automáticas" parent="menu_sgi_config"
               action="sgi_alert_source_action" sequence="80"/>
+
+    <!-- Recuelga los menús de calidad del raíz de la app Calidad, con
+         tolerancia si el xmlid Enterprise no existe (ver ir.ui.menu). -->
+    <function model="ir.ui.menu" name="_sgi_attach_quality_menus"/>
 </odoo>

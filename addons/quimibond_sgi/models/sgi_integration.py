@@ -287,3 +287,30 @@ class ResPartner(models.Model):
             'domain': [('partner_id', '=', self.id)],
             'context': {'default_partner_id': self.id},
         }
+
+
+class IrUiMenu(models.Model):
+    _inherit = 'ir.ui.menu'
+
+    @api.model
+    def _sgi_attach_quality_menus(self):
+        """Cuelga 'Calidad preventiva' y 'Tableros (SGI)' del menú raíz de la
+        app Calidad, resolviendo el xmlid en runtime con tolerancia: el
+        módulo quality es Enterprise y una referencia dura en el XML rompe
+        la carga completa del registro si el id no coincide. Si no se
+        encuentra la app Calidad, los menús se quedan bajo el SGI (el
+        parent declarado en sgi_menus.xml), que siempre existe."""
+        root = None
+        for xmlid in ('quality.menu_quality_root',
+                      'quality_control.menu_quality_root'):
+            root = self.env.ref(xmlid, raise_if_not_found=False)
+            if root:
+                break
+        if not root:
+            return False
+        for xmlid in ('quimibond_sgi.menu_sgi_automotive',
+                      'quimibond_sgi.menu_sgi_dashboards'):
+            menu = self.env.ref(xmlid, raise_if_not_found=False)
+            if menu and menu.parent_id != root:
+                menu.parent_id = root
+        return True
