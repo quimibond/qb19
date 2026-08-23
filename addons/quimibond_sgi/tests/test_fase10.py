@@ -106,3 +106,44 @@ class TestActivityMeasurement(TransactionCase):
             'process_id': self.process.id, 'name': 'Sin medición'})
         with self.assertRaises(UserError):
             bare.action_view_measure_records()
+
+    def test_10_activity_chain(self):
+        """El encadenamiento liga pasos con su entregable, cruza procesos y
+        el botón «Siguiente paso» navega la cadena."""
+        other = self.env['sgi.process'].create({
+            'code': 'P-TST-CHAIN', 'name': 'Proceso destino'})
+        a = self._activity(name='Paso A')
+        b = self.env['sgi.process.activity'].create({
+            'process_id': other.id, 'name': 'Paso B'})
+        link = self.env['sgi.activity.link'].create({
+            'from_activity_id': a.id, 'to_activity_id': b.id,
+            'name': 'Entregable X'})
+        self.assertTrue(link.is_cross_process)
+        self.assertEqual(a.next_activity_ids, b)
+        self.assertEqual(b.prev_activity_ids, a)
+        action = a.action_open_next()
+        self.assertEqual(action['res_id'], b.id)
+        with self.assertRaises(UserError):
+            b.action_open_next()
+        from odoo.exceptions import ValidationError as VE
+        with self.assertRaises(VE):
+            self.env['sgi.activity.link'].create({
+                'from_activity_id': a.id, 'to_activity_id': a.id,
+                'name': 'Ciclo'})
+
+    def test_09_menu_resolution_from_text(self):
+        """El texto «App → Menú» se resuelve al menú real, y sin menú el
+        paso abre la evidencia (nunca se queda en texto plano)."""
+        action = self.env['ir.actions.act_window'].create({
+            'name': 'Prueba fase10', 'res_model': 'res.partner'})
+        root = self.env['ir.ui.menu'].create({'name': 'AppFase10'})
+        menu = self.env['ir.ui.menu'].create({
+            'name': 'PasoFase10', 'parent_id': root.id,
+            'action': 'ir.actions.act_window,%d' % action.id})
+        act = self._activity(odoo_ref='AppFase10 → PasoFase10')
+        act._sgi_resolve_menu()
+        self.assertEqual(act.odoo_menu_id, menu)
+        # Fallback: sin menú pero con medición, abrir lleva a la evidencia.
+        fallback = self._activity(odoo_ref='Ruta → Inexistente')
+        result = fallback.action_open_odoo()
+        self.assertEqual(result['res_model'], 'res.partner')
