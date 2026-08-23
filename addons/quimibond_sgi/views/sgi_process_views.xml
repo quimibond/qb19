@@ -170,11 +170,15 @@
         <field name="arch" type="xml">
             <form string="Proceso">
                 <sheet>
+                    <!-- Botones de alerta: solo aparecen cuando hay algo que atender.
+                         Los de navegación (Documentos, Indicadores, Riesgos) van al final. -->
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_open_ncs" type="object" class="oe_stat_button" icon="fa-exclamation-triangle">
+                        <button name="action_open_ncs" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle" invisible="nc_count == 0">
                             <field name="nc_count" widget="statinfo" string="NC abiertas"/>
                         </button>
-                        <button name="action_open_overdue_actions" type="object" class="oe_stat_button" icon="fa-clock-o">
+                        <button name="action_open_overdue_actions" type="object" class="oe_stat_button"
+                                icon="fa-clock-o" invisible="overdue_action_count == 0">
                             <field name="overdue_action_count" widget="statinfo" string="Acc. vencidas"/>
                         </button>
                         <button name="action_open_red_kpis" type="object" class="oe_stat_button" icon="fa-thermometer-full"
@@ -188,13 +192,17 @@
                         <button name="action_open_documents" type="object" class="oe_stat_button" icon="fa-file-text-o">
                             <field name="document_count" widget="statinfo" string="Documentos"/>
                         </button>
-                        <button name="action_open_indicators" type="object" class="oe_stat_button" icon="fa-line-chart">
+                        <button name="action_open_indicators" type="object" class="oe_stat_button"
+                                icon="fa-line-chart" invisible="indicator_count == 0">
                             <field name="indicator_count" widget="statinfo" string="Indicadores"/>
                         </button>
-                        <button name="action_open_risks" type="object" class="oe_stat_button" icon="fa-shield">
+                        <button name="action_open_risks" type="object" class="oe_stat_button"
+                                icon="fa-shield" invisible="risk_count == 0">
                             <field name="risk_count" widget="statinfo" string="Riesgos"/>
                         </button>
                     </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nombre del proceso"/></h1>
                         <h3><field name="code" placeholder="Clave"/></h3>
@@ -204,63 +212,63 @@
                                decoration-danger="health == 'rojo'"/>
                     </div>
                     <group>
-                        <group>
+                        <group string="Qué es">
+                            <field name="active" invisible="1"/>
                             <field name="process_type"/>
                             <field name="parent_id"/>
-                            <field name="active"/>
+                            <field name="odoo_model_ids" string="Se opera en Odoo con"
+                                   widget="many2many_tags" readonly="1"/>
                         </group>
-                        <group>
-                            <field name="owner_id"/>
+                        <group string="Quién responde por él">
+                            <field name="owner_id" string="Dueño del proceso"/>
                             <field name="department_id"/>
+                            <field name="job_ids" widget="many2many_tags"
+                                   string="Puestos que participan"/>
                         </group>
                     </group>
                     <group string="Objetivo del proceso">
                         <field name="purpose" nolabel="1"
                                placeholder="Para qué existe este proceso (de su caracterización/SIPOC)…"/>
                     </group>
-                    <group string="Se opera en Odoo con">
-                        <field name="odoo_model_ids" nolabel="1" widget="many2many_tags" readonly="1"/>
-                    </group>
                     <notebook>
-                        <page string="Entradas">
+                        <!-- La pestaña «Procedimiento» (el cómo, paso a paso) se
+                             inserta ANTES de esta, desde sgi_process_procedure_views.xml. -->
+                        <page string="Entradas y salidas" name="entradas_salidas">
+                            <div class="alert alert-info mb-3" role="status">
+                                Lo que este proceso <b>recibe</b> de otros y lo que
+                                les <b>entrega</b>: cada línea es una entrega real,
+                                con su formato y su criterio de aceptación. Si vive
+                                en Odoo, <i>Ver registros</i> abre las entregas.
+                            </div>
+                            <separator string="Recibe de otros procesos (entradas)"/>
                             <field name="in_flow_ids">
                                 <list editable="bottom">
-                                    <field name="from_process_id"/>
-                                    <field name="name"/>
-                                    <field name="document_id"/>
-                                    <field name="acceptance_criteria"/>
-                                    <field name="odoo_model_id" optional="show"/>
+                                    <field name="from_process_id" string="Lo entrega"/>
+                                    <field name="name" string="Entregable"/>
+                                    <field name="document_id" optional="show"/>
+                                    <field name="acceptance_criteria" optional="show"/>
+                                    <field name="odoo_model_id" optional="hide"/>
                                     <button name="action_view_records" type="object"
                                             string="Ver registros" icon="fa-external-link"
                                             invisible="not odoo_model_id"/>
                                 </list>
                             </field>
-                        </page>
-                        <page string="Salidas">
+                            <separator string="Entrega a otros procesos (salidas)"/>
                             <field name="out_flow_ids">
                                 <list editable="bottom">
-                                    <field name="name"/>
-                                    <field name="to_process_id"/>
-                                    <field name="document_id"/>
-                                    <field name="acceptance_criteria"/>
-                                    <field name="odoo_model_id" optional="show"/>
+                                    <field name="name" string="Entregable"/>
+                                    <field name="to_process_id" string="Lo recibe"/>
+                                    <field name="document_id" optional="show"/>
+                                    <field name="acceptance_criteria" optional="show"/>
+                                    <field name="odoo_model_id" optional="hide"/>
                                     <button name="action_view_records" type="object"
                                             string="Ver registros" icon="fa-external-link"
                                             invisible="not odoo_model_id"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Cómo se opera">
-                            <div class="alert alert-info mb-3" role="status">
-                                <b>Dos niveles:</b> los <b>procedimientos e
-                                instructivos vigentes</b> son el «cómo» aprobado
-                                (el procedimiento vivo se edita en la pestaña
-                                <i>Procedimiento</i> y se imprime desde el botón
-                                «Actividades»); abajo están <b>todos los
-                                documentos</b> del proceso (formatos, DATs,
-                                anexos) con su estado.
-                            </div>
-                            <group string="Procedimientos e instructivos vigentes">
+                        <page string="Documentos" name="documentos">
+                            <group string="Procedimientos e instructivos vigentes (el «cómo» aprobado)">
                                 <field name="procedure_ids" nolabel="1" readonly="1">
                                     <list>
                                         <field name="sgi_code"/>
@@ -284,7 +292,7 @@
                                 </field>
                             </group>
                         </page>
-                        <page string="Indicadores">
+                        <page string="Indicadores" name="indicadores">
                             <field name="indicator_ids" readonly="1">
                                 <list>
                                     <field name="code"/>
@@ -296,7 +304,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Riesgos y oportunidades">
+                        <page string="Riesgos y oportunidades" name="riesgos">
                             <field name="risk_ids" readonly="1">
                                 <list>
                                     <field name="instrument"/>
@@ -306,10 +314,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Puestos">
-                            <field name="job_ids"/>
-                        </page>
-                        <page string="Subprocesos" invisible="not child_ids">
+                        <page string="Subprocesos" name="subprocesos" invisible="not child_ids">
                             <field name="child_ids" readonly="1">
                                 <list>
                                     <field name="code"/>
