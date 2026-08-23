@@ -274,7 +274,10 @@ class SgiProcessActivity(models.Model):
              "actividad se ejecutó (sale.order para cotizar, mrp.production "
              "para cerrar una orden, quality.check para inspeccionar…).")
     measure_model_name = fields.Char(
-        related='measure_model_id.model', string="Modelo técnico")
+        string="Modelo técnico", compute='_compute_measure_model_name',
+        inverse='_inverse_measure_model_name', store=True,
+        help="Nombre técnico (sale.order, mrp.production…). Escribirlo "
+             "resuelve solo el modelo — útil para capturas masivas.")
     measure_domain = fields.Char(
         string="Filtro de evidencia", default='[]',
         help="Dominio sobre el modelo para acotar qué registros cuentan, "
@@ -311,9 +314,22 @@ class SgiProcessActivity(models.Model):
     # Campos de medición: configurarlos o que el cron los actualice NO es un
     # cambio al cuerpo del procedimiento (no dispara el candado G14).
     _SGI_MEASURE_FIELDS = {
-        'measure_model_id', 'measure_domain', 'measure_date_field',
-        'measure_cadence', 'measure_last_date', 'measure_count_30d',
-        'measure_state'}
+        'measure_model_id', 'measure_model_name', 'measure_domain',
+        'measure_date_field', 'measure_cadence', 'measure_last_date',
+        'measure_count_30d', 'measure_state'}
+
+    @api.depends('measure_model_id')
+    def _compute_measure_model_name(self):
+        for activity in self:
+            activity.measure_model_name = activity.measure_model_id.model
+
+    def _inverse_measure_model_name(self):
+        IrModel = self.env['ir.model'].sudo()
+        for activity in self:
+            name = (activity.measure_model_name or '').strip()
+            model = IrModel.search([('model', '=', name)], limit=1) \
+                if name and name in self.env else IrModel.browse()
+            activity.measure_model_id = model
 
     def _sgi_measure_domain(self):
         self.ensure_one()
@@ -324,36 +340,41 @@ class SgiProcessActivity(models.Model):
             return []
 
     def _sgi_measure(self):
-        """Recalcula la evidencia de cada actividad medible."""
+        """Recalcula la evidencia de cada actividad medible. Una actividad con
+        dominio o modelo inválido queda sin semáforo, sin tumbar al resto."""
         now = fields.Datetime.now()
         for activity in self:
             vals = {'measure_last_date': False, 'measure_count_30d': 0,
                     'measure_state': False}
-            model_name = activity.measure_model_id.model
-            Model = self.env.get(model_name) if model_name else None
-            if Model is None or Model._transient or Model._abstract:
-                activity.write(vals)
-                continue
-            Model = Model.sudo()
-            date_field = activity.measure_date_field or 'create_date'
-            if date_field not in Model._fields:
-                date_field = 'create_date'
-            domain = activity._sgi_measure_domain()
-            last = Model.search(domain, order='%s desc, id desc' % date_field,
-                                limit=1)
-            last_date = last and last[date_field] or False
-            if last_date and not isinstance(last_date, datetime):
-                last_date = fields.Datetime.to_datetime(last_date)
-            vals['measure_last_date'] = last_date
-            vals['measure_count_30d'] = Model.search_count(
-                domain + [(date_field, '>=', now - timedelta(days=30))])
-            days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-            if days:
-                in_window = Model.search_count(
-                    domain + [(date_field, '>=', now - timedelta(days=days))])
-                vals['measure_state'] = 'verde' if in_window else 'rojo'
-            elif last_date:
-                vals['measure_state'] = 'verde'
+            try:
+                model_name = activity.measure_model_id.model
+                Model = self.env.get(model_name) if model_name else None
+                if Model is None or Model._transient or Model._abstract:
+                    activity.write(vals)
+                    continue
+                Model = Model.sudo()
+                date_field = activity.measure_date_field or 'create_date'
+                if date_field not in Model._fields:
+                    date_field = 'create_date'
+                domain = activity._sgi_measure_domain()
+                last = Model.search(
+                    domain, order='%s desc, id desc' % date_field, limit=1)
+                last_date = last and last[date_field] or False
+                if last_date and not isinstance(last_date, datetime):
+                    last_date = fields.Datetime.to_datetime(last_date)
+                vals['measure_last_date'] = last_date
+                vals['measure_count_30d'] = Model.search_count(
+                    domain + [(date_field, '>=', now - timedelta(days=30))])
+                days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
+                if days:
+                    in_window = Model.search_count(
+                        domain
+                        + [(date_field, '>=', now - timedelta(days=days))])
+                    vals['measure_state'] = 'verde' if in_window else 'rojo'
+                elif last_date:
+                    vals['measure_state'] = 'verde'
+            except Exception:
+                pass
             activity.write(vals)
 
     @api.model

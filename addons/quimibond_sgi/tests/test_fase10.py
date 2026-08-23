@@ -90,6 +90,14 @@ class TestActivityMeasurement(TransactionCase):
         act.write({'description': 'cambio de fondo'})
         self.assertTrue(doc.sgi_procedure_dirty)
 
+    def test_08_model_name_inverse(self):
+        act = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'name': 'Por nombre técnico',
+            'measure_model_name': 'sale.order'})
+        self.assertEqual(act.measure_model_id.model, 'sale.order')
+        act.write({'measure_model_name': 'modelo.inexistente'})
+        self.assertFalse(act.measure_model_id)
+
     def test_07_evidence_action(self):
         act = self._activity(measure_domain='[]')
         action = act.action_view_measure_records()
