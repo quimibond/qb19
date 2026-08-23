@@ -370,9 +370,24 @@ class IrUiMenu(models.Model):
             root = candidates.filtered(lambda m: not m.parent_id)[:1]
         if not root:
             return False
-        for xmlid in ('quimibond_sgi.menu_sgi_automotive',
-                      'quimibond_sgi.menu_sgi_dashboards'):
+        # Acomodarlos ANTES del menú nativo de Configuración de la app
+        # Calidad: los menús conservaban la secuencia del SGI (80/85) y en
+        # Calidad eso los mandaba hasta después de Configuración. La
+        # secuencia del vecino también se descubre en runtime.
+        config = self.sudo().search([
+            ('parent_id', '=', root.id), ('name', 'ilike', 'onfig')], limit=1)
+        base_seq = max(config.sequence - 2, 0) if config else 50
+        for offset, xmlid in enumerate((
+                'quimibond_sgi.menu_sgi_automotive',
+                'quimibond_sgi.menu_sgi_dashboards')):
             menu = self.env.ref(xmlid, raise_if_not_found=False)
-            if menu and menu.parent_id != root:
-                menu.parent_id = root
+            if not menu:
+                continue
+            vals = {}
+            if menu.parent_id != root:
+                vals['parent_id'] = root.id
+            if menu.sequence != base_seq + offset:
+                vals['sequence'] = base_seq + offset
+            if vals:
+                menu.write(vals)
         return True
