@@ -139,11 +139,14 @@
             <list create="false" delete="false" edit="false">
                 <field name="centro_id"/>
                 <field name="employee_count" sum="Total"/>
-                <field name="dotacion_ajuste"/>
+                <field name="dotacion_ajuste" optional="hide"/>
                 <field name="hours_month"/>
-                <field name="wage_month_total" sum="Total"/>
+                <field name="wage_month_total" sum="Total" optional="show"/>
+                <field name="nomina_share_pct"/>
+                <field name="gl_mod_directo" sum="Total" optional="hide"/>
+                <field name="gl_mod_prorrateado" sum="Total" optional="hide"/>
                 <field name="gl_mod_month" sum="Total"/>
-                <field name="mod_hour_wages"/>
+                <field name="mod_hour_wages" optional="hide"/>
                 <field name="mod_hour_gl"/>
             </list>
         </field>

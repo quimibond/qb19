@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from datetime import date
 
+from dateutil.relativedelta import relativedelta
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -928,6 +930,78 @@ class TestQbCosteo(TransactionCase):
             # neto ≤ bruto siempre (op% ≥ 0 sobre el facturado)
             self.assertGreaterEqual(
                 r.margen_bruto_12m + 0.01, r.margen_neto_12m)
+
+    def test_rh_mod_prorrateo_por_nomina(self):
+        """El MOD por centro sale del GL (la nómina que de verdad se pagó)
+        repartido por masa salarial de RH normalizada a mensual: un sueldo
+        capturado SEMANAL pesa ×4.33 frente al mismo número capturado
+        mensual. Antes la columna GL salía $0 (las cuentas de nómina no
+        tienen centro asignado) y los sueldos crudos mezclaban semanales
+        con mensuales."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        if 'hr.version' not in self.env \
+                or 'wage' not in self.env['hr.version']._fields \
+                or 'schedule_pay' not in self.env['hr.version']._fields:
+            self.skipTest('hr.version sin parte contractual en esta DB')
+        # Cuenta de nómina clasificada mod SIN centro → entra al pool
+        cuenta = self.env['account.account'].create({
+            'code': '501.06.T77', 'name': 'SUELDOS TEST',
+            'account_type': 'expense'})
+        contra = self.env['account.account'].create({
+            'code': '102.01.T77', 'name': 'BANCO TEST',
+            'account_type': 'asset_cash'})
+        self.env['qb.costeo.cuenta.class'].create({
+            'account_id': cuenta.id, 'bucket': 'mod'})
+        fecha = date.today().replace(day=1) - relativedelta(months=1)
+        move = self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': fecha,
+            'line_ids': [
+                (0, 0, {'account_id': cuenta.id, 'debit': 300000.0,
+                        'name': 'nomina test'}),
+                (0, 0, {'account_id': contra.id, 'credit': 300000.0,
+                        'name': 'nomina test'}),
+            ]})
+        move.action_post()
+        # Dos centros, un empleado cada uno, MISMO número capturado pero
+        # distinta periodicidad: semanal pesa 4.33× vs mensual
+        tejido = self.env.ref('qb_capacidad_costeo.centro_tejido')
+        acabado = self.env.ref('qb_capacidad_costeo.centro_acabado')
+        d1 = self.env['hr.department'].create({'name': 'Tejido RH Test'})
+        d2 = self.env['hr.department'].create({'name': 'Acabado RH Test'})
+        tejido.department_ids = [(6, 0, [d1.id])]
+        acabado.department_ids = [(6, 0, [d2.id])]
+        e1 = self.env['hr.employee'].create({
+            'name': 'Op Semanal', 'department_id': d1.id})
+        e2 = self.env['hr.employee'].create({
+            'name': 'Op Mensual', 'department_id': d2.id})
+        e1.current_version_id.write(
+            {'wage': 1000.0, 'schedule_pay': 'weekly'})
+        e2.current_version_id.write(
+            {'wage': 1000.0, 'schedule_pay': 'monthly'})
+        Rh = self.env['qb.rh.centro']
+        r1 = Rh.search([('centro_id', '=', tejido.id)])
+        r2 = Rh.search([('centro_id', '=', acabado.id)])
+        # Normalización: 1000 semanal → 4330/mes; 1000 mensual → 1000/mes
+        self.assertAlmostEqual(r1.wage_month_total, 4330.0, places=1)
+        self.assertAlmostEqual(r2.wage_month_total, 1000.0, places=1)
+        # El pool (300k/3 = 100k/mes) se reparte 4.33:1 entre los dos
+        # únicos centros con empleados mapeados
+        self.assertGreater(r1.gl_mod_prorrateado, 0)
+        self.assertGreater(r2.gl_mod_prorrateado, 0)
+        self.assertAlmostEqual(
+            r1.gl_mod_prorrateado / r2.gl_mod_prorrateado, 4.33, places=2)
+        self.assertGreaterEqual(
+            r1.gl_mod_prorrateado + r2.gl_mod_prorrateado, 99999.0)
+        # el total del centro = directo (0 aquí) + prorrateado
+        self.assertAlmostEqual(
+            r1.gl_mod_month, r1.gl_mod_directo + r1.gl_mod_prorrateado,
+            places=2)
+        # y las participaciones suman 100 entre todos los centros
+        total_share = sum(Rh.search([]).mapped('nomina_share_pct'))
+        self.assertAlmostEqual(total_share, 100.0, places=1)
 
     def test_cron_refresca_mes_en_curso(self):
         """El cron semanal recalcula el mes EN CURSO (sin esperar al cierre),
