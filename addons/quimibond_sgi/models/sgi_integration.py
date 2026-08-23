@@ -295,17 +295,27 @@ class IrUiMenu(models.Model):
     @api.model
     def _sgi_attach_quality_menus(self):
         """Cuelga 'Calidad preventiva' y 'Tableros (SGI)' del menú raíz de la
-        app Calidad, resolviendo el xmlid en runtime con tolerancia: el
-        módulo quality es Enterprise y una referencia dura en el XML rompe
-        la carga completa del registro si el id no coincide. Si no se
-        encuentra la app Calidad, los menús se quedan bajo el SGI (el
-        parent declarado en sgi_menus.xml), que siempre existe."""
+        app Calidad. El módulo quality es Enterprise y su xmlid no es
+        verificable desde el repo: una referencia dura en el XML rompería
+        la carga completa del registro si no coincide. Aquí el raíz se
+        DESCUBRE en runtime: primero por los xmlids conocidos y, si no,
+        buscando en ir.model.data el menú de primer nivel que pertenezca
+        al módulo quality/quality_control. Si no hay app Calidad, los
+        menús se quedan bajo el SGI (el parent declarado en
+        sgi_menus.xml), que siempre existe."""
         root = None
         for xmlid in ('quality.menu_quality_root',
                       'quality_control.menu_quality_root'):
             root = self.env.ref(xmlid, raise_if_not_found=False)
             if root:
                 break
+        if not root:
+            data = self.env['ir.model.data'].sudo().search([
+                ('model', '=', 'ir.ui.menu'),
+                ('module', 'in', ('quality', 'quality_control', 'quality_mrp')),
+            ])
+            candidates = self.sudo().browse(data.mapped('res_id')).exists()
+            root = candidates.filtered(lambda m: not m.parent_id)[:1]
         if not root:
             return False
         for xmlid in ('quimibond_sgi.menu_sgi_automotive',

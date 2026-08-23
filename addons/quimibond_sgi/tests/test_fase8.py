@@ -159,3 +159,21 @@ class TestOperationalSignals(TransactionCase):
             ('res_id', '=', equipment.id),
         ])
         self.assertFalse(acts, "Con menos de 3 correctivas no se escala.")
+
+
+@tagged('post_install', '-at_install')
+class TestQualityMenuRelocation(TransactionCase):
+
+    def test_01_quality_menus_hang_from_quality_app(self):
+        """Con la app Calidad instalada, el descubrimiento en runtime debe
+        colgar los menús operativos de su raíz (sin ref dura a un xmlid)."""
+        self.env['ir.ui.menu']._sgi_attach_quality_menus()
+        sgi_root = self.env.ref('quimibond_sgi.menu_sgi_root')
+        for xmlid in ('quimibond_sgi.menu_sgi_automotive',
+                      'quimibond_sgi.menu_sgi_dashboards'):
+            menu = self.env.ref(xmlid)
+            self.assertTrue(menu.parent_id, "%s debe tener padre." % xmlid)
+            self.assertNotEqual(
+                menu.parent_id, sgi_root,
+                "%s debe colgar del raíz de la app Calidad, no del SGI "
+                "(quality_control está instalado en este entorno)." % xmlid)
