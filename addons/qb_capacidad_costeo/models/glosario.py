@@ -76,7 +76,10 @@ GLOSARIO_HTML = """
     <tr><th colspan="2" style="background:#f2f2f2;">📈 Márgenes (al precio evaluado)</th></tr>
     <tr><td><b>Margen de contribución</b></td>
         <td>= precio − costo variable (en $ y en % del precio). Lo que cada
-        unidad aporta para pagar los costos fijos.</td></tr>
+        unidad aporta para pagar los costos fijos (que se pagan igual, se
+        venda o no). NO es utilidad todavía: de aquí aún salen la
+        fabricación y la operación. Es la cifra para decidir qué producto
+        empujar cuando la capacidad es el límite.</td></tr>
     <tr><td><b>Margen bruto %</b></td>
         <td>= (precio − costo de producción) ÷ precio. Utilidad después de
         fabricar, ANTES de administración y ventas.</td></tr>

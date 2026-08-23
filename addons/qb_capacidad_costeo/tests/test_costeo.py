@@ -173,7 +173,7 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18})
         ctx = self.Costo._engine_ctx([self.tela.id])
-        sales = {self.tela.id: (-5.0, -100.0)}  # qty neta negativa
+        sales = {self.tela.id: (-5.0, -100.0, '')}  # qty neta negativa
         vals, _ = self.Costo._compute_product_vals(
             self.tela, period, factores, sales, ctx, self.Ruteo, self.Peso)
         self.assertEqual(vals['precio_prom'], 0.0)
@@ -747,7 +747,9 @@ class TestQbCosteo(TransactionCase):
                     t['precio_mxn'], round(wiz2.piso_lleno, 2), places=2)
 
     def test_recompute_invariante_costo_total(self):
-        """costo_absorbido = MP + energía + fab + op, exacto por producto."""
+        """Las identidades de costos y márgenes, exactas por producto:
+        absorbido = MP + energía + fab + op; producción = variable + fab;
+        bruto = precio − producción; neto (absorbido) = bruto − op."""
         period = date.today().replace(day=1)
         self.Costo.action_recompute_period(period)
         recs = self.Costo.search([('period', '=', period)])
@@ -758,6 +760,9 @@ class TestQbCosteo(TransactionCase):
                 rec.mp_unit + rec.energia_unit + rec.fab_unit + rec.op_unit,
                 places=3,
                 msg='Invariante roto en %s' % rec.product_id.display_name)
+            self.assertAlmostEqual(
+                rec.costo_produccion, rec.costo_variable + rec.fab_unit,
+                places=4)
             if rec.product_bucket in ('importado', 'subproducto'):
                 self.assertEqual(rec.fab_unit, 0.0)
             self.assertTrue(rec.alerta, 'alerta debe poblarse siempre')
@@ -765,6 +770,29 @@ class TestQbCosteo(TransactionCase):
                 rec.contrib_total,
                 (rec.margen_contribucion * rec.qty_vendida
                  if rec.precio_prom else 0.0), places=2)
+            if rec.precio_prom:
+                # bruto = precio − producción; neto = bruto − operación
+                self.assertAlmostEqual(
+                    rec.margen_bruto, rec.precio_prom - rec.costo_produccion,
+                    places=3)
+                self.assertAlmostEqual(
+                    rec.margen_absorbido, rec.margen_bruto - rec.op_unit,
+                    places=3)
+                # jerarquía: contribución ≥ bruto ≥ neto (op ≥ 0)
+                self.assertGreaterEqual(
+                    rec.margen_contribucion + 0.001, rec.margen_bruto)
+                self.assertGreaterEqual(
+                    rec.margen_bruto + 0.001, rec.margen_absorbido)
+                self.assertAlmostEqual(
+                    rec.margen_bruto_total,
+                    rec.margen_bruto * rec.qty_vendida, places=2)
+                self.assertAlmostEqual(
+                    rec.margen_neto_total,
+                    rec.margen_absorbido * rec.qty_vendida, places=2)
+            else:
+                self.assertEqual(rec.margen_bruto, 0.0)
+                self.assertEqual(rec.margen_bruto_total, 0.0)
+                self.assertEqual(rec.margen_neto_total, 0.0)
 
     def test_margen_objetivo_fija_precio(self):
         """Cotizar por MARGEN objetivo: el precio sugerido = costo_producción
@@ -827,9 +855,16 @@ class TestQbCosteo(TransactionCase):
         # No debe tronar aunque no haya facturas en la DB de test.
         recs = Rent.search([], limit=5)
         self.assertIn('costo_cobertura_pct', Rent._fields)
+        # Los tres márgenes por cliente están expuestos
+        for f in ('margen_bruto_12m', 'margen_bruto_pct',
+                  'margen_neto_12m', 'margen_neto_pct'):
+            self.assertIn(f, Rent._fields)
         for r in recs:
             # cobertura es un %; el revenue en MXN no explota a negativos raros
             self.assertGreaterEqual(r.costo_cobertura_pct, -0.01)
+            # neto ≤ bruto siempre (op% ≥ 0 sobre el facturado)
+            self.assertGreaterEqual(
+                r.margen_bruto_12m + 0.01, r.margen_neto_12m)
 
     def test_cron_refresca_mes_en_curso(self):
         """El cron semanal recalcula el mes EN CURSO (sin esperar al cierre),

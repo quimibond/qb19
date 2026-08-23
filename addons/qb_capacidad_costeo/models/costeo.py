@@ -18,8 +18,9 @@ Capas (validadas con dirección; mismas reglas que el modelo de silver):
 4. Operación = op_pct × precio (op_pct = Σ cuentas operación ÷ Σ ventas,
          suavizado; o override).
 
-costo_variable = MP + energía        (para margen de contribución)
-costo_absorbido = variable + fab + op (para P&L / precio piso lleno)
+costo_variable = MP + energía          (para margen de contribución)
+costo_produccion = variable + fab      (para margen BRUTO)
+costo_absorbido = producción + op      (para margen NETO / precio piso lleno)
 
 Los factores del período se guardan en qb.costo.factores para que cada
 número sea auditable (pool, denominadores, ventana usada).
@@ -118,14 +119,47 @@ class QbCostoProducto(models.Model):
              'saldría ~1/3 en productos con triplete.')
     mp_unit = fields.Float(string='MP $/u', digits=(16, 4))
     energia_unit = fields.Float(string='Energía $/u', digits=(16, 4))
-    costo_variable = fields.Float(string='Costo variable $/u', digits=(16, 4))
+    costo_variable = fields.Float(
+        string='Costo variable $/u', digits=(16, 4),
+        help='MP + energía: lo que sale de la bolsa por producir UNA unidad '
+             'más. Base del margen de contribución.')
     fab_unit = fields.Float(string='Fabricación $/u', digits=(16, 4))
+    costo_produccion = fields.Float(
+        string='Costo de producción $/u', digits=(16, 4),
+        help='Variable + fabricación absorbida: lo que cuesta FABRICAR la '
+             'unidad. Base del margen bruto.')
     op_unit = fields.Float(string='Operación $/u', digits=(16, 4))
-    costo_absorbido = fields.Float(string='Costo absorbido $/u', digits=(16, 4))
-    margen_contribucion = fields.Float(string='Contribución $/u', digits=(16, 4))
+    costo_absorbido = fields.Float(
+        string='Costo absorbido $/u', digits=(16, 4),
+        help='Producción + operación (admin y ventas como % del precio): el '
+             'costo COMPLETO. Base del margen neto.')
+    margen_contribucion = fields.Float(
+        string='Contribución $/u', digits=(16, 4),
+        help='Precio − costo VARIABLE (MP + energía). Lo que cada unidad '
+             'vendida aporta para pagar los costos fijos (que se pagan igual, '
+             'se venda o no). Todavía NO es utilidad: de aquí salen la '
+             'fabricación y la operación.')
     margen_contribucion_pct = fields.Float(string='Contribución %')
-    margen_absorbido = fields.Float(string='Margen absorbido $/u', digits=(16, 4))
-    margen_absorbido_pct = fields.Float(string='Margen absorbido %')
+    margen_bruto = fields.Float(
+        string='Margen bruto $/u', digits=(16, 4),
+        help='Precio − costo de producción (MP + energía + fabricación). '
+             'Utilidad de fabricar y vender la unidad, ANTES de gastos de '
+             'administración y ventas.')
+    margen_bruto_pct = fields.Float(string='Margen bruto %')
+    margen_absorbido = fields.Float(
+        string='Margen neto $/u', digits=(16, 4),
+        help='Precio − costo absorbido (producción + operación). Lo que queda '
+             'de verdad después de TODOS los costos asignables. También '
+             'llamado "margen absorbido" en costeo.')
+    margen_absorbido_pct = fields.Float(string='Margen neto %')
+    margen_bruto_total = fields.Float(
+        string='Margen bruto total (período)',
+        help='Margen bruto unitario × qty vendida. Aditivo: se puede sumar '
+             'entre meses/productos en el pivote.')
+    margen_neto_total = fields.Float(
+        string='Margen neto total (período)',
+        help='Margen neto unitario × qty vendida. Aditivo: se puede sumar '
+             'entre meses/productos en el pivote.')
     contrib_hora_maquina = fields.Float(
         string='Contribución $/hora-máquina',
         help='Margen de contribución ÷ horas-máquina por unidad en el centro '
@@ -721,8 +755,10 @@ class QbCostoProducto(models.Model):
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
         op = factores.op_pct * precio
         variable = mp + energia
-        absorbido = variable + fab + op
+        produccion = variable + fab
+        absorbido = produccion + op
         contrib = precio - variable
+        bruto = precio - produccion
         hours_per_unit = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
 
         peso_relevante = not is_kg and bucket in (
@@ -755,14 +791,20 @@ class QbCostoProducto(models.Model):
             'energia_unit': energia,
             'costo_variable': variable,
             'fab_unit': fab,
+            'costo_produccion': produccion,
             'op_unit': op,
             'costo_absorbido': absorbido,
             'margen_contribucion': contrib if precio else 0.0,
             'margen_contribucion_pct':
                 100.0 * contrib / precio if precio else 0.0,
+            'margen_bruto': bruto if precio else 0.0,
+            'margen_bruto_pct':
+                100.0 * bruto / precio if precio else 0.0,
+            'margen_bruto_total': bruto * qty if precio else 0.0,
             'margen_absorbido': precio - absorbido if precio else 0.0,
             'margen_absorbido_pct':
                 100.0 * (precio - absorbido) / precio if precio else 0.0,
+            'margen_neto_total': (precio - absorbido) * qty if precio else 0.0,
             'contrib_hora_maquina':
                 contrib / hours_per_unit if hours_per_unit and precio else 0.0,
             'contrib_total': contrib * qty if precio else 0.0,
