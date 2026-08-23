@@ -10,6 +10,11 @@
                     <button name="action_open_odoo" type="object"
                             string="Abrir en Odoo" icon="fa-external-link"
                             invisible="not odoo_menu_id"/>
+                    <button name="action_view_measure_records" type="object"
+                            string="Ver evidencia" icon="fa-check-square-o"
+                            invisible="not measure_model_id"/>
+                    <field name="measure_state" widget="statusbar"
+                           invisible="not measure_state"/>
                 </header>
                 <sheet>
                     <div class="alert alert-info mb-3" role="status">
@@ -58,6 +63,28 @@
                     <group string="Nota">
                         <field name="note" nolabel="1"/>
                     </group>
+                    <group string="Medición — la actividad como acciones reales de Odoo">
+                        <group>
+                            <field name="measure_model_id" options="{'no_create': True}"/>
+                            <field name="measure_domain"
+                                   invisible="not measure_model_id"
+                                   placeholder="[('state', '=', 'done')]"/>
+                            <field name="measure_date_field"
+                                   invisible="not measure_model_id"/>
+                            <field name="measure_cadence"
+                                   invisible="not measure_model_id"/>
+                        </group>
+                        <group>
+                            <field name="measure_last_date" invisible="not measure_model_id"/>
+                            <field name="measure_count_30d" invisible="not measure_model_id"/>
+                        </group>
+                        <div class="text-muted" colspan="2" invisible="measure_model_id">
+                            Liga un modelo de Odoo y esta actividad dejará de ser
+                            texto: el cron diario contará sus registros reales
+                            (quién y cuándo) y pintará el semáforo contra la
+                            cadencia esperada.
+                        </div>
+                    </group>
                 </sheet>
             </form>
         </field>
@@ -77,9 +104,17 @@
                 <field name="format_document_ids" widget="many2many_tags" optional="show"/>
                 <field name="odoo_ref" optional="hide"/>
                 <field name="odoo_menu_id" optional="show"/>
+                <field name="measure_cadence" optional="hide"/>
+                <field name="measure_count_30d" optional="hide"/>
+                <field name="measure_state" optional="show" widget="badge"
+                       decoration-success="measure_state == 'verde'"
+                       decoration-danger="measure_state == 'rojo'"/>
                 <button name="action_open_odoo" type="object"
                         string="Abrir en Odoo" icon="fa-external-link"
                         invisible="not odoo_menu_id"/>
+                <button name="action_view_measure_records" type="object"
+                        string="Evidencia" icon="fa-check-square-o"
+                        invisible="not measure_model_id"/>
             </list>
         </field>
     </record>
@@ -103,6 +138,13 @@
                         domain="[('format_document_ids', '=', False)]"/>
                 <filter name="no_menu" string="Sin menú de Odoo"
                         domain="[('odoo_menu_id', '=', False)]"/>
+                <separator/>
+                <filter name="measurable" string="Medibles"
+                        domain="[('measure_model_id', '!=', False)]"/>
+                <filter name="not_measurable" string="Aún en texto (sin medición)"
+                        domain="[('measure_model_id', '=', False)]"/>
+                <filter name="measure_red" string="Sin evidencia en su periodo"
+                        domain="[('measure_state', '=', 'rojo')]"/>
                 <group>
                     <filter name="group_process" string="Proceso"
                             context="{'group_by': 'process_id'}"/>
@@ -177,6 +219,15 @@
                         </list>
                     </field>
                     <separator string="Desarrollo (actividades)"/>
+                    <group invisible="measurable_activity_count == 0">
+                        <group>
+                            <field name="procedure_compliance" widget="progressbar"/>
+                        </group>
+                        <group>
+                            <field name="measurable_activity_count"/>
+                            <field name="measure_red_count"/>
+                        </group>
+                    </group>
                     <field name="activity_ids" context="{'default_process_id': id}">
                         <list string="Actividades" default_order="sequence, number">
                             <field name="sequence" widget="handle"/>
@@ -188,9 +239,16 @@
                             <field name="format_document_ids" widget="many2many_tags" optional="show"/>
                             <field name="odoo_ref" optional="hide"/>
                             <field name="odoo_menu_id" column_invisible="1"/>
+                            <field name="measure_model_id" column_invisible="1"/>
+                            <field name="measure_state" optional="show" widget="badge"
+                                   decoration-success="measure_state == 'verde'"
+                                   decoration-danger="measure_state == 'rojo'"/>
                             <button name="action_open_odoo" type="object"
                                     string="Abrir en Odoo" icon="fa-external-link"
                                     invisible="not odoo_menu_id"/>
+                            <button name="action_view_measure_records" type="object"
+                                    string="Evidencia" icon="fa-check-square-o"
+                                    invisible="not measure_model_id"/>
                         </list>
                     </field>
                     <group>
