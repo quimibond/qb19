@@ -10,6 +10,28 @@ class QualityPoint(models.Model):
 
     sgi_control_plan_id = fields.Many2one('sgi.control.plan', string="Plan de control",
                                           ondelete='set null', index=True)
+    # Inversa de la liga de migración: qué formatos controlados sustituye
+    # este worksheet (para navegar en ambos sentidos).
+    sgi_replaced_document_ids = fields.One2many(
+        'documents.document', 'sgi_migration_point_id',
+        string="Formatos que sustituye")
+    sgi_replaced_document_count = fields.Integer(
+        compute='_compute_sgi_replaced_document_count',
+        string="# Formatos sustituidos")
+
+    def _compute_sgi_replaced_document_count(self):
+        for point in self:
+            point.sgi_replaced_document_count = len(point.sgi_replaced_document_ids)
+
+    def action_sgi_open_replaced_documents(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Formatos que sustituye",
+            'res_model': 'documents.document',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', self.sgi_replaced_document_ids.ids)],
+        }
     sgi_characteristic = fields.Char(string="Característica",
                                      help="Característica de la Master Spec del cliente.")
     sgi_criticality = fields.Selection([

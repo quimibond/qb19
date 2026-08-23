@@ -32,6 +32,29 @@ class TestFase9Forms(TransactionCase):
         self.assertEqual(action['type'], 'ir.actions.act_url')
         self.assertIn('/survey/', action['url'])
 
+    def test_06_document_to_worksheet_link(self):
+        """Del formato al worksheet en un clic, y la inversa en el punto."""
+        point = self.env['quality.point'].create({
+            'title': 'Checklist liga',
+            'team_id': self.env['quality.alert.team'].search([], limit=1).id,
+            'picking_type_ids': [(4, self.env.ref('stock.picking_type_in').id)],
+        })
+        doc = self.env['documents.document'].create({
+            'name': 'F-IT-P-TEST-01 Hoja liga', 'type': 'binary',
+            'sgi_doc_type': 'formato_it',
+            'sgi_migration_point_id': point.id,
+        })
+        action = doc.action_sgi_open_migration_point()
+        self.assertEqual(action['res_model'], 'quality.point')
+        self.assertEqual(action['res_id'], point.id)
+        self.assertEqual(point.sgi_replaced_document_count, 1)
+        # Sin liga -> error claro.
+        bare = self.env['documents.document'].create({
+            'name': 'F-P-TEST-02', 'type': 'binary', 'sgi_doc_type': 'formato'})
+        from odoo.exceptions import UserError as UE
+        with self.assertRaises(UE):
+            bare.action_sgi_open_migration_point()
+
     def test_05_product_spec_and_job_epp(self):
         # Spec del producto (C04-06/C14-02) y EPP por puesto (S03-01).
         tmpl = self.env['product.template'].create({

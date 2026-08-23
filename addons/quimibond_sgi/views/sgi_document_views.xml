@@ -78,6 +78,11 @@
                                 </group>
                                 <group>
                                     <field name="sgi_migration_target"/>
+                                    <field name="sgi_migration_point_id"/>
+                                    <button name="action_sgi_open_migration_point"
+                                            type="object" string="Abrir worksheet"
+                                            icon="fa-external-link" class="btn-secondary"
+                                            invisible="not sgi_migration_point_id"/>
                                 </group>
                             </group>
                         </page>
@@ -342,10 +347,14 @@ else:
                 <field name="sgi_process_id" optional="hide"/>
                 <field name="sgi_migration_class"/>
                 <field name="sgi_migration_target"/>
+                <field name="sgi_migration_point_id" optional="show"/>
                 <field name="sgi_migration_state" widget="badge"
                        decoration-success="sgi_migration_state in ('migrado', 'baja')"
                        decoration-warning="sgi_migration_state == 'pendiente'"
                        decoration-info="sgi_migration_state == 'en_curso'"/>
+                <button name="action_sgi_open_migration_point" type="object"
+                        icon="fa-external-link" string="Abrir worksheet"
+                        title="Abrir worksheet" invisible="not sgi_migration_point_id"/>
                 <button name="action_sgi_view_file" type="object" icon="fa-file-pdf-o"
                         string="Ver archivo" title="Ver archivo"/>
             </list>
