@@ -852,6 +852,11 @@ class TestQbCosteo(TransactionCase):
         """La vista SQL de rentabilidad por cliente compila y expone la
         cobertura de costo (revenue en MXN vía balance, no price_subtotal)."""
         Rent = self.env['qb.cliente.rentabilidad']
+        # _table_query pasa por formateo estilo printf: un '%' literal (aun
+        # en un comentario SQL) truena TODA lectura de la vista con "not
+        # enough arguments for format string" — pasó en producción con un
+        # comentario que decía "op%".
+        self.assertNotIn('%', Rent._table_query)
         # No debe tronar aunque no haya facturas en la DB de test.
         recs = Rent.search([], limit=5)
         self.assertIn('costo_cobertura_pct', Rent._fields)
