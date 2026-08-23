@@ -136,6 +136,15 @@
                                     <span t-if="act.odoo_ref" class="text-muted">
                                         (Odoo: <t t-out="act.odoo_ref"/>)
                                     </span>
+                                    <div t-if="act.in_link_ids or act.out_link_ids"
+                                         style="margin-left:12px; color:#444; font-size:0.95em;">
+                                        <div t-foreach="act.in_link_ids" t-as="lnk">
+                                            &#8592; Recibe de <t t-out="lnk.from_activity_id.display_name"/><t t-if="lnk.is_cross_process"> (<t t-out="lnk.from_process_id.name"/>)</t>: <em t-out="lnk.name"/>
+                                        </div>
+                                        <div t-foreach="act.out_link_ids" t-as="lnk">
+                                            &#8594; Entrega a <t t-out="lnk.to_activity_id.display_name"/><t t-if="lnk.is_cross_process"> (<t t-out="lnk.to_process_id.name"/>)</t>: <em t-out="lnk.name"/>
+                                        </div>
+                                    </div>
                                     <div t-if="act.format_document_ids" style="margin-left:12px;">
                                         <t t-foreach="act.format_document_ids" t-as="fmt">
                                             <span style="color:#c00000; font-weight:bold;"

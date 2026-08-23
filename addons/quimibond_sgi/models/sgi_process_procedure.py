@@ -74,6 +74,67 @@ class SgiProcessProcedure(models.Model):
         for process in self:
             process.activity_count = len(process.activity_ids)
 
+    chain_link_count = fields.Integer(
+        string="Ligas de la cadena", compute='_compute_chain_link_count',
+        help="Entregas entre actividades que tocan este proceso (entran o salen).")
+
+    # Referencias entrantes: actividades de OTROS procesos que citan mis
+    # procedimientos (related_procedure_id) o usan mis formatos. Se calculan
+    # solas — nadie captura dos veces: quien menciona, ya avisó.
+    inbound_reference_ids = fields.Many2many(
+        'sgi.process.activity', string="Actividades que me referencian",
+        compute='_compute_inbound_references')
+    inbound_reference_count = fields.Integer(
+        string="Me referencian", compute='_compute_inbound_references')
+
+    def _compute_inbound_references(self):
+        Activity = self.env['sgi.process.activity']
+        Document = self.env['documents.document']
+        for process in self:
+            if not process.id:
+                process.inbound_reference_ids = False
+                process.inbound_reference_count = 0
+                continue
+            my_docs = Document.search([('sgi_process_id', '=', process.id)])
+            acts = Activity.search([
+                ('process_id', '!=', process.id),
+                '|', ('related_procedure_id', 'in', my_docs.ids),
+                ('format_document_ids', 'in', my_docs.ids),
+            ]) if my_docs else Activity.browse()
+            process.inbound_reference_ids = acts
+            process.inbound_reference_count = len(acts)
+
+    def action_view_inbound_references(self):
+        """Quién me menciona: las actividades ajenas que citan mis
+        procedimientos o usan mis formatos."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Me referencian — %s" % self.name,
+            'res_model': 'sgi.process.activity',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', self.inbound_reference_ids.ids)],
+        }
+
+    def _compute_chain_link_count(self):
+        Link = self.env['sgi.activity.link']
+        for process in self:
+            process.chain_link_count = Link.search_count([
+                '|', ('from_process_id', '=', process.id),
+                ('to_process_id', '=', process.id)]) if process.id else 0
+
+    def action_view_chain(self):
+        """La cadena del proceso: qué entregables entran y salen, paso a paso."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Cadena — %s" % self.name,
+            'res_model': 'sgi.activity.link',
+            'view_mode': 'list',
+            'domain': ['|', ('from_process_id', '=', self.id),
+                       ('to_process_id', '=', self.id)],
+        }
+
     @api.depends('activity_ids.measure_state', 'activity_ids.measure_model_id')
     def _compute_measure_stats(self):
         for process in self:

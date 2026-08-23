@@ -104,6 +104,9 @@
                 <field name="red_kpi_count"/>
                 <field name="open_high_risk_count"/>
                 <field name="health"/>
+                <field name="measure_red_count"/>
+                <field name="measurable_activity_count"/>
+                <field name="procedure_compliance"/>
                 <templates>
                     <t t-name="card">
                         <div class="oe_kanban_global_click">
@@ -127,6 +130,12 @@
                                 </span>
                                 <span class="text-danger me-2" t-if="record.open_high_risk_count.raw_value">
                                     Riesgos altos: <field name="open_high_risk_count"/>
+                                </span>
+                                <span class="text-danger me-2" t-if="record.measure_red_count.raw_value">
+                                    Pasos sin evidencia: <field name="measure_red_count"/>
+                                </span>
+                                <span class="text-muted me-2" t-if="record.measurable_activity_count.raw_value">
+                                    Cumplimiento: <field name="procedure_compliance"/>%
                                 </span>
                             </div>
                         </div>
