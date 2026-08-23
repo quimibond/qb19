@@ -18,8 +18,12 @@
     <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_panel"
               action="sgi_diagnostic_action" sequence="9"
               groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_dashboards" name="Tableros" parent="menu_sgi_panel"
-              sequence="10" groups="quimibond_sgi.group_sgi_manager"/>
+    <!-- Los Paretos de calidad son análisis operativo: viven en la app
+         CALIDAD (ver "OPERACIÓN EN SU APP"). El Panel se queda con la
+         gestión pura: salud, Política, Objetivos y Diagnóstico. -->
+    <menuitem id="menu_sgi_dashboards" name="Tableros (SGI)"
+              parent="quality.menu_quality_root" sequence="60"
+              groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"
               parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto"
               sequence="10"/>
