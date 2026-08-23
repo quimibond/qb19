@@ -12,6 +12,12 @@
                     <field name="sgi_nc_count" widget="statinfo" string="NC"/>
                 </button>
             </xpath>
+            <!-- Sello del transporte (sustituye F-IT-P-A07-01-07/08): solo en
+                 embarques de salida; se imprime en la remisión. -->
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sgi_seal_number"
+                       invisible="picking_type_code != 'outgoing'"/>
+            </xpath>
         </field>
     </record>
 
@@ -66,6 +72,16 @@
                         </list>
                     </field>
                 </page>
+                <page string="EPP requerido (SGI)">
+                    <div class="text-muted mb-2">
+                        El EPP que exige este puesto — fuente única del
+                        F-P-S03-01. El cron de EPP vigila reposiciones; la
+                        responsiva de entrega se firma en la ficha del
+                        empleado.
+                    </div>
+                    <field name="sgi_epp_required" nolabel="1"
+                           placeholder="Ej. casco, lentes de seguridad, guantes de nitrilo, protección auditiva..."/>
+                </page>
             </xpath>
         </field>
     </record>
@@ -85,6 +101,36 @@
                         icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
                     <field name="sgi_nc_count" widget="statinfo" string="NC"/>
                 </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- product.template: especificaciones controladas (C04-06 y C14-02).
+         La spec ES un documento controlado; aquí queda a un clic desde el
+         producto para inspección y almacén. -->
+    <record id="sgi_product_template_view_form_spec" model="ir.ui.view">
+        <field name="name">product.template.form.sgi.spec</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="SGI">
+                    <group>
+                        <group string="Especificación del material">
+                            <field name="sgi_spec_document_id"/>
+                        </group>
+                        <group>
+                            <button name="action_sgi_open_spec" type="object"
+                                    string="Ver especificación" icon="fa-file-pdf-o"
+                                    class="btn-secondary"
+                                    invisible="not sgi_spec_document_id"/>
+                        </group>
+                    </group>
+                    <group string="Manejo y empaque (C14-02)">
+                        <field name="sgi_packaging_notes" nolabel="1"
+                               placeholder="Indicaciones de manejo y empaque: orientación, apilado máximo, protección, etiquetado..."/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

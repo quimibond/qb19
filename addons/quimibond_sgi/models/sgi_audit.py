@@ -133,6 +133,16 @@ class SgiAudit(models.Model):
     survey_input_ids = fields.Many2many('survey.user_input', 'sgi_audit_input_rel',
                                         'audit_id', 'input_id', string="Respuestas del checklist")
     conclusion = fields.Text(string="Conclusión")
+    # Minutas de las reuniones (sustituyen F-P-G03-05 y F-P-G03-06: los
+    # asistentes ya viven en auditor_ids/auditee_ids, aquí queda el acta).
+    opening_minutes = fields.Text(
+        string="Minuta de apertura",
+        help="Acuerdos de la reunión de apertura: alcance confirmado, agenda, "
+             "criterios. Sustituye el formato F-P-G03-05.")
+    closing_minutes = fields.Text(
+        string="Minuta de cierre",
+        help="Resumen presentado al auditado: hallazgos, conclusión, plazos. "
+             "Sustituye el formato F-P-G03-06.")
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('planificada', "Planificada"),
@@ -234,6 +244,31 @@ class SgiAudit(models.Model):
         else:
             url = '/survey/start/%s?answer_token=%s' % (
                 self.survey_id.access_token, answer.access_token)
+        return {'type': 'ir.actions.act_url', 'url': url, 'target': 'new'}
+
+    def action_evaluate_auditors(self):
+        """Abre la encuesta de evaluación del comportamiento del auditor
+        (sustituye F-IT-P-G03-01-01): el auditado la contesta al terminar la
+        auditoría y el resultado queda en Encuestas, consultable por MAST.
+        La encuesta se creó directamente en producción (MCP, 2026-08-23) y
+        MAST puede editarla; se localiza por su clave en el título, con
+        fallback al xmlid por si alguna instalación la siembra."""
+        self.ensure_one()
+        survey = self.env.ref(
+            'quimibond_sgi.sgi_survey_auditor_eval', raise_if_not_found=False)
+        if not survey:
+            survey = self.env['survey.survey'].sudo().search(
+                [('title', 'like', 'F-IT-P-G03-01-01')], limit=1)
+        if not survey:
+            raise UserError(
+                "No existe la encuesta de evaluación del auditor. Cree en "
+                "Encuestas una con la clave F-IT-P-G03-01-01 en el título.")
+        answer = survey.sudo()._create_answer(user=self.env.user)
+        if hasattr(answer, 'get_start_url'):
+            url = answer.get_start_url()
+        else:
+            url = '/survey/start/%s?answer_token=%s' % (
+                survey.access_token, answer.access_token)
         return {'type': 'ir.actions.act_url', 'url': url, 'target': 'new'}
 
     def action_generate_findings_from_checklist(self):

@@ -90,6 +90,29 @@ class DocumentsDocument(models.Model):
     ], string="Estado de migración", default='pendiente', tracking=True)
     sgi_migration_target = fields.Char(string="Destino en Odoo",
         help="Objeto/menú de Odoo que sustituye a este formato (p.ej. 'SGI > No Conformidades').")
+    # Liga REAL al destino (H-migración): del formato al worksheet con un
+    # clic. Para hojas de piso/laboratorio apunta al punto de calidad; los
+    # formatos-transacción siguen describiendo su menú en sgi_migration_target.
+    sgi_migration_point_id = fields.Many2one(
+        'quality.point', string="Worksheet destino",
+        help="Punto de calidad (worksheet) que sustituye a este formato. "
+             "El botón «Abrir worksheet» salta directo a él.")
+
+    def action_sgi_open_migration_point(self):
+        """Del formato a su worksheet en un clic (y desde ahí, a sus checks)."""
+        self.ensure_one()
+        if not self.sgi_migration_point_id:
+            raise UserError(
+                "Este formato no tiene ligado su worksheet destino. "
+                "Selecciónalo en la pestaña de migración (campo "
+                "«Worksheet destino»).")
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.sgi_migration_point_id.title or "Punto de calidad",
+            'res_model': 'quality.point',
+            'res_id': self.sgi_migration_point_id.id,
+            'view_mode': 'form',
+        }
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats')

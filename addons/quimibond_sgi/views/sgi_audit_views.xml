@@ -83,6 +83,10 @@
                             invisible="state != 'en_ejecucion'"/>
                     <button name="action_close" type="object" string="Cerrar"
                             class="btn-primary" invisible="state != 'informe'"/>
+                    <button name="action_evaluate_auditors" type="object"
+                            string="Evaluar al auditor" icon="fa-star-o"
+                            invisible="state not in ('informe', 'cerrada')"
+                            help="Abre la encuesta de evaluación del comportamiento del auditor (sustituye F-IT-P-G03-01-01); la contesta el auditado."/>
                     <button name="action_draft" type="object" string="Volver a borrador"
                             invisible="state in ('borrador','cerrada')"/>
                     <field name="state" widget="statusbar"/>
@@ -141,6 +145,19 @@
                                             invisible="alert_id or finding_type in ('conformidad','oportunidad')"/>
                                 </list>
                             </field>
+                        </page>
+                        <page string="Reuniones">
+                            <div class="text-muted mb-2">
+                                Los asistentes son los de «Equipo y fechas»;
+                                aquí quedan las actas. Sustituyen los formatos
+                                F-P-G03-05 (apertura) y F-P-G03-06 (cierre).
+                            </div>
+                            <group>
+                                <field name="opening_minutes"
+                                       placeholder="Apertura: alcance confirmado, agenda, criterios, acuerdos..."/>
+                                <field name="closing_minutes"
+                                       placeholder="Cierre: hallazgos presentados, conclusión, plazos de respuesta..."/>
+                            </group>
                         </page>
                         <page string="Conclusión">
                             <field name="conclusion" nolabel="1"/>
