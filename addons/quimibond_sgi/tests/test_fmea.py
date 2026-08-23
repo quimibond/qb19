@@ -56,7 +56,42 @@ class TestFmea(TransactionCase):
         with self.assertRaises(UserError):
             fmea.action_set_vigente()
 
-        # Con la acción TERMINADA, sí pasa a vigente.
+        # Acción TERMINADA pero SIN re-evaluación (S/O/D post) -> bloqueado.
         action.write({'date_done': date.today()})
+        with self.assertRaises(UserError):
+            fmea.action_set_vigente()
+
+        # Re-evaluación capturada pero el NPR post NO baja (162 = inicial)
+        # y sin justificación -> bloqueado.
+        line.write({'severity_post': '9', 'occurrence_post': '6',
+                    'detection_post': '3'})
+        with self.assertRaises(UserError):
+            fmea.action_set_vigente()
+
+        # Con el NPR post a la baja (9*2*3 = 54 < 162), sí pasa a vigente.
+        line.write({'occurrence_post': '2'})
+        fmea.action_set_vigente()
+        self.assertEqual(fmea.state, 'vigente')
+
+    def test_04_vigente_npr_post_no_baja_con_justificacion(self):
+        fmea = self.Fmea.create({'name': 'PFMEA severidad de diseño'})
+        line = self.Line.create({
+            'fmea_id': fmea.id,
+            'step': 'Impregnado',
+            'severity': '10', 'occurrence': '5', 'detection': '2',
+        })
+        self.env['sgi.action.line'].create({
+            'fmea_line_id': line.id,
+            'name': 'Control redundante',
+            'responsible_id': self.env.user.id,
+            'date_commit': date.today(),
+            'date_done': date.today(),
+        })
+        # NPR post igual al inicial: solo pasa con justificación escrita.
+        line.write({'severity_post': '10', 'occurrence_post': '5',
+                    'detection_post': '2'})
+        with self.assertRaises(UserError):
+            fmea.action_set_vigente()
+        line.post_note = "La severidad no baja por diseño; se refuerza detección aguas abajo."
         fmea.action_set_vigente()
         self.assertEqual(fmea.state, 'vigente')
