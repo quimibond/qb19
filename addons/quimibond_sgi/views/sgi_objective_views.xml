@@ -28,14 +28,18 @@
                             <field name="indicator_count" widget="statinfo" string="Indicadores"/>
                         </button>
                     </div>
-                    <group>
-                        <field name="name"/>
-                        <field name="policy_id"/>
-                        <field name="target_year"/>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nombre del objetivo integral"/></h1>
                         <field name="health" widget="badge"
                                decoration-success="health == 'verde'"
                                decoration-warning="health == 'amarillo'"
                                decoration-danger="health == 'rojo'"/>
+                    </div>
+                    <group>
+                        <field name="policy_id"/>
+                        <field name="target_year"/>
                         <field name="active" invisible="1"/>
                     </group>
                     <group string="Descripción">

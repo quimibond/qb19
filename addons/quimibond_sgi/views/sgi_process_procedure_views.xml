@@ -330,40 +330,26 @@
                            string="Me referencian"/>
                 </button>
             </xpath>
-            <xpath expr="//notebook" position="inside">
+            <!-- El procedimiento es lo que más se usa: va como PRIMERA pestaña. -->
+            <xpath expr="//page[@name='entradas_salidas']" position="before">
                 <page string="Procedimiento" name="procedimiento">
                     <div class="alert alert-info mb-3" role="status">
                         <b>Esta pestaña ES el procedimiento vivo</b> (F-P-G01-02):
-                        alcance, responsabilidades y actividades numeradas viven
-                        aquí como datos, y el <b>PDF se imprime</b> con el botón
-                        de arriba (contador «Actividades»). Cualquier cambio marca
-                        el documento controlado como <b>pendiente de revisión
-                        documental</b> y avisa a su dueño — la nueva revisión se
-                        aprueba por <i>Documental → Cambios documentales</i>.
+                        el PDF se imprime con el botón «Actividades» de arriba, y
+                        cualquier cambio de fondo lo marca <b>pendiente de revisión
+                        documental</b> y avisa a su dueño.
                     </div>
-                    <group string="Alcance">
-                        <field name="scope" nolabel="1"
-                               placeholder="A qué áreas/actividades aplica el procedimiento…"/>
-                    </group>
-                    <separator string="Responsabilidades de las áreas"/>
-                    <field name="job_responsibility_ids">
-                        <list string="Responsabilidades" editable="bottom">
-                            <field name="sequence" widget="handle"/>
-                            <field name="name"/>
-                            <field name="job_id"/>
-                            <field name="responsibilities"/>
-                        </list>
-                    </field>
-                    <separator string="Desarrollo (actividades)"/>
-                    <group invisible="measurable_activity_count == 0">
+                    <group string="¿Se está cumpliendo? (medido con acciones reales de Odoo)"
+                           invisible="measurable_activity_count == 0">
                         <group>
                             <field name="procedure_compliance" widget="progressbar"/>
                         </group>
                         <group>
-                            <field name="measurable_activity_count"/>
-                            <field name="measure_red_count"/>
+                            <field name="measurable_activity_count" string="Pasos medibles"/>
+                            <field name="measure_red_count" string="Sin evidencia"/>
                         </group>
                     </group>
+                    <separator string="Desarrollo — las actividades, paso a paso"/>
                     <field name="activity_ids" context="{'default_process_id': id}">
                         <list string="Actividades" default_order="sequence, number">
                             <field name="sequence" widget="handle"/>
@@ -387,6 +373,21 @@
                                     invisible="not measure_model_id"/>
                         </list>
                     </field>
+                    <separator string="Secciones fijas del procedimiento (salen en el PDF)"/>
+                    <group string="Alcance">
+                        <field name="scope" nolabel="1"
+                               placeholder="A qué áreas/actividades aplica el procedimiento…"/>
+                    </group>
+                    <group string="Responsabilidades de las áreas">
+                        <field name="job_responsibility_ids" nolabel="1">
+                            <list string="Responsabilidades" editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="name"/>
+                                <field name="job_id"/>
+                                <field name="responsibilities"/>
+                            </list>
+                        </field>
+                    </group>
                     <group>
                         <group string="Descripción de aspectos ambientales">
                             <field name="env_aspects" nolabel="1"/>
