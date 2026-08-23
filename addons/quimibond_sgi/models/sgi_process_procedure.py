@@ -116,12 +116,23 @@ class SgiProcessProcedure(models.Model):
             'domain': [('id', 'in', self.inbound_reference_ids.ids)],
         }
 
+    chain_stuck_count = fields.Integer(
+        string="Eslabones atorados", compute='_compute_chain_link_count',
+        help="Ligas de este proceso donde el paso origen entregó pero el "
+             "destino no tiene evidencia en su periodo.")
+
     def _compute_chain_link_count(self):
         Link = self.env['sgi.activity.link']
         for process in self:
-            process.chain_link_count = Link.search_count([
-                '|', ('from_process_id', '=', process.id),
-                ('to_process_id', '=', process.id)]) if process.id else 0
+            if not process.id:
+                process.chain_link_count = 0
+                process.chain_stuck_count = 0
+                continue
+            base = ['|', ('from_process_id', '=', process.id),
+                    ('to_process_id', '=', process.id)]
+            process.chain_link_count = Link.search_count(base)
+            process.chain_stuck_count = Link.search_count(
+                base + [('chain_state', '=', 'atorado')])
 
     def action_view_chain(self):
         """La cadena del proceso: qué entregables entran y salen, paso a paso."""
@@ -500,10 +511,11 @@ class SgiProcessActivity(models.Model):
     @api.model
     def cron_measure_activities(self):
         # Primero intenta resolver menús pendientes desde su texto; después
-        # mide. Así el paso queda navegable sin captura manual.
+        # mide, y con la medición fresca evalúa el flujo de la cadena.
         self.search([('odoo_menu_id', '=', False),
                      ('odoo_ref', '!=', False)])._sgi_resolve_menu()
         self.search([('measure_model_id', '!=', False)])._sgi_measure()
+        self.env['sgi.activity.link'].search([])._sgi_evaluate_chain()
         return True
 
     def action_view_measure_records(self):
@@ -598,11 +610,96 @@ class SgiActivityLink(models.Model):
     is_cross_process = fields.Boolean(
         string="Cruza procesos", compute='_compute_cross', store=True)
 
+    # --- Flujo del eslabón (fase 3): ¿el paso siguiente sigue al anterior? ---
+    chain_state = fields.Selection([
+        ('fluye', "Fluye"),
+        ('atorado', "Atorado"),
+    ], string="Flujo", readonly=True,
+        help="Fluye: ambos pasos con evidencia en su periodo. Atorado: el paso "
+             "origen tiene evidencia pero el destino no — el entregable entró "
+             "y no salió. Lo calcula el cron de medición.")
+    lag_days = fields.Float(
+        string="Rezago (días)", readonly=True, digits=(6, 1),
+        help="Días que la última evidencia del paso destino va detrás de la "
+             "del paso origen. 0 = el eslabón está al día.")
+    atorado_since = fields.Datetime("Atorado desde", readonly=True)
+    nc_alert_id = fields.Many2one(
+        'quality.alert', string="NC generada", readonly=True, copy=False)
+
+    # Campos que escribe el cron: no son contenido del procedimiento.
+    _SGI_MEASURE_FIELDS = {
+        'chain_state', 'lag_days', 'atorado_since', 'nc_alert_id'}
+
+    _SGI_NC_AFTER_DAYS = 7
+
     @api.depends('from_process_id', 'to_process_id')
     def _compute_cross(self):
         for link in self:
             link.is_cross_process = (
                 link.from_process_id != link.to_process_id)
+
+    def _sgi_evaluate_chain(self):
+        """Evalúa cada eslabón tras la medición: estado, rezago, aviso al
+        dueño al atorarse y NC automática si persiste."""
+        now = fields.Datetime.now()
+        Cron = self.env['sgi.cron']
+        for link in self:
+            frm, to = link.from_activity_id, link.to_activity_id
+            vals = {'chain_state': False, 'lag_days': 0.0}
+            if frm.measure_state == 'verde' and to.measure_state == 'rojo':
+                vals['chain_state'] = 'atorado'
+            elif frm.measure_state and to.measure_state:
+                vals['chain_state'] = 'fluye'
+            if frm.measure_last_date and to.measure_last_date \
+                    and frm.measure_last_date > to.measure_last_date:
+                vals['lag_days'] = round(
+                    (frm.measure_last_date - to.measure_last_date
+                     ).total_seconds() / 86400.0, 1)
+            if vals['chain_state'] == 'atorado':
+                since = link.atorado_since or now
+                vals['atorado_since'] = since
+                owner_user = (to.process_id.owner_id.user_id.id
+                              or Cron._sgi_manager_user_id())
+                if not link.atorado_since:
+                    Cron._sgi_schedule(
+                        to.process_id,
+                        "Eslabón atorado: %s" % (link.name or ''),
+                        "«%s» entregó (%s) pero «%s» no tiene evidencia en su "
+                        "periodo. Revise el paso o su medición." % (
+                            frm.display_name, link.name or '',
+                            to.display_name),
+                        owner_user)
+                elif not link.nc_alert_id and (
+                        now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS:
+                    vals['nc_alert_id'] = link._sgi_create_chain_nc().id
+            else:
+                vals['atorado_since'] = False
+            link.write(vals)
+
+    def _sgi_create_chain_nc(self):
+        """NC automática por ruptura de secuencia persistente."""
+        self.ensure_one()
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
+                            raise_if_not_found=False)
+        stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open',
+                             raise_if_not_found=False)
+        vals = {
+            'title': "Ruptura de secuencia: %s" % (self.name or ''),
+            'description':
+                "El procedimiento se rompió en este eslabón por más de %d "
+                "días: «%s» tiene evidencia pero «%s» no ejecutó su paso "
+                "(%s). Detectado por la medición de la cadena." % (
+                    self._SGI_NC_AFTER_DAYS,
+                    self.from_activity_id.display_name,
+                    self.to_activity_id.display_name, self.name or ''),
+            'sgi_origin_type': 'proceso',
+            'sgi_process_id': self.to_process_id.id,
+        }
+        if team:
+            vals['team_id'] = team.id
+        if stage:
+            vals['stage_id'] = stage.id
+        return self.env['quality.alert'].sudo().create(vals)
 
     @api.constrains('from_activity_id', 'to_activity_id')
     def _check_not_self(self):
@@ -620,8 +717,10 @@ class SgiActivityLink(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        (self.from_activity_id.process_id
-         | self.to_activity_id.process_id)._sgi_flag_procedure_dirty()
+        # Lo que escribe el cron (flujo/rezago) no es contenido documental.
+        if set(vals) - self._SGI_MEASURE_FIELDS:
+            (self.from_activity_id.process_id
+             | self.to_activity_id.process_id)._sgi_flag_procedure_dirty()
         return res
 
     def unlink(self):

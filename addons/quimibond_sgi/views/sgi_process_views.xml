@@ -107,6 +107,7 @@
                 <field name="measure_red_count"/>
                 <field name="measurable_activity_count"/>
                 <field name="procedure_compliance"/>
+                <field name="chain_stuck_count"/>
                 <templates>
                     <t t-name="card">
                         <div class="oe_kanban_global_click">
@@ -136,6 +137,9 @@
                                 </span>
                                 <span class="text-muted me-2" t-if="record.measurable_activity_count.raw_value">
                                     Cumplimiento: <field name="procedure_compliance"/>%
+                                </span>
+                                <span class="text-danger me-2" t-if="record.chain_stuck_count.raw_value">
+                                    Eslabones atorados: <field name="chain_stuck_count"/>
                                 </span>
                             </div>
                         </div>

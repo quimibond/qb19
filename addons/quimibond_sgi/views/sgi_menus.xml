@@ -18,6 +18,9 @@
     <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_panel"
               action="sgi_diagnostic_action" sequence="9"
               groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_compliance" name="Cumplimiento de procedimientos"
+              parent="menu_sgi_panel" action="sgi_activity_compliance_action"
+              sequence="7"/>
     <!-- Los Paretos de calidad son análisis operativo: viven en la app
          CALIDAD (ver "OPERACIÓN EN SU APP"). El Panel se queda con la
          gestión pura: salud, Política, Objetivos y Diagnóstico.
