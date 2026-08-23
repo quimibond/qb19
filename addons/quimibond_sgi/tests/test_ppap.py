@@ -37,6 +37,37 @@ class TestPpap(TransactionCase):
         self.assertEqual(ppap.state, 'enviado')
         self.assertTrue(ppap.date_submitted)
 
+    def test_02b_nivel_1_solo_bloquean_los_S(self):
+        # Nivel 1: solo AAR (13) y PSW (18) se presentan; el resto se retiene.
+        ppap = self.Ppap.create({
+            'partner_id': self.partner.id,
+            'product_tmpl_id': self.product.id,
+            'level': '1',
+        })
+        submits = ppap.element_ids.filtered(lambda e: e.submission == 'submit')
+        self.assertEqual(sorted(submits.mapped('sequence')), [13, 18])
+        # Los retenidos pendientes NO bloquean el envío; los S sí.
+        with self.assertRaises(UserError):
+            ppap.action_mark_enviado()
+        submits.write({'state': 'listo'})
+        ppap.action_mark_enviado()
+        self.assertEqual(ppap.state, 'enviado')
+
+    def test_02c_cambiar_nivel_reaplica_tabla(self):
+        ppap = self._new_ppap()  # nivel 3: casi todo S
+        el15 = ppap.element_ids.filtered(lambda e: e.sequence == 15)
+        self.assertEqual(el15.submission, 'retain',
+                         "La muestra maestra (15) se retiene incluso en nivel 3.")
+        n_submit_l3 = len(ppap.element_ids.filtered(
+            lambda e: e.submission == 'submit'))
+        ppap.level = '5'
+        self.assertFalse(ppap.element_ids.filtered(
+            lambda e: e.submission == 'submit'),
+            "Nivel 5 retiene todo (revisión en planta).")
+        ppap.level = '3'
+        self.assertEqual(len(ppap.element_ids.filtered(
+            lambda e: e.submission == 'submit')), n_submit_l3)
+
     def test_03_approve_requires_psw(self):
         ppap = self._new_ppap()
         ppap.element_ids.write({'state': 'listo'})

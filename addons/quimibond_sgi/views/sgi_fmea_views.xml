@@ -47,10 +47,11 @@
                                 Escalas AIAG 1–10: <b>S</b>everidad ·
                                 <b>O</b>currencia · <b>D</b>etección.
                                 NPR = S × O × D. Un NPR ≥ 100 marca la línea
-                                en rojo y exige una acción <b>TERMINADA</b>
-                                antes de marcar el AMEF vigente; después de
-                                actuar, captura la re-evaluación (NPR post)
-                                dentro de la línea.
+                                en rojo y para marcar el AMEF vigente exige:
+                                acción <b>TERMINADA</b> + re-evaluación
+                                capturada (S/O/D post, dentro de la línea) +
+                                <b>NPR post menor al inicial</b> o
+                                justificación escrita de por qué no baja.
                             </div>
                             <field name="line_ids">
                                 <list editable="bottom" decoration-danger="requires_action == True">
@@ -86,6 +87,9 @@
                                             <field name="occurrence_post"/>
                                             <field name="detection_post"/>
                                             <field name="npr_post"/>
+                                            <field name="post_note"
+                                                   invisible="not npr_post or npr_post &lt; npr"
+                                                   required="npr_post and npr_post >= npr and requires_action"/>
                                         </group>
                                     </group>
                                     <group string="Acciones">
@@ -157,7 +161,7 @@
         <field name="search_view_id" ref="sgi_fmea_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea el primer AMEF</p>
-            <p>El NPR se calcula solo (S × O × D); un NPR ≥ 100 exige una acción TERMINADA antes de que el AMEF pueda marcarse vigente.</p>
+            <p>El NPR se calcula solo (S × O × D); un NPR ≥ 100 exige acción TERMINADA y re-evaluación con NPR post a la baja (o justificada) antes de que el AMEF pueda marcarse vigente.</p>
         </field>
     </record>
 
