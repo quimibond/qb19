@@ -31,3 +31,18 @@ class TestFase9Forms(TransactionCase):
         survey = self.env.ref('quimibond_sgi.sgi_survey_consulta')
         self.assertGreaterEqual(len(survey.question_ids), 5,
                                 "La consulta y participación (F-P-A10-05) trae sus preguntas.")
+
+    def test_05_product_spec_and_job_epp(self):
+        # Spec del producto (C04-06/C14-02) y EPP por puesto (S03-01).
+        tmpl = self.env['product.template'].create({
+            'name': 'Fibra spec', 'sgi_packaging_notes': "No apilar > 3 camas."})
+        self.assertTrue(tmpl.sgi_packaging_notes)
+        from odoo.exceptions import UserError as UE
+        with self.assertRaises(UE):
+            tmpl.action_sgi_open_spec()  # sin spec ligada -> error claro
+        variant = tmpl.product_variant_id
+        with self.assertRaises(UE):
+            variant.action_sgi_open_spec()  # resuelve también en la variante
+        job = self.env['hr.job'].create({
+            'name': 'Operador spec', 'sgi_epp_required': "Casco, lentes."})
+        self.assertTrue(job.sgi_epp_required)
