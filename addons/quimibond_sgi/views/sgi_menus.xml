@@ -155,6 +155,9 @@
               action="sgi_process_action" sequence="5"/>
     <menuitem id="menu_sgi_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
               action="sgi_process_flow_action" sequence="10"/>
+    <menuitem id="menu_sgi_activity_chain" name="Cadena de actividades"
+              parent="menu_sgi_processes" action="sgi_activity_link_action"
+              sequence="15"/>
     <menuitem id="menu_sgi_activities" name="Actividades de procedimiento"
               parent="menu_sgi_processes" action="sgi_process_activity_action"
               sequence="20"/>

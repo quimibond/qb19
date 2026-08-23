@@ -208,6 +208,59 @@
         </field>
     </record>
 
+    <!-- ====== Cadena de actividades: el hilo conductor paso a paso ====== -->
+    <record id="sgi_activity_link_view_list" model="ir.ui.view">
+        <field name="name">sgi.activity.link.list</field>
+        <field name="model">sgi.activity.link</field>
+        <field name="arch" type="xml">
+            <list string="Cadena de actividades" default_order="from_process_id, id"
+                  decoration-info="is_cross_process">
+                <field name="from_process_id" optional="show"/>
+                <field name="from_activity_id"/>
+                <field name="name" string="Entregable"/>
+                <field name="to_activity_id"/>
+                <field name="to_process_id" optional="show"/>
+                <field name="is_cross_process" string="Cruza procesos" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_link_view_search" model="ir.ui.view">
+        <field name="name">sgi.activity.link.search</field>
+        <field name="model">sgi.activity.link</field>
+        <field name="arch" type="xml">
+            <search string="Cadena de actividades">
+                <field name="name" string="Entregable"/>
+                <field name="from_activity_id"/>
+                <field name="to_activity_id"/>
+                <field name="from_process_id"/>
+                <field name="to_process_id"/>
+                <filter name="cross" string="Cruzan procesos"
+                        domain="[('is_cross_process', '=', True)]"/>
+                <filter name="internal" string="Dentro del proceso"
+                        domain="[('is_cross_process', '=', False)]"/>
+                <group>
+                    <filter name="group_from" string="Proceso origen"
+                            context="{'group_by': 'from_process_id'}"/>
+                    <filter name="group_to" string="Proceso destino"
+                            context="{'group_by': 'to_process_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_link_action" model="ir.actions.act_window">
+        <field name="name">Cadena de actividades</field>
+        <field name="res_model">sgi.activity.link</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="sgi_activity_link_view_search"/>
+        <field name="context">{'search_default_group_from': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El hilo conductor de la operación</p>
+            <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Se capturan en la actividad (Recibe de / Entrega a) y se imprimen en el F-P-G01-02.</p>
+        </field>
+    </record>
+
     <!-- ====== Pestaña "Procedimiento" en la ficha del proceso ====== -->
     <record id="sgi_process_view_form_procedure" model="ir.ui.view">
         <field name="name">sgi.process.form.procedure</field>
@@ -219,6 +272,11 @@
                         class="oe_stat_button" icon="fa-print"
                         invisible="activity_count == 0">
                     <field name="activity_count" widget="statinfo" string="Actividades"/>
+                </button>
+                <button name="action_view_chain" type="object"
+                        class="oe_stat_button" icon="fa-link"
+                        invisible="chain_link_count == 0">
+                    <field name="chain_link_count" widget="statinfo" string="Cadena"/>
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">

@@ -74,6 +74,29 @@ class SgiProcessProcedure(models.Model):
         for process in self:
             process.activity_count = len(process.activity_ids)
 
+    chain_link_count = fields.Integer(
+        string="Ligas de la cadena", compute='_compute_chain_link_count',
+        help="Entregas entre actividades que tocan este proceso (entran o salen).")
+
+    def _compute_chain_link_count(self):
+        Link = self.env['sgi.activity.link']
+        for process in self:
+            process.chain_link_count = Link.search_count([
+                '|', ('from_process_id', '=', process.id),
+                ('to_process_id', '=', process.id)]) if process.id else 0
+
+    def action_view_chain(self):
+        """La cadena del proceso: qué entregables entran y salen, paso a paso."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Cadena — %s" % self.name,
+            'res_model': 'sgi.activity.link',
+            'view_mode': 'list',
+            'domain': ['|', ('from_process_id', '=', self.id),
+                       ('to_process_id', '=', self.id)],
+        }
+
     @api.depends('activity_ids.measure_state', 'activity_ids.measure_model_id')
     def _compute_measure_stats(self):
         for process in self:

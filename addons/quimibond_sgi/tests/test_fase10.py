@@ -123,6 +123,11 @@ class TestActivityMeasurement(TransactionCase):
         self.assertEqual(b.prev_activity_ids, a)
         action = a.action_open_next()
         self.assertEqual(action['res_id'], b.id)
+        # La ficha del proceso ve su cadena (entradas y salidas).
+        self.assertEqual(self.process.chain_link_count, 1)
+        self.assertEqual(other.chain_link_count, 1)
+        chain_action = self.process.action_view_chain()
+        self.assertEqual(chain_action['res_model'], 'sgi.activity.link')
         with self.assertRaises(UserError):
             b.action_open_next()
         from odoo.exceptions import ValidationError as VE
