@@ -73,6 +73,9 @@
                             invisible="state != 'borrador'"/>
                     <button name="action_start" type="object" string="Iniciar"
                             class="btn-primary" invisible="state != 'planificada'"/>
+                    <button name="action_answer_checklist" type="object"
+                            string="Contestar checklist" icon="fa-list-ol"
+                            invisible="state != 'en_ejecucion'"/>
                     <button name="action_generate_findings_from_checklist" type="object"
                             string="Hallazgos del checklist" icon="fa-magic"
                             invisible="state not in ('en_ejecucion', 'informe')"/>
@@ -111,6 +114,13 @@
                         </group>
                     </group>
                     <group string="Checklist">
+                        <div class="text-muted" colspan="2">
+                            Flujo: <b>Contestar checklist</b> abre el cuestionario
+                            y liga la respuesta aquí; al terminar,
+                            <b>Hallazgos del checklist</b> convierte cada
+                            «No conforme» en NC menor y cada «Observación» en
+                            observación — sin doble captura.
+                        </div>
                         <field name="survey_id"/>
                         <field name="survey_input_ids" widget="many2many_tags"/>
                     </group>

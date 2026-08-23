@@ -35,8 +35,14 @@
                         Genere una nueva revisión controlada o confírmelo.
                     </div>
                     <div class="oe_title">
-                        <h1><field name="sgi_code" placeholder="Clave (p.ej. P-G01)"/></h1>
+                        <h1><field name="sgi_code" placeholder="Clave (P-A28 · F-P-G05-01 · IT-P-P01-08 · DAT… · ANEXO 6)"/></h1>
                         <h2><field name="name" placeholder="Nombre del documento"/></h2>
+                        <div class="text-muted" invisible="not sgi_is_controlled">
+                            La clave sigue la nomenclatura PNTQ (P-Xnn, F-P-Xnn-nn,
+                            IT-P-Xnn-nn, F-IT-P-Xnn-nn-nn, DAT, PROT-nn, ANEXO n;
+                            X = área G/A/C/D/E/I/M/P/S/V). Solo puede haber UNA
+                            revisión vigente por clave.
+                        </div>
                     </div>
                     <group>
                         <group>
@@ -53,6 +59,14 @@
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
                         </group>
+                    </group>
+                    <group string="Archivo">
+                        <field name="type" widget="radio" options="{'horizontal': true}"
+                               string="Tipo de archivo"/>
+                        <field name="datas" filename="name" string="PDF / archivo"
+                               invisible="type != 'binary'"/>
+                        <field name="url" widget="url" placeholder="https://…"
+                               invisible="type != 'url'"/>
                     </group>
                     <notebook>
                         <page string="Migración a Odoo"
@@ -97,19 +111,29 @@
                             </group>
                         </page>
                         <page string="Puestos que aplican">
-                            <field name="sgi_job_ids"/>
+                            <div class="alert alert-info mb-3" role="status">
+                                <b>La difusión depende de esto:</b> el botón
+                                «Generar acuses» crea un acuse por cada empleado
+                                de estos puestos, y «Mis procedimientos» filtra
+                                por puesto. Un documento vigente sin puestos no
+                                se difunde a nadie.
+                            </div>
+                            <field name="sgi_job_ids" widget="many2many_tags"/>
                         </page>
                         <page string="Acuses de lectura">
                             <field name="sgi_ack_ids">
-                                <list>
+                                <list decoration-warning="state == 'pendiente'"
+                                      decoration-success="state == 'leido'">
                                     <field name="employee_id"/>
-                                    <field name="state"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'leido'"
+                                           decoration-warning="state == 'pendiente'"/>
                                     <field name="ack_date"/>
                                 </list>
                             </field>
                         </page>
                     </notebook>
-                    <field name="attachment_id" widget="many2one"/>
+                    <field name="attachment_id" invisible="1"/>
                 </sheet>
                 <chatter/>
             </form>
@@ -218,6 +242,8 @@ else:
                 <field name="employee_id"/>
                 <field name="state"/>
                 <field name="ack_date"/>
+                <button name="action_view_file" type="object"
+                        icon="fa-file-pdf-o" title="Leer el documento"/>
                 <button name="action_mark_read" type="object" string="Marcar leído y entendido"
                         icon="fa-check" invisible="state == 'leido'"/>
             </list>
@@ -230,6 +256,8 @@ else:
         <field name="arch" type="xml">
             <form string="Acuse de lectura">
                 <header>
+                    <button name="action_view_file" type="object"
+                            string="Leer el documento" icon="fa-file-pdf-o"/>
                     <button name="action_mark_read" type="object" string="Marcar leído y entendido"
                             class="btn-primary" invisible="state == 'leido'"/>
                     <field name="state" widget="statusbar"/>
@@ -248,10 +276,51 @@ else:
         </field>
     </record>
 
+    <record id="sgi_document_ack_view_search" model="ir.ui.view">
+        <field name="name">sgi.document.ack.search</field>
+        <field name="model">sgi.document.ack</field>
+        <field name="arch" type="xml">
+            <search string="Acuses de lectura">
+                <field name="document_id"/>
+                <field name="employee_id"/>
+                <field name="sgi_code"/>
+                <filter name="mine" string="Míos"
+                        domain="[('user_id', '=', uid)]"/>
+                <filter name="pending" string="Pendientes"
+                        domain="[('state', '=', 'pendiente')]"/>
+                <filter name="read" string="Leídos"
+                        domain="[('state', '=', 'leido')]"/>
+                <group>
+                    <filter name="group_document" string="Documento"
+                            context="{'group_by': 'document_id'}"/>
+                    <filter name="group_employee" string="Empleado"
+                            context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Mi trabajo → Mis acuses de lectura: leer (botón PDF) y firmar, en la
+         misma pantalla. Antes el empleado solo llegaba aquí por su ficha. -->
+    <record id="sgi_document_ack_action_mine" model="ir.actions.act_window">
+        <field name="name">Mis acuses de lectura</field>
+        <field name="res_model">sgi.document.ack</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_document_ack_view_search"/>
+        <field name="context">{'search_default_mine': 1, 'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin acuses pendientes 🎉</p>
+            <p>Cuando un documento de tu puesto se publique o cambie de revisión, aquí te aparecerá: léelo con el botón del PDF y firma con <b>Marcar leído y entendido</b>. Quita el filtro «Pendientes» para ver tu historial.</p>
+        </field>
+    </record>
+
     <record id="sgi_document_ack_action" model="ir.actions.act_window">
         <field name="name">Acuses de lectura</field>
         <field name="res_model">sgi.document.ack</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_document_ack_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin acuses de lectura pendientes</p>
             <p>Se generan al publicar un documento con puestos asignados; cada acuse es la firma de difusión que pide el auditor.</p>

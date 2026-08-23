@@ -27,6 +27,13 @@
                                    invisible="not sgi_alert_id"/>
                         </group>
                     </group>
+                    <div class="text-muted mb-2">
+                        Un resultado <b>Fuera de tolerancia</b> marca el equipo
+                        como NO USAR y genera la NC de evaluación de impacto
+                        (qué producto se midió con él). La <b>Próxima fecha</b>
+                        actualiza el semáforo del equipo: avisa 30 días antes
+                        y al vencer también lo bloquea.
+                    </div>
                     <group string="Notas">
                         <field name="notes" nolabel="1"/>
                     </group>
@@ -143,7 +150,7 @@
         <field name="res_model">maintenance.equipment</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('sgi_is_measuring', '=', True)]</field>
-        <field name="context">{'search_default_group_category': 0}</field>
+        <field name="context">{'search_default_group_category': 0, 'default_sgi_is_measuring': True}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Da de alta los equipos de medición</p>
             <p>Con su frecuencia de calibración; el semáforo avisa los vencimientos 30 días antes.</p>

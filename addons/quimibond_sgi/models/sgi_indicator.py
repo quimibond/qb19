@@ -151,6 +151,19 @@ class SgiIndicator(models.Model):
             indicator.display_name = "%s - %s" % (indicator.code, indicator.name) \
                 if indicator.code else indicator.name
 
+    def action_view_trend(self):
+        """La pregunta real de MAST frente a un KPI: ¿cómo viene la tendencia?
+        Abre las mediciones del indicador en gráfica de línea por periodo."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Tendencia — %s" % (self.code or self.name),
+            'res_model': 'sgi.indicator.measure',
+            'view_mode': 'graph,list,form',
+            'domain': [('indicator_id', '=', self.id)],
+            'context': {'default_indicator_id': self.id},
+        }
+
     # ------------------------------------------------------------------
     # Motor de cálculo automático
     # ------------------------------------------------------------------

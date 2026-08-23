@@ -10,10 +10,12 @@
             <list string="Acciones" decoration-danger="state == 'vencida'"
                   decoration-muted="state == 'terminada'">
                 <field name="name"/>
+                <field name="origin_display" string="Origen"/>
                 <field name="action_type" optional="show"/>
-                <field name="alert_id" optional="show"/>
+                <field name="alert_id" optional="hide"/>
                 <field name="risk_id" optional="hide"/>
                 <field name="incident_id" optional="hide"/>
+                <field name="drill_id" optional="hide"/>
                 <field name="responsible_id" widget="many2one_avatar_user"/>
                 <field name="date_commit"/>
                 <field name="progress" optional="show"/>
@@ -22,6 +24,12 @@
                        decoration-success="state == 'terminada'"
                        decoration-danger="state == 'vencida'"
                        decoration-info="state == 'abierta'"/>
+                <button name="action_open_origin" type="object"
+                        icon="fa-external-link" title="Abrir el origen (NC, riesgo, incidente…)"/>
+                <button name="action_mark_done" type="object"
+                        string="Terminar" icon="fa-check"
+                        invisible="date_done"
+                        confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
             </list>
         </field>
     </record>
@@ -50,6 +58,8 @@
                         domain="[('fmea_line_id', '!=', False)]"/>
                 <filter name="from_incident" string="De Incidentes SST"
                         domain="[('incident_id', '!=', False)]"/>
+                <filter name="from_drill" string="De Simulacros"
+                        domain="[('drill_id', '!=', False)]"/>
                 <separator/>
                 <filter name="group_responsible" string="Agrupar por responsable"
                         context="{'group_by': 'responsible_id'}"/>
@@ -61,10 +71,58 @@
         </field>
     </record>
 
+    <!-- Form: el contexto completo de UNA acción — qué hay que hacer, de
+         dónde viene y los dos clicks que importan (Terminar / Abrir origen). -->
+    <record id="sgi_action_line_view_form" model="ir.ui.view">
+        <field name="name">sgi.action.line.form</field>
+        <field name="model">sgi.action.line</field>
+        <field name="arch" type="xml">
+            <form string="Acción">
+                <header>
+                    <button name="action_mark_done" type="object"
+                            string="Marcar terminada" class="btn-primary"
+                            invisible="date_done"
+                            confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
+                    <button name="action_open_origin" type="object"
+                            string="Abrir origen" icon="fa-external-link"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="abierta,terminada"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Acción"/>
+                        <h2><field name="name" placeholder="¿Qué hay que hacer?"/></h2>
+                        <div class="text-muted">
+                            Origen: <field name="origin_display" readonly="1" nolabel="1" class="oe_inline"/>
+                        </div>
+                    </div>
+                    <group>
+                        <group string="Compromiso">
+                            <field name="action_type"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="date_commit"/>
+                        </group>
+                        <group string="Ejecución">
+                            <field name="progress"/>
+                            <field name="date_done"/>
+                        </group>
+                    </group>
+                    <group invisible="1">
+                        <field name="alert_id"/>
+                        <field name="risk_id"/>
+                        <field name="incident_id"/>
+                        <field name="drill_id"/>
+                        <field name="fmea_line_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="sgi_action_line_action_mine" model="ir.actions.act_window">
         <field name="name">Mis acciones</field>
         <field name="res_model">sgi.action.line</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_action_line_view_search"/>
         <field name="context">{'search_default_mine': 1, 'search_default_open': 1, 'search_default_overdue': 1}</field>
         <field name="help" type="html">
@@ -78,7 +136,7 @@
     <record id="sgi_action_line_action_all" model="ir.actions.act_window">
         <field name="name">Todas las acciones</field>
         <field name="res_model">sgi.action.line</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_action_line_view_search"/>
         <field name="context">{'search_default_open': 1, 'search_default_overdue': 1, 'search_default_group_responsible': 1}</field>
         <field name="help" type="html">

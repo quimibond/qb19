@@ -11,6 +11,10 @@
                 <field name="name"/>
                 <field name="issue_date"/>
                 <field name="objective_count"/>
+                <field name="health" widget="badge"
+                       decoration-success="health == 'verde'"
+                       decoration-warning="health == 'amarillo'"
+                       decoration-danger="health == 'rojo'"/>
                 <field name="state"/>
             </list>
         </field>
@@ -67,6 +71,10 @@
                                     <field name="name"/>
                                     <field name="target_year"/>
                                     <field name="indicator_count"/>
+                                    <field name="health" widget="badge"
+                                           decoration-success="health == 'verde'"
+                                           decoration-warning="health == 'amarillo'"
+                                           decoration-danger="health == 'rojo'"/>
                                 </list>
                             </field>
                         </page>
