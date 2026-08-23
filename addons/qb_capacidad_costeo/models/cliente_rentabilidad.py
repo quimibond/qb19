@@ -67,7 +67,15 @@ class QbClienteRentabilidad(models.Model):
 
     @property
     def _table_query(self):
-        return """
+        # Solo la COMPAÑIA ACTIVA, como el motor de costos: sin este filtro,
+        # en multicompañía las facturas de las otras empresas del grupo
+        # metían a QUIMIBOND y a las hermanas (p.ej. ENTRETELAS BRINCO)
+        # como "clientes" con cobertura de costo 0 — pura facturación
+        # intercompañía. _table_query es una property: se re-evalúa en cada
+        # lectura con la compañía activa del usuario. Ningún caracter de
+        # porcentaje en el SQL (pasa por formateo estilo printf).
+        company_id = int(self.env.company.id)
+        return f"""
             WITH lines AS (
                 SELECT am.commercial_partner_id AS partner_id,
                        aml.product_id,
@@ -87,6 +95,7 @@ class QbClienteRentabilidad(models.Model):
                   AND aml.display_type = 'product'
                   AND aa.account_type = 'income'
                   AND aml.product_id IS NOT NULL
+                  AND aml.company_id = {company_id}
                   AND am.invoice_date >= (date_trunc('month', CURRENT_DATE)
                                           - INTERVAL '12 months')
             ),
@@ -135,6 +144,7 @@ class QbClienteRentabilidad(models.Model):
                              AND r.product_id = q.product_id AND r.mes = q.mes
                 LEFT JOIN qb_costo_producto cp
                        ON cp.product_id = q.product_id AND cp.period = q.mes
+                      AND cp.company_id = {company_id}
                 LEFT JOIN qb_costo_factores f ON f.id = cp.factores_id
             )
             SELECT
