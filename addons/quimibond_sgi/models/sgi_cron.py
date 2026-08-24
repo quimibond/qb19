@@ -192,27 +192,34 @@ class SgiCron(models.AbstractModel):
         ack_days = int(Param.get_param('quimibond_sgi.doc_ack_pending_days', 7))
 
         # Revisión bienal: dos avisos configurables (por defecto 60 y 30 días).
-        for offset in {notice_days, notice_final}:
+        # Por RANGO (<=), no por igualdad exacta: con igualdad, un día sin
+        # corrida del cron (mantenimiento, error previo) perdía el aviso de esa
+        # cohorte para siempre. La dedup por resumen evita repetirlo; el
+        # resumen lleva el nivel de aviso (60/30), no la fecha.
+        for offset in sorted({notice_days, notice_final}, reverse=True):
             target = today + relativedelta(days=offset)
             docs = Doc.search([
                 ('sgi_state', '=', 'vigente'),
-                ('sgi_next_review_date', '=', target),
+                ('sgi_next_review_date', '!=', False),
+                ('sgi_next_review_date', '<=', target),
             ])
 
             def _review_notice(doc, offset=offset):
                 self._sgi_schedule(
                     doc,
-                    "Revisión bienal en %d días: %s" % (offset, doc.sgi_code or doc.name),
-                    "El documento requiere revisión antes de %s." % doc.sgi_next_review_date,
+                    "Revisión bienal (aviso %d días): %s" % (offset, doc.sgi_code or doc.name),
+                    "El documento requiere revisión antes del %s." % doc.sgi_next_review_date,
                     doc.sgi_owner_id.id or self._sgi_manager_user_id())
 
             self._sgi_for_each(docs, _review_notice, "aviso de revisión bienal")
 
-        # Pilotos que vencen (aviso configurable, por defecto 7 días).
+        # Pilotos que vencen (aviso configurable, por defecto 7 días). También
+        # por rango: un piloto ya vencido sin cerrar sigue mereciendo su aviso.
         pilot_target = today + relativedelta(days=pilot_days)
         pilots = Doc.search([
             ('sgi_state', '=', 'piloto'),
-            ('sgi_pilot_end_date', '=', pilot_target),
+            ('sgi_pilot_end_date', '!=', False),
+            ('sgi_pilot_end_date', '<=', pilot_target),
         ])
 
         def _pilot_notice(doc):
