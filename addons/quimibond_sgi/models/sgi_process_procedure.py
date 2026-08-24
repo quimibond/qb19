@@ -531,7 +531,11 @@ class SgiProcessActivity(models.Model):
                     vals['measure_state'] = 'verde'
             except Exception:
                 pass
-            activity.write(vals)
+            # Solo se escribe lo que cambió: el cron diario re-mide TODO y la
+            # mayoría de los valores no se mueven — escribir igual infla el
+            # write_date y el WAL sin aportar nada.
+            if any(activity[key] != value for key, value in vals.items()):
+                activity.write(vals)
 
     def _sgi_resolve_menu(self):
         """Resuelve odoo_menu_id desde el texto de odoo_ref: convierte
@@ -759,7 +763,12 @@ class SgiActivityLink(models.Model):
                         vals['nc_alert_id'] = alert.id
             else:
                 vals['atorado_since'] = False
-            link.write(vals)
+            # Solo-diferencia: el cron evalúa todos los eslabones a diario y
+            # casi siempre nada cambió (un UPDATE por link por día, de balde).
+            if any(
+                    (link[key].id if key == 'nc_alert_id' else link[key]) != value
+                    for key, value in vals.items()):
+                link.write(vals)
 
     def _sgi_chain_nc_open(self):
         """¿La NC ligada al eslabón sigue abierta (bloquea crear otra)?"""
