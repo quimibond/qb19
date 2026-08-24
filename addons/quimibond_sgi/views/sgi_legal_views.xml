@@ -104,7 +104,7 @@
                 <filter name="ambiental" string="Ambiental (14001)" domain="[('system', '=', 'ambiental')]"/>
                 <filter name="sst" string="SST (45001)" domain="[('system', '=', 'sst')]"/>
                 <filter name="calidad" string="Calidad / cliente" domain="[('system', '=', 'calidad')]"/>
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter name="group_system" string="Sistema" context="{'group_by': 'system'}"/>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
                     <filter name="group_state" string="Cumplimiento" context="{'group_by': 'compliance_state'}"/>
