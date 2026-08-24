@@ -450,10 +450,38 @@ class SgiDocumentAck(models.Model):
         "Ya existe un acuse para este empleado y documento.",
     )
 
-    def action_mark_read(self):
+    # El acuse es evidencia de difusión (ISO 7.5): la firma vive en write(),
+    # no solo en el botón — un write directo (lista editable, import, RPC)
+    # podía firmar acuses ajenos sin dejar rastro. Un acuse cuyo empleado no
+    # tiene usuario ligado solo lo firma MAST (no hay forma de saber que fue
+    # «el propio empleado»).
+    _SGI_ACK_SIGN_FIELDS = {'state', 'ack_date'}
+
+    def _sgi_check_can_sign(self):
+        if self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            return
         for ack in self:
-            if ack.user_id and ack.user_id != self.env.user and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-                raise UserError("Solo el propio empleado puede marcar su acuse como leído.")
+            if not ack.user_id or ack.user_id != self.env.user:
+                raise UserError(
+                    "Solo el propio empleado (o el Jefe de MAST) puede firmar o "
+                    "modificar el acuse de lectura de %s." % ack.employee_id.name)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        acks = super().create(vals_list)
+        # Crear un acuse ya «firmado» equivale a firmarlo: mismo candado.
+        pre_signed = acks.filtered(lambda a: a.state != 'pendiente' or a.ack_date)
+        pre_signed._sgi_check_can_sign()
+        return acks
+
+    def write(self, vals):
+        if self._SGI_ACK_SIGN_FIELDS & set(vals):
+            self._sgi_check_can_sign()
+        return super().write(vals)
+
+    def action_mark_read(self):
+        # La validación de identidad vive en write(); aquí solo se sella.
+        for ack in self:
             ack.write({'state': 'leido', 'ack_date': fields.Datetime.now()})
         return True
 
