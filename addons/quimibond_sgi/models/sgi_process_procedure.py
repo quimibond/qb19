@@ -538,19 +538,39 @@ class SgiProcessActivity(models.Model):
                     "SGI: falló un paso del cron de medición; continúo.")
         return True
 
+    def _sgi_checked_measure_domain(self):
+        """Dominio de evidencia VALIDADO contra el modelo real. El dominio lo
+        captura una persona: uno con un campo inexistente o no almacenado pasa
+        el safe_eval y truena hasta la vista del usuario («Cannot convert to
+        SQL» — misma familia del bug de complete_name). El cron ya se protege
+        con try/except; aquí se valida ANTES de devolver la acción, con un
+        error accionable en vez de un traceback."""
+        self.ensure_one()
+        domain = self._sgi_measure_domain()
+        try:
+            self.env[self.measure_model_id.model].sudo().search_count(domain, limit=1)
+        except Exception as exc:
+            raise UserError(
+                "El «Filtro de evidencia» de la actividad %s es inválido para "
+                "el modelo %s:\n%s\n\nCorrige el dominio en la pestaña de "
+                "medición (solo campos reales y almacenados del modelo)." % (
+                    self.display_name, self.measure_model_id.model, exc))
+        return domain
+
     def action_view_measure_records(self):
         """Abre los registros reales que son la evidencia de la actividad."""
         self.ensure_one()
         if not self.measure_model_id:
             raise UserError(
                 "Esta actividad no tiene modelo de medición ligado.")
+        domain = self._sgi_checked_measure_domain()
         return {
             'type': 'ir.actions.act_window',
             'name': "%s — evidencia" % (
                 self.name or self.number or self.section or 'Actividad'),
             'res_model': self.measure_model_id.model,
             'view_mode': 'list,form',
-            'domain': self._sgi_measure_domain(),
+            'domain': domain,
         }
 
     @api.depends('number', 'name', 'section')
