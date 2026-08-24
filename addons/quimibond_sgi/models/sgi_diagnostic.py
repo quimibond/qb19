@@ -272,6 +272,60 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line('ok', "Mejora continua fluyendo."))
         section("Mejora continua", lines)
 
+        # ---- 5b. Contexto y cumplimiento (4.1/4.2 · 6.1.3 · 7.2) ----------
+        lines = []
+        if not env['sgi.interested.party'].search_count([]):
+            lines.append(self._sgi_line(
+                'bad', "Cero partes interesadas registradas (4.2 sin evidencia: es de lo primero que pregunta un auditor de certificación).",
+                "SGI → Panel → Partes interesadas"))
+        Legal = env['sgi.legal.requirement']
+        legal_total = Legal.search_count([])
+        if not legal_total:
+            lines.append(self._sgi_line(
+                'bad', "Cero requisitos legales registrados (14001/45001 6.1.3): sin matriz legal no hay evaluación del cumplimiento.",
+                "SGI → Riesgos y auditorías → Requisitos legales"))
+        else:
+            broken = Legal.search_count(
+                [('compliance_state', 'in', ('no_cumple', 'parcial'))])
+            if broken:
+                lines.append(self._sgi_line(
+                    'bad', "%d requisito(s) legales en incumplimiento (total o parcial)." % broken,
+                    "trate la NC ligada y re-evalúe"))
+            overdue = Legal.search_count([
+                ('next_eval_date', '!=', False), ('next_eval_date', '<=', today)])
+            if overdue:
+                lines.append(self._sgi_line(
+                    'warn', "%d evaluación(es) de cumplimiento legal vencidas." % overdue))
+        if not env['hr.job.skill'].search_count([]):
+            lines.append(self._sgi_line(
+                'bad', "Cero competencias requeridas por puesto (hr.job.skill): la DNC y el KPI de capacitación no tienen materia prima (7.2).",
+                "Empleados → Puestos → pestaña Habilidades"))
+        suppliers_pending = env['res.partner'].search_count(
+            [('supplier_rank', '>', 0), ('sgi_supplier_status', '=', False)])
+        if suppliers_pending:
+            lines.append(self._sgi_line(
+                'warn', "%d proveedor(es) sin aprobación 8.4.1 (el bloqueo de OC no aplica a nadie): arranque por los que reciben compras hoy." % suppliers_pending,
+                "ficha del proveedor → pestaña SGI Proveedor"))
+        # Encuesta de satisfacción divergente: hay respuestas reales en OTRA
+        # encuesta de satisfacción distinta de la que alimenta CA-02.
+        survey = env['sgi.indicator']._sgi_satisfaction_survey()
+        if survey:
+            configured_count = env['survey.user_input'].sudo().search_count(
+                [('survey_id', '=', survey.id), ('state', '=', 'done')])
+            others = env['survey.survey'].sudo().with_context(
+                active_test=False).search(
+                [('id', '!=', survey.id), ('title', 'ilike', 'satisf')])
+            other_count = env['survey.user_input'].sudo().search_count(
+                [('survey_id', 'in', others.ids), ('state', '=', 'done')]) \
+                if others else 0
+            if other_count and not configured_count:
+                lines.append(self._sgi_line(
+                    'warn', "El KPI CA-02 lee una encuesta con 0 respuestas mientras otra encuesta de satisfacción acumula %d: re-apunte la fuente en Ajustes o declare el corte." % other_count,
+                    "SGI → Configuración → Ajustes → Encuesta de satisfacción (CA-02)"))
+        if not lines:
+            lines.append(self._sgi_line('ok', "Contexto, matriz legal y competencias con base capturada."))
+        section("Contexto y cumplimiento", lines)
+
         # ---- 6. Ajustes clave ---------------------------------------------
         lines = []
         Param = env['ir.config_parameter'].sudo()

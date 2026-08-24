@@ -6,6 +6,16 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
+                <!-- Única herencia del button_box del partner (D.30): el orden
+                     de los botones es determinista dentro de esta vista. -->
+                <button name="action_sgi_open_complaints" type="object" class="oe_stat_button"
+                        icon="fa-comments" invisible="sgi_complaint_count == 0">
+                    <field name="sgi_complaint_count" widget="statinfo" string="Reclamaciones"/>
+                </button>
+                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                    <field name="sgi_nc_count" widget="statinfo" string="NC"/>
+                </button>
                 <button name="action_sgi_open_evals" type="object" class="oe_stat_button"
                         icon="fa-star" invisible="sgi_eval_count == 0">
                     <field name="sgi_eval_count" widget="statinfo" string="Evaluaciones"/>

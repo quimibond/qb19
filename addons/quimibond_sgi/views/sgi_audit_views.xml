@@ -26,10 +26,12 @@
                             <field name="audit_type"/>
                             <field name="norm_ids" widget="many2many_tags"/>
                             <field name="lead_auditor_id"/>
-                            <field name="state"/>
+                            <field name="state" widget="badge"
+                                   decoration-success="state == 'cerrada'"
+                                   decoration-info="state == 'creada'"/>
                             <button name="action_create_audit" type="object"
                                     string="Crear auditoría" icon="fa-plus"
-                                    invisible="state == 'creada'"/>
+                                    invisible="state != 'pendiente'"/>
                             <field name="audit_id" readonly="1" optional="hide"/>
                         </list>
                     </field>

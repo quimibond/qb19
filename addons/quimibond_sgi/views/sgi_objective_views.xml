@@ -45,7 +45,31 @@
                     <group string="Descripción">
                         <field name="description" nolabel="1"/>
                     </group>
+                    <notebook>
+                        <page string="Plan de acción (6.2.2)" name="action_plan">
+                            <p class="text-muted">ISO 6.2.2: qué se hará para
+                            lograr el objetivo, quién y para cuándo. Cada
+                            acción genera su actividad espejo al responsable;
+                            la evaluación del resultado la dan los KPIs
+                            ligados.</p>
+                            <field name="action_line_ids" context="{'default_objective_id': id}">
+                                <list editable="bottom"
+                                      decoration-danger="state == 'vencida'"
+                                      decoration-success="state == 'terminada'">
+                                    <field name="name"/>
+                                    <field name="responsible_id"/>
+                                    <field name="date_commit"/>
+                                    <field name="date_done"/>
+                                    <field name="progress"/>
+                                    <field name="state"/>
+                                    <field name="action_type" column_invisible="1"/>
+                                    <field name="alert_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

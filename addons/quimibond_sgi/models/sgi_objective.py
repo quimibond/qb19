@@ -17,6 +17,9 @@ def sgi_worst_health(values):
 class SgiObjective(models.Model):
     _name = 'sgi.objective'
     _description = "Objetivo Integral SGI"
+    # mail.activity.mixin: las acciones del plan (6.2.2) anclan su actividad
+    # espejo SOBRE el objetivo; sin el mixin, agendar tronaría (lección C1).
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'target_year, name'
 
     name = fields.Char(string="Objetivo", required=True, translate=False)
@@ -28,19 +31,31 @@ class SgiObjective(models.Model):
     target_year = fields.Integer(string="Año meta")
     indicator_ids = fields.One2many('sgi.indicator', 'objective_id', string="Indicadores")
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_indicator_count')
+    # Plan de acción del objetivo (ISO 6.2.2: qué se hará, responsable y
+    # plazo). Reutiliza el modelo CAPA transversal: sexta fuente del XOR.
+    action_line_ids = fields.One2many('sgi.action.line', 'objective_id',
+                                      string="Plan de acción (6.2.2)")
     health = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
     ], string="Salud agregada", compute='_compute_health',
-        help="Peor color entre los procesos de sus indicadores.")
+        help="Peor color entre los procesos de sus indicadores Y el último "
+             "semáforo de cada indicador.")
     active = fields.Boolean(default=True)
 
     @api.depends('indicator_ids', 'indicator_ids.process_id')
     def _compute_health(self):
+        """Agrega la salud del proceso Y el último semáforo del indicador:
+        antes solo el proceso, así que un objetivo cuyos KPIs no tuvieran
+        proceso salía verde siempre (deuda B.18)."""
+        semaphore_to_health = {'rojo': 'rojo', 'amarillo': 'amarillo',
+                               'verde': 'verde'}
         for objective in self:
-            processes = objective.indicator_ids.mapped('process_id')
-            objective.health = sgi_worst_health(processes.mapped('health'))
+            values = objective.indicator_ids.mapped('process_id').mapped('health')
+            values += [semaphore_to_health.get(s) for s in
+                       objective.indicator_ids.mapped('last_semaphore') if s]
+            objective.health = sgi_worst_health(values)
 
     def _compute_indicator_count(self):
         data = self.env['sgi.indicator']._read_group(

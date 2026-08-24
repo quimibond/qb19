@@ -65,6 +65,22 @@ class DocumentsDocument(models.Model):
     sgi_next_review_date = fields.Date(string="Próxima revisión")
     sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto")
 
+    # --- Retención y disposición de registros (ISO 7.5.3; clientes IATF
+    # suelen imponer retenciones largas). 0 = sin definir: el filtro «Sin
+    # retención definida» y el diagnóstico lo señalan; la tabla de retención
+    # se imprime con el reporte del mismo nombre. ---
+    sgi_retention_years = fields.Integer(
+        string="Retención (años)",
+        help="Años que el registro/documento se conserva tras quedar obsoleto "
+             "o cerrado. 0 = sin definir. Clientes automotrices suelen exigir "
+             "vida del programa + años: captúralo por documento o familia.")
+    sgi_disposition = fields.Selection([
+        ('archivo', "Archivo muerto"),
+        ('destruccion', "Destrucción controlada"),
+        ('devolucion', "Devolución al cliente"),
+    ], string="Disposición final",
+        help="Qué se hace con el registro al cumplirse la retención.")
+
     # --- Detección de divergencia "Procedimiento vivo" vs PDF controlado (G14) ---
     # Los datos vivos del procedimiento (sgi.process.activity/responsibility y el
     # cuerpo del proceso) pueden editarse fuera del flujo de cambio documental.

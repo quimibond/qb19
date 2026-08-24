@@ -97,3 +97,7 @@ access_sgi_msa_study_user,sgi.msa.study.user,model_sgi_msa_study,group_sgi_user,
 access_sgi_msa_study_quality,sgi.msa.study.quality,model_sgi_msa_study,quality.group_quality_user,1,1,1,0
 access_sgi_msa_study_manager,sgi.msa.study.manager,model_sgi_msa_study,group_sgi_manager,1,1,1,1
 access_sgi_diagnostic_manager,sgi.diagnostic.manager,model_sgi_diagnostic,group_sgi_manager,1,1,1,1
+access_sgi_legal_requirement_user,sgi.legal.requirement.user,model_sgi_legal_requirement,group_sgi_user,1,1,0,0
+access_sgi_legal_requirement_manager,sgi.legal.requirement.manager,model_sgi_legal_requirement,group_sgi_manager,1,1,1,1
+access_sgi_interested_party_user,sgi.interested.party.user,model_sgi_interested_party,group_sgi_user,1,0,0,0
+access_sgi_interested_party_manager,sgi.interested.party.manager,model_sgi_interested_party,group_sgi_manager,1,1,1,1

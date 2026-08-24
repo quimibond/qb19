@@ -139,6 +139,13 @@ class QualityAlert(models.Model):
         for alert in alerts:
             if not alert.sgi_folio and alert.team_id.sgi_sequence_id:
                 alert.sgi_folio = alert.team_id.sgi_sequence_id.next_by_id()
+        # Una NC MAYOR del SGI avisa por correo además de la actividad:
+        # Dirección no vive dentro de Odoo.
+        Cron = self.env['sgi.cron']
+        for alert in alerts:
+            if alert.sgi_folio and alert.sgi_classification == 'mayor':
+                Cron._sgi_send_critical_mail(
+                    'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
         return alerts
 
     @api.depends('sgi_process_id', 'sgi_norm_clause_id', 'sgi_folio')
@@ -276,6 +283,12 @@ class QualityAlert(models.Model):
                         alert.sgi_folio or alert.name, "\n".join(problems)))
 
     def write(self, vals):
+        # Reclasificar a MAYOR una NC con folio también dispara el correo
+        # crítico (solo la transición: no re-avisa a las que ya eran mayores).
+        newly_mayor = self.browse()
+        if vals.get('sgi_classification') == 'mayor':
+            newly_mayor = self.filtered(
+                lambda a: a.sgi_folio and a.sgi_classification != 'mayor')
         newly_closed = self.env['quality.alert']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
@@ -292,6 +305,10 @@ class QualityAlert(models.Model):
                 newly_closed = self.filtered(
                     lambda a: a.stage_id != new_stage and a.sgi_folio)
         res = super().write(vals)
+        Cron = self.env['sgi.cron']
+        for alert in newly_mayor:
+            Cron._sgi_send_critical_mail(
+                'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
         for alert in newly_closed:
             if alert.sgi_classification == 'mayor':
                 alert._sgi_notify_mayor_closed()
@@ -317,6 +334,11 @@ class QualityAlert(models.Model):
                 "lección aprendida.")
         if self.sgi_fmea_id:
             self.sgi_fmea_id._sgi_schedule_activity(manager_id, summary, note)
+            # Con la liga AMEF → plan de control (C.25), el aviso de lecciones
+            # aprendidas también llega al plan que materializa los controles.
+            plan = self.sgi_fmea_id.control_plan_id
+            if plan:
+                plan._sgi_schedule_activity(manager_id, summary, note)
         else:
             Cron._sgi_schedule(self, summary, note, manager_id)
         return True
@@ -376,6 +398,9 @@ class SgiActionLine(models.Model):
                                    ondelete='cascade')
     incident_id = fields.Many2one('sgi.incident', string="Incidente SST", ondelete='cascade')
     drill_id = fields.Many2one('sgi.emergency.drill', string="Simulacro", ondelete='cascade')
+    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral",
+                                   ondelete='cascade',
+                                   help="Plan de acción del objetivo (ISO 6.2.2).")
     action_type = fields.Selection([
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
@@ -400,7 +425,8 @@ class SgiActionLine(models.Model):
                                   readonly=True, copy=False, index=True)
     origin_display = fields.Char(string="Origen", compute='_compute_origin_display')
 
-    @api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id', 'fmea_line_id')
+    @api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id',
+                 'fmea_line_id', 'objective_id')
     def _compute_origin_display(self):
         for line in self:
             origin = line._sgi_origin()
@@ -429,16 +455,18 @@ class SgiActionLine(models.Model):
             'view_mode': 'form',
         }
 
-    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'drill_id', 'name')
+    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id',
+                    'drill_id', 'objective_id', 'name')
     def _check_parent_xor(self):
         for line in self:
             parents = [line.alert_id, line.risk_id, line.fmea_line_id,
-                       line.incident_id, line.drill_id]
+                       line.incident_id, line.drill_id, line.objective_id]
             if sum(1 for p in parents if p) != 1:
                 raise ValidationError(
                     "Una acción debe pertenecer exactamente a un origen: una No "
                     "Conformidad, un Riesgo, un modo de falla de AMEF, un incidente "
-                    "SST o un simulacro (exactamente uno, no varios ni ninguno).")
+                    "SST, un simulacro o un objetivo integral (exactamente uno, "
+                    "no varios ni ninguno).")
 
     @api.constrains('action_type', 'alert_id')
     def _sgi_check_root_cause_before_capa(self):
@@ -485,6 +513,8 @@ class SgiActionLine(models.Model):
             return self.incident_id
         if self.drill_id:
             return self.drill_id
+        if self.objective_id:
+            return self.objective_id
         if self.fmea_line_id:
             return self.fmea_line_id.fmea_id
         return self.env['sgi.action.line'].browse()

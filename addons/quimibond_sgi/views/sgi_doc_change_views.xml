@@ -7,6 +7,20 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
                 <field name="sgi_is_doc_change" invisible="1"/>
+                <field name="sgi_is_moc" invisible="1"/>
+                <notebook invisible="not sgi_is_moc">
+                    <page string="Gestión del cambio SGI (MOC)">
+                        <p class="text-muted">9001 §6.3 / 45001 §8.1.3: un
+                        cambio de proceso, infraestructura o plantilla no se
+                        aprueba sin motivo, procesos afectados y evaluación de
+                        riesgos.</p>
+                        <group>
+                            <field name="sgi_reason" string="Motivo del cambio"/>
+                            <field name="sgi_affected_process_ids" widget="many2many_tags"/>
+                            <field name="sgi_moc_risk_note"/>
+                        </group>
+                    </page>
+                </notebook>
                 <field name="sgi_applied" invisible="1"/>
                 <notebook invisible="not sgi_is_doc_change">
                     <page string="Cambio documental SGI">

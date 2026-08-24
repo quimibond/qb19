@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Reporte 8D de la No Conformidad: los clientes automotrices piden el
+         8D en su disciplina; todos los datos ya viven en la NC (equipo,
+         contención=corrección, causa raíz + 5 porqués + Ishikawa, CAPA,
+         eficacia, lección) — esto solo los presenta en ese orden. -->
+    <record id="action_report_8d" model="ir.actions.report">
+        <field name="name">Reporte 8D</field>
+        <field name="model">quality.alert</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_8d_document</field>
+        <field name="report_file">quimibond_sgi.report_8d_document</field>
+        <field name="binding_model_id" ref="quality.model_quality_alert"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_8d_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Reporte 8D — <t t-out="doc.sgi_folio or doc.name"/></h2>
+                        <table class="table table-sm table-bordered">
+                            <tr>
+                                <td><b>Título:</b> <t t-out="doc.title or doc.name"/></td>
+                                <td><b>Fecha de apertura:</b> <t t-out="doc.create_date and doc.create_date.date()"/></td>
+                            </tr>
+                            <tr>
+                                <td><b>Cliente / proveedor:</b> <t t-out="doc.partner_id.display_name or 'N/A'"/></td>
+                                <td><b>Producto:</b> <t t-out="doc.product_id.display_name or doc.product_tmpl_id.display_name or 'N/A'"/></td>
+                            </tr>
+                            <tr>
+                                <td><b>Proceso:</b> <t t-out="doc.sgi_process_id.display_name or 'N/A'"/></td>
+                                <td><b>Ref. externa (NCR cliente):</b> <t t-out="doc.sgi_external_ref or 'N/A'"/></td>
+                            </tr>
+                        </table>
+
+                        <h5>D1 — Equipo</h5>
+                        <p>
+                            <b>Responsable:</b> <t t-out="doc.user_id.name or 'sin asignar'"/>.
+                            <b>Responsables a contestar:</b>
+                            <t t-out="', '.join(doc.sgi_responsible_ids.mapped('name')) or 'N/A'"/>.
+                            <b>Solicitante:</b> <t t-out="doc.sgi_requester_id.name or 'N/A'"/>
+                            <t t-if="doc.sgi_requester_job"> (<t t-out="doc.sgi_requester_job"/>)</t>.
+                        </p>
+
+                        <h5>D2 — Descripción del problema</h5>
+                        <p style="white-space: pre-line;"><t t-out="doc.sgi_deviation or doc.description or 'Sin capturar.'"/></p>
+
+                        <h5>D3 — Contención inmediata (correcciones)</h5>
+                        <t t-set="containment" t-value="doc.sgi_action_line_ids.filtered(lambda l: l.action_type == 'correccion')"/>
+                        <table class="table table-sm table-bordered" t-if="containment">
+                            <thead><tr><th>Corrección</th><th>Responsable</th><th>Compromiso</th><th>Terminada</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="containment" t-as="line">
+                                    <td t-out="line.name"/>
+                                    <td t-out="line.responsible_id.name"/>
+                                    <td t-out="line.date_commit"/>
+                                    <td t-out="line.date_done or 'abierta'"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-else="">Sin correcciones registradas.</p>
+
+                        <h5>D4 — Causa raíz</h5>
+                        <p style="white-space: pre-line;"><t t-out="doc.sgi_root_cause or 'Sin capturar.'"/></p>
+                        <t t-if="doc.sgi_why_1">
+                            <p><b>5 porqués:</b></p>
+                            <ol>
+                                <li t-if="doc.sgi_why_1" t-out="doc.sgi_why_1"/>
+                                <li t-if="doc.sgi_why_2" t-out="doc.sgi_why_2"/>
+                                <li t-if="doc.sgi_why_3" t-out="doc.sgi_why_3"/>
+                                <li t-if="doc.sgi_why_4" t-out="doc.sgi_why_4"/>
+                                <li t-if="doc.sgi_why_5" t-out="doc.sgi_why_5"/>
+                            </ol>
+                        </t>
+                        <p t-if="doc.sgi_ishikawa_notes"><b>Ishikawa (5-6M):</b>
+                            <span style="white-space: pre-line;" t-out="doc.sgi_ishikawa_notes"/></p>
+
+                        <h5>D5 / D6 — Acciones correctivas definidas e implementadas</h5>
+                        <t t-set="corrective" t-value="doc.sgi_action_line_ids.filtered(lambda l: l.action_type == 'correctiva')"/>
+                        <table class="table table-sm table-bordered" t-if="corrective">
+                            <thead><tr><th>Acción correctiva</th><th>Responsable</th><th>Compromiso</th><th>Implementada</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="corrective" t-as="line">
+                                    <td t-out="line.name"/>
+                                    <td t-out="line.responsible_id.name"/>
+                                    <td t-out="line.date_commit"/>
+                                    <td t-out="line.date_done or 'abierta'"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-else="">Sin acciones correctivas registradas.</p>
+
+                        <h5>D7 — Prevención de la recurrencia</h5>
+                        <t t-set="preventive" t-value="doc.sgi_action_line_ids.filtered(lambda l: l.action_type == 'preventiva')"/>
+                        <table class="table table-sm table-bordered" t-if="preventive">
+                            <thead><tr><th>Acción preventiva</th><th>Responsable</th><th>Compromiso</th><th>Terminada</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="preventive" t-as="line">
+                                    <td t-out="line.name"/>
+                                    <td t-out="line.responsible_id.name"/>
+                                    <td t-out="line.date_commit"/>
+                                    <td t-out="line.date_done or 'abierta'"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p>
+                            <b>Lección aplicada a AMEF / plan de control / documento:</b>
+                            <t t-out="doc.sgi_lesson_captured and 'Sí' or 'Pendiente'"/>.
+                            <t t-if="doc.sgi_fmea_id"> AMEF: <t t-out="doc.sgi_fmea_id.display_name"/>.</t>
+                            <t t-if="doc.sgi_document_id"> Documento: <t t-out="doc.sgi_document_id.sgi_code or doc.sgi_document_id.name"/>.</t>
+                        </p>
+
+                        <h5>D8 — Verificación de eficacia y cierre</h5>
+                        <p style="white-space: pre-line;"><t t-out="doc.sgi_effectiveness_note or 'Eficacia pendiente de verificar.'"/></p>
+                        <table class="table table-sm table-bordered">
+                            <tr>
+                                <td><b>Eficacia verificada por:</b> <t t-out="doc.sgi_effectiveness_by.name or 'pendiente'"/></td>
+                                <td><b>Fecha de eficacia:</b> <t t-out="doc.sgi_effectiveness_date or 'pendiente'"/></td>
+                            </tr>
+                            <tr>
+                                <td><b>Verificó:</b> <t t-out="doc.sgi_verified_by.name or ''"/> <t t-out="doc.sgi_verified_date or ''"/></td>
+                                <td><b>Aprobó:</b> <t t-out="doc.sgi_approved_by.name or ''"/> <t t-out="doc.sgi_approved_date or ''"/></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><b>Etapa actual:</b> <t t-out="doc.stage_id.name"/>
+                                    <t t-if="doc.date_close"> — cerrada el <t t-out="doc.date_close.date()"/></t>
+                                </td>
+                            </tr>
+                        </table>
+                        <p class="text-muted">Documento generado desde la No
+                        Conformidad del SGI; copia no controlada al imprimirse.</p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -83,6 +83,8 @@ class SgiControlPlan(models.Model):
     point_ids = fields.One2many('quality.point', 'sgi_control_plan_id',
                                 string="Puntos de control")
     point_count = fields.Integer(string="N° de puntos", compute='_compute_point_count')
+    fmea_ids = fields.One2many('sgi.fmea', 'control_plan_id', string="AMEF ligados")
+    fmea_count = fields.Integer(string="# AMEF", compute='_compute_fmea_count')
     document_id = fields.Many2one('documents.document', string="Especificación del cliente")
     notes = fields.Text(string="Notas")
 
@@ -91,6 +93,22 @@ class SgiControlPlan(models.Model):
     def _compute_point_count(self):
         for plan in self:
             plan.point_count = len(plan.point_ids)
+
+    @api.depends('fmea_ids')
+    def _compute_fmea_count(self):
+        for plan in self:
+            plan.fmea_count = len(plan.fmea_ids)
+
+    def action_view_fmeas(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "AMEF — %s" % (self.folio or self.name),
+            'res_model': 'sgi.fmea',
+            'view_mode': 'list,form',
+            'domain': [('control_plan_id', '=', self.id)],
+            'context': {'default_control_plan_id': self.id},
+        }
 
     def action_set_vigente(self):
         for plan in self:

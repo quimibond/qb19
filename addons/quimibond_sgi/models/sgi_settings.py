@@ -104,6 +104,11 @@ class ResConfigSettings(models.TransientModel):
         'res.partner', string="Proveedor de energía",
         help="KPI TR-03 (Consumo de energía): proveedor cuyas facturas del periodo "
              "suman el consumo. Sin configurar, la medición queda en 0 con nota.")
+    sgi_satisfaction_survey_id = fields.Many2one(
+        'survey.survey', string="Encuesta de satisfacción (CA-02)",
+        help="Encuesta cuyas respuestas alimentan el KPI CA-02. Sin configurar "
+             "se usa la sembrada por el módulo. Útil para re-apuntar al "
+             "histórico de respuestas (aunque esté archivado).")
     sgi_sales_budget_alert_pct = fields.Integer(
         string="Umbral de aviso de presupuesto de ventas (%)",
         config_parameter='quimibond_sgi.sales_budget_alert_pct',
@@ -170,6 +175,11 @@ class ResConfigSettings(models.TransientModel):
         res['sgi_energy_partner_id'] = (
             energy_id if energy_id and self.env['res.partner'].browse(energy_id).exists()
             else False)
+        survey_id = int(Param.get_param('quimibond_sgi.satisfaction_survey_id', '0') or 0)
+        res['sgi_satisfaction_survey_id'] = (
+            survey_id if survey_id and self.env['survey.survey'].with_context(
+                active_test=False).browse(survey_id).exists()
+            else False)
         pl_id = int(Param.get_param('quimibond_sgi.budget_pricelist_id', '0') or 0)
         res['sgi_budget_pricelist_id'] = (
             pl_id if pl_id and self.env['product.pricelist'].browse(pl_id).exists()
@@ -187,5 +197,7 @@ class ResConfigSettings(models.TransientModel):
                         self.sgi_purchase_approval_category_id.id or 0)
         Param.set_param('quimibond_sgi.energy_partner_id',
                         self.sgi_energy_partner_id.id or 0)
+        Param.set_param('quimibond_sgi.satisfaction_survey_id',
+                        self.sgi_satisfaction_survey_id.id or 0)
         Param.set_param('quimibond_sgi.budget_pricelist_id',
                         self.sgi_budget_pricelist_id.id or 0)

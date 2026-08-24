@@ -48,6 +48,8 @@
                                 <field name="supplier_summary"/>
                                 <field name="env_summary"/>
                                 <field name="doc_changes_summary"/>
+                                <field name="legal_summary"/>
+                                <field name="participation_summary"/>
                                 <field name="resources_note"/>
                             </group>
                             <separator string="5. Indicadores en rojo"/>

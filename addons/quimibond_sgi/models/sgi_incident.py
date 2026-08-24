@@ -153,6 +153,10 @@ class SgiIncident(models.Model):
                 recipients.add(user.id)
         for user_id in recipients:
             Cron._sgi_schedule(self, summary, note, user_id)
+        # Además de la actividad, correo inmediato: un incidente grave no
+        # puede esperar a que Dirección abra Odoo.
+        Cron._sgi_send_critical_mail(
+            'quimibond_sgi.mail_template_sgi_incident_grave', self)
 
     def _sgi_check_can_close(self):
         for incident in self:
