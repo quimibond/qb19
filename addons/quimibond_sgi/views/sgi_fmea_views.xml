@@ -33,6 +33,7 @@
                             <field name="fmea_type"/>
                             <field name="product_tmpl_id"/>
                             <field name="process_id"/>
+                            <field name="control_plan_id"/>
                         </group>
                         <group>
                             <field name="revision"/>

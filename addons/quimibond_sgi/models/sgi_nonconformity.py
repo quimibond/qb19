@@ -317,6 +317,11 @@ class QualityAlert(models.Model):
                 "lección aprendida.")
         if self.sgi_fmea_id:
             self.sgi_fmea_id._sgi_schedule_activity(manager_id, summary, note)
+            # Con la liga AMEF → plan de control (C.25), el aviso de lecciones
+            # aprendidas también llega al plan que materializa los controles.
+            plan = self.sgi_fmea_id.control_plan_id
+            if plan:
+                plan._sgi_schedule_activity(manager_id, summary, note)
         else:
             Cron._sgi_schedule(self, summary, note, manager_id)
         return True

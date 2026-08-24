@@ -24,6 +24,13 @@ class SgiFmea(models.Model):
     ], string="Tipo", default='proceso', required=True, tracking=True)
     product_tmpl_id = fields.Many2one('product.template', string="Producto")
     process_id = fields.Many2one('sgi.process', string="Proceso")
+    # Cadena IATF: PFMEA → plan de control. Antes solo se enlazaban vía
+    # elementos PPAP (deuda C.25); la relación directa habilita el
+    # read-across y los avisos de «actualizar ambos».
+    control_plan_id = fields.Many2one(
+        'sgi.control.plan', string="Plan de control", ondelete='set null',
+        help="Plan de control que materializa los controles de este AMEF "
+             "(cadena IATF PFMEA → plan de control).")
     revision = fields.Char(string="Revisión", default="00", tracking=True)
     date = fields.Date(string="Fecha", default=fields.Date.context_today)
     team_ids = fields.Many2many('res.users', string="Equipo AMEF")
