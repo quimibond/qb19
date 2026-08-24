@@ -96,3 +96,31 @@ class SgiBaseMixin(models.AbstractModel):
                     "Registros bloqueados: %s"
                     % ", ".join(locked.mapped('display_name')))
         return super().write(vals)
+
+
+def sgi_find_menu(env, path):
+    """Encuentra el ir.ui.menu (con acción) cuya ruta coincide con `path`
+    («App/Sub/Menú», separadores ya normalizados a «/»).
+
+    ir.ui.menu.complete_name NO es un campo almacenado en Odoo 19: ponerlo
+    en un dominio de search truena con «Cannot convert ... to SQL». Por eso
+    los candidatos se buscan por su nombre (almacenado) y la ruta completa
+    se compara en Python. Lo usan la actividad del procedimiento
+    (_sgi_resolve_menu) y el documento «Formulario de Odoo»."""
+    Menu = env['ir.ui.menu'].sudo()
+    parts = [p for p in (path or '').split('/') if p]
+    if not parts:
+        return Menu
+    candidates = Menu.search([
+        ('name', '=ilike', parts[-1]), ('action', '!=', False)])
+    low = '/'.join(parts).lower()
+    for menu in candidates:
+        if (menu.complete_name or '').lower() == low:
+            return menu
+    if len(parts) > 1:
+        first = parts[0].lower() + '/'
+        for menu in candidates:
+            if (menu.complete_name or '').lower().startswith(first):
+                return menu
+        return Menu
+    return candidates[:1]

@@ -128,7 +128,7 @@ class DocumentsDocument(models.Model):
         actividades del procedimiento (los ir.* no se exponen por MCP, así
         que la liga se resuelve aquí, en el servidor). Ignora los
         paréntesis aclaratorios («Fabricación > Plan Maestro (MPS)»)."""
-        Menu = self.env['ir.ui.menu'].sudo()
+        from .sgi_base import sgi_find_menu
         resolved = self.env['documents.document']
         for doc in self:
             target = (doc.sgi_migration_target or '').split('·')[0]
@@ -137,19 +137,7 @@ class DocumentsDocument(models.Model):
                 continue
             path = '/'.join(p.strip() for p in target.replace('→', '/')
                             .replace('>', '/').split('/') if p.strip())
-            menu = Menu.search([
-                ('complete_name', '=ilike', path),
-                ('action', '!=', False)], limit=1)
-            if not menu and '/' in path:
-                first, last = path.split('/')[0], path.split('/')[-1]
-                menu = Menu.search([
-                    ('name', '=ilike', last),
-                    ('complete_name', '=ilike', first + '/%'),
-                    ('action', '!=', False)], limit=1)
-            if not menu and '/' not in path:
-                menu = Menu.search([
-                    ('name', '=ilike', path),
-                    ('action', '!=', False)], limit=1)
+            menu = sgi_find_menu(self.env, path)
             if menu:
                 doc.sgi_odoo_menu_id = menu
                 resolved |= doc
