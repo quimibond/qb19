@@ -365,6 +365,24 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        if vals.get('sgi_state') == 'vigente' and len(self) > 1:
+            # Selección múltiple con la MISMA clave: el obsoletado excluye solo
+            # al doc en turno, ambos quedarían vigentes y el índice único
+            # reventaría en el flush con un IntegrityError ilegible. Mejor un
+            # error claro antes de escribir.
+            seen = {}
+            for doc in self:
+                code = vals.get('sgi_code', doc.sgi_code)
+                controlled = vals.get('sgi_is_controlled', doc.sgi_is_controlled)
+                if not code or not controlled:
+                    continue
+                if code in seen:
+                    raise UserError(
+                        "No se puede poner en vigor más de un documento "
+                        "controlado con la clave '%s' a la vez (%s y %s): solo "
+                        "puede haber un vigente por clave. Hazlo de uno en uno." % (
+                            code, seen[code].display_name, doc.display_name))
+                seen[code] = doc
         if vals.get('sgi_state') == 'vigente':
             for doc in self:
                 code = vals.get('sgi_code', doc.sgi_code)
