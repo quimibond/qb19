@@ -140,7 +140,10 @@ class SgiEmergencyDrill(models.Model):
             drill.display_name = ("%s - %s" % (drill.folio, drill.plan_id.name)
                                   if drill.folio else (drill.plan_id.name or ''))
 
-    def action_set_realizado(self):
+    def _sgi_check_can_realize(self):
+        """Requisitos para marcar realizado. Viven aparte del botón porque
+        write() los aplica por cualquier vía: un write directo de state dejaba
+        sellar como evidencia un simulacro sin resultado ni acciones."""
         for drill in self:
             problems = []
             if not drill.result:
@@ -159,10 +162,23 @@ class SgiEmergencyDrill(models.Model):
             if problems:
                 raise UserError("No se puede marcar realizado el simulacro %s:\n%s"
                                 % (drill.folio or '', "\n".join(problems)))
+
+    def write(self, vals):
+        if vals.get('state') == 'realizado' and not self.env.su:
+            # El resultado/participantes pueden venir en el mismo write del
+            # botón: se valida el estado RESULTANTE, no el previo.
+            checking = self.filtered(lambda d: d.state != 'realizado')
+            res = super().write(vals)
+            checking._sgi_check_can_realize()
+            return res
+        return super().write(vals)
+
+    def action_set_realizado(self):
+        for drill in self:
             vals = {'state': 'realizado'}
             if not drill.date_done:
                 vals['date_done'] = fields.Date.context_today(drill)
-            drill.write(vals)
+            drill.write(vals)  # el candado vive en write()
         return True
 
     def action_set_cancelado(self):

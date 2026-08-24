@@ -84,6 +84,11 @@ class SgiIncident(models.Model):
         if vals.get('severity') in ('grave', 'fatal'):
             escalating = self.filtered(
                 lambda i: i.severity not in ('grave', 'fatal'))
+        # Candado de cierre por CUALQUIER vía (botón, RPC, import, server
+        # action) — mismo patrón que sgi.risk: validar solo en el botón dejaba
+        # cerrar sin SCAT con un write directo de state.
+        if vals.get('state') == 'cerrado' and not self.env.su:
+            self.filtered(lambda i: i.state != 'cerrado')._sgi_check_can_close()
         res = super().write(vals)
         for incident in escalating:
             incident._sgi_notify_if_serious()
@@ -183,7 +188,7 @@ class SgiIncident(models.Model):
         return True
 
     def action_set_cerrado(self):
-        self._sgi_check_can_close()
+        # El candado de cierre vive en write() (aplica por cualquier vía).
         self.write({'state': 'cerrado'})
         return True
 
