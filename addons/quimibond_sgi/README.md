@@ -433,13 +433,40 @@ adopción medida en producción):
   adjunto y obligatorio en externas; Diagnóstico con sección «Contexto y
   cumplimiento».
 
-**Diferido a propósito** (requiere datos cargados o decisión/configuración,
-no código del addon): SPC/Cpk desde quality.check (necesita metrología
-cargada), app Sign para acuses/minutas y eLearning para la DNC (configuración
-en producción), digest semanal de correo. La **carga de registros** (política,
-riesgos, acuses, validación de mediciones, programa de auditorías, metrología,
-competencias por puesto, 8.4.1, presupuesto) es la Ola 0 operativa: el
-Diagnóstico del SGI es su checklist.
+**Diferido a propósito** (requiere datos cargados, no código del addon):
+SPC/Cpk desde quality.check (necesita metrología cargada). La **carga de
+registros** (política, riesgos, acuses, validación de mediciones, programa de
+auditorías, metrología, competencias por puesto, 8.4.1, presupuesto) es la
+Ola 0 operativa: el Diagnóstico del SGI es su checklist.
+
+## Integraciones Sign / eLearning y digest semanal (v19.0.26.0.0)
+
+Cierra los diferidos de la ola certificable usando las apps **Firma (Sign)**
+y **eLearning**, ya instaladas en la instancia (ahora dependencias del addon):
+
+- **Acuses con firma electrónica**: en el documento controlado (pestaña
+  Acuses de lectura, solo Jefe MAST) se liga una **plantilla de Sign** hecha
+  con el PDF del documento y su campo de firma; el botón «Enviar acuses a
+  firma» crea una solicitud por empleado pendiente (idempotente, salta a
+  quien no tiene contacto/correo) y el cron diario **sella el acuse** cuando
+  la solicitud queda firmada (la firma electrónica es la evidencia; pasa el
+  candado A2 vía superusuario del cron). La columna «Firma electrónica» del
+  acuse muestra el avance sin exigir permisos de Sign al empleado (related
+  almacenado).
+- **eLearning → DNC**: menú Empleados → Competencias (SGI) → «Cursos y
+  competencias (eLearning)»: lista editable que mapea curso → competencia
+  (`hr.skill`) y nivel otorgado. El cron diario registra o **sube** (nunca
+  baja) la competencia de los asistentes con curso terminado, cerrando la
+  brecha en la DNC sin captura manual.
+- **Digest semanal**: correo-resumen a Jefe MAST + Dirección (mismos
+  destinatarios del correo crítico) con NC abiertas, acciones vencidas, KPIs
+  en rojo, evaluaciones legales vencidas/incumplidas, riesgos altos sin
+  tratamiento, acuses pendientes y contexto por revisar. Cada métrica corre
+  en su propio savepoint; si todo está en cero lo dice («sin pendientes»).
+
+Configuración manual restante: crear las plantillas de Sign por documento
+(una vez, colocando el campo de firma sobre el PDF) y mapear los cursos
+existentes a competencias.
 
 ## Alcance multiempresa (decisión de arquitectura)
 

@@ -38,3 +38,4 @@ from . import test_fase9
 from . import test_fase10
 from . import test_audit_hardening
 from . import test_ola_certificable
+from . import test_sign_elearning

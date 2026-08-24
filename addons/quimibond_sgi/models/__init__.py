@@ -34,4 +34,5 @@ from . import sgi_diagnostic
 from . import sgi_emergency
 from . import sgi_msa
 from . import sgi_settings
+from . import sgi_sign_elearning
 from . import sgi_cron

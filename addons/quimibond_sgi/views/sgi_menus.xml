@@ -126,6 +126,9 @@
     <menuitem id="menu_sgi_dnc_survey" name="Encuesta DNC"
               parent="menu_hr_sgi_competences" action="sgi_dnc_survey_action"
               sequence="20"/>
+    <menuitem id="menu_sgi_elearning_skills" name="Cursos y competencias (eLearning)"
+              parent="menu_hr_sgi_competences" action="sgi_slide_channel_action"
+              sequence="30" groups="quimibond_sgi.group_sgi_manager"/>
 
     <!-- Ventas: el presupuesto/pronóstico se captura y da seguimiento en la
          app Ventas (menú de abajo). El SGI conserva el KPI de cumplimiento
