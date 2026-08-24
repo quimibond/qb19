@@ -4,6 +4,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
+from .sgi_risk import SGI_HIGH_ATTENTION
+
 
 class SgiManagementReview(models.Model):
     _name = 'sgi.management.review'
@@ -250,7 +252,7 @@ class SgiManagementReview(models.Model):
     def _sgi_load_high_risks(self):
         self.ensure_one()
         return self.env['sgi.risk'].search([
-            ('attention_level', 'in', ['inmediata', 'alto']),
+            ('attention_level', 'in', list(SGI_HIGH_ATTENTION)),
             ('state', '!=', 'cerrado'),
         ])
 

@@ -14,6 +14,14 @@ ATTENTION_LEVELS = [
     ('alto', "Alto"),
 ]
 
+# Nivel máximo de cada instrumento (ryo/ambiental → 'inmediata';
+# iper/patrimonial → 'alto'). Fuente ÚNICA para el código Python (deuda
+# D.29: el par se repetía a mano en la salud del proceso, la RxD y el
+# candado H11). Los dominios XML lo repiten literal por necesidad; si algún
+# día se normaliza la escala, se migra desde aquí. La escala doble en sí es
+# deliberada: cada instrumento conserva su vocabulario del formato original.
+SGI_HIGH_ATTENTION = ('inmediata', 'alto')
+
 
 class SgiRiskCategory(models.Model):
     _name = 'sgi.risk.category'
@@ -211,9 +219,8 @@ class SgiRisk(models.Model):
     # ------------------------------------------------------------------
     # Candado de riesgo alto (H11)
     # ------------------------------------------------------------------
-    # Nivel más alto de cada instrumento (ryo/ambiental -> inmediata,
-    # iper/patrimonial -> alto).
-    _SGI_HIGH_ATTENTION = ('inmediata', 'alto')
+    # Nivel más alto de cada instrumento — fuente única a nivel de módulo.
+    _SGI_HIGH_ATTENTION = SGI_HIGH_ATTENTION
     _SGI_CLOSING_STATES = ('controlado', 'cerrado')
 
     def _sgi_check_can_close(self):
