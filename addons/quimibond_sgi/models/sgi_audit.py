@@ -78,6 +78,7 @@ class SgiAuditProgramLine(models.Model):
     state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('creada', "Auditoría creada"),
+        ('cerrada', "Auditoría cerrada"),
     ], string="Estado", default='pendiente', required=True)
     audit_id = fields.Many2one('sgi.audit', string="Auditoría", readonly=True)
 
@@ -204,7 +205,9 @@ class SgiAudit(models.Model):
         for audit in self:
             audit.state = 'cerrada'  # el candado vive en write()
             if audit.program_line_id:
-                audit.program_line_id.state = 'creada'
+                # Deuda B.19: antes escribía 'creada' (no-op semántico); la
+                # línea del programa ahora refleja el cierre real.
+                audit.program_line_id.state = 'cerrada'
         return True
 
     def action_draft(self):
