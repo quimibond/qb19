@@ -87,23 +87,9 @@
     </record>
 
     <!-- res.partner -->
-    <record id="sgi_res_partner_view_form" model="ir.ui.view">
-        <field name="name">sgi.res.partner.form.inherit</field>
-        <field name="model">res.partner</field>
-        <field name="inherit_id" ref="base.view_partner_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_sgi_open_complaints" type="object" class="oe_stat_button"
-                        icon="fa-comments" invisible="sgi_complaint_count == 0">
-                    <field name="sgi_complaint_count" widget="statinfo" string="Reclamaciones"/>
-                </button>
-                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
-                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
-                    <field name="sgi_nc_count" widget="statinfo" string="NC"/>
-                </button>
-            </xpath>
-        </field>
-    </record>
+    <!-- Los smart buttons del partner (Reclamaciones/NC) viven CONSOLIDADOS
+         en sgi_res_partner_views.xml junto a Evaluaciones (deuda D.30: dos
+         herencias del mismo button_box dejaban el orden al azar de carga). -->
 
     <!-- product.template: especificaciones controladas (C04-06 y C14-02).
          La spec ES un documento controlado; aquí queda a un clic desde el
