@@ -151,6 +151,17 @@
                             <field name="sgi_job_ids" widget="many2many_tags"/>
                         </page>
                         <page string="Acuses de lectura">
+                            <group groups="quimibond_sgi.group_sgi_manager">
+                                <group string="Firma electrónica (app Firma)">
+                                    <field name="sgi_sign_template_id"
+                                           options="{'no_create': True}"/>
+                                    <button name="action_sgi_send_sign_requests"
+                                            type="object" string="Enviar acuses a firma"
+                                            class="btn-secondary" icon="fa-pencil-square-o"
+                                            invisible="not sgi_sign_template_id"
+                                            confirm="Se creará una solicitud de firma electrónica por cada empleado con acuse pendiente. ¿Continuar?"/>
+                                </group>
+                            </group>
                             <field name="sgi_ack_ids">
                                 <list decoration-warning="state == 'pendiente'"
                                       decoration-success="state == 'leido'">
@@ -158,6 +169,9 @@
                                     <field name="state" widget="badge"
                                            decoration-success="state == 'leido'"
                                            decoration-warning="state == 'pendiente'"/>
+                                    <field name="sign_state" optional="show" widget="badge"
+                                           decoration-success="sign_state == 'signed'"
+                                           decoration-info="sign_state == 'sent'"/>
                                     <field name="ack_date"/>
                                 </list>
                             </field>

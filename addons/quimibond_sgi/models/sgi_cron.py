@@ -1106,3 +1106,87 @@ class SgiCron(models.AbstractModel):
 
         self._sgi_for_each(parties, _process, "revisión del contexto")
         return True
+
+    # ------------------------------------------------------------------
+    # Integraciones Sign / eLearning — sincronización diaria
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_sign_elearning_sync(self):
+        """Cron diario: sella acuses cuya firma electrónica ya se completó y
+        otorga competencias de cursos eLearning terminados."""
+        self._sgi_step(
+            "acuses firmados vía Sign",
+            lambda: self.env['sgi.document.ack']._sgi_sync_from_sign())
+        self._sgi_step(
+            "competencias por cursos eLearning",
+            lambda: self.env['slide.channel']._sgi_sync_completions())
+        return True
+
+    # ------------------------------------------------------------------
+    # Digest semanal — el pulso del SGI para quien no vive dentro de Odoo
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_weekly_digest(self):
+        """Cron semanal: correo-resumen de pendientes del SGI al Jefe de
+        MAST y Dirección. Cada métrica va en su propio savepoint: una
+        consulta rota no tumba el resumen."""
+        emails = self._sgi_critical_mail_emails()
+        if not emails:
+            return True
+        today = fields.Date.context_today(self)
+        rows = []
+
+        def metric(label, func):
+            def _run():
+                count = func()
+                if count:
+                    rows.append((label, count))
+            self._sgi_step("digest: %s" % label, _run)
+
+        metric("No Conformidades abiertas", lambda: self.env['quality.alert'].search_count([
+            ('team_id.sgi_sequence_id', '!=', False),
+            ('stage_id.sgi_is_closing_stage', '=', False),
+            ('stage_id.sgi_is_cancel_stage', '=', False)]))
+        metric("Acciones CAPA vencidas", lambda: self.env['sgi.action.line'].search_count([
+            ('date_done', '=', False), ('state', '=', 'vencida')]))
+        metric("Indicadores en rojo (último semáforo)", lambda: self.env['sgi.indicator'].search_count([
+            ('last_semaphore', '=', 'rojo')]))
+        metric("Evaluaciones legales vencidas", lambda: self.env['sgi.legal.requirement'].search_count([
+            ('next_eval_date', '!=', False), ('next_eval_date', '<=', today)]))
+        metric("Requisitos legales en incumplimiento (total o parcial)",
+               lambda: self.env['sgi.legal.requirement'].search_count([
+                   ('compliance_state', 'in', ('no_cumple', 'parcial'))]))
+        metric("Riesgos en atención alta sin tratamiento", lambda: self.env['sgi.risk'].search_count([
+            ('attention_level', 'in', ('inmediata', 'alto')),
+            ('state', '=', 'identificado')]))
+        metric("Acuses de lectura pendientes", lambda: self.env['sgi.document.ack'].search_count([
+            ('state', '=', 'pendiente')]))
+        metric("Partes interesadas con revisión vencida",
+               lambda: self.env['sgi.interested.party'].search_count([
+                   ('next_review_date', '!=', False),
+                   ('next_review_date', '<=', today)]))
+
+        if rows:
+            lines = "".join(
+                "<tr><td style='padding:4px 12px 4px 0;'>%s</td>"
+                "<td style='text-align:right;font-weight:bold;'>%d</td></tr>"
+                % (label, count) for label, count in rows)
+            body = (
+                "<p>Resumen semanal del SGI al %s:</p>"
+                "<table style='border-collapse:collapse;'>%s</table>"
+                "<p>El detalle vive en Odoo → SGI (Panel y Diagnóstico del "
+                "SGI).</p>" % (today.strftime('%d/%m/%Y'), lines))
+        else:
+            body = ("<p>Resumen semanal del SGI al %s: sin pendientes "
+                    "abiertos en los indicadores vigilados.</p>"
+                    % today.strftime('%d/%m/%Y'))
+
+        def _send():
+            self.env['mail.mail'].sudo().create({
+                'subject': "SGI: resumen semanal (%s)" % today.strftime('%d/%m/%Y'),
+                'email_to': emails,
+                'body_html': body,
+                'auto_delete': True,
+            }).send()
+        self._sgi_step("digest: envío del correo", _send)
+        return True
