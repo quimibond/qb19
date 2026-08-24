@@ -5,9 +5,13 @@ Política → Objetivo integral → Indicador → Proceso. La política es el en
 único vigente del que cuelgan los objetivos; el resto de la cascada ya existe
 (el indicador tiene objective_id y process_id).
 """
+import logging
+
 from odoo import models, fields, api
 
 from odoo.addons.quimibond_sgi.models.sgi_objective import sgi_worst_health
+
+_logger = logging.getLogger(__name__)
 
 
 class SgiPolicy(models.Model):
@@ -48,9 +52,21 @@ class SgiPolicy(models.Model):
 
     def init(self):
         """A lo sumo UNA política vigente, garantizado en BD (la validación
-        Python sola permite condición de carrera)."""
+        Python sola permite condición de carrera). Con datos legados (2+
+        vigentes) se loggea y se omite el índice en vez de abortar el update
+        del módulo (mismo patrón que el índice documental)."""
         super().init()
-        self.env.cr.execute("""
+        cr = self.env.cr
+        cr.execute("SELECT array_agg(id ORDER BY id) FROM sgi_policy "
+                   "WHERE state = 'vigente'")
+        vigentes = cr.fetchone()[0] or []
+        if len(vigentes) > 1:
+            _logger.error(
+                "SGI: NO se creó el índice de política única vigente: hay %d "
+                "políticas vigentes (ids %s). Obsoleta las sobrantes y vuelve "
+                "a actualizar.", len(vigentes), vigentes)
+            return
+        cr.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS sgi_policy_one_vigente
             ON sgi_policy ((1)) WHERE state = 'vigente'
         """)

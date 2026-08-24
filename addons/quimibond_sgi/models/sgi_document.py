@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
 import re
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api, Command
 from odoo.exceptions import ValidationError, UserError
+
+_logger = logging.getLogger(__name__)
 
 # Nomenclatura documental real de PNTQ (áreas G,A,C,D,E,I,M,P,S,V)
 SGI_CODE_REGEX = re.compile(
@@ -233,9 +236,31 @@ class DocumentsDocument(models.Model):
 
     def init(self):
         """Un solo VIGENTE por clave, garantizado en BD (la validación Python
-        sola permite condición de carrera)."""
+        sola permite condición de carrera).
+
+        Con datos legados duplicados (BD restaurada, SQL directo), el CREATE
+        UNIQUE INDEX abortaba el update completo del módulo con un
+        IntegrityError críptico. Ahora se detectan primero: se loggea la lista
+        accionable y se OMITE el índice (el constraint Python sigue
+        protegiendo) en vez de bloquear el update."""
         super().init()
-        self.env.cr.execute("""
+        cr = self.env.cr
+        cr.execute("""
+            SELECT sgi_code, array_agg(id ORDER BY id)
+            FROM documents_document
+            WHERE sgi_state = 'vigente' AND sgi_is_controlled IS TRUE
+                  AND sgi_code IS NOT NULL
+            GROUP BY sgi_code HAVING count(*) > 1
+        """)
+        duplicated = cr.fetchall()
+        if duplicated:
+            _logger.error(
+                "SGI: NO se creó el índice único de documentos vigentes: hay "
+                "claves con más de un vigente controlado. Obsoleta los "
+                "sobrantes y vuelve a actualizar. Duplicados (clave, ids): %s",
+                duplicated)
+            return
+        cr.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS documents_document_sgi_unique_vigente
             ON documents_document (sgi_code)
             WHERE sgi_state = 'vigente' AND sgi_is_controlled IS TRUE
