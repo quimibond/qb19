@@ -1056,15 +1056,10 @@ class SgiCron(models.AbstractModel):
     def _sgi_participation_survey(self):
         """Encuesta de consulta y participación de los trabajadores (45001
         §5.4, F-P-A10-05). Vive en producción (creada por MCP, MAST la puede
-        editar): se localiza por la clave en el título, con fallback al xmlid
-        por si alguna instalación la siembra — mismo patrón que la evaluación
-        del auditor."""
-        survey = self.env.ref('quimibond_sgi.sgi_survey_participation',
-                              raise_if_not_found=False)
-        if not survey:
-            survey = self.env['survey.survey'].sudo().search(
-                [('title', 'like', 'F-P-A10-05')], limit=1)
-        return survey
+        editar), no como semilla del módulo: se localiza por la clave en el
+        título — mismo patrón que la evaluación del auditor."""
+        return self.env['survey.survey'].sudo().search(
+            [('title', 'like', 'F-P-A10-05')], limit=1)
 
     @api.model
     def cron_worker_participation(self):
