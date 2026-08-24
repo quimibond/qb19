@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Sincronización diaria de integraciones: acuses firmados vía Sign y
+         competencias otorgadas por cursos eLearning terminados. -->
+    <record id="sgi_cron_sign_elearning" model="ir.cron">
+        <field name="name">SGI: Sincronizar Firma electrónica y eLearning</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sign_elearning_sync()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Digest semanal del SGI a Jefe MAST + Dirección. -->
+    <record id="sgi_cron_weekly_digest" model="ir.cron">
+        <field name="name">SGI: Resumen semanal por correo</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_weekly_digest()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

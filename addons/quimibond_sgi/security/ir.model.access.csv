@@ -101,3 +101,6 @@ access_sgi_legal_requirement_user,sgi.legal.requirement.user,model_sgi_legal_req
 access_sgi_legal_requirement_manager,sgi.legal.requirement.manager,model_sgi_legal_requirement,group_sgi_manager,1,1,1,1
 access_sgi_interested_party_user,sgi.interested.party.user,model_sgi_interested_party,group_sgi_user,1,0,0,0
 access_sgi_interested_party_manager,sgi.interested.party.manager,model_sgi_interested_party,group_sgi_manager,1,1,1,1
+access_sign_template_sgi_manager,sign.template sgi manager,sign.model_sign_template,group_sgi_manager,1,0,0,0
+access_sign_request_sgi_manager,sign.request sgi manager,sign.model_sign_request,group_sgi_manager,1,0,0,0
+access_slide_channel_sgi_manager,slide.channel sgi manager,website_slides.model_slide_channel,group_sgi_manager,1,1,0,0
