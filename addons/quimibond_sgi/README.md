@@ -394,6 +394,53 @@ Aprovecha lo que Odoo ya registra, sin captura adicional:
   cerradas con lección aplicada — causa raíz, eficacia y proceso. La memoria
   del sistema, que ya existía pero no se podía consultar.
 
+## Ola «certificable» (v19.0.25.0.0, auditoría 2026-08)
+
+Cierra las brechas normativas detectadas por la segunda auditoría (reporte con
+adopción medida en producción):
+
+- **Requisitos legales y evaluación del cumplimiento** (14001/45001 §6.1.3 y
+  §9.1.2): `sgi.legal.requirement` con frecuencia de evaluación, botones
+  Cumple/Parcial/No cumple, NC mayor automática (fuente
+  `requisito_legal_incumplido`) y cron de evaluaciones vencidas y permisos por
+  vencer. Menú: Riesgos y auditorías → Requisitos legales.
+- **Partes interesadas** (§4.2): `sgi.interested.party` con necesidades y
+  expectativas, adopción como requisito, ligas a riesgos/legales y revisión
+  periódica vigilada por cron. Menú: Panel → Partes interesadas.
+- **Objetivos con plan de acción** (§6.2.2): el objetivo integral gana
+  chatter y líneas CAPA propias (sexta fuente del XOR); su salud ahora agrega
+  también el último semáforo de sus KPIs (deuda B.18).
+- **Retención de registros** (§7.5.3): años de retención + disposición final
+  por documento, filtro «Sin retención definida» y reporte imprimible «Tabla
+  de retención».
+- **Consulta y participación** (45001 §5.4): la encuesta F-P-A10-05 queda
+  cableada (cron semestral a RH) y la RxD gana las entradas 11 (cumplimiento
+  legal) y 12 (participación + quejas internas).
+- **Encuesta de satisfacción configurable**: CA-02 puede re-apuntarse desde
+  Ajustes a la encuesta histórica (575 respuestas viven en una encuesta
+  archivada distinta de la sembrada).
+- **MOC** (9001 §6.3 / 45001 §8.1.3): categoría de Aprobaciones «Cambio de
+  proceso / infraestructura» con gate duro (motivo + procesos afectados +
+  evaluación de riesgos).
+- **Diseño y desarrollo** (§8.3): proyecto semilla con etapas-gate
+  8.3.2–8.3.6 y candado de evidencia en la transferencia.
+- **Correo crítico**: incidente grave/fatal, NC mayor y bloqueo por
+  calibración avisan por correo (plantillas editables) además de la actividad.
+- **Deudas cerradas**: B.16 (recalcular medición), B.19 (línea del programa
+  con cierre real), C.25 (AMEF↔plan de control), D.28 (acuses de la
+  política), D.29 (constante de atención máxima), D.30 (button_box del
+  partner consolidado). 8D imprimible desde la NC; certificado de calibración
+  adjunto y obligatorio en externas; Diagnóstico con sección «Contexto y
+  cumplimiento».
+
+**Diferido a propósito** (requiere datos cargados o decisión/configuración,
+no código del addon): SPC/Cpk desde quality.check (necesita metrología
+cargada), app Sign para acuses/minutas y eLearning para la DNC (configuración
+en producción), digest semanal de correo. La **carga de registros** (política,
+riesgos, acuses, validación de mediciones, programa de auditorías, metrología,
+competencias por puesto, 8.4.1, presupuesto) es la Ola 0 operativa: el
+Diagnóstico del SGI es su checklist.
+
 ## Alcance multiempresa (decisión de arquitectura)
 
 La instancia tiene varias compañías; **el SGI es exclusivo de PRODUCTORA DE NO
