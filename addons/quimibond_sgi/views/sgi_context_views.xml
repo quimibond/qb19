@@ -70,7 +70,7 @@
                         domain="[('becomes_requirement', '=', True)]"/>
                 <filter name="revision_vencida" string="Revisión vencida"
                         domain="[('next_review_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'party_type'}"/>
                     <filter name="group_category" string="Categoría" context="{'group_by': 'category'}"/>
                 </group>
