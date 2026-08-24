@@ -379,21 +379,29 @@ class SgiSalesBudgetLine(models.Model):
     def _check_no_mixed_scheme(self):
         """Anti-doble-conteo: dentro de un presupuesto, un producto es global
         (sin cliente) O por cliente, nunca ambos — o el mismo importe se contaría
-        dos veces contra el mismo real."""
-        for line in self:
+        dos veces contra el mismo real.
+
+        Una search POR PRESUPUESTO, no por línea: una importación de cientos de
+        líneas disparaba cientos de searches (N+1)."""
+        for budget in self.budget_id:
+            lines = self.filtered(lambda l: l.budget_id == budget)
             siblings = self.search([
-                ('budget_id', '=', line.budget_id.id),
-                ('product_id', '=', line.product_id.id),
-                ('id', '!=', line.id),
+                ('budget_id', '=', budget.id),
+                ('product_id', 'in', lines.product_id.ids),
             ])
-            has_global = any(not s.partner_id for s in siblings) or not line.partner_id
-            has_client = any(s.partner_id for s in siblings) or bool(line.partner_id)
-            if has_global and has_client:
-                raise ValidationError(
-                    "El producto '%s' ya está presupuestado por cliente en este "
-                    "presupuesto; captura el resto como otro cliente o cambia el "
-                    "esquema (no mezcles líneas con cliente y sin cliente para el "
-                    "mismo producto)." % line.product_id.display_name)
+            schemes = {}   # product_id -> {True: con cliente, False: global}
+            products = {}  # product_id -> record (para el mensaje)
+            for sibling in siblings:
+                product = sibling.product_id
+                schemes.setdefault(product.id, set()).add(bool(sibling.partner_id))
+                products[product.id] = product
+            for product_id, kinds in schemes.items():
+                if len(kinds) > 1:
+                    raise ValidationError(
+                        "El producto '%s' ya está presupuestado por cliente en este "
+                        "presupuesto; captura el resto como otro cliente o cambia el "
+                        "esquema (no mezcles líneas con cliente y sin cliente para el "
+                        "mismo producto)." % products[product_id].display_name)
 
     @api.constrains('uom_id', 'product_id')
     def _check_uom_category(self):

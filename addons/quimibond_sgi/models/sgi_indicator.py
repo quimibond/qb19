@@ -568,10 +568,14 @@ class SgiIndicator(models.Model):
         Employee = self.env['hr.employee']
         JobSkill = self.env['hr.job.skill']
         employees = Employee.search([])
+        jobs = employees.job_id
         required = 0
-        for employee in employees:
-            if employee.job_id:
-                required += JobSkill.search_count([('job_id', '=', employee.job_id.id)])
+        if jobs:
+            # Una _read_group por puesto (antes: un search_count POR empleado).
+            counts = {job.id: count for job, count in JobSkill._read_group(
+                [('job_id', 'in', jobs.ids)], ['job_id'], ['__count'])}
+            required = sum(counts.get(employee.job_id.id, 0)
+                           for employee in employees if employee.job_id)
         if not required:
             return None
         gaps = self.env['sgi.competence.gap'].search_count(
