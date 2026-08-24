@@ -6,6 +6,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_base import sgi_bypass_allowed
+
 _logger = logging.getLogger(__name__)
 
 
@@ -277,7 +279,12 @@ class QualityAlert(models.Model):
         newly_closed = self.env['quality.alert']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
-            if new_stage.sgi_is_closing_stage and not self.env.context.get('sgi_force_close'):
+            # El cierre forzado solo cuenta desde el wizard de MAST (o código de
+            # sistema): el contexto lo controla el cliente RPC y no debe bastar
+            # para brincarse los candados de cierre.
+            force = (self.env.context.get('sgi_force_close')
+                     and sgi_bypass_allowed(self.env))
+            if new_stage.sgi_is_closing_stage and not force:
                 for alert in self:
                     if alert.stage_id != new_stage:
                         alert._sgi_check_can_close()

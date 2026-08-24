@@ -21,6 +21,8 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
+from .sgi_base import sgi_bypass_allowed
+
 _logger = logging.getLogger(__name__)
 
 
@@ -178,7 +180,9 @@ class SgiProcessProcedure(models.Model):
         contenido que SON la revisión vigente (seed_procedure_ventas y similares)
         no son una divergencia y no deben disparar G14.
         """
-        if not self.env.registry.ready or self.env.context.get('sgi_bypass_dirty'):
+        if not self.env.registry.ready or (
+                self.env.context.get('sgi_bypass_dirty')
+                and sgi_bypass_allowed(self.env)):
             return
         for process in self:
             doc = process._sgi_procedure_document()

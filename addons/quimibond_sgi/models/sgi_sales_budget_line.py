@@ -12,6 +12,7 @@ from datetime import timedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_base import sgi_bypass_allowed
 from .sgi_sales_budget import _REAL_MOVE_TYPES, _convert_qty
 
 
@@ -833,8 +834,9 @@ class SgiSalesBudgetLine(models.Model):
         """Regresa a 'borrador' los documentos 'revisado' de `budgets` tras editar
         sus líneas de captura, con constancia en el chatter. Aplica al pronóstico
         (documento vivo) y al presupuesto (gobernanza del revisado). Se salta bajo
-        sgi_bypass_lock (refresco de la foto real, borrado en cascada)."""
-        if self.env.context.get('sgi_bypass_lock'):
+        sgi_bypass_lock (refresco de la foto real, borrado en cascada) — solo si
+        el contexto viene de sistema o de MAST (el cliente RPC lo puede forjar)."""
+        if self.env.context.get('sgi_bypass_lock') and sgi_bypass_allowed(self.env):
             return
         for budget in budgets.filtered(lambda b: b.state == 'revisado'):
             budget.with_context(sgi_bypass_lock=True).state = 'borrador'
@@ -853,7 +855,11 @@ class SgiSalesBudgetLine(models.Model):
             and l.budget_id.state in self._SGI_LOCKED_PARENT_STATES)
 
     def write(self, vals):
-        if (not self.env.su and not self.env.context.get('sgi_bypass_lock')
+        # El bypass por contexto solo cuenta desde sistema o MAST (el contexto
+        # lo controla el cliente RPC); para no-MAST equivale a no traerlo.
+        if (not self.env.su
+                and not (self.env.context.get('sgi_bypass_lock')
+                         and sgi_bypass_allowed(self.env))
                 and self._SGI_EDITABLE_FIELDS & set(vals)
                 and not self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
             locked = self._sgi_locked_lines()
@@ -872,7 +878,9 @@ class SgiSalesBudgetLine(models.Model):
         return res
 
     def unlink(self):
-        if (not self.env.su and not self.env.context.get('sgi_bypass_lock')
+        if (not self.env.su
+                and not (self.env.context.get('sgi_bypass_lock')
+                         and sgi_bypass_allowed(self.env))
                 and not self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
             locked = self._sgi_locked_lines()
             if locked:
