@@ -12,6 +12,7 @@ from datetime import timedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_base import sgi_bypass_allowed
 from .sgi_sales_budget import _REAL_MOVE_TYPES, _convert_qty
 
 
@@ -378,21 +379,29 @@ class SgiSalesBudgetLine(models.Model):
     def _check_no_mixed_scheme(self):
         """Anti-doble-conteo: dentro de un presupuesto, un producto es global
         (sin cliente) O por cliente, nunca ambos — o el mismo importe se contaría
-        dos veces contra el mismo real."""
-        for line in self:
+        dos veces contra el mismo real.
+
+        Una search POR PRESUPUESTO, no por línea: una importación de cientos de
+        líneas disparaba cientos de searches (N+1)."""
+        for budget in self.budget_id:
+            lines = self.filtered(lambda l: l.budget_id == budget)
             siblings = self.search([
-                ('budget_id', '=', line.budget_id.id),
-                ('product_id', '=', line.product_id.id),
-                ('id', '!=', line.id),
+                ('budget_id', '=', budget.id),
+                ('product_id', 'in', lines.product_id.ids),
             ])
-            has_global = any(not s.partner_id for s in siblings) or not line.partner_id
-            has_client = any(s.partner_id for s in siblings) or bool(line.partner_id)
-            if has_global and has_client:
-                raise ValidationError(
-                    "El producto '%s' ya está presupuestado por cliente en este "
-                    "presupuesto; captura el resto como otro cliente o cambia el "
-                    "esquema (no mezcles líneas con cliente y sin cliente para el "
-                    "mismo producto)." % line.product_id.display_name)
+            schemes = {}   # product_id -> {True: con cliente, False: global}
+            products = {}  # product_id -> record (para el mensaje)
+            for sibling in siblings:
+                product = sibling.product_id
+                schemes.setdefault(product.id, set()).add(bool(sibling.partner_id))
+                products[product.id] = product
+            for product_id, kinds in schemes.items():
+                if len(kinds) > 1:
+                    raise ValidationError(
+                        "El producto '%s' ya está presupuestado por cliente en este "
+                        "presupuesto; captura el resto como otro cliente o cambia el "
+                        "esquema (no mezcles líneas con cliente y sin cliente para el "
+                        "mismo producto)." % products[product_id].display_name)
 
     @api.constrains('uom_id', 'product_id')
     def _check_uom_category(self):
@@ -783,23 +792,35 @@ class SgiSalesBudgetLine(models.Model):
     @api.depends('product_id', 'partner_id', 'date', 'kind', 'uom_id')
     def _compute_qty_forecast(self):
         """Suma lo pronosticado del mismo producto/cliente/mes por los pronósticos
-        vigentes (no obsoletos) del año, convertido a la unidad de esta línea."""
-        for line in self:
+        vigentes (no obsoletos) del año, convertido a la unidad de esta línea.
+
+        Por lote: una search de pronósticos por (año, compañía) y un índice por
+        producto+mes — antes cada línea mostrada buscaba los pronósticos e
+        iteraba TODAS sus líneas (O(n×m) en presupuestos grandes)."""
+        budget_lines = self.filtered(
+            lambda l: l.kind == 'presupuesto' and l.product_id and l.date)
+        for line in (self - budget_lines):
             line.qty_forecast = 0.0
-            if line.kind != 'presupuesto' or not line.product_id or not line.date:
-                continue
-            forecasts = self.env['sgi.sales.budget'].search([
-                ('kind', '=', 'pronostico'),
-                ('year', '=', line.budget_id.year),
-                ('state', '!=', 'obsoleto'),
-                ('company_id', '=', line.company_id.id)])
+        # (año, company_id) -> {(product_id, mes): [líneas de pronóstico]}
+        index_cache = {}
+        for line in budget_lines:
+            key = (line.budget_id.year, line.company_id.id)
+            index = index_cache.get(key)
+            if index is None:
+                index = {}
+                forecasts = self.env['sgi.sales.budget'].search([
+                    ('kind', '=', 'pronostico'),
+                    ('year', '=', key[0]),
+                    ('state', '!=', 'obsoleto'),
+                    ('company_id', '=', key[1])])
+                for fl in forecasts.line_ids:
+                    if fl.product_id and fl.date:
+                        index.setdefault(
+                            (fl.product_id.id, fl.date.month), []).append(fl)
+                index_cache[key] = index
             partner = line.partner_id.commercial_partner_id
             total = 0.0
-            for fl in forecasts.mapped('line_ids'):
-                if fl.product_id != line.product_id or not fl.date:
-                    continue
-                if fl.date.month != line.date.month:
-                    continue
+            for fl in index.get((line.product_id.id, line.date.month), []):
                 if partner and fl.partner_id.commercial_partner_id != partner:
                     continue
                 conv = _convert_qty(fl.qty_budget, fl.uom_id, line.uom_id)
@@ -833,8 +854,9 @@ class SgiSalesBudgetLine(models.Model):
         """Regresa a 'borrador' los documentos 'revisado' de `budgets` tras editar
         sus líneas de captura, con constancia en el chatter. Aplica al pronóstico
         (documento vivo) y al presupuesto (gobernanza del revisado). Se salta bajo
-        sgi_bypass_lock (refresco de la foto real, borrado en cascada)."""
-        if self.env.context.get('sgi_bypass_lock'):
+        sgi_bypass_lock (refresco de la foto real, borrado en cascada) — solo si
+        el contexto viene de sistema o de MAST (el cliente RPC lo puede forjar)."""
+        if self.env.context.get('sgi_bypass_lock') and sgi_bypass_allowed(self.env):
             return
         for budget in budgets.filtered(lambda b: b.state == 'revisado'):
             budget.with_context(sgi_bypass_lock=True).state = 'borrador'
@@ -853,7 +875,11 @@ class SgiSalesBudgetLine(models.Model):
             and l.budget_id.state in self._SGI_LOCKED_PARENT_STATES)
 
     def write(self, vals):
-        if (not self.env.su and not self.env.context.get('sgi_bypass_lock')
+        # El bypass por contexto solo cuenta desde sistema o MAST (el contexto
+        # lo controla el cliente RPC); para no-MAST equivale a no traerlo.
+        if (not self.env.su
+                and not (self.env.context.get('sgi_bypass_lock')
+                         and sgi_bypass_allowed(self.env))
                 and self._SGI_EDITABLE_FIELDS & set(vals)
                 and not self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
             locked = self._sgi_locked_lines()
@@ -872,7 +898,9 @@ class SgiSalesBudgetLine(models.Model):
         return res
 
     def unlink(self):
-        if (not self.env.su and not self.env.context.get('sgi_bypass_lock')
+        if (not self.env.su
+                and not (self.env.context.get('sgi_bypass_lock')
+                         and sgi_bypass_allowed(self.env))
                 and not self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
             locked = self._sgi_locked_lines()
             if locked:

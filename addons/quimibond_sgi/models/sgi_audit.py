@@ -192,10 +192,17 @@ class SgiAudit(models.Model):
             if not audit.date_end:
                 audit.date_end = fields.Date.context_today(audit)
 
+    def write(self, vals):
+        # Candado de cierre por cualquier vía (botón, RPC, import): validar
+        # solo en action_close dejaba cerrar con hallazgos sin disposición.
+        if vals.get('state') == 'cerrada' and not self.env.su:
+            for audit in self.filtered(lambda a: a.state != 'cerrada'):
+                audit._sgi_check_can_close()
+        return super().write(vals)
+
     def action_close(self):
         for audit in self:
-            audit._sgi_check_can_close()
-            audit.state = 'cerrada'
+            audit.state = 'cerrada'  # el candado vive en write()
             if audit.program_line_id:
                 audit.program_line_id.state = 'creada'
         return True

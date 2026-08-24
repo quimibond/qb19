@@ -36,3 +36,4 @@ from . import test_diagnostic_otd
 from . import test_mywork
 from . import test_fase9
 from . import test_fase10
+from . import test_audit_hardening

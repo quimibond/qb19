@@ -518,11 +518,15 @@ class SgiConfig(models.AbstractModel):
     @api.model
     def harden_noupdate(self):
         """Marca noupdate=True en registros que ya existían ANTES de que su
-        archivo pasara a noupdate=1 (crons, mapeo de claves): sin esto, el
-        odoo-update seguiría revirtiendo lo que el usuario edite ahí."""
+        archivo pasara a noupdate=1 (crons, mapeo de claves, y desde la
+        auditoría 2026-08 también los datos maestros: procesos, flujos, áreas
+        y normas — sin esto, el odoo-update seguiría revirtiendo lo que MAST
+        edite ahí y resucitando lo que borre)."""
         self.env['ir.model.data'].sudo().search([
             ('module', '=', 'quimibond_sgi'),
-            ('model', 'in', ('ir.cron', 'sgi.format.map')),
+            ('model', 'in', ('ir.cron', 'sgi.format.map',
+                             'sgi.process', 'sgi.process.flow',
+                             'sgi.area', 'sgi.norm', 'sgi.norm.clause')),
             ('noupdate', '=', False),
         ]).write({'noupdate': True})
         return True

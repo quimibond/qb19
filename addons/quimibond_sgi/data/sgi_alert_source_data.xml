@@ -60,6 +60,18 @@ nada.</field>
 reclamación de cliente.</field>
     </record>
 
+    <record id="sgi_alert_source_chain_stuck" model="sgi.alert.source">
+        <field name="code">eslabon_atorado</field>
+        <field name="name">Eslabón de procedimiento atorado</field>
+        <field name="sequence">55</field>
+        <field name="trigger_type">automatico</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">La medición de la cadena detecta un eslabón
+atorado por más de 7 días: el paso origen tiene evidencia y el destino no
+ejecutó el suyo. Apagar la fuente detiene la NC automática; el aviso de
+actividad al dueño del proceso sigue saliendo.</field>
+    </record>
+
     <record id="sgi_alert_source_maintenance" model="sgi.alert.source">
         <field name="code">mantenimiento_falla</field>
         <field name="name">Falla de mantenimiento</field>

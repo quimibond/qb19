@@ -11,6 +11,15 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 
+def sgi_bypass_allowed(env):
+    """Un contexto de bypass de candado (sgi_bypass_lock, sgi_force_close,
+    sgi_bypass_dirty) solo cuenta si viene de código de sistema (superusuario)
+    o de un Jefe MAST. El contexto lo controla el cliente: sin esta guarda,
+    cualquier usuario podía brincarse los candados de evidencia pasando el
+    contexto por RPC."""
+    return env.su or env.user.has_group('quimibond_sgi.group_sgi_manager')
+
+
 class SgiBaseMixin(models.AbstractModel):
     _name = 'sgi.base.mixin'
     _description = "Cimiento de registros del SGI"
@@ -85,7 +94,8 @@ class SgiBaseMixin(models.AbstractModel):
 
     def write(self, vals):
         if (self._sgi_locked_states and not self.env.su
-                and not self.env.context.get('sgi_bypass_lock')
+                and not (self.env.context.get('sgi_bypass_lock')
+                         and sgi_bypass_allowed(self.env))
                 and self._sgi_vals_touch_locked(vals)):
             locked = self._sgi_locked_records()
             if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
@@ -96,6 +106,24 @@ class SgiBaseMixin(models.AbstractModel):
                     "Registros bloqueados: %s"
                     % ", ".join(locked.mapped('display_name')))
         return super().write(vals)
+
+    def unlink(self):
+        """Cinturón del candado: un registro cerrado tampoco se borra. Hoy los
+        ACL ya niegan unlink a los usuarios en todos los modelos con estados
+        bloqueados, pero la regla no debe depender de que ningún ACL futuro lo
+        abra."""
+        if (self._sgi_locked_states and not self.env.su
+                and not (self.env.context.get('sgi_bypass_lock')
+                         and sgi_bypass_allowed(self.env))
+                and not self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            locked = self._sgi_locked_records()
+            if locked:
+                raise UserError(
+                    "Este registro del SGI está cerrado y es evidencia: no puede "
+                    "borrarse. Pide al Jefe de MAST reabrirlo si hay un error "
+                    "real.\n\nRegistros bloqueados: %s"
+                    % ", ".join(locked.mapped('display_name')))
+        return super().unlink()
 
 
 def sgi_find_menu(env, path):
@@ -111,8 +139,12 @@ def sgi_find_menu(env, path):
     parts = [p for p in (path or '').split('/') if p]
     if not parts:
         return Menu
+    # El texto viene de una persona: un «%», «_» o «\» literal son comodines
+    # de LIKE y harían matchear menús que no son (o no matchear el correcto).
+    pattern = (parts[-1].replace('\\', '\\\\')
+               .replace('%', '\\%').replace('_', '\\_'))
     candidates = Menu.search([
-        ('name', '=ilike', parts[-1]), ('action', '!=', False)])
+        ('name', '=ilike', pattern), ('action', '!=', False)])
     low = '/'.join(parts).lower()
     for menu in candidates:
         if (menu.complete_name or '').lower() == low:

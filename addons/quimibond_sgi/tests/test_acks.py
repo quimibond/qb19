@@ -58,6 +58,17 @@ class TestDocsAndAcks(TransactionCase):
                             sgi_job_ids=[(6, 0, [self.job.id])])
         doc.action_generate_acks()
         ack = doc.sgi_ack_ids[0]
-        ack.action_mark_read()
+        # A2: el empleado no tiene usuario ligado → un usuario cualquiera no
+        # puede firmarlo; MAST sí.
+        from odoo.exceptions import UserError
+        someone = self.env['res.users'].create({
+            'name': 'Firmador ajeno', 'login': 'sgi_ack_test',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_user').id])]})
+        with self.assertRaises(UserError):
+            ack.with_user(someone).action_mark_read()
+        manager = self.env['res.users'].create({
+            'name': 'MAST acuses', 'login': 'sgi_ack_mgr_test',
+            'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_manager').id])]})
+        ack.with_user(manager).action_mark_read()
         self.assertEqual(ack.state, 'leido')
         self.assertTrue(ack.ack_date)

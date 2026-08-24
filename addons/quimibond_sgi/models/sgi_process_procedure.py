@@ -21,6 +21,8 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
+from .sgi_base import sgi_bypass_allowed
+
 _logger = logging.getLogger(__name__)
 
 
@@ -72,9 +74,11 @@ class SgiProcessProcedure(models.Model):
     doc_vobo_id = fields.Many2one(
         'res.users', string="Vo.Bo.")
 
-    # Campos del cuerpo del procedimiento cuya edición diverge del PDF controlado.
+    # Campos del cuerpo del procedimiento cuya edición diverge del PDF
+    # controlado. 'purpose' (sección 1, OBJETIVO) también se imprime en el
+    # F-P-G01-02: editarlo sin nueva revisión ES una divergencia G14.
     _SGI_PROCEDURE_BODY_FIELDS = {
-        'scope', 'env_aspects', 'norm_ids',
+        'purpose', 'scope', 'env_aspects', 'norm_ids',
         'doc_owner_id', 'doc_approver_id', 'doc_vobo_id'}
 
     @api.depends('procedure_activity_ids')
@@ -96,21 +100,40 @@ class SgiProcessProcedure(models.Model):
         string="Me referencian", compute='_compute_inbound_references')
 
     def _compute_inbound_references(self):
+        """Por lote: una search de documentos y una de actividades para el
+        recordset completo (antes eran 2 searches POR proceso)."""
         Activity = self.env['sgi.process.activity']
         Document = self.env['documents.document']
-        for process in self:
-            if not process.id:
-                process.inbound_reference_ids = False
-                process.inbound_reference_count = 0
-                continue
-            my_docs = Document.search([('sgi_process_id', '=', process.id)])
-            acts = Activity.search([
-                ('process_id', '!=', process.id),
-                '|', ('related_procedure_id', 'in', my_docs.ids),
-                ('format_document_ids', 'in', my_docs.ids),
-            ]) if my_docs else Activity.browse()
-            process.inbound_reference_ids = acts
-            process.inbound_reference_count = len(acts)
+        processes = self.filtered('id')
+        for process in (self - processes):
+            process.inbound_reference_ids = False
+            process.inbound_reference_count = 0
+        if not processes:
+            return
+        doc_process = {}  # doc_id -> process_id dueño
+        for doc in Document.search_read(
+                [('sgi_process_id', 'in', processes.ids)], ['sgi_process_id']):
+            doc_process[doc['id']] = doc['sgi_process_id'][0]
+        acts = Activity.search([
+            '|', ('related_procedure_id', 'in', list(doc_process)),
+            ('format_document_ids', 'in', list(doc_process)),
+        ]) if doc_process else Activity.browse()
+        by_process = {}  # process_id -> [activity_id]
+        for act in acts:
+            owner_pids = set()
+            related_id = act.related_procedure_id.id
+            if related_id in doc_process:
+                owner_pids.add(doc_process[related_id])
+            for doc_id in act.format_document_ids.ids:
+                if doc_id in doc_process:
+                    owner_pids.add(doc_process[doc_id])
+            for pid in owner_pids:
+                if act.process_id.id != pid:
+                    by_process.setdefault(pid, []).append(act.id)
+        for process in processes:
+            act_ids = by_process.get(process.id, [])
+            process.inbound_reference_ids = Activity.browse(act_ids)
+            process.inbound_reference_count = len(act_ids)
 
     def action_view_inbound_references(self):
         """Quién me menciona: las actividades ajenas que citan mis
@@ -130,17 +153,31 @@ class SgiProcessProcedure(models.Model):
              "destino no tiene evidencia en su periodo.")
 
     def _compute_chain_link_count(self):
+        """Por lote: una sola search_read para el recordset (antes 2
+        search_count por proceso). El set de pids deduplica los eslabones cuyo
+        origen y destino caen en el mismo proceso."""
         Link = self.env['sgi.activity.link']
-        for process in self:
-            if not process.id:
-                process.chain_link_count = 0
-                process.chain_stuck_count = 0
-                continue
-            base = ['|', ('from_process_id', '=', process.id),
-                    ('to_process_id', '=', process.id)]
-            process.chain_link_count = Link.search_count(base)
-            process.chain_stuck_count = Link.search_count(
-                base + [('chain_state', '=', 'atorado')])
+        processes = self.filtered('id')
+        for process in (self - processes):
+            process.chain_link_count = 0
+            process.chain_stuck_count = 0
+        if not processes:
+            return
+        wanted = set(processes.ids)
+        totals, stuck = {}, {}
+        for link in Link.search_read(
+                ['|', ('from_process_id', 'in', list(wanted)),
+                 ('to_process_id', 'in', list(wanted))],
+                ['from_process_id', 'to_process_id', 'chain_state']):
+            pids = {value[0] for value in (
+                link['from_process_id'], link['to_process_id']) if value}
+            for pid in pids & wanted:
+                totals[pid] = totals.get(pid, 0) + 1
+                if link['chain_state'] == 'atorado':
+                    stuck[pid] = stuck.get(pid, 0) + 1
+        for process in processes:
+            process.chain_link_count = totals.get(process.id, 0)
+            process.chain_stuck_count = stuck.get(process.id, 0)
 
     def action_view_chain(self):
         """La cadena del proceso: qué entregables entran y salen, paso a paso."""
@@ -178,7 +215,9 @@ class SgiProcessProcedure(models.Model):
         contenido que SON la revisión vigente (seed_procedure_ventas y similares)
         no son una divergencia y no deben disparar G14.
         """
-        if not self.env.registry.ready or self.env.context.get('sgi_bypass_dirty'):
+        if not self.env.registry.ready or (
+                self.env.context.get('sgi_bypass_dirty')
+                and sgi_bypass_allowed(self.env)):
             return
         for process in self:
             doc = process._sgi_procedure_document()
@@ -492,7 +531,11 @@ class SgiProcessActivity(models.Model):
                     vals['measure_state'] = 'verde'
             except Exception:
                 pass
-            activity.write(vals)
+            # Solo se escribe lo que cambió: el cron diario re-mide TODO y la
+            # mayoría de los valores no se mueven — escribir igual infla el
+            # write_date y el WAL sin aportar nada.
+            if any(activity[key] != value for key, value in vals.items()):
+                activity.write(vals)
 
     def _sgi_resolve_menu(self):
         """Resuelve odoo_menu_id desde el texto de odoo_ref: convierte
@@ -538,19 +581,39 @@ class SgiProcessActivity(models.Model):
                     "SGI: falló un paso del cron de medición; continúo.")
         return True
 
+    def _sgi_checked_measure_domain(self):
+        """Dominio de evidencia VALIDADO contra el modelo real. El dominio lo
+        captura una persona: uno con un campo inexistente o no almacenado pasa
+        el safe_eval y truena hasta la vista del usuario («Cannot convert to
+        SQL» — misma familia del bug de complete_name). El cron ya se protege
+        con try/except; aquí se valida ANTES de devolver la acción, con un
+        error accionable en vez de un traceback."""
+        self.ensure_one()
+        domain = self._sgi_measure_domain()
+        try:
+            self.env[self.measure_model_id.model].sudo().search_count(domain, limit=1)
+        except Exception as exc:
+            raise UserError(
+                "El «Filtro de evidencia» de la actividad %s es inválido para "
+                "el modelo %s:\n%s\n\nCorrige el dominio en la pestaña de "
+                "medición (solo campos reales y almacenados del modelo)." % (
+                    self.display_name, self.measure_model_id.model, exc))
+        return domain
+
     def action_view_measure_records(self):
         """Abre los registros reales que son la evidencia de la actividad."""
         self.ensure_one()
         if not self.measure_model_id:
             raise UserError(
                 "Esta actividad no tiene modelo de medición ligado.")
+        domain = self._sgi_checked_measure_domain()
         return {
             'type': 'ir.actions.act_window',
             'name': "%s — evidencia" % (
                 self.name or self.number or self.section or 'Actividad'),
             'res_model': self.measure_model_id.model,
             'view_mode': 'list,form',
-            'domain': self._sgi_measure_domain(),
+            'domain': domain,
         }
 
     @api.depends('number', 'name', 'section')
@@ -689,18 +752,49 @@ class SgiActivityLink(models.Model):
                             frm.display_name, link.name or '',
                             to.display_name),
                         owner_user)
-                elif not link.nc_alert_id and (
-                        now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS:
-                    vals['nc_alert_id'] = link._sgi_create_chain_nc().id
+                elif (now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS \
+                        and not link._sgi_chain_nc_open():
+                    # Sin NC ligada, o la ligada ya cerró/canceló: este
+                    # atoramiento persistente amerita su propia NC (antes,
+                    # nc_alert_id nunca se soltaba y el SEGUNDO episodio ya no
+                    # generaba NC jamás).
+                    alert = link._sgi_create_chain_nc()
+                    if alert:
+                        vals['nc_alert_id'] = alert.id
             else:
                 vals['atorado_since'] = False
-            link.write(vals)
+            # Solo-diferencia: el cron evalúa todos los eslabones a diario y
+            # casi siempre nada cambió (un UPDATE por link por día, de balde).
+            if any(
+                    (link[key].id if key == 'nc_alert_id' else link[key]) != value
+                    for key, value in vals.items()):
+                link.write(vals)
+
+    def _sgi_chain_nc_open(self):
+        """¿La NC ligada al eslabón sigue abierta (bloquea crear otra)?"""
+        self.ensure_one()
+        nc = self.nc_alert_id
+        return bool(nc) and not (nc.stage_id.sgi_is_closing_stage
+                                 or nc.stage_id.sgi_is_cancel_stage)
 
     def _sgi_create_chain_nc(self):
-        """NC automática por ruptura de secuencia persistente."""
+        """NC automática por ruptura de secuencia persistente.
+
+        Va por sgi_auto_create (punto ÚNICO de entrada de NCs automáticas):
+        así MAST puede apagar la fuente «eslabon_atorado» desde Configuración
+        y la NC queda estampada con su sgi_source_id — antes se creaba con
+        create() directo y no había forma de apagarla sin tocar código.
+        Devuelve un recordset vacío si la fuente está apagada o si no está
+        configurado el equipo NC Internas (una NC sin equipo queda sin folio,
+        fuera de los candados del SGI: mejor no crearla y avisar al log)."""
         self.ensure_one()
         team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
                             raise_if_not_found=False)
+        if not team:
+            _logger.warning(
+                "SGI: eslabón atorado %s sin NC — falta el equipo NC Internas "
+                "(quimibond_sgi.sgi_quality_team_internal).", self.id)
+            return self.env['quality.alert']
         stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open',
                              raise_if_not_found=False)
         vals = {
@@ -714,12 +808,14 @@ class SgiActivityLink(models.Model):
                     self.to_activity_id.display_name, self.name or ''),
             'sgi_origin_type': 'proceso',
             'sgi_process_id': self.to_process_id.id,
+            'team_id': team.id,
         }
-        if team:
-            vals['team_id'] = team.id
         if stage:
             vals['stage_id'] = stage.id
-        return self.env['quality.alert'].sudo().create(vals)
+        # count_suppression=False: el cron reevalúa el mismo eslabón cada día;
+        # una omisión ya contada no es un evento nuevo.
+        return self.env['quality.alert'].sudo().sgi_auto_create(
+            'eslabon_atorado', vals, count_suppression=False)
 
     @api.constrains('from_activity_id', 'to_activity_id')
     def _check_not_self(self):

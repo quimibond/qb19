@@ -59,7 +59,9 @@ class SgiFmea(models.Model):
             'domain': [('id', 'in', self.sgi_nc_ids.ids)],
         }
 
-    def action_set_vigente(self):
+    def _sgi_check_can_publish(self):
+        """Candados IATF/AIAG para pasar a Vigente. Viven aparte del botón
+        porque write() los aplica por CUALQUIER vía (RPC, import…)."""
         for fmea in self:
             pending = fmea.line_ids.filtered(
                 lambda l: l.requires_action and not l.action_line_ids)
@@ -98,7 +100,14 @@ class SgiFmea(models.Model):
                     "cuyo NPR post NO bajó respecto al inicial y no tienen "
                     "justificación escrita (campo «Justificación NPR post»)."
                     % (fmea.folio or fmea.name, len(not_improved)))
-            fmea.state = 'vigente'
+
+    def write(self, vals):
+        if vals.get('state') == 'vigente' and not self.env.su:
+            self.filtered(lambda f: f.state != 'vigente')._sgi_check_can_publish()
+        return super().write(vals)
+
+    def action_set_vigente(self):
+        self.write({'state': 'vigente'})  # el candado vive en write()
         return True
 
     def action_set_borrador(self):

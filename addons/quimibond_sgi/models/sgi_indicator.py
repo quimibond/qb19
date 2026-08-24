@@ -568,10 +568,14 @@ class SgiIndicator(models.Model):
         Employee = self.env['hr.employee']
         JobSkill = self.env['hr.job.skill']
         employees = Employee.search([])
+        jobs = employees.job_id
         required = 0
-        for employee in employees:
-            if employee.job_id:
-                required += JobSkill.search_count([('job_id', '=', employee.job_id.id)])
+        if jobs:
+            # Una _read_group por puesto (antes: un search_count POR empleado).
+            counts = {job.id: count for job, count in JobSkill._read_group(
+                [('job_id', 'in', jobs.ids)], ['job_id'], ['__count'])}
+            required = sum(counts.get(employee.job_id.id, 0)
+                           for employee in employees if employee.job_id)
         if not required:
             return None
         gaps = self.env['sgi.competence.gap'].search_count(
@@ -873,17 +877,23 @@ class SgiIndicatorMeasure(models.Model):
             'domain': domain,
         }
 
-    # Una medición VALIDADA es evidencia: su valor no se toca sin privilegio.
-    _SGI_LOCKED_FIELDS = {'value', 'period_date', 'indicator_id'}
+    # Una medición VALIDADA es evidencia: ni su valor NI su estado se tocan sin
+    # privilegio. El estado forma parte del candado: sin él, bastaba regresarla
+    # a 'pendiente' (write de state) para editar el valor ya des-validado.
+    _SGI_LOCKED_FIELDS = {'value', 'period_date', 'indicator_id', 'state'}
 
     def write(self, vals):
-        if self._SGI_LOCKED_FIELDS & set(vals.keys()):
+        if self._SGI_LOCKED_FIELDS & set(vals.keys()) and not self.env.su:
             locked = self.filtered(lambda m: m.state == 'validado')
+            # Re-escribir 'validado' sobre una ya validada no reabre nada.
+            if set(vals.keys()) == {'state'} and vals.get('state') == 'validado':
+                locked = self.browse()
             if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
                 raise UserError(
                     "La medición validada de %s es evidencia del SGI y no puede "
-                    "modificarse. Pide al Jefe de MAST regresarla a borrador si "
-                    "hay un error real." % ', '.join(locked.mapped('indicator_id.name')))
+                    "modificarse ni regresarse a borrador. Pide al Jefe de MAST "
+                    "reabrirla si hay un error real." % ', '.join(
+                        locked.mapped('indicator_id.name')))
         return super().write(vals)
 
     def action_capture(self):
@@ -891,10 +901,11 @@ class SgiIndicatorMeasure(models.Model):
 
     def action_validate(self):
         self._sgi_check_validate_access()
-        self.write({'state': 'validado'})
+        self.filtered(lambda m: m.state != 'validado').write({'state': 'validado'})
         self._sgi_maybe_create_nc()
 
     def action_reset(self):
+        # El write bloquea la reapertura de validadas para quien no sea MAST.
         self.write({'state': 'pendiente'})
 
     def _sgi_check_validate_access(self):

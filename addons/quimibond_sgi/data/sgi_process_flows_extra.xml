@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo>
+<!-- noupdate="1": son datos maestros que MAST edita en produccion
+     (renombres, dueños, flujos); sin la marca, cada odoo-update los
+     revertia al XML y resucitaba los borrados. Registros nuevos si se
+     crean (Odoo crea los xmlid que aun no existen). -->
+<odoo noupdate="1">
     <!-- Flujos entrada/salida faltantes del mapa de procesos (mini-fase 4.8).
          Fuente: SIPOC reales del SGI — Compras (may-2026), Planeación (abr-2026),
          Ventas (oct-2025), Auditoría de Calidad (abr-2026), ANEXO 3 (modelo de
