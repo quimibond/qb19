@@ -192,6 +192,10 @@
                     <button name="action_view_evidence" type="object"
                             string="Ver evidencia" icon="fa-search-plus"
                             invisible="source_type == 'manual'"/>
+                    <button name="action_recompute_value" type="object"
+                            string="Recalcular valor" icon="fa-refresh"
+                            invisible="source_type == 'manual' or state == 'validado'"
+                            confirm="Se recalcula el valor del periodo con el modo de cálculo ACTUAL del indicador. ¿Continuar?"/>
                     <button name="action_reset" type="object"
                             string="Regresar a pendiente"
                             groups="quimibond_sgi.group_sgi_manager"

@@ -2,19 +2,29 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class ApprovalCategory(models.Model):
     _inherit = 'approval.category'
 
     sgi_is_doc_change = fields.Boolean(string="Cambio documental SGI")
+    sgi_is_moc = fields.Boolean(
+        string="Gestión del cambio SGI (MOC)",
+        help="Cambios de proceso, infraestructura o plantilla (9001 §6.3, "
+             "45001 §8.1.3): la solicitud exige motivo, procesos afectados y "
+             "evaluación de riesgos ANTES de poder aprobarse.")
 
 
 class ApprovalRequest(models.Model):
     _inherit = 'approval.request'
 
     sgi_is_doc_change = fields.Boolean(related='category_id.sgi_is_doc_change', store=True)
+    sgi_is_moc = fields.Boolean(related='category_id.sgi_is_moc', store=True)
+    sgi_moc_risk_note = fields.Text(
+        string="Evaluación de riesgos del cambio",
+        help="45001 §8.1.3 / 9001 §6.3: riesgos del cambio para calidad, "
+             "ambiente y SST, y cómo se controlan. Obligatoria para aprobar.")
     sgi_document_id = fields.Many2one('documents.document', string="Documento afectado")
     sgi_change_kind = fields.Selection([
         ('alta', "Alta"),
@@ -110,7 +120,26 @@ class ApprovalRequest(models.Model):
             )
         self.sgi_applied = True
 
+    def _sgi_check_moc_ready(self):
+        """Gate del MOC: nadie aprueba un cambio de proceso/infraestructura
+        sin motivo, procesos afectados y evaluación de riesgos (6.3/8.1.3)."""
+        for req in self.filtered('sgi_is_moc'):
+            problems = []
+            if not (req.sgi_reason or '').strip():
+                problems.append("• Falta el motivo del cambio.")
+            if not req.sgi_affected_process_ids:
+                problems.append("• Faltan los procesos afectados.")
+            if not (req.sgi_moc_risk_note or '').strip():
+                problems.append(
+                    "• Falta la evaluación de riesgos del cambio (calidad, "
+                    "ambiente y SST).")
+            if problems:
+                raise UserError(
+                    "No se puede aprobar el cambio «%s» (gestión del cambio "
+                    "SGI):\n%s" % (req.name or '', "\n".join(problems)))
+
     def action_approve(self, approver=None):
+        self._sgi_check_moc_ready()
         res = super().action_approve(approver=approver)
         for req in self:
             if req.sgi_is_doc_change and req.request_status == 'approved' and not req.sgi_applied:

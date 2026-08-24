@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.24.0.0',
+    'version': '19.0.25.0.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -74,6 +74,10 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_fase7_data.xml',
         'data/sgi_fase8_data.xml',
         'data/sgi_measure_cron.xml',
+        'data/sgi_cumplimiento_data.xml',
+        'data/sgi_mail_templates.xml',
+        'data/sgi_moc_data.xml',
+        'data/sgi_dyd_data.xml',
         # views
         'views/sgi_area_views.xml',
         'views/sgi_norm_views.xml',
@@ -90,6 +94,8 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_indicator_views.xml',
         'views/sgi_audit_views.xml',
         'views/sgi_risk_views.xml',
+        'views/sgi_legal_views.xml',
+        'views/sgi_context_views.xml',
         'views/sgi_supplier_eval_views.xml',
         'views/sgi_res_partner_views.xml',
         'views/sgi_management_review_views.xml',
@@ -111,6 +117,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_settings_views.xml',
         # reports
         'report/report_nc.xml',
+        'report/report_8d.xml',
         'report/report_news.xml',
         'report/report_audit.xml',
         'report/report_mgmt_review.xml',
@@ -119,6 +126,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_incident.xml',
         'report/report_procedure.xml',
         'report/report_sales_budget.xml',
+        'report/report_retention.xml',
         'report/sgi_format_footer.xml',
         # menus
         'views/sgi_menus.xml',

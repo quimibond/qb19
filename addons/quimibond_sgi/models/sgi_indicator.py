@@ -583,6 +583,18 @@ class SgiIndicator(models.Model):
         return round((required - gaps) / required * 100.0, 2)
 
     def _sgi_satisfaction_survey(self):
+        """Encuesta que alimenta CA-02. Configurable en Ajustes
+        (satisfaction_survey_id): en producción las 575 respuestas históricas
+        viven en una encuesta ARCHIVADA distinta de la sembrada — MAST decide
+        cuál es la fuente (re-apuntar al histórico o arrancar de cero con la
+        sembrada) sin tocar código. Sin parámetro, cae a la sembrada."""
+        param = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.satisfaction_survey_id', 0) or 0)
+        if param:
+            survey = self.env['survey.survey'].sudo().with_context(
+                active_test=False).browse(param).exists()
+            if survey:
+                return survey
         return self.env.ref('quimibond_sgi.sgi_survey_satisfaction',
                             raise_if_not_found=False)
 
@@ -895,6 +907,42 @@ class SgiIndicatorMeasure(models.Model):
                     "reabrirla si hay un error real." % ', '.join(
                         locked.mapped('indicator_id.name')))
         return super().write(vals)
+
+    def action_recompute_value(self):
+        """Recalcula el valor con el modo ACTUAL del indicador (deuda B.16:
+        el cron solo crea la medición faltante, así que cambiar el calc_mode
+        de un KPI no re-medía los periodos ya generados). Solo mediciones no
+        validadas: la validada es evidencia."""
+        for measure in self:
+            indicator = measure.indicator_id
+            if measure.state == 'validado':
+                raise UserError(
+                    "La medición de %s ya está validada (es evidencia): pide "
+                    "al Jefe MAST regresarla a pendiente antes de recalcular."
+                    % indicator.code)
+            if indicator.calc_mode == 'manual':
+                raise UserError(
+                    "El indicador %s es de captura manual: no hay nada que "
+                    "recalcular." % indicator.code)
+            date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
+            value = indicator._sgi_compute_value(date_from, date_to)
+            note = indicator._sgi_compute_note(date_from, date_to)
+            if value is None:
+                vals = {'state': 'pendiente'}
+                if note:
+                    vals['note'] = note
+                measure.write(vals)
+                measure_label = "sin dato calculable: queda pendiente de captura"
+            else:
+                vals = {'value': value, 'state': 'capturado'}
+                if note:
+                    vals['note'] = note
+                measure.write(vals)
+                measure_label = "valor recalculado: %s" % value
+            indicator.message_post(
+                body="Medición de %s recalculada con el modo «%s» — %s." % (
+                    measure.period_date, indicator.calc_mode, measure_label))
+        return True
 
     def action_capture(self):
         self.write({'state': 'capturado'})

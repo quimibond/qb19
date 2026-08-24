@@ -8,6 +8,7 @@ Política → Objetivo integral → Indicador → Proceso. La política es el en
 import logging
 
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 from odoo.addons.quimibond_sgi.models.sgi_objective import sgi_worst_health
 
@@ -107,6 +108,25 @@ class SgiPolicy(models.Model):
     def action_set_obsoleta(self):
         self.write({'state': 'obsoleta'})
         return True
+
+    def action_generate_acks(self):
+        """Difusión con firma de la política (deuda D.28): delega en el
+        documento controlado ligado. Antes se podía publicar la política sin
+        difusión — dependía de ir al documento y acordarse de generar acuses."""
+        self.ensure_one()
+        if not self.document_id:
+            raise UserError(
+                "Liga primero el documento controlado donde se publica la "
+                "política (campo «Documento publicado (MIID)») y vuelve a "
+                "generar los acuses.")
+        if not self.document_id.sgi_job_ids:
+            raise UserError(
+                "El documento %s no tiene puestos asignados: asígnalos en su "
+                "pestaña «Puestos que aplican» (define quién debe firmar el "
+                "acuse) y vuelve a generar." % (
+                    self.document_id.sgi_code or self.document_id.name))
+        self.document_id.action_generate_acks()
+        return self.document_id.action_open_acks()
 
     def action_open_objectives(self):
         self.ensure_one()

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Vigilancia del cumplimiento legal (14001/45001 6.1.3 / 9.1.2):
+         evaluaciones vencidas y permisos por vencer. -->
+    <record id="sgi_cron_legal_requirements" model="ir.cron">
+        <field name="name">SGI: Cumplimiento legal (evaluaciones y permisos)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_legal_requirements()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Consulta y participación de los trabajadores (45001 5.4):
+         recordatorio semestral de distribuir la encuesta F-P-A10-05. -->
+    <record id="sgi_cron_worker_participation" model="ir.cron">
+        <field name="name">SGI: Consulta y participación de trabajadores (45001 5.4)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_worker_participation()</field>
+        <field name="interval_number">6</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Revisión periódica del contexto (partes interesadas, 4.1/4.2). -->
+    <record id="sgi_cron_context_review" model="ir.cron">
+        <field name="name">SGI: Revisión del contexto (partes interesadas)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_context_review()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

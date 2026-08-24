@@ -66,6 +66,36 @@ class SgiCron(models.AbstractModel):
     # protege cron_measure_activities — puesto ahí después de que un solo
     # tropiezo tumbó la medición completa en producción.
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Correo inmediato para eventos críticos: incidente grave/fatal, NC
+    # mayor y equipo bloqueado por calibración. Todo lo demás sigue siendo
+    # actividad — el correo es solo para quien no vive dentro de Odoo.
+    # ------------------------------------------------------------------
+    def _sgi_critical_mail_emails(self):
+        """Correos de Jefe MAST + Dirección (deduplicados)."""
+        users = self.env['res.users']
+        for xmlid in ('quimibond_sgi.group_sgi_manager',
+                      'quimibond_sgi.group_sgi_director'):
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                users |= group.all_user_ids
+        return ','.join(sorted({e for e in users.mapped('email') if e}))
+
+    def _sgi_send_critical_mail(self, template_xmlid, record):
+        """Envía el correo crítico SIN romper el flujo que lo dispara: un
+        fallo de plantilla/SMTP se loggea y el negocio continúa."""
+        template = self.env.ref(template_xmlid, raise_if_not_found=False)
+        emails = self._sgi_critical_mail_emails()
+        if not template or not emails or not record:
+            return
+        try:
+            template.sudo().with_context(sgi_email_to=emails).send_mail(
+                record.id)
+        except Exception:
+            _logger.exception(
+                "SGI: falló el correo crítico %s para %s; continúo.",
+                template_xmlid, record)
+
     def _sgi_step(self, label, func):
         """Ejecuta un paso independiente del cron en su propio savepoint:
         si truena, se registra y se continúa con el siguiente paso."""
@@ -723,9 +753,13 @@ class SgiCron(models.AbstractModel):
                         eq.sgi_next_calibration_date),
                     user_id)
             elif eq.sgi_calibration_state == 'vencido':
-                # Vencido: bloquear y avisar al Jefe MAST.
+                # Vencido: bloquear y avisar al Jefe MAST. El correo crítico
+                # sale solo en la transición al bloqueo (no cada corrida).
                 if not eq.sgi_do_not_use:
                     eq.sgi_do_not_use = True
+                    self._sgi_send_critical_mail(
+                        'quimibond_sgi.mail_template_sgi_calibration_blocked',
+                        eq)
                 self._sgi_schedule(
                     eq,
                     "Calibración VENCIDA: %s" % eq.name,
@@ -820,8 +854,7 @@ class SgiCron(models.AbstractModel):
         de Satisfacción del Cliente (9001 9.1.2). Las respuestas alimentan el
         KPI CA-02 automáticamente. No envía correos a clientes por sí solo:
         el envío es una acción humana desde la app Encuestas."""
-        survey = self.env.ref('quimibond_sgi.sgi_survey_satisfaction',
-                              raise_if_not_found=False)
+        survey = self.env['sgi.indicator']._sgi_satisfaction_survey()
         user_id = self._sgi_sales_admin_user_id()
         if not survey or not user_id:
             return True
@@ -974,4 +1007,102 @@ class SgiCron(models.AbstractModel):
                     manager_id)
 
             self._sgi_for_each(tickets, _sla, "SLA de reclamaciones")
+        return True
+
+    # ------------------------------------------------------------------
+    # Cumplimiento legal (14001/45001 6.1.3 / 9.1.2)
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_legal_requirements(self):
+        """Cron diario: evaluaciones de cumplimiento vencidas y permisos por
+        vencer (≤60 días) o vencidos. Idempotente por resumen."""
+        today = fields.Date.context_today(self)
+        soon = today + relativedelta(days=60)
+        manager_id = self._sgi_manager_user_id()
+        Requirement = self.env['sgi.legal.requirement']
+        overdue = Requirement.search([
+            ('next_eval_date', '!=', False),
+            ('next_eval_date', '<=', today),
+        ])
+
+        def _overdue(req):
+            self._sgi_schedule(
+                req,
+                "Evaluar cumplimiento legal: %s" % req.display_name,
+                "La evaluación periódica del cumplimiento (9.1.2) venció el "
+                "%s. Evalúe y registre el resultado (Cumple / Parcial / No "
+                "cumple)." % req.next_eval_date,
+                req.responsible_id.id or manager_id)
+
+        self._sgi_for_each(overdue, _overdue, "evaluaciones legales vencidas")
+
+        expiring = Requirement.search([
+            ('expiry_date', '!=', False), ('expiry_date', '<=', soon),
+        ])
+
+        def _expiring(req):
+            summary = ("Permiso VENCIDO: %s" if req.expiry_date < today
+                       else "Permiso por vencer: %s") % req.display_name
+            self._sgi_schedule(
+                req, summary,
+                "El permiso/licencia vence el %s. Gestione la renovación."
+                % req.expiry_date,
+                req.responsible_id.id or manager_id)
+
+        self._sgi_for_each(expiring, _expiring, "permisos por vencer")
+        return True
+
+    @api.model
+    def _sgi_participation_survey(self):
+        """Encuesta de consulta y participación de los trabajadores (45001
+        §5.4, F-P-A10-05). Vive en producción (creada por MCP, MAST la puede
+        editar), no como semilla del módulo: se localiza por la clave en el
+        título — mismo patrón que la evaluación del auditor."""
+        return self.env['survey.survey'].sudo().search(
+            [('title', 'like', 'F-P-A10-05')], limit=1)
+
+    @api.model
+    def cron_worker_participation(self):
+        """Cron semestral: recuerda distribuir la encuesta de consulta y
+        participación de los trabajadores (45001 §5.4). Las respuestas y las
+        quejas del canal interno alimentan la entrada 12 de la RxD.
+        Idempotente por semestre (el resumen lleva el semestre)."""
+        survey = self._sgi_participation_survey()
+        rh_id = self._sgi_rh_user_id()
+        if not survey or not rh_id:
+            return True
+        today = fields.Date.context_today(self)
+        label = "S%d %d" % (1 if today.month <= 6 else 2, today.year)
+        self._sgi_schedule(
+            survey,
+            "Distribuir consulta y participación de trabajadores (%s)" % label,
+            "45001 §5.4: comparta la encuesta F-P-A10-05 con el personal desde "
+            "la app Encuestas (botón Compartir). Las respuestas del periodo "
+            "alimentan la entrada 12 de la Revisión por la Dirección.",
+            rh_id)
+        return True
+
+    @api.model
+    def cron_context_review(self):
+        """Cron semanal: partes interesadas (4.1/4.2) con revisión vencida.
+        Idempotente por resumen."""
+        today = fields.Date.context_today(self)
+        manager_id = self._sgi_manager_user_id()
+        if not manager_id:
+            return True
+        parties = self.env['sgi.interested.party'].search([
+            ('next_review_date', '!=', False),
+            ('next_review_date', '<=', today),
+        ])
+
+        def _process(party):
+            self._sgi_schedule(
+                party,
+                "Revisar parte interesada: %s" % party.name,
+                "La revisión periódica del contexto (4.1/4.2) venció el %s. "
+                "Confirme o actualice sus necesidades/expectativas y marque "
+                "la revisión." % party.next_review_date,
+                manager_id)
+
+        self._sgi_for_each(parties, _process, "revisión del contexto")
         return True

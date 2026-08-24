@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tabla de retención de registros (ISO 7.5.3): se imprime desde la
+         lista de documentos (selección múltiple → Imprimir). -->
+    <record id="action_report_retention" model="ir.actions.report">
+        <field name="name">Tabla de retención de registros</field>
+        <field name="model">documents.document</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_retention_document</field>
+        <field name="report_file">quimibond_sgi.report_retention_document</field>
+        <field name="binding_model_id" ref="documents.model_documents_document"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_retention_document">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2 class="text-center">Tabla de retención de registros (ISO 7.5.3)</h2>
+                    <table class="table table-sm table-bordered mt-3">
+                        <thead>
+                            <tr>
+                                <th>Clave</th>
+                                <th>Documento / registro</th>
+                                <th>Tipo</th>
+                                <th>Responsable</th>
+                                <th class="text-end">Retención (años)</th>
+                                <th>Disposición final</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs.sorted(key=lambda d: (d.sgi_code or '~', d.name or ''))" t-as="doc">
+                                <td t-esc="doc.sgi_code or ''"/>
+                                <td t-esc="doc.name or ''"/>
+                                <td t-esc="dict(doc._fields['sgi_doc_type'].selection).get(doc.sgi_doc_type, '')"/>
+                                <td t-esc="doc.sgi_owner_id.name or ''"/>
+                                <td class="text-end">
+                                    <span t-if="doc.sgi_retention_years" t-esc="doc.sgi_retention_years"/>
+                                    <span t-else="" class="text-danger">SIN DEFINIR</span>
+                                </td>
+                                <td t-esc="dict(doc._fields['sgi_disposition'].selection).get(doc.sgi_disposition, '')"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-muted">Un registro «SIN DEFINIR» no tiene
+                    retención capturada: defínela en la ficha SGI del documento
+                    (campo «Retención (años)»).</p>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -2,6 +2,8 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
 
+from .sgi_risk import SGI_HIGH_ATTENTION
+
 
 class SgiProcess(models.Model):
     _name = 'sgi.process'
@@ -144,7 +146,7 @@ class SgiProcess(models.Model):
                     red_counts[pid] = red_counts.get(pid, 0) + 1
         risk_counts = {p.id: count for p, count in Risk._read_group(
             [('process_id', 'in', ids),
-             ('attention_level', 'in', ('inmediata', 'alto')),
+             ('attention_level', 'in', SGI_HIGH_ATTENTION),
              ('state', '!=', 'cerrado')],
             ['process_id'], ['__count'])}
         for process in processes:
@@ -287,7 +289,7 @@ class SgiProcess(models.Model):
             'view_mode': 'list,form',
             'domain': [
                 ('process_id', '=', self.id),
-                ('attention_level', 'in', ('inmediata', 'alto')),
+                ('attention_level', 'in', SGI_HIGH_ATTENTION),
                 ('state', '!=', 'cerrado'),
             ],
         }

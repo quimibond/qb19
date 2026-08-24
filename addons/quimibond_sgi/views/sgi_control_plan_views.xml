@@ -26,6 +26,10 @@
                                 icon="fa-list-ul" invisible="point_count == 0">
                             <field name="point_count" widget="statinfo" string="Puntos"/>
                         </button>
+                        <button name="action_view_fmeas" type="object" class="oe_stat_button"
+                                icon="fa-sitemap" invisible="fmea_count == 0">
+                            <field name="fmea_count" widget="statinfo" string="AMEF"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nombre del plan de control"/></h1>
