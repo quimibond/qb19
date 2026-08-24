@@ -14,8 +14,15 @@ class MailActivity(models.Model):
 
     def _action_done(self, feedback=False, attachment_ids=None):
         """Cierre bidireccional: completar desde el chatter la actividad espejo
-        de una acción del SGI marca terminada la acción (date_done)."""
-        lines = self.env['sgi.action.line'].search([
+        de una acción del SGI marca terminada la acción (date_done).
+
+        sudo() obligatorio: este override corre para CUALQUIER usuario que
+        complete CUALQUIER actividad de CUALQUIER app, y el ACL de
+        sgi.action.line solo da lectura al grupo SGI — sin sudo, un usuario
+        interno fuera del grupo no podía cerrar ni sus propias actividades
+        (AccessError). Es contabilidad interna del sistema, no un acceso que
+        el usuario pida."""
+        lines = self.env['sgi.action.line'].sudo().search([
             ('activity_id', 'in', self.ids), ('date_done', '=', False),
         ])
         res = super()._action_done(feedback=feedback, attachment_ids=attachment_ids)
