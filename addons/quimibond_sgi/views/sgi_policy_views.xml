@@ -29,6 +29,10 @@
                     <button name="action_set_vigente" type="object" string="Publicar (Vigente)"
                             class="btn-primary" invisible="state == 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_generate_acks" type="object"
+                            string="Generar acuses de difusión"
+                            invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_set_borrador" type="object" string="A borrador"
                             invisible="state == 'borrador'"
                             groups="quimibond_sgi.group_sgi_manager"/>
