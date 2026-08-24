@@ -45,6 +45,14 @@ class SgiManagementReview(models.Model):
     env_summary = fields.Text(string="8. Desempeño ambiental (scrap)", readonly=True)
     resources_note = fields.Text(string="9. Recursos (calibraciones/capacitación)")
     doc_changes_summary = fields.Text(string="10. Cambios documentales", readonly=True)
+    legal_summary = fields.Text(
+        string="11. Cumplimiento legal", readonly=True,
+        help="14001/45001 9.3: estado de la evaluación del cumplimiento de "
+             "requisitos legales y permisos.")
+    participation_summary = fields.Text(
+        string="12. Consulta y participación", readonly=True,
+        help="45001 5.4/9.3: respuestas de la encuesta de consulta y "
+             "participación y quejas del canal interno en el periodo.")
 
     # Salidas
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',
@@ -79,8 +87,63 @@ class SgiManagementReview(models.Model):
                 'risk_high_ids': [(6, 0, review._sgi_load_high_risks().ids)],
                 'env_summary': review._sgi_load_env(),
                 'doc_changes_summary': review._sgi_load_doc_changes(),
+                'legal_summary': review._sgi_load_legal(),
+                'participation_summary': review._sgi_load_participation(),
             })
         return True
+
+    def _sgi_load_legal(self):
+        """Entrada 11 (14001/45001 9.3): foto del cumplimiento legal."""
+        self.ensure_one()
+        Requirement = self.env['sgi.legal.requirement']
+        total = Requirement.search_count([])
+        if not total:
+            return ("Sin requisitos legales registrados: capture la matriz "
+                    "legal (SGI → Riesgos y auditorías → Requisitos legales).")
+        today = fields.Date.context_today(self)
+        parts = ["%d requisito(s) registrados." % total]
+        labels = dict(Requirement._fields['compliance_state'].selection)
+        for state, count in Requirement._read_group(
+                [], ['compliance_state'], ['__count']):
+            parts.append("%s: %d" % (labels.get(state, state), count))
+        overdue = Requirement.search_count([
+            ('next_eval_date', '!=', False), ('next_eval_date', '<=', today)])
+        if overdue:
+            parts.append("Evaluaciones vencidas: %d." % overdue)
+        expiring = Requirement.search_count([
+            ('expiry_date', '!=', False),
+            ('expiry_date', '<=', today + relativedelta(days=90))])
+        if expiring:
+            parts.append("Permisos que vencen en ≤90 días: %d." % expiring)
+        return "\n".join(parts)
+
+    def _sgi_load_participation(self):
+        """Entrada 12 (45001 5.4): consulta y participación de trabajadores."""
+        self.ensure_one()
+        dt_from, dt_to = self._sgi_bounds()
+        parts = []
+        survey = self.env['sgi.cron']._sgi_participation_survey()
+        if survey:
+            answered = self.env['survey.user_input'].sudo().search_count([
+                ('survey_id', '=', survey.id), ('state', '=', 'done'),
+                ('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
+            parts.append("Encuesta de consulta y participación (F-P-A10-05): "
+                         "%d respuesta(s) en el periodo." % answered)
+        else:
+            parts.append("La encuesta de consulta y participación "
+                         "(F-P-A10-05) no está disponible en Encuestas.")
+        team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_voice',
+                            raise_if_not_found=False)
+        if team:
+            Ticket = self.env['helpdesk.ticket']
+            received = Ticket.search_count([
+                ('team_id', '=', team.id),
+                ('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
+            open_now = Ticket.search_count([
+                ('team_id', '=', team.id), ('stage_id.fold', '=', False)])
+            parts.append("Quejas y sugerencias internas: %d recibidas en el "
+                         "periodo, %d abiertas hoy." % (received, open_now))
+        return "\n".join(parts)
 
     def _sgi_load_prev_agreements(self):
         self.ensure_one()

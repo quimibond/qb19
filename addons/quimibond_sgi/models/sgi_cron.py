@@ -1020,6 +1020,41 @@ class SgiCron(models.AbstractModel):
         return True
 
     @api.model
+    def _sgi_participation_survey(self):
+        """Encuesta de consulta y participación de los trabajadores (45001
+        §5.4, F-P-A10-05). Vive en producción (creada por MCP, MAST la puede
+        editar): se localiza por la clave en el título, con fallback al xmlid
+        por si alguna instalación la siembra — mismo patrón que la evaluación
+        del auditor."""
+        survey = self.env.ref('quimibond_sgi.sgi_survey_participation',
+                              raise_if_not_found=False)
+        if not survey:
+            survey = self.env['survey.survey'].sudo().search(
+                [('title', 'like', 'F-P-A10-05')], limit=1)
+        return survey
+
+    @api.model
+    def cron_worker_participation(self):
+        """Cron semestral: recuerda distribuir la encuesta de consulta y
+        participación de los trabajadores (45001 §5.4). Las respuestas y las
+        quejas del canal interno alimentan la entrada 12 de la RxD.
+        Idempotente por semestre (el resumen lleva el semestre)."""
+        survey = self._sgi_participation_survey()
+        rh_id = self._sgi_rh_user_id()
+        if not survey or not rh_id:
+            return True
+        today = fields.Date.context_today(self)
+        label = "S%d %d" % (1 if today.month <= 6 else 2, today.year)
+        self._sgi_schedule(
+            survey,
+            "Distribuir consulta y participación de trabajadores (%s)" % label,
+            "45001 §5.4: comparta la encuesta F-P-A10-05 con el personal desde "
+            "la app Encuestas (botón Compartir). Las respuestas del periodo "
+            "alimentan la entrada 12 de la Revisión por la Dirección.",
+            rh_id)
+        return True
+
+    @api.model
     def cron_context_review(self):
         """Cron semanal: partes interesadas (4.1/4.2) con revisión vencida.
         Idempotente por resumen."""
