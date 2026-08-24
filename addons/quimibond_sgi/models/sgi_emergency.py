@@ -44,7 +44,11 @@ class SgiEmergencyPlan(models.Model):
         ('obsoleto', "Obsoleto"),
     ], string="Estado", default='borrador', required=True, tracking=True)
     drill_ids = fields.One2many('sgi.emergency.drill', 'plan_id', string="Simulacros")
-    drill_count = fields.Integer(string="# Simulacros", compute='_compute_drill_dates')
+    # drill_count vive en su PROPIO compute: compartir método con los campos
+    # almacenados de fechas (store=True) mezclaba store/compute_sudo en el
+    # mismo grupo y el registry lo marcaba como inconsistente en el log de
+    # producción (además de recomputar de más).
+    drill_count = fields.Integer(string="# Simulacros", compute='_compute_drill_count')
     last_drill_date = fields.Date(string="Último simulacro",
                                   compute='_compute_drill_dates', store=True)
     next_drill_date = fields.Date(string="Próximo simulacro",
@@ -53,12 +57,16 @@ class SgiEmergencyPlan(models.Model):
     _folio_uniq = models.Constraint(
         'unique(folio)', "Ya existe un plan de emergencia con ese folio.")
 
+    @api.depends('drill_ids')
+    def _compute_drill_count(self):
+        for plan in self:
+            plan.drill_count = len(plan.drill_ids)
+
     @api.depends('drill_ids.state', 'drill_ids.date_done', 'drill_frequency_months')
     def _compute_drill_dates(self):
         for plan in self:
             done = plan.drill_ids.filtered(
                 lambda d: d.state == 'realizado' and d.date_done)
-            plan.drill_count = len(plan.drill_ids)
             plan.last_drill_date = max(done.mapped('date_done')) if done else False
             months = plan.drill_frequency_months or 12
             plan.next_drill_date = (
@@ -140,7 +148,10 @@ class SgiEmergencyDrill(models.Model):
             drill.display_name = ("%s - %s" % (drill.folio, drill.plan_id.name)
                                   if drill.folio else (drill.plan_id.name or ''))
 
-    def action_set_realizado(self):
+    def _sgi_check_can_realize(self):
+        """Requisitos para marcar realizado. Viven aparte del botón porque
+        write() los aplica por cualquier vía: un write directo de state dejaba
+        sellar como evidencia un simulacro sin resultado ni acciones."""
         for drill in self:
             problems = []
             if not drill.result:
@@ -159,10 +170,23 @@ class SgiEmergencyDrill(models.Model):
             if problems:
                 raise UserError("No se puede marcar realizado el simulacro %s:\n%s"
                                 % (drill.folio or '', "\n".join(problems)))
+
+    def write(self, vals):
+        if vals.get('state') == 'realizado' and not self.env.su:
+            # El resultado/participantes pueden venir en el mismo write del
+            # botón: se valida el estado RESULTANTE, no el previo.
+            checking = self.filtered(lambda d: d.state != 'realizado')
+            res = super().write(vals)
+            checking._sgi_check_can_realize()
+            return res
+        return super().write(vals)
+
+    def action_set_realizado(self):
+        for drill in self:
             vals = {'state': 'realizado'}
             if not drill.date_done:
                 vals['date_done'] = fields.Date.context_today(drill)
-            drill.write(vals)
+            drill.write(vals)  # el candado vive en write()
         return True
 
     def action_set_cancelado(self):

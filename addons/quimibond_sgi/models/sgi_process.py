@@ -83,46 +83,75 @@ class SgiProcess(models.Model):
         - rojo: hay un riesgo de atención máxima abierto, o coinciden NC abierta
           y KPI en rojo (síntoma sistémico: falla + evidencia de que no baja);
         - amarillo: hay algo abierto pero no alcanza el umbral rojo.
+
+        Todo POR LOTE (una query por métrica para el recordset completo): la
+        versión por registro disparaba 4+ queries por proceso y el mapa
+        completo (~21 procesos) costaba ~150 queries por render.
         """
         Alert = self.env['quality.alert']
         ActionLine = self.env['sgi.action.line']
         Risk = self.env['sgi.risk']
-        for process in self:
-            if not process.id:
-                process.nc_count = process.overdue_action_count = 0
-                process.red_kpi_count = process.open_high_risk_count = 0
-                process.health = 'verde'
-                continue
-            process.nc_count = Alert.search_count([
-                ('sgi_process_id', '=', process.id),
-                ('stage_id.sgi_is_closing_stage', '=', False),
-                ('stage_id.sgi_is_cancel_stage', '=', False),
-            ])
-            # Acciones vencidas cuyos orígenes (NC/riesgo/incidente/AMEF) apuntan
-            # al proceso.
-            process.overdue_action_count = ActionLine.search_count([
-                ('state', '=', 'vencida'),
-                '|', '|', '|',
-                ('alert_id.sgi_process_id', '=', process.id),
-                ('risk_id.process_id', '=', process.id),
-                ('incident_id.process_id', '=', process.id),
-                ('fmea_line_id.fmea_id.process_id', '=', process.id),
-            ])
-            # KPIs en rojo: indicadores del proceso cuya última medición VALIDADA
-            # está en rojo.
-            red = 0
-            for indicator in process.indicator_ids:
-                last_val = indicator.measure_ids.filtered(
-                    lambda m: m.state == 'validado').sorted(
-                        'period_date', reverse=True)[:1]
-                if last_val and last_val.semaphore == 'rojo':
-                    red += 1
-            process.red_kpi_count = red
-            process.open_high_risk_count = Risk.search_count([
-                ('process_id', '=', process.id),
-                ('attention_level', 'in', ('inmediata', 'alto')),
-                ('state', '!=', 'cerrado'),
-            ])
+        Measure = self.env['sgi.indicator.measure']
+        processes = self.filtered('id')
+        for process in (self - processes):
+            process.nc_count = process.overdue_action_count = 0
+            process.red_kpi_count = process.open_high_risk_count = 0
+            process.health = 'verde'
+        if not processes:
+            return
+        ids = processes.ids
+        nc_counts = {p.id: count for p, count in Alert._read_group(
+            [('sgi_process_id', 'in', ids),
+             ('stage_id.sgi_is_closing_stage', '=', False),
+             ('stage_id.sgi_is_cancel_stage', '=', False)],
+            ['sgi_process_id'], ['__count'])}
+        # Acciones vencidas cuyos orígenes (NC/riesgo/incidente/AMEF) apuntan
+        # al proceso: una search para todos y el bucket en Python (una acción
+        # tiene exactamente UN origen — constraint XOR).
+        overdue_counts = {}
+        overdue = ActionLine.search([
+            ('state', '=', 'vencida'),
+            '|', '|', '|',
+            ('alert_id.sgi_process_id', 'in', ids),
+            ('risk_id.process_id', 'in', ids),
+            ('incident_id.process_id', 'in', ids),
+            ('fmea_line_id.fmea_id.process_id', 'in', ids),
+        ])
+        for line in overdue:
+            pid = (line.alert_id.sgi_process_id.id
+                   or line.risk_id.process_id.id
+                   or line.incident_id.process_id.id
+                   or line.fmea_line_id.fmea_id.process_id.id)
+            if pid:
+                overdue_counts[pid] = overdue_counts.get(pid, 0) + 1
+        # KPIs en rojo: indicadores del proceso cuya última medición VALIDADA
+        # está en rojo — una sola search ordenada y se toma la primera por
+        # indicador.
+        red_counts = {}
+        indicators = processes.indicator_ids
+        if indicators:
+            seen = set()
+            for measure in Measure.search(
+                    [('indicator_id', 'in', indicators.ids),
+                     ('state', '=', 'validado')],
+                    order='indicator_id, period_date desc, id desc'):
+                ind = measure.indicator_id
+                if ind.id in seen:
+                    continue
+                seen.add(ind.id)
+                if measure.semaphore == 'rojo':
+                    pid = ind.process_id.id
+                    red_counts[pid] = red_counts.get(pid, 0) + 1
+        risk_counts = {p.id: count for p, count in Risk._read_group(
+            [('process_id', 'in', ids),
+             ('attention_level', 'in', ('inmediata', 'alto')),
+             ('state', '!=', 'cerrado')],
+            ['process_id'], ['__count'])}
+        for process in processes:
+            process.nc_count = nc_counts.get(process.id, 0)
+            process.overdue_action_count = overdue_counts.get(process.id, 0)
+            process.red_kpi_count = red_counts.get(process.id, 0)
+            process.open_high_risk_count = risk_counts.get(process.id, 0)
             if process.open_high_risk_count or (process.nc_count and process.red_kpi_count):
                 process.health = 'rojo'
             elif process.nc_count or process.overdue_action_count or process.red_kpi_count:
@@ -141,16 +170,27 @@ class SgiProcess(models.Model):
             process.odoo_model_ids = flows.mapped('odoo_model_id')
 
     def _compute_counts(self):
+        """Conteos por lote (una _read_group por métrica, no 3 queries por
+        proceso)."""
         Doc = self.env['documents.document']
         Indicator = self.env['sgi.indicator']
         Risk = self.env['sgi.risk']
-        for process in self:
-            if process.id:
-                process.document_count = Doc.search_count([('sgi_process_id', '=', process.id)])
-                process.indicator_count = Indicator.search_count([('process_id', '=', process.id)])
-                process.risk_count = Risk.search_count([('process_id', '=', process.id)])
-            else:
-                process.document_count = process.indicator_count = process.risk_count = 0
+        processes = self.filtered('id')
+        for process in (self - processes):
+            process.document_count = process.indicator_count = process.risk_count = 0
+        if not processes:
+            return
+        ids = processes.ids
+        doc_counts = {p.id: count for p, count in Doc._read_group(
+            [('sgi_process_id', 'in', ids)], ['sgi_process_id'], ['__count'])}
+        ind_counts = {p.id: count for p, count in Indicator._read_group(
+            [('process_id', 'in', ids)], ['process_id'], ['__count'])}
+        risk_counts = {p.id: count for p, count in Risk._read_group(
+            [('process_id', 'in', ids)], ['process_id'], ['__count'])}
+        for process in processes:
+            process.document_count = doc_counts.get(process.id, 0)
+            process.indicator_count = ind_counts.get(process.id, 0)
+            process.risk_count = risk_counts.get(process.id, 0)
 
     def action_open_documents(self):
         self.ensure_one()

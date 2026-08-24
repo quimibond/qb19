@@ -303,10 +303,15 @@ class SgiSalesBudget(models.Model):
         mondays = set(self._sgi_horizon_mondays())
         Line = self.env['sgi.sales.budget.line']
         forecast_keys = {(l.product_id.id, l.date) for l in self.line_ids}
+        # Cota de fecha: sin ella se traía TODO el histórico de pedidos del
+        # cliente para filtrar en Python. Un pedido con compromiso en el
+        # horizonte de hoy no viene de órdenes de hace más de un año.
+        date_floor = fields.Datetime.to_datetime(min(mondays)) - timedelta(days=365)
         sols = self.env['sale.order.line'].search([
             ('order_id.state', 'in', ('sale', 'done')),
             ('order_id.partner_id.commercial_partner_id', '=', partner.id),
             ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
+            ('order_id.date_order', '>=', date_floor),
         ])
         result = self.env['sale.order.line']
         for sol in sols:
@@ -967,10 +972,15 @@ class SgiSalesBudget(models.Model):
         if not partner:
             return result
         Line = self.env['sgi.sales.budget.line']
+        # Cota de fecha: solo interesan los lunes del año del pronóstico; un
+        # pedido ordenado antes del año previo no compromete semanas de este
+        # año (antes se traía y filtraba TODO el histórico del cliente).
         sols = self.env['sale.order.line'].search([
             ('order_id.state', 'in', ('sale', 'done')),
             ('order_id.partner_id.commercial_partner_id', '=', partner.id),
             ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
+            ('order_id.date_order', '>=',
+             fields.Datetime.to_datetime(date(self.year - 1, 1, 1))),
         ])
         for sol in sols:
             monday = Line._sgi_effective_monday(sol.order_id)

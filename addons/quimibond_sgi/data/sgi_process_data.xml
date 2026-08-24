@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo>
+<!-- noupdate="1": son datos maestros que MAST edita en produccion
+     (renombres, dueños, flujos); sin la marca, cada odoo-update los
+     revertia al XML y resucitaba los borrados. Registros nuevos si se
+     crean (Odoo crea los xmlid que aun no existen). -->
+<odoo noupdate="1">
     <!-- ============ MACROPROCESOS ============ -->
     <record id="proc_adm" model="sgi.process">
         <field name="code">MP-ADM</field>

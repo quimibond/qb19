@@ -20,6 +20,17 @@ class HelpdeskTicket(models.Model):
 
     def action_sgi_generate_nc(self):
         self.ensure_one()
+        # Idempotente: la vista oculta el botón con NC ligada, pero un
+        # formulario desactualizado o una llamada RPC repetida no debe
+        # duplicar la NC (folio consumido + concentrado contaminado).
+        if self.sgi_alert_id:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "No Conformidad",
+                'res_model': 'quality.alert',
+                'res_id': self.sgi_alert_id.id,
+                'view_mode': 'form',
+            }
         team = self.env.ref('quimibond_sgi.sgi_quality_team_internal', raise_if_not_found=False)
         vals = {
             'title': "Reclamación: %s" % (self.name or ''),

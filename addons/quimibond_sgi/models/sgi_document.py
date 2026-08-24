@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
 import re
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api, Command
 from odoo.exceptions import ValidationError, UserError
+
+_logger = logging.getLogger(__name__)
 
 # Nomenclatura documental real de PNTQ (áreas G,A,C,D,E,I,M,P,S,V)
 SGI_CODE_REGEX = re.compile(
@@ -233,9 +236,31 @@ class DocumentsDocument(models.Model):
 
     def init(self):
         """Un solo VIGENTE por clave, garantizado en BD (la validación Python
-        sola permite condición de carrera)."""
+        sola permite condición de carrera).
+
+        Con datos legados duplicados (BD restaurada, SQL directo), el CREATE
+        UNIQUE INDEX abortaba el update completo del módulo con un
+        IntegrityError críptico. Ahora se detectan primero: se loggea la lista
+        accionable y se OMITE el índice (el constraint Python sigue
+        protegiendo) en vez de bloquear el update."""
         super().init()
-        self.env.cr.execute("""
+        cr = self.env.cr
+        cr.execute("""
+            SELECT sgi_code, array_agg(id ORDER BY id)
+            FROM documents_document
+            WHERE sgi_state = 'vigente' AND sgi_is_controlled IS TRUE
+                  AND sgi_code IS NOT NULL
+            GROUP BY sgi_code HAVING count(*) > 1
+        """)
+        duplicated = cr.fetchall()
+        if duplicated:
+            _logger.error(
+                "SGI: NO se creó el índice único de documentos vigentes: hay "
+                "claves con más de un vigente controlado. Obsoleta los "
+                "sobrantes y vuelve a actualizar. Duplicados (clave, ids): %s",
+                duplicated)
+            return
+        cr.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS documents_document_sgi_unique_vigente
             ON documents_document (sgi_code)
             WHERE sgi_state = 'vigente' AND sgi_is_controlled IS TRUE
@@ -340,6 +365,24 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        if vals.get('sgi_state') == 'vigente' and len(self) > 1:
+            # Selección múltiple con la MISMA clave: el obsoletado excluye solo
+            # al doc en turno, ambos quedarían vigentes y el índice único
+            # reventaría en el flush con un IntegrityError ilegible. Mejor un
+            # error claro antes de escribir.
+            seen = {}
+            for doc in self:
+                code = vals.get('sgi_code', doc.sgi_code)
+                controlled = vals.get('sgi_is_controlled', doc.sgi_is_controlled)
+                if not code or not controlled:
+                    continue
+                if code in seen:
+                    raise UserError(
+                        "No se puede poner en vigor más de un documento "
+                        "controlado con la clave '%s' a la vez (%s y %s): solo "
+                        "puede haber un vigente por clave. Hazlo de uno en uno." % (
+                            code, seen[code].display_name, doc.display_name))
+                seen[code] = doc
         if vals.get('sgi_state') == 'vigente':
             for doc in self:
                 code = vals.get('sgi_code', doc.sgi_code)
@@ -450,10 +493,38 @@ class SgiDocumentAck(models.Model):
         "Ya existe un acuse para este empleado y documento.",
     )
 
-    def action_mark_read(self):
+    # El acuse es evidencia de difusión (ISO 7.5): la firma vive en write(),
+    # no solo en el botón — un write directo (lista editable, import, RPC)
+    # podía firmar acuses ajenos sin dejar rastro. Un acuse cuyo empleado no
+    # tiene usuario ligado solo lo firma MAST (no hay forma de saber que fue
+    # «el propio empleado»).
+    _SGI_ACK_SIGN_FIELDS = {'state', 'ack_date'}
+
+    def _sgi_check_can_sign(self):
+        if self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            return
         for ack in self:
-            if ack.user_id and ack.user_id != self.env.user and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-                raise UserError("Solo el propio empleado puede marcar su acuse como leído.")
+            if not ack.user_id or ack.user_id != self.env.user:
+                raise UserError(
+                    "Solo el propio empleado (o el Jefe de MAST) puede firmar o "
+                    "modificar el acuse de lectura de %s." % ack.employee_id.name)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        acks = super().create(vals_list)
+        # Crear un acuse ya «firmado» equivale a firmarlo: mismo candado.
+        pre_signed = acks.filtered(lambda a: a.state != 'pendiente' or a.ack_date)
+        pre_signed._sgi_check_can_sign()
+        return acks
+
+    def write(self, vals):
+        if self._SGI_ACK_SIGN_FIELDS & set(vals):
+            self._sgi_check_can_sign()
+        return super().write(vals)
+
+    def action_mark_read(self):
+        # La validación de identidad vive en write(); aquí solo se sella.
+        for ack in self:
             ack.write({'state': 'leido', 'ack_date': fields.Datetime.now()})
         return True
 
