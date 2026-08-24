@@ -66,6 +66,36 @@ class SgiCron(models.AbstractModel):
     # protege cron_measure_activities — puesto ahí después de que un solo
     # tropiezo tumbó la medición completa en producción.
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Correo inmediato para eventos críticos: incidente grave/fatal, NC
+    # mayor y equipo bloqueado por calibración. Todo lo demás sigue siendo
+    # actividad — el correo es solo para quien no vive dentro de Odoo.
+    # ------------------------------------------------------------------
+    def _sgi_critical_mail_emails(self):
+        """Correos de Jefe MAST + Dirección (deduplicados)."""
+        users = self.env['res.users']
+        for xmlid in ('quimibond_sgi.group_sgi_manager',
+                      'quimibond_sgi.group_sgi_director'):
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                users |= group.all_user_ids
+        return ','.join(sorted({e for e in users.mapped('email') if e}))
+
+    def _sgi_send_critical_mail(self, template_xmlid, record):
+        """Envía el correo crítico SIN romper el flujo que lo dispara: un
+        fallo de plantilla/SMTP se loggea y el negocio continúa."""
+        template = self.env.ref(template_xmlid, raise_if_not_found=False)
+        emails = self._sgi_critical_mail_emails()
+        if not template or not emails or not record:
+            return
+        try:
+            template.sudo().with_context(sgi_email_to=emails).send_mail(
+                record.id)
+        except Exception:
+            _logger.exception(
+                "SGI: falló el correo crítico %s para %s; continúo.",
+                template_xmlid, record)
+
     def _sgi_step(self, label, func):
         """Ejecuta un paso independiente del cron en su propio savepoint:
         si truena, se registra y se continúa con el siguiente paso."""
@@ -723,9 +753,13 @@ class SgiCron(models.AbstractModel):
                         eq.sgi_next_calibration_date),
                     user_id)
             elif eq.sgi_calibration_state == 'vencido':
-                # Vencido: bloquear y avisar al Jefe MAST.
+                # Vencido: bloquear y avisar al Jefe MAST. El correo crítico
+                # sale solo en la transición al bloqueo (no cada corrida).
                 if not eq.sgi_do_not_use:
                     eq.sgi_do_not_use = True
+                    self._sgi_send_critical_mail(
+                        'quimibond_sgi.mail_template_sgi_calibration_blocked',
+                        eq)
                 self._sgi_schedule(
                     eq,
                     "Calibración VENCIDA: %s" % eq.name,

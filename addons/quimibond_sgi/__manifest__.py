@@ -75,6 +75,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_fase8_data.xml',
         'data/sgi_measure_cron.xml',
         'data/sgi_cumplimiento_data.xml',
+        'data/sgi_mail_templates.xml',
         # views
         'views/sgi_area_views.xml',
         'views/sgi_norm_views.xml',

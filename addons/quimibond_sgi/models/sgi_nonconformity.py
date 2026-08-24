@@ -139,6 +139,13 @@ class QualityAlert(models.Model):
         for alert in alerts:
             if not alert.sgi_folio and alert.team_id.sgi_sequence_id:
                 alert.sgi_folio = alert.team_id.sgi_sequence_id.next_by_id()
+        # Una NC MAYOR del SGI avisa por correo además de la actividad:
+        # Dirección no vive dentro de Odoo.
+        Cron = self.env['sgi.cron']
+        for alert in alerts:
+            if alert.sgi_folio and alert.sgi_classification == 'mayor':
+                Cron._sgi_send_critical_mail(
+                    'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
         return alerts
 
     @api.depends('sgi_process_id', 'sgi_norm_clause_id', 'sgi_folio')
@@ -276,6 +283,12 @@ class QualityAlert(models.Model):
                         alert.sgi_folio or alert.name, "\n".join(problems)))
 
     def write(self, vals):
+        # Reclasificar a MAYOR una NC con folio también dispara el correo
+        # crítico (solo la transición: no re-avisa a las que ya eran mayores).
+        newly_mayor = self.browse()
+        if vals.get('sgi_classification') == 'mayor':
+            newly_mayor = self.filtered(
+                lambda a: a.sgi_folio and a.sgi_classification != 'mayor')
         newly_closed = self.env['quality.alert']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
@@ -292,6 +305,10 @@ class QualityAlert(models.Model):
                 newly_closed = self.filtered(
                     lambda a: a.stage_id != new_stage and a.sgi_folio)
         res = super().write(vals)
+        Cron = self.env['sgi.cron']
+        for alert in newly_mayor:
+            Cron._sgi_send_critical_mail(
+                'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
         for alert in newly_closed:
             if alert.sgi_classification == 'mayor':
                 alert._sgi_notify_mayor_closed()
