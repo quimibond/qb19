@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_legal_requirement_view_list" model="ir.ui.view">
+        <field name="name">sgi.legal.requirement.list</field>
+        <field name="model">sgi.legal.requirement</field>
+        <field name="arch" type="xml">
+            <list string="Requisitos legales"
+                  decoration-danger="compliance_state == 'no_cumple'"
+                  decoration-warning="compliance_state in ('parcial', 'pendiente')">
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="kind" optional="show"/>
+                <field name="system"/>
+                <field name="authority" optional="hide"/>
+                <field name="responsible_id" optional="show" widget="many2one_avatar_user"/>
+                <field name="last_eval_date" optional="show"/>
+                <field name="next_eval_date"/>
+                <field name="expiry_date" optional="hide"/>
+                <field name="compliance_state" widget="badge"
+                       decoration-success="compliance_state == 'cumple'"
+                       decoration-warning="compliance_state in ('parcial', 'pendiente')"
+                       decoration-danger="compliance_state == 'no_cumple'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_legal_requirement_view_form" model="ir.ui.view">
+        <field name="name">sgi.legal.requirement.form</field>
+        <field name="model">sgi.legal.requirement</field>
+        <field name="arch" type="xml">
+            <form string="Requisito legal">
+                <header>
+                    <button name="action_mark_cumple" type="object" string="Cumple"
+                            class="btn-success"/>
+                    <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
+                            class="btn-warning"
+                            confirm="Un cumplimiento parcial levanta una No Conformidad. ¿Registrar la evaluación?"/>
+                    <button name="action_mark_no_cumple" type="object" string="No cumple"
+                            class="btn-danger"
+                            confirm="Un incumplimiento levanta una No Conformidad mayor. ¿Registrar la evaluación?"/>
+                    <field name="compliance_state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_alert" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle" invisible="not alert_id">
+                            <div class="o_stat_info"><span class="o_stat_text">NC de<br/>incumplimiento</span></div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Obligación concreta…"/></h1>
+                    </div>
+                    <group>
+                        <group string="Requisito">
+                            <field name="reference"/>
+                            <field name="kind"/>
+                            <field name="system"/>
+                            <field name="authority"/>
+                            <field name="expiry_date"/>
+                        </group>
+                        <group string="Evaluación del cumplimiento (9.1.2)">
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="eval_frequency_months"/>
+                            <field name="last_eval_date" readonly="1"/>
+                            <field name="next_eval_date"/>
+                            <field name="alert_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description" placeholder="Qué obliga a hacer exactamente…"/>
+                        <field name="evidence" placeholder="Con qué se demuestra el cumplimiento…"/>
+                        <field name="eval_note" placeholder="Qué se revisó y qué se encontró en la última evaluación…"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="process_ids" widget="many2many_tags"/>
+                            <field name="risk_ids" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="document_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_legal_requirement_view_search" model="ir.ui.view">
+        <field name="name">sgi.legal.requirement.search</field>
+        <field name="model">sgi.legal.requirement</field>
+        <field name="arch" type="xml">
+            <search string="Requisitos legales">
+                <field name="name"/>
+                <field name="reference"/>
+                <field name="authority"/>
+                <filter name="no_cumple" string="No cumple / parcial"
+                        domain="[('compliance_state', 'in', ('no_cumple', 'parcial'))]"/>
+                <filter name="pendiente" string="Sin evaluar"
+                        domain="[('compliance_state', '=', 'pendiente')]"/>
+                <filter name="eval_vencida" string="Evaluación vencida"
+                        domain="[('next_eval_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="ambiental" string="Ambiental (14001)" domain="[('system', '=', 'ambiental')]"/>
+                <filter name="sst" string="SST (45001)" domain="[('system', '=', 'sst')]"/>
+                <filter name="calidad" string="Calidad / cliente" domain="[('system', '=', 'calidad')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_system" string="Sistema" context="{'group_by': 'system'}"/>
+                    <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
+                    <filter name="group_state" string="Cumplimiento" context="{'group_by': 'compliance_state'}"/>
+                    <filter name="group_responsible" string="Responsable" context="{'group_by': 'responsible_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_legal_requirement_action" model="ir.actions.act_window">
+        <field name="name">Requisitos legales</field>
+        <field name="res_model">sgi.legal.requirement</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registra la matriz de requisitos legales</p>
+            <p>NOMs, permisos, licencias y requisitos de cliente (14001/45001
+            §6.1.3). Cada requisito lleva su frecuencia de evaluación del
+            cumplimiento (§9.1.2): el cron avisa cuando toca evaluar y un
+            «No cumple» levanta la NC automáticamente.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_sgi_legal" name="Requisitos legales"
+              parent="menu_sgi_audits" action="sgi_legal_requirement_action"
+              sequence="8"/>
+</odoo>

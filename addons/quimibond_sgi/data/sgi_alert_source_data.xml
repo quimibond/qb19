@@ -72,6 +72,17 @@ ejecutó el suyo. Apagar la fuente detiene la NC automática; el aviso de
 actividad al dueño del proceso sigue saliendo.</field>
     </record>
 
+    <record id="sgi_alert_source_legal" model="sgi.alert.source">
+        <field name="code">requisito_legal_incumplido</field>
+        <field name="name">Incumplimiento de requisito legal</field>
+        <field name="sequence">58</field>
+        <field name="trigger_type">manual</field>
+        <field name="origin_module">quimibond_sgi</field>
+        <field name="trigger_note">La evaluación del cumplimiento (14001/45001
+9.1.2) de un requisito legal resulta «No cumple» o «Cumple parcialmente». La
+levanta el evaluador con los botones del requisito.</field>
+    </record>
+
     <record id="sgi_alert_source_maintenance" model="sgi.alert.source">
         <field name="code">mantenimiento_falla</field>
         <field name="name">Falla de mantenimiento</field>

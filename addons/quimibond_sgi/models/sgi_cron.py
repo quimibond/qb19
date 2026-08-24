@@ -975,3 +975,46 @@ class SgiCron(models.AbstractModel):
 
             self._sgi_for_each(tickets, _sla, "SLA de reclamaciones")
         return True
+
+    # ------------------------------------------------------------------
+    # Cumplimiento legal (14001/45001 6.1.3 / 9.1.2)
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_legal_requirements(self):
+        """Cron diario: evaluaciones de cumplimiento vencidas y permisos por
+        vencer (≤60 días) o vencidos. Idempotente por resumen."""
+        today = fields.Date.context_today(self)
+        soon = today + relativedelta(days=60)
+        manager_id = self._sgi_manager_user_id()
+        Requirement = self.env['sgi.legal.requirement']
+        overdue = Requirement.search([
+            ('next_eval_date', '!=', False),
+            ('next_eval_date', '<=', today),
+        ])
+
+        def _overdue(req):
+            self._sgi_schedule(
+                req,
+                "Evaluar cumplimiento legal: %s" % req.display_name,
+                "La evaluación periódica del cumplimiento (9.1.2) venció el "
+                "%s. Evalúe y registre el resultado (Cumple / Parcial / No "
+                "cumple)." % req.next_eval_date,
+                req.responsible_id.id or manager_id)
+
+        self._sgi_for_each(overdue, _overdue, "evaluaciones legales vencidas")
+
+        expiring = Requirement.search([
+            ('expiry_date', '!=', False), ('expiry_date', '<=', soon),
+        ])
+
+        def _expiring(req):
+            summary = ("Permiso VENCIDO: %s" if req.expiry_date < today
+                       else "Permiso por vencer: %s") % req.display_name
+            self._sgi_schedule(
+                req, summary,
+                "El permiso/licencia vence el %s. Gestione la renovación."
+                % req.expiry_date,
+                req.responsible_id.id or manager_id)
+
+        self._sgi_for_each(expiring, _expiring, "permisos por vencer")
+        return True
