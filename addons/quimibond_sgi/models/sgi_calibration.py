@@ -134,6 +134,10 @@ class SgiCalibration(models.Model):
     ], string="Tipo", default='externa', required=True)
     provider_id = fields.Many2one('res.partner', string="Laboratorio / Proveedor")
     certificate_ref = fields.Char(string="N° de certificado")
+    # El auditor pide el certificado, no solo su folio: el PDF vive adjunto
+    # a la calibración (attachment=True → ir.attachment, no infla la tabla).
+    certificate_file = fields.Binary(string="Certificado (PDF)", attachment=True)
+    certificate_filename = fields.Char(string="Nombre del certificado")
     result = fields.Selection([
         ('conforme', "Conforme"),
         ('fuera_tolerancia', "Fuera de tolerancia"),
@@ -142,6 +146,18 @@ class SgiCalibration(models.Model):
     next_date = fields.Date(string="Próxima calibración", compute='_compute_next_date',
                             store=True, readonly=False)
     sgi_alert_id = fields.Many2one('quality.alert', string="NC generada", readonly=True)
+
+    @api.constrains('calibration_type', 'certificate_ref', 'certificate_file')
+    def _check_certificate(self):
+        """Una calibración EXTERNA sin certificado no es evidencia (7.1.5):
+        exige al menos el folio del certificado o el PDF adjunto."""
+        for cal in self:
+            if cal.calibration_type == 'externa' and not (
+                    cal.certificate_ref or cal.certificate_file):
+                raise ValidationError(
+                    "Una calibración externa requiere el certificado del "
+                    "laboratorio: captura el N° de certificado o adjunta el "
+                    "PDF (equipo %s)." % cal.equipment_id.name)
 
     @api.depends('date', 'equipment_id.sgi_calibration_interval_months')
     def _compute_next_date(self):
