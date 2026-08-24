@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import base64
+import logging
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
 
 
 class SgiCron(models.AbstractModel):
@@ -52,6 +55,33 @@ class SgiCron(models.AbstractModel):
             else self._sgi_manager_user_id()
 
     # ------------------------------------------------------------------
+    # Aislamiento de errores: un registro/paso envenenado no debe tumbar
+    # (ni revertir) la corrida completa del cron. Es el patrón que ya
+    # protege cron_measure_activities — puesto ahí después de que un solo
+    # tropiezo tumbó la medición completa en producción.
+    # ------------------------------------------------------------------
+    def _sgi_step(self, label, func):
+        """Ejecuta un paso independiente del cron en su propio savepoint:
+        si truena, se registra y se continúa con el siguiente paso."""
+        try:
+            with self.env.cr.savepoint():
+                func()
+        except Exception:
+            _logger.exception("SGI cron: falló el paso «%s»; continúo.", label)
+
+    def _sgi_for_each(self, records, func, label):
+        """Aplica func(record) con savepoint por registro: el registro que
+        truena se revierte y se loggea, sin abortar el resto de la corrida."""
+        for record in records:
+            try:
+                with self.env.cr.savepoint():
+                    func(record)
+            except Exception:
+                _logger.exception(
+                    "SGI cron (%s): falló el registro %s (id %s); continúo.",
+                    label, record.display_name, record.id)
+
+    # ------------------------------------------------------------------
     # 1. Cron diario — No Conformidades
     # ------------------------------------------------------------------
     @api.model
@@ -62,14 +92,18 @@ class SgiCron(models.AbstractModel):
         external_days = int(Param.get_param('quimibond_sgi.nc_escalation_days_external', 3))
 
         # Marca acciones vencidas (recomputo del store)
-        self.env['sgi.action.line'].search([('date_done', '=', False)])._compute_state()
+        self._sgi_step(
+            "recomputar estado de acciones",
+            lambda: self.env['sgi.action.line'].search(
+                [('date_done', '=', False)])._compute_state())
 
         open_alerts = self.env['quality.alert'].search([
             ('team_id.sgi_sequence_id', '!=', False),
             ('stage_id.sgi_is_closing_stage', '=', False),
             ('stage_id.sgi_is_cancel_stage', '=', False),
         ])
-        for alert in open_alerts:
+
+        def _process(alert):
             days = external_days if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
             deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')
@@ -92,6 +126,8 @@ class SgiCron(models.AbstractModel):
                     "Verificar eficacia: %s" % (alert.sgi_folio or alert.name),
                     "Todas las acciones terminaron; falta registrar la verificación de eficacia.",
                     user_id)
+
+        self._sgi_for_each(open_alerts, _process, "seguimiento de NC")
         return True
 
     # ------------------------------------------------------------------
@@ -112,13 +148,15 @@ class SgiCron(models.AbstractModel):
         d_dir = int(Param.get_param('quimibond_sgi.action_escalation_director_days', 15))
         Line = self.env['sgi.action.line']
         overdue = Line.search([('date_done', '=', False), ('date_commit', '<', today)])
-        overdue._compute_state()  # asegura el estado 'vencida'
+        self._sgi_step("recomputar estado de acciones vencidas",
+                       lambda: overdue._compute_state())  # asegura el estado 'vencida'
         manager_fallback = self._sgi_manager_user_id()
         director_id = self._sgi_director_user_id()
-        for line in overdue:
+
+        def _process(line):
             origin = line._sgi_origin()
             if not origin:
-                continue
+                return
             days = (today - line.date_commit).days
             who = line.responsible_id.display_name or '-'
             if days > d_mgr:
@@ -136,6 +174,8 @@ class SgiCron(models.AbstractModel):
                     "La acción de %s lleva %d días vencida (compromiso %s); se "
                     "escala a Dirección." % (who, days, line.date_commit),
                     director_id)
+
+        self._sgi_for_each(overdue, _process, "escalamiento de acciones")
         return True
 
     # ------------------------------------------------------------------
@@ -158,12 +198,15 @@ class SgiCron(models.AbstractModel):
                 ('sgi_state', '=', 'vigente'),
                 ('sgi_next_review_date', '=', target),
             ])
-            for doc in docs:
+
+            def _review_notice(doc, offset=offset):
                 self._sgi_schedule(
                     doc,
                     "Revisión bienal en %d días: %s" % (offset, doc.sgi_code or doc.name),
                     "El documento requiere revisión antes de %s." % doc.sgi_next_review_date,
                     doc.sgi_owner_id.id or self._sgi_manager_user_id())
+
+            self._sgi_for_each(docs, _review_notice, "aviso de revisión bienal")
 
         # Pilotos que vencen (aviso configurable, por defecto 7 días).
         pilot_target = today + relativedelta(days=pilot_days)
@@ -171,12 +214,15 @@ class SgiCron(models.AbstractModel):
             ('sgi_state', '=', 'piloto'),
             ('sgi_pilot_end_date', '=', pilot_target),
         ])
-        for doc in pilots:
+
+        def _pilot_notice(doc):
             self._sgi_schedule(
                 doc,
                 "Piloto por vencer: %s" % (doc.sgi_code or doc.name),
                 "La prueba piloto vence el %s." % doc.sgi_pilot_end_date,
                 doc.sgi_owner_id.id or self._sgi_manager_user_id())
+
+        self._sgi_for_each(pilots, _pilot_notice, "aviso de piloto")
 
         # Acuses pendientes (umbral configurable, por defecto 7 días).
         limit_date = fields.Datetime.now() - relativedelta(days=ack_days)
@@ -185,13 +231,16 @@ class SgiCron(models.AbstractModel):
             ('create_date', '<=', limit_date),
         ])
         manager_id = self._sgi_manager_user_id()
-        for ack in acks:
+
+        def _ack_notice(ack):
             user_id = ack.user_id.id or manager_id
             self._sgi_schedule(
                 ack.document_id,
                 "Acuse pendiente: %s" % (ack.employee_id.name),
                 "El acuse de lectura lleva más de %d días pendiente." % ack_days,
                 user_id)
+
+        self._sgi_for_each(acks, _ack_notice, "acuses pendientes")
         return True
 
     # ------------------------------------------------------------------
@@ -242,20 +291,32 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_indicators(self):
-        """Cron mensual: mide los indicadores de frecuencia mensual del mes anterior."""
+        """Cron mensual: mide los indicadores de frecuencia mensual del mes anterior.
+
+        Los tres bloques (mediciones, cierre de mes de presupuestos, refresco de
+        la foto) son independientes y van cada uno en su savepoint: antes, una
+        excepción en el refresco de UN presupuesto revertía TODAS las mediciones
+        del mes y sus NCs — y al ser mensual, el mes quedaba sin medir hasta una
+        corrida manual."""
         today = fields.Date.context_today(self)
         first_this = today.replace(day=1)
         first_prev = first_this - relativedelta(months=1)
         last_prev = first_this - relativedelta(days=1)
         deadline = first_this + relativedelta(days=4)
         indicators = self.env['sgi.indicator'].search([('frequency', '=', 'monthly')])
-        self._sgi_generate_measures(
-            indicators, first_prev, first_prev, last_prev, deadline,
-            "%s" % first_prev.strftime('%m/%Y'))
-        self._sgi_sales_budget_month_close(first_prev, last_prev)
+        self._sgi_step(
+            "mediciones mensuales",
+            lambda: self._sgi_generate_measures(
+                indicators, first_prev, first_prev, last_prev, deadline,
+                "%s" % first_prev.strftime('%m/%Y')))
+        self._sgi_step(
+            "cierre de mes de presupuestos",
+            lambda: self._sgi_sales_budget_month_close(first_prev, last_prev))
         # Refresca la foto de facturado/pedido de los presupuestos vigentes.
-        self.env['sgi.sales.budget'].search(
-            [('state', '!=', 'obsoleto')]).action_refresh_actuals()
+        self._sgi_step(
+            "refresco de foto de presupuestos",
+            lambda: self.env['sgi.sales.budget'].search(
+                [('state', '!=', 'obsoleto')]).action_refresh_actuals())
         return True
 
     @api.model
@@ -280,17 +341,17 @@ class SgiCron(models.AbstractModel):
             return '{:,.0f}'.format(value or 0)
         Budget = self.env['sgi.sales.budget']
         Line = self.env['sgi.sales.budget.line']
-        for budget in Budget.search([('kind', '=', 'pronostico'),
-                                     ('state', '!=', 'obsoleto')]):
+
+        def _process(budget):
             budget.action_refresh_actuals()  # cobertura con el horizonte de hoy
             uncovered = budget.line_ids.filtered(
                 lambda l: l.coverage_state in ('sin_pedido', 'parcial'))
             orphans = budget._sgi_orders_without_forecast()
             if not uncovered and not orphans:
-                continue
+                return
             user_id = budget.team_id.user_id.id or self._sgi_sales_admin_user_id()
             if not user_id:
-                continue
+                return
             parts = []
             if uncovered:
                 rows = ["%s · %s: pronosticado %s, comprometido %s, faltante %s %s" % (
@@ -312,6 +373,10 @@ class SgiCron(models.AbstractModel):
                 "Cobertura del pronóstico %s (P-A28 4.2.2.7)" % (
                     budget.partner_id.name or budget.name),
                 "\n\n".join(parts), user_id)
+
+        budgets = Budget.search([('kind', '=', 'pronostico'),
+                                 ('state', '!=', 'obsoleto')])
+        self._sgi_for_each(budgets, _process, "cobertura del pronóstico")
         return True
 
     @api.model
@@ -330,11 +395,12 @@ class SgiCron(models.AbstractModel):
         budgets = self.env['sgi.sales.budget'].search([
             ('kind', '=', 'presupuesto'),
             ('state', '=', 'aprobado'), ('year', '=', year)])
-        for budget in budgets:
+
+        def _process(budget):
             budgeted = sum(budget.line_ids.filtered(
                 lambda l: l.date and l.date <= last_prev).mapped('amount_budget'))
             if not budgeted:
-                continue
+                return
             real = self._sgi_team_net_invoiced(budget.team_id, year_start, last_prev)
             achieved = real / budgeted * 100.0
             # Justificación del incumplimiento (P-A28 4.3.6.1): si va por debajo del
@@ -351,10 +417,10 @@ class SgiCron(models.AbstractModel):
                     "campo «Justificación de incumplimiento»." % (achieved, min_pct),
                     sales_admin_id)
             if achieved >= pct:
-                continue
+                return
             user = budget.team_id.user_id
             if not user:
-                continue
+                return
             top = self._sgi_budget_top_gaps(budget, last_prev)
             note = ("El acumulado facturado del equipo va en %.1f%% del presupuesto "
                     "aprobado del año. Revisa el pipeline y las acciones "
@@ -367,6 +433,8 @@ class SgiCron(models.AbstractModel):
                 "Presupuesto %s por debajo del %.0f%% al cierre de %s" % (
                     budget.team_id.name, pct, first_prev.strftime('%m/%Y')),
                 note, user.id)
+
+        self._sgi_for_each(budgets, _process, "cierre de mes de presupuesto")
         return True
 
     @api.model
@@ -415,7 +483,8 @@ class SgiCron(models.AbstractModel):
         budgets = self.env['sgi.sales.budget'].search([
             ('kind', '=', 'presupuesto'),
             ('state', '=', 'aprobado'), ('year', '=', year)])
-        for budget in budgets:
+
+        def _process(budget):
             self._sgi_schedule(
                 budget,
                 "Revaluar cantidades del S2 — P-A28 Nota 1",
@@ -424,6 +493,8 @@ class SgiCron(models.AbstractModel):
                 "genera la siguiente revisión con «Revisar (nueva Rev.)»." % (
                     budget.folio or budget.name),
                 sales_admin_id)
+
+        self._sgi_for_each(budgets, _process, "revaluación del S2")
         return True
 
     @api.model
@@ -443,10 +514,13 @@ class SgiCron(models.AbstractModel):
     @api.model
     def _sgi_generate_measures(self, indicators, period_date, date_from, date_to,
                                deadline, period_label):
-        """Genera (idempotente) las mediciones del periodo y evalúa la NC automática."""
+        """Genera (idempotente) las mediciones del periodo y evalúa la NC
+        automática. Cada indicador va en su savepoint: un cálculo que truene
+        (fuente de datos rota) no deja sin medir a los demás."""
         Measure = self.env['sgi.indicator.measure']
         manager_id = self._sgi_manager_user_id()
-        for indicator in indicators:
+
+        def _process(indicator):
             measure = Measure.search([
                 ('indicator_id', '=', indicator.id),
                 ('period_date', '=', period_date),
@@ -477,6 +551,8 @@ class SgiCron(models.AbstractModel):
                             user_id, deadline)
             # NC automática (solo mediciones rojas validadas con nc_on_red)
             measure._sgi_maybe_create_nc()
+
+        self._sgi_for_each(indicators, _process, "medición de indicadores")
         return True
 
     @api.model
@@ -500,7 +576,8 @@ class SgiCron(models.AbstractModel):
             ('program_id.state', '=', 'aprobado'),
         ])
         manager_id = self._sgi_manager_user_id()
-        for line in lines:
+
+        def _process(line):
             month_start = fields.Date.to_date(
                 '%s-%02d-01' % (line.program_id.year, int(line.planned_month)))
             notice_date = month_start - relativedelta(days=15)
@@ -513,6 +590,8 @@ class SgiCron(models.AbstractModel):
                         line.planned_month, line.program_id.year),
                     "La auditoría planificada inicia el mes próximo; cree la auditoría.",
                     user_id)
+
+        self._sgi_for_each(lines, _process, "programa de auditorías")
         return True
 
     # ------------------------------------------------------------------
@@ -527,7 +606,8 @@ class SgiCron(models.AbstractModel):
             ('state', '!=', 'cerrado'),
         ])
         manager_id = self._sgi_manager_user_id()
-        for risk in risks:
+
+        def _process(risk):
             owner = risk.process_id.owner_id.user_id
             user_id = owner.id or manager_id
             self._sgi_schedule(
@@ -535,6 +615,8 @@ class SgiCron(models.AbstractModel):
                 "Revisar riesgo %s" % (risk.folio or risk.name),
                 "La revisión del riesgo/oportunidad venció el %s." % risk.next_review_date,
                 user_id)
+
+        self._sgi_for_each(risks, _process, "revisión de riesgos")
         return True
 
     # ------------------------------------------------------------------
@@ -560,7 +642,8 @@ class SgiCron(models.AbstractModel):
         ])
         partners = pickings.mapped('partner_id.commercial_partner_id')
         purchase_user_id = self._sgi_purchase_user_id()
-        for partner in partners:
+
+        def _process(partner):
             existing = Eval.search([
                 ('partner_id', '=', partner.id),
                 ('date_from', '=', prev_q_start),
@@ -583,6 +666,8 @@ class SgiCron(models.AbstractModel):
                     "La evaluación trimestral dejó al proveedor como %s (calif. %s)." % (
                         existing.supplier_class, existing.score),
                     purchase_user_id)
+
+        self._sgi_for_each(partners, _process, "evaluación de proveedores")
         return True
 
     def _sgi_purchase_user_id(self):
@@ -608,12 +693,13 @@ class SgiCron(models.AbstractModel):
 
         # Recomputa el estado de calibración (store) antes de evaluar.
         measuring = Equipment.search([('sgi_is_measuring', '=', True)])
-        measuring._compute_calibration_state()
+        self._sgi_step("recomputar estado de calibración",
+                       lambda: measuring._compute_calibration_state())
 
         # Por vencer (<= 30 días) y vencidos.
-        for eq in measuring:
+        def _calibration(eq):
             if not eq.sgi_next_calibration_date:
-                continue
+                return
             owner = eq.technician_user_id or eq.owner_user_id
             user_id = owner.id or manager_id
             if eq.sgi_calibration_state == 'por_vencer':
@@ -634,12 +720,15 @@ class SgiCron(models.AbstractModel):
                     "bloqueado (No usar)." % eq.sgi_next_calibration_date,
                     manager_id or user_id)
 
+        self._sgi_for_each(measuring, _calibration, "calibraciones")
+
         # EPP por vencer (P-S03).
         ppe = Equipment.search([
             ('sgi_is_ppe', '=', True),
             ('sgi_ppe_expiry_date', '!=', False),
         ])
-        for eq in ppe:
+
+        def _ppe(eq):
             if eq.sgi_ppe_expiry_date <= today + relativedelta(days=30):
                 owner = eq.technician_user_id or eq.owner_user_id
                 user_id = owner.id or manager_id
@@ -649,6 +738,8 @@ class SgiCron(models.AbstractModel):
                     "El EPP vence (o venció) el %s. Gestione su reposición." % (
                         eq.sgi_ppe_expiry_date),
                     user_id)
+
+        self._sgi_for_each(ppe, _ppe, "EPP")
         return True
 
     # ------------------------------------------------------------------
@@ -667,7 +758,8 @@ class SgiCron(models.AbstractModel):
             ('valid_to', '!=', False),
             ('valid_to', '<=', soon),
         ])
-        for cert in certs:
+
+        def _cert(cert):
             employee = cert.employee_id
             emp_user_id = employee.user_id.id
             label = "%s — %s" % (employee.name, cert.skill_id.name or '')
@@ -682,19 +774,24 @@ class SgiCron(models.AbstractModel):
                 for user_id in {emp_user_id, rh_id}:
                     self._sgi_schedule(employee, summary, note, user_id)
 
+        self._sgi_for_each(certs, _cert, "certificaciones")
+
         # Currículos / cursos con fecha de fin próxima (hr.resume.line).
         resume_lines = self.env['hr.resume.line'].search([
             ('date_end', '!=', False),
             ('date_end', '<=', soon),
             ('date_end', '>=', today),
         ])
-        for line in resume_lines:
+
+        def _resume(line):
             employee = line.employee_id
             self._sgi_schedule(
                 employee,
                 "Formación por concluir: %s (%s)" % (line.name, employee.name),
                 "La formación registrada concluye el %s." % line.date_end,
                 employee.user_id.id or rh_id)
+
+        self._sgi_for_each(resume_lines, _resume, "formación por concluir")
         return True
 
     # ------------------------------------------------------------------
@@ -756,10 +853,11 @@ class SgiCron(models.AbstractModel):
         soon = today + relativedelta(days=30)
         manager_id = self._sgi_manager_user_id()
         plans = self.env['sgi.emergency.plan'].search([('state', '=', 'vigente')])
-        for plan in plans:
+
+        def _plan(plan):
             user_id = plan.responsible_id.id or manager_id
             if not user_id:
-                continue
+                return
             if not plan.next_drill_date:
                 self._sgi_schedule(
                     plan,
@@ -781,11 +879,15 @@ class SgiCron(models.AbstractModel):
                     "El próximo simulacro vence el %s. Prográmelo."
                     % plan.next_drill_date,
                     user_id)
+
+        self._sgi_for_each(plans, _plan, "planes de emergencia")
+
         overdue_drills = self.env['sgi.emergency.drill'].search([
             ('state', '=', 'programado'),
             ('date_planned', '<', today),
         ])
-        for drill in overdue_drills:
+
+        def _drill(drill):
             user_id = drill.plan_id.responsible_id.id or manager_id
             if user_id:
                 self._sgi_schedule(
@@ -794,6 +896,8 @@ class SgiCron(models.AbstractModel):
                     "El simulacro estaba programado para el %s y sigue sin "
                     "realizarse." % drill.date_planned,
                     user_id)
+
+        self._sgi_for_each(overdue_drills, _drill, "simulacros vencidos")
         return True
 
     # ------------------------------------------------------------------
@@ -821,9 +925,11 @@ class SgiCron(models.AbstractModel):
         for request in requests:
             by_equipment.setdefault(request.equipment_id, 0)
             by_equipment[request.equipment_id] += 1
-        for equipment, count in by_equipment.items():
+
+        def _repetitive(equipment):
+            count = by_equipment[equipment]
             if count < 3:
-                continue
+                return
             self._sgi_schedule(
                 equipment,
                 "Falla repetitiva: %s (%d correctivas en 90 días)"
@@ -832,6 +938,8 @@ class SgiCron(models.AbstractModel):
                 "Evalúe levantar una NC (botón «Levantar NC» en la solicitud) "
                 "y revisar su plan de mantenimiento preventivo." % count,
                 manager_id)
+
+        self._sgi_for_each(list(by_equipment), _repetitive, "falla repetitiva")
         # (b) Reclamaciones con SLA vencido que siguen abiertas.
         team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
                             raise_if_not_found=False)
@@ -843,11 +951,14 @@ class SgiCron(models.AbstractModel):
                 ('sla_deadline', '!=', False),
                 ('sla_deadline', '<', now),
             ])
-            for ticket in tickets:
+
+            def _sla(ticket):
                 self._sgi_schedule(
                     ticket,
                     "SLA vencido: reclamación %s" % (ticket.name or ticket.id),
                     "La reclamación superó su SLA de respuesta y sigue "
                     "abierta. Escale la respuesta al cliente.",
                     manager_id)
+
+            self._sgi_for_each(tickets, _sla, "SLA de reclamaciones")
         return True
