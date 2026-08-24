@@ -38,21 +38,27 @@ class SgiCron(models.AbstractModel):
             'mail.mail_activity_data_todo',
             summary=summary, note=note or '', user_id=user_id)
 
+    def _sgi_first_user_id(self, group):
+        """Primer usuario ACTIVO del grupo, por id (determinista). all_user_ids
+        no garantiza orden: con 2+ usuarios en el grupo, el destinatario de los
+        escalamientos cambiaba entre corridas y burlaba la deduplicación de
+        actividades por usuario."""
+        users = group.all_user_ids.sorted('id') if group else False
+        return users[:1].id if users else False
+
     def _sgi_manager_user_id(self):
         group = self.env.ref('quimibond_sgi.group_sgi_manager', raise_if_not_found=False)
-        return group.all_user_ids[:1].id if group and group.all_user_ids else False
+        return self._sgi_first_user_id(group)
 
     def _sgi_director_user_id(self):
         group = self.env.ref('quimibond_sgi.group_sgi_director', raise_if_not_found=False)
-        return group.all_user_ids[:1].id if group and group.all_user_ids \
-            else self._sgi_manager_user_id()
+        return self._sgi_first_user_id(group) or self._sgi_manager_user_id()
 
     def _sgi_sales_admin_user_id(self):
         """Administrador de ventas (P-A28): primer usuario del grupo Admin de ventas
         de Odoo; fallback al Jefe MAST/SGI."""
         group = self.env.ref('sales_team.group_sale_manager', raise_if_not_found=False)
-        return group.all_user_ids[:1].id if group and group.all_user_ids \
-            else self._sgi_manager_user_id()
+        return self._sgi_first_user_id(group) or self._sgi_manager_user_id()
 
     # ------------------------------------------------------------------
     # Aislamiento de errores: un registro/paso envenenado no debe tumbar
@@ -679,7 +685,7 @@ class SgiCron(models.AbstractModel):
 
     def _sgi_purchase_user_id(self):
         group = self.env.ref('purchase.group_purchase_manager', raise_if_not_found=False)
-        return group.all_user_ids[:1].id if group and group.all_user_ids else self._sgi_manager_user_id()
+        return self._sgi_first_user_id(group) or self._sgi_manager_user_id()
 
     def _sgi_rh_user_id(self):
         """Coordinador de RH (parametrizable); fallback al Jefe MAST."""
