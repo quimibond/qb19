@@ -376,6 +376,9 @@ class SgiActionLine(models.Model):
                                    ondelete='cascade')
     incident_id = fields.Many2one('sgi.incident', string="Incidente SST", ondelete='cascade')
     drill_id = fields.Many2one('sgi.emergency.drill', string="Simulacro", ondelete='cascade')
+    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral",
+                                   ondelete='cascade',
+                                   help="Plan de acción del objetivo (ISO 6.2.2).")
     action_type = fields.Selection([
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
@@ -400,7 +403,8 @@ class SgiActionLine(models.Model):
                                   readonly=True, copy=False, index=True)
     origin_display = fields.Char(string="Origen", compute='_compute_origin_display')
 
-    @api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id', 'fmea_line_id')
+    @api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id',
+                 'fmea_line_id', 'objective_id')
     def _compute_origin_display(self):
         for line in self:
             origin = line._sgi_origin()
@@ -429,16 +433,18 @@ class SgiActionLine(models.Model):
             'view_mode': 'form',
         }
 
-    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'drill_id', 'name')
+    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id',
+                    'drill_id', 'objective_id', 'name')
     def _check_parent_xor(self):
         for line in self:
             parents = [line.alert_id, line.risk_id, line.fmea_line_id,
-                       line.incident_id, line.drill_id]
+                       line.incident_id, line.drill_id, line.objective_id]
             if sum(1 for p in parents if p) != 1:
                 raise ValidationError(
                     "Una acción debe pertenecer exactamente a un origen: una No "
                     "Conformidad, un Riesgo, un modo de falla de AMEF, un incidente "
-                    "SST o un simulacro (exactamente uno, no varios ni ninguno).")
+                    "SST, un simulacro o un objetivo integral (exactamente uno, "
+                    "no varios ni ninguno).")
 
     @api.constrains('action_type', 'alert_id')
     def _sgi_check_root_cause_before_capa(self):
@@ -485,6 +491,8 @@ class SgiActionLine(models.Model):
             return self.incident_id
         if self.drill_id:
             return self.drill_id
+        if self.objective_id:
+            return self.objective_id
         if self.fmea_line_id:
             return self.fmea_line_id.fmea_id
         return self.env['sgi.action.line'].browse()
