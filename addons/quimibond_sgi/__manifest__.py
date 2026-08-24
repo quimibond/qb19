@@ -115,6 +115,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_settings_views.xml',
         # reports
         'report/report_nc.xml',
+        'report/report_8d.xml',
         'report/report_news.xml',
         'report/report_audit.xml',
         'report/report_mgmt_review.xml',
