@@ -1018,3 +1018,28 @@ class SgiCron(models.AbstractModel):
 
         self._sgi_for_each(expiring, _expiring, "permisos por vencer")
         return True
+
+    @api.model
+    def cron_context_review(self):
+        """Cron semanal: partes interesadas (4.1/4.2) con revisión vencida.
+        Idempotente por resumen."""
+        today = fields.Date.context_today(self)
+        manager_id = self._sgi_manager_user_id()
+        if not manager_id:
+            return True
+        parties = self.env['sgi.interested.party'].search([
+            ('next_review_date', '!=', False),
+            ('next_review_date', '<=', today),
+        ])
+
+        def _process(party):
+            self._sgi_schedule(
+                party,
+                "Revisar parte interesada: %s" % party.name,
+                "La revisión periódica del contexto (4.1/4.2) venció el %s. "
+                "Confirme o actualice sus necesidades/expectativas y marque "
+                "la revisión." % party.next_review_date,
+                manager_id)
+
+        self._sgi_for_each(parties, _process, "revisión del contexto")
+        return True

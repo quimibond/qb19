@@ -92,6 +92,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_audit_views.xml',
         'views/sgi_risk_views.xml',
         'views/sgi_legal_views.xml',
+        'views/sgi_context_views.xml',
         'views/sgi_supplier_eval_views.xml',
         'views/sgi_res_partner_views.xml',
         'views/sgi_management_review_views.xml',

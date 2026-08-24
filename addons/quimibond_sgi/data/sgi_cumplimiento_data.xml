@@ -11,4 +11,15 @@
         <field name="interval_type">days</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- Revisión periódica del contexto (partes interesadas, 4.1/4.2). -->
+    <record id="sgi_cron_context_review" model="ir.cron">
+        <field name="name">SGI: Revisión del contexto (partes interesadas)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_context_review()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>
