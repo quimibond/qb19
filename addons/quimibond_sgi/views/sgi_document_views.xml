@@ -62,6 +62,8 @@
                             <field name="sgi_next_review_date"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
+                            <field name="sgi_retention_years"/>
+                            <field name="sgi_disposition" invisible="not sgi_retention_years"/>
                         </group>
                     </group>
                     <group string="Archivo" invisible="sgi_doc_type == 'formulario_odoo'">
@@ -187,6 +189,8 @@
                        decoration-warning="sgi_state == 'piloto'"
                        decoration-info="sgi_state == 'borrador'"/>
                 <field name="sgi_next_review_date" optional="show"/>
+                <field name="sgi_retention_years" optional="hide"/>
+                <field name="sgi_disposition" optional="hide"/>
                 <field name="sgi_ack_read_pct" widget="percentage" optional="show"/>
                 <field name="sgi_owner_id" optional="hide"/>
                 <field name="sgi_issue_date" optional="hide"/>
@@ -210,6 +214,8 @@
                 <field name="sgi_area_id"/>
                 <field name="sgi_process_id"/>
                 <filter name="sgi_vigente" string="Vigentes" domain="[('sgi_state','=','vigente')]"/>
+                <filter name="sgi_no_retention" string="Sin retención definida"
+                        domain="[('sgi_is_controlled','=',True),('sgi_retention_years','=',0)]"/>
                 <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
                 <filter name="sgi_formularios" string="Formularios de Odoo (vistas)"
                         domain="[('sgi_doc_type','=','formulario_odoo')]"/>

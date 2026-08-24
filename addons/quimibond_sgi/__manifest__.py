@@ -122,6 +122,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_incident.xml',
         'report/report_procedure.xml',
         'report/report_sales_budget.xml',
+        'report/report_retention.xml',
         'report/sgi_format_footer.xml',
         # menus
         'views/sgi_menus.xml',
