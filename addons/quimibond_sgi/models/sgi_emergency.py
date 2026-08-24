@@ -44,7 +44,11 @@ class SgiEmergencyPlan(models.Model):
         ('obsoleto', "Obsoleto"),
     ], string="Estado", default='borrador', required=True, tracking=True)
     drill_ids = fields.One2many('sgi.emergency.drill', 'plan_id', string="Simulacros")
-    drill_count = fields.Integer(string="# Simulacros", compute='_compute_drill_dates')
+    # drill_count vive en su PROPIO compute: compartir método con los campos
+    # almacenados de fechas (store=True) mezclaba store/compute_sudo en el
+    # mismo grupo y el registry lo marcaba como inconsistente en el log de
+    # producción (además de recomputar de más).
+    drill_count = fields.Integer(string="# Simulacros", compute='_compute_drill_count')
     last_drill_date = fields.Date(string="Último simulacro",
                                   compute='_compute_drill_dates', store=True)
     next_drill_date = fields.Date(string="Próximo simulacro",
@@ -53,12 +57,16 @@ class SgiEmergencyPlan(models.Model):
     _folio_uniq = models.Constraint(
         'unique(folio)', "Ya existe un plan de emergencia con ese folio.")
 
+    @api.depends('drill_ids')
+    def _compute_drill_count(self):
+        for plan in self:
+            plan.drill_count = len(plan.drill_ids)
+
     @api.depends('drill_ids.state', 'drill_ids.date_done', 'drill_frequency_months')
     def _compute_drill_dates(self):
         for plan in self:
             done = plan.drill_ids.filtered(
                 lambda d: d.state == 'realizado' and d.date_done)
-            plan.drill_count = len(plan.drill_ids)
             plan.last_drill_date = max(done.mapped('date_done')) if done else False
             months = plan.drill_frequency_months or 12
             plan.next_drill_date = (
