@@ -100,21 +100,40 @@ class SgiProcessProcedure(models.Model):
         string="Me referencian", compute='_compute_inbound_references')
 
     def _compute_inbound_references(self):
+        """Por lote: una search de documentos y una de actividades para el
+        recordset completo (antes eran 2 searches POR proceso)."""
         Activity = self.env['sgi.process.activity']
         Document = self.env['documents.document']
-        for process in self:
-            if not process.id:
-                process.inbound_reference_ids = False
-                process.inbound_reference_count = 0
-                continue
-            my_docs = Document.search([('sgi_process_id', '=', process.id)])
-            acts = Activity.search([
-                ('process_id', '!=', process.id),
-                '|', ('related_procedure_id', 'in', my_docs.ids),
-                ('format_document_ids', 'in', my_docs.ids),
-            ]) if my_docs else Activity.browse()
-            process.inbound_reference_ids = acts
-            process.inbound_reference_count = len(acts)
+        processes = self.filtered('id')
+        for process in (self - processes):
+            process.inbound_reference_ids = False
+            process.inbound_reference_count = 0
+        if not processes:
+            return
+        doc_process = {}  # doc_id -> process_id dueño
+        for doc in Document.search_read(
+                [('sgi_process_id', 'in', processes.ids)], ['sgi_process_id']):
+            doc_process[doc['id']] = doc['sgi_process_id'][0]
+        acts = Activity.search([
+            '|', ('related_procedure_id', 'in', list(doc_process)),
+            ('format_document_ids', 'in', list(doc_process)),
+        ]) if doc_process else Activity.browse()
+        by_process = {}  # process_id -> [activity_id]
+        for act in acts:
+            owner_pids = set()
+            related_id = act.related_procedure_id.id
+            if related_id in doc_process:
+                owner_pids.add(doc_process[related_id])
+            for doc_id in act.format_document_ids.ids:
+                if doc_id in doc_process:
+                    owner_pids.add(doc_process[doc_id])
+            for pid in owner_pids:
+                if act.process_id.id != pid:
+                    by_process.setdefault(pid, []).append(act.id)
+        for process in processes:
+            act_ids = by_process.get(process.id, [])
+            process.inbound_reference_ids = Activity.browse(act_ids)
+            process.inbound_reference_count = len(act_ids)
 
     def action_view_inbound_references(self):
         """Quién me menciona: las actividades ajenas que citan mis
@@ -134,17 +153,31 @@ class SgiProcessProcedure(models.Model):
              "destino no tiene evidencia en su periodo.")
 
     def _compute_chain_link_count(self):
+        """Por lote: una sola search_read para el recordset (antes 2
+        search_count por proceso). El set de pids deduplica los eslabones cuyo
+        origen y destino caen en el mismo proceso."""
         Link = self.env['sgi.activity.link']
-        for process in self:
-            if not process.id:
-                process.chain_link_count = 0
-                process.chain_stuck_count = 0
-                continue
-            base = ['|', ('from_process_id', '=', process.id),
-                    ('to_process_id', '=', process.id)]
-            process.chain_link_count = Link.search_count(base)
-            process.chain_stuck_count = Link.search_count(
-                base + [('chain_state', '=', 'atorado')])
+        processes = self.filtered('id')
+        for process in (self - processes):
+            process.chain_link_count = 0
+            process.chain_stuck_count = 0
+        if not processes:
+            return
+        wanted = set(processes.ids)
+        totals, stuck = {}, {}
+        for link in Link.search_read(
+                ['|', ('from_process_id', 'in', list(wanted)),
+                 ('to_process_id', 'in', list(wanted))],
+                ['from_process_id', 'to_process_id', 'chain_state']):
+            pids = {value[0] for value in (
+                link['from_process_id'], link['to_process_id']) if value}
+            for pid in pids & wanted:
+                totals[pid] = totals.get(pid, 0) + 1
+                if link['chain_state'] == 'atorado':
+                    stuck[pid] = stuck.get(pid, 0) + 1
+        for process in processes:
+            process.chain_link_count = totals.get(process.id, 0)
+            process.chain_stuck_count = stuck.get(process.id, 0)
 
     def action_view_chain(self):
         """La cadena del proceso: qué entregables entran y salen, paso a paso."""
