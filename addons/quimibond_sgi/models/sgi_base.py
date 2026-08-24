@@ -107,6 +107,24 @@ class SgiBaseMixin(models.AbstractModel):
                     % ", ".join(locked.mapped('display_name')))
         return super().write(vals)
 
+    def unlink(self):
+        """Cinturón del candado: un registro cerrado tampoco se borra. Hoy los
+        ACL ya niegan unlink a los usuarios en todos los modelos con estados
+        bloqueados, pero la regla no debe depender de que ningún ACL futuro lo
+        abra."""
+        if (self._sgi_locked_states and not self.env.su
+                and not (self.env.context.get('sgi_bypass_lock')
+                         and sgi_bypass_allowed(self.env))
+                and not self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            locked = self._sgi_locked_records()
+            if locked:
+                raise UserError(
+                    "Este registro del SGI está cerrado y es evidencia: no puede "
+                    "borrarse. Pide al Jefe de MAST reabrirlo si hay un error "
+                    "real.\n\nRegistros bloqueados: %s"
+                    % ", ".join(locked.mapped('display_name')))
+        return super().unlink()
+
 
 def sgi_find_menu(env, path):
     """Encuentra el ir.ui.menu (con acción) cuya ruta coincide con `path`
