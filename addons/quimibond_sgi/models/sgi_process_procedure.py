@@ -13,11 +13,15 @@ MO cerrada). Un cron evalúa cada actividad contra su cadencia esperada y
 pinta el semáforo de cumplimiento — el procedimiento se mide con acciones
 reales, no con texto.
 """
+import logging
+
 from datetime import datetime, timedelta
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
+
+_logger = logging.getLogger(__name__)
 
 
 class SgiProcessProcedure(models.Model):
@@ -503,18 +507,30 @@ class SgiProcessActivity(models.Model):
     @api.model
     def cron_measure_activities(self):
         # Primero intenta resolver menús pendientes desde su texto; después
-        # mide, y con la medición fresca evalúa el flujo de la cadena.
-        self.search([('odoo_menu_id', '=', False),
-                     ('odoo_ref', '!=', False)])._sgi_resolve_menu()
-        # Los «Formularios de Odoo» del control documental también resuelven
-        # su menú desde el texto del destino de migración.
-        self.env['documents.document'].search([
-            ('sgi_doc_type', '=', 'formulario_odoo'),
-            ('sgi_odoo_menu_id', '=', False),
-            ('sgi_migration_target', '!=', False),
-        ]).action_sgi_resolve_odoo_menu()
-        self.search([('measure_model_id', '!=', False)])._sgi_measure()
-        self.env['sgi.activity.link'].search([])._sgi_evaluate_chain()
+        # mide, y con la medición fresca evalúa el flujo de la cadena. Cada
+        # paso es independiente: un tropiezo en uno no debe dejar sin medir
+        # a los demás (ya pasó en producción con el aviso de eslabón).
+        steps = (
+            lambda: self.search([('odoo_menu_id', '=', False),
+                                 ('odoo_ref', '!=', False)])._sgi_resolve_menu(),
+            # Los «Formularios de Odoo» del control documental también
+            # resuelven su menú desde el texto del destino de migración.
+            lambda: self.env['documents.document'].search([
+                ('sgi_doc_type', '=', 'formulario_odoo'),
+                ('sgi_odoo_menu_id', '=', False),
+                ('sgi_migration_target', '!=', False),
+            ]).action_sgi_resolve_odoo_menu(),
+            lambda: self.search(
+                [('measure_model_id', '!=', False)])._sgi_measure(),
+            lambda: self.env['sgi.activity.link'].search(
+                [])._sgi_evaluate_chain(),
+        )
+        for step in steps:
+            try:
+                step()
+            except Exception:
+                _logger.exception(
+                    "SGI: falló un paso del cron de medición; continúo.")
         return True
 
     def action_view_measure_records(self):

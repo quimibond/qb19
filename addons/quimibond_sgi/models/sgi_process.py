@@ -6,6 +6,11 @@ from odoo.exceptions import ValidationError, UserError
 class SgiProcess(models.Model):
     _name = 'sgi.process'
     _description = "Proceso SGI"
+    # mail.activity.mixin es indispensable: el aviso de «eslabón atorado» se
+    # agenda SOBRE el proceso destino (activity_schedule) — sin el mixin el
+    # cron de medición tronaba completo en producción. mail.thread da además
+    # el chatter que a la ficha le faltaba.
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _parent_name = 'parent_id'
     _parent_store = True
     _order = 'process_type, code'
