@@ -30,6 +30,8 @@
                         <setting string="Proveedor de energía"
                                  help="KPI TR-03: proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
                             <field name="sgi_energy_partner_id"/>
+                            <field name="sgi_satisfaction_survey_id"
+                                   context="{'active_test': False}"/>
                         </setting>
                         <setting string="Umbral de aviso de presupuesto de ventas (%)"
                                  help="Al cierre de mes, un equipo con presupuesto aprobado por debajo de este % del acumulado del año avisa a su responsable.">

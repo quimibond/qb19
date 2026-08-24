@@ -583,6 +583,18 @@ class SgiIndicator(models.Model):
         return round((required - gaps) / required * 100.0, 2)
 
     def _sgi_satisfaction_survey(self):
+        """Encuesta que alimenta CA-02. Configurable en Ajustes
+        (satisfaction_survey_id): en producción las 575 respuestas históricas
+        viven en una encuesta ARCHIVADA distinta de la sembrada — MAST decide
+        cuál es la fuente (re-apuntar al histórico o arrancar de cero con la
+        sembrada) sin tocar código. Sin parámetro, cae a la sembrada."""
+        param = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.satisfaction_survey_id', 0) or 0)
+        if param:
+            survey = self.env['survey.survey'].sudo().with_context(
+                active_test=False).browse(param).exists()
+            if survey:
+                return survey
         return self.env.ref('quimibond_sgi.sgi_survey_satisfaction',
                             raise_if_not_found=False)
 

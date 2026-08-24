@@ -820,8 +820,7 @@ class SgiCron(models.AbstractModel):
         de Satisfacción del Cliente (9001 9.1.2). Las respuestas alimentan el
         KPI CA-02 automáticamente. No envía correos a clientes por sí solo:
         el envío es una acción humana desde la app Encuestas."""
-        survey = self.env.ref('quimibond_sgi.sgi_survey_satisfaction',
-                              raise_if_not_found=False)
+        survey = self.env['sgi.indicator']._sgi_satisfaction_survey()
         user_id = self._sgi_sales_admin_user_id()
         if not survey or not user_id:
             return True
