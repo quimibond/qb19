@@ -44,7 +44,7 @@ class TestProcedureModel(TransactionCase):
                 'number': '4.1.%d' % i, 'block': 'inicial',
                 'name': 'Actividad %d' % i})
         self.assertEqual(self.process.activity_count, 3)
-        self.assertEqual(len(self.process.activity_ids), 3)
+        self.assertEqual(len(self.process.procedure_activity_ids), 3)
 
     def test_04_activity_format_domain_holds_controlled_doc(self):
         doc = self.env['documents.document'].create({
@@ -206,7 +206,8 @@ class TestProcedureVentasSeed(TransactionCase):
         menu = self.env.ref('sale.menu_sale_order', raise_if_not_found=False)
         if not menu:
             self.skipTest("El menú nativo de Ventas no está en esta base.")
-        act = self.process.activity_ids.filtered(lambda a: a.number == '4.1.2')
+        act = self.process.procedure_activity_ids.filtered(
+            lambda a: a.number == '4.1.2')
         self.assertEqual(act.odoo_menu_id, menu,
                          "La actividad de pedidos apunta al menú de Ventas.")
 

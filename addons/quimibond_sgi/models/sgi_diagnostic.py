@@ -78,7 +78,7 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line('ok', "Todos los procesos tienen dueño."))
         no_activities = env['sgi.process'].search(
             [('parent_id', '!=', False), ('active', '=', True)]).filtered(
-            lambda p: not p.activity_ids)
+            lambda p: not p.procedure_activity_ids)
         if no_activities:
             lines.append(self._sgi_line(
                 'warn', "%d proceso(s) sin procedimiento vivo (0 actividades): %s" % (

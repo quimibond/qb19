@@ -350,7 +350,7 @@
                         </group>
                     </group>
                     <separator string="Desarrollo — las actividades, paso a paso"/>
-                    <field name="activity_ids" context="{'default_process_id': id}">
+                    <field name="procedure_activity_ids" context="{'default_process_id': id}">
                         <list string="Actividades" default_order="sequence, number">
                             <field name="sequence" widget="handle"/>
                             <field name="block"/>

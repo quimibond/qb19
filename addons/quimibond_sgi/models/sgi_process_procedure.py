@@ -41,7 +41,11 @@ class SgiProcessProcedure(models.Model):
     job_responsibility_ids = fields.One2many(
         'sgi.process.responsibility', 'process_id',
         string="Responsabilidades de las áreas")
-    activity_ids = fields.One2many(
+    # OJO con el nombre: mail.activity.mixin (heredado por sgi.process) ya
+    # define activity_ids para las actividades de mail — llamar igual a este
+    # one2many pisaba el campo del mixin y el registro NO CARGABA
+    # (KeyError: activity_type_id ... does not exist). De ahí el prefijo.
+    procedure_activity_ids = fields.One2many(
         'sgi.process.activity', 'process_id',
         string="Actividades del procedimiento")
     activity_count = fields.Integer(
@@ -73,10 +77,10 @@ class SgiProcessProcedure(models.Model):
         'scope', 'env_aspects', 'norm_ids',
         'doc_owner_id', 'doc_approver_id', 'doc_vobo_id'}
 
-    @api.depends('activity_ids')
+    @api.depends('procedure_activity_ids')
     def _compute_activity_count(self):
         for process in self:
-            process.activity_count = len(process.activity_ids)
+            process.activity_count = len(process.procedure_activity_ids)
 
     chain_link_count = fields.Integer(
         string="Ligas de la cadena", compute='_compute_chain_link_count',
@@ -150,10 +154,11 @@ class SgiProcessProcedure(models.Model):
                        ('to_process_id', '=', self.id)],
         }
 
-    @api.depends('activity_ids.measure_state', 'activity_ids.measure_model_id')
+    @api.depends('procedure_activity_ids.measure_state',
+                 'procedure_activity_ids.measure_model_id')
     def _compute_measure_stats(self):
         for process in self:
-            acts = process.activity_ids.filtered(
+            acts = process.procedure_activity_ids.filtered(
                 lambda a: a.measure_model_id and a.measure_state)
             reds = acts.filtered(lambda a: a.measure_state == 'rojo')
             process.measurable_activity_count = len(acts)
@@ -241,7 +246,7 @@ class SgiProcessProcedure(models.Model):
         en las actividades + la familia FK del procedimiento + las referencias
         cruzadas, ordenada por clave."""
         self.ensure_one()
-        docs = self.activity_ids.mapped('format_document_ids')
+        docs = self.procedure_activity_ids.mapped('format_document_ids')
         proc = self._sgi_procedure_document()
         if proc:
             docs |= proc.sgi_family_document_ids
