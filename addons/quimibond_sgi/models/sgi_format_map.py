@@ -464,7 +464,7 @@ class SgiConfig(models.AbstractModel):
 
         # Reconstrucción idempotente de responsabilidades y actividades.
         process.job_responsibility_ids.unlink()
-        process.activity_ids.unlink()
+        process.procedure_activity_ids.unlink()
 
         Job = self.env['hr.job']
         resp_vals = []

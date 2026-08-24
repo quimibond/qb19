@@ -115,7 +115,7 @@
                     <t t-foreach="[('inicial', '4.1 Actividades iniciales'), ('desarrollo', '4.2 Desarrollo'), ('final', '4.3 Actividades finales')]"
                        t-as="blk">
                         <t t-set="acts"
-                           t-value="doc.activity_ids.filtered(lambda a: a.block == blk[0])"/>
+                           t-value="doc.procedure_activity_ids.filtered(lambda a: a.block == blk[0])"/>
                         <t t-if="acts">
                             <h5 style="background-color:#e8e8e8; padding:3px;" t-out="blk[1]"/>
                             <t t-set="current_section" t-value="None"/>
