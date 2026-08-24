@@ -908,6 +908,42 @@ class SgiIndicatorMeasure(models.Model):
                         locked.mapped('indicator_id.name')))
         return super().write(vals)
 
+    def action_recompute_value(self):
+        """Recalcula el valor con el modo ACTUAL del indicador (deuda B.16:
+        el cron solo crea la medición faltante, así que cambiar el calc_mode
+        de un KPI no re-medía los periodos ya generados). Solo mediciones no
+        validadas: la validada es evidencia."""
+        for measure in self:
+            indicator = measure.indicator_id
+            if measure.state == 'validado':
+                raise UserError(
+                    "La medición de %s ya está validada (es evidencia): pide "
+                    "al Jefe MAST regresarla a pendiente antes de recalcular."
+                    % indicator.code)
+            if indicator.calc_mode == 'manual':
+                raise UserError(
+                    "El indicador %s es de captura manual: no hay nada que "
+                    "recalcular." % indicator.code)
+            date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
+            value = indicator._sgi_compute_value(date_from, date_to)
+            note = indicator._sgi_compute_note(date_from, date_to)
+            if value is None:
+                vals = {'state': 'pendiente'}
+                if note:
+                    vals['note'] = note
+                measure.write(vals)
+                measure_label = "sin dato calculable: queda pendiente de captura"
+            else:
+                vals = {'value': value, 'state': 'capturado'}
+                if note:
+                    vals['note'] = note
+                measure.write(vals)
+                measure_label = "valor recalculado: %s" % value
+            indicator.message_post(
+                body="Medición de %s recalculada con el modo «%s» — %s." % (
+                    measure.period_date, indicator.calc_mode, measure_label))
+        return True
+
     def action_capture(self):
         self.write({'state': 'capturado'})
 
