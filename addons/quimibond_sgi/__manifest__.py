@@ -77,6 +77,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
         'data/sgi_moc_data.xml',
+        'data/sgi_dyd_data.xml',
         # views
         'views/sgi_area_views.xml',
         'views/sgi_norm_views.xml',
