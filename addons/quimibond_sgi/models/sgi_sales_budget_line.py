@@ -792,23 +792,35 @@ class SgiSalesBudgetLine(models.Model):
     @api.depends('product_id', 'partner_id', 'date', 'kind', 'uom_id')
     def _compute_qty_forecast(self):
         """Suma lo pronosticado del mismo producto/cliente/mes por los pronósticos
-        vigentes (no obsoletos) del año, convertido a la unidad de esta línea."""
-        for line in self:
+        vigentes (no obsoletos) del año, convertido a la unidad de esta línea.
+
+        Por lote: una search de pronósticos por (año, compañía) y un índice por
+        producto+mes — antes cada línea mostrada buscaba los pronósticos e
+        iteraba TODAS sus líneas (O(n×m) en presupuestos grandes)."""
+        budget_lines = self.filtered(
+            lambda l: l.kind == 'presupuesto' and l.product_id and l.date)
+        for line in (self - budget_lines):
             line.qty_forecast = 0.0
-            if line.kind != 'presupuesto' or not line.product_id or not line.date:
-                continue
-            forecasts = self.env['sgi.sales.budget'].search([
-                ('kind', '=', 'pronostico'),
-                ('year', '=', line.budget_id.year),
-                ('state', '!=', 'obsoleto'),
-                ('company_id', '=', line.company_id.id)])
+        # (año, company_id) -> {(product_id, mes): [líneas de pronóstico]}
+        index_cache = {}
+        for line in budget_lines:
+            key = (line.budget_id.year, line.company_id.id)
+            index = index_cache.get(key)
+            if index is None:
+                index = {}
+                forecasts = self.env['sgi.sales.budget'].search([
+                    ('kind', '=', 'pronostico'),
+                    ('year', '=', key[0]),
+                    ('state', '!=', 'obsoleto'),
+                    ('company_id', '=', key[1])])
+                for fl in forecasts.line_ids:
+                    if fl.product_id and fl.date:
+                        index.setdefault(
+                            (fl.product_id.id, fl.date.month), []).append(fl)
+                index_cache[key] = index
             partner = line.partner_id.commercial_partner_id
             total = 0.0
-            for fl in forecasts.mapped('line_ids'):
-                if fl.product_id != line.product_id or not fl.date:
-                    continue
-                if fl.date.month != line.date.month:
-                    continue
+            for fl in index.get((line.product_id.id, line.date.month), []):
                 if partner and fl.partner_id.commercial_partner_id != partner:
                     continue
                 conv = _convert_qty(fl.qty_budget, fl.uom_id, line.uom_id)
