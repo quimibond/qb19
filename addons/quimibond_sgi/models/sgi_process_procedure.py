@@ -74,9 +74,11 @@ class SgiProcessProcedure(models.Model):
     doc_vobo_id = fields.Many2one(
         'res.users', string="Vo.Bo.")
 
-    # Campos del cuerpo del procedimiento cuya edición diverge del PDF controlado.
+    # Campos del cuerpo del procedimiento cuya edición diverge del PDF
+    # controlado. 'purpose' (sección 1, OBJETIVO) también se imprime en el
+    # F-P-G01-02: editarlo sin nueva revisión ES una divergencia G14.
     _SGI_PROCEDURE_BODY_FIELDS = {
-        'scope', 'env_aspects', 'norm_ids',
+        'purpose', 'scope', 'env_aspects', 'norm_ids',
         'doc_owner_id', 'doc_approver_id', 'doc_vobo_id'}
 
     @api.depends('procedure_activity_ids')
