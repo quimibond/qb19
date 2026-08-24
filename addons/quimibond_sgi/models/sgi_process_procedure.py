@@ -713,18 +713,44 @@ class SgiActivityLink(models.Model):
                             frm.display_name, link.name or '',
                             to.display_name),
                         owner_user)
-                elif not link.nc_alert_id and (
-                        now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS:
-                    vals['nc_alert_id'] = link._sgi_create_chain_nc().id
+                elif (now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS \
+                        and not link._sgi_chain_nc_open():
+                    # Sin NC ligada, o la ligada ya cerró/canceló: este
+                    # atoramiento persistente amerita su propia NC (antes,
+                    # nc_alert_id nunca se soltaba y el SEGUNDO episodio ya no
+                    # generaba NC jamás).
+                    alert = link._sgi_create_chain_nc()
+                    if alert:
+                        vals['nc_alert_id'] = alert.id
             else:
                 vals['atorado_since'] = False
             link.write(vals)
 
+    def _sgi_chain_nc_open(self):
+        """¿La NC ligada al eslabón sigue abierta (bloquea crear otra)?"""
+        self.ensure_one()
+        nc = self.nc_alert_id
+        return bool(nc) and not (nc.stage_id.sgi_is_closing_stage
+                                 or nc.stage_id.sgi_is_cancel_stage)
+
     def _sgi_create_chain_nc(self):
-        """NC automática por ruptura de secuencia persistente."""
+        """NC automática por ruptura de secuencia persistente.
+
+        Va por sgi_auto_create (punto ÚNICO de entrada de NCs automáticas):
+        así MAST puede apagar la fuente «eslabon_atorado» desde Configuración
+        y la NC queda estampada con su sgi_source_id — antes se creaba con
+        create() directo y no había forma de apagarla sin tocar código.
+        Devuelve un recordset vacío si la fuente está apagada o si no está
+        configurado el equipo NC Internas (una NC sin equipo queda sin folio,
+        fuera de los candados del SGI: mejor no crearla y avisar al log)."""
         self.ensure_one()
         team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
                             raise_if_not_found=False)
+        if not team:
+            _logger.warning(
+                "SGI: eslabón atorado %s sin NC — falta el equipo NC Internas "
+                "(quimibond_sgi.sgi_quality_team_internal).", self.id)
+            return self.env['quality.alert']
         stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open',
                              raise_if_not_found=False)
         vals = {
@@ -738,12 +764,14 @@ class SgiActivityLink(models.Model):
                     self.to_activity_id.display_name, self.name or ''),
             'sgi_origin_type': 'proceso',
             'sgi_process_id': self.to_process_id.id,
+            'team_id': team.id,
         }
-        if team:
-            vals['team_id'] = team.id
         if stage:
             vals['stage_id'] = stage.id
-        return self.env['quality.alert'].sudo().create(vals)
+        # count_suppression=False: el cron reevalúa el mismo eslabón cada día;
+        # una omisión ya contada no es un evento nuevo.
+        return self.env['quality.alert'].sudo().sgi_auto_create(
+            'eslabon_atorado', vals, count_suppression=False)
 
     @api.constrains('from_activity_id', 'to_activity_id')
     def _check_not_self(self):
