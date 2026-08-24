@@ -139,8 +139,12 @@ def sgi_find_menu(env, path):
     parts = [p for p in (path or '').split('/') if p]
     if not parts:
         return Menu
+    # El texto viene de una persona: un «%», «_» o «\» literal son comodines
+    # de LIKE y harían matchear menús que no son (o no matchear el correcto).
+    pattern = (parts[-1].replace('\\', '\\\\')
+               .replace('%', '\\%').replace('_', '\\_'))
     candidates = Menu.search([
-        ('name', '=ilike', parts[-1]), ('action', '!=', False)])
+        ('name', '=ilike', pattern), ('action', '!=', False)])
     low = '/'.join(parts).lower()
     for menu in candidates:
         if (menu.complete_name or '').lower() == low:
