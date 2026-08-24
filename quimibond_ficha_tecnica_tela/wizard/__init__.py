@@ -1,1 +1,2 @@
-from . import ficha_tecnica_import_wizard
+from . import ficha_tecnica_tejido_import_wizard
+from . import ficha_tecnica_acabado_import_wizard
