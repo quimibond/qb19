@@ -7,11 +7,17 @@
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
-                <button name="action_view_fichas_tecnicas" type="object"
+                <button name="action_view_ficha_tecnica_tejido" type="object"
                         class="oe_stat_button" icon="fa-file-text-o"
-                        invisible="ficha_tecnica_count == 0">
-                    <field name="ficha_tecnica_count" widget="statinfo"
-                           string="Ficha(s) Técnica(s)"/>
+                        invisible="ficha_tecnica_tejido_count == 0">
+                    <field name="ficha_tecnica_tejido_count" widget="statinfo"
+                           string="Ficha de Tejido"/>
+                </button>
+                <button name="action_view_ficha_tecnica_acabado" type="object"
+                        class="oe_stat_button" icon="fa-file-text"
+                        invisible="ficha_tecnica_acabado_count == 0">
+                    <field name="ficha_tecnica_acabado_count" widget="statinfo"
+                           string="Ficha de Acabado"/>
                 </button>
             </div>
         </field>

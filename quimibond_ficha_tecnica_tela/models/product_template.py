@@ -5,34 +5,50 @@ from odoo import fields, models
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
-    ficha_tecnica_ids = fields.One2many(
-        'ficha.tecnica.tela', compute='_compute_ficha_tecnica_ids',
-        string='Fichas técnicas')
-    ficha_tecnica_count = fields.Integer(
-        string='No. de fichas técnicas', compute='_compute_ficha_tecnica_ids')
+    ficha_tecnica_tejido_id = fields.Many2one(
+        'ficha.tecnica.tejido', compute='_compute_ficha_tecnica_tejido',
+        string='Ficha técnica de tejido')
+    ficha_tecnica_tejido_count = fields.Integer(
+        string='No. de fichas de tejido', compute='_compute_ficha_tecnica_tejido')
 
-    def _compute_ficha_tecnica_ids(self):
-        Ficha = self.env['ficha.tecnica.tela']
+    ficha_tecnica_acabado_id = fields.Many2one(
+        'ficha.tecnica.acabado', compute='_compute_ficha_tecnica_acabado',
+        string='Ficha técnica de acabado')
+    ficha_tecnica_acabado_count = fields.Integer(
+        string='No. de fichas de acabado', compute='_compute_ficha_tecnica_acabado')
+
+    def _compute_ficha_tecnica_tejido(self):
+        FichaTejido = self.env['ficha.tecnica.tejido']
         for tmpl in self:
             product_ids = tmpl.product_variant_ids.ids
-            fichas = Ficha.search([
-                '|',
-                ('product_proceso_id', 'in', product_ids),
-                ('product_acabado_id', 'in', product_ids),
-            ])
-            tmpl.ficha_tecnica_ids = fichas
-            tmpl.ficha_tecnica_count = len(fichas)
+            ficha = FichaTejido.search([('product_proceso_id', 'in', product_ids)], limit=1)
+            tmpl.ficha_tecnica_tejido_id = ficha
+            tmpl.ficha_tecnica_tejido_count = 1 if ficha else 0
 
-    def action_view_fichas_tecnicas(self):
+    def _compute_ficha_tecnica_acabado(self):
+        FichaAcabado = self.env['ficha.tecnica.acabado']
+        for tmpl in self:
+            product_ids = tmpl.product_variant_ids.ids
+            ficha = FichaAcabado.search([('product_acabado_id', 'in', product_ids)], limit=1)
+            tmpl.ficha_tecnica_acabado_id = ficha
+            tmpl.ficha_tecnica_acabado_count = 1 if ficha else 0
+
+    def action_view_ficha_tecnica_tejido(self):
         self.ensure_one()
-        fichas = self.ficha_tecnica_ids
-        action = {
+        return {
             'type': 'ir.actions.act_window',
-            'name': 'Fichas Técnicas',
-            'res_model': 'ficha.tecnica.tela',
+            'name': 'Ficha Técnica de Tejido',
+            'res_model': 'ficha.tecnica.tejido',
+            'view_mode': 'form',
+            'res_id': self.ficha_tecnica_tejido_id.id,
         }
-        if len(fichas) == 1:
-            action.update({'view_mode': 'form', 'res_id': fichas.id})
-        else:
-            action.update({'view_mode': 'list,form', 'domain': [('id', 'in', fichas.ids)]})
-        return action
+
+    def action_view_ficha_tecnica_acabado(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Ficha Técnica de Acabado',
+            'res_model': 'ficha.tecnica.acabado',
+            'view_mode': 'form',
+            'res_id': self.ficha_tecnica_acabado_id.id,
+        }

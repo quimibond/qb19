@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ficha_tecnica_tejido_import_wizard_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.tejido.import.wizard.form</field>
+        <field name="model">ficha.tecnica.tejido.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importar Fichas Técnicas de Tejido (masivo)">
+                <group>
+                    <p>
+                        Sube un archivo Excel tabular: la primera fila debe
+                        tener encabezados (ej. "Artículo", "Máquina",
+                        "Galga", "Rendimiento", "Hilo1 Tipo", etc.) y cada
+                        fila siguiente es un artículo distinto. Las
+                        columnas que no reconozca el sistema se ignoran, así
+                        que puedes incluir columnas extra sin que falle la
+                        importación.
+                    </p>
+                    <field name="file_data" filename="file_name"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="update_if_exists"/>
+                </group>
+                <footer>
+                    <button name="action_import" type="object" string="Importar"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_tejido_import_wizard" model="ir.actions.act_window">
+        <field name="name">Importar Tejido desde Excel</field>
+        <field name="res_model">ficha.tecnica.tejido.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_ficha_tecnica_tejido_import"
+              name="Importar Tejido desde Excel"
+              parent="menu_ficha_tecnica_tela_root"
+              action="action_ficha_tecnica_tejido_import_wizard"
+              sequence="30"/>
+
+</odoo>

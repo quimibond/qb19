@@ -1,6 +1,9 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_ficha_tecnica_tela_user,ficha.tecnica.tela.user,model_ficha_tecnica_tela,base.group_user,1,1,1,0
-access_ficha_tecnica_tela_manager,ficha.tecnica.tela.manager,model_ficha_tecnica_tela,mrp.group_mrp_manager,1,1,1,1
-access_ficha_tecnica_tela_hilo_user,ficha.tecnica.tela.hilo.user,model_ficha_tecnica_tela_hilo,base.group_user,1,1,1,0
-access_ficha_tecnica_tela_hilo_manager,ficha.tecnica.tela.hilo.manager,model_ficha_tecnica_tela_hilo,mrp.group_mrp_manager,1,1,1,1
-access_ficha_tecnica_import_wizard,ficha.tecnica.import.wizard,model_ficha_tecnica_import_wizard,base.group_user,1,1,1,1
+access_ficha_tecnica_tejido_user,ficha.tecnica.tejido.user,model_ficha_tecnica_tejido,base.group_user,1,1,1,0
+access_ficha_tecnica_tejido_manager,ficha.tecnica.tejido.manager,model_ficha_tecnica_tejido,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_tejido_hilo_user,ficha.tecnica.tejido.hilo.user,model_ficha_tecnica_tejido_hilo,base.group_user,1,1,1,0
+access_ficha_tecnica_tejido_hilo_manager,ficha.tecnica.tejido.hilo.manager,model_ficha_tecnica_tejido_hilo,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_acabado_user,ficha.tecnica.acabado.user,model_ficha_tecnica_acabado,base.group_user,1,1,1,0
+access_ficha_tecnica_acabado_manager,ficha.tecnica.acabado.manager,model_ficha_tecnica_acabado,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_tejido_import_wizard,ficha.tecnica.tejido.import.wizard,model_ficha_tecnica_tejido_import_wizard,base.group_user,1,1,1,1
+access_ficha_tecnica_acabado_import_wizard,ficha.tecnica.acabado.import.wizard,model_ficha_tecnica_acabado_import_wizard,base.group_user,1,1,1,1
