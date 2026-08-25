@@ -21,7 +21,7 @@ Accesible desde Manufactura > Configuración > Tabla de Rendimientos y RB
 Tintorería.
 """,
     'category': 'Manufacturing',
-    'author': 'Quimibond',
+    'author': 'Jose Sacramento Consolti',
     'depends': ['mrp'],
     'data': [
         'security/ir.model.access.csv',

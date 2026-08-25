@@ -40,31 +40,31 @@ class FichaTecnicaAcabado(models.Model):
     peso_acabado = fields.Float(string='Peso')
     peso_acabado_tol = fields.Char(
         string='Tolerancia peso', help='Admite formato asimétrico, ej. "+12 / -6".')
-    peso_acabado_tol_unit = fields.Char(string='Unidad', default='g/m2')
+    peso_acabado_tol_unit = fields.Char(string='Unidad — Peso', default='g/m2')
 
     ancho_acabado = fields.Float(string='Ancho')
     ancho_acabado_tol = fields.Char(string='Tolerancia ancho')
-    ancho_acabado_tol_unit = fields.Char(string='Unidad', default='cm')
+    ancho_acabado_tol_unit = fields.Char(string='Unidad — Ancho', default='cm')
 
     encogimiento_largo = fields.Float(string='Encogimiento a lo largo')
     encogimiento_largo_tol = fields.Char(string='Tolerancia encogimiento largo')
-    encogimiento_largo_tol_unit = fields.Char(string='Unidad', default='%')
+    encogimiento_largo_tol_unit = fields.Char(string='Unidad — Encogimiento largo', default='%')
 
     encogimiento_ancho = fields.Float(string='Encogimiento a lo ancho')
     encogimiento_ancho_tol = fields.Char(string='Tolerancia encogimiento ancho')
-    encogimiento_ancho_tol_unit = fields.Char(string='Unidad', default='%')
+    encogimiento_ancho_tol_unit = fields.Char(string='Unidad — Encogimiento ancho', default='%')
 
     espesor_acabado = fields.Float(string='Espesor')
     espesor_acabado_tol = fields.Char(string='Tolerancia espesor')
-    espesor_acabado_tol_unit = fields.Char(string='Unidad', default='in')
+    espesor_acabado_tol_unit = fields.Char(string='Unidad — Espesor', default='in')
 
     elongacion_largo_acabado = fields.Float(string='Elongación largo')
     elongacion_largo_acabado_tol = fields.Char(string='Tolerancia elongación largo')
-    elongacion_largo_acabado_tol_unit = fields.Char(string='Unidad', default='%')
+    elongacion_largo_acabado_tol_unit = fields.Char(string='Unidad — Elongación largo', default='%')
 
     elongacion_ancho_acabado = fields.Float(string='Elongación ancho')
     elongacion_ancho_acabado_tol = fields.Char(string='Tolerancia elongación ancho')
-    elongacion_ancho_acabado_tol_unit = fields.Char(string='Unidad', default='%')
+    elongacion_ancho_acabado_tol_unit = fields.Char(string='Unidad — Elongación ancho', default='%')
 
     encogimiento_largo_dentro_norma = fields.Boolean(
         string='Encogimiento largo dentro de norma (≤5%)',
