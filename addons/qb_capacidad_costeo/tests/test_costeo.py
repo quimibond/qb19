@@ -1118,3 +1118,40 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('EUR', rec.divisa_venta)
         self.assertEqual(rec.company_currency_id,
                          self.env.company.currency_id)
+
+    def test_encogimiento_sale_del_denominador_de_metros(self):
+        """El encogimiento no destruye material: la misma tela mide menos.
+
+        Sus metros tienen que salir del denominador, porque el pool sí se
+        gastó pero se recupera sobre menos metros vendibles. Si se quedan,
+        el costo unitario queda subvaluado en esa proporción y la merma
+        termina en resultados en vez de en el costo de lo que queda.
+        """
+        Costo = self.env['qb.costo.producto']
+        desde, hasta = date(2026, 1, 1), date(2026, 9, 1)
+
+        # La consulta corre contra la BD real: lo que se prueba es que no
+        # truene y devuelva metros por mes (el riesgo del cambio es el SQL).
+        enc = Costo._encogimiento_by_month(desde, hasta)
+        self.assertIsInstance(enc, dict)
+        for mes, metros in enc.items():
+            self.assertIsInstance(metros, float)
+
+        acabado = self.env.ref('qb_capacidad_costeo.centro_acabado')
+        base = Costo._production_month_avg(acabado, desde, hasta)
+
+        # Descontar más metros de los producidos no puede dar un denominador
+        # negativo: los meses que quedan en cero o abajo se excluyen del
+        # promedio, igual que los meses sin producción.
+        exagerado = Costo._production_month_avg(
+            acabado, desde, hasta,
+            restar_by_month={date(2026, m, 1): 1e12 for m in range(1, 9)})
+        self.assertGreaterEqual(exagerado, 0.0)
+        self.assertLessEqual(exagerado, base if base else 0.0)
+
+        # Sin resta, el resultado es idéntico al de la firma de 3 argumentos:
+        # el parámetro es opcional y no altera el camino existente.
+        self.assertEqual(
+            Costo._production_month_avg(acabado, desde, hasta,
+                                        restar_by_month={}),
+            base)
