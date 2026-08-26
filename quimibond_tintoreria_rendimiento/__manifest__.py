@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Tabla de Rendimientos y RB Tintorería',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.2.1',
     'summary': 'Capacidad por rendimiento y Relación de Baño (RB) por centro de trabajo de Tintorería',
     'description': """
 Tabla de Rendimientos y RB Tintorería
@@ -21,7 +21,7 @@ Accesible desde Manufactura > Configuración > Tabla de Rendimientos y RB
 Tintorería.
 """,
     'category': 'Manufacturing',
-    'author': 'Jose Sacramento Consolti',
+    'author': 'Jose Sacramento CONSOLTI',
     'depends': ['mrp'],
     'data': [
         'security/ir.model.access.csv',

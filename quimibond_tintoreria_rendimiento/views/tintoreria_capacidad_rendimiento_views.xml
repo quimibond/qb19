@@ -6,9 +6,8 @@
         <field name="model">tintoreria.capacidad.rendimiento</field>
         <field name="arch" type="xml">
             <list string="Tabla de Rendimientos y RB Tintorería" editable="bottom">
+                <field name="workcenter_id"/>
                 <field name="codigo"/>
-                <field name="nombre"/>
-                <field name="workcenter_id" optional="hide"/>
                 <field name="capacidad_kg" string="Capacidad (kg)"/>
                 <field name="capacidad_grupo_a" string="Grupo A (3-6 m/kg)"/>
                 <field name="capacidad_grupo_b" string="Grupo B (7-10 m/kg)"/>
@@ -26,14 +25,14 @@
             <form string="Tabla de Rendimientos y RB Tintorería">
                 <sheet>
                     <div class="oe_title">
+                        <label for="workcenter_id"/>
                         <h1>
-                            <field name="codigo" placeholder="Ej. HTJ1"/>
+                            <field name="workcenter_id" placeholder="Selecciona un centro de trabajo Tintorería..."/>
                         </h1>
                     </div>
                     <group>
                         <group>
-                            <field name="nombre"/>
-                            <field name="workcenter_id"/>
+                            <field name="codigo"/>
                             <field name="active"/>
                         </group>
                         <group>
