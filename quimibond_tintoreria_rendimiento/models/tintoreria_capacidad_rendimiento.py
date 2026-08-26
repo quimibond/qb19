@@ -5,16 +5,20 @@ from odoo import api, fields, models
 class TintoreriaCapacidadRendimiento(models.Model):
     _name = 'tintoreria.capacidad.rendimiento'
     _description = 'Tabla de Rendimientos y RB Tintorería'
-    _rec_name = 'nombre'
+    _rec_name = 'codigo'
     _order = 'codigo'
 
-    codigo = fields.Char(string='Código', required=True,
-                          help='Código del centro de trabajo, ej. HTJ1')
-    nombre = fields.Char(string='Nombre', required=True,
-                          help='Nombre del centro de trabajo, ej. TINTORERIA 1')
     workcenter_id = fields.Many2one(
-        'mrp.workcenter', string='Centro de trabajo (Odoo)',
-        help='Vínculo opcional al work center real de manufactura, una vez configurado.')
+        'mrp.workcenter', string='Centro de trabajo', required=True,
+        domain=[('name', '=ilike', 'Tintoreria%')],
+        help='Solo se pueden seleccionar centros de trabajo cuyo nombre '
+             'empiece con "Tintoreria". El código se toma directamente '
+             'de este centro de trabajo (el nombre ya se ve en este '
+             'mismo campo, por eso no se repite en un campo aparte).')
+    codigo = fields.Char(
+        string='Código', related='workcenter_id.code', store=True, readonly=True,
+        help='Código del centro de trabajo, tomado de Manufactura > '
+             'Centros de Trabajo — no editable aquí.')
     active = fields.Boolean(default=True)
 
     capacidad_kg = fields.Float(string='Capacidad (kg)', required=True,
@@ -41,9 +45,9 @@ class TintoreriaCapacidadRendimiento(models.Model):
 
     notas = fields.Text(string='Notas')
 
-    _codigo_uniq = models.Constraint(
-        'unique(codigo)',
-        'Ya existe un centro de trabajo de tintorería con ese código.',
+    _workcenter_uniq = models.Constraint(
+        'unique(workcenter_id)',
+        'Ya existe una configuración de rendimiento para ese centro de trabajo.',
     )
 
     def capacidad_para_rendimiento(self, rendimiento):
@@ -66,3 +70,39 @@ class TintoreriaCapacidadRendimiento(models.Model):
         """Litros de baño necesarios para procesar `kg` de tela en este centro."""
         self.ensure_one()
         return self.relacion_bano * kg
+
+    @api.model
+    def _load_default_data(self):
+        """Carga inicial de las 5 tintorerías conocidas (HTJ1-HTJ5), tomada
+        del catálogo de capacidades de origen. Es idempotente a propósito:
+        si ya existe una configuración para ese centro de trabajo (por
+        haberse creado antes, por una migración previa, o por cualquier
+        estado intermedio de la base de datos), no la toca ni la
+        duplica — así nunca choca con la restricción de unicidad de
+        `workcenter_id`, sin importar en qué momento o cuántas veces se
+        ejecute esta carga.
+        """
+        Workcenter = self.env['mrp.workcenter']
+        defaults = [
+            # código, capacidad_kg, grupo_a, grupo_b, grupo_c, relacion_bano, notas
+            ('HTJ1', 1000, 900, 600, 450, 10, ''),
+            ('HTJ2', 950, 450, 300, 300, 7, ''),
+            ('HTJ3', 600, 600, 0, 0, 6, 'Grupo B y C: N/A en archivo de origen.'),
+            ('HTJ4', 300, 300, 150, 150, 6, ''),
+            ('HTJ5', 1200, 900, 600, 450, 7, ''),
+        ]
+        for codigo, cap, grupo_a, grupo_b, grupo_c, rb, notas in defaults:
+            workcenter = Workcenter.search([('code', '=', codigo)], limit=1)
+            if not workcenter:
+                continue
+            if self.search_count([('workcenter_id', '=', workcenter.id)]):
+                continue
+            self.create({
+                'workcenter_id': workcenter.id,
+                'capacidad_kg': cap,
+                'capacidad_grupo_a': grupo_a,
+                'capacidad_grupo_b': grupo_b,
+                'capacidad_grupo_c': grupo_c,
+                'relacion_bano': rb,
+                'notas': notas,
+            })
