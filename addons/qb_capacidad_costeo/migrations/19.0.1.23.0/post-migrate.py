@@ -23,8 +23,9 @@ $190,684,760—. Dejarla dentro hacía dos daños:
 Se filtra por la referencia del asiento, sin `%` en la expresión SQL (las
 vistas pasan por formateo estilo printf).
 
-Se recalculan los períodos abiertos, que ahora incluyen diciembre de verdad.
-Los cerrados se respetan.
+El recálculo —que hace que diciembre vuelva a contar de verdad— lo hace la
+migración más nueva de la cadena, una sola vez. Al agregarse la 19.0.1.24.0
+se movió allá.
 """
 import logging
 
@@ -35,9 +36,7 @@ _logger = logging.getLogger(__name__)
 
 def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
-    _logger.info(
-        'qb_capacidad_costeo: %s períodos recalculados sin la póliza de '
-        'cierre anual dentro de los pools.', len(set(periodos)))
+    # El recálculo lo hace la migración MÁS NUEVA de la cadena, una sola vez.
+    # Al agregarse la 19.0.1.24.0, se movió allá.
+    _logger.info('qb_capacidad_costeo: póliza de cierre anual fuera de los '
+                 'pools; el recálculo lo hace la 19.0.1.24.0.')
