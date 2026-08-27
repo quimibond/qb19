@@ -2109,3 +2109,67 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(f.absorcion_ya_fuera_month, 90000.0, places=2)
         self.assertEqual(f.absorcion_pool_month, 0.0)
         centro.unlink()
+
+    def test_los_totales_cumplen_ventas_menos_costo_igual_margen(self):
+        """En TODA fila: ventas_total − costo_X_total = margen_X_total.
+
+        La identidad se rompía en las filas con cantidad neta ≤ 0 —cuando las
+        devoluciones del período superan a las ventas—. Esa fila se trata
+        como «sin ventas» para no generar un precio negativo que envenene los
+        márgenes unitarios y las alertas, pero `ventas_total` sí conserva el
+        ingreso negativo, que es el hecho contable. Los totales de margen se
+        calculaban desde `precio × qty`, así que salían en 0 contra un
+        ingreso que no era 0.
+
+        No es un detalle: 11 filas metieron $561,866 de residuo en la
+        conciliación entre enero y julio de 2026 —marzo solo, $242,363— y ese
+        residuo no correspondía a ninguna causa real. Se leía como gasto sin
+        explicar.
+        """
+        Costo = self.Costo
+        period = date(2027, 6, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        ctx = Costo._engine_ctx([self.tela.id], factores)
+
+        def fila(qty, revenue):
+            vals, _f = Costo._compute_product_vals(
+                self.tela, period, factores,
+                {self.tela.id: {'qty': qty, 'revenue': revenue}},
+                ctx, self.Ruteo, self.Peso)
+            return vals
+
+        for qty, revenue, caso in (
+                (1000.0, 50000.0, 'venta normal'),
+                (0.0, 0.0, 'sin movimiento'),
+                (500.0, 0.0, 'muestra sin cargo'),
+                (-2.0, -242363.52, 'devolución neta'),
+                (-5716.8, -157560.37, 'devolución neta de volumen')):
+            v = fila(qty, revenue)
+            self.assertAlmostEqual(
+                v['ventas_total'] - v['costo_absorbido_total'],
+                v['margen_neto_total'], places=2, msg=caso)
+            self.assertAlmostEqual(
+                v['ventas_total'] - v['costo_produccion_total'],
+                v['margen_bruto_total'], places=2, msg=caso)
+            self.assertAlmostEqual(
+                v['ventas_total'] - v['costo_variable_total'],
+                v['contrib_total'], places=2, msg=caso)
+
+        # Y la venta normal no cambia de valor: el arreglo es una identidad
+        # algebraica para toda fila con precio válido, no un criterio nuevo.
+        v = fila(1000.0, 50000.0)
+        self.assertAlmostEqual(
+            v['margen_neto_total'],
+            (v['precio_prom'] - v['costo_absorbido']) * 1000.0, places=2)
+
+        # La devolución neta sigue SIN precio ni margen unitario: el guard
+        # que evita el precio negativo se conserva, es solo el total el que
+        # ahora refleja el ingreso.
+        d = fila(-2.0, -242363.52)
+        self.assertEqual(d['precio_prom'], 0.0)
+        self.assertEqual(d['margen_absorbido'], 0.0)
+        self.assertEqual(d['costo_absorbido_total'], 0.0)
+        self.assertAlmostEqual(d['margen_neto_total'], -242363.52, places=2)

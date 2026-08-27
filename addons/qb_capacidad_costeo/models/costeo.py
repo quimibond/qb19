@@ -1933,14 +1933,26 @@ class QbCostoProducto(models.Model):
             'margen_bruto': bruto if precio else 0.0,
             'margen_bruto_pct':
                 100.0 * bruto / precio if precio else 0.0,
-            'margen_bruto_total': bruto * qty if precio else 0.0,
+            # Los totales de margen se derivan del INGRESO, no de
+            # `precio × qty`. Para una fila normal da exactamente lo mismo
+            # (revenue = precio × qty), pero cuando la cantidad neta del
+            # período es ≤ 0 —devoluciones mayores que ventas— la fila se
+            # trata como «sin ventas» para no generar un precio negativo, y
+            # sin embargo `ventas_total` sí conserva el ingreso negativo.
+            # Calculando desde `precio` el margen salía 0 contra un ingreso
+            # que no era 0, y la identidad ventas − costo = margen se rompía
+            # justo ahí: 11 filas metieron $561,866 de residuo en la
+            # conciliación entre enero y julio de 2026, sin causa real
+            # detrás. Derivado del ingreso, la identidad se cumple por
+            # construcción en toda fila.
+            'margen_bruto_total': revenue - produccion * qty_efectiva,
             'margen_absorbido': precio - absorbido if precio else 0.0,
             'margen_absorbido_pct':
                 100.0 * (precio - absorbido) / precio if precio else 0.0,
-            'margen_neto_total': (precio - absorbido) * qty if precio else 0.0,
+            'margen_neto_total': revenue - absorbido * qty_efectiva,
             'contrib_hora_maquina':
                 contrib / hours_per_unit if hours_per_unit and precio else 0.0,
-            'contrib_total': contrib * qty if precio else 0.0,
+            'contrib_total': revenue - variable * qty_efectiva,
             'alerta': alerta,
             'centro_route': ', '.join(centros.mapped('code')),
             'factores_id': factores.id,
