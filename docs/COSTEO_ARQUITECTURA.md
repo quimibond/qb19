@@ -8,15 +8,15 @@ El sistema construye **proxies para datos que ya existen**. Cada proxy necesita
 un factor de calibración, cada factor necesita una banda de cordura, cada banda
 necesita un parámetro, y cada parámetro necesita un chequeo en el panel. Por eso
 una pregunta conceptualmente simple —¿cuánto cuesta este metro de tela?— vive en
-~10,000 líneas y 30 parámetros.
+5,837 líneas de Python (más 1,185 de tests) y 57 campos de configuración.
 
 Mira el patrón:
 
 | Capa | Lo que hace el módulo | Lo que ya existe en Odoo |
 |---|---|---|
 | Materia prima | Explota la receta al último precio de compra, y le aplica un factor de ajuste contra el costo primo del mayor | Valuación real-time con AVCO en `Materia Prima` y `Producto en Proceso` — Odoo ya sabe el valor exacto de cada consumo |
-| Aduana | Prorrateo sobre una base promedio | `stock.landed.cost`, configurado y con 195 registros históricos |
-| Conversión | Pool de planta repartido 67/33 entre kilos y metros | `mrp.workcenter.costs_hour` × tiempo real del workorder |
+| Aduana | Prorrateo sobre una base promedio | `stock.landed.cost`, con 163 aplicaciones por $7.85M — 159 de ellas en 2023 |
+| Conversión | Pool de planta repartido 67/33 entre kilos y metros | `mrp.workcenter.costs_hour` × tiempo real del workorder — **en marcha**: TEJIDO arranca el 1-sep-2026, Acabado a mediados de septiembre |
 | Renta | Un número contractual capturado a mano | El mayor (irregular, pero es el hecho) |
 | Energía | $/kg promedio de planta | Cuentas ya asignadas a Tintorería y Acabado |
 | Operación | % del precio de venta | — (aquí sí hace falta una decisión de reparto) |
@@ -46,13 +46,23 @@ de un factor global que solo dice que algo no cuadra.
 
 ### 2. Capturar los pedimentos con landed cost
 
-Ya está configurado. En los últimos doce meses se aplicó **uno** ($111,355 en
-mayo 2026) mientras ~$963,000/mes de aduana se quedaban en resultados.
+Ya está configurado y probado: 163 landed costs aplicados por $7.85M. Pero 159
+de ellos son de **2023**; entre 2024 y agosto 2026 se aplicó uno solo ($111,355
+en mayo). Mientras tanto, **$352,690/mes** de aduana (502.03.x + 504.01.0035 =
+$2.82M en ocho meses de 2026) se quedaron en resultados.
+
+La práctica existe y funciona: lo que falta es retomarla — y a partir de
+septiembre vuelve a operar.
 
 El pedimento sabe a qué embarque pertenece. Capturarlo en la recepción hace que
 el arancel de una máquina se capitalice en la máquina y el del hilo en el hilo
 —que es exactamente lo que ningún prorrateo puede adivinar—, y de paso el costo
 del hilo importado llega a cada tela por la receta, sin trucos.
+
+El riesgo a vigilar no es que falte el landed cost, sino que se gasten
+importaciones en resultados **en paralelo** al landed cost: ahí el mismo
+pedimento entra dos veces, una al inventario y otra al P&L. La conciliación lo
+mide con `gl_importacion` contra lo capitalizado.
 
 Es trabajo operativo, no de código: alguien captura el pedimento cuando llega
 el embarque.
@@ -79,7 +89,8 @@ Con 1–3, al módulo le queda un alcance mucho más chico y mucho más claro:
 - **Reportar margen y decidir precio**: contribución, cuello de botella,
   pisos, escalera de volumen. El cotizador ya es bueno.
 
-De ~10,000 líneas a algo del orden de 2,000, y de 30 parámetros a unos 5.
+De 5,837 líneas a algo del orden de 2,000, y de 57 campos de configuración
+a una decena.
 
 ## Los errores de diseño que más cuestan
 
@@ -191,14 +202,23 @@ separación sea explícita en el diseño, no una nota al pie.
 
 Ordenado por relación valor/esfuerzo:
 
-1. **Capturar pedimentos con landed cost** (operativo, empieza mañana). Cierra
-   ~$963k/mes con el dato correcto en lugar de un prorrateo.
-2. **Tarifa por hora en los 38 workcenters** (un campo por centro). Desbloquea
-   el costeo por ruta, que es el hallazgo #12 de la revisión.
-3. **Cerrar períodos** (código chico, alto valor de confianza).
-4. **Leer el consumo real de las órdenes** en lugar de explotar recetas (código
-   medio). Convierte el factor de ajuste de MP en variación de rendimiento.
-5. **Reestructurar la clasificación** a elemento × centro × comportamiento
-   (código medio, migración de datos).
-
-Los puntos 1 y 2 no son de programación, y son los dos que más mueven la aguja.
+1. **Cerrar períodos.** ✅ Hecho (v19.0.1.18.0). Era el prerrequisito de todo
+   lo demás: sin él, cualquier corrección reescribe meses ya reportados.
+2. **Régimen híbrido capa/absorción.** ✅ Hecho (v19.0.1.18.0). TEJIDO sale del
+   pool desde 2026-09-01 y lo capitalizado se resta medido en la cuenta de
+   costos fabriles aplicados.
+3. **Sacar el precio del costo.** ✅ Hecho (v19.0.1.14.0).
+4. **Homologar ventanas.** ✅ Hecho (v19.0.1.19.0).
+5. **Descomponer la brecha en variaciones** (precio / rendimiento / tarifa /
+   volumen). Pendiente. La de volumen ya existe (`fab_ocioso_month`); las de
+   precio y rendimiento necesitan el punto 6.
+6. **Leer el consumo real de las órdenes** en lugar de explotar recetas.
+   Pendiente, y con excepciones que hay que respetar: el estiramiento consume
+   0 por diseño, CONV-ART y RE-TIN son conversiones y no fabricación, y los 64
+   BOMs con `cost_share = 0` en el subproducto están **bien** —el principal
+   absorbe todo y el saldo entra a $0.
+7. **Tarifa por hora en los workcenters.** En marcha fuera del módulo: los 37
+   CIRCULAR ya traen la cuenta de costos aplicados y el 1-sep se les escribe
+   la tarifa. Acabado sigue a mediados de septiembre.
+8. **Reestructurar la clasificación** a elemento × centro × comportamiento.
+   Pendiente.

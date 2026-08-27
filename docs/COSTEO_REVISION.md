@@ -203,7 +203,7 @@ precio de largo plazo sin un ajuste explícito.
 | # | Hallazgo | $/mes | Estado |
 |---|---|---:|---|
 | 1 | Renta de planta excluida y no reintegrada | 356,935 | **Arreglado** (v19.0.1.10.0) |
-| 2 | Gastos e impuestos de importación sin dueño | 963,597 | **Arreglado** (v19.0.1.11.0) |
+| 2 | Gastos e impuestos de importación en resultados | 352,690 | **Arreglado** (v19.0.1.17.0): el módulo mide, no prorratea |
 | 3 | MP de receta sin conciliar contra el costo primo | ~1,014,605 | **Arreglado** (v19.0.1.12.0) |
 | 4 | Ociosidad cargada al producto | — | **Arreglado** (v19.0.1.13.0) |
 | 5 | El costo depende del precio | — | **Arreglado** (v19.0.1.14.0) |
@@ -305,3 +305,32 @@ implementados (ver § 3.5). Lo que queda:
    depreciación de maquinaria ($79,334/mes para 37 máquinas de tejido
    circular) es costo histórico sobre equipo casi totalmente depreciado. No es
    un error contable, pero el costo no está reservando la reposición.
+
+---
+
+## Apéndice: correcciones a este documento
+
+Tres cifras de la primera versión estaban mal medidas y quedan corregidas
+arriba. Se dejan anotadas porque hubo decisiones que se tomaron con ellas:
+
+| Afirmación original | Medición correcta |
+|---|---|
+| «Landed cost configurado y sin usar» | Hay **163 landed costs aplicados por $7.85M** — pero 159 son de 2023 y solo uno entre 2024 y agosto 2026. La práctica existe y se detuvo. El problema real es que **además** se gastan importaciones en resultados en paralelo, o sea el mismo pedimento por dos vías. |
+| «$963,597/mes de pedimentos en resultados» | **$352,690/mes** (502.03.x + 504.01.0035 = $2.82M en ocho meses de 2026). |
+| «~10,000 líneas y 30 parámetros» | **5,837 líneas** de Python (más 1,185 de tests) y **57 campos** de configuración. |
+
+Lo que NO cambia con la corrección: la aduana seguía quedándose en resultados
+y ningún producto la cargaba, y el reparto que se implementó primero
+(v19.0.1.11.0) estaba mal repartido. El arreglo de v19.0.1.17.0 —medir en vez
+de prorratear— sigue siendo el correcto, y con landed costs operando desde
+septiembre es además el que se vuelve suficiente.
+
+También conviene dejar por escrito lo que se revisó y resultó estar **bien**,
+para no "arreglarlo" después:
+
+- Los 64 BOMs con `cost_share = 0` en el subproducto son correctos: el
+  principal absorbe todo el costo y el saldo entra a $0 en producción normal.
+- Las conversiones (CONV-ART, RE-TIN, CVU) son neutras en valor.
+- El ajuste de metros por encogimiento/estiramiento está bien implementado y
+  mueve el costo/metro +1.16%. El primer recálculo debe moverse aproximadamente
+  ese porcentaje: si se mueve mucho más o mucho menos, hay que parar y revisar.
