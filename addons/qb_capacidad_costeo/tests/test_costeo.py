@@ -958,6 +958,86 @@ class TestQbCosteo(TransactionCase):
             self.assertGreaterEqual(
                 r.margen_bruto_12m + 0.01, r.margen_neto_12m)
 
+    def test_importacion_entra_al_costo_del_importado(self):
+        """Los impuestos y gastos de aduana se cargan al valor importado.
+
+        El AVCO de Odoo NO los trae: IGI, DTA, PRV y el agente aduanal se
+        postean directo a resultados. Antes quedaban en `no_costeo` y el
+        importado se veía más barato de lo que es."""
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2027, 3, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+            'factor_importacion': 0.20})
+        base = self.importado.standard_price  # 7.51
+
+        q = self.Costo.quote_product(self.importado, factores)
+        self.assertAlmostEqual(q['mp'], base * 1.20, places=4,
+                               msg='el importado debe cargar su aduana')
+        # Y sigue sin cargar fabricación: solo pasa por inspección
+        self.assertEqual(q['fab'], 0.0)
+
+        # El nacional NO se toca: su MP no lleva aduana
+        q_nac = self.Costo.quote_product(self.tela, factores)
+        factores.factor_importacion = 0.0
+        self.assertAlmostEqual(
+            q_nac['mp'], self.Costo.quote_product(self.tela, factores)['mp'],
+            places=4, msg='la aduana no debe tocar al producto nacional')
+
+    def test_importacion_se_reporta_dentro_de_la_mp(self):
+        """`importacion_unit` es informativo: la parte de la MP que es aduana.
+        No es una capa aparte — si lo fuera, la cascada del cotizador y del
+        PDF (MP → +energía → =variable) dejaría de cuadrar."""
+        period = date(2027, 4, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+            'factor_importacion': 0.25})
+        ctx = self.Costo._engine_ctx([self.importado.id], factores)
+        vals, _fab = self.Costo._compute_product_vals(
+            self.importado, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        # 25% sobre el valor de compra → 20% del costo final es aduana
+        self.assertAlmostEqual(
+            vals['importacion_unit'], vals['mp_unit'] * 0.25 / 1.25, places=4)
+        # y la identidad de capas sigue intacta (la aduana NO se suma aparte)
+        self.assertAlmostEqual(
+            vals['costo_variable'], vals['mp_unit'] + vals['energia_unit'],
+            places=4)
+
+    def test_reconocedor_de_cuentas_de_importacion(self):
+        """Distingue aduana de exportación y no se dispara con subcadenas:
+        'DTAS' o 'DIGITALIZACION' no son cuentas de importación."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+
+        def cuenta(name, code):
+            return Account.create({'name': name, 'code': code,
+                                   'account_type': 'expense'})
+
+        self.assertTrue(Clase._es_cuenta_de_importacion(
+            cuenta('GASTOS DE IMPORTACION TEST', 'QBI.0001')))
+        self.assertTrue(Clase._es_cuenta_de_importacion(
+            cuenta('IGI TEST', 'QBI.0002')))
+        self.assertFalse(Clase._es_cuenta_de_importacion(
+            cuenta('GASTOS POR EXPORTACIONES TEST', 'QBI.0003')))
+        self.assertFalse(Clase._es_cuenta_de_importacion(
+            cuenta('VENTA DTAS TEST', 'QBI.0004')))
+
+        # Solo reclasifica lo que hoy está fuera de costeo
+        fuera = Clase.create({
+            'account_id': cuenta('IMPORTACION FLETES TEST', 'QBI.0005').id,
+            'bucket': 'no_costeo'})
+        en_operacion = Clase.create({
+            'account_id': cuenta('IMPORTACION AGENTE TEST', 'QBI.0006').id,
+            'bucket': 'operacion'})
+        Clase.reclasificar_cuentas_de_importacion()
+        self.assertEqual(fuera.bucket, 'importacion')
+        self.assertEqual(en_operacion.bucket, 'operacion',
+                         'mover un bucket ya activo es decisión del usuario')
+        self.assertIn(en_operacion,
+                      Clase.cuentas_de_importacion_mal_ubicadas())
+
     def test_renta_contractual_entra_al_pool_fabril(self):
         """La renta contractual de TODOS los centros fabriles llega al costo
         del producto, no solo la de entretelas.

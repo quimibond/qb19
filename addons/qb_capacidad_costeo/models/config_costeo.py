@@ -23,6 +23,7 @@ BUCKETS = [
     ('overhead_fab', 'Overhead de fábrica'),
     ('depreciacion', 'Depreciación fábrica'),
     ('arrend_maquinaria', 'Arrendamiento de maquinaria'),
+    ('importacion', 'Gastos e impuestos de importación'),
     ('operacion', 'Operación (admin / ventas)'),
     ('ventas', 'Ingresos (ventas)'),
     ('no_costeo', 'Fuera de costeo'),
@@ -250,6 +251,55 @@ class QbCosteoCuentaClass(models.Model):
     def action_marcar_rentas(self):
         self.marcar_cuentas_de_renta()
         return True
+
+    # Gastos e impuestos de importación: IGI (impuesto general de
+    # importación), DTA (derecho de trámite aduanero), PRV (prevalidación) y
+    # los gastos de agente aduanal/flete. Los tres acrónimos van con límite
+    # de palabra: como subcadena matchearían cualquier cosa.
+    _IMPORT_RE = re.compile(
+        r'IMPORTACION|IMPORTACIÓN|\bIGI\b|\bDTA\b|\bPRV\b'
+        r'|AGENTE ADUANAL|PEDIMENTO')
+
+    @api.model
+    def _es_cuenta_de_importacion(self, account):
+        """¿La cuenta lleva gasto o impuesto de importación? Se reparte sobre
+        el valor de lo importado, no sobre las ventas."""
+        nombre = ((account.name or '') + ' ' + (account.code or '')).upper()
+        if 'EXPORTACION' in nombre or 'EXPORTACIÓN' in nombre:
+            return False
+        return bool(self._IMPORT_RE.search(nombre))
+
+    @api.model
+    def reclasificar_cuentas_de_importacion(self):
+        """Mueve al bucket `importacion` las cuentas de importación que hoy
+        están FUERA de costeo.
+
+        Solo toca `no_costeo` a propósito: esas cuentas hoy aportan cero a
+        cualquier pool, así que moverlas no puede provocar doble conteo. Una
+        cuenta de importación ya clasificada en otro bucket se deja quieta y
+        se reporta — moverla sí cambiaría un reparto existente y esa decisión
+        es del usuario. Idempotente."""
+        movidas = self.browse()
+        for rec in self.with_context(active_test=False).search(
+                [('bucket', '=', 'no_costeo')]):
+            if any(self._es_cuenta_de_importacion(a) for a in rec.account_ids):
+                movidas |= rec
+        if movidas:
+            movidas.bucket = 'importacion'
+            _logger.info('qb_capacidad_costeo: %s cuentas de importación '
+                         'movidas de no_costeo a importacion: %s',
+                         len(movidas), ', '.join(movidas.mapped('name')))
+        return movidas
+
+    @api.model
+    def cuentas_de_importacion_mal_ubicadas(self):
+        """Clasificaciones de importación que están en un bucket que las
+        reparte por el driver equivocado (típicamente `operacion`, o sea
+        prorrateadas sobre TODAS las ventas en vez de sobre lo importado)."""
+        return self.with_context(active_test=False).search([
+            ('bucket', 'not in', ('importacion', 'no_costeo')),
+        ]).filtered(lambda c: any(
+            self._es_cuenta_de_importacion(a) for a in c.account_ids))
 
     @api.model
     def action_unclassified_accounts(self):

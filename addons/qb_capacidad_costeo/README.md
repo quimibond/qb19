@@ -16,7 +16,7 @@ su lógica ni su versión de manifest.
 | Modelo | Qué captura |
 |---|---|
 | `qb.costeo.centro` | Catálogo de centros de proceso: naturaleza, driver (peso/largo), **workcenter_ids** (M2M a `mrp.workcenter`), departamentos RH, throughput nominal, capacidad normal (IAS 2), renta contractual, patrón de órdenes (fallback pre-workcenter) |
-| `qb.costeo.cuenta.class` | Clasificación de cuentas: cuenta o patrón LIKE → bucket (mp/energia/mod/overhead_fab/depreciacion/arrend_maquinaria/operacion/ventas/no_costeo), variable/fija, centro, driver, % |
+| `qb.costeo.cuenta.class` | Clasificación de cuentas: cuenta o patrón LIKE → bucket (mp/energia/mod/overhead_fab/depreciacion/arrend_maquinaria/**importacion**/operacion/ventas/no_costeo), variable/fija, **es_renta**, centro, driver, % |
 | `qb.costeo.factor.config` | Parámetros globales por key: `fab_weight_share` (0.67), `smoothing_months` (12), `production_window_months` (3), `m_per_kg_default`, `energia_por_kg` (0=auto), `op_pct_override` (0=auto), `weeks_per_month`, `entretela_overhead_extra_mxn`, `denominador_kg_override`, `denominador_m_override` |
 | `qb.producto.peso` | Override de peso/unidad y kg↔m por producto (manual > cvu > ref_gramaje > bom > odoo_weight) |
 | `qb.producto.ruteo` | Producto/categoría/patrón → familia de costeo (tela / entretela tejida / entretela carda / importado / subproducto) + centros de su ruta |
@@ -49,7 +49,10 @@ su lógica ni su versión de manifest.
 
 ```
 MP/u        = explosión recursiva de BOM al ÚLTIMO costo de compra (fallback avg)
-              importados (' I') = landed (avg Odoo);  sin costo → gemelo nacional
+              importados (' I') = costo de compra × (1 + factor_importacion),
+                factor = pool de aduana ÷ valor comprado de importado. El AVCO
+                de Odoo NO trae IGI/DTA/PRV ni agente aduanal: se postean
+                directo a resultados. Sin costo propio → gemelo nacional
               subproductos (SALDO/DESPERDICIO) = $0
 energía/u   = energia_por_kg × peso   (importados: 0)
 fab/u       = híbrida:  tela en m  → kg/m × factor_kg + factor_m
@@ -111,8 +114,14 @@ por correo.
 - Gastos GL: promedio móvil `smoothing_months` (12m default), **excluyendo
   meses con pool ≤ 0** (reversos de cierre anual).
 - Producción: promedio `production_window_months` (3m default) de meses completos.
-- Renta: **contractual fija** por centro (el GL de renta se paga a saltos →
-  la cuenta 504.01.0008 está clasificada `no_costeo` para no doble contar).
+- Renta: **contractual fija** por centro, para TODOS los centros fabriles
+  (el GL de renta se paga a saltos). Las cuentas de renta de inmueble se
+  marcan `es_renta` y el motor las resta del pool mes a mes — sin esa marca
+  la renta se contaría dos veces, una por el GL y otra por el contrato. El
+  panel lo revisa y `qb.costo.factores` guarda las dos cifras lado a lado.
+- Importación: IGI, DTA, PRV, agente aduanal y flete van al bucket
+  `importacion` y se reparten sobre el **valor de compra de lo importado**
+  (que es lo que los causa), no sobre las ventas ni fuera de costeo.
 - MP: último costo de compra por hoja de BOM, convertido a MXN al FX de la compra.
 - Capacidad: `resource.calendar` real × `time_efficiency` — nunca 24/7 asumido.
 
@@ -190,6 +199,12 @@ arreglar) está en **`docs/COSTEO_REVISION.md`**.
 - La conciliación cuadra con el motor: su lado "modelo" es exactamente la Σ
   de `qb.costo.producto` del mes (test).
 - Importados sin fabricación; subproductos MP $0 (tests).
+- La renta contractual de un centro fabril mueve el pool en exactamente esa
+  cantidad; el reconocedor distingue renta de inmueble de arrendamiento de
+  maquinaria (tests).
+- La aduana entra DENTRO de la MP del importado y no toca al nacional;
+  `importacion_unit` es informativo y la identidad de capas sigue intacta
+  (tests).
 - `qb.costo.factores.cobertura_fab_pct`: Σ fab absorbida en vendidos ÷ pool
   (~90% es sano; mucho menos = revisar denominadores/clasificación).
 - Parser de gramaje: solo bloques de exactamente 3 dígitos (4 dígitos =

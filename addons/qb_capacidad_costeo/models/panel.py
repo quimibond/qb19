@@ -105,6 +105,27 @@ class QbCosteoPanel(models.TransientModel):
             checks.append((BAD if sin_marcar else OK,
                            'Renta sin doble conteo', detalle))
 
+        # 5.6 Importación: dónde caen los impuestos y gastos de aduana
+        Clase = env['qb.costeo.cuenta.class']
+        mal_ubicadas = Clase.cuentas_de_importacion_mal_ubicadas()
+        n_import = Clase.search_count([('bucket', '=', 'importacion')])
+        if mal_ubicadas:
+            checks.append((
+                WARN, 'Gastos de importación',
+                'estas cuentas de aduana se están repartiendo por el driver '
+                'equivocado (sobre TODAS las ventas, o fuera de costeo) en '
+                'vez de sobre el valor importado: %s. Muévelas al bucket '
+                '«Gastos e impuestos de importación».'
+                % ', '.join(mal_ubicadas.mapped('name'))))
+        else:
+            checks.append((
+                OK if n_import else WARN, 'Gastos de importación',
+                '%s cuentas de aduana cargadas al valor importado' % n_import
+                if n_import else
+                'ninguna cuenta en el bucket «Gastos e impuestos de '
+                'importación» — si importas, esos impuestos y fletes no los '
+                'está pagando ningún producto'))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:

@@ -58,6 +58,19 @@ class QbCostoFactores(models.Model):
              'promedio suavizado, sin la parte de entretelas.')
     energia_pool_month = fields.Float(string='Pool energía/mes')
     op_pool_month = fields.Float(string='Pool operación/mes')
+    importacion_pool_month = fields.Float(
+        string='Pool importación/mes',
+        help='Gastos e impuestos de importación (IGI, DTA, PRV, agente '
+             'aduanal, flete). No se prorratean sobre las ventas: se cargan '
+             'al valor de lo importado, que es lo que los causa.')
+    importacion_base_month = fields.Float(
+        string='Compras importadas/mes',
+        help='Valor de compra mensual promedio de los productos importados, '
+             'en moneda de la compañía. Es la base del factor.')
+    factor_importacion = fields.Float(
+        string='Factor importación', digits=(16, 6),
+        help='Pool ÷ base: cuánto se suma al costo de un importado por cada '
+             'peso de valor de compra. 0.15 = 15% sobre el valor importado.')
     ventas_pool_month = fields.Float(string='Ventas/mes (promedio)')
     entretela_pool_month = fields.Float(string='Pool entretelas/mes')
     renta_contractual_pool = fields.Float(
@@ -164,6 +177,15 @@ class QbCostoProducto(models.Model):
              'reconocidos ÷ importe en divisa. Es el TC efectivo de las '
              'facturas del mes, no el del día.')
     mp_unit = fields.Float(string='MP $/u', digits=(16, 4))
+    importacion_unit = fields.Float(
+        string='de eso, importación $/u', digits=(16, 4),
+        help='Cuánto de la MP de arriba son gastos e impuestos de aduana '
+             '(IGI, DTA, PRV, agente aduanal, flete) repartidos sobre el '
+             'valor importado. NO es una capa aparte: ya está dentro de la '
+             'MP, se muestra para poder auditarla.\n\n'
+             'Solo aplica al producto importado en sí; si un producto '
+             'nacional lleva componentes importados, la aduana de esos '
+             'componentes va dentro de su MP y no se ve en este renglón.')
     energia_unit = fields.Float(string='Energía $/u', digits=(16, 4))
     costo_variable = fields.Float(
         string='Costo variable $/u', digits=(16, 4),
@@ -187,6 +209,10 @@ class QbCostoProducto(models.Model):
         string='MP $ (período)',
         help='MP unitaria × qty vendida: cuánta materia prima cargó lo '
              'vendido este mes.')
+    importacion_total = fields.Float(
+        string='de eso, importación $ (período)',
+        help='La parte de la MP del período que es aduana. Ya está dentro de '
+             '«MP $ (período)» — no se suma aparte.')
     energia_total = fields.Float(string='Energía $ (período)')
     fab_total = fields.Float(string='Fabricación $ (período)')
     op_total = fields.Float(string='Operación $ (período)')
@@ -494,6 +520,33 @@ class QbCostoProducto(models.Model):
                        restar_by_month=self._ajuste_metros_by_month(
                            date_from, date_to)))
 
+        # Importación: los gastos e impuestos de aduana se cargan al valor de
+        # lo importado (el IGI se calcula sobre el valor en aduana; flete y
+        # agente escalan con el valor embarcado). Antes caían en `no_costeo` y
+        # ningún producto los pagaba, o peor, en `operacion` y se prorrateaban
+        # sobre TODAS las ventas — incluidas las de producto nacional.
+        importacion_pool = self._smooth(
+            self._pool_by_month(('importacion',), date_from, date_to))
+        # Sin pool no hay factor: la base cuesta un escaneo de 12 meses de
+        # compras y una resolución de ruteo por producto comprado, y
+        # action_recompute_year llama a esto doce veces.
+        importacion_base = (self._import_purchase_base(date_from, date_to)
+                            if importacion_pool else 0.0)
+        factor_importacion = (
+            Config.get_param('importacion_factor_override', 0.0)
+            or (importacion_pool / importacion_base if importacion_base else 0.0))
+        # Guarda contra clasificación errónea: una cuenta grande mal puesta en
+        # el bucket dispararía el costo de TODOS los importados sin aviso.
+        factor_max = Config.get_param('importacion_factor_max', 1.0) or 1.0
+        if factor_importacion > factor_max:
+            _logger.warning(
+                'qb.costo.factores %s: factor de importación %.3f supera el '
+                'máximo %.3f (pool %.2f ÷ base %.2f). Se recorta — revisa qué '
+                'cuentas están en el bucket «importacion».',
+                period, factor_importacion, factor_max,
+                importacion_pool, importacion_base)
+            factor_importacion = factor_max
+
         ws = Config.get_param('fab_weight_share', 0.67)
         factor_fab_kg = ws * fab_pool / kg_denom if kg_denom else 0.0
         factor_fab_m = (1 - ws) * fab_pool / m_denom if m_denom else 0.0
@@ -510,6 +563,9 @@ class QbCostoProducto(models.Model):
             'fab_pool_month': fab_pool,
             'energia_pool_month': energia_pool,
             'op_pool_month': op_pool,
+            'importacion_pool_month': importacion_pool,
+            'importacion_base_month': importacion_base,
+            'factor_importacion': factor_importacion,
             'ventas_pool_month': ventas_pool,
             'entretela_pool_month': entretela_pool,
             'renta_contractual_pool': renta_contractual,
@@ -531,6 +587,74 @@ class QbCostoProducto(models.Model):
             existing.write(vals)
             return existing
         return Factores.create(vals)
+
+    # ------------------------------------------------------------------
+    # Base de importación: valor comprado de producto importado
+    # ------------------------------------------------------------------
+    @api.model
+    def _es_importado(self, product, bucket=None):
+        """¿El producto se compra importado? Mismo criterio que usa la MP:
+        la familia de ruteo, o el sufijo ' I' de la nomenclatura."""
+        if bucket is None:
+            bucket, _c = self.env['qb.producto.ruteo'].resolve(product)
+        return bucket == 'importado' or (product.default_code or '').endswith(' I')
+
+    @api.model
+    def _import_purchase_base(self, date_from, date_to, rules=None):
+        """Valor de compra mensual promedio de los productos IMPORTADOS, en
+        moneda de la compañía.
+
+        Es la base sobre la que se reparten los gastos e impuestos de aduana:
+        el IGI se calcula sobre el valor en aduana, y flete y agente escalan
+        con el valor embarcado. Se promedian solo los meses CON compras — si
+        se importa cada dos meses, dividir entre la ventana completa partiría
+        el factor a la mitad.
+        """
+        self.env.cr.execute("""
+            SELECT date_trunc('month', po.date_order)::date AS mes,
+                   pol.product_id, po.currency_id,
+                   SUM(pol.price_unit * pol.product_qty
+                       * (1 - COALESCE(pol.discount, 0) / 100.0)) AS monto
+            FROM purchase_order_line pol
+            JOIN purchase_order po ON po.id = pol.order_id
+            WHERE po.state IN ('purchase', 'done')
+              AND po.company_id = %s
+              AND po.date_order >= %s AND po.date_order < %s
+              AND pol.product_id IS NOT NULL
+            GROUP BY 1, 2, 3
+        """, (self.env.company.id, date_from, date_to))
+        rows = self.env.cr.fetchall()
+        if not rows:
+            return 0.0
+
+        Ruteo = self.env['qb.producto.ruteo']
+        rules = rules if rules is not None else Ruteo.search([])
+        products = self.env['product.product'].browse(
+            list({r[1] for r in rows})).exists()
+        products.read(['default_code'])
+        importados = set()
+        for product in products:
+            bucket, _centros = Ruteo.resolve(product, rules)
+            if self._es_importado(product, bucket):
+                importados.add(product.id)
+        if not importados:
+            return 0.0
+
+        company = self.env.company
+        currencies = {c.id: c for c in self.env['res.currency'].browse(
+            list({r[2] for r in rows if r[2]})).exists()}
+        by_month = {}
+        for mes, product_id, currency_id, monto in rows:
+            if product_id not in importados:
+                continue
+            monto = monto or 0.0
+            currency = currencies.get(currency_id)
+            if currency and currency != company.currency_id:
+                monto = currency._convert(
+                    monto, company.currency_id, company, mes)
+            by_month[mes] = by_month.get(mes, 0.0) + monto
+        activos = [v for v in by_month.values() if v > 0]
+        return sum(activos) / len(activos) if activos else 0.0
 
     # ------------------------------------------------------------------
     # MP: último costo de compra, explosión recursiva
@@ -600,10 +724,11 @@ class QbCostoProducto(models.Model):
         return price
 
     @api.model
-    def _engine_ctx(self, product_ids=None):
+    def _engine_ctx(self, product_ids=None, factores=None):
         """Contexto de una corrida del motor: todo lo que se resuelve UNA vez
         y se comparte en el loop (reglas de ruteo, mapa de últimas compras,
-        cachés de peso y MP). Mantiene el motor O(productos), no O(queries).
+        factor de importación, cachés de peso y MP). Mantiene el motor
+        O(productos), no O(queries).
         """
         leaf_ids = set(product_ids or [])
         # Todas las hojas posibles de las recetas, en un query
@@ -620,16 +745,22 @@ class QbCostoProducto(models.Model):
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,
             'multi_bom_ids': self._multi_bom_ids_set(),
+            # El caché de MP guarda el costo YA con aduana, así que el factor
+            # tiene que vivir en el contexto de la corrida: mezclar dos
+            # factores en el mismo caché daría costos incoherentes.
+            'import_factor': factores.factor_importacion if factores else 0.0,
             'peso_cache': {},
             'mp_cache': {},
         }
 
     @api.model
-    def _mp_cost_unit(self, product, cache=None, seen=None, ctx=None):
+    def _mp_cost_unit(self, product, cache=None, seen=None, ctx=None,
+                      import_factor=None):
         """Costo primo MP por unidad: BOM recursiva a último costo.
 
         Reglas: subproducto → $0 (su MP ya está en la receta del principal);
-        importado → landed (avg de Odoo), sin costo propio → gemelo nacional;
+        importado → costo de compra MÁS gastos e impuestos de aduana
+        (`import_factor`); sin costo propio → gemelo nacional;
         receta AMBIGUA (>1 BOM activa) con AVCO válido → costo AVCO de Odoo
         (evita colapsar el costo eligiendo una receta al azar);
         hoja sin BOM → último costo de compra (fallback avg).
@@ -637,6 +768,11 @@ class QbCostoProducto(models.Model):
         `ctx` (de _engine_ctx) comparte reglas/pol_map/cachés en loops
         grandes; sin él (cotizador, tests) resuelve todo al vuelo.
         """
+        # El landed va DENTRO de la MP y no como capa aparte: así lo recoge
+        # también la receta que consume el importado como componente, y la
+        # cascada del cotizador y del PDF sigue cuadrando sin cambios.
+        if import_factor is None:
+            import_factor = (ctx or {}).get('import_factor', 0.0)
         cache = cache if cache is not None \
             else (ctx['mp_cache'] if ctx else {})
         seen = seen if seen is not None else set()
@@ -660,7 +796,12 @@ class QbCostoProducto(models.Model):
                 twin = self.env['product.product'].search(
                     [('default_code', '=', ref[:-2].strip())], limit=1)
                 if twin:
-                    cost = self._mp_cost_unit(twin, cache, seen, ctx)
+                    cost = self._mp_cost_unit(twin, cache, seen, ctx,
+                                              import_factor)
+            # El AVCO de Odoo NO trae la aduana: el IGI, el DTA y el agente
+            # aduanal se postean directo a resultados, así que nunca entraron
+            # al costo del producto. Aquí se le suman.
+            cost *= 1.0 + import_factor
         else:
             std = product.standard_price or 0.0
             is_multi = self._has_multiple_boms(product, ctx)
@@ -677,13 +818,15 @@ class QbCostoProducto(models.Model):
                 # En vez de explotar una al azar (que colapsaría el costo),
                 # explota TODAS y toma la MÁS CARA — conservador para cotizar.
                 boms = self._applicable_boms(product)
-                costs = [self._explode_bom(b, product, cache, seen, ctx)
+                costs = [self._explode_bom(b, product, cache, seen, ctx,
+                                           import_factor)
                          for b in boms]
                 cost = max(costs) if costs else \
                     self._last_purchase_cost(product, pol_map)
             else:
                 bom = self.env['mrp.bom']._bom_find(product).get(product)
-                cost = self._explode_bom(bom, product, cache, seen, ctx) \
+                cost = self._explode_bom(bom, product, cache, seen, ctx,
+                                         import_factor) \
                     if bom else self._last_purchase_cost(product, pol_map)
         cache[product.id] = cost
         return cost
@@ -699,7 +842,8 @@ class QbCostoProducto(models.Model):
         ])
 
     @api.model
-    def _explode_bom(self, bom, product, cache, seen, ctx):
+    def _explode_bom(self, bom, product, cache, seen, ctx,
+                     import_factor=0.0):
         """Costo MP/unidad explotando UNA receta: Σ(qty × costo_hoja) ÷ salida.
         raise_if_failure=False evita que una conversión entre categorías de
         UoM (kg vs m) tumbe el costeo — deja la cantidad sin convertir."""
@@ -709,7 +853,8 @@ class QbCostoProducto(models.Model):
             qty = line.product_uom_id._compute_quantity(
                 line.product_qty, comp.uom_id, round=False,
                 raise_if_failure=False)
-            total += qty * self._mp_cost_unit(comp, cache, seen, ctx)
+            total += qty * self._mp_cost_unit(comp, cache, seen, ctx,
+                                              import_factor)
         bom_qty = bom.product_uom_id._compute_quantity(
             bom.product_qty, product.uom_id, round=False,
             raise_if_failure=False) or 1.0
@@ -893,7 +1038,7 @@ class QbCostoProducto(models.Model):
 
         Ruteo = self.env['qb.producto.ruteo']
         Peso = self.env['qb.producto.peso']
-        ctx = self._engine_ctx(product_ids)
+        ctx = self._engine_ctx(product_ids, factores)
         existing = {r.product_id.id: r for r in self.search(
             [('period', '=', period),
              ('company_id', '=', self.env.company.id)])}
@@ -999,6 +1144,10 @@ class QbCostoProducto(models.Model):
         revenue_divisa = venta.get('revenue_divisa', 0.0)
 
         mp = self._mp_cost_unit(product, ctx=ctx)
+        # Parte de la MP que es aduana (informativa: ya está dentro de mp).
+        f_imp = ctx.get('import_factor', 0.0)
+        importacion = (mp * f_imp / (1.0 + f_imp)
+                       if f_imp and self._es_importado(product, bucket) else 0.0)
         energia = 0.0 if bucket in ('importado', 'subproducto') \
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
@@ -1045,6 +1194,7 @@ class QbCostoProducto(models.Model):
             'tc_prom': (venta.get('revenue_mxn_divisa', 0.0)
                         / revenue_divisa) if revenue_divisa else 0.0,
             'mp_unit': mp,
+            'importacion_unit': importacion,
             'energia_unit': energia,
             'costo_variable': variable,
             'fab_unit': fab,
@@ -1052,6 +1202,7 @@ class QbCostoProducto(models.Model):
             'op_unit': op,
             'costo_absorbido': absorbido,
             'mp_total': mp * qty_efectiva,
+            'importacion_total': importacion * qty_efectiva,
             'energia_total': energia * qty_efectiva,
             'fab_total': fab * qty_efectiva,
             'op_total': op * qty_efectiva,
@@ -1145,7 +1296,8 @@ class QbCostoProducto(models.Model):
         peso_source = Peso.resolve_kg_source(product)
         m_per_kg = Peso.resolve_m_per_kg(product)
         is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
-        mp = self._mp_cost_unit(product)
+        mp = self._mp_cost_unit(
+            product, import_factor=factores.factor_importacion)
         energia = 0.0 if bucket in ('importado', 'subproducto') \
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
