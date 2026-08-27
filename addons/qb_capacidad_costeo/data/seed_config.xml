@@ -275,6 +275,12 @@
             <field name="bucket">no_costeo</field>
             <field name="notes">COGS contable AVCO: el módulo calcula MP desde BOM a último costo — no se toma del GL.</field>
         </record>
+        <record id="cc_mp_ajustes_merma" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">501.01.02%</field>
+            <field name="bucket">mp</field>
+            <field name="filtro_etiqueta">SP/</field>
+            <field name="notes">Ajustes a cantidad. La cuenta mezcla naturalezas: la merma real lleva etiqueta SP/ (el scrap de Odoo) y SÍ es costo del producto; los embarques (TL/EMB/), el encogimiento (TL/ENC/) y las entradas de refacciones (TVAR/ENT-REF/) son ajustes de cantidad y NO lo son. El filtro de etiqueta deja pasar solo la merma. Gana por patrón más largo sobre 501.01%.</field>
+        </record>
         <record id="cc_502_no" model="qb.costeo.cuenta.class">
             <field name="code_pattern">502%</field>
             <field name="bucket">no_costeo</field>

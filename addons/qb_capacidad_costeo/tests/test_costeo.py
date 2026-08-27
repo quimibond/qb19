@@ -2474,3 +2474,61 @@ class TestQbCosteo(TransactionCase):
         esperado = (ws * (f.utilizacion_kg_pct or 0.0)
                     + (1 - ws) * (f.utilizacion_m_pct or 0.0))
         self.assertAlmostEqual(f.utilizacion_pond_pct, esperado, places=4)
+
+    def test_filtro_de_etiqueta_deja_pasar_solo_la_merma(self):
+        """Una cuenta que mezcla naturalezas deja pasar al pool solo las
+        líneas cuyo concepto lo diga.
+
+        `501.01.02 COSTO POR AJUSTES A CANTIDAD` junta la merma real
+        —etiquetada `SP/`, el scrap de Odoo— con embarques (`TL/EMB/`),
+        encogimiento (`TL/ENC/`) y entradas de refacciones (`TVAR/ENT-REF/`).
+        Solo la merma es costo del producto; los ajustes de cantidad no.
+
+        Sin el filtro, un asiento de regularización de $5,822,686 en diciembre
+        de 2025 —1,136 scraps sin asiento, revueltos con ajustes— entraba
+        entero al ajuste de MP y subía el costo de materia prima de TODOS los
+        productos.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mes = date(2027, 7, 1)
+
+        cuenta = Account.create({
+            'name': 'AJUSTES A CANTIDAD TEST', 'code': 'QBSP.0001',
+            'account_type': 'expense_direct_cost'})
+        contra = Account.create({'name': 'CONTRA SP TEST', 'code': 'QBSP.0009',
+                                 'account_type': 'expense'})
+        clase = Clase.create({'account_id': cuenta.id, 'bucket': 'mp'})
+
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': mes,
+            'line_ids': [
+                (0, 0, {'account_id': cuenta.id, 'debit': 30000.0,
+                        'name': 'SP/10758 - TC210X5.2X0.2X 3.99'}),
+                (0, 0, {'account_id': cuenta.id, 'debit': 70000.0,
+                        'name': 'TL/EMB/04840 - Entretela no tejida'}),
+                (0, 0, {'account_id': cuenta.id, 'debit': 50000.0,
+                        'name': 'TL/ENC//00103 - TEJIDO CIRCULAR'}),
+                (0, 0, {'account_id': contra.id, 'credit': 150000.0}),
+            ]}).action_post()
+
+        ventana = (mes, mes + relativedelta(months=1))
+        sin_filtro = self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0)
+        self.assertAlmostEqual(sin_filtro, 150000.0, places=2,
+                               msg='sin filtro entra la cuenta completa')
+
+        clase.filtro_etiqueta = 'SP/'
+        con_filtro = self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0)
+        self.assertAlmostEqual(
+            con_filtro, 30000.0, places=2,
+            msg='con filtro entra solo la merma, no los ajustes')
+
+        # Vaciarlo lo apaga: el filtro es opt-in, no un default escondido
+        clase.filtro_etiqueta = False
+        self.assertAlmostEqual(
+            self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0),
+            150000.0, places=2)

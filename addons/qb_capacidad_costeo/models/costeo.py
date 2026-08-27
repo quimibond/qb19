@@ -575,6 +575,13 @@ class QbCostoProducto(models.Model):
               AND aml.date >= %%s AND aml.date < %%s
               AND aml.company_id = %%s
               AND {CIERRE}
+              -- Filtro de LÍNEA: una cuenta que mezcla naturalezas deja
+              -- pasar solo las líneas cuyo concepto lo diga. Hoy:
+              -- `501.01.02` solo cuenta con `SP/`, que es la merma real;
+              -- los embarques y el encogimiento son ajustes, no costo.
+              AND (m.filtro_etiqueta = ''
+                   OR position(m.filtro_etiqueta in
+                               coalesce(aml.name, '')) > 0)
         """.replace('{CIERRE}', EXCLUIR_CIERRE_SQL) % CUENTA_MAP_SQL
         params = [tuple(buckets), date_from, date_to, self.env.company.id]
         if es_variable is not None:

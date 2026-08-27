@@ -69,6 +69,7 @@ CUENTA_MAP_SQL = """
         c.bucket,
         c.es_variable,
         COALESCE(c.es_renta, FALSE) AS es_renta,
+        COALESCE(c.filtro_etiqueta, '') AS filtro_etiqueta,
         c.centro_id,
         c.driver,
         COALESCE(c.allocation_pct, 100.0) AS allocation_pct,
@@ -99,6 +100,7 @@ class QbCosteoCuentaMap(models.Model):
     bucket = fields.Char(readonly=True)
     es_variable = fields.Boolean(readonly=True)
     es_renta = fields.Boolean(readonly=True)
+    filtro_etiqueta = fields.Char(readonly=True)
     centro_id = fields.Many2one('qb.costeo.centro', readonly=True)
     driver = fields.Char(readonly=True)
     allocation_pct = fields.Float(readonly=True)
@@ -113,6 +115,7 @@ class QbCosteoCuentaMap(models.Model):
                    m.bucket,
                    m.es_variable,
                    m.es_renta,
+                   m.filtro_etiqueta,
                    m.centro_id,
                    m.driver,
                    m.allocation_pct,
