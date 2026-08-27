@@ -1,6 +1,7 @@
 # Revisión del costeo — qb_capacidad_costeo
 
 **Fecha:** agosto 2026 · **Compañía:** PRODUCTORA DE NO TEJIDOS QUIMIBOND (id 1)
+**Estado:** los cinco hallazgos prioritarios están arreglados — ver § 3.5
 **Datos:** mayor posteado de Odoo (ene–ago 2026) contra `qb.costo.producto`
 y `qb.costo.factores` de los mismos meses.
 
@@ -197,6 +198,39 @@ precio de largo plazo sin un ajuste explícito.
 
 ---
 
+## 3.5 Estado de cada hallazgo
+
+| # | Hallazgo | $/mes | Estado |
+|---|---|---:|---|
+| 1 | Renta de planta excluida y no reintegrada | 356,935 | **Arreglado** (v19.0.1.10.0) |
+| 2 | Gastos e impuestos de importación sin dueño | 963,597 | **Arreglado** (v19.0.1.11.0) |
+| 3 | MP de receta sin conciliar contra el costo primo | ~1,014,605 | **Arreglado** (v19.0.1.12.0) |
+| 4 | Ociosidad cargada al producto | — | **Arreglado** (v19.0.1.13.0) |
+| 5 | El costo depende del precio | — | **Arreglado** (v19.0.1.14.0) |
+| 6 | Ajustes de inventario y conteo sin cargar | 494,605 | **Arreglado**: entran por el bucket `mp` (v19.0.1.12.0) |
+| 7 | Sobre-absorción de fabricación (80–117%) | ~946,456 | **Mitigado**: el denominador de capacidad normal la estabiliza; lo que no se absorbe queda medido en `fab_ocioso_month` |
+| 8 | Dedup que parte a la mitad dos rollos iguales | — | **Arreglado** (v19.0.1.15.0) |
+| 9 | Receta con atributos que carga de más | — | **Arreglado** (v19.0.1.15.0) |
+| 10 | Denominador sin filtro de compañía | — | **Arreglado** (v19.0.1.10.0) |
+| 11 | Energía $/kg sobre capacidad en vez de producción | — | **Arreglado** (v19.0.1.13.0) |
+| 12 | Fabricación repartida por planta, no por ruta | — | **Pendiente, bloqueado por datos** |
+| 13 | Centros sin throughput nominal | — | **Medido**: el panel los lista |
+| 14 | Depreciación a costo histórico | — | **No es un error**: nota para el piso de largo plazo |
+
+### El único bloqueado: costear por ruta
+
+El reparto 67/33 entre kilos y metros es de planta, así que un producto que se
+vende crudo paga acabado. La información de ruta ya existe (cada
+`mrp.production` tiene sus workorders con su workcenter), pero **repartir por
+ruta exige que el gasto fabril esté asignado a un centro de costo**, y hoy casi
+todo el pool está clasificado sin centro: solo agua va a Tintorería, gas a
+Acabado y energéticos a Tejido.
+
+Implementarlo ahora dejaría la mayor parte del pool sin repartir y rompería el
+costo. Por eso este cambio no lo implementa: agrega
+`fab_pool_con_centro_pct` a los factores, que mide exactamente cuánto falta.
+Cuando esa cifra suba, el costeo por ruta se vuelve un cambio mecánico.
+
 ## 4. Qué se hizo en este cambio
 
 Nada de lo anterior se puede arreglar a ciegas: primero hay que **ver** la
@@ -248,18 +282,26 @@ sirve como piso de precio.
 
 ---
 
-## 5. Qué sigue (en orden de impacto)
+## 5. Qué sigue
 
-1. **Landed cost de importados.** Clasificar 502.03.xx y 504.01.0035 y
-   repartirlos sobre el valor importado. Cierra $963,597/mes de fuga y
-   corrige el producto que hoy se ve más barato de lo que es.
-2. **Conciliar la MP contra 501.01.01.** Comparar mes a mes la MP explotada
-   contra el costo primo consumido y aplicar el factor de ajuste (merma +
-   variación de precio) al costo unitario. Cierra el +$1.0M/mes.
-3. **Capturar `capacidad_normal` por centro** y dividir el pool fijo entre
-   ella, mandando la ociosidad al P&L. Estabiliza el costo unitario y alinea
-   el motor con la vista de ociosidad y con el README.
-4. **Sacar el precio del costo.** Repartir operación por un driver (kg
-   vendidos, pedidos, líneas) en vez de % del precio.
-5. **Costear por ruta real** usando los workorders que ya existen, en lugar
-   del split 67/33 de planta.
+Los cinco puntos prioritarios de la primera versión de este documento ya están
+implementados (ver § 3.5). Lo que queda:
+
+1. **Verificar la conciliación después de desplegar.** Cada arreglo mueve la
+   brecha; el número que debe tender a cero es **Brecha sin ociosidad**. Si
+   algún factor quedó fuera de su banda de cordura, el log lo dice y el panel
+   lo marca.
+2. **Revisar las cuentas de aduana que el panel liste como mal ubicadas.** La
+   migración solo movió las que estaban fuera de costeo; una cuenta de
+   importación clasificada en `operacion` se sigue prorrateando sobre TODAS
+   las ventas —incluidas las de producto nacional— y moverla es decisión del
+   usuario.
+3. **Capturar el throughput nominal** de tintorería, entretelas e inspección.
+   Hoy quedan fuera de la contribución por hora-máquina, así que el ranking
+   mide el centro equivocado cuando el cuello real está en uno de ellos.
+4. **Asignar el gasto fabril a centros de costo.** Es el prerrequisito del
+   costeo por ruta; `fab_pool_con_centro_pct` mide el avance.
+5. **Decidir si el costo absorbido sirve como piso de largo plazo.** La
+   depreciación de maquinaria ($79,334/mes para 37 máquinas de tejido
+   circular) es costo histórico sobre equipo casi totalmente depreciado. No es
+   un error contable, pero el costo no está reservando la reposición.
