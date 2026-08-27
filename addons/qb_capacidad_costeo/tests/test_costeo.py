@@ -958,6 +958,123 @@ class TestQbCosteo(TransactionCase):
             self.assertGreaterEqual(
                 r.margen_bruto_12m + 0.01, r.margen_neto_12m)
 
+    def _ventana(self, period, window=12):
+        return (period + relativedelta(months=1) - relativedelta(months=window),
+                period + relativedelta(months=1))
+
+    def test_mp_ajuste_inerte_sin_cuentas_clasificadas(self):
+        """Sin cuentas en el bucket «mp» no hay contra qué conciliar: el
+        ajuste vale 1.0 y el costo no se mueve. El ajuste solo existe cuando
+        hay un número duro del mayor enfrente."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Clase.search([('bucket', '=', 'mp')]).write({'active': False})
+        period = date.today().replace(day=1)
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        gl, modelada, factor = self.Costo._mp_ajuste(
+            *self._ventana(period), ctx)
+        self.assertEqual((gl, modelada, factor), (0.0, 0.0, 1.0))
+
+    def test_mp_ajuste_es_el_cociente_y_respeta_la_banda(self):
+        """El factor es MP consumida ÷ MP modelada, y se recorta a la banda
+        de cordura: un factor disparado casi siempre significa una cuenta mal
+        clasificada, no una receta equivocada por 3×."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date.today().replace(day=1)
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        cuenta_mp = Account.create({
+            'name': 'COSTO PRIMO TEST', 'code': 'QBMP.0001',
+            'account_type': 'expense_direct_cost'})
+        contra = Account.create({
+            'name': 'CONTRA TEST', 'code': 'QBMP.0002',
+            'account_type': 'expense'})
+        Clase.create({'account_id': cuenta_mp.id, 'bucket': 'mp'})
+        # Un monto absurdo contra la MP modelada: debe recortarse, no pasar
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': cuenta_mp.id, 'debit': 99000000.0,
+                        'credit': 0.0}),
+                (0, 0, {'account_id': contra.id, 'debit': 0.0,
+                        'credit': 99000000.0}),
+            ]}).action_post()
+
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        gl, modelada, factor = self.Costo._mp_ajuste(
+            *self._ventana(period), ctx)
+        f_max = self.env['qb.costeo.factor.config'].get_param(
+            'mp_ajuste_max', 1.5) or 1.5
+        if modelada > 0:
+            self.assertEqual(factor, f_max,
+                             'un cociente disparado debe recortarse a la banda')
+            # gl y modelada se devuelven sobre el MISMO conjunto de meses, así
+            # que su cociente es el factor SIN recortar
+            self.assertGreater(gl / modelada, f_max)
+        else:
+            # Sin ventas en la ventana no hay con qué comparar
+            self.assertEqual(factor, 1.0)
+
+    def test_mp_ajuste_solo_toca_al_nacional(self):
+        """El ajuste acerca la receta al consumo real de la planta. El
+        importado no consume materia prima de la planta (su MP es precio de
+        compra más aduana) y el subproducto tiene MP $0: ninguno se escala."""
+        period = date(2027, 5, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+            'mp_ajuste': 0.80})
+        ctx = self.Costo._engine_ctx(
+            [self.tela.id, self.importado.id, self.saldo.id], factores)
+
+        base_tela = self.Costo._mp_cost_unit(self.tela, ctx=ctx)
+        vals, _f = self.Costo._compute_product_vals(
+            self.tela, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(vals['mp_unit'], base_tela * 0.80, places=4)
+
+        vals_imp, _f = self.Costo._compute_product_vals(
+            self.importado, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(
+            vals_imp['mp_unit'], self.importado.standard_price, places=4,
+            msg='el importado no se ajusta contra el costo primo de la planta')
+
+        vals_sub, _f = self.Costo._compute_product_vals(
+            self.saldo, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertEqual(vals_sub['mp_unit'], 0.0)
+
+    def test_reconocedor_de_cuentas_de_materia_prima(self):
+        """Reconoce consumo, no inventario: 'INVENTARIO DE MATERIA PRIMA' es
+        un activo y matchea el patrón, pero no es consumo — meterlo al bucket
+        falsearía la conciliación."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+
+        def cuenta(name, code, tipo='expense_direct_cost'):
+            return Account.create({'name': name, 'code': code,
+                                   'account_type': tipo})
+
+        self.assertTrue(Clase._es_cuenta_de_materia_prima(
+            cuenta('COSTO PRIMO TEST', 'QBR.0001')))
+        self.assertTrue(Clase._es_cuenta_de_materia_prima(
+            cuenta('COSTO POR AJUSTES A CANTIDAD TEST', 'QBR.0002')))
+        self.assertTrue(Clase._es_cuenta_de_materia_prima(
+            cuenta('DIFERENCIAS POR CONTEO TEST', 'QBR.0003')))
+        self.assertFalse(Clase._es_cuenta_de_materia_prima(
+            cuenta('INVENTARIO DE MATERIA PRIMA TEST', 'QBR.0004',
+                   tipo='asset_current')),
+            'el inventario es un activo, no consumo')
+        self.assertFalse(Clase._es_cuenta_de_materia_prima(
+            cuenta('SUELDOS Y SALARIOS TEST', 'QBR.0005')))
+
+        fuera = Clase.create({
+            'account_id': cuenta('COSTO PRIMO MOVER TEST', 'QBR.0006').id,
+            'bucket': 'no_costeo'})
+        Clase.reclasificar_cuentas_de_materia_prima()
+        self.assertEqual(fuera.bucket, 'mp')
+
     def test_importacion_entra_al_costo_del_importado(self):
         """Los impuestos y gastos de aduana se cargan al valor importado.
 

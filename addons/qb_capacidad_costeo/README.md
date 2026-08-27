@@ -49,6 +49,10 @@ su lógica ni su versión de manifest.
 
 ```
 MP/u        = explosión recursiva de BOM al ÚLTIMO costo de compra (fallback avg)
+              × mp_ajuste  (= costo primo del mayor ÷ MP modelada de lo
+                vendido, misma ventana). La receta no lleva merma ni
+                rendimiento real ni variación de precio; el mayor sí. Solo
+                aplica a producto nacional, con banda de cordura [0.5, 1.5]
               importados (' I') = costo de compra × (1 + factor_importacion),
                 factor = pool de aduana ÷ valor comprado de importado. El AVCO
                 de Odoo NO trae IGI/DTA/PRV ni agente aduanal: se postean
@@ -122,7 +126,10 @@ por correo.
 - Importación: IGI, DTA, PRV, agente aduanal y flete van al bucket
   `importacion` y se reparten sobre el **valor de compra de lo importado**
   (que es lo que los causa), no sobre las ventas ni fuera de costeo.
-- MP: último costo de compra por hoja de BOM, convertido a MXN al FX de la compra.
+- MP: último costo de compra por hoja de BOM, convertido a MXN al FX de la
+  compra, y conciliada contra el costo primo del mayor (bucket `mp`, que
+  incluye los ajustes de inventario: ahí vive la merma que la receta no
+  lleva). Sin cuentas en ese bucket el ajuste es 1.0 y no pasa nada.
 - Capacidad: `resource.calendar` real × `time_efficiency` — nunca 24/7 asumido.
 
 ## Configuración automática desde Supabase (cero manual)
@@ -202,6 +209,8 @@ arreglar) está en **`docs/COSTEO_REVISION.md`**.
 - La renta contractual de un centro fabril mueve el pool en exactamente esa
   cantidad; el reconocedor distingue renta de inmueble de arrendamiento de
   maquinaria (tests).
+- El ajuste de MP es exactamente el cociente GL ÷ modelada, se recorta a la
+  banda, y solo toca al producto nacional (tests).
 - La aduana entra DENTRO de la MP del importado y no toca al nacional;
   `importacion_unit` es informativo y la identidad de capas sigue intacta
   (tests).

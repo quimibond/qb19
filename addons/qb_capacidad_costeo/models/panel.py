@@ -126,6 +126,23 @@ class QbCosteoPanel(models.TransientModel):
                 'importación» — si importas, esos impuestos y fletes no los '
                 'está pagando ningún producto'))
 
+        # 5.7 MP: ¿hay contra qué conciliar la receta?
+        n_mp = Clase.search_count([('bucket', '=', 'mp')])
+        if not n_mp:
+            checks.append((
+                WARN, 'Conciliación de materia prima',
+                'ninguna cuenta en el bucket «Materia prima» — la MP de '
+                'receta no se está comparando contra el costo primo del '
+                'mayor, así que la merma y la variación de precio no entran '
+                'al costo'))
+        else:
+            ajuste = env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1).mp_ajuste or 1.0
+            checks.append((
+                OK, 'Conciliación de materia prima',
+                '%s cuentas de costo primo; ajuste vigente ×%.3f '
+                '(receta → consumo real)' % (n_mp, ajuste)))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:

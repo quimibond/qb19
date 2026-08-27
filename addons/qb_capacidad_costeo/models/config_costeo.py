@@ -260,10 +260,22 @@ class QbCosteoCuentaClass(models.Model):
         r'IMPORTACION|IMPORTACIÓN|\bIGI\b|\bDTA\b|\bPRV\b'
         r'|AGENTE ADUANAL|PEDIMENTO')
 
+    # Cuentas de RESULTADOS: los reconocedores por nombre solo deben mover
+    # cuentas de gasto. 'INVENTARIO DE MATERIA PRIMA' es un activo y matchea
+    # el patrón de MP, pero no es consumo — meterlo al bucket falsearía la
+    # conciliación.
+    _EXPENSE_TYPES = ('expense', 'expense_depreciation', 'expense_direct_cost')
+
+    @api.model
+    def _es_cuenta_de_resultados(self, account):
+        return account.account_type in self._EXPENSE_TYPES
+
     @api.model
     def _es_cuenta_de_importacion(self, account):
         """¿La cuenta lleva gasto o impuesto de importación? Se reparte sobre
         el valor de lo importado, no sobre las ventas."""
+        if not self._es_cuenta_de_resultados(account):
+            return False
         nombre = ((account.name or '') + ' ' + (account.code or '')).upper()
         if 'EXPORTACION' in nombre or 'EXPORTACIÓN' in nombre:
             return False
@@ -289,6 +301,43 @@ class QbCosteoCuentaClass(models.Model):
             _logger.info('qb_capacidad_costeo: %s cuentas de importación '
                          'movidas de no_costeo a importacion: %s',
                          len(movidas), ', '.join(movidas.mapped('name')))
+        return movidas
+
+    # Materia prima realmente consumida: el costo primo del mayor más los
+    # ajustes de inventario (la merma que la receta no lleva). Es el número
+    # contra el que se concilia la MP de receta.
+    _MP_RE = re.compile(
+        r'COSTO PRIMO|MATERIA PRIMA|AJUSTES? A CANTIDAD'
+        r'|DIFERENCIAS? POR CONTEO|AJUSTE DE INVENTARIO')
+
+    @api.model
+    def _es_cuenta_de_materia_prima(self, account):
+        """¿La cuenta lleva el consumo real de materia prima?"""
+        if not self._es_cuenta_de_resultados(account):
+            return False
+        nombre = ((account.name or '') + ' ' + (account.code or '')).upper()
+        return bool(self._MP_RE.search(nombre))
+
+    @api.model
+    def reclasificar_cuentas_de_materia_prima(self):
+        """Mueve al bucket `mp` las cuentas de costo primo que hoy están
+        FUERA de costeo.
+
+        Igual que con importación, solo toca `no_costeo`: hoy aportan cero.
+        Y el bucket `mp` no se suma a ningún pool — es únicamente el número
+        contra el que se concilia la MP de receta, así que moverlas ahí no
+        puede inflar ningún costo; lo único que hace es destapar el ajuste.
+        Idempotente."""
+        movidas = self.browse()
+        for rec in self.with_context(active_test=False).search(
+                [('bucket', '=', 'no_costeo')]):
+            if any(self._es_cuenta_de_materia_prima(a) for a in rec.account_ids):
+                movidas |= rec
+        if movidas:
+            movidas.bucket = 'mp'
+            _logger.info('qb_capacidad_costeo: %s cuentas de materia prima '
+                         'movidas de no_costeo a mp: %s', len(movidas),
+                         ', '.join(movidas.mapped('name')))
         return movidas
 
     @api.model

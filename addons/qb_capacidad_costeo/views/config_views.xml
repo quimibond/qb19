@@ -220,6 +220,9 @@
                      las cuentas de renta estén marcadas «es renta». -->
                 <field name="renta_contractual_pool" optional="show"/>
                 <field name="renta_gl_sustituida" optional="show"/>
+                <field name="mp_gl_month" optional="show"/>
+                <field name="mp_modelada_month" optional="show"/>
+                <field name="mp_ajuste" optional="show"/>
                 <field name="kg_denom_month"/>
                 <field name="m_denom_month"/>
                 <field name="factor_fab_kg"/>

@@ -58,6 +58,22 @@ class QbCostoFactores(models.Model):
              'promedio suavizado, sin la parte de entretelas.')
     energia_pool_month = fields.Float(string='Pool energía/mes')
     op_pool_month = fields.Float(string='Pool operación/mes')
+    mp_gl_month = fields.Float(
+        string='MP consumida/mes (mayor)',
+        help='Costo primo más ajustes de inventario del mayor: la materia '
+             'prima que la planta REALMENTE consumió. Sale de las cuentas '
+             'clasificadas en el bucket «Materia prima».')
+    mp_modelada_month = fields.Float(
+        string='MP modelada/mes (receta)',
+        help='Σ (MP de receta × cantidad vendida) de producto nacional, en la '
+             'misma ventana. Es lo que el motor le cobra a los productos '
+             'antes del ajuste.')
+    mp_ajuste = fields.Float(
+        string='Ajuste de MP', digits=(16, 6), default=1.0,
+        help='MP consumida ÷ MP modelada. Acerca la receta al último precio '
+             'de compra (un costo de reposición teórico, sin merma ni '
+             'rendimiento real) a lo que de verdad se consumió. 1.0 = no hay '
+             'nada que conciliar (bucket «mp» vacío) o ya cuadran.')
     importacion_pool_month = fields.Float(
         string='Pool importación/mes',
         help='Gastos e impuestos de importación (IGI, DTA, PRV, agente '
@@ -589,6 +605,136 @@ class QbCostoProducto(models.Model):
         return Factores.create(vals)
 
     # ------------------------------------------------------------------
+    # Ajuste de MP: receta teórica vs. materia prima realmente consumida
+    # ------------------------------------------------------------------
+    @api.model
+    def _sales_qty_by_month(self, date_from, date_to):
+        """{(mes, product_id): qty} vendida, con el mismo dedup del triplete
+        que usa `_sales_by_product`.
+
+        Una sola query para TODA la ventana: el ajuste de MP necesita doce
+        meses, y hacer doce consultas por recálculo no escala — un
+        `action_recompute_year` haría ciento cuarenta y cuatro.
+        """
+        self.env.cr.execute("""
+            WITH lines AS (
+                SELECT aml.move_id, aml.product_id, aml.quantity,
+                       am.move_type,
+                       date_trunc('month', am.invoice_date)::date AS mes
+                FROM account_move_line aml
+                JOIN account_move am ON am.id = aml.move_id
+                JOIN account_account aa ON aa.id = aml.account_id
+                WHERE am.move_type IN ('out_invoice', 'out_refund')
+                  AND am.state = 'posted'
+                  AND aml.display_type = 'product'
+                  AND aml.product_id IS NOT NULL
+                  AND aa.account_type = 'income'
+                  AND am.invoice_date >= %s AND am.invoice_date < %s
+                  AND aml.company_id = %s
+            ),
+            dedup AS (
+                SELECT DISTINCT ON (move_id, product_id, ABS(quantity))
+                       mes, product_id, quantity, move_type
+                FROM lines
+                ORDER BY move_id, product_id, ABS(quantity)
+            )
+            SELECT mes, product_id,
+                   SUM(CASE WHEN move_type = 'out_refund'
+                            THEN -quantity ELSE quantity END)
+            FROM dedup
+            GROUP BY 1, 2
+        """, (date_from, date_to, self.env.company.id))
+        return {(mes, pid): qty or 0.0
+                for mes, pid, qty in self.env.cr.fetchall()}
+
+    @api.model
+    def _mp_ajuste(self, date_from, date_to, ctx):
+        """Factor que acerca la MP de receta a la MP realmente consumida.
+
+        Devuelve `(gl_mes, modelada_mes, factor)`.
+
+        La MP del motor es la receta explotada al ÚLTIMO precio de compra: un
+        costo de reposición teórico. No lleva merma, ni rendimiento real, ni
+        la variación entre ese último precio y lo que de verdad se pagó. La
+        contabilidad sí sabe cuánta materia prima se consumió — es el costo
+        primo, más los ajustes de inventario. El cociente entre las dos es el
+        factor.
+
+        Ambos lados se suman sobre la MISMA ventana antes de dividir, no se
+        promedian por separado: una ventana con meses de venta desigual daría
+        un factor sesgado hacia los meses flojos.
+
+        El factor NO se aplica a los importados: su MP es el precio de compra
+        más aduana, no materia prima que la planta consuma, y meterla al
+        cociente contaminaría las dos partes.
+
+        Factor 1.0 (inerte) si no hay cuentas clasificadas en el bucket
+        `mp` — el ajuste solo existe cuando hay contra qué conciliar.
+
+        Aproximación conocida: la MP modelada usa la receta y el último precio
+        de compra de HOY sobre las ventas de los doce meses, mientras el GL es
+        histórico. Es la misma convención que usa todo el motor (el costo se
+        expresa a precios de reposición), y por eso el factor se lee como
+        "cuánto se desvía la receta del consumo real", no como una
+        reexpresión contable de cada mes.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        gl_by_month = self._pool_by_month(('mp',), date_from, date_to)
+        if not gl_by_month:
+            return 0.0, 0.0, 1.0
+
+        qty_by_month = self._sales_qty_by_month(date_from, date_to)
+        Ruteo = self.env['qb.producto.ruteo']
+        rules = ctx['rules']
+        Product = self.env['product.product']
+        products = {p.id: p for p in Product.browse(
+            list({pid for _mes, pid in qty_by_month})).exists()}
+        modelada_by_month = {}
+        nacional = {}
+        for (mes, pid), qty in qty_by_month.items():
+            if qty <= 0:
+                continue
+            product = products.get(pid)
+            if product is None:
+                continue
+            es_nac = nacional.get(pid)
+            if es_nac is None:
+                bucket, _centros = Ruteo.resolve(product, rules)
+                es_nac = not self._es_importado(product, bucket) \
+                    and bucket != 'subproducto'
+                nacional[pid] = es_nac
+            if not es_nac:
+                continue
+            mp = self._mp_cost_unit(product, ctx=ctx)
+            modelada_by_month[mes] = modelada_by_month.get(mes, 0.0) + mp * qty
+
+        # Solo los meses con dato de los DOS lados: un mes sin póliza de costo
+        # primo (o sin ventas) sesgaría el cociente.
+        meses = [m for m in gl_by_month
+                 if gl_by_month[m] > 0 and modelada_by_month.get(m, 0.0) > 0]
+        if not meses:
+            return 0.0, 0.0, 1.0
+        gl = sum(gl_by_month[m] for m in meses)
+        modelada = sum(modelada_by_month[m] for m in meses)
+        factor = (Config.get_param('mp_ajuste_override', 0.0)
+                  or (gl / modelada if modelada else 1.0))
+
+        # Banda de cordura: un factor disparado casi siempre significa una
+        # cuenta mal clasificada en el bucket `mp`, no que la receta esté
+        # equivocada por 3×. Se recorta y se loggea en vez de reescribir todos
+        # los costos en silencio.
+        f_min = Config.get_param('mp_ajuste_min', 0.5) or 0.5
+        f_max = Config.get_param('mp_ajuste_max', 1.5) or 1.5
+        if not f_min <= factor <= f_max:
+            _logger.warning(
+                'qb.costo.factores: ajuste de MP %.4f fuera de la banda '
+                '[%.2f, %.2f] (GL %.2f ÷ modelada %.2f en %s meses). Se '
+                'recorta — revisa qué cuentas están en el bucket «mp».',
+                factor, f_min, f_max, gl, modelada, len(meses))
+            factor = min(max(factor, f_min), f_max)
+        return gl / len(meses), modelada / len(meses), factor
+
+    # ------------------------------------------------------------------
     # Base de importación: valor comprado de producto importado
     # ------------------------------------------------------------------
     @api.model
@@ -1039,6 +1185,18 @@ class QbCostoProducto(models.Model):
         Ruteo = self.env['qb.producto.ruteo']
         Peso = self.env['qb.producto.peso']
         ctx = self._engine_ctx(product_ids, factores)
+
+        # El ajuste de MP necesita el caché de costos ya caliente, así que se
+        # resuelve DESPUÉS del contexto y antes del loop. Compara la receta
+        # contra el costo primo del mayor sobre la misma ventana de suavizado.
+        window = factores.window_months or 12
+        win_to = period + relativedelta(months=1)
+        win_from = win_to - relativedelta(months=window)
+        mp_gl, mp_modelada, mp_ajuste = self._mp_ajuste(win_from, win_to, ctx)
+        factores.write({'mp_gl_month': mp_gl,
+                        'mp_modelada_month': mp_modelada,
+                        'mp_ajuste': mp_ajuste})
+
         existing = {r.product_id.id: r for r in self.search(
             [('period', '=', period),
              ('company_id', '=', self.env.company.id)])}
@@ -1144,10 +1302,16 @@ class QbCostoProducto(models.Model):
         revenue_divisa = venta.get('revenue_divisa', 0.0)
 
         mp = self._mp_cost_unit(product, ctx=ctx)
+        es_importado = self._es_importado(product, bucket)
+        # Ajuste de MP: acerca la receta teórica a la materia prima que de
+        # verdad se consumió. NO aplica a importados — su MP es precio de
+        # compra más aduana, no materia prima que la planta consuma.
+        if not es_importado and bucket != 'subproducto':
+            mp *= factores.mp_ajuste or 1.0
         # Parte de la MP que es aduana (informativa: ya está dentro de mp).
         f_imp = ctx.get('import_factor', 0.0)
         importacion = (mp * f_imp / (1.0 + f_imp)
-                       if f_imp and self._es_importado(product, bucket) else 0.0)
+                       if f_imp and es_importado else 0.0)
         energia = 0.0 if bucket in ('importado', 'subproducto') \
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
@@ -1298,6 +1462,8 @@ class QbCostoProducto(models.Model):
         is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
         mp = self._mp_cost_unit(
             product, import_factor=factores.factor_importacion)
+        if not self._es_importado(product, bucket) and bucket != 'subproducto':
+            mp *= factores.mp_ajuste or 1.0
         energia = 0.0 if bucket in ('importado', 'subproducto') \
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
