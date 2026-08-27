@@ -273,20 +273,77 @@ class QbCosteoCuentaClass(models.Model):
         return not any(t in nombre for t in self._RENTA_EXCLUDE)
 
     @api.model
+    def _clase_es_de_renta(self, rec):
+        """¿ESTA clasificación es, entera, renta de inmueble?
+
+        La bandera vive en la CLASE, no en la cuenta, y el motor saca del
+        pool TODO lo que la clase abarca. Así que solo puede marcarse cuando
+        la clase entera es renta: basta con que un patrón amplio arrastre una
+        cuenta de renta entre cuarenta de overhead para que marcarlo saque las
+        cuarenta.
+
+        Es exactamente lo que pasó: `504.01%` incluye a `504.01.0008 RENTA DEL
+        LOCAL`, y `701.11%` a `701.11.0001 ARRENDAMIENTO FINANCIERO`. Con la
+        regla vieja —marcar si ALGUNA cuenta era renta— quedaron marcadas 38
+        cuentas fabriles, de las cuales una sola era renta de inmueble. El
+        motor sacaba del pool $1,534,140/mes que nada reponía: mantenimientos
+        de fábrica, herramientas, uniformes, ISO y el arrendamiento de la
+        maquinaria con la que se produce.
+
+        Cuando un patrón amplio contiene una cuenta de renta, la salida
+        correcta es darle a ESA cuenta su propia clasificación específica
+        (gana por ser más específica, ver CUENTA_MAP_SQL) y marcar esa. El
+        panel lo avisa.
+        """
+        if rec.bucket == 'arrend_maquinaria':
+            # El arrendamiento de maquinaria es costo de producción: no hay
+            # renta contractual de centro que lo sustituya, así que sacarlo
+            # del pool es quitarlo y ya. El nombre de la cuenta puede decir
+            # solo «ARRENDAMIENTO FINANCIERO» y matchear el reconocedor.
+            return False
+        cuentas = rec.account_ids
+        return bool(cuentas) and all(
+            self._es_cuenta_de_renta(a) for a in cuentas)
+
+    @api.model
+    def clases_con_renta_mezclada(self):
+        """Clases NO marcadas que abarcan alguna cuenta de renta de inmueble
+        junto a cuentas que no lo son, estando en un bucket fabril. Ahí la
+        renta del GL se cuela al pool y se cuenta dos veces con la contractual,
+        pero marcar la clase entera sería peor: hay que separar la cuenta."""
+        return self.with_context(active_test=False).search([
+            ('es_renta', '=', False),
+            ('bucket', 'in', ('mod', 'overhead_fab', 'depreciacion')),
+        ]).filtered(lambda c: any(
+            self._es_cuenta_de_renta(a) for a in c.account_ids))
+
+    @api.model
     def marcar_cuentas_de_renta(self):
-        """Marca `es_renta` en las clasificaciones cuyas cuentas son renta de
-        inmueble. Sin esta bandera el motor cuenta la renta dos veces: una por
-        el GL y otra por el contrato del centro. Idempotente."""
+        """Sincroniza `es_renta` con lo que las clasificaciones abarcan hoy.
+
+        Sin esta bandera el motor cuenta la renta dos veces: una por el GL y
+        otra por el contrato del centro. Con ella de más, saca del pool gasto
+        fabril que nada repone. Marca Y DESMARCA, para que corra la regla
+        vigente y no quede colgado un marcado de una regla anterior.
+        Idempotente."""
         marcadas = self.browse()
-        for rec in self.with_context(active_test=False).search(
-                [('es_renta', '=', False)]):
-            if any(self._es_cuenta_de_renta(a) for a in rec.account_ids):
-                marcadas |= rec
+        desmarcadas = self.browse()
+        for rec in self.with_context(active_test=False).search([]):
+            if self._clase_es_de_renta(rec):
+                if not rec.es_renta:
+                    marcadas |= rec
+            elif rec.es_renta:
+                desmarcadas |= rec
         if marcadas:
             marcadas.es_renta = True
             _logger.info('qb_capacidad_costeo: %s clasificaciones marcadas '
                          'como renta de inmueble: %s', len(marcadas),
                          ', '.join(marcadas.mapped('name')))
+        if desmarcadas:
+            desmarcadas.es_renta = False
+            _logger.info('qb_capacidad_costeo: %s clasificaciones DESmarcadas '
+                         '(no son renta de inmueble entera): %s',
+                         len(desmarcadas), ', '.join(desmarcadas.mapped('name')))
         return marcadas
 
     def action_marcar_rentas(self):

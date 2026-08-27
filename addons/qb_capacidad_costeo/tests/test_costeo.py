@@ -2173,3 +2173,84 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(d['margen_absorbido'], 0.0)
         self.assertEqual(d['costo_absorbido_total'], 0.0)
         self.assertAlmostEqual(d['margen_neto_total'], -242363.52, places=2)
+
+    def test_patron_amplio_con_una_renta_dentro_no_se_marca(self):
+        """Una clase de PATRÓN que abarca una cuenta de renta entre muchas
+        que no lo son NO se marca `es_renta`.
+
+        La bandera vive en la clase y el motor saca del pool todo lo que la
+        clase abarca. Con la regla vieja —marcar si ALGUNA cuenta era renta—
+        bastaba que `504.01%` incluyera a `504.01.0008 RENTA DEL LOCAL` para
+        que los cuarenta gastos de overhead de fábrica salieran del pool. En
+        producción quedaron marcadas 38 cuentas fabriles, de las que una sola
+        era renta de inmueble: el motor sacaba $1,534,140/mes que nada
+        reponía.
+        """
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+
+        def cuenta(name, code):
+            return Account.create({'name': name, 'code': code,
+                                   'account_type': 'expense_direct_cost'})
+
+        renta = cuenta('RENTA DEL LOCAL TEST', 'QBRP.01.0008')
+        mtto = cuenta('MANTENIMIENTOS FABRICA TEST', 'QBRP.01.0005')
+        herr = cuenta('HERRAMIENTAS Y EQUIPO MENOR TEST', 'QBRP.01.0042')
+        patron = Clase.create({'code_pattern': 'QBRP.01%',
+                               'bucket': 'overhead_fab'})
+        self.assertEqual(set(patron.account_ids.ids),
+                         {renta.id, mtto.id, herr.id})
+
+        Clase.marcar_cuentas_de_renta()
+        self.assertFalse(
+            patron.es_renta,
+            'marcar el patrón sacaría del pool el mantenimiento y las '
+            'herramientas, que nada repone')
+        # Y el panel lo dice, en vez de pedir que se marque
+        self.assertIn(patron, Clase.clases_con_renta_mezclada())
+
+        # La salida correcta: la cuenta de renta con clasificación propia.
+        # Gana por más específica, y esa SÍ se marca.
+        propia = Clase.create({'account_id': renta.id,
+                               'bucket': 'overhead_fab'})
+        Clase.marcar_cuentas_de_renta()
+        self.assertTrue(propia.es_renta)
+        self.assertFalse(patron.es_renta)
+
+    def test_arrendamiento_de_maquinaria_nunca_sale_del_pool(self):
+        """El arrendamiento de maquinaria es costo de producción: no hay renta
+        contractual de centro que lo sustituya, así que sacarlo del pool es
+        quitarlo y ya.
+
+        El reconocedor mira el NOMBRE de la cuenta, y una cuenta que se llama
+        solo «ARRENDAMIENTO FINANCIERO» matchea sin decir maquinaria por
+        ningún lado. En producción eso sacó $867,721/mes del pool fabril. El
+        bucket manda sobre el nombre: `arrend_maquinaria` nunca es renta de
+        inmueble.
+        """
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        generica = Account.create({
+            'name': 'ARRENDAMIENTO FINANCIERO TEST', 'code': 'QBAF.11.0001',
+            'account_type': 'expense_direct_cost'})
+        # El reconocedor por nombre sí matchea: no dice «maquinaria»
+        self.assertTrue(Clase._es_cuenta_de_renta(generica))
+
+        clase = Clase.create({'code_pattern': 'QBAF.11%',
+                              'bucket': 'arrend_maquinaria'})
+        Clase.marcar_cuentas_de_renta()
+        self.assertFalse(clase.es_renta, 'el bucket manda sobre el nombre')
+        self.assertNotIn(clase, Clase.clases_con_renta_mezclada())
+
+    def test_marcar_rentas_tambien_desmarca(self):
+        """`marcar_cuentas_de_renta` corre la regla VIGENTE sobre todas las
+        clases: si una quedó marcada por una regla anterior, la desmarca. Sin
+        eso, arreglar la regla no arregla los datos."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mtto = Account.create({'name': 'MANTENIMIENTOS TEST', 'code': 'QBDM.01',
+                               'account_type': 'expense_direct_cost'})
+        clase = Clase.create({'account_id': mtto.id, 'bucket': 'overhead_fab'})
+        clase.es_renta = True          # como lo dejó la regla vieja
+        Clase.marcar_cuentas_de_renta()
+        self.assertFalse(clase.es_renta)

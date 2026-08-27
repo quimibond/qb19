@@ -144,19 +144,21 @@ class QbCosteoPanel(models.TransientModel):
             ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
         ]).mapped('renta_contractual_mxn'))
         if renta_contractual:
-            sin_marcar = Clase.search([
-                ('es_renta', '=', False),
-                ('bucket', 'in', ('mod', 'overhead_fab', 'depreciacion',
-                                  'arrend_maquinaria')),
-            ]).filtered(lambda c: any(
-                Clase._es_cuenta_de_renta(a) for a in c.account_ids))
+            # Una clase de PATRÓN que abarca una cuenta de renta junto a
+            # cuarenta que no lo son no se arregla marcándola: marcarla saca
+            # las cuarenta del pool. Se arregla separando la cuenta de renta
+            # en su propia clasificación, que gana por más específica.
+            sin_marcar = Clase.clases_con_renta_mezclada()
             if sin_marcar:
                 detalle = (
                     'la renta se está contando DOS VECES: $%s/mes por '
-                    'contrato y además por %s, que está en un bucket fabril. '
-                    'Márcalas «es renta de inmueble» en Clasificación de '
-                    'cuentas.' % (f'{renta_contractual:,.0f}',
-                                  ', '.join(sin_marcar.mapped('name'))))
+                    'contrato y además por una cuenta de renta que vive '
+                    'dentro de %s, en un bucket fabril. NO marques esas '
+                    'clases: abarcan mucho más que la renta y marcarlas '
+                    'sacaría todo del pool. Dale a la cuenta de renta su '
+                    'propia clasificación específica y marca esa.'
+                    % (f'{renta_contractual:,.0f}',
+                       ', '.join(sin_marcar.mapped('name'))))
             else:
                 detalle = ('renta contractual $%s/mes en el pool; las cuentas '
                            'de renta del GL están marcadas y fuera'
