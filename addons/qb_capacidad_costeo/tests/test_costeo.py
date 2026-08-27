@@ -962,6 +962,103 @@ class TestQbCosteo(TransactionCase):
         return (period + relativedelta(months=1) - relativedelta(months=window),
                 period + relativedelta(months=1))
 
+    def test_dos_rollos_iguales_cuentan_como_dos(self):
+        """Dos líneas del mismo producto con la misma cantidad en una factura
+        son dos rollos, no un triplete de facturación.
+
+        El dedup viejo colapsaba cualquier repetición: la cantidad se partía a
+        la mitad y el precio promedio salía al doble. La regla nueva mira el
+        TAMAÑO del grupo — un triplete son exactamente tres líneas."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date(2027, 9, 1)
+        partner = self.env['res.partner'].create({'name': 'Cliente Rollos'})
+        linea = {'product_id': self.tela.id, 'quantity': 100,
+                 'price_unit': 20.0}
+        self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': period,
+            'invoice_line_ids': [(0, 0, dict(linea)), (0, 0, dict(linea))],
+        }).action_post()
+
+        venta = self.Costo._sales_by_product(period)[self.tela.id]
+        self.assertAlmostEqual(venta['qty'], 200.0, places=2,
+                               msg='dos rollos de 100 m son 200 m')
+        self.assertAlmostEqual(venta['revenue'], 4000.0, places=2)
+        # …y por lo tanto el precio promedio es el real, no el doble
+        self.assertAlmostEqual(
+            venta['revenue'] / venta['qty'], 20.0, places=2)
+
+    def test_triplete_de_tres_lineas_si_se_colapsa(self):
+        """Tres líneas con la misma cantidad sí son un triplete: la cantidad
+        cuenta una vez y el revenue suma las tres (cancelan aritméticamente),
+        que es justo para lo que existe el dedup."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date(2027, 10, 1)
+        partner = self.env['res.partner'].create({'name': 'Cliente Triplete'})
+        self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': period,
+            'invoice_line_ids': [
+                (0, 0, {'product_id': self.tela.id, 'quantity': 100,
+                        'price_unit': 25.0}),      # lista
+                (0, 0, {'product_id': self.tela.id, 'quantity': 100,
+                        'price_unit': -5.0}),      # descuento
+                (0, 0, {'product_id': self.tela.id, 'quantity': 100,
+                        'price_unit': 0.0}),       # neta
+            ]}).action_post()
+
+        venta = self.Costo._sales_by_product(period)[self.tela.id]
+        self.assertAlmostEqual(venta['qty'], 100.0, places=2,
+                               msg='el triplete es UNA venta de 100 m')
+        self.assertAlmostEqual(venta['revenue'], 2000.0, places=2)
+
+    def test_receta_con_atributos_no_carga_lo_de_las_hermanas(self):
+        """Una línea de receta que solo aplica a otra variante NO debe entrar
+        al costo del producto. Sin el filtro, la MP salía inflada por todo lo
+        de sus variantes hermanas."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        attr = self.env['product.attribute'].create({
+            'name': 'COLOR TEST',
+            'value_ids': [(0, 0, {'name': 'ROJO TEST'}),
+                          (0, 0, {'name': 'AZUL TEST'})]})
+        tmpl = self.env['product.template'].create({
+            'name': 'TELA CON COLOR TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'sale_ok': True,
+            'attribute_line_ids': [(0, 0, {
+                'attribute_id': attr.id,
+                'value_ids': [(6, 0, attr.value_ids.ids)]})]})
+        rojo, azul = tmpl.product_variant_ids[0], tmpl.product_variant_ids[1]
+        ptav_rojo = rojo.product_template_attribute_value_ids[:1]
+
+        pigmento = self.env['product.product'].create({
+            'name': 'PIGMENTO TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 900.0})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tmpl.id, 'product_qty': 1.0,
+            'product_uom_id': uom_kg.id,
+            'bom_line_ids': [
+                (0, 0, {'product_id': self.hilo.id, 'product_qty': 1.0,
+                        'product_uom_id': uom_kg.id}),
+                # Solo para la variante ROJO
+                (0, 0, {'product_id': pigmento.id, 'product_qty': 0.1,
+                        'product_uom_id': uom_kg.id,
+                        'bom_product_template_attribute_value_ids':
+                            [(6, 0, ptav_rojo.ids)]}),
+            ]})
+
+        costo_rojo = self.Costo._mp_cost_unit(rojo)
+        costo_azul = self.Costo._mp_cost_unit(azul)
+        self.assertAlmostEqual(costo_rojo, 50.0 + 0.1 * 900.0, places=4)
+        self.assertAlmostEqual(
+            costo_azul, 50.0, places=4,
+            msg='AZUL no lleva pigmento: no debe cargar el de ROJO')
+
     def test_operacion_no_depende_del_precio(self):
         """El costo reportado deja de moverse con el descuento del vendedor.
 

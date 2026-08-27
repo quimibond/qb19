@@ -38,6 +38,30 @@ from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
 _logger = logging.getLogger(__name__)
 
 KG_UOM_NAMES = ('kg', 'kgs', 'kilogramo', 'kilogramos')
+
+# Dedup del "triplete" de facturación (línea de lista +, de descuento −, y
+# neta +): las tres repiten la MISMA cantidad y sin colapsarlas la qty saldría
+# al triple. El revenue no necesita dedup — las tres suman el neto.
+#
+# La regla mira el TAMAÑO del grupo, no solo la cantidad repetida: un triplete
+# son exactamente tres líneas, mientras que dos rollos iguales en la misma
+# factura son dos. Antes se colapsaba cualquier repetición, así que dos rollos
+# de 100 m se contaban como uno y el precio promedio salía al doble. Medido
+# sobre ene–ago 2026 (2,116 líneas de factura) ningún grupo llega a tres: hoy
+# el dedup no descarta nada y solo estaba el riesgo.
+QTY_DEDUP_SQL = """
+    SELECT move_id, product_id, currency_id, quantity, move_type, mes
+    FROM (
+        SELECT l.*,
+               COUNT(*) OVER (
+                   PARTITION BY l.move_id, l.product_id, ABS(l.quantity)) AS n,
+               ROW_NUMBER() OVER (
+                   PARTITION BY l.move_id, l.product_id, ABS(l.quantity)
+                   ORDER BY l.move_id) AS rn
+        FROM lines l
+    ) g
+    WHERE g.n < 3 OR g.rn = 1
+"""
 FAB_BUCKETS = ('mod', 'overhead_fab', 'depreciacion', 'arrend_maquinaria')
 
 
@@ -185,8 +209,10 @@ class QbCostoProducto(models.Model):
     precio_prom = fields.Float(
         string='Precio promedio',
         help='Revenue ÷ qty deduplicada por el triplete lista/descuento/neta '
-             '(DISTINCT ON move, product, qty) — sin el dedup el precio '
-             'saldría ~1/3 en productos con triplete.')
+             '— sin el dedup el precio saldría ~1/3 en productos con '
+             'triplete. La regla mira el tamaño del grupo (un triplete son '
+             'tres líneas), así que dos rollos iguales en la misma factura '
+             'siguen contando como dos.')
     ventas_total = fields.Float(
         string='Ventas $ (período)',
         help='Lo REALMENTE facturado del producto en el mes, en moneda de la '
@@ -731,7 +757,7 @@ class QbCostoProducto(models.Model):
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
-                       am.move_type,
+                       am.move_type, am.currency_id,
                        date_trunc('month', am.invoice_date)::date AS mes
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
@@ -745,17 +771,15 @@ class QbCostoProducto(models.Model):
                   AND aml.company_id = %s
             ),
             dedup AS (
-                SELECT DISTINCT ON (move_id, product_id, ABS(quantity))
-                       mes, product_id, quantity, move_type
-                FROM lines
-                ORDER BY move_id, product_id, ABS(quantity)
+                {QTY_DEDUP}
             )
             SELECT mes, product_id,
                    SUM(CASE WHEN move_type = 'out_refund'
                             THEN -quantity ELSE quantity END)
             FROM dedup
             GROUP BY 1, 2
-        """, (date_from, date_to, self.env.company.id))
+        """.format(QTY_DEDUP=QTY_DEDUP_SQL),
+            (date_from, date_to, self.env.company.id))
         return {(mes, pid): qty or 0.0
                 for mes, pid, qty in self.env.cr.fetchall()}
 
@@ -1108,6 +1132,11 @@ class QbCostoProducto(models.Model):
         UoM (kg vs m) tumbe el costeo — deja la cantidad sin convertir."""
         total = 0.0
         for line in bom.bom_line_ids:
+            # Una receta con atributos trae líneas que solo aplican a ciertas
+            # variantes. Sin este filtro, el producto cargaba componentes que
+            # NO consume — su MP salía inflada por todo lo de sus hermanas.
+            if line._skip_bom_line(product):
+                continue
             comp = line.product_id
             qty = line.product_uom_id._compute_quantity(
                 line.product_qty, comp.uom_id, round=False,
@@ -1171,6 +1200,9 @@ class QbCostoProducto(models.Model):
 
         Dedup del triplete (lista+/descuento−/neta+) para qty; el revenue suma
         las 3 líneas (cancelan aritméticamente). ``out_refund`` resta.
+        El dedup colapsa solo grupos de TRES o más líneas con la misma
+        cantidad: dos rollos iguales en una factura son dos ventas, no un
+        triplete (ver ``QTY_DEDUP_SQL``).
 
         El revenue en moneda local sale de ``aml.balance``, NO de
         ``price_subtotal`` (moneda del documento): así una factura en USD entra
@@ -1192,7 +1224,8 @@ class QbCostoProducto(models.Model):
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
                        aml.balance, aml.amount_currency,
-                       am.move_type, am.currency_id
+                       am.move_type, am.currency_id,
+                       date_trunc('month', am.invoice_date)::date AS mes
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
                 JOIN account_account aa ON aa.id = aml.account_id
@@ -1205,10 +1238,7 @@ class QbCostoProducto(models.Model):
                   AND aml.company_id = %s
             ),
             qty_dedup AS (
-                SELECT DISTINCT ON (move_id, product_id, ABS(quantity))
-                       move_id, product_id, currency_id, quantity, move_type
-                FROM lines
-                ORDER BY move_id, product_id, ABS(quantity)
+                {QTY_DEDUP}
             ),
             qty_agg AS (
                 SELECT product_id, currency_id,
@@ -1231,7 +1261,8 @@ class QbCostoProducto(models.Model):
                    ON q.product_id = r.product_id
                   AND q.currency_id IS NOT DISTINCT FROM r.currency_id
             LEFT JOIN res_currency cur ON cur.id = r.currency_id
-        """, (period, date_to, self.env.company.id))
+        """.format(QTY_DEDUP=QTY_DEDUP_SQL),
+            (period, date_to, self.env.company.id))
 
         result = {}
         # {product_id: {currency_id: (qty, revenue_mxn, revenue_cur)}} de las

@@ -233,6 +233,11 @@ arreglar) está en **`docs/COSTEO_REVISION.md`**.
   (~90% es sano; mucho menos = revisar denominadores/clasificación).
 - Parser de gramaje: solo bloques de exactamente 3 dígitos (4 dígitos =
   código de resina, p.ej. 4032/9032).
+- Dedup de cantidades por TAMAÑO del grupo: tres líneas iguales son un
+  triplete de facturación y cuentan una vez; dos son dos rollos y cuentan
+  dos (tests).
+- La explosión de receta filtra las líneas por variante: un producto no
+  carga los componentes de sus variantes hermanas (test).
 
 ## Rendimiento (límites de cron de Odoo.sh)
 
