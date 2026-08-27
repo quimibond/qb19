@@ -42,6 +42,16 @@
             <field name="value">25</field>
             <field name="descripcion">Techo del rendimiento sano (unidades/hora). Arriba de esto casi siempre son horas sin registrar, no una máquina rapidísima.</field>
         </record>
+        <record id="factor_utilizacion_min_comparable" model="qb.costeo.factor.config">
+            <field name="key">utilizacion_min_comparable</field>
+            <field name="value">0.70</field>
+            <field name="descripcion">Debajo de esta utilización ponderada, el período se marca «Producción baja en la ventana»: la energía se divide entre kilos reales, así que su $/kg —y con él el costo unitario— sale inflado y no compara contra un mes normal. Un mes sano ronda 93-98%.</field>
+        </record>
+        <record id="factor_utilizacion_min_utilizable" model="qb.costeo.factor.config">
+            <field name="key">utilizacion_min_utilizable</field>
+            <field name="value">0.40</field>
+            <field name="descripcion">Debajo de esto el período se marca «Ventana casi sin producción». Enero-2024 salió en 26.6% porque su ventana cae en 2023, cuando las órdenes todavía no se registraban en Odoo: la energía dio $34.22/kg contra $11.09 en diciembre del mismo año.</field>
+        </record>
         <record id="factor_importacion_driver" model="qb.costeo.factor.config">
             <field name="key">importacion_driver</field>
             <field name="value">0</field>
@@ -119,7 +129,7 @@
             <field name="std_output_per_hour">11</field>
             <field name="renta_contractual_mxn">284269</field>
             <field name="es_denominador_kg" eval="True"/>
-            <field name="mo_name_pattern">TL/OP-TE%</field>
+            <field name="mo_name_pattern">TL/OP-TE%,OP-TE%</field>
             <field name="notes">36 máquinas circulares. Ligar aquí los mrp.workcenter de tejido. Throughput 11 kg/h/máquina (rango real 8.3-12.6 según galga). Producción medida por orden (TL/OP-TE), no por workorder: la cantidad por workorder está mal registrada (abril colapsa a ~1/5).</field>
         </record>
         <record id="centro_tintoreria" model="qb.costeo.centro">
@@ -129,7 +139,7 @@
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">peso</field>
             <field name="renta_contractual_mxn">178467</field>
-            <field name="mo_name_pattern">TL/OP-TIN%</field>
+            <field name="mo_name_pattern">TL/OP-TIN%,OP-TIN%</field>
             <field name="notes">5 jets. Producción medida por orden (TL/OP-TIN, kg) — sin patrón salía en CERO. Sin workcenters: capturar turnos en Turnos/Capacidad manual, o dar de alta los jets como workcenters y ligarlos aquí.</field>
         </record>
         <record id="centro_acabado" model="qb.costeo.centro">
@@ -140,7 +150,7 @@
             <field name="driver_principal">largo</field>
             <field name="std_output_per_hour">1779</field>
             <field name="renta_contractual_mxn">178467</field>
-            <field name="mo_name_pattern">TL/OP-ACA%</field>
+            <field name="mo_name_pattern">TL/OP-ACA%,OP-ACA%</field>
             <field name="es_denominador_m" eval="True"/>
             <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA (tela). V10 NO es acabado — es entretelas/resina, va en su centro.</field>
         </record>
@@ -151,7 +161,7 @@
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">largo</field>
             <field name="renta_contractual_mxn">352062</field>
-            <field name="mo_name_pattern">TL/OP-CAR%,TL/OP-V10%</field>
+            <field name="mo_name_pattern">TL/OP-CAR%,TL/OP-V10%,OP-CAR%,OP-V1%</field>
             <field name="notes">Carda, puntos (resina), espolvoreo, perfoquim, impregnación, termofijado. Lote 10. Factor propio $/m. Producción TL/OP-CAR (carda) + TL/OP-V10 (aplicación de resina / fusionable) — antes V10 no se contaba en ningún centro.</field>
         </record>
         <record id="centro_insp" model="qb.costeo.centro">

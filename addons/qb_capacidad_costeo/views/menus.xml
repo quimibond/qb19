@@ -101,8 +101,10 @@
               parent="menu_qb_config" action="costo_recompute_action" sequence="8"/>
     <menuitem id="menu_qb_recompute_year" name="Recalcular costeo (año en curso)"
               parent="menu_qb_config" action="costo_recompute_year_action" sequence="9"/>
+    <menuitem id="menu_qb_recompute_rango" name="Recalcular costeo (rango de meses)"
+              parent="menu_qb_config" action="recalculo_wizard_action" sequence="10"/>
     <menuitem id="menu_qb_centros" name="Centros de costo"
-              parent="menu_qb_config" action="centro_action" sequence="10"/>
+              parent="menu_qb_config" action="centro_action" sequence="11"/>
     <menuitem id="menu_qb_cuentas" name="Clasificación de cuentas"
               parent="menu_qb_config" action="cuenta_class_action" sequence="20"/>
     <menuitem id="menu_qb_cuentas_map" name="Cuentas mapeadas"

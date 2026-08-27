@@ -35,7 +35,8 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import html_escape
 
-from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
+from .cuenta_map import (CUENTA_MAP_SQL, EXCLUIR_CIERRE_SQL,
+                         mo_qty_sql, wo_qty_sql)
 
 _logger = logging.getLogger(__name__)
 
@@ -218,6 +219,26 @@ class QbCostoFactores(models.Model):
              'revisa el throughput nominal y los calendarios: el denominador '
              'estará inflado y el costo unitario saldrá bajo.')
     utilizacion_m_pct = fields.Float(string='Utilización m %')
+    utilizacion_pond_pct = fields.Float(
+        string='Utilización ponderada %',
+        help='Las dos utilizaciones pesadas por el share peso/largo, que es '
+             'como el pool se reparte de verdad. Cuando un lado se queda sin '
+             'centros en capa su share es 0, así que esta cifra no se cae '
+             'sola por eso — a diferencia de mirar solo la de kg.')
+    confiabilidad = fields.Selection(
+        [('ok', 'Comparable'),
+         ('parcial', 'Producción baja en la ventana'),
+         ('mala', 'Ventana casi sin producción')],
+        string='Confiabilidad', default='ok',
+        help='Si la producción de la ventana quedó muy por debajo de la '
+             'capacidad normal, el costo unitario de este período NO es '
+             'comparable con uno normal: la energía es variable y se divide '
+             'entre los kilos REALES, así que su $/kg se infla en la misma '
+             'proporción. Puede ser ociosidad de verdad o producción que '
+             'todavía no se registraba en Odoo — en los dos casos el número '
+             'no sirve para comparar contra otro mes.')
+    confiabilidad_detalle = fields.Text(
+        string='Por qué', help='Qué se midió y en cuánto queda inflado.')
     fab_ocioso_month = fields.Float(
         string='Fabricación no absorbida/mes',
         help='La parte del pool fijo que la producción real no alcanza a '
@@ -547,12 +568,14 @@ class QbCostoProducto(models.Model):
             SELECT date_trunc('month', aml.date)::date AS mes,
                    SUM(aml.balance * m.allocation_pct / 100.0) AS monto
             FROM account_move_line aml
+            JOIN account_move am ON am.id = aml.move_id
             JOIN cuenta_map m ON m.account_id = aml.account_id
             WHERE m.bucket IN %%s
               AND aml.parent_state = 'posted'
               AND aml.date >= %%s AND aml.date < %%s
               AND aml.company_id = %%s
-        """ % CUENTA_MAP_SQL
+              AND {CIERRE}
+        """.replace('{CIERRE}', EXCLUIR_CIERRE_SQL) % CUENTA_MAP_SQL
         params = [tuple(buckets), date_from, date_to, self.env.company.id]
         if es_variable is not None:
             query += ' AND COALESCE(m.es_variable, FALSE) = %s'
@@ -1055,6 +1078,42 @@ class QbCostoProducto(models.Model):
         fab_absorbible = fab_pool * (ws * util_kg + (1 - ws) * util_m)
         fab_ocioso = max(fab_pool - fab_absorbible, 0.0)
 
+        # ¿El costo unitario de este período se puede comparar con otro?
+        #
+        # La fabricación se divide entre capacidad normal, así que no se mueve
+        # con la producción. La ENERGÍA sí: es variable y se divide entre los
+        # kilos REALES, que es lo correcto físicamente. Pero cuando los kilos
+        # de la ventana están muy por debajo de la capacidad, su $/kg se infla
+        # en esa misma proporción y el producto sale caro por una razón que no
+        # es su costo.
+        #
+        # En producción se vio crudo: enero-2024 salió con energía a $34.22/kg
+        # y diciembre-2024 a $11.09/kg —3.1×— porque la ventana de los
+        # primeros meses cae en 2023, cuando la producción todavía no se
+        # registraba en Odoo (372 órdenes en todo 2023 contra 4,715 en 2024).
+        # El margen de esos meses salía negativo por eso, no por el negocio.
+        #
+        # Da igual si es subregistro o paro real: en los dos casos el unitario
+        # no compara contra un mes normal, y quien lea el reporte tiene que
+        # saberlo sin ir a investigar.
+        util_pond = ws * util_kg + (1 - ws) * util_m
+        conf_parcial = Config.get_param('utilizacion_min_comparable', 0.70)
+        conf_mala = Config.get_param('utilizacion_min_utilizable', 0.40)
+        confiabilidad, conf_detalle = 'ok', False
+        if util_pond and util_pond < conf_mala:
+            confiabilidad = 'mala'
+        elif util_pond and util_pond < conf_parcial:
+            confiabilidad = 'parcial'
+        if confiabilidad != 'ok':
+            conf_detalle = (
+                'La producción de la ventana quedó en %.1f%% de la capacidad '
+                'normal. La energía se divide entre kilos reales, así que su '
+                '$/kg está inflado alrededor de %.1f veces contra un período '
+                'a capacidad, y con él el costo unitario. Revisa si la planta '
+                'de verdad corrió así de bajo o si las órdenes de producción '
+                'de esos meses no se estaban registrando.'
+                % (100.0 * util_pond, 1.0 / util_pond))
+
         Factores = self.env['qb.costo.factores']
         vals = {
             'period': period,
@@ -1085,6 +1144,9 @@ class QbCostoProducto(models.Model):
             'm_produccion_month': m_real,
             'utilizacion_kg_pct': 100.0 * util_kg,
             'utilizacion_m_pct': 100.0 * util_m,
+            'utilizacion_pond_pct': 100.0 * util_pond,
+            'confiabilidad': confiabilidad,
+            'confiabilidad_detalle': conf_detalle,
             'fab_ocioso_month': fab_ocioso,
             'fab_pool_con_centro_pct': fab_con_centro_pct,
             'entretela_m_denom_month': entretela_m,
