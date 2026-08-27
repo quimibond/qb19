@@ -31,6 +31,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 from odoo.tools import html_escape
 
 from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
@@ -68,11 +69,32 @@ FAB_BUCKETS = ('mod', 'overhead_fab', 'depreciacion', 'arrend_maquinaria')
 class QbCostoFactores(models.Model):
     _name = 'qb.costo.factores'
     _description = 'Factores de costeo por período (trazabilidad)'
+    _inherit = ['mail.thread']
     _order = 'period DESC'
     _rec_name = 'period'
 
     period = fields.Date(required=True, index=True,
                          help='Primer día del mes calculado.')
+    state = fields.Selection([
+        ('borrador', 'Borrador'),
+        ('cerrado', 'Cerrado'),
+    ], default='borrador', required=True, tracking=True, string='Estado',
+        help='CERRADO congela el período: ni el cron ni un recálculo manual '
+             'pueden volver a tocar sus factores ni sus costos por producto. '
+             'Sin esto, el número que presentaste el mes pasado cambia solo '
+             'la próxima vez que alguien recalcula, y no hay forma de '
+             'defenderlo.')
+    cerrado_por = fields.Many2one('res.users', string='Cerrado por',
+                                  readonly=True, tracking=True)
+    cerrado_el = fields.Datetime(string='Cerrado el', readonly=True,
+                                 tracking=True)
+    reaperturas = fields.Integer(
+        string='Reaperturas', readonly=True, default=0, tracking=True,
+        help='Cuántas veces se reabrió un período ya cerrado. Cualquier '
+             'número distinto de cero es una señal para el auditor.')
+    motivo_reapertura = fields.Text(
+        string='Motivo de reapertura', tracking=True,
+        help='Obligatorio para reabrir. Queda en el historial del período.')
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, required=True)
     window_months = fields.Integer(string='Ventana de suavizado (meses)')
@@ -113,6 +135,22 @@ class QbCostoFactores(models.Model):
              'peso de valor de compra. 0.15 = 15% sobre el valor importado.')
     ventas_pool_month = fields.Float(string='Ventas/mes (promedio)')
     entretela_pool_month = fields.Float(string='Pool entretelas/mes')
+    absorcion_pool_month = fields.Float(
+        string='Absorbido por Odoo/mes',
+        help='Saldo acreedor de la cuenta de costos fabriles aplicados a '
+             'producción: lo que los workcenters capitalizaron al AVCO del '
+             'producto vía tarifa por hora. Se RESTA del pool, porque ese '
+             'costo ya viaja dentro del inventario y la venta lo libera solo. '
+             'Es el hecho contable, no un parámetro: si la tarifa absorbe de '
+             'más o de menos, esto se mueve solo y el pool se ajusta.')
+    centros_absorbidos = fields.Char(
+        string='Centros absorbidos por Odoo',
+        help='Qué centros estaban en absorción por workcenter en ESTE '
+             'período. Queda guardado para que un mes viejo se pueda leer '
+             'con el régimen que de verdad tuvo.')
+    centros_capa = fields.Char(
+        string='Centros en capa',
+        help='Qué centros repartió el módulo con sus factores en este período.')
     renta_contractual_pool = fields.Float(
         string='Renta contractual/mes',
         help='Σ de la renta contractual de TODOS los centros fabriles. '
@@ -182,6 +220,48 @@ class QbCostoFactores(models.Model):
         'unique(period, company_id)',
         "Ya existen factores para ese período.",
     )
+
+    # ------------------------------------------------------------------
+    # Cierre de período: el costo deja de ser un número que se mueve solo
+    # ------------------------------------------------------------------
+    @api.model
+    def periodo_cerrado(self, period, company=None):
+        """¿El período está cerrado? Lo consultan el motor y el cron antes
+        de escribir nada."""
+        return bool(self.search_count([
+            ('period', '=', period),
+            ('company_id', '=', (company or self.env.company).id),
+            ('state', '=', 'cerrado'),
+        ]))
+
+    def action_cerrar(self):
+        for rec in self:
+            if rec.state == 'cerrado':
+                continue
+            rec.write({
+                'state': 'cerrado',
+                'cerrado_por': self.env.user.id,
+                'cerrado_el': fields.Datetime.now(),
+            })
+            rec.message_post(body='Período cerrado. Sus factores y sus costos '
+                                  'por producto quedan congelados.')
+        return True
+
+    def action_reabrir(self):
+        for rec in self:
+            if rec.state != 'cerrado':
+                continue
+            if not (rec.motivo_reapertura or '').strip():
+                raise UserError(
+                    'Escribe el motivo de reapertura antes de reabrir %s. '
+                    'Reabrir un período cerrado cambia números que ya se '
+                    'reportaron: tiene que quedar por qué.' % rec.period)
+            rec.write({'state': 'borrador',
+                       'reaperturas': rec.reaperturas + 1})
+            rec.message_post(
+                body='Período REABIERTO (%s vez/veces). Motivo: %s'
+                     % (rec.reaperturas, rec.motivo_reapertura))
+        return True
 
 
 class QbCostoProducto(models.Model):
@@ -371,13 +451,45 @@ class QbCostoProducto(models.Model):
         "Ya existe el costo de ese producto para ese período.",
     )
 
+    def _bloquear_si_cerrado(self):
+        """Un período cerrado es un snapshot: sus filas no se escriben ni se
+        borran. El guard del recálculo ya lo evita por el camino normal; esto
+        cierra la puerta también a un write suelto desde la UI o un script.
+
+        `qb_periodo_verificado` lo pone el propio recálculo cuando YA comprobó
+        el estado: sin eso, el loop haría una consulta de períodos cerrados por
+        cada uno de los ~1,250 productos.
+        """
+        ctx = self.env.context
+        if ctx.get('qb_periodo_verificado') or \
+                ctx.get('qb_forzar_periodo_cerrado'):
+            return
+        Factores = self.env['qb.costo.factores']
+        cerrados = {
+            (f.period, f.company_id.id)
+            for f in Factores.search([('state', '=', 'cerrado')])}
+        for rec in self:
+            if (rec.period, rec.company_id.id) in cerrados:
+                raise UserError(
+                    'El período %s está cerrado: su costo por producto es un '
+                    'snapshot y no se modifica. Reábrelo con motivo si de '
+                    'verdad hay que moverlo.' % rec.period)
+
+    def write(self, vals):
+        self._bloquear_si_cerrado()
+        return super().write(vals)
+
+    def unlink(self):
+        self._bloquear_si_cerrado()
+        return super().unlink()
+
     # ------------------------------------------------------------------
     # Pools GL
     # ------------------------------------------------------------------
     @api.model
     def _pool_by_month(self, buckets, date_from, date_to,
                        es_variable=None, centro_id=None, sign=1.0,
-                       es_renta=None, con_centro=None):
+                       es_renta=None, con_centro=None, excluir_centros=None):
         """Σ balance de las cuentas clasificadas en `buckets`, por mes.
 
         Devuelve {date_mes: monto}. sign=-1 para ingresos (saldo acreedor).
@@ -408,6 +520,9 @@ class QbCostoProducto(models.Model):
         if con_centro is not None:
             query += (' AND m.centro_id IS NOT NULL' if con_centro
                       else ' AND m.centro_id IS NULL')
+        if excluir_centros:
+            query += ' AND (m.centro_id IS NULL OR m.centro_id != ALL(%s))'
+            params.append(list(excluir_centros))
         query += ' GROUP BY 1'
         self.env.cr.execute(query, tuple(params))
         return {row[0]: sign * row[1] for row in self.env.cr.fetchall()}
@@ -585,6 +700,35 @@ class QbCostoProducto(models.Model):
         """, (self.env.company.id, date_from, date_to))
         return {mes: (qty or 0.0) for mes, qty in self.env.cr.fetchall()}
 
+    @api.model
+    def _meses_sin_estiramiento(self, date_from, date_to):
+        """Meses de la ventana con encogimiento pero SIN estiramiento.
+
+        El ajuste de metros resta el encogimiento y suma el estiramiento, que
+        se compensan. Si el estiramiento se detiene y el encogimiento no, la
+        resta queda sin su contrapeso y el denominador se sobrecorrige: el
+        costo por metro sube por una operación que dejó de hacerse, no porque
+        la planta gaste más. Se detectó parado desde el 30-jun-2026.
+        """
+        self.env.cr.execute("""
+            SELECT date_trunc('month', sm.date)::date AS mes,
+                   COUNT(*) FILTER (WHERE spt.sequence_code LIKE '%%ENC%%')
+                       AS encogimiento,
+                   COUNT(*) FILTER (WHERE spt.sequence_code LIKE '%%OP-EST%%')
+                       AS estiramiento
+            FROM stock_move sm
+            JOIN stock_picking_type spt ON spt.id = sm.picking_type_id
+            WHERE sm.state = 'done'
+              AND sm.company_id = %s
+              AND (spt.sequence_code LIKE '%%ENC%%'
+                   OR spt.sequence_code LIKE '%%OP-EST%%')
+              AND sm.date >= %s AND sm.date < %s
+            GROUP BY 1
+            ORDER BY 1
+        """, (self.env.company.id, date_from, date_to))
+        return [mes for mes, enc, est in self.env.cr.fetchall()
+                if enc and not est]
+
     # ------------------------------------------------------------------
     # Factores del período
     # ------------------------------------------------------------------
@@ -596,8 +740,17 @@ class QbCostoProducto(models.Model):
         date_to = period + relativedelta(months=1)
         date_from = date_to - relativedelta(months=window)
 
+        # Régimen híbrido. Un centro cuyos workcenters ya capitalizan (tarifa
+        # por hora + cuenta de costos aplicados) NO puede seguir en el pool:
+        # Odoo mete su costo al AVCO del producto y la venta lo libera. Si el
+        # módulo lo repartiera además con sus factores, el mismo peso se
+        # cobraría dos veces.
+        absorbidos = Centro.absorbidos_en(period)
+        excluir = absorbidos.ids
+
         fab_by_month = self._pool_by_month(FAB_BUCKETS, date_from, date_to,
-                                           es_variable=False)
+                                           es_variable=False,
+                                           excluir_centros=excluir)
         energia_by_month = self._pool_by_month(('energia',), date_from, date_to)
         op_by_month = self._pool_by_month(('operacion',), date_from, date_to)
         ventas_by_month = self._pool_by_month(('ventas',), date_from, date_to,
@@ -607,7 +760,8 @@ class QbCostoProducto(models.Model):
         # Se RESTA del pool de tela (split quirúrgico) y forma su factor $/m.
         ent_centros = Centro.search([('driver_principal', '=', 'largo'),
                                      ('nature', '=', 'fabril_directo'),
-                                     ('code', 'ilike', 'ENTRETELA')])
+                                     ('code', 'ilike', 'ENTRETELA'),
+                                     ('id', 'not in', excluir)])
         entretela_pool = 0.0
         entretela_en_pool = 0.0
         entretela_m = 0.0
@@ -653,17 +807,28 @@ class QbCostoProducto(models.Model):
         # entretelas le quitaría a tela una renta que nunca se le sumó.
         renta_centros = Centro.search([
             ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
+            ('id', 'not in', excluir),
         ])
         renta_contractual = sum(renta_centros.mapped('renta_contractual_mxn'))
 
+        # Lo que Odoo capitalizó de verdad: el saldo ACREEDOR de la cuenta de
+        # costos fabriles aplicados a producción. No es un parámetro que haya
+        # que mantener al día — es el hecho contable, y se autocorrige si la
+        # tarifa por hora absorbe de más o de menos.
+        absorcion_pool = self._smooth(
+            self._pool_by_month(('absorcion_odoo',), date_from, date_to,
+                                sign=-1.0))
+
         fab_pool = max(self._smooth(fab_sin_renta) + renta_contractual
-                       - entretela_en_pool, 0.0)
+                       - entretela_en_pool - absorcion_pool, 0.0)
         energia_pool = self._smooth(energia_by_month)
         op_pool = self._smooth(op_by_month)
         ventas_pool = self._smooth(ventas_by_month)
 
-        kg_centros = Centro.search([('es_denominador_kg', '=', True)])
-        m_centros = Centro.search([('es_denominador_m', '=', True)])
+        kg_centros = Centro.search([('es_denominador_kg', '=', True),
+                                    ('id', 'not in', excluir)])
+        m_centros = Centro.search([('es_denominador_m', '=', True),
+                                   ('id', 'not in', excluir)])
         ajuste_m = self._ajuste_metros_by_month(date_from, date_to)
         caps = self._capacidad_normal_map(kg_centros | m_centros)
         # Denominador = capacidad NORMAL (IAS 2). La producción real se sigue
@@ -719,6 +884,13 @@ class QbCostoProducto(models.Model):
             factor_importacion = factor_max
 
         ws = Config.get_param('fab_weight_share', 0.67)
+        # El share se calibró con TODOS los centros dentro. Cuando un lado se
+        # queda sin centros en capa, repartirle una fracción del pool dejaría
+        # dinero sin absorber en un factor que ya no tiene denominador.
+        if not kg_centros and m_centros:
+            ws = 0.0
+        elif not m_centros and kg_centros:
+            ws = 1.0
         factor_fab_kg = ws * fab_pool / kg_denom if kg_denom else 0.0
         factor_fab_m = (1 - ws) * fab_pool / m_denom if m_denom else 0.0
         # La energía es VARIABLE: su $/kg se divide entre los kilos que de
@@ -764,6 +936,11 @@ class QbCostoProducto(models.Model):
             'ventas_pool_month': ventas_pool,
             'entretela_pool_month': entretela_pool,
             'renta_contractual_pool': renta_contractual,
+            'absorcion_pool_month': absorcion_pool,
+            'centros_absorbidos': ', '.join(absorbidos.mapped('code')),
+            'centros_capa': ', '.join(Centro.search([
+                ('nature', '!=', 'admin'),
+                ('id', 'not in', excluir)]).mapped('code')),
             'renta_gl_sustituida': renta_gl,
             'kg_denom_month': kg_denom,
             'm_denom_month': m_denom,
@@ -785,6 +962,13 @@ class QbCostoProducto(models.Model):
             ('period', '=', period),
             ('company_id', '=', self.env.company.id)], limit=1)
         if existing:
+            if existing.state == 'cerrado' and not self.env.context.get(
+                    'qb_forzar_periodo_cerrado'):
+                # Puerta trasera: alguien llamando _compute_factores directo,
+                # sin pasar por el guard de action_recompute_period.
+                _logger.info('qb.costo.factores: %s está CERRADO — se '
+                             'devuelven los factores congelados.', period)
+                return existing
             existing.write(vals)
             return existing
         return Factores.create(vals)
@@ -1405,6 +1589,15 @@ class QbCostoProducto(models.Model):
         elif isinstance(period, str):
             period = fields.Date.from_string(period)
         period = date(period.year, period.month, 1)
+
+        Factores = self.env['qb.costo.factores']
+        if Factores.periodo_cerrado(period) and not self.env.context.get(
+                'qb_forzar_periodo_cerrado'):
+            _logger.info(
+                'qb.costo.producto: %s está CERRADO — no se recalcula. '
+                'Reábrelo con motivo si de verdad hay que moverlo.', period)
+            return False
+        self = self.with_context(qb_periodo_verificado=True)
 
         factores = self._compute_factores(period)
         sales = self._sales_by_product(period)

@@ -52,3 +52,4 @@ access_qb_cotizacion_tramo_user,qb.cotizacion.tramo.user,model_qb_cotizacion_tra
 access_qb_cotizacion_tramo_mgr,qb.cotizacion.tramo.mgr,model_qb_cotizacion_tramo,mrp.group_mrp_manager,1,1,1,1
 access_qb_cotizacion_tramo_sys,qb.cotizacion.tramo.sys,model_qb_cotizacion_tramo,base.group_system,1,1,1,1
 access_qb_costo_conciliacion_user,qb.costo.conciliacion.user,model_qb_costo_conciliacion,base.group_user,1,0,0,0
+access_qb_workorder_excepcion_user,qb.workorder.excepcion.user,model_qb_workorder_excepcion,base.group_user,1,0,0,0

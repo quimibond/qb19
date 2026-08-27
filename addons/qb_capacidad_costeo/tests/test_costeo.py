@@ -3,6 +3,7 @@ from datetime import date
 
 from dateutil.relativedelta import relativedelta
 
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -1430,6 +1431,108 @@ class TestQbCosteo(TransactionCase):
                          'mover un bucket ya activo es decisión del usuario')
         self.assertIn(en_operacion,
                       Clase.cuentas_de_importacion_mal_ubicadas())
+
+    def test_periodo_cerrado_no_se_recalcula(self):
+        """Un período cerrado es un snapshot: ni el cron ni un recálculo
+        manual lo tocan. Sin esto, el número que presentaste el mes pasado
+        cambia solo la próxima vez que alguien recalcula."""
+        period = date(2027, 11, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'op_pct': 0.18})
+        fila = self.Costo.create({
+            'period': period, 'product_id': self.tela.id,
+            'qty_vendida': 10.0, 'precio_prom': 50.0, 'mp_unit': 3.6})
+
+        factores.action_cerrar()
+        self.assertEqual(factores.state, 'cerrado')
+        self.assertEqual(factores.cerrado_por, self.env.user)
+
+        # El recálculo se rehúsa y lo dice
+        self.assertFalse(self.Costo.action_recompute_period(period))
+        # y la fila no se puede escribir ni borrar por la puerta de atrás
+        with self.assertRaises(UserError):
+            fila.write({'precio_prom': 999.0})
+        with self.assertRaises(UserError):
+            fila.unlink()
+        self.assertEqual(fila.precio_prom, 50.0)
+
+        # Reabrir exige motivo, y queda contado
+        with self.assertRaises(UserError):
+            factores.action_reabrir()
+        factores.motivo_reapertura = 'Se reclasificó una cuenta de renta.'
+        factores.action_reabrir()
+        self.assertEqual(factores.state, 'borrador')
+        self.assertEqual(factores.reaperturas, 1)
+        fila.write({'precio_prom': 60.0})
+        self.assertEqual(fila.precio_prom, 60.0)
+
+    def test_centro_absorbido_sale_del_pool(self):
+        """Un centro cuyos workcenters ya capitalizan NO puede seguir en el
+        pool: Odoo mete su costo al AVCO del producto y la venta lo libera.
+        Repartirlo además con los factores lo cobraría dos veces."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'TEST_ABS', 'name': 'Centro de prueba absorción',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': 80000.0,
+        })
+        period = date.today().replace(day=1)
+        pool_capa = self.Costo._compute_factores(period).fab_pool_month
+
+        centro.write({'modo_costeo': 'absorcion_odoo',
+                      'fecha_absorcion': period})
+        factores = self.Costo._compute_factores(period)
+        self.assertIn('TEST_ABS', factores.centros_absorbidos or '')
+        self.assertNotIn('TEST_ABS', factores.centros_capa or '')
+        self.assertAlmostEqual(
+            pool_capa - factores.fab_pool_month, 80000.0, places=2,
+            msg='su renta contractual debe salir del pool')
+
+        # La fecha de corte se compara contra el PERÍODO: un mes anterior
+        # conserva el régimen de capa y el histórico no se reescribe.
+        anterior = period - relativedelta(months=1)
+        previos = self.Costo._compute_factores(anterior)
+        self.assertNotIn('TEST_ABS', previos.centros_absorbidos or '')
+        centro.unlink()
+
+    def test_absorcion_requiere_fecha_de_corte(self):
+        """Sin fecha no se sabe desde qué período sacar el gasto del pool."""
+        Centro = self.env['qb.costeo.centro']
+        with self.assertRaises(ValidationError):
+            Centro.create({
+                'code': 'TEST_SIN_FECHA', 'name': 'Sin fecha',
+                'nature': 'fabril_directo', 'modo_costeo': 'absorcion_odoo'})
+
+    def test_share_se_apaga_cuando_su_lado_queda_sin_centros(self):
+        """Al absorberse el único centro que define los kilos, el share de
+        peso debe irse a 0: repartirle pool a un factor sin denominador
+        dejaría dinero sin absorber."""
+        Centro = self.env['qb.costeo.centro']
+        period = date(2027, 12, 1)
+        kg = Centro.create({
+            'code': 'TEST_KG', 'name': 'Denominador kg de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'es_denominador_kg': True, 'std_output_per_hour': 10.0})
+        m = Centro.create({
+            'code': 'TEST_M', 'name': 'Denominador m de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'es_denominador_m': True, 'std_output_per_hour': 100.0})
+        # Los centros reales de la DB pueden aportar denominador también, así
+        # que se apagan para aislar el caso.
+        otros = Centro.search([
+            '|', ('es_denominador_kg', '=', True), ('es_denominador_m', '=', True),
+            ('id', 'not in', (kg | m).ids)])
+        otros.write({'active': False})
+
+        self.assertGreater(
+            self.Costo._compute_factores(period).fab_weight_share, 0.0)
+        kg.write({'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period})
+        self.assertEqual(
+            self.Costo._compute_factores(period).fab_weight_share, 0.0,
+            'sin centro de kilos en capa, todo el pool va por metros')
+        otros.write({'active': True})
+        (kg | m).unlink()
 
     def test_renta_contractual_entra_al_pool_fabril(self):
         """La renta contractual de TODOS los centros fabriles llega al costo

@@ -24,6 +24,7 @@ BUCKETS = [
     ('depreciacion', 'Depreciación fábrica'),
     ('arrend_maquinaria', 'Arrendamiento de maquinaria'),
     ('importacion', 'Gastos e impuestos de importación'),
+    ('absorcion_odoo', 'Absorbido por Odoo (costos fabriles aplicados)'),
     ('operacion', 'Operación (admin / ventas)'),
     ('ventas', 'Ingresos (ventas)'),
     ('no_costeo', 'Fuera de costeo'),
@@ -90,6 +91,22 @@ class QbCosteoCentro(models.Model):
         string='Renta contractual (MXN/mes)',
         help='Renta fija contractual del centro. Se usa en lugar del GL '
              'porque la renta se paga a saltos (un mes $0, el siguiente doble).')
+    modo_costeo = fields.Selection([
+        ('capa', 'Capa mensual — lo reparte el módulo'),
+        ('absorcion_odoo', 'Absorción por workcenter — lo capitaliza Odoo'),
+    ], string='Modo de costeo', default='capa', required=True,
+        help='«Capa mensual»: el gasto del centro entra al pool y el módulo '
+             'lo reparte con sus factores.\n\n'
+             '«Absorción por workcenter»: sus workcenters tienen tarifa por '
+             'hora y cuenta de costos aplicados, así que cada orden capitaliza '
+             'horas × tarifa al AVCO del producto y la venta lo libera sola. '
+             'A partir de la fecha de corte el módulo SACA su gasto del pool: '
+             'si no, el mismo costo se contaría dos veces.')
+    fecha_absorcion = fields.Date(
+        string='Absorbido por Odoo desde',
+        help='Primer día en que los workcenters del centro empezaron a '
+             'capitalizar. Los períodos anteriores conservan el régimen de '
+             'capa, así que el histórico no se altera al migrar un centro.')
     mo_name_pattern = fields.Char(
         string='Patrón de órdenes (fallback)',
         help="Patrón SQL LIKE sobre mrp.production.name (ej. 'TL/OP-ACA%') "
@@ -110,6 +127,30 @@ class QbCosteoCentro(models.Model):
         'unique(code, company_id)',
         "El código del centro debe ser único por compañía.",
     )
+
+    @api.constrains('modo_costeo', 'fecha_absorcion')
+    def _check_absorcion(self):
+        for rec in self:
+            if rec.modo_costeo == 'absorcion_odoo' and not rec.fecha_absorcion:
+                raise ValidationError(
+                    'El centro %s está marcado como absorbido por Odoo pero '
+                    'no tiene fecha de corte. Sin fecha no se sabe desde qué '
+                    'período sacar su gasto del pool, y el histórico se '
+                    'reescribiría.' % rec.code)
+
+    @api.model
+    def absorbidos_en(self, period):
+        """Centros cuyo gasto YA capitaliza Odoo en ese período.
+
+        La fecha de corte se compara contra el período, no contra hoy: un
+        centro que migró en septiembre sigue siendo de capa en agosto, así
+        que recalcular un mes viejo no lo reescribe con el régimen nuevo.
+        """
+        return self.search([
+            ('modo_costeo', '=', 'absorcion_odoo'),
+            ('fecha_absorcion', '!=', False),
+            ('fecha_absorcion', '<=', period),
+        ])
 
 
 class QbCosteoCuentaClass(models.Model):

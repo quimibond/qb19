@@ -81,12 +81,53 @@ class QbCosteoPanel(models.TransientModel):
                        'Clasificación de cuentas',
                        '%s cuentas de resultados sin clasificar' % len(pending)))
 
+        # 5.4 Régimen híbrido: un centro que Odoo ya capitaliza NO puede
+        # seguir en el pool del módulo, y su cuenta de costos aplicados tiene
+        # que estar clasificada para poder restarla. Las dos mitades del
+        # doble conteo son silenciosas.
+        Centro = env['qb.costeo.centro']
+        Clase = env['qb.costeo.cuenta.class']
+        hoy = fields.Date.today()
+        absorbidos = Centro.absorbidos_en(hoy)
+        n_absorcion = Clase.search_count([('bucket', '=', 'absorcion_odoo')])
+        ultimo = env['qb.costo.factores'].search(
+            [], order='period DESC', limit=1)
+        if absorbidos and not n_absorcion:
+            checks.append((
+                BAD, 'Absorción por workcenter',
+                '%s ya capitaliza por workcenter, pero NINGUNA cuenta está '
+                'clasificada como «Absorbido por Odoo». Sin ella el módulo no '
+                'puede restar lo capitalizado y ese costo se cuenta DOS '
+                'veces: una en el AVCO del producto y otra en el pool.'
+                % ', '.join(absorbidos.mapped('code'))))
+        elif absorbidos and ultimo and not ultimo.absorcion_pool_month:
+            checks.append((
+                WARN, 'Absorción por workcenter',
+                '%s está marcado como absorbido y la cuenta está clasificada, '
+                'pero el período %s no registra nada capitalizado. O la '
+                'tarifa por hora sigue en 0, o la fecha de corte se adelantó.'
+                % (', '.join(absorbidos.mapped('code')), ultimo.period)))
+        elif absorbidos:
+            checks.append((
+                OK, 'Absorción por workcenter',
+                '%s fuera del pool desde %s; Odoo capitalizó $%s/mes'
+                % (', '.join(absorbidos.mapped('code')),
+                   min(absorbidos.mapped('fecha_absorcion')),
+                   f'{ultimo.absorcion_pool_month:,.0f}' if ultimo else '0')))
+        elif ultimo and ultimo.absorcion_pool_month:
+            checks.append((
+                BAD, 'Absorción por workcenter',
+                'Odoo capitalizó $%s/mes de costos fabriles aplicados pero '
+                'ningún centro está marcado como absorbido. Marca su modo de '
+                'costeo y su fecha de corte, o el pool seguirá arrastrando un '
+                'gasto que ya viaja dentro del inventario.'
+                % f'{ultimo.absorcion_pool_month:,.0f}'))
+
         # 5.5 Renta: contractual vs. GL — el doble conteo es silencioso
         renta_contractual = sum(env['qb.costeo.centro'].search([
             ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
         ]).mapped('renta_contractual_mxn'))
         if renta_contractual:
-            Clase = env['qb.costeo.cuenta.class']
             sin_marcar = Clase.search([
                 ('es_renta', '=', False),
                 ('bucket', 'in', ('mod', 'overhead_fab', 'depreciacion',
@@ -110,7 +151,6 @@ class QbCosteoPanel(models.TransientModel):
         # 5.6 Aduana: ¿se está capitalizando con landed costs, o se queda en
         # resultados? El pedimento sabe a qué embarque pertenece; prorratearlo
         # con una fórmula le cobra al hilo el pedimento de una máquina.
-        Clase = env['qb.costeo.cuenta.class']
         mal_ubicadas = Clase.cuentas_de_importacion_mal_ubicadas()
         n_import = Clase.search_count([('bucket', '=', 'importacion')])
         if mal_ubicadas:
@@ -205,6 +245,22 @@ class QbCosteoPanel(models.TransientModel):
                 'hora-máquina los ignora, así que el ranking mide el centro '
                 'equivocado cuando el cuello real está en uno de ellos.'
                 % ', '.join(sin_throughput.mapped('code'))))
+
+        # 5.10 El ajuste de metros pierde su contrapeso si el estiramiento
+        # se detiene: resta encogimiento y suma estiramiento, y se compensan.
+        desde = fields.Date.today().replace(day=1) - relativedelta(months=6)
+        sin_est = env['qb.costo.producto']._meses_sin_estiramiento(
+            desde, fields.Date.today() + relativedelta(months=1))
+        if sin_est:
+            checks.append((
+                WARN, 'Ajuste de metros (encogimiento/estiramiento)',
+                'estos meses tienen encogimiento pero CERO estiramiento: %s. '
+                'El ajuste resta metros sin su contrapeso, así que el costo '
+                'por metro sale alto por una operación que dejó de hacerse, '
+                'no porque la planta gaste más. Si el estiramiento se '
+                'suspendió de verdad, revisa si el encogimiento debe seguir '
+                'descontándose.'
+                % ', '.join(str(m) for m in sin_est)))
 
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)

@@ -21,6 +21,8 @@
                 <field name="std_output_per_hour"/>
                 <field name="capacidad_normal"/>
                 <field name="renta_contractual_mxn"/>
+                <field name="modo_costeo" optional="show"/>
+                <field name="fecha_absorcion" optional="show"/>
                 <field name="es_denominador_kg" optional="hide"/>
                 <field name="es_denominador_m" optional="hide"/>
             </list>
@@ -57,6 +59,19 @@
                         <group string="Costos">
                             <field name="renta_contractual_mxn"/>
                             <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Régimen de costeo">
+                            <field name="modo_costeo"/>
+                            <field name="fecha_absorcion"
+                                   required="modo_costeo == 'absorcion_odoo'"
+                                   invisible="modo_costeo != 'absorcion_odoo'"/>
+                            <div colspan="2" class="text-muted"
+                                 invisible="modo_costeo != 'absorcion_odoo'">
+                                Desde esa fecha el gasto de este centro SALE del
+                                pool del módulo: sus workcenters ya lo capitalizan
+                                al AVCO del producto. Los períodos anteriores
+                                conservan el régimen de capa.
+                            </div>
                         </group>
                     </group>
                     <field name="notes" placeholder="Notas..."/>
@@ -211,10 +226,18 @@
         <field name="name">qb.costo.factores.list</field>
         <field name="model">qb.costo.factores</field>
         <field name="arch" type="xml">
-            <list create="false">
+            <list create="false"
+                  decoration-muted="state == 'cerrado'"
+                  decoration-danger="reaperturas &gt; 0">
                 <field name="period"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'cerrado'"
+                       decoration-warning="state == 'borrador'"/>
+                <field name="reaperturas" optional="show"/>
                 <field name="window_months"/>
                 <field name="fab_pool_month" sum="Total"/>
+                <field name="absorcion_pool_month" optional="show" sum="Total"/>
+                <field name="centros_absorbidos" optional="show"/>
                 <!-- Renta: contractual dentro del pool, GL sustituido fuera.
                      Si la contractual > 0 y la sustituida = 0, revisa que
                      las cuentas de renta estén marcadas «es renta». -->
@@ -241,7 +264,94 @@
                 <field name="entretela_factor_m"/>
                 <field name="fab_pool_con_centro_pct" optional="show"/>
                 <field name="cobertura_fab_pct"/>
+                <button name="action_cerrar" type="object" string="Cerrar"
+                        icon="fa-lock" invisible="state == 'cerrado'"
+                        confirm="Cerrar el período congela sus factores y sus
+                                 costos por producto: ni el cron ni un
+                                 recálculo manual podrán volver a tocarlos.
+                                 ¿Cerrar?"/>
+                <button name="action_reabrir" type="object" string="Reabrir"
+                        icon="fa-unlock" invisible="state != 'cerrado'"/>
             </list>
+        </field>
+    </record>
+    <record id="costo_factores_view_form" model="ir.ui.view">
+        <field name="name">qb.costo.factores.form</field>
+        <field name="model">qb.costo.factores</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button name="action_cerrar" type="object" string="Cerrar período"
+                            class="btn-primary" invisible="state == 'cerrado'"
+                            confirm="Cerrar el período congela sus factores y sus
+                                     costos por producto. ¿Cerrar?"/>
+                    <button name="action_reabrir" type="object"
+                            string="Reabrir período"
+                            invisible="state != 'cerrado'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,cerrado"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="period" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Ventanas y pools">
+                            <field name="window_months"/>
+                            <field name="fab_pool_month"/>
+                            <field name="absorcion_pool_month"/>
+                            <field name="centros_capa"/>
+                            <field name="centros_absorbidos"/>
+                            <field name="renta_contractual_pool"/>
+                            <field name="renta_gl_sustituida"/>
+                            <field name="entretela_pool_month"/>
+                            <field name="energia_pool_month"/>
+                            <field name="op_pool_month"/>
+                            <field name="ventas_pool_month"/>
+                            <field name="importacion_pool_month"/>
+                        </group>
+                        <group string="Denominadores y capacidad">
+                            <field name="kg_denom_month"/>
+                            <field name="m_denom_month"/>
+                            <field name="kg_produccion_month"/>
+                            <field name="m_produccion_month"/>
+                            <field name="utilizacion_kg_pct"/>
+                            <field name="utilizacion_m_pct"/>
+                            <field name="fab_ocioso_month"/>
+                            <field name="entretela_m_denom_month"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Factores resultantes">
+                            <field name="fab_weight_share"/>
+                            <field name="factor_fab_kg"/>
+                            <field name="factor_fab_m"/>
+                            <field name="entretela_factor_m"/>
+                            <field name="energia_por_kg"/>
+                            <field name="op_pct" widget="percentage"/>
+                            <field name="op_rate"/>
+                            <field name="factor_importacion"/>
+                            <field name="mp_ajuste"/>
+                        </group>
+                        <group string="Cierre">
+                            <field name="cerrado_por"/>
+                            <field name="cerrado_el"/>
+                            <field name="reaperturas"/>
+                            <field name="motivo_reapertura"
+                                   placeholder="Obligatorio para reabrir: por qué hay que mover un período ya reportado."/>
+                        </group>
+                    </group>
+                    <group string="Cobertura y trazabilidad">
+                        <field name="cobertura_fab_pct"/>
+                        <field name="fab_pool_con_centro_pct"/>
+                        <field name="mp_gl_month"/>
+                        <field name="mp_modelada_month"/>
+                        <field name="importacion_base_month"/>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
         </field>
     </record>
 

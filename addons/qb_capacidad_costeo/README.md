@@ -15,7 +15,7 @@ su lógica ni su versión de manifest.
 
 | Modelo | Qué captura |
 |---|---|
-| `qb.costeo.centro` | Catálogo de centros de proceso: naturaleza, driver (peso/largo), **workcenter_ids** (M2M a `mrp.workcenter`), departamentos RH, throughput nominal, capacidad normal (IAS 2), renta contractual, patrón de órdenes (fallback pre-workcenter) |
+| `qb.costeo.centro` | Catálogo de centros de proceso: naturaleza, driver (peso/largo), **workcenter_ids** (M2M a `mrp.workcenter`), departamentos RH, throughput nominal, capacidad normal (IAS 2), renta contractual, patrón de órdenes (fallback pre-workcenter), y el **régimen de costeo**: capa mensual o absorción por workcenter con su fecha de corte |
 | `qb.costeo.cuenta.class` | Clasificación de cuentas: cuenta o patrón LIKE → bucket (mp/energia/mod/overhead_fab/depreciacion/arrend_maquinaria/**importacion**/operacion/ventas/no_costeo), variable/fija, **es_renta**, centro, driver, % |
 | `qb.costeo.factor.config` | Parámetros globales por key: `fab_weight_share` (0.67), `smoothing_months` (12), `production_window_months` (3), `m_per_kg_default`, `energia_por_kg` (0=auto), `op_pct_override` (0=auto), `weeks_per_month`, `entretela_overhead_extra_mxn`, `denominador_kg_override`, `denominador_m_override` |
 | `qb.producto.peso` | Override de peso/unidad y kg↔m por producto (manual > cvu > ref_gramaje > bom > odoo_weight) |
@@ -31,6 +31,7 @@ su lógica ni su versión de manifest.
 | `qb.balance` | Por centro, en **metros-equivalentes**: capacidad vs producción, cuello de botella (= techo de planta) |
 | `qb.rh.centro` | Dotación, horas y costo MOD/hora (desde sueldos de `hr.version` y desde GL — ambos) |
 | `qb.ociosidad` | Costo fijo del centro × (1 − utilización) = capacidad hundida (IAS 2); fijo unitario a capacidad normal vs a producción real |
+| `qb.workorder.excepcion` | Operaciones con rendimiento (cantidad ÷ horas registradas) fuera de la banda sana. Con tarifa por hora activa el tiempo es dinero: un timer desbocado le carga al producto horas que no trabajó. Mira siempre la duración REAL, nunca `duration_expected` — hay rutas con minutos capturados donde van horas |
 | `qb.costo.conciliacion` | **El control de calidad del costeo**: mes a mes, ventas y costo del modelo contra el mayor — gasto fuera de costeo, gasto sin clasificar, resultado contable vs. resultado del modelo y la **brecha** en monto y % de ventas. Verde bajo ±2%. Ver `docs/COSTEO_REVISION.md` |
 
 ### Motor de costeo (stored, por período)
@@ -199,6 +200,46 @@ refresca al guardar y cada noche (cron), así las cuentas nuevas de una
 familia ya clasificada entran solas. El menú **Cuentas sin clasificar**
 lista las 4xx-7xx pendientes.
 
+## Régimen híbrido: capa mensual vs. absorción por workcenter
+
+Un centro puede costearse de dos maneras, y el módulo tiene que saber cuál
+para no cobrar el mismo peso dos veces:
+
+- **Capa mensual** — su gasto entra al pool y el módulo lo reparte con sus
+  factores. Es el régimen de arranque.
+- **Absorción por workcenter** — sus `mrp.workcenter` tienen tarifa por hora y
+  cuenta de costos fabriles aplicados, así que **Odoo** capitaliza horas ×
+  tarifa al AVCO del producto y la venta lo libera sola.
+
+Cada centro declara su modo y su **fecha de corte**. La fecha se compara
+contra el PERÍODO, no contra hoy: un centro que migró en septiembre sigue
+siendo de capa en agosto, así que recalcular un mes viejo no lo reescribe con
+el régimen nuevo.
+
+Desde su fecha de corte, el centro sale del pool, de la renta contractual y de
+los denominadores. Y lo que Odoo capitalizó **se resta del pool medido en la
+propia cuenta de costos fabriles aplicados** (su saldo acreedor), no con un
+parámetro que haya que mantener al día: si la tarifa absorbe de más o de
+menos, el pool se ajusta solo.
+
+Cuando un lado del split peso/largo se queda sin centros en capa, su share se
+va a 0 automáticamente — repartirle pool a un factor que ya no tiene
+denominador dejaría dinero sin absorber. El panel vigila las dos mitades del
+doble conteo: centro absorbido sin cuenta clasificada, y cuenta con saldo sin
+centro marcado.
+
+**Corte vigente:** TEJIDO desde 2026-09-01 (37 workcenters CIRCULAR).
+
+## Períodos cerrables
+
+`qb.costo.factores` tiene estado. **Cerrado** congela el período: ni el cron
+ni un recálculo manual ni un `write` suelto pueden tocar sus factores ni sus
+costos por producto. Reabrir exige motivo, cuenta las reaperturas y queda en
+el historial del registro.
+
+Sin esto, el número que se presentó el mes pasado cambiaba solo la próxima vez
+que alguien recalculaba, y no había forma de defenderlo.
+
 ## Conciliación contra la contabilidad
 
 **Análisis → Costos → Conciliación vs. contabilidad.** El costeo reparte
@@ -229,6 +270,11 @@ arreglar) está en **`docs/COSTEO_REVISION.md`**.
   `ventas_total − costo_variable_total = contrib_total`.
 - La conciliación cuadra con el motor: su lado "modelo" es exactamente la Σ
   de `qb.costo.producto` del mes (test).
+- Un período cerrado no se recalcula, sus filas no se escriben ni se borran, y
+  reabrirlo exige motivo (test).
+- Un centro absorbido sale del pool por exactamente su renta contractual, la
+  fecha de corte respeta el histórico, y el share se apaga cuando su lado
+  queda sin centros en capa (tests).
 - Importados sin fabricación; subproductos MP $0 (tests).
 - La renta contractual de un centro fabril mueve el pool en exactamente esa
   cantidad; el reconocedor distingue renta de inmueble de arrendamiento de

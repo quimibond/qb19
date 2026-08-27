@@ -60,6 +60,10 @@
               parent="menu_qb_capacidad_group" action="escenario_turno_action" sequence="40"/>
     <menuitem id="menu_qb_rh" name="RH / MOD por centro"
               parent="menu_qb_capacidad_group" action="rh_centro_action" sequence="50"/>
+    <!-- Con tarifa por hora activa, un timer malo mueve el AVCO del producto -->
+    <menuitem id="menu_qb_wo_excepciones" name="Excepciones de tiempo"
+              parent="menu_qb_capacidad_group"
+              action="workorder_excepcion_action" sequence="55"/>
 
     <!-- 4.5 Fichas técnicas: la nomenclatura hecha datos -->
     <menuitem id="menu_qb_fichas" name="Fichas técnicas"
