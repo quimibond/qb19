@@ -238,9 +238,16 @@ class QbCostoProducto(models.Model):
     # Denominadores de producción (kg / m)
     # ------------------------------------------------------------------
     @api.model
-    def _production_month_avg(self, centros, date_from, date_to):
+    def _production_month_avg(self, centros, date_from, date_to,
+                              restar_by_month=None):
         """Producción promedio mensual de un conjunto de centros: vía sus
-        workcenters (mrp.workorder) o su mo_name_pattern (mrp.production)."""
+        workcenters (mrp.workorder) o su mo_name_pattern (mrp.production).
+
+        `restar_by_month` ajusta metros que la orden reportó pero que ya no
+        coinciden al momento de vender (hoy: encogimiento menos estiramiento).
+        Un valor negativo suma metros en vez de restarlos, que es el caso del
+        estiramiento. Sin ese ajuste el pool se reparte entre metros que se
+        evaporaron y el costo unitario queda subvaluado."""
         if not centros:
             return 0.0
         # Promediar SOLO los meses con producción: si los workcenters
@@ -283,8 +290,52 @@ class QbCostoProducto(models.Model):
             """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
             for mes, qty in self.env.cr.fetchall():
                 by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
+        for mes, qty in (restar_by_month or {}).items():
+            if mes in by_month:
+                by_month[mes] -= qty
         activos = [q for q in by_month.values() if q > 0]
         return sum(activos) / len(activos) if activos else 0.0
+
+    def _ajuste_metros_by_month(self, date_from, date_to):
+        """Metros que la orden reportó y que ya no coinciden al vender.
+
+        Ni el encogimiento ni el estiramiento destruyen o crean material: la
+        misma tela mide menos o mide más. Ninguno de los dos pasa por la orden
+        de fabricación —ocurren después, en Inspección, con su propio tipo de
+        operación— así que el denominador los ignora por completo.
+
+        Se mide como salida NETA de inventario, de modo que el signo sale
+        solo: el encogimiento saca metros y da positivo (hay que restarlos del
+        denominador); el estiramiento mete metros y da negativo (al restarlo,
+        los devuelve). La misma fórmula cubre además los dos regímenes del
+        encogimiento: el viejo (movimiento a scrap, que sacaba los metros y
+        los mandaba a resultados) y el nuevo (orden que consume 100 y produce
+        95 sin tocar resultados).
+
+        Los tipos se identifican por sequence_code porque el nombre es
+        traducible y no se puede filtrar en SQL. Se usa 'OP-EST' y no 'EST' a
+        propósito: 'EST' también matchea 'DEST-' (DESTRUCCIÓN), que es
+        material realmente perdido y no un cambio de medida.
+        """
+        self.env.cr.execute("""
+            SELECT date_trunc('month', sm.date)::date,
+                   COALESCE(SUM(
+                       CASE WHEN ld.usage != 'internal' THEN sm.quantity
+                            ELSE 0 END
+                     - CASE WHEN ls.usage != 'internal' THEN sm.quantity
+                            ELSE 0 END), 0)
+            FROM stock_move sm
+            JOIN stock_picking_type spt ON spt.id = sm.picking_type_id
+            JOIN stock_location ls ON ls.id = sm.location_id
+            JOIN stock_location ld ON ld.id = sm.location_dest_id
+            WHERE sm.state = 'done'
+              AND sm.company_id = %s
+              AND (spt.sequence_code LIKE '%%ENC%%'
+                   OR spt.sequence_code LIKE '%%OP-EST%%')
+              AND sm.date >= %s AND sm.date < %s
+            GROUP BY 1
+        """, (self.env.company.id, date_from, date_to))
+        return {mes: (qty or 0.0) for mes, qty in self.env.cr.fetchall()}
 
     # ------------------------------------------------------------------
     # Factores del período
@@ -334,7 +385,10 @@ class QbCostoProducto(models.Model):
         kg_denom = (Config.get_param('denominador_kg_override', 0.0)
                     or self._production_month_avg(kg_centros, date_from, date_to))
         m_denom = (Config.get_param('denominador_m_override', 0.0)
-                   or self._production_month_avg(m_centros, date_from, date_to))
+                   or self._production_month_avg(
+                       m_centros, date_from, date_to,
+                       restar_by_month=self._ajuste_metros_by_month(
+                           date_from, date_to)))
 
         ws = Config.get_param('fab_weight_share', 0.67)
         factor_fab_kg = ws * fab_pool / kg_denom if kg_denom else 0.0
