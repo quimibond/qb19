@@ -61,11 +61,14 @@ los movimientos `REF-CON` cuyo Origen es la solicitud.
 
 ## Esquema contable definitivo (decidido 27/08/26)
 
-**Solo Bolsas (326) y Tubos (328) llevan inventario** en valuación Perpetua: su
-factura carga 115.01.03 y su consumo lo descarga. **Todo lo demás del árbol
+**Solo Bolsas (326) y Tubos (328) llevan inventario** en valuación Permanente
+(al facturar), y su cuenta de valuación es **115.02.01 Materia prima y
+materiales** (cambiada el 27/08/26 desde 115.01.03, por instrucción de José): su
+factura carga 115.02.01 y su consumo lo descarga. **Todo lo demás del árbol
 "Refacciones y Consumibles" es Periódico**: el gasto se registra directo al
 facturar la compra, por categoría y a costo exacto, y los traslados nunca generan
-asientos — el flujo de mantenimiento es control puro de cantidades.
+asientos — el flujo de mantenimiento es control puro de cantidades. Con esto,
+115.01.03 Inventario refacciones deja de recibir movimientos.
 
 Ajustes aplicados ese día vía MCP:
 
@@ -75,11 +78,15 @@ Ajustes aplicados ese día vía MCP:
   inventario, solo el tubo y la bolsa"). No hizo falta crear categorías nuevas.
 - Con esto el traslado de migración 97709 puede validarse **en cualquier
   momento**: cero asientos garantizado.
-- **Pendiente para contabilidad:** quedaron **$125,955.90** cargados en 115.01.03
-  por facturas de Agujados registradas mientras esa categoría estuvo en Perpetua
-  (detalle producto por producto en el chatter del picking 97709). Requiere
-  reclasificación manual Dr 504.01.0007 AGUJADOS / Cr 115.01.03. Cintas se
-  verificó sin saldo: no requiere nada.
+- **Pendientes para contabilidad** (saldos legados en 115.01.03, detalle en los
+  chatters del picking 97709 y de las categorías 326/328):
+  - **$125,955.90** cargados por facturas de Agujados registradas mientras esa
+    categoría estuvo en Permanente → reclasificar Dr 504.01.0007 AGUJADOS /
+    Cr 115.01.03. Cintas se verificó sin saldo.
+  - Bolsas+Tubos dejan un saldo histórico neto de **-$131,490.63** en 115.01.03
+    (más abonos por consumo que cargos por factura), y su stock físico a la mano
+    (~$319,001 en bolsas, ~$275,012 en tubos) debe quedar reflejado en 115.02.01
+    → requiere revisión/reclasificación manual.
 
 ## Reglas fijas
 
