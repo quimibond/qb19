@@ -86,9 +86,18 @@ def migrate(cr, version):
             'qb_capacidad_costeo: no existe la cuenta %s. Cuando se cree, '
             'clasifícala en el bucket «Absorbido por Odoo».', CUENTA_APLICADOS)
 
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
-    _logger.info('qb_capacidad_costeo: %s períodos recalculados; todos quedan '
-                 'en BORRADOR — ciérralos desde Factores por período cuando '
-                 'los des por buenos.', len(set(periodos)))
+    # El recálculo de los períodos NO va aquí, a propósito. Las migraciones
+    # corren en orden de versión y cada una pisa el resultado de la anterior,
+    # así que recalcular en las trece dejaba ~130,600 recálculos de producto
+    # (13 migraciones x 8 períodos x ~1,256 productos) para un build donde
+    # bastan los ~10,000 de la última pasada. Las doce primeras se tiraban a
+    # la basura y el build de Odoo.sh las pagaba enteras.
+    #
+    # Lo hace la migración MÁS NUEVA, una sola vez, con todos los cambios de
+    # datos de esta cadena ya aplicados. Si alguna vez se despliega una
+    # versión intermedia suelta —hoy no pasa: el módulo se instala en la
+    # versión del manifest— queda el botón «Recalcular» del Panel.
+
+    _logger.info('qb_capacidad_costeo: TEJIDO marcado para absorción. Los '
+                 'períodos quedan todos en BORRADOR a propósito: congelar un '
+                 'mes es decisión de alguien, no de una migración.')

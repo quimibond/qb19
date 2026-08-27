@@ -29,24 +29,12 @@ Dos cambios:
 
 Se recalculan los períodos existentes para deshacer el reparto anterior.
 """
-import logging
-
-from odoo import SUPERUSER_ID, api
-
-_logger = logging.getLogger(__name__)
 
 
 def migrate(cr, version):
-    env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
+    """No-op: este cambio es de MOTOR, no de datos.
 
-    ultimo = env['qb.costo.factores'].search([], order='period DESC', limit=1)
-    if ultimo and ultimo.importacion_pool_month:
-        _logger.info(
-            'qb_capacidad_costeo: %s períodos recalculados. Aduana en '
-            'resultados: %.2f/mes. Con el driver «landed» no se prorratea — '
-            'captúrala con landed costs en las recepciones y la conciliación '
-            'la verá bajar.', len(set(periodos)),
-            ultimo.importacion_pool_month)
+    El archivo existe para dejar registro de qué cambió en esta versión y
+    para que la cadena de migraciones no tenga huecos. El recálculo que
+    aplica el cambio lo hace la migración más nueva, una sola vez.
+    """

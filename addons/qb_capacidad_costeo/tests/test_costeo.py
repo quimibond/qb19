@@ -2109,3 +2109,200 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(f.absorcion_ya_fuera_month, 90000.0, places=2)
         self.assertEqual(f.absorcion_pool_month, 0.0)
         centro.unlink()
+
+    def test_los_totales_cumplen_ventas_menos_costo_igual_margen(self):
+        """En TODA fila: ventas_total − costo_X_total = margen_X_total.
+
+        La identidad se rompía en las filas con cantidad neta ≤ 0 —cuando las
+        devoluciones del período superan a las ventas—. Esa fila se trata
+        como «sin ventas» para no generar un precio negativo que envenene los
+        márgenes unitarios y las alertas, pero `ventas_total` sí conserva el
+        ingreso negativo, que es el hecho contable. Los totales de margen se
+        calculaban desde `precio × qty`, así que salían en 0 contra un
+        ingreso que no era 0.
+
+        No es un detalle: 11 filas metieron $561,866 de residuo en la
+        conciliación entre enero y julio de 2026 —marzo solo, $242,363— y ese
+        residuo no correspondía a ninguna causa real. Se leía como gasto sin
+        explicar.
+        """
+        Costo = self.Costo
+        period = date(2027, 6, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        ctx = Costo._engine_ctx([self.tela.id], factores)
+
+        def fila(qty, revenue):
+            vals, _f = Costo._compute_product_vals(
+                self.tela, period, factores,
+                {self.tela.id: {'qty': qty, 'revenue': revenue}},
+                ctx, self.Ruteo, self.Peso)
+            return vals
+
+        for qty, revenue, caso in (
+                (1000.0, 50000.0, 'venta normal'),
+                (0.0, 0.0, 'sin movimiento'),
+                (500.0, 0.0, 'muestra sin cargo'),
+                (-2.0, -242363.52, 'devolución neta'),
+                (-5716.8, -157560.37, 'devolución neta de volumen')):
+            v = fila(qty, revenue)
+            self.assertAlmostEqual(
+                v['ventas_total'] - v['costo_absorbido_total'],
+                v['margen_neto_total'], places=2, msg=caso)
+            self.assertAlmostEqual(
+                v['ventas_total'] - v['costo_produccion_total'],
+                v['margen_bruto_total'], places=2, msg=caso)
+            self.assertAlmostEqual(
+                v['ventas_total'] - v['costo_variable_total'],
+                v['contrib_total'], places=2, msg=caso)
+
+        # Y la venta normal no cambia de valor: el arreglo es una identidad
+        # algebraica para toda fila con precio válido, no un criterio nuevo.
+        v = fila(1000.0, 50000.0)
+        self.assertAlmostEqual(
+            v['margen_neto_total'],
+            (v['precio_prom'] - v['costo_absorbido']) * 1000.0, places=2)
+
+        # La devolución neta sigue SIN precio ni margen unitario: el guard
+        # que evita el precio negativo se conserva, es solo el total el que
+        # ahora refleja el ingreso.
+        d = fila(-2.0, -242363.52)
+        self.assertEqual(d['precio_prom'], 0.0)
+        self.assertEqual(d['margen_absorbido'], 0.0)
+        self.assertEqual(d['costo_absorbido_total'], 0.0)
+        self.assertAlmostEqual(d['margen_neto_total'], -242363.52, places=2)
+
+    def test_patron_amplio_con_una_renta_dentro_no_se_marca(self):
+        """Una clase de PATRÓN que abarca una cuenta de renta entre muchas
+        que no lo son NO se marca `es_renta`.
+
+        La bandera vive en la clase y el motor saca del pool todo lo que la
+        clase abarca. Con la regla vieja —marcar si ALGUNA cuenta era renta—
+        bastaba que `504.01%` incluyera a `504.01.0008 RENTA DEL LOCAL` para
+        que los cuarenta gastos de overhead de fábrica salieran del pool. En
+        producción quedaron marcadas 38 cuentas fabriles, de las que una sola
+        era renta de inmueble: el motor sacaba $1,534,140/mes que nada
+        reponía.
+        """
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+
+        def cuenta(name, code):
+            return Account.create({'name': name, 'code': code,
+                                   'account_type': 'expense_direct_cost'})
+
+        renta = cuenta('RENTA DEL LOCAL TEST', 'QBRP.01.0008')
+        mtto = cuenta('MANTENIMIENTOS FABRICA TEST', 'QBRP.01.0005')
+        herr = cuenta('HERRAMIENTAS Y EQUIPO MENOR TEST', 'QBRP.01.0042')
+        patron = Clase.create({'code_pattern': 'QBRP.01%',
+                               'bucket': 'overhead_fab'})
+        self.assertEqual(set(patron.account_ids.ids),
+                         {renta.id, mtto.id, herr.id})
+
+        Clase.marcar_cuentas_de_renta()
+        self.assertFalse(
+            patron.es_renta,
+            'marcar el patrón sacaría del pool el mantenimiento y las '
+            'herramientas, que nada repone')
+        # Y el panel lo dice, en vez de pedir que se marque
+        self.assertIn(patron, Clase.clases_con_renta_mezclada())
+
+        # La salida correcta: la cuenta de renta con clasificación propia.
+        # Gana por más específica, y esa SÍ se marca.
+        propia = Clase.create({'account_id': renta.id,
+                               'bucket': 'overhead_fab'})
+        Clase.marcar_cuentas_de_renta()
+        self.assertTrue(propia.es_renta)
+        self.assertFalse(patron.es_renta)
+
+    def test_arrendamiento_de_maquinaria_nunca_sale_del_pool(self):
+        """El arrendamiento de maquinaria es costo de producción: no hay renta
+        contractual de centro que lo sustituya, así que sacarlo del pool es
+        quitarlo y ya.
+
+        El reconocedor mira el NOMBRE de la cuenta, y una cuenta que se llama
+        solo «ARRENDAMIENTO FINANCIERO» matchea sin decir maquinaria por
+        ningún lado. En producción eso sacó $867,721/mes del pool fabril. El
+        bucket manda sobre el nombre: `arrend_maquinaria` nunca es renta de
+        inmueble.
+        """
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        generica = Account.create({
+            'name': 'ARRENDAMIENTO FINANCIERO TEST', 'code': 'QBAF.11.0001',
+            'account_type': 'expense_direct_cost'})
+        # El reconocedor por nombre sí matchea: no dice «maquinaria»
+        self.assertTrue(Clase._es_cuenta_de_renta(generica))
+
+        clase = Clase.create({'code_pattern': 'QBAF.11%',
+                              'bucket': 'arrend_maquinaria'})
+        Clase.marcar_cuentas_de_renta()
+        self.assertFalse(clase.es_renta, 'el bucket manda sobre el nombre')
+        self.assertNotIn(clase, Clase.clases_con_renta_mezclada())
+
+    def test_marcar_rentas_tambien_desmarca(self):
+        """`marcar_cuentas_de_renta` corre la regla VIGENTE sobre todas las
+        clases: si una quedó marcada por una regla anterior, la desmarca. Sin
+        eso, arreglar la regla no arregla los datos."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mtto = Account.create({'name': 'MANTENIMIENTOS TEST', 'code': 'QBDM.01',
+                               'account_type': 'expense_direct_cost'})
+        clase = Clase.create({'account_id': mtto.id, 'bucket': 'overhead_fab'})
+        clase.es_renta = True          # como lo dejó la regla vieja
+        Clase.marcar_cuentas_de_renta()
+        self.assertFalse(clase.es_renta)
+
+    def test_la_aduana_de_una_maquina_no_la_paga_el_hilo(self):
+        """El activo fijo y los servicios se quedan en la BASE del factor de
+        importación, pero nunca reciben el recargo.
+
+        Quedarse en la base es correcto: su pedimento existe y diluye el
+        factor. Recibir el recargo no lo sería: una máquina se deprecia, no se
+        vende, y un seguro no tiene inventario que cargar. Esa parte del pool
+        se queda en resultados a propósito.
+
+        En producción la ventana sep-2025/ago-2026 traía una ROPE OPENER AND
+        SLITTING LINE de €95,000 y una decena de seguros, fletes y licencias
+        dentro del conjunto que recibe recargo.
+        """
+        Costo = self.Costo
+        Categ = self.env['product.category']
+        Product = self.env['product.product']
+        fijo = Categ.create({'name': 'Maquinaria', 'parent_id': Categ.create(
+            {'name': 'Activo Fijo'}).id})
+        mp = Categ.create({'name': 'Hilo QB TEST'})
+
+        maquina = Product.create({
+            'name': 'ROPE OPENER TEST', 'is_storable': True,
+            'categ_id': fijo.id})
+        seguro = Product.create({
+            'name': 'SEGURO TEST', 'type': 'service', 'categ_id': mp.id})
+        hilo = Product.create({
+            'name': 'HILO IMPORTADO TEST', 'is_storable': True,
+            'categ_id': mp.id})
+
+        self.assertTrue(Costo._es_importado_costeable(hilo))
+        self.assertFalse(Costo._es_importado_costeable(maquina),
+                         'una máquina se deprecia, no se vende')
+        self.assertFalse(Costo._es_importado_costeable(seguro),
+                         'un servicio no tiene inventario que cargar')
+
+    def test_base_de_importacion_separa_lo_costeable(self):
+        """La base total incluye todo lo importado; la costeable, solo lo que
+        puede recibir el recargo. Las dos se promedian sobre los MISMOS meses,
+        o el porcentaje entre ellas mentiría."""
+        base, ids, costeable = self.Costo._import_purchase_base(
+            date(2025, 9, 1), date(2026, 9, 1))
+        self.assertGreaterEqual(base, costeable,
+                                'lo costeable es un subconjunto de la base')
+        self.assertGreaterEqual(costeable, 0.0)
+        Product = self.env['product.product']
+        for pid in list(ids)[:25]:
+            self.assertTrue(
+                self.Costo._es_importado_costeable(Product.browse(pid)),
+                'solo productos costeables reciben el recargo')
+        if not base:
+            self.skipTest('sin compras de importación en la ventana')

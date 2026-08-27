@@ -259,6 +259,7 @@
                 <field name="factor_fab_m"/>
                 <field name="energia_por_kg"/>
                 <field name="importacion_pool_month" optional="show"/>
+                <field name="importacion_base_costeable" optional="hide"/>
                 <field name="importacion_base_month" optional="hide"/>
                 <field name="factor_importacion" optional="show"/>
                 <field name="op_pct" widget="percentage"/>
@@ -353,6 +354,7 @@
                         <field name="mp_gl_month"/>
                         <field name="mp_modelada_month"/>
                         <field name="importacion_base_month"/>
+                        <field name="importacion_base_costeable"/>
                         <field name="notes"/>
                     </group>
                 </sheet>
