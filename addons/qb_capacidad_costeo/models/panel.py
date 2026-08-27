@@ -143,6 +143,28 @@ class QbCosteoPanel(models.TransientModel):
                 '%s cuentas de costo primo; ajuste vigente ×%.3f '
                 '(receta → consumo real)' % (n_mp, ajuste)))
 
+        # 5.8 Capacidad normal: sin ella el producto carga la ociosidad
+        denominadores = env['qb.costeo.centro'].search(
+            ['|', ('es_denominador_kg', '=', True),
+             ('es_denominador_m', '=', True)])
+        caps = {o.centro_id.id: o.capacity_month_units
+                for o in env['qb.ociosidad'].search(
+                    [('centro_id', 'in', denominadores.ids)])}
+        sin_normal = denominadores.filtered(lambda c: caps.get(c.id, 0.0) <= 0)
+        if sin_normal:
+            checks.append((
+                WARN, 'Capacidad normal (IAS 2)',
+                'estos centros definen el denominador y NO tienen capacidad '
+                'normal derivable: %s. Su pool fijo se divide entre la '
+                'producción real, así que un mes flojo encarece el producto. '
+                'Captura su throughput nominal (o su capacidad normal) en '
+                'Centros de costo.' % ', '.join(sin_normal.mapped('code'))))
+        else:
+            checks.append((
+                OK, 'Capacidad normal (IAS 2)',
+                'el pool fijo se divide entre capacidad normal; la ociosidad '
+                'va al resultado del período, no al producto'))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:

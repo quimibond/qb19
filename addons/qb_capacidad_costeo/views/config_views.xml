@@ -225,6 +225,11 @@
                 <field name="mp_ajuste" optional="show"/>
                 <field name="kg_denom_month"/>
                 <field name="m_denom_month"/>
+                <field name="kg_produccion_month" optional="hide"/>
+                <field name="m_produccion_month" optional="hide"/>
+                <field name="utilizacion_kg_pct" optional="show"/>
+                <field name="utilizacion_m_pct" optional="show"/>
+                <field name="fab_ocioso_month" optional="show"/>
                 <field name="factor_fab_kg"/>
                 <field name="factor_fab_m"/>
                 <field name="energia_por_kg"/>

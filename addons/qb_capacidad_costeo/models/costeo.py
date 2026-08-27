@@ -100,8 +100,28 @@ class QbCostoFactores(models.Model):
              'pool fabril y que se saca para no contar la renta dos veces. Si '
              'sale en 0 con renta contractual > 0, revisa que las cuentas de '
              'renta estén marcadas — puede haber doble conteo.')
-    kg_denom_month = fields.Float(string='Denominador kg/mes')
-    m_denom_month = fields.Float(string='Denominador m/mes')
+    kg_denom_month = fields.Float(
+        string='Denominador kg/mes',
+        help='Capacidad NORMAL en kg de los centros que definen el peso '
+             '(IAS 2), o su producción real si no hay capacidad derivable.')
+    m_denom_month = fields.Float(
+        string='Denominador m/mes',
+        help='Capacidad NORMAL en metros, misma regla que el de kg.')
+    kg_produccion_month = fields.Float(string='Producción kg/mes (real)')
+    m_produccion_month = fields.Float(string='Producción m/mes (real)')
+    utilizacion_kg_pct = fields.Float(
+        string='Utilización kg %',
+        help='Producción real ÷ capacidad normal. Si sale absurdamente baja, '
+             'revisa el throughput nominal y los calendarios: el denominador '
+             'estará inflado y el costo unitario saldrá bajo.')
+    utilizacion_m_pct = fields.Float(string='Utilización m %')
+    fab_ocioso_month = fields.Float(
+        string='Fabricación no absorbida/mes',
+        help='La parte del pool fijo que la producción real no alcanza a '
+             'absorber contra la capacidad normal: el costo de la capacidad '
+             'ociosa. Bajo IAS 2 va al resultado del período, NO al costo del '
+             'producto — por eso el modelo reparte menos que el gasto total, '
+             'y esa diferencia es deliberada.')
     entretela_m_denom_month = fields.Float(string='Metros entretela/mes')
     fab_weight_share = fields.Float(string='Share peso')
     factor_fab_kg = fields.Float(string='Factor fabricación $/kg')
@@ -420,6 +440,60 @@ class QbCostoProducto(models.Model):
         activos = [q for q in by_month.values() if q > 0]
         return sum(activos) / len(activos) if activos else 0.0
 
+    @api.model
+    def _capacidad_normal_map(self, centros):
+        """{centro_id: capacidad normal/mes} desde `qb.ociosidad`.
+
+        Se resuelve UNA vez por corrida y se pasa a los denominadores: la
+        vista de ociosidad arma calendarios, pools del GL y producción, y
+        `action_recompute_year` llamaría a ese query veinticuatro veces.
+        """
+        if not centros:
+            return {}
+        return {o.centro_id.id: o.capacity_month_units
+                for o in self.env['qb.ociosidad'].search(
+                    [('centro_id', 'in', centros.ids)])}
+
+    def _denominador_capacidad(self, centros, date_from, date_to,
+                               restar_by_month=None, caps=None):
+        """Denominador del factor de fabricación: capacidad NORMAL del centro,
+        no su producción real (costeo normal, IAS 2).
+
+        Dividir el pool fijo entre la producción del mes le carga la ociosidad
+        al producto: un mes flojo lo encarece, y el modelo entonces recomienda
+        subir el precio justo cuando lo que hace falta es vender más. Bajo
+        IAS 2 el costo no absorbido por la capacidad ociosa va al resultado
+        del período, no al inventario.
+
+        La capacidad normal sale de `qb.ociosidad`, que ya la deriva igual que
+        el campo promete: `capacidad_normal` capturada, o calendario real ×
+        throughput nominal. Usar la misma fuente que la vista de ociosidad es
+        lo que hace que las dos mitades del módulo digan lo mismo — antes el
+        motor dividía entre producción real y la vista entre capacidad normal.
+
+        Un centro sin capacidad derivable (sin throughput nominal, sin
+        workcenters y sin turnos) cae a su producción real: degradar con
+        gracia es preferible a dejar el denominador en cero.
+        """
+        if not centros:
+            return 0.0
+        Config = self.env['qb.costeo.factor.config']
+        if not Config.get_param('denominador_capacidad_normal', 1.0):
+            return self._production_month_avg(
+                centros, date_from, date_to, restar_by_month)
+        if caps is None:
+            caps = self._capacidad_normal_map(centros)
+        con_normal = centros.filtered(lambda c: caps.get(c.id, 0.0) > 0)
+        sin_normal = centros - con_normal
+        total = sum(caps[c.id] for c in con_normal)
+        if sin_normal:
+            # El ajuste de metros (encogimiento/estiramiento) solo aplica al
+            # lado que se mide con producción: la capacidad normal es un techo
+            # teórico y no encoge.
+            total += self._production_month_avg(
+                sin_normal, date_from, date_to, restar_by_month)
+        return total
+
     def _ajuste_metros_by_month(self, date_from, date_to):
         """Metros que la orden reportó y que ya no coinciden al vender.
 
@@ -528,13 +602,21 @@ class QbCostoProducto(models.Model):
 
         kg_centros = Centro.search([('es_denominador_kg', '=', True)])
         m_centros = Centro.search([('es_denominador_m', '=', True)])
+        ajuste_m = self._ajuste_metros_by_month(date_from, date_to)
+        caps = self._capacidad_normal_map(kg_centros | m_centros)
+        # Denominador = capacidad NORMAL (IAS 2). La producción real se sigue
+        # midiendo aparte para saber cuánto del pool NO se absorbió: ese es el
+        # costo de la ociosidad, y va al resultado del período, no al producto.
         kg_denom = (Config.get_param('denominador_kg_override', 0.0)
-                    or self._production_month_avg(kg_centros, date_from, date_to))
+                    or self._denominador_capacidad(
+                        kg_centros, date_from, date_to, caps=caps))
         m_denom = (Config.get_param('denominador_m_override', 0.0)
-                   or self._production_month_avg(
+                   or self._denominador_capacidad(
                        m_centros, date_from, date_to,
-                       restar_by_month=self._ajuste_metros_by_month(
-                           date_from, date_to)))
+                       restar_by_month=ajuste_m, caps=caps))
+        kg_real = self._production_month_avg(kg_centros, date_from, date_to)
+        m_real = self._production_month_avg(
+            m_centros, date_from, date_to, restar_by_month=ajuste_m)
 
         # Importación: los gastos e impuestos de aduana se cargan al valor de
         # lo importado (el IGI se calcula sobre el valor en aduana; flete y
@@ -566,11 +648,26 @@ class QbCostoProducto(models.Model):
         ws = Config.get_param('fab_weight_share', 0.67)
         factor_fab_kg = ws * fab_pool / kg_denom if kg_denom else 0.0
         factor_fab_m = (1 - ws) * fab_pool / m_denom if m_denom else 0.0
+        # La energía es VARIABLE: su $/kg se divide entre los kilos que de
+        # verdad se produjeron, no entre la capacidad normal. Con capacidad
+        # normal en el denominador, un mes al 60% de utilización daría una
+        # energía por kilo 40% baja — justo al revés de la realidad física.
+        # (El override manual sigue mandando sobre los dos.)
+        kg_energia = Config.get_param('denominador_kg_override', 0.0) or kg_real
         energia_por_kg = (Config.get_param('energia_por_kg', 0.0)
-                          or (energia_pool / kg_denom if kg_denom else 0.0))
+                          or (energia_pool / kg_energia if kg_energia else 0.0))
         op_pct = (Config.get_param('op_pct_override', 0.0)
                   or (op_pool / ventas_pool if ventas_pool else 0.0))
         entretela_factor = entretela_pool / entretela_m if entretela_m else 0.0
+
+        # Costo de la capacidad ociosa: la parte del pool fijo que la
+        # producción real NO alcanza a absorber contra la capacidad normal.
+        # Con denominador = producción real esto da 0 por construcción, que es
+        # justo el problema que el costeo normal evita.
+        util_kg = kg_real / kg_denom if kg_denom else 0.0
+        util_m = m_real / m_denom if m_denom else 0.0
+        fab_absorbible = fab_pool * (ws * util_kg + (1 - ws) * util_m)
+        fab_ocioso = max(fab_pool - fab_absorbible, 0.0)
 
         Factores = self.env['qb.costo.factores']
         vals = {
@@ -588,6 +685,11 @@ class QbCostoProducto(models.Model):
             'renta_gl_sustituida': renta_gl,
             'kg_denom_month': kg_denom,
             'm_denom_month': m_denom,
+            'kg_produccion_month': kg_real,
+            'm_produccion_month': m_real,
+            'utilizacion_kg_pct': 100.0 * util_kg,
+            'utilizacion_m_pct': 100.0 * util_m,
+            'fab_ocioso_month': fab_ocioso,
             'entretela_m_denom_month': entretela_m,
             'fab_weight_share': ws,
             'factor_fab_kg': factor_fab_kg,

@@ -37,7 +37,7 @@ su lógica ni su versión de manifest.
 
 | Modelo | Qué guarda |
 |---|---|
-| `qb.costo.factores` | Los factores del mes: pools GL suavizados, denominadores kg/m, factor $/kg y $/m, energía $/kg, op %, factor entretela, **cobertura del pool** — trazabilidad completa |
+| `qb.costo.factores` | Los factores del mes: pools GL suavizados, denominadores kg/m (capacidad normal) y producción real, utilización, **fabricación no absorbida** (ociosidad IAS 2), factor $/kg y $/m, energía $/kg, op %, factor entretela, renta contractual vs. GL sustituido, ajuste de MP contra el costo primo, factor de importación, **cobertura del pool** — trazabilidad completa |
 | `qb.costo.producto` | Costo por capa por producto: MP (BOM recursiva a último costo), energía, fabricación híbrida, operación; márgenes de contribución, bruto y neto en $/u, % y **total del período**; **contribución por hora-máquina**. Trae además el dinero real del mes: `ventas_total` (facturado en pesos, cuadra contra el estado de resultados), los totales por capa (`mp_total` … `costo_absorbido_total` = costo de lo vendido) y el precio **en la divisa original** (`divisa_id`, `precio_prom_divisa`, `ventas_total_divisa`, `tc_prom` = TC efectivo de las facturas) |
 | `qb.cotizacion` | Cotizaciones guardadas con supuestos (para comparar antes/después). El wizard es una **calculadora viva**: los resultados (costo por capa, pisos, contribución, capacidad) se recalculan al instante al cambiar producto/volumen/precio/margen; el botón solo guarda el escenario |
 | — claridad de términos | **Glosario único** (`models/glosario.py`) visible en el wizard, en la cotización guardada y en el PDF: precio objetivo, precio de mercado, TC, márgenes bruto/neto/contribución, pisos, capacidad, ociosidad, semáforo. Toda cifra indica su moneda (MXN vs divisa); el precio objetivo capturado en divisa muestra su espejo `= en MXN` con el TC del día |
@@ -131,6 +131,14 @@ por correo.
   incluye los ajustes de inventario: ahí vive la merma que la receta no
   lleva). Sin cuentas en ese bucket el ajuste es 1.0 y no pasa nada.
 - Capacidad: `resource.calendar` real × `time_efficiency` — nunca 24/7 asumido.
+- Denominador de fabricación: **capacidad NORMAL** del centro (IAS 2), no la
+  producción del mes. La misma fuente que usa `qb.ociosidad`, así que el
+  motor y la vista dicen lo mismo. Lo que la producción real no alcanza a
+  absorber queda en `fab_ocioso_month` y va al resultado del período, no al
+  producto. Un centro sin capacidad derivable cae a producción real.
+- Denominador de energía: producción **real**. Es un costo variable: con
+  capacidad normal en el denominador, un mes al 60% de utilización daría una
+  energía por kilo 40% baja.
 
 ## Configuración automática desde Supabase (cero manual)
 

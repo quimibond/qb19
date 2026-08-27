@@ -109,17 +109,29 @@ class QbCostoConciliacion(models.Model):
     resultado_modelo = fields.Float(
         string='Resultado (modelo)', readonly=True,
         help='Σ del margen neto total de Costo por producto.')
+    ociosidad_ias2 = fields.Float(
+        string='Ociosidad no absorbida', readonly=True,
+        help='Costo fijo de la capacidad ociosa: bajo IAS 2 va al resultado '
+             'del período y NO al costo del producto. Es una diferencia '
+             'DELIBERADA entre el modelo y el gasto total — por eso se '
+             'descuenta de la brecha para leer lo que de verdad falta '
+             'explicar.')
     brecha = fields.Float(
         string='Brecha', readonly=True,
         help='Resultado del modelo − resultado del mayor. NEGATIVA = el '
              'modelo le cobra a los productos MÁS de lo que la empresa '
              'gasta (los pinta menos rentables de lo que son). POSITIVA = '
              'les cobra de menos.')
+    brecha_neta = fields.Float(
+        string='Brecha sin ociosidad', readonly=True,
+        help='Brecha más la ociosidad no absorbida: lo que queda por explicar '
+             'una vez descontada la capacidad ociosa, que a propósito no se '
+             'le cobra al producto. ESTE es el número que debe tender a cero.')
     brecha_pct = fields.Float(
         string='Brecha % s/ventas', readonly=True,
-        help='Brecha ÷ ventas del mayor. Bajo ±2% el modelo es confiable '
-             'para decidir precios; más allá, primero hay que cerrar la '
-             'brecha.')
+        help='Brecha sin ociosidad ÷ ventas del mayor. Bajo ±2% el modelo es '
+             'confiable para decidir precios; más allá, primero hay que '
+             'cerrar la brecha.')
     cobertura_pct = fields.Float(
         string='Cobertura del gasto %', readonly=True,
         help='Costo total del modelo ÷ gasto total del mayor. 100% = el '
@@ -161,6 +173,13 @@ class QbCostoConciliacion(models.Model):
                                           'expense', 'expense_depreciation')
                 GROUP BY 1, 2
             ),
+            factores AS (
+                SELECT period, company_id,
+                       SUM(fab_ocioso_month) AS ociosidad
+                FROM qb_costo_factores
+                WHERE company_id = {company_id}
+                GROUP BY 1, 2
+            ),
             modelo AS (
                 SELECT period, company_id,
                        SUM(ventas_total) AS ventas,
@@ -196,13 +215,18 @@ class QbCostoConciliacion(models.Model):
                 gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion
                     AS resultado_gl,
                 COALESCE(mo.resultado, 0) AS resultado_modelo,
+                COALESCE(fa.ociosidad, 0) AS ociosidad_ias2,
                 COALESCE(mo.resultado, 0)
                     - (gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion)
                     AS brecha,
+                COALESCE(mo.resultado, 0)
+                    - (gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion)
+                    + COALESCE(fa.ociosidad, 0) AS brecha_neta,
                 CASE WHEN gl.gl_ventas > 0 THEN
                     100.0 * (COALESCE(mo.resultado, 0)
                              - (gl.gl_ventas - gl.gl_costo_ventas
-                                - gl.gl_operacion)) / gl.gl_ventas
+                                - gl.gl_operacion)
+                             + COALESCE(fa.ociosidad, 0)) / gl.gl_ventas
                      ELSE 0 END AS brecha_pct,
                 CASE WHEN (gl.gl_costo_ventas + gl.gl_operacion) > 0 THEN
                     100.0 * COALESCE(mo.costo, 0)
@@ -212,4 +236,7 @@ class QbCostoConciliacion(models.Model):
             LEFT JOIN modelo mo
                    ON mo.period = gl.period
                   AND mo.company_id = gl.company_id
+            LEFT JOIN factores fa
+                   ON fa.period = gl.period
+                  AND fa.company_id = gl.company_id
         """

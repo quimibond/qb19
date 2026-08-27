@@ -962,6 +962,67 @@ class TestQbCosteo(TransactionCase):
         return (period + relativedelta(months=1) - relativedelta(months=window),
                 period + relativedelta(months=1))
 
+    def test_denominador_usa_capacidad_normal_no_produccion(self):
+        """El pool fijo se divide entre capacidad NORMAL, no entre producción
+        real (IAS 2). Con producción en el denominador, un mes flojo encarece
+        el producto y el modelo recomienda subir el precio justo cuando lo que
+        hace falta es vender más."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'TEST_CAP', 'name': 'Centro de prueba capacidad',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'capacidad_normal': 50000.0, 'std_output_per_hour': 10.0,
+            'es_denominador_kg': True,
+        })
+        period = date.today().replace(day=1)
+        date_to = period + relativedelta(months=1)
+        date_from = date_to - relativedelta(months=12)
+        denom = self.Costo._denominador_capacidad(centro, date_from, date_to)
+        self.assertAlmostEqual(
+            denom, 50000.0, places=2,
+            msg='con capacidad normal capturada, el denominador es esa')
+
+        # Apagando el costeo normal vuelve a producción real (que sin órdenes
+        # en el centro de prueba es 0)
+        self.env['qb.costeo.factor.config'].create({
+            'key': 'denominador_capacidad_normal', 'value': 0.0})
+        self.assertAlmostEqual(
+            self.Costo._denominador_capacidad(centro, date_from, date_to),
+            self.Costo._production_month_avg(centro, date_from, date_to),
+            places=2)
+        centro.unlink()
+
+    def test_energia_se_divide_entre_produccion_real(self):
+        """La energía es VARIABLE: su $/kg va sobre los kilos que de verdad se
+        produjeron. Con capacidad normal en el denominador, un mes al 60% de
+        utilización daría una energía por kilo 40% baja — al revés de la
+        realidad física."""
+        Config = self.env['qb.costeo.factor.config']
+        if Config.get_param('energia_por_kg', 0.0) or \
+                Config.get_param('denominador_kg_override', 0.0):
+            self.skipTest('energía por kg fijada a mano por parámetro')
+        period = date.today().replace(day=1)
+        factores = self.Costo._compute_factores(period)
+        if not factores.energia_pool_month or not factores.kg_produccion_month:
+            self.skipTest('sin pool de energía ni producción en la DB de test')
+        self.assertAlmostEqual(
+            factores.energia_por_kg,
+            factores.energia_pool_month / factores.kg_produccion_month,
+            places=4)
+
+    def test_ociosidad_no_absorbida_es_la_parte_del_pool_que_falta(self):
+        """`fab_ocioso_month` = pool fijo − lo que la producción real alcanza a
+        absorber. Es la diferencia DELIBERADA entre el modelo y el gasto: bajo
+        IAS 2 la capacidad ociosa va al resultado del período."""
+        period = date.today().replace(day=1)
+        f = self.Costo._compute_factores(period)
+        util = (f.fab_weight_share * f.utilizacion_kg_pct / 100.0
+                + (1 - f.fab_weight_share) * f.utilizacion_m_pct / 100.0)
+        self.assertAlmostEqual(
+            f.fab_ocioso_month, max(f.fab_pool_month * (1 - util), 0.0),
+            places=2)
+        self.assertGreaterEqual(f.fab_ocioso_month, 0.0)
+
     def test_mp_ajuste_inerte_sin_cuentas_clasificadas(self):
         """Sin cuentas en el bucket «mp» no hay contra qué conciliar: el
         ajuste vale 1.0 y el costo no se mueve. El ajuste solo existe cuando

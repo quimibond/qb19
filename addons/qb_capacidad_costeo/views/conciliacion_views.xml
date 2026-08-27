@@ -43,7 +43,13 @@
                        options="{'currency_field': 'company_currency_id'}"/>
                 <field name="resultado_modelo" sum="Total" widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
-                <field name="brecha" sum="Total" widget="monetary"
+                <field name="ociosidad_ias2" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="brecha" optional="hide" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="brecha_neta" sum="Total" widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
                 <field name="brecha_pct"/>
             </list>
@@ -105,6 +111,10 @@
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="brecha" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="ociosidad_ias2" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="brecha_neta" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="brecha_pct"/>
                         </group>
                     </group>
@@ -145,6 +155,10 @@
             <p>
                 <b>Gasto fuera de costeo</b> y <b>Gasto sin clasificar</b>
                 muestran el dinero que se paga y ningún producto carga.
+                La <b>ociosidad no absorbida</b> también sale del modelo a
+                propósito (IAS 2: la capacidad ociosa va al resultado del
+                período, no al producto), así que la columna que debe tender
+                a cero es <b>Brecha sin ociosidad</b>.
             </p>
         </field>
     </record>
