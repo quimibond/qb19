@@ -60,6 +60,17 @@ class QbCostoFactores(models.Model):
     op_pool_month = fields.Float(string='Pool operación/mes')
     ventas_pool_month = fields.Float(string='Ventas/mes (promedio)')
     entretela_pool_month = fields.Float(string='Pool entretelas/mes')
+    renta_contractual_pool = fields.Float(
+        string='Renta contractual/mes',
+        help='Σ de la renta contractual de los centros fabriles (sin '
+             'entretelas, que tienen la suya en su propio pool). Sustituye a '
+             'las cuentas de renta del GL, que se pagan a saltos.')
+    renta_gl_sustituida = fields.Float(
+        string='Renta del GL sustituida/mes',
+        help='Lo que las cuentas marcadas «es renta de inmueble» aportaban al '
+             'pool fabril y que se saca para no contar la renta dos veces. Si '
+             'sale en 0 con renta contractual > 0, revisa que las cuentas de '
+             'renta estén marcadas — puede haber doble conteo.')
     kg_denom_month = fields.Float(string='Denominador kg/mes')
     m_denom_month = fields.Float(string='Denominador m/mes')
     entretela_m_denom_month = fields.Float(string='Metros entretela/mes')
@@ -256,10 +267,13 @@ class QbCostoProducto(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _pool_by_month(self, buckets, date_from, date_to,
-                       es_variable=None, centro_id=None, sign=1.0):
+                       es_variable=None, centro_id=None, sign=1.0,
+                       es_renta=None):
         """Σ balance de las cuentas clasificadas en `buckets`, por mes.
 
         Devuelve {date_mes: monto}. sign=-1 para ingresos (saldo acreedor).
+        `es_renta=True` aísla las cuentas de renta de inmueble (para poder
+        sustituirlas por la renta contractual sin contarlas dos veces).
         """
         query = """
             WITH cuenta_map AS (%s)
@@ -279,6 +293,9 @@ class QbCostoProducto(models.Model):
         if centro_id is not None:
             query += ' AND m.centro_id = %s'
             params.append(centro_id)
+        if es_renta is not None:
+            query += ' AND COALESCE(m.es_renta, FALSE) = %s'
+            params.append(es_renta)
         query += ' GROUP BY 1'
         self.env.cr.execute(query, tuple(params))
         return {row[0]: sign * row[1] for row in self.env.cr.fetchall()}
@@ -327,24 +344,32 @@ class QbCostoProducto(models.Model):
                 FROM mrp_production mp
                 WHERE mp.name LIKE ANY(string_to_array(%%s, ','))
                   AND mp.state = 'done'
+                  AND mp.company_id = %%s
                   AND mp.date_finished >= %%s AND mp.date_finished < %%s
                 GROUP BY 1
             """ % mo_qty_sql(self.env),
-                (centro.mo_name_pattern, date_from, date_to))
+                (centro.mo_name_pattern, self.env.company.id,
+                 date_from, date_to))
             for mes, qty in self.env.cr.fetchall():
                 by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
         wc_ids = centros.filtered(
             lambda c: c.workcenter_ids and not c.mo_name_pattern
         ).mapped('workcenter_ids').ids
         if wc_ids:
+            # El pool de gasto se lee SOLO de la compañía activa; el
+            # denominador de producción tiene que leerse igual o el factor
+            # $/kg queda dividido entre la producción de todo el grupo.
             self.env.cr.execute("""
                 SELECT date_trunc('month', wo.date_finished)::date,
                        COALESCE(SUM(%s), 0)
                 FROM mrp_workorder wo
+                JOIN mrp_production mp ON mp.id = wo.production_id
                 WHERE wo.workcenter_id IN %%s AND wo.state = 'done'
+                  AND mp.company_id = %%s
                   AND wo.date_finished >= %%s AND wo.date_finished < %%s
                 GROUP BY 1
-            """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
+            """ % wo_qty_sql(self.env),
+                (tuple(wc_ids), self.env.company.id, date_from, date_to))
             for mes, qty in self.env.cr.fetchall():
                 by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
         for mes, qty in (restar_by_month or {}).items():
@@ -432,7 +457,29 @@ class QbCostoProducto(models.Model):
                 + Config.get_param('entretela_overhead_extra_mxn', 0.0))
             entretela_m = self._production_month_avg(ent_centros, date_from, date_to)
 
-        fab_pool = max(self._smooth(fab_by_month) - entretela_pool, 0.0)
+        # Renta: el GL se paga a saltos, así que las cuentas marcadas
+        # `es_renta` SALEN del pool y en su lugar entra la renta contractual
+        # de los centros fabriles. Antes la contractual solo se aplicaba a
+        # entretelas — tejido, tintorería y acabado tenían su renta capturada
+        # y nunca llegaba al costo del producto (y la que sí llegaba, por una
+        # cuenta de renta clasificada en un bucket fabril, se contaba doble
+        # en cuanto se activaba el contrato).
+        # La resta va MES A MES, no contra el promedio: la renta se postea en
+        # unos meses sí y otros no, así que promediarla sobre sus propios
+        # meses de pago la escalaría distinto que al pool y sobre-restaría.
+        renta_by_month = self._pool_by_month(
+            FAB_BUCKETS, date_from, date_to, es_variable=False, es_renta=True)
+        fab_sin_renta = {mes: monto - renta_by_month.get(mes, 0.0)
+                         for mes, monto in fab_by_month.items()}
+        renta_gl = sum(renta_by_month.values()) / window if window else 0.0
+        renta_centros = Centro.search([
+            ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
+            ('id', 'not in', ent_centros.ids),
+        ])
+        renta_contractual = sum(renta_centros.mapped('renta_contractual_mxn'))
+
+        fab_pool = max(self._smooth(fab_sin_renta) - entretela_pool
+                       + renta_contractual, 0.0)
         energia_pool = self._smooth(energia_by_month)
         op_pool = self._smooth(op_by_month)
         ventas_pool = self._smooth(ventas_by_month)
@@ -465,6 +512,8 @@ class QbCostoProducto(models.Model):
             'op_pool_month': op_pool,
             'ventas_pool_month': ventas_pool,
             'entretela_pool_month': entretela_pool,
+            'renta_contractual_pool': renta_contractual,
+            'renta_gl_sustituida': renta_gl,
             'kg_denom_month': kg_denom,
             'm_denom_month': m_denom,
             'entretela_m_denom_month': entretela_m,

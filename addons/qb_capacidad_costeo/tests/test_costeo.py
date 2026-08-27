@@ -958,6 +958,66 @@ class TestQbCosteo(TransactionCase):
             self.assertGreaterEqual(
                 r.margen_bruto_12m + 0.01, r.margen_neto_12m)
 
+    def test_renta_contractual_entra_al_pool_fabril(self):
+        """La renta contractual de TODOS los centros fabriles llega al costo
+        del producto, no solo la de entretelas.
+
+        Era un bug con dinero real: la cuenta de renta del GL se excluía
+        (`no_costeo`) argumentando que en su lugar se usaba la renta
+        contractual, pero el código solo la aplicaba dentro del bloque de
+        entretelas. Tejido, tintorería y acabado tenían su renta capturada y
+        nunca llegaba al costo."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'TEST_RENTA', 'name': 'Centro de prueba renta',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': 100000.0,
+        })
+        period = date.today().replace(day=1)
+        factores = self.Costo._compute_factores(period)
+        self.assertGreaterEqual(
+            factores.renta_contractual_pool, 100000.0,
+            'la renta contractual del centro fabril debe entrar al pool')
+        pool_con = factores.fab_pool_month
+
+        # Sin renta contractual el pool baja exactamente en esos $100k
+        centro.renta_contractual_mxn = 0.0
+        factores = self.Costo._compute_factores(period)
+        pool_sin = factores.fab_pool_month
+        if pool_sin > 0:
+            # (con el pool en 0 el max(..., 0) del motor recorta y la resta
+            # exacta deja de aplicar)
+            self.assertAlmostEqual(pool_con - pool_sin, 100000.0, places=2)
+        else:
+            self.assertAlmostEqual(pool_con, 100000.0, places=2)
+        centro.unlink()
+
+    def test_renta_del_gl_marcada_sale_del_pool(self):
+        """Una cuenta marcada «es renta de inmueble» se saca del pool fabril:
+        de otro modo la renta se contaría dos veces (GL + contrato)."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        renta = Account.create({
+            'name': 'RENTA DEL LOCAL (PLANTA) TEST', 'code': 'QBT.45.0001',
+            'account_type': 'expense'})
+        maquina = Account.create({
+            'name': 'ARRENDAMIENTO DE MAQUINARIA TEST', 'code': 'QBT.20.0001',
+            'account_type': 'expense'})
+        self.assertTrue(Clase._es_cuenta_de_renta(renta))
+        self.assertFalse(
+            Clase._es_cuenta_de_renta(maquina),
+            'el arrendamiento de maquinaria NO se sustituye por contrato')
+
+        # Y el marcado automático las distingue igual: la de inmueble queda
+        # fuera del pool fabril, la de maquinaria se queda dentro.
+        clase_renta = Clase.create({'account_id': renta.id,
+                                    'bucket': 'overhead_fab'})
+        clase_maq = Clase.create({'account_id': maquina.id,
+                                  'bucket': 'arrend_maquinaria'})
+        Clase.marcar_cuentas_de_renta()
+        self.assertTrue(clase_renta.es_renta)
+        self.assertFalse(clase_maq.es_renta)
+
     def test_conciliacion_modelo_vs_mayor(self):
         """La conciliación compila, cuadra con el motor y expone la brecha.
 

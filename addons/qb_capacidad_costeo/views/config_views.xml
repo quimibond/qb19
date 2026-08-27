@@ -80,6 +80,7 @@
                 <field name="account_id"/>
                 <field name="bucket"/>
                 <field name="es_variable"/>
+                <field name="es_renta" optional="show"/>
                 <field name="centro_id"/>
                 <field name="driver"/>
                 <field name="allocation_pct"/>
@@ -101,6 +102,7 @@
                 <field name="account_id"/>
                 <field name="bucket"/>
                 <field name="es_variable"/>
+                <field name="es_renta" optional="show"/>
                 <field name="centro_id"/>
                 <field name="driver"/>
                 <field name="allocation_pct"/>
@@ -213,6 +215,11 @@
                 <field name="period"/>
                 <field name="window_months"/>
                 <field name="fab_pool_month" sum="Total"/>
+                <!-- Renta: contractual dentro del pool, GL sustituido fuera.
+                     Si la contractual > 0 y la sustituida = 0, revisa que
+                     las cuentas de renta estén marcadas «es renta». -->
+                <field name="renta_contractual_pool" optional="show"/>
+                <field name="renta_gl_sustituida" optional="show"/>
                 <field name="kg_denom_month"/>
                 <field name="m_denom_month"/>
                 <field name="factor_fab_kg"/>

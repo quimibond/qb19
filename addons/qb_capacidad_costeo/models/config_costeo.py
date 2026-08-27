@@ -132,6 +132,15 @@ class QbCosteoCuentaClass(models.Model):
         string='Es variable',
         help='Variable = escala con el volumen (energía). Lo no variable es '
              'fijo y entra al costo de ociosidad.')
+    es_renta = fields.Boolean(
+        string='Es renta de inmueble',
+        help='La cuenta lleva renta o arrendamiento de inmueble. El motor la '
+             'SACA del pool de fabricación y en su lugar usa la renta '
+             'contractual capturada en cada centro — el GL de renta se paga '
+             'a saltos (un mes $0, el siguiente doble) y el contrato es el '
+             'número estable.\n\n'
+             'Sin esta bandera la renta se contaría dos veces: una por el GL '
+             'y otra por el contrato.')
     centro_id = fields.Many2one(
         'qb.costeo.centro', string='Centro de costo',
         help='Asignación directa a un centro (ej. agua → Tintorería). '
@@ -203,6 +212,43 @@ class QbCosteoCuentaClass(models.Model):
 
     def action_refresh_accounts(self):
         self._recompute_matched_accounts()
+        return True
+
+    # Renta de inmueble: nombres con los que aparece en el plan contable, y
+    # los que la descartan (el arrendamiento de MAQUINARIA sí es costo fabril
+    # del GL y no tiene contrato capturado que lo sustituya).
+    _RENTA_TOKENS = ('RENTA', 'ARRENDAMIENTO')
+    _RENTA_EXCLUDE = ('MAQUINARIA', 'EQUIPO', 'TRANSPORTE', 'VEHIC')
+
+    @api.model
+    def _es_cuenta_de_renta(self, account):
+        """¿La cuenta lleva renta de INMUEBLE? Se resuelve por nombre vía ORM
+        (el nombre es traducible: en SQL sería un jsonb y no se puede filtrar
+        con un LIKE simple)."""
+        nombre = ((account.name or '') + ' ' + (account.code or '')).upper()
+        if not any(t in nombre for t in self._RENTA_TOKENS):
+            return False
+        return not any(t in nombre for t in self._RENTA_EXCLUDE)
+
+    @api.model
+    def marcar_cuentas_de_renta(self):
+        """Marca `es_renta` en las clasificaciones cuyas cuentas son renta de
+        inmueble. Sin esta bandera el motor cuenta la renta dos veces: una por
+        el GL y otra por el contrato del centro. Idempotente."""
+        marcadas = self.browse()
+        for rec in self.with_context(active_test=False).search(
+                [('es_renta', '=', False)]):
+            if any(self._es_cuenta_de_renta(a) for a in rec.account_ids):
+                marcadas |= rec
+        if marcadas:
+            marcadas.es_renta = True
+            _logger.info('qb_capacidad_costeo: %s clasificaciones marcadas '
+                         'como renta de inmueble: %s', len(marcadas),
+                         ', '.join(marcadas.mapped('name')))
+        return marcadas
+
+    def action_marcar_rentas(self):
+        self.marcar_cuentas_de_renta()
         return True
 
     @api.model

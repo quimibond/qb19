@@ -79,6 +79,32 @@ class QbCosteoPanel(models.TransientModel):
                        'Clasificación de cuentas',
                        '%s cuentas de resultados sin clasificar' % len(pending)))
 
+        # 5.5 Renta: contractual vs. GL — el doble conteo es silencioso
+        renta_contractual = sum(env['qb.costeo.centro'].search([
+            ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
+        ]).mapped('renta_contractual_mxn'))
+        if renta_contractual:
+            Clase = env['qb.costeo.cuenta.class']
+            sin_marcar = Clase.search([
+                ('es_renta', '=', False),
+                ('bucket', 'in', ('mod', 'overhead_fab', 'depreciacion',
+                                  'arrend_maquinaria')),
+            ]).filtered(lambda c: any(
+                Clase._es_cuenta_de_renta(a) for a in c.account_ids))
+            if sin_marcar:
+                detalle = (
+                    'la renta se está contando DOS VECES: $%s/mes por '
+                    'contrato y además por %s, que está en un bucket fabril. '
+                    'Márcalas «es renta de inmueble» en Clasificación de '
+                    'cuentas.' % (f'{renta_contractual:,.0f}',
+                                  ', '.join(sin_marcar.mapped('name'))))
+            else:
+                detalle = ('renta contractual $%s/mes en el pool; las cuentas '
+                           'de renta del GL están marcadas y fuera'
+                           % f'{renta_contractual:,.0f}')
+            checks.append((BAD if sin_marcar else OK,
+                           'Renta sin doble conteo', detalle))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:
