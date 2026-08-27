@@ -91,6 +91,19 @@ class QbCostoConciliacion(models.Model):
              'primo y ajustes de inventario). Contra esto se compara la MP '
              'que el modelo explota de la receta. Sale en 0 si esas cuentas '
              'están clasificadas como "no_costeo".')
+    gl_importacion = fields.Float(
+        string='Aduana en el P&L', readonly=True,
+        help='Gastos e impuestos de importación que quedaron en resultados '
+             '(bucket «importacion»). Lo correcto es que casi nada llegue '
+             'aquí: el pedimento se captura con el landed cost de Odoo sobre '
+             'la recepción y se capitaliza al inventario de los productos que '
+             'lo causaron. Lo que sí llega aquí es aduana que ningún producto '
+             'está cargando.')
+    importacion_absorbida = fields.Float(
+        string='Aduana absorbida por el modelo', readonly=True,
+        help='Lo que el prorrateo de aduana cargó a lo vendido. Con el driver '
+             '«landed» (default) es 0 a propósito: el módulo no prorratea '
+             'pedimentos, los espera capitalizados.')
     gl_no_costeo = fields.Float(
         string='Gasto fuera de costeo', readonly=True,
         help='Cuentas clasificadas "no_costeo": gasto real que ningún '
@@ -157,6 +170,9 @@ class QbCostoConciliacion(models.Model):
                        SUM(CASE WHEN m.bucket = 'mp'
                                 THEN aml.balance * m.allocation_pct / 100.0
                                 ELSE 0 END) AS gl_mp,
+                       SUM(CASE WHEN m.bucket = 'importacion'
+                                THEN aml.balance * m.allocation_pct / 100.0
+                                ELSE 0 END) AS gl_importacion,
                        SUM(CASE WHEN m.bucket = 'no_costeo'
                                 THEN aml.balance * m.allocation_pct / 100.0
                                 ELSE 0 END) AS gl_no_costeo,
@@ -187,6 +203,7 @@ class QbCostoConciliacion(models.Model):
                        SUM(energia_total) AS energia,
                        SUM(fab_total) AS fab,
                        SUM(op_total) AS op,
+                       SUM(importacion_total) AS importacion,
                        SUM(costo_absorbido_total) AS costo,
                        SUM(margen_neto_total) AS resultado
                 FROM qb_costo_producto
@@ -210,6 +227,8 @@ class QbCostoConciliacion(models.Model):
                 COALESCE(mo.op, 0) AS modelo_op,
                 COALESCE(mo.costo, 0) AS modelo_costo_total,
                 gl.gl_mp,
+                gl.gl_importacion,
+                COALESCE(mo.importacion, 0) AS importacion_absorbida,
                 gl.gl_no_costeo,
                 gl.gl_sin_clasificar,
                 gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion

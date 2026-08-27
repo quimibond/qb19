@@ -53,10 +53,15 @@ MP/u        = explosión recursiva de BOM al ÚLTIMO costo de compra (fallback a
                 vendido, misma ventana). La receta no lleva merma ni
                 rendimiento real ni variación de precio; el mayor sí. Solo
                 aplica a producto nacional, con banda de cordura [0.5, 1.5]
-              importados (' I') = costo de compra × (1 + factor_importacion),
-                factor = pool de aduana ÷ valor comprado de importado. El AVCO
-                de Odoo NO trae IGI/DTA/PRV ni agente aduanal: se postean
-                directo a resultados. Sin costo propio → gemelo nacional
+              aduana: por default NO se prorratea (`importacion_driver` =
+                "landed"). El pedimento ya sabe a qué embarque pertenece: se
+                captura con el landed cost de Odoo sobre la recepción y cae en
+                los productos que lo causaron. El módulo solo MIDE cuánta
+                aduana se quedó en resultados. Con driver "compras" se
+                prorratea sobre el valor comprado a proveedor extranjero y el
+                recargo entra en la HOJA comprada — el hilo importado carga su
+                aduana y la receta la lleva a la tela
+              importados (' I') sin costo propio → gemelo nacional
               subproductos (SALDO/DESPERDICIO) = $0
 energía/u   = energia_por_kg × peso   (importados: 0)
 fab/u       = híbrida:  tela en m  → kg/m × factor_kg + factor_m
@@ -131,8 +136,12 @@ por correo.
   la renta se contaría dos veces, una por el GL y otra por el contrato. El
   panel lo revisa y `qb.costo.factores` guarda las dos cifras lado a lado.
 - Importación: IGI, DTA, PRV, agente aduanal y flete van al bucket
-  `importacion` y se reparten sobre el **valor de compra de lo importado**
-  (que es lo que los causa), no sobre las ventas ni fuera de costeo.
+  `importacion`, que sirve para **medirlos**, no para prorratearlos. La forma
+  correcta de que lleguen al costo es el **landed cost de Odoo** sobre cada
+  recepción: el pedimento cae en los productos que lo causaron y una máquina
+  carga el suyo en lugar de cobrárselo al hilo. La conciliación muestra
+  cuánta aduana se quedó en resultados y el panel la compara contra lo
+  capitalizado.
 - MP: último costo de compra por hoja de BOM, convertido a MXN al FX de la
   compra, y conciliada contra el costo primo del mayor (bucket `mp`, que
   incluye los ajustes de inventario: ahí vive la merma que la receta no
@@ -226,9 +235,10 @@ arreglar) está en **`docs/COSTEO_REVISION.md`**.
   maquinaria (tests).
 - El ajuste de MP es exactamente el cociente GL ÷ modelada, se recorta a la
   banda, y solo toca al producto nacional (tests).
-- La aduana entra DENTRO de la MP del importado y no toca al nacional;
-  `importacion_unit` es informativo y la identidad de capas sigue intacta
-  (tests).
+- Con el driver default no hay prorrateo de aduana (test). Con driver
+  "compras", la aduana del hilo importado llega a la tela por la receta y no
+  se aplica dos veces; `importacion_unit` es informativo y la identidad de
+  capas sigue intacta (tests).
 - `qb.costo.factores.cobertura_fab_pct`: Σ fab absorbida en vendidos ÷ pool
   (~90% es sano; mucho menos = revisar denominadores/clasificación).
 - Parser de gramaje: solo bloques de exactamente 3 dígitos (4 dígitos =

@@ -32,6 +32,12 @@
             <field name="value">1.5</field>
             <field name="descripcion">Techo del ajuste de MP. Ver mp_ajuste_min.</field>
         </record>
+        <record id="factor_importacion_driver" model="qb.costeo.factor.config">
+            <field name="key">importacion_driver</field>
+            <field name="value">0</field>
+            <field name="value_text">landed</field>
+            <field name="descripcion">Cómo llega la aduana al costo. "landed" (default y recomendado): NO se prorratea — el pedimento se captura con el landed cost de Odoo sobre la recepción y cae en los productos que lo causaron; el módulo solo mide cuánta aduana se quedó en resultados. "compras": prorrateo aproximado sobre el valor de las compras importadas (proveedor extranjero); útil si no se van a capturar los pedimentos, pero le cobra al hilo el pedimento de una máquina y viceversa.</field>
+        </record>
         <record id="factor_importacion_factor_max" model="qb.costeo.factor.config">
             <field name="key">importacion_factor_max</field>
             <field name="value">1.0</field>

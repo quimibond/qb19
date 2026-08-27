@@ -33,6 +33,12 @@
                 <field name="modelo_costo_total" sum="Total" widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
                 <field name="cobertura_pct" optional="show"/>
+                <field name="gl_importacion" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="importacion_absorbida" optional="hide" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="gl_no_costeo" optional="show" sum="Total"
                        widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
@@ -83,6 +89,10 @@
                             <field name="gl_gasto_total" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="gl_mp" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="gl_importacion" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="importacion_absorbida" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="gl_no_costeo" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>

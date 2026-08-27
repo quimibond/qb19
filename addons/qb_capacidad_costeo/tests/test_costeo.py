@@ -1329,6 +1329,54 @@ class TestQbCosteo(TransactionCase):
             q_nac['mp'], self.Costo.quote_product(self.tela, factores)['mp'],
             places=4, msg='la aduana no debe tocar al producto nacional')
 
+    def test_aduana_del_hilo_importado_llega_a_la_tela(self):
+        """El pedimento del hilo lo carga el hilo, y la receta lo arrastra a
+        cada tela que lo consume.
+
+        La versión anterior repartía TODA la aduana sobre la familia de
+        reventa, que es ~9% del valor importado; el hilo —que es ~83%— no
+        cargaba nada. El resultado era un factor once veces alto sobre el
+        producto equivocado."""
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        base = self.Costo._mp_cost_unit(self.tela, ctx=ctx)
+
+        ctx_imp = dict(ctx, import_factor=0.20,
+                       import_ids={self.hilo.id}, mp_cache={})
+        con_aduana = self.Costo._mp_cost_unit(self.tela, ctx=ctx_imp)
+        self.assertAlmostEqual(con_aduana, base * 1.20, places=4)
+        # y la tela NO se vuelve importada por eso: sigue cargando fabricación
+        self.assertNotEqual(
+            self.Ruteo.resolve(self.tela, ctx['rules'])[0], 'importado')
+
+    def test_aduana_no_se_aplica_dos_veces_en_la_receta(self):
+        """Un componente importado ya trae su aduana dentro; el total de la
+        receta no se vuelve a multiplicar."""
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        ctx_imp = dict(ctx, import_factor=0.20,
+                       import_ids={self.hilo.id, self.tela.id}, mp_cache={})
+        # Aunque la TELA también esté marcada como compra importada, su costo
+        # sale de la receta (tiene BOM), no de una compra: el recargo entra
+        # una sola vez, por el hilo.
+        base = self.Costo._mp_cost_unit(
+            self.tela, ctx=dict(ctx, mp_cache={}))
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(self.tela, ctx=ctx_imp),
+            base * 1.20, places=4)
+
+    def test_driver_de_aduana_por_default_no_prorratea(self):
+        """El default es «landed»: el módulo NO inventa un prorrateo de
+        pedimentos. Mide cuánta aduana se quedó en resultados y espera que se
+        capitalice con el landed cost de Odoo sobre cada recepción."""
+        Config = self.env['qb.costeo.factor.config']
+        self.assertEqual(
+            Config.get_param_text('importacion_driver', 'landed'), 'landed')
+        period = date.today().replace(day=1)
+        factores = self.Costo._compute_factores(period)
+        self.assertEqual(
+            factores.factor_importacion, 0.0,
+            'con driver «landed» no debe haber factor de prorrateo')
+        self.assertEqual(factores.importacion_base_month, 0.0)
+
     def test_importacion_se_reporta_dentro_de_la_mp(self):
         """`importacion_unit` es informativo: la parte de la MP que es aduana.
         No es una capa aparte — si lo fuera, la cascada del cotizador y del

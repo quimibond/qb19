@@ -5,6 +5,8 @@ Semáforo de configuración (qué falta y qué número desbloquea) + KPIs del
 mes. Es la respuesta a "¿por qué todo sale en cero?": cada prerequisito
 se muestra con su estado y un botón directo para resolverlo.
 """
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models
 
 OK = '✅'
@@ -105,26 +107,51 @@ class QbCosteoPanel(models.TransientModel):
             checks.append((BAD if sin_marcar else OK,
                            'Renta sin doble conteo', detalle))
 
-        # 5.6 Importación: dónde caen los impuestos y gastos de aduana
+        # 5.6 Aduana: ¿se está capitalizando con landed costs, o se queda en
+        # resultados? El pedimento sabe a qué embarque pertenece; prorratearlo
+        # con una fórmula le cobra al hilo el pedimento de una máquina.
         Clase = env['qb.costeo.cuenta.class']
         mal_ubicadas = Clase.cuentas_de_importacion_mal_ubicadas()
         n_import = Clase.search_count([('bucket', '=', 'importacion')])
         if mal_ubicadas:
             checks.append((
-                WARN, 'Gastos de importación',
-                'estas cuentas de aduana se están repartiendo por el driver '
-                'equivocado (sobre TODAS las ventas, o fuera de costeo) en '
-                'vez de sobre el valor importado: %s. Muévelas al bucket '
-                '«Gastos e impuestos de importación».'
+                WARN, 'Cuentas de aduana',
+                'estas cuentas de aduana están en un bucket que las reparte '
+                'por el driver equivocado (sobre TODAS las ventas, o fuera de '
+                'costeo): %s. Muévelas al bucket «Gastos e impuestos de '
+                'importación» para al menos poder medirlas.'
                 % ', '.join(mal_ubicadas.mapped('name'))))
-        else:
+        elif not n_import:
             checks.append((
-                OK if n_import else WARN, 'Gastos de importación',
-                '%s cuentas de aduana cargadas al valor importado' % n_import
-                if n_import else
+                WARN, 'Cuentas de aduana',
                 'ninguna cuenta en el bucket «Gastos e impuestos de '
-                'importación» — si importas, esos impuestos y fletes no los '
-                'está pagando ningún producto'))
+                'importación» — si importas, no hay forma de saber cuánta '
+                'aduana se está quedando en resultados'))
+        else:
+            checks.append((OK, 'Cuentas de aduana',
+                           '%s cuentas clasificadas' % n_import))
+
+        if n_import:
+            desde = fields.Date.today() - relativedelta(months=12)
+            aduana = env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1).importacion_pool_month or 0.0
+            capitalizado = sum(env['stock.landed.cost'].search([
+                ('state', '=', 'done'), ('date', '>=', desde),
+            ]).mapped('amount_total')) / 12.0
+            if aduana and capitalizado < 0.25 * aduana:
+                checks.append((
+                    BAD, 'Aduana capitalizada (landed cost)',
+                    '$%s/mes de aduana en resultados contra solo $%s/mes '
+                    'capitalizado con landed costs. El pedimento sabe a qué '
+                    'embarque pertenece: captúralo en la recepción y caerá en '
+                    'los productos que lo causaron. Prorratearlo con una '
+                    'fórmula le cobra al hilo el pedimento de una máquina.'
+                    % (f'{aduana:,.0f}', f'{capitalizado:,.0f}')))
+            else:
+                checks.append((
+                    OK, 'Aduana capitalizada (landed cost)',
+                    '$%s/mes capitalizado con landed costs contra $%s/mes en '
+                    'resultados' % (f'{capitalizado:,.0f}', f'{aduana:,.0f}')))
 
         # 5.7 MP: ¿hay contra qué conciliar la receta?
         n_mp = Clase.search_count([('bucket', '=', 'mp')])

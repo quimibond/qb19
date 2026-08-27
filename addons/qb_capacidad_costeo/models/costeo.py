@@ -260,12 +260,15 @@ class QbCostoProducto(models.Model):
     importacion_unit = fields.Float(
         string='de eso, importación $/u', digits=(16, 4),
         help='Cuánto de la MP de arriba son gastos e impuestos de aduana '
-             '(IGI, DTA, PRV, agente aduanal, flete) repartidos sobre el '
-             'valor importado. NO es una capa aparte: ya está dentro de la '
-             'MP, se muestra para poder auditarla.\n\n'
-             'Solo aplica al producto importado en sí; si un producto '
-             'nacional lleva componentes importados, la aduana de esos '
-             'componentes va dentro de su MP y no se ve en este renglón.')
+             '(IGI, DTA, PRV, agente aduanal, flete). NO es una capa aparte: '
+             'ya está dentro de la MP, se muestra para poder auditarla.\n\n'
+             'Solo el recargo de ESTE producto, cuando él mismo se compra '
+             'importado. La aduana de un componente importado (el hilo, por '
+             'ejemplo) vive dentro de la MP del componente y llega a la tela '
+             'por la receta, sin aparecer en este renglón.\n\n'
+             'Sale en 0 con el driver «landed» (el default), que es el que no '
+             'prorratea: ahí la aduana se captura con el landed cost de Odoo '
+             'sobre cada recepción.')
     energia_unit = fields.Float(string='Energía $/u', digits=(16, 4))
     costo_variable = fields.Float(
         string='Costo variable $/u', digits=(16, 4),
@@ -684,22 +687,33 @@ class QbCostoProducto(models.Model):
         # sobre TODAS las ventas — incluidas las de producto nacional.
         importacion_pool = self._smooth(
             self._pool_by_month(('importacion',), date_from, date_to))
-        # Sin pool no hay factor: la base cuesta un escaneo de 12 meses de
-        # compras y una resolución de ruteo por producto comprado, y
-        # action_recompute_year llama a esto doce veces.
-        importacion_base = (self._import_purchase_base(date_from, date_to)
-                            if importacion_pool else 0.0)
+        # Driver por default: `landed`. La aduana NO se prorratea con una
+        # fórmula, porque el pedimento ya dice a qué embarque pertenece: se
+        # captura con el landed cost de Odoo sobre la recepción y cae en los
+        # productos que de verdad lo causaron. Prorratear sobre una base
+        # promedio le cobra al hilo el pedimento de una máquina y viceversa.
+        #
+        # `compras` habilita el prorrateo como aproximación explícita, para
+        # quien no vaya a capturar los pedimentos. Sigue siendo un proxy.
+        driver = Config.get_param_text('importacion_driver', 'landed')
+        importacion_base = 0.0
+        import_ids = set()
+        if importacion_pool and driver == 'compras':
+            importacion_base, import_ids = self._import_purchase_base(
+                date_from, date_to)
         factor_importacion = (
             Config.get_param('importacion_factor_override', 0.0)
             or (importacion_pool / importacion_base if importacion_base else 0.0))
-        # Guarda contra clasificación errónea: una cuenta grande mal puesta en
-        # el bucket dispararía el costo de TODOS los importados sin aviso.
+        # Guarda contra base mal medida o cuenta mal clasificada: cualquiera
+        # de las dos dispararía el costo de TODOS los importados sin aviso.
         factor_max = Config.get_param('importacion_factor_max', 1.0) or 1.0
         if factor_importacion > factor_max:
             _logger.warning(
                 'qb.costo.factores %s: factor de importación %.3f supera el '
-                'máximo %.3f (pool %.2f ÷ base %.2f). Se recorta — revisa qué '
-                'cuentas están en el bucket «importacion».',
+                'máximo %.3f (pool %.2f ÷ base %.2f). Se recorta — casi '
+                'siempre significa que la base está incompleta (proveedores '
+                'sin país capturado) o que hay una cuenta ajena en el bucket '
+                '«importacion».',
                 period, factor_importacion, factor_max,
                 importacion_pool, importacion_base)
             factor_importacion = factor_max
@@ -917,15 +931,36 @@ class QbCostoProducto(models.Model):
 
     @api.model
     def _import_purchase_base(self, date_from, date_to, rules=None):
-        """Valor de compra mensual promedio de los productos IMPORTADOS, en
-        moneda de la compañía.
+        """Valor de compra mensual promedio de lo IMPORTADO, y qué productos
+        lo son. Devuelve `(base_mensual, {product_id})`.
 
         Es la base sobre la que se reparten los gastos e impuestos de aduana:
         el IGI se calcula sobre el valor en aduana, y flete y agente escalan
         con el valor embarcado. Se promedian solo los meses CON compras — si
         se importa cada dos meses, dividir entre la ventana completa partiría
         el factor a la mitad.
+
+        **Qué cuenta como importado.** El país del proveedor, no la moneda de
+        la orden. Comprarle en dólares a un proveedor mexicano (ALPEK POLYESTER
+        MEXICO, HILADOS DE ALTA CALIDAD) NO es una importación y no causa
+        pedimento; comprarle a NINGBO MH INDUSTRY sí, se facture en la moneda
+        que se facture.
+
+        **La base es TODO lo importado, no solo lo que se revende.** Medido
+        sobre sep 2025 – ago 2026, el valor importado se reparte ~83% materia
+        prima (hilo, fibra, resina), ~9% producto de reventa y ~6% activo fijo.
+        Tomar como base solo la familia de reventa multiplicaba el factor por
+        once: el pedimento del hilo lo causa el hilo.
+
+        El activo fijo se queda en la base a propósito —su pedimento existe y
+        diluye el factor correctamente— pero nunca recibe el recargo, porque
+        una máquina no pasa por el costo del producto. Esa parte del pool
+        queda sin absorber, que es justo lo que debe pasar.
         """
+        company = self.env.company
+        # El país del PROVEEDOR es el discriminante. Se compara contra el país
+        # de la compañía: sin país capturado, la compra no se cuenta como
+        # importación (mejor dejar dinero fuera del reparto que inventarlo).
         self.env.cr.execute("""
             SELECT date_trunc('month', po.date_order)::date AS mes,
                    pol.product_id, po.currency_id,
@@ -933,44 +968,36 @@ class QbCostoProducto(models.Model):
                        * (1 - COALESCE(pol.discount, 0) / 100.0)) AS monto
             FROM purchase_order_line pol
             JOIN purchase_order po ON po.id = pol.order_id
+            JOIN res_partner prov ON prov.id = po.partner_id
+            JOIN res_company cia ON cia.id = po.company_id
+            JOIN res_partner cia_p ON cia_p.id = cia.partner_id
             WHERE po.state IN ('purchase', 'done')
               AND po.company_id = %s
               AND po.date_order >= %s AND po.date_order < %s
               AND pol.product_id IS NOT NULL
+              AND prov.country_id IS NOT NULL
+              AND prov.country_id IS DISTINCT FROM cia_p.country_id
             GROUP BY 1, 2, 3
-        """, (self.env.company.id, date_from, date_to))
+        """, (company.id, date_from, date_to))
         rows = self.env.cr.fetchall()
         if not rows:
-            return 0.0
+            return 0.0, set()
 
-        Ruteo = self.env['qb.producto.ruteo']
-        rules = rules if rules is not None else Ruteo.search([])
-        products = self.env['product.product'].browse(
-            list({r[1] for r in rows})).exists()
-        products.read(['default_code'])
-        importados = set()
-        for product in products:
-            bucket, _centros = Ruteo.resolve(product, rules)
-            if self._es_importado(product, bucket):
-                importados.add(product.id)
-        if not importados:
-            return 0.0
-
-        company = self.env.company
         currencies = {c.id: c for c in self.env['res.currency'].browse(
             list({r[2] for r in rows if r[2]})).exists()}
         by_month = {}
+        importados = set()
         for mes, product_id, currency_id, monto in rows:
-            if product_id not in importados:
-                continue
             monto = monto or 0.0
             currency = currencies.get(currency_id)
             if currency and currency != company.currency_id:
                 monto = currency._convert(
                     monto, company.currency_id, company, mes)
             by_month[mes] = by_month.get(mes, 0.0) + monto
+            importados.add(product_id)
         activos = [v for v in by_month.values() if v > 0]
-        return sum(activos) / len(activos) if activos else 0.0
+        base = sum(activos) / len(activos) if activos else 0.0
+        return base, importados
 
     # ------------------------------------------------------------------
     # MP: último costo de compra, explosión recursiva
@@ -1057,6 +1084,17 @@ class QbCostoProducto(models.Model):
             pols = self.env['purchase.order.line'].browse(list(pol_map.values()))
             pols.read(['price_unit', 'discount', 'order_id'])
             pols.order_id.read(['currency_id', 'date_order'])
+        # Qué productos se COMPRAN importados: son los que cargan el recargo
+        # de aduana. Incluye la materia prima importada (el hilo es el 83% del
+        # valor importado), no solo la familia de reventa — y por eso el
+        # recargo llega a la tela nacional por la receta, sin tratarla como
+        # importada.
+        import_ids = set()
+        if factores and factores.factor_importacion:
+            win_to = factores.period + relativedelta(months=1)
+            win_from = win_to - relativedelta(
+                months=factores.window_months or 12)
+            _base, import_ids = self._import_purchase_base(win_from, win_to)
         return {
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,
@@ -1065,6 +1103,7 @@ class QbCostoProducto(models.Model):
             # tiene que vivir en el contexto de la corrida: mezclar dos
             # factores en el mismo caché daría costos incoherentes.
             'import_factor': factores.factor_importacion if factores else 0.0,
+            'import_ids': import_ids,
             'peso_cache': {},
             'mp_cache': {},
         }
@@ -1089,6 +1128,11 @@ class QbCostoProducto(models.Model):
         # cascada del cotizador y del PDF sigue cuadrando sin cambios.
         if import_factor is None:
             import_factor = (ctx or {}).get('import_factor', 0.0)
+        # El recargo de aduana se aplica SOLO donde el costo viene de una
+        # compra importada. Nunca después de explotar una receta: los
+        # componentes importados ya lo traen dentro, y volver a aplicarlo
+        # sobre el total lo contaría dos veces.
+        import_ids = (ctx or {}).get('import_ids') or set()
         cache = cache if cache is not None \
             else (ctx['mp_cache'] if ctx else {})
         seen = seen if seen is not None else set()
@@ -1112,11 +1156,11 @@ class QbCostoProducto(models.Model):
                 twin = self.env['product.product'].search(
                     [('default_code', '=', ref[:-2].strip())], limit=1)
                 if twin:
+                    # El gemelo nacional ya viene con su propio tratamiento;
+                    # no se le vuelve a aplicar el recargo encima.
                     cost = self._mp_cost_unit(twin, cache, seen, ctx,
                                               import_factor)
-            # El AVCO de Odoo NO trae la aduana: el IGI, el DTA y el agente
-            # aduanal se postean directo a resultados, así que nunca entraron
-            # al costo del producto. Aquí se le suman.
+                    import_factor = 0.0
             cost *= 1.0 + import_factor
         else:
             std = product.standard_price or 0.0
@@ -1137,14 +1181,29 @@ class QbCostoProducto(models.Model):
                 costs = [self._explode_bom(b, product, cache, seen, ctx,
                                            import_factor)
                          for b in boms]
-                cost = max(costs) if costs else \
-                    self._last_purchase_cost(product, pol_map)
+                cost = max(costs) if costs else self._costo_de_compra(
+                    product, pol_map, import_factor, import_ids)
             else:
                 bom = self.env['mrp.bom']._bom_find(product).get(product)
                 cost = self._explode_bom(bom, product, cache, seen, ctx,
                                          import_factor) \
-                    if bom else self._last_purchase_cost(product, pol_map)
+                    if bom else self._costo_de_compra(
+                        product, pol_map, import_factor, import_ids)
         cache[product.id] = cost
+        return cost
+
+    @api.model
+    def _costo_de_compra(self, product, pol_map, import_factor, import_ids):
+        """Último costo de compra de una hoja, con el recargo de aduana si esa
+        hoja se compra importada.
+
+        Aquí es donde el pedimento del hilo llega al costo de la tela: el hilo
+        importado carga su aduana en SU costo, y la receta lo arrastra a cada
+        tela que lo consume. La tela no se trata como importada — no lo es.
+        """
+        cost = self._last_purchase_cost(product, pol_map)
+        if import_factor and product.id in import_ids:
+            cost *= 1.0 + import_factor
         return cost
 
     @api.model
@@ -1485,9 +1544,14 @@ class QbCostoProducto(models.Model):
         revenue_divisa = venta.get('revenue_divisa', 0.0)
 
         # Parte de la MP que es aduana (informativa: ya está dentro de mp).
+        # Solo la de ESTE producto si él mismo se compra importado; la aduana
+        # de un componente importado vive dentro de la MP del componente.
         f_imp = ctx.get('import_factor', 0.0)
+        es_compra_importada = (
+            product.id in (ctx.get('import_ids') or set())
+            or self._es_importado(product, bucket))
         importacion = (mp * f_imp / (1.0 + f_imp)
-                       if f_imp and self._es_importado(product, bucket) else 0.0)
+                       if f_imp and es_compra_importada else 0.0)
         variable = mp + energia
         produccion = variable + fab
         # Operación sobre el costo de producción, no sobre el precio: si el
