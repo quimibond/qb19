@@ -33,12 +33,14 @@ def migrate(cr, version):
             'clasifica a mano las cuentas de consumo de materia prima en el '
             'bucket «Materia prima».')
 
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
-
-    ultimo = env['qb.costo.factores'].search([], order='period DESC', limit=1)
-    _logger.info('qb_capacidad_costeo: %s períodos recalculados; ajuste de MP '
-                 'vigente ×%.4f (GL %.2f ÷ modelada %.2f al mes)',
-                 len(set(periodos)), ultimo.mp_ajuste or 1.0,
-                 ultimo.mp_gl_month, ultimo.mp_modelada_month)
+    # El recálculo de los períodos NO va aquí, a propósito. Las migraciones
+    # corren en orden de versión y cada una pisa el resultado de la anterior,
+    # así que recalcular en las trece dejaba ~130,600 recálculos de producto
+    # (13 migraciones x 8 períodos x ~1,256 productos) para un build donde
+    # bastan los ~10,000 de la última pasada. Las doce primeras se tiraban a
+    # la basura y el build de Odoo.sh las pagaba enteras.
+    #
+    # Lo hace la migración MÁS NUEVA, una sola vez, con todos los cambios de
+    # datos de esta cadena ya aplicados. Si alguna vez se despliega una
+    # versión intermedia suelta —hoy no pasa: el módulo se instala en la
+    # versión del manifest— queda el botón «Recalcular» del Panel.

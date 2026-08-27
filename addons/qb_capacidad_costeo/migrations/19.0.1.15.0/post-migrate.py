@@ -18,20 +18,17 @@
    variante. En una receta con atributos, el producto cargaba componentes que
    no consume: su MP salía inflada por todo lo de sus variantes hermanas.
 
-Se recalculan los períodos existentes.
+El recálculo de los períodos lo hace la migración MÁS NUEVA de la cadena,
+una sola vez y con todos los cambios de datos ya aplicados: recalcular en
+cada una dejaba ~130,600 recálculos de producto por build para un
+resultado que la siguiente migración pisaba enseguida.
 """
-import logging
-
-from odoo import SUPERUSER_ID, api
-
-_logger = logging.getLogger(__name__)
 
 
 def migrate(cr, version):
-    env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
-    _logger.info('qb_capacidad_costeo: %s períodos recalculados con el dedup '
-                 'por tamaño de grupo y el filtro de variante en la receta',
-                 len(set(periodos)))
+    """No-op: este cambio es de MOTOR, no de datos.
+
+    El archivo existe para dejar registro de qué cambió en esta versión y
+    para que la cadena de migraciones no tenga huecos. El recálculo que
+    aplica el cambio lo hace la migración más nueva, una sola vez.
+    """
