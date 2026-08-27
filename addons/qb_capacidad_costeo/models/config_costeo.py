@@ -23,6 +23,8 @@ BUCKETS = [
     ('overhead_fab', 'Overhead de fábrica'),
     ('depreciacion', 'Depreciación fábrica'),
     ('arrend_maquinaria', 'Arrendamiento de maquinaria'),
+    ('importacion', 'Gastos e impuestos de importación'),
+    ('absorcion_odoo', 'Absorbido por Odoo (costos fabriles aplicados)'),
     ('operacion', 'Operación (admin / ventas)'),
     ('ventas', 'Ingresos (ventas)'),
     ('no_costeo', 'Fuera de costeo'),
@@ -89,6 +91,22 @@ class QbCosteoCentro(models.Model):
         string='Renta contractual (MXN/mes)',
         help='Renta fija contractual del centro. Se usa en lugar del GL '
              'porque la renta se paga a saltos (un mes $0, el siguiente doble).')
+    modo_costeo = fields.Selection([
+        ('capa', 'Capa mensual — lo reparte el módulo'),
+        ('absorcion_odoo', 'Absorción por workcenter — lo capitaliza Odoo'),
+    ], string='Modo de costeo', default='capa', required=True,
+        help='«Capa mensual»: el gasto del centro entra al pool y el módulo '
+             'lo reparte con sus factores.\n\n'
+             '«Absorción por workcenter»: sus workcenters tienen tarifa por '
+             'hora y cuenta de costos aplicados, así que cada orden capitaliza '
+             'horas × tarifa al AVCO del producto y la venta lo libera sola. '
+             'A partir de la fecha de corte el módulo SACA su gasto del pool: '
+             'si no, el mismo costo se contaría dos veces.')
+    fecha_absorcion = fields.Date(
+        string='Absorbido por Odoo desde',
+        help='Primer día en que los workcenters del centro empezaron a '
+             'capitalizar. Los períodos anteriores conservan el régimen de '
+             'capa, así que el histórico no se altera al migrar un centro.')
     mo_name_pattern = fields.Char(
         string='Patrón de órdenes (fallback)',
         help="Patrón SQL LIKE sobre mrp.production.name (ej. 'TL/OP-ACA%') "
@@ -109,6 +127,30 @@ class QbCosteoCentro(models.Model):
         'unique(code, company_id)',
         "El código del centro debe ser único por compañía.",
     )
+
+    @api.constrains('modo_costeo', 'fecha_absorcion')
+    def _check_absorcion(self):
+        for rec in self:
+            if rec.modo_costeo == 'absorcion_odoo' and not rec.fecha_absorcion:
+                raise ValidationError(
+                    'El centro %s está marcado como absorbido por Odoo pero '
+                    'no tiene fecha de corte. Sin fecha no se sabe desde qué '
+                    'período sacar su gasto del pool, y el histórico se '
+                    'reescribiría.' % rec.code)
+
+    @api.model
+    def absorbidos_en(self, period):
+        """Centros cuyo gasto YA capitaliza Odoo en ese período.
+
+        La fecha de corte se compara contra el período, no contra hoy: un
+        centro que migró en septiembre sigue siendo de capa en agosto, así
+        que recalcular un mes viejo no lo reescribe con el régimen nuevo.
+        """
+        return self.search([
+            ('modo_costeo', '=', 'absorcion_odoo'),
+            ('fecha_absorcion', '!=', False),
+            ('fecha_absorcion', '<=', period),
+        ])
 
 
 class QbCosteoCuentaClass(models.Model):
@@ -132,6 +174,15 @@ class QbCosteoCuentaClass(models.Model):
         string='Es variable',
         help='Variable = escala con el volumen (energía). Lo no variable es '
              'fijo y entra al costo de ociosidad.')
+    es_renta = fields.Boolean(
+        string='Es renta de inmueble',
+        help='La cuenta lleva renta o arrendamiento de inmueble. El motor la '
+             'SACA del pool de fabricación y en su lugar usa la renta '
+             'contractual capturada en cada centro — el GL de renta se paga '
+             'a saltos (un mes $0, el siguiente doble) y el contrato es el '
+             'número estable.\n\n'
+             'Sin esta bandera la renta se contaría dos veces: una por el GL '
+             'y otra por el contrato.')
     centro_id = fields.Many2one(
         'qb.costeo.centro', string='Centro de costo',
         help='Asignación directa a un centro (ej. agua → Tintorería). '
@@ -204,6 +255,141 @@ class QbCosteoCuentaClass(models.Model):
     def action_refresh_accounts(self):
         self._recompute_matched_accounts()
         return True
+
+    # Renta de inmueble: nombres con los que aparece en el plan contable, y
+    # los que la descartan (el arrendamiento de MAQUINARIA sí es costo fabril
+    # del GL y no tiene contrato capturado que lo sustituya).
+    _RENTA_TOKENS = ('RENTA', 'ARRENDAMIENTO')
+    _RENTA_EXCLUDE = ('MAQUINARIA', 'EQUIPO', 'TRANSPORTE', 'VEHIC')
+
+    @api.model
+    def _es_cuenta_de_renta(self, account):
+        """¿La cuenta lleva renta de INMUEBLE? Se resuelve por nombre vía ORM
+        (el nombre es traducible: en SQL sería un jsonb y no se puede filtrar
+        con un LIKE simple)."""
+        nombre = ((account.name or '') + ' ' + (account.code or '')).upper()
+        if not any(t in nombre for t in self._RENTA_TOKENS):
+            return False
+        return not any(t in nombre for t in self._RENTA_EXCLUDE)
+
+    @api.model
+    def marcar_cuentas_de_renta(self):
+        """Marca `es_renta` en las clasificaciones cuyas cuentas son renta de
+        inmueble. Sin esta bandera el motor cuenta la renta dos veces: una por
+        el GL y otra por el contrato del centro. Idempotente."""
+        marcadas = self.browse()
+        for rec in self.with_context(active_test=False).search(
+                [('es_renta', '=', False)]):
+            if any(self._es_cuenta_de_renta(a) for a in rec.account_ids):
+                marcadas |= rec
+        if marcadas:
+            marcadas.es_renta = True
+            _logger.info('qb_capacidad_costeo: %s clasificaciones marcadas '
+                         'como renta de inmueble: %s', len(marcadas),
+                         ', '.join(marcadas.mapped('name')))
+        return marcadas
+
+    def action_marcar_rentas(self):
+        self.marcar_cuentas_de_renta()
+        return True
+
+    # Gastos e impuestos de importación: IGI (impuesto general de
+    # importación), DTA (derecho de trámite aduanero), PRV (prevalidación) y
+    # los gastos de agente aduanal/flete. Los tres acrónimos van con límite
+    # de palabra: como subcadena matchearían cualquier cosa.
+    _IMPORT_RE = re.compile(
+        r'IMPORTACION|IMPORTACIÓN|\bIGI\b|\bDTA\b|\bPRV\b'
+        r'|AGENTE ADUANAL|PEDIMENTO')
+
+    # Cuentas de RESULTADOS: los reconocedores por nombre solo deben mover
+    # cuentas de gasto. 'INVENTARIO DE MATERIA PRIMA' es un activo y matchea
+    # el patrón de MP, pero no es consumo — meterlo al bucket falsearía la
+    # conciliación.
+    _EXPENSE_TYPES = ('expense', 'expense_depreciation', 'expense_direct_cost')
+
+    @api.model
+    def _es_cuenta_de_resultados(self, account):
+        return account.account_type in self._EXPENSE_TYPES
+
+    @api.model
+    def _es_cuenta_de_importacion(self, account):
+        """¿La cuenta lleva gasto o impuesto de importación? Se reparte sobre
+        el valor de lo importado, no sobre las ventas."""
+        if not self._es_cuenta_de_resultados(account):
+            return False
+        nombre = ((account.name or '') + ' ' + (account.code or '')).upper()
+        if 'EXPORTACION' in nombre or 'EXPORTACIÓN' in nombre:
+            return False
+        return bool(self._IMPORT_RE.search(nombre))
+
+    @api.model
+    def reclasificar_cuentas_de_importacion(self):
+        """Mueve al bucket `importacion` las cuentas de importación que hoy
+        están FUERA de costeo.
+
+        Solo toca `no_costeo` a propósito: esas cuentas hoy aportan cero a
+        cualquier pool, así que moverlas no puede provocar doble conteo. Una
+        cuenta de importación ya clasificada en otro bucket se deja quieta y
+        se reporta — moverla sí cambiaría un reparto existente y esa decisión
+        es del usuario. Idempotente."""
+        movidas = self.browse()
+        for rec in self.with_context(active_test=False).search(
+                [('bucket', '=', 'no_costeo')]):
+            if any(self._es_cuenta_de_importacion(a) for a in rec.account_ids):
+                movidas |= rec
+        if movidas:
+            movidas.bucket = 'importacion'
+            _logger.info('qb_capacidad_costeo: %s cuentas de importación '
+                         'movidas de no_costeo a importacion: %s',
+                         len(movidas), ', '.join(movidas.mapped('name')))
+        return movidas
+
+    # Materia prima realmente consumida: el costo primo del mayor más los
+    # ajustes de inventario (la merma que la receta no lleva). Es el número
+    # contra el que se concilia la MP de receta.
+    _MP_RE = re.compile(
+        r'COSTO PRIMO|MATERIA PRIMA|AJUSTES? A CANTIDAD'
+        r'|DIFERENCIAS? POR CONTEO|AJUSTE DE INVENTARIO')
+
+    @api.model
+    def _es_cuenta_de_materia_prima(self, account):
+        """¿La cuenta lleva el consumo real de materia prima?"""
+        if not self._es_cuenta_de_resultados(account):
+            return False
+        nombre = ((account.name or '') + ' ' + (account.code or '')).upper()
+        return bool(self._MP_RE.search(nombre))
+
+    @api.model
+    def reclasificar_cuentas_de_materia_prima(self):
+        """Mueve al bucket `mp` las cuentas de costo primo que hoy están
+        FUERA de costeo.
+
+        Igual que con importación, solo toca `no_costeo`: hoy aportan cero.
+        Y el bucket `mp` no se suma a ningún pool — es únicamente el número
+        contra el que se concilia la MP de receta, así que moverlas ahí no
+        puede inflar ningún costo; lo único que hace es destapar el ajuste.
+        Idempotente."""
+        movidas = self.browse()
+        for rec in self.with_context(active_test=False).search(
+                [('bucket', '=', 'no_costeo')]):
+            if any(self._es_cuenta_de_materia_prima(a) for a in rec.account_ids):
+                movidas |= rec
+        if movidas:
+            movidas.bucket = 'mp'
+            _logger.info('qb_capacidad_costeo: %s cuentas de materia prima '
+                         'movidas de no_costeo a mp: %s', len(movidas),
+                         ', '.join(movidas.mapped('name')))
+        return movidas
+
+    @api.model
+    def cuentas_de_importacion_mal_ubicadas(self):
+        """Clasificaciones de importación que están en un bucket que las
+        reparte por el driver equivocado (típicamente `operacion`, o sea
+        prorrateadas sobre TODAS las ventas en vez de sobre lo importado)."""
+        return self.with_context(active_test=False).search([
+            ('bucket', 'not in', ('importacion', 'no_costeo')),
+        ]).filtered(lambda c: any(
+            self._es_cuenta_de_importacion(a) for a in c.account_ids))
 
     @api.model
     def action_unclassified_accounts(self):

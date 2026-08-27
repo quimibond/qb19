@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Conciliación: modelo vs. mayor ============
+         La pregunta: ¿lo que le cobro a los productos es lo que de verdad
+         gasta la empresa? Una fila por mes; la columna que manda es la
+         BRECHA (resultado del modelo − resultado contable). -->
+    <record id="costo_conciliacion_view_list" model="ir.ui.view">
+        <field name="name">qb.costo.conciliacion.list</field>
+        <field name="model">qb.costo.conciliacion</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="brecha_pct &gt;= 5 or brecha_pct &lt;= -5"
+                  decoration-warning="(brecha_pct &gt;= 2 and brecha_pct &lt; 5) or (brecha_pct &lt;= -2 and brecha_pct &gt; -5)"
+                  decoration-success="brecha_pct &lt; 2 and brecha_pct &gt; -2">
+                <field name="company_currency_id" column_invisible="1"/>
+                <field name="period"/>
+                <field name="gl_ventas" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="modelo_ventas" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="ventas_dif" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="gl_gasto_total" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="gl_costo_ventas" optional="hide" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="gl_gastos_operacion" optional="hide" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="modelo_costo_total" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="cobertura_pct" optional="show"/>
+                <field name="gl_importacion" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="importacion_absorbida" optional="hide" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="gl_no_costeo" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="gl_sin_clasificar" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="resultado_gl" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="resultado_modelo" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="ociosidad_ias2" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="brecha" optional="hide" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="brecha_neta" sum="Total" widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
+                <field name="brecha_pct"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="costo_conciliacion_view_form" model="ir.ui.view">
+        <field name="name">qb.costo.conciliacion.form</field>
+        <field name="model">qb.costo.conciliacion</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="period" readonly="1"/></h1>
+                    </div>
+                    <field name="company_currency_id" invisible="1"/>
+                    <group>
+                        <group string="Ventas">
+                            <field name="gl_ventas" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="modelo_ventas" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="ventas_dif" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                        </group>
+                        <group string="Gasto real (mayor)">
+                            <field name="gl_costo_ventas" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="gl_gastos_operacion" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="gl_gasto_total" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="gl_mp" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="gl_importacion" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="importacion_absorbida" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="gl_no_costeo" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="gl_sin_clasificar" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Costo cargado a los productos (modelo)">
+                            <field name="modelo_mp" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="modelo_energia" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="modelo_fab" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="modelo_op" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="modelo_costo_total" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="cobertura_pct"/>
+                        </group>
+                        <group string="El veredicto">
+                            <field name="resultado_gl" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="resultado_modelo" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="brecha" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="ociosidad_ias2" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="brecha_neta" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="brecha_pct"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="costo_conciliacion_view_search" model="ir.ui.view">
+        <field name="name">qb.costo.conciliacion.search</field>
+        <field name="model">qb.costo.conciliacion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="period"/>
+                <filter name="brecha_grande" string="Brecha ≥ 2% de las ventas"
+                        domain="['|', ('brecha_pct', '&gt;=', 2), ('brecha_pct', '&lt;=', -2)]"/>
+                <filter name="fuga" string="Con gasto sin clasificar"
+                        domain="[('gl_sin_clasificar', '!=', 0)]"/>
+                <filter name="group_year" string="Agrupar por año"
+                        context="{'group_by': 'period:year'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="costo_conciliacion_action" model="ir.actions.act_window">
+        <field name="name">Conciliación: modelo vs. contabilidad</field>
+        <field name="res_model">qb.costo.conciliacion</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aquí se ve si el costeo cuadra con la contabilidad</p>
+            <p>
+                Cada renglón compara, mes a mes, lo que el modelo le cobra a
+                los productos contra lo que la empresa realmente gastó según
+                el mayor. La columna <b>Brecha</b> es la que importa:
+                negativa = el modelo cobra de más y pinta los productos menos
+                rentables de lo que son; positiva = cobra de menos.
+            </p>
+            <p>
+                <b>Gasto fuera de costeo</b> y <b>Gasto sin clasificar</b>
+                muestran el dinero que se paga y ningún producto carga.
+                La <b>ociosidad no absorbida</b> también sale del modelo a
+                propósito (IAS 2: la capacidad ociosa va al resultado del
+                período, no al producto), así que la columna que debe tender
+                a cero es <b>Brecha sin ociosidad</b>.
+            </p>
+        </field>
+    </record>
+
+</odoo>

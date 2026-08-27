@@ -3,6 +3,7 @@ from datetime import date
 
 from dateutil.relativedelta import relativedelta
 
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -175,11 +176,18 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18})
         ctx = self.Costo._engine_ctx([self.tela.id])
-        sales = {self.tela.id: (-5.0, -100.0, '')}  # qty neta negativa
+        # qty neta negativa (devoluciones > ventas)
+        sales = {self.tela.id: {'qty': -5.0, 'revenue': -100.0,
+                                'divisas': ''}}
         vals, _ = self.Costo._compute_product_vals(
             self.tela, period, factores, sales, ctx, self.Ruteo, self.Peso)
         self.assertEqual(vals['precio_prom'], 0.0)
         self.assertNotEqual(vals['alerta'], 'bajo_variable')
+        # El monto facturado SÍ se conserva (es un hecho contable), pero sin
+        # precio unitario válido no hay costo ni margen que totalizar.
+        self.assertEqual(vals['ventas_total'], -100.0)
+        self.assertEqual(vals['costo_absorbido_total'], 0.0)
+        self.assertEqual(vals['margen_bruto_total'], 0.0)
 
     def test_precio_sugerido_con_margen_meta(self):
         """El precio sugerido = costo_producción ÷ (1 − op − margen_meta),
@@ -791,6 +799,26 @@ class TestQbCosteo(TransactionCase):
                 self.assertAlmostEqual(
                     rec.margen_neto_total,
                     rec.margen_absorbido * rec.qty_vendida, places=2)
+                # Los totales del período cuadran con lo facturado: el
+                # revenue de la contabilidad menos el costo de lo vendido
+                # ES el margen total (nada se calcula dos veces por caminos
+                # distintos).
+                self.assertAlmostEqual(
+                    rec.ventas_total, rec.precio_prom * rec.qty_vendida,
+                    places=2)
+                self.assertAlmostEqual(
+                    rec.costo_absorbido_total,
+                    rec.mp_total + rec.energia_total + rec.fab_total
+                    + rec.op_total, places=2)
+                self.assertAlmostEqual(
+                    rec.margen_bruto_total,
+                    rec.ventas_total - rec.costo_produccion_total, places=2)
+                self.assertAlmostEqual(
+                    rec.margen_neto_total,
+                    rec.ventas_total - rec.costo_absorbido_total, places=2)
+                self.assertAlmostEqual(
+                    rec.contrib_total,
+                    rec.ventas_total - rec.costo_variable_total, places=2)
             else:
                 self.assertEqual(rec.margen_bruto, 0.0)
                 self.assertEqual(rec.margen_bruto_total, 0.0)
@@ -930,6 +958,757 @@ class TestQbCosteo(TransactionCase):
             # neto ≤ bruto siempre (op% ≥ 0 sobre el facturado)
             self.assertGreaterEqual(
                 r.margen_bruto_12m + 0.01, r.margen_neto_12m)
+
+    def _ventana(self, period, window=12):
+        return (period + relativedelta(months=1) - relativedelta(months=window),
+                period + relativedelta(months=1))
+
+    def test_dos_rollos_iguales_cuentan_como_dos(self):
+        """Dos líneas del mismo producto con la misma cantidad en una factura
+        son dos rollos, no un triplete de facturación.
+
+        El dedup viejo colapsaba cualquier repetición: la cantidad se partía a
+        la mitad y el precio promedio salía al doble. La regla nueva mira el
+        TAMAÑO del grupo — un triplete son exactamente tres líneas."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date(2027, 9, 1)
+        partner = self.env['res.partner'].create({'name': 'Cliente Rollos'})
+        linea = {'product_id': self.tela.id, 'quantity': 100,
+                 'price_unit': 20.0}
+        self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': period,
+            'invoice_line_ids': [(0, 0, dict(linea)), (0, 0, dict(linea))],
+        }).action_post()
+
+        venta = self.Costo._sales_by_product(period)[self.tela.id]
+        self.assertAlmostEqual(venta['qty'], 200.0, places=2,
+                               msg='dos rollos de 100 m son 200 m')
+        self.assertAlmostEqual(venta['revenue'], 4000.0, places=2)
+        # …y por lo tanto el precio promedio es el real, no el doble
+        self.assertAlmostEqual(
+            venta['revenue'] / venta['qty'], 20.0, places=2)
+
+    def test_triplete_de_tres_lineas_si_se_colapsa(self):
+        """Tres líneas con la misma cantidad sí son un triplete: la cantidad
+        cuenta una vez y el revenue suma las tres (cancelan aritméticamente),
+        que es justo para lo que existe el dedup."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date(2027, 10, 1)
+        partner = self.env['res.partner'].create({'name': 'Cliente Triplete'})
+        self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': period,
+            'invoice_line_ids': [
+                (0, 0, {'product_id': self.tela.id, 'quantity': 100,
+                        'price_unit': 25.0}),      # lista
+                (0, 0, {'product_id': self.tela.id, 'quantity': 100,
+                        'price_unit': -5.0}),      # descuento
+                (0, 0, {'product_id': self.tela.id, 'quantity': 100,
+                        'price_unit': 0.0}),       # neta
+            ]}).action_post()
+
+        venta = self.Costo._sales_by_product(period)[self.tela.id]
+        self.assertAlmostEqual(venta['qty'], 100.0, places=2,
+                               msg='el triplete es UNA venta de 100 m')
+        self.assertAlmostEqual(venta['revenue'], 2000.0, places=2)
+
+    def test_receta_con_atributos_no_carga_lo_de_las_hermanas(self):
+        """Una línea de receta que solo aplica a otra variante NO debe entrar
+        al costo del producto. Sin el filtro, la MP salía inflada por todo lo
+        de sus variantes hermanas."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        attr = self.env['product.attribute'].create({
+            'name': 'COLOR TEST',
+            'value_ids': [(0, 0, {'name': 'ROJO TEST'}),
+                          (0, 0, {'name': 'AZUL TEST'})]})
+        tmpl = self.env['product.template'].create({
+            'name': 'TELA CON COLOR TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'sale_ok': True,
+            'attribute_line_ids': [(0, 0, {
+                'attribute_id': attr.id,
+                'value_ids': [(6, 0, attr.value_ids.ids)]})]})
+        rojo, azul = tmpl.product_variant_ids[0], tmpl.product_variant_ids[1]
+        ptav_rojo = rojo.product_template_attribute_value_ids[:1]
+
+        pigmento = self.env['product.product'].create({
+            'name': 'PIGMENTO TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 900.0})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tmpl.id, 'product_qty': 1.0,
+            'product_uom_id': uom_kg.id,
+            'bom_line_ids': [
+                (0, 0, {'product_id': self.hilo.id, 'product_qty': 1.0,
+                        'product_uom_id': uom_kg.id}),
+                # Solo para la variante ROJO
+                (0, 0, {'product_id': pigmento.id, 'product_qty': 0.1,
+                        'product_uom_id': uom_kg.id,
+                        'bom_product_template_attribute_value_ids':
+                            [(6, 0, ptav_rojo.ids)]}),
+            ]})
+
+        costo_rojo = self.Costo._mp_cost_unit(rojo)
+        costo_azul = self.Costo._mp_cost_unit(azul)
+        self.assertAlmostEqual(costo_rojo, 50.0 + 0.1 * 900.0, places=4)
+        self.assertAlmostEqual(
+            costo_azul, 50.0, places=4,
+            msg='AZUL no lleva pigmento: no debe cargar el de ROJO')
+
+    def test_operacion_no_depende_del_precio(self):
+        """El costo reportado deja de moverse con el descuento del vendedor.
+
+        Con `op = op_pct × precio`, el mismo producto vendido a la mitad
+        «costaba» la mitad de operación y su margen se veía sano. Con driver
+        de producción la operación se reparte sobre lo que cuesta fabricar,
+        que no se mueve con el precio."""
+        period = date(2027, 6, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18, 'op_rate': 0.10})
+        ctx = self.Costo._engine_ctx([self.tela.id], factores)
+
+        def vals_a(precio):
+            ventas = {self.tela.id: {
+                'qty': 100.0, 'revenue': precio * 100.0, 'divisas': ''}}
+            v, _f = self.Costo._compute_product_vals(
+                self.tela, period, factores, ventas, ctx, self.Ruteo, self.Peso)
+            return v
+
+        caro, barato = vals_a(50.0), vals_a(25.0)
+        self.assertAlmostEqual(caro['op_unit'], barato['op_unit'], places=4,
+                               msg='la operación no debe seguir al precio')
+        self.assertAlmostEqual(
+            caro['op_unit'], caro['costo_produccion'] * 0.10, places=4)
+        self.assertAlmostEqual(caro['costo_absorbido'],
+                               barato['costo_absorbido'], places=4)
+        # Y la identidad de capas sigue exacta
+        self.assertAlmostEqual(
+            caro['costo_absorbido'],
+            caro['mp_unit'] + caro['energia_unit'] + caro['fab_unit']
+            + caro['op_unit'], places=4)
+
+    def test_operacion_driver_legacy_sigue_sobre_ventas(self):
+        """Con `op_rate` en 0 (driver «ventas») se mantiene el reparto viejo:
+        el cambio es reversible desde Parámetros."""
+        period = date(2027, 7, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18, 'op_rate': 0.0})
+        ctx = self.Costo._engine_ctx([self.tela.id], factores)
+        ventas = {self.tela.id: {
+            'qty': 100.0, 'revenue': 5000.0, 'divisas': ''}}
+        vals, _f = self.Costo._compute_product_vals(
+            self.tela, period, factores, ventas, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(vals['op_unit'], 0.18 * 50.0, places=4)
+
+    def test_capas_produccion_es_la_misma_cuenta_en_los_dos_caminos(self):
+        """El reporte y la base de la tasa de operación tienen que salir del
+        MISMO cálculo: si divergieran, la tasa no cuadraría contra el costo al
+        que se aplica."""
+        period = date(2027, 8, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18, 'mp_ajuste': 0.9})
+        ctx = self.Costo._engine_ctx([self.tela.id], factores)
+        _b, _c, _kg, _mkg, _ik, mp, energia, fab = \
+            self.Costo._capas_produccion(
+                self.tela, factores, ctx, self.Ruteo, self.Peso)
+        vals, _f = self.Costo._compute_product_vals(
+            self.tela, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(vals['mp_unit'], mp, places=6)
+        self.assertAlmostEqual(vals['energia_unit'], energia, places=6)
+        self.assertAlmostEqual(vals['fab_unit'], fab, places=6)
+        self.assertAlmostEqual(
+            vals['costo_produccion'], mp + energia + fab, places=6)
+
+    def test_denominador_usa_capacidad_normal_no_produccion(self):
+        """El pool fijo se divide entre capacidad NORMAL, no entre producción
+        real (IAS 2). Con producción en el denominador, un mes flojo encarece
+        el producto y el modelo recomienda subir el precio justo cuando lo que
+        hace falta es vender más."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'TEST_CAP', 'name': 'Centro de prueba capacidad',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'capacidad_normal': 50000.0, 'std_output_per_hour': 10.0,
+            'es_denominador_kg': True,
+        })
+        period = date.today().replace(day=1)
+        date_to = period + relativedelta(months=1)
+        date_from = date_to - relativedelta(months=12)
+        denom = self.Costo._denominador_capacidad(centro, date_from, date_to)
+        self.assertAlmostEqual(
+            denom, 50000.0, places=2,
+            msg='con capacidad normal capturada, el denominador es esa')
+
+        # Apagando el costeo normal vuelve a producción real (que sin órdenes
+        # en el centro de prueba es 0)
+        self.env['qb.costeo.factor.config'].create({
+            'key': 'denominador_capacidad_normal', 'value': 0.0})
+        self.assertAlmostEqual(
+            self.Costo._denominador_capacidad(centro, date_from, date_to),
+            self.Costo._production_month_avg(centro, date_from, date_to),
+            places=2)
+        centro.unlink()
+
+    def test_energia_se_divide_entre_produccion_real(self):
+        """La energía es VARIABLE: su $/kg va sobre los kilos que de verdad se
+        produjeron. Con capacidad normal en el denominador, un mes al 60% de
+        utilización daría una energía por kilo 40% baja — al revés de la
+        realidad física."""
+        Config = self.env['qb.costeo.factor.config']
+        if Config.get_param('energia_por_kg', 0.0) or \
+                Config.get_param('denominador_kg_override', 0.0):
+            self.skipTest('energía por kg fijada a mano por parámetro')
+        period = date.today().replace(day=1)
+        factores = self.Costo._compute_factores(period)
+        if not factores.energia_pool_month or not factores.kg_produccion_month:
+            self.skipTest('sin pool de energía ni producción en la DB de test')
+        self.assertAlmostEqual(
+            factores.energia_por_kg,
+            factores.energia_pool_month / factores.kg_produccion_month,
+            places=4)
+
+    def test_ociosidad_no_absorbida_es_la_parte_del_pool_que_falta(self):
+        """`fab_ocioso_month` = pool fijo − lo que la producción real alcanza a
+        absorber. Es la diferencia DELIBERADA entre el modelo y el gasto: bajo
+        IAS 2 la capacidad ociosa va al resultado del período."""
+        period = date.today().replace(day=1)
+        f = self.Costo._compute_factores(period)
+        util = (f.fab_weight_share * f.utilizacion_kg_pct / 100.0
+                + (1 - f.fab_weight_share) * f.utilizacion_m_pct / 100.0)
+        self.assertAlmostEqual(
+            f.fab_ocioso_month, max(f.fab_pool_month * (1 - util), 0.0),
+            places=2)
+        self.assertGreaterEqual(f.fab_ocioso_month, 0.0)
+
+    def test_mp_ajuste_inerte_sin_cuentas_clasificadas(self):
+        """Sin cuentas en el bucket «mp» no hay contra qué conciliar: el
+        ajuste vale 1.0 y el costo no se mueve. El ajuste solo existe cuando
+        hay un número duro del mayor enfrente."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Clase.search([('bucket', '=', 'mp')]).write({'active': False})
+        period = date.today().replace(day=1)
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        gl, modelada, factor = self.Costo._mp_ajuste(
+            *self._ventana(period), ctx)
+        self.assertEqual((gl, modelada, factor), (0.0, 0.0, 1.0))
+
+    def test_mp_ajuste_es_el_cociente_y_respeta_la_banda(self):
+        """El factor es MP consumida ÷ MP modelada, y se recorta a la banda
+        de cordura: un factor disparado casi siempre significa una cuenta mal
+        clasificada, no una receta equivocada por 3×."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date.today().replace(day=1)
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        cuenta_mp = Account.create({
+            'name': 'COSTO PRIMO TEST', 'code': 'QBMP.0001',
+            'account_type': 'expense_direct_cost'})
+        contra = Account.create({
+            'name': 'CONTRA TEST', 'code': 'QBMP.0002',
+            'account_type': 'expense'})
+        Clase.create({'account_id': cuenta_mp.id, 'bucket': 'mp'})
+        # Un monto absurdo contra la MP modelada: debe recortarse, no pasar
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': cuenta_mp.id, 'debit': 99000000.0,
+                        'credit': 0.0}),
+                (0, 0, {'account_id': contra.id, 'debit': 0.0,
+                        'credit': 99000000.0}),
+            ]}).action_post()
+
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        gl, modelada, factor = self.Costo._mp_ajuste(
+            *self._ventana(period), ctx)
+        f_max = self.env['qb.costeo.factor.config'].get_param(
+            'mp_ajuste_max', 1.5) or 1.5
+        if modelada > 0:
+            self.assertEqual(factor, f_max,
+                             'un cociente disparado debe recortarse a la banda')
+            # gl y modelada se devuelven sobre el MISMO conjunto de meses, así
+            # que su cociente es el factor SIN recortar
+            self.assertGreater(gl / modelada, f_max)
+        else:
+            # Sin ventas en la ventana no hay con qué comparar
+            self.assertEqual(factor, 1.0)
+
+    def test_mp_ajuste_solo_toca_al_nacional(self):
+        """El ajuste acerca la receta al consumo real de la planta. El
+        importado no consume materia prima de la planta (su MP es precio de
+        compra más aduana) y el subproducto tiene MP $0: ninguno se escala."""
+        period = date(2027, 5, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+            'mp_ajuste': 0.80})
+        ctx = self.Costo._engine_ctx(
+            [self.tela.id, self.importado.id, self.saldo.id], factores)
+
+        base_tela = self.Costo._mp_cost_unit(self.tela, ctx=ctx)
+        vals, _f = self.Costo._compute_product_vals(
+            self.tela, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(vals['mp_unit'], base_tela * 0.80, places=4)
+
+        vals_imp, _f = self.Costo._compute_product_vals(
+            self.importado, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(
+            vals_imp['mp_unit'], self.importado.standard_price, places=4,
+            msg='el importado no se ajusta contra el costo primo de la planta')
+
+        vals_sub, _f = self.Costo._compute_product_vals(
+            self.saldo, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertEqual(vals_sub['mp_unit'], 0.0)
+
+    def test_reconocedor_de_cuentas_de_materia_prima(self):
+        """Reconoce consumo, no inventario: 'INVENTARIO DE MATERIA PRIMA' es
+        un activo y matchea el patrón, pero no es consumo — meterlo al bucket
+        falsearía la conciliación."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+
+        def cuenta(name, code, tipo='expense_direct_cost'):
+            return Account.create({'name': name, 'code': code,
+                                   'account_type': tipo})
+
+        self.assertTrue(Clase._es_cuenta_de_materia_prima(
+            cuenta('COSTO PRIMO TEST', 'QBR.0001')))
+        self.assertTrue(Clase._es_cuenta_de_materia_prima(
+            cuenta('COSTO POR AJUSTES A CANTIDAD TEST', 'QBR.0002')))
+        self.assertTrue(Clase._es_cuenta_de_materia_prima(
+            cuenta('DIFERENCIAS POR CONTEO TEST', 'QBR.0003')))
+        self.assertFalse(Clase._es_cuenta_de_materia_prima(
+            cuenta('INVENTARIO DE MATERIA PRIMA TEST', 'QBR.0004',
+                   tipo='asset_current')),
+            'el inventario es un activo, no consumo')
+        self.assertFalse(Clase._es_cuenta_de_materia_prima(
+            cuenta('SUELDOS Y SALARIOS TEST', 'QBR.0005')))
+
+        fuera = Clase.create({
+            'account_id': cuenta('COSTO PRIMO MOVER TEST', 'QBR.0006').id,
+            'bucket': 'no_costeo'})
+        Clase.reclasificar_cuentas_de_materia_prima()
+        self.assertEqual(fuera.bucket, 'mp')
+
+    def test_importacion_entra_al_costo_del_importado(self):
+        """Los impuestos y gastos de aduana se cargan al valor importado.
+
+        El AVCO de Odoo NO los trae: IGI, DTA, PRV y el agente aduanal se
+        postean directo a resultados. Antes quedaban en `no_costeo` y el
+        importado se veía más barato de lo que es."""
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2027, 3, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+            'factor_importacion': 0.20})
+        base = self.importado.standard_price  # 7.51
+
+        q = self.Costo.quote_product(self.importado, factores)
+        self.assertAlmostEqual(q['mp'], base * 1.20, places=4,
+                               msg='el importado debe cargar su aduana')
+        # Y sigue sin cargar fabricación: solo pasa por inspección
+        self.assertEqual(q['fab'], 0.0)
+
+        # El nacional NO se toca: su MP no lleva aduana
+        q_nac = self.Costo.quote_product(self.tela, factores)
+        factores.factor_importacion = 0.0
+        self.assertAlmostEqual(
+            q_nac['mp'], self.Costo.quote_product(self.tela, factores)['mp'],
+            places=4, msg='la aduana no debe tocar al producto nacional')
+
+    def test_aduana_del_hilo_importado_llega_a_la_tela(self):
+        """El pedimento del hilo lo carga el hilo, y la receta lo arrastra a
+        cada tela que lo consume.
+
+        La versión anterior repartía TODA la aduana sobre la familia de
+        reventa, que es ~9% del valor importado; el hilo —que es ~83%— no
+        cargaba nada. El resultado era un factor once veces alto sobre el
+        producto equivocado."""
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        base = self.Costo._mp_cost_unit(self.tela, ctx=ctx)
+
+        ctx_imp = dict(ctx, import_factor=0.20,
+                       import_ids={self.hilo.id}, mp_cache={})
+        con_aduana = self.Costo._mp_cost_unit(self.tela, ctx=ctx_imp)
+        self.assertAlmostEqual(con_aduana, base * 1.20, places=4)
+        # y la tela NO se vuelve importada por eso: sigue cargando fabricación
+        self.assertNotEqual(
+            self.Ruteo.resolve(self.tela, ctx['rules'])[0], 'importado')
+
+    def test_aduana_no_se_aplica_dos_veces_en_la_receta(self):
+        """Un componente importado ya trae su aduana dentro; el total de la
+        receta no se vuelve a multiplicar."""
+        ctx = self.Costo._engine_ctx([self.tela.id])
+        ctx_imp = dict(ctx, import_factor=0.20,
+                       import_ids={self.hilo.id, self.tela.id}, mp_cache={})
+        # Aunque la TELA también esté marcada como compra importada, su costo
+        # sale de la receta (tiene BOM), no de una compra: el recargo entra
+        # una sola vez, por el hilo.
+        base = self.Costo._mp_cost_unit(
+            self.tela, ctx=dict(ctx, mp_cache={}))
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(self.tela, ctx=ctx_imp),
+            base * 1.20, places=4)
+
+    def test_driver_de_aduana_por_default_no_prorratea(self):
+        """El default es «landed»: el módulo NO inventa un prorrateo de
+        pedimentos. Mide cuánta aduana se quedó en resultados y espera que se
+        capitalice con el landed cost de Odoo sobre cada recepción."""
+        Config = self.env['qb.costeo.factor.config']
+        self.assertEqual(
+            Config.get_param_text('importacion_driver', 'landed'), 'landed')
+        period = date.today().replace(day=1)
+        factores = self.Costo._compute_factores(period)
+        self.assertEqual(
+            factores.factor_importacion, 0.0,
+            'con driver «landed» no debe haber factor de prorrateo')
+        self.assertEqual(factores.importacion_base_month, 0.0)
+
+    def test_importacion_se_reporta_dentro_de_la_mp(self):
+        """`importacion_unit` es informativo: la parte de la MP que es aduana.
+        No es una capa aparte — si lo fuera, la cascada del cotizador y del
+        PDF (MP → +energía → =variable) dejaría de cuadrar."""
+        period = date(2027, 4, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+            'factor_importacion': 0.25})
+        ctx = self.Costo._engine_ctx([self.importado.id], factores)
+        vals, _fab = self.Costo._compute_product_vals(
+            self.importado, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        # 25% sobre el valor de compra → 20% del costo final es aduana
+        self.assertAlmostEqual(
+            vals['importacion_unit'], vals['mp_unit'] * 0.25 / 1.25, places=4)
+        # y la identidad de capas sigue intacta (la aduana NO se suma aparte)
+        self.assertAlmostEqual(
+            vals['costo_variable'], vals['mp_unit'] + vals['energia_unit'],
+            places=4)
+
+    def test_reconocedor_de_cuentas_de_importacion(self):
+        """Distingue aduana de exportación y no se dispara con subcadenas:
+        'DTAS' o 'DIGITALIZACION' no son cuentas de importación."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+
+        def cuenta(name, code):
+            return Account.create({'name': name, 'code': code,
+                                   'account_type': 'expense'})
+
+        self.assertTrue(Clase._es_cuenta_de_importacion(
+            cuenta('GASTOS DE IMPORTACION TEST', 'QBI.0001')))
+        self.assertTrue(Clase._es_cuenta_de_importacion(
+            cuenta('IGI TEST', 'QBI.0002')))
+        self.assertFalse(Clase._es_cuenta_de_importacion(
+            cuenta('GASTOS POR EXPORTACIONES TEST', 'QBI.0003')))
+        self.assertFalse(Clase._es_cuenta_de_importacion(
+            cuenta('VENTA DTAS TEST', 'QBI.0004')))
+
+        # Solo reclasifica lo que hoy está fuera de costeo
+        fuera = Clase.create({
+            'account_id': cuenta('IMPORTACION FLETES TEST', 'QBI.0005').id,
+            'bucket': 'no_costeo'})
+        en_operacion = Clase.create({
+            'account_id': cuenta('IMPORTACION AGENTE TEST', 'QBI.0006').id,
+            'bucket': 'operacion'})
+        Clase.reclasificar_cuentas_de_importacion()
+        self.assertEqual(fuera.bucket, 'importacion')
+        self.assertEqual(en_operacion.bucket, 'operacion',
+                         'mover un bucket ya activo es decisión del usuario')
+        self.assertIn(en_operacion,
+                      Clase.cuentas_de_importacion_mal_ubicadas())
+
+    def test_smooth_divide_entre_meses_de_ventana_no_de_facturas(self):
+        """Un gasto que se registra al PAGARSE aparece en unos meses sí y
+        otros no. Dividir entre los meses en que apareció da el cargo por
+        factura, no el costo mensual: energía en 53k/65k/173k son $97k por
+        recibo pero $41k al mes si la ventana es de siete."""
+        Costo = self.Costo
+        por_mes = {date(2026, 1, 1): 53000.0,
+                   date(2026, 3, 1): 65000.0,
+                   date(2026, 6, 1): 173000.0}
+        self.assertAlmostEqual(
+            Costo._smooth(por_mes, meses=7), 291000.0 / 7, places=2)
+        # Sin `meses` se conserva el comportamiento viejo (por factura)
+        self.assertAlmostEqual(
+            Costo._smooth(por_mes), 291000.0 / 3, places=2)
+
+    def test_smooth_descarta_el_reverso_de_cierre_de_los_dos_lados(self):
+        """El reverso del cierre anual es un mes negativo. Dejarlo en el
+        numerador hundiría el promedio; dejarlo en el denominador lo
+        subvaluaría igual. Sale de los dos."""
+        por_mes = {date(2025, 11, 1): 100.0,
+                   date(2025, 12, 1): -5000.0,
+                   date(2026, 1, 1): 200.0}
+        # 3 meses de ventana, uno descartado -> 300 / 2
+        self.assertAlmostEqual(
+            self.Costo._smooth(por_mes, meses=3), 150.0, places=2)
+
+    def test_ventana_fabril_arranca_en_el_corte_de_absorcion(self):
+        """Promediar meses del régimen viejo con meses del nuevo mezcla dos
+        cosas distintas: los anteriores al corte llevan el gasto del centro
+        completo. El factor del mes tiene que describir a ese mes."""
+        Centro = self.env['qb.costeo.centro']
+        period = date.today().replace(day=1)
+        corte = period - relativedelta(months=1)
+        centro = Centro.create({
+            'code': 'TEST_VENTANA', 'name': 'Corte de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': corte,
+        })
+        factores = self.Costo._compute_factores(period)
+        self.assertEqual(factores.fab_ventana_desde, corte,
+                         'la ventana fabril arranca en el corte')
+        self.assertLessEqual(factores.fab_ventana_meses,
+                             factores.window_months)
+        centro.unlink()
+
+        # Sin centros absorbidos, la ventana fabril es la de suavizado
+        factores = self.Costo._compute_factores(period)
+        esperado = (period + relativedelta(months=1)
+                    - relativedelta(months=factores.window_months))
+        self.assertEqual(factores.fab_ventana_desde, esperado)
+
+    def test_periodo_cerrado_no_se_recalcula(self):
+        """Un período cerrado es un snapshot: ni el cron ni un recálculo
+        manual lo tocan. Sin esto, el número que presentaste el mes pasado
+        cambia solo la próxima vez que alguien recalcula."""
+        period = date(2027, 11, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'op_pct': 0.18})
+        fila = self.Costo.create({
+            'period': period, 'product_id': self.tela.id,
+            'qty_vendida': 10.0, 'precio_prom': 50.0, 'mp_unit': 3.6})
+
+        factores.action_cerrar()
+        self.assertEqual(factores.state, 'cerrado')
+        self.assertEqual(factores.cerrado_por, self.env.user)
+
+        # El recálculo se rehúsa y lo dice
+        self.assertFalse(self.Costo.action_recompute_period(period))
+        # y la fila no se puede escribir ni borrar por la puerta de atrás
+        with self.assertRaises(UserError):
+            fila.write({'precio_prom': 999.0})
+        with self.assertRaises(UserError):
+            fila.unlink()
+        self.assertEqual(fila.precio_prom, 50.0)
+
+        # Reabrir exige motivo, y queda contado
+        with self.assertRaises(UserError):
+            factores.action_reabrir()
+        factores.motivo_reapertura = 'Se reclasificó una cuenta de renta.'
+        factores.action_reabrir()
+        self.assertEqual(factores.state, 'borrador')
+        self.assertEqual(factores.reaperturas, 1)
+        fila.write({'precio_prom': 60.0})
+        self.assertEqual(fila.precio_prom, 60.0)
+
+    def test_centro_absorbido_sale_del_pool(self):
+        """Un centro cuyos workcenters ya capitalizan NO puede seguir en el
+        pool: Odoo mete su costo al AVCO del producto y la venta lo libera.
+        Repartirlo además con los factores lo cobraría dos veces."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'TEST_ABS', 'name': 'Centro de prueba absorción',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': 80000.0,
+        })
+        period = date.today().replace(day=1)
+        pool_capa = self.Costo._compute_factores(period).fab_pool_month
+
+        centro.write({'modo_costeo': 'absorcion_odoo',
+                      'fecha_absorcion': period})
+        factores = self.Costo._compute_factores(period)
+        self.assertIn('TEST_ABS', factores.centros_absorbidos or '')
+        self.assertNotIn('TEST_ABS', factores.centros_capa or '')
+        self.assertAlmostEqual(
+            pool_capa - factores.fab_pool_month, 80000.0, places=2,
+            msg='su renta contractual debe salir del pool')
+
+        # La fecha de corte se compara contra el PERÍODO: un mes anterior
+        # conserva el régimen de capa y el histórico no se reescribe.
+        anterior = period - relativedelta(months=1)
+        previos = self.Costo._compute_factores(anterior)
+        self.assertNotIn('TEST_ABS', previos.centros_absorbidos or '')
+        centro.unlink()
+
+    def test_absorcion_requiere_fecha_de_corte(self):
+        """Sin fecha no se sabe desde qué período sacar el gasto del pool."""
+        Centro = self.env['qb.costeo.centro']
+        with self.assertRaises(ValidationError):
+            Centro.create({
+                'code': 'TEST_SIN_FECHA', 'name': 'Sin fecha',
+                'nature': 'fabril_directo', 'modo_costeo': 'absorcion_odoo'})
+
+    def test_share_se_apaga_cuando_su_lado_queda_sin_centros(self):
+        """Al absorberse el único centro que define los kilos, el share de
+        peso debe irse a 0: repartirle pool a un factor sin denominador
+        dejaría dinero sin absorber."""
+        Centro = self.env['qb.costeo.centro']
+        period = date(2027, 12, 1)
+        kg = Centro.create({
+            'code': 'TEST_KG', 'name': 'Denominador kg de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'es_denominador_kg': True, 'std_output_per_hour': 10.0})
+        m = Centro.create({
+            'code': 'TEST_M', 'name': 'Denominador m de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'es_denominador_m': True, 'std_output_per_hour': 100.0})
+        # Los centros reales de la DB pueden aportar denominador también, así
+        # que se apagan para aislar el caso.
+        otros = Centro.search([
+            '|', ('es_denominador_kg', '=', True), ('es_denominador_m', '=', True),
+            ('id', 'not in', (kg | m).ids)])
+        otros.write({'active': False})
+
+        self.assertGreater(
+            self.Costo._compute_factores(period).fab_weight_share, 0.0)
+        kg.write({'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period})
+        self.assertEqual(
+            self.Costo._compute_factores(period).fab_weight_share, 0.0,
+            'sin centro de kilos en capa, todo el pool va por metros')
+        otros.write({'active': True})
+        (kg | m).unlink()
+
+    def test_renta_contractual_entra_al_pool_fabril(self):
+        """La renta contractual de TODOS los centros fabriles llega al costo
+        del producto, no solo la de entretelas.
+
+        Era un bug con dinero real: la cuenta de renta del GL se excluía
+        (`no_costeo`) argumentando que en su lugar se usaba la renta
+        contractual, pero el código solo la aplicaba dentro del bloque de
+        entretelas. Tejido, tintorería y acabado tenían su renta capturada y
+        nunca llegaba al costo."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'TEST_RENTA', 'name': 'Centro de prueba renta',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': 100000.0,
+        })
+        period = date.today().replace(day=1)
+        factores = self.Costo._compute_factores(period)
+        self.assertGreaterEqual(
+            factores.renta_contractual_pool, 100000.0,
+            'la renta contractual del centro fabril debe entrar al pool')
+        pool_con = factores.fab_pool_month
+
+        # Sin renta contractual el pool baja exactamente en esos $100k
+        centro.renta_contractual_mxn = 0.0
+        factores = self.Costo._compute_factores(period)
+        pool_sin = factores.fab_pool_month
+        if pool_sin > 0:
+            # (con el pool en 0 el max(..., 0) del motor recorta y la resta
+            # exacta deja de aplicar)
+            self.assertAlmostEqual(pool_con - pool_sin, 100000.0, places=2)
+        else:
+            self.assertAlmostEqual(pool_con, 100000.0, places=2)
+        centro.unlink()
+
+    def test_renta_de_entretelas_no_le_cuesta_a_tela(self):
+        """La renta contractual de entretelas entra al total y sale otra vez
+        con el pool propio de entretelas: el pool de TELA no se mueve.
+
+        Restarle a tela una renta que nunca se le sumó le quitaría dinero que
+        tela no tuvo, y su factor $/kg saldría bajo."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'ENTRETELA TEST', 'name': 'Entretela de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'renta_contractual_mxn': 0.0,
+        })
+        period = date.today().replace(day=1)
+        pool_sin = self.Costo._compute_factores(period).fab_pool_month
+
+        centro.renta_contractual_mxn = 70000.0
+        factores = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(
+            factores.fab_pool_month, pool_sin, places=2,
+            msg='la renta de entretelas no debe tocar el pool de tela')
+        self.assertGreaterEqual(factores.entretela_pool_month, 70000.0,
+                                'pero sí debe financiar su propio factor')
+        centro.unlink()
+
+    def test_renta_del_gl_marcada_sale_del_pool(self):
+        """Una cuenta marcada «es renta de inmueble» se saca del pool fabril:
+        de otro modo la renta se contaría dos veces (GL + contrato)."""
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        renta = Account.create({
+            'name': 'RENTA DEL LOCAL (PLANTA) TEST', 'code': 'QBT.45.0001',
+            'account_type': 'expense'})
+        maquina = Account.create({
+            'name': 'ARRENDAMIENTO DE MAQUINARIA TEST', 'code': 'QBT.20.0001',
+            'account_type': 'expense'})
+        self.assertTrue(Clase._es_cuenta_de_renta(renta))
+        self.assertFalse(
+            Clase._es_cuenta_de_renta(maquina),
+            'el arrendamiento de maquinaria NO se sustituye por contrato')
+
+        # Y el marcado automático las distingue igual: la de inmueble queda
+        # fuera del pool fabril, la de maquinaria se queda dentro.
+        clase_renta = Clase.create({'account_id': renta.id,
+                                    'bucket': 'overhead_fab'})
+        clase_maq = Clase.create({'account_id': maquina.id,
+                                  'bucket': 'arrend_maquinaria'})
+        Clase.marcar_cuentas_de_renta()
+        self.assertTrue(clase_renta.es_renta)
+        self.assertFalse(clase_maq.es_renta)
+
+    def test_conciliacion_modelo_vs_mayor(self):
+        """La conciliación compila, cuadra con el motor y expone la brecha.
+
+        Es el control de calidad del costeo: el modelo reparte costos con
+        recetas y pools, y esta vista lo confronta contra el mayor. Si las
+        ventas del modelo no empatan con las del mayor, o el costo repartido
+        no se parece al gasto real, aquí se ve — antes se decidían precios
+        sin saberlo."""
+        period = date.today().replace(day=1)
+        self.Costo.action_recompute_period(period)
+        Conc = self.env['qb.costo.conciliacion']
+        rows = Conc.search([])
+        # La vista lee sin reventar y trae todas sus columnas
+        rows.read([
+            'period', 'gl_ventas', 'modelo_ventas', 'ventas_dif',
+            'gl_costo_ventas', 'gl_gastos_operacion', 'gl_gasto_total',
+            'modelo_mp', 'modelo_energia', 'modelo_fab', 'modelo_op',
+            'modelo_costo_total', 'gl_mp', 'gl_no_costeo',
+            'gl_sin_clasificar', 'resultado_gl', 'resultado_modelo',
+            'brecha', 'brecha_pct', 'cobertura_pct'])
+        row = Conc.search([('period', '=', period)], limit=1)
+        if not row:
+            self.skipTest('sin movimientos de resultados en el período')
+        # El lado "modelo" es exactamente lo que suma qb.costo.producto:
+        # si esto se desalinea, la brecha deja de significar algo.
+        recs = self.Costo.search([('period', '=', period)])
+        self.assertAlmostEqual(
+            row.modelo_ventas, sum(recs.mapped('ventas_total')), places=2)
+        self.assertAlmostEqual(
+            row.modelo_costo_total,
+            sum(recs.mapped('costo_absorbido_total')), places=2)
+        self.assertAlmostEqual(
+            row.resultado_modelo,
+            sum(recs.mapped('margen_neto_total')), places=2)
+        # Y la brecha es, por definición, modelo − mayor
+        self.assertAlmostEqual(
+            row.brecha, row.resultado_modelo - row.resultado_gl, places=2)
+        self.assertAlmostEqual(
+            row.gl_gasto_total,
+            row.gl_costo_ventas + row.gl_gastos_operacion, places=2)
 
     def test_cuenta_especifica_gana_sobre_patron(self):
         """Una clase de CUENTA ESPECIFICA gana sobre una de patrón para la
@@ -1103,7 +1882,9 @@ class TestQbCosteo(TransactionCase):
         move.action_post()
 
         sales = self.Costo._sales_by_product(period)
-        qty, revenue, divisa = sales[self.tela.id]
+        venta = sales[self.tela.id]
+        qty, revenue, divisa = (venta['qty'], venta['revenue'],
+                                venta['divisas'])
         self.assertAlmostEqual(qty, 100.0, places=2)
         # 100 u × 5 EUR × 20 = 10,000 en moneda cía — NO 500 (el crudo EUR)
         self.assertAlmostEqual(revenue, 10000.0, places=0,
@@ -1118,6 +1899,14 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('EUR', rec.divisa_venta)
         self.assertEqual(rec.company_currency_id,
                          self.env.company.currency_id)
+        # …y ADEMÁS el precio en la divisa original, sin convertir: 5 EUR/u
+        self.assertEqual(rec.divisa_id, eur)
+        self.assertAlmostEqual(rec.qty_divisa, 100.0, places=2)
+        self.assertAlmostEqual(rec.ventas_total_divisa, 500.0, places=2)
+        self.assertAlmostEqual(rec.precio_prom_divisa, 5.0, places=2)
+        self.assertAlmostEqual(rec.tc_prom, 20.0, places=2)
+        # Ventas del período = el facturado real en pesos
+        self.assertAlmostEqual(rec.ventas_total, 10000.0, places=0)
 
     def test_ajuste_de_metros_sale_del_denominador(self):
         """Encogimiento y estiramiento no destruyen ni crean material: la
@@ -1181,3 +1970,142 @@ class TestQbCosteo(TransactionCase):
             Costo._production_month_avg(acabado, desde, hasta,
                                         restar_by_month={}),
             base)
+
+    def test_absorcion_resta_solo_lo_que_el_pool_todavia_trae(self):
+        """La resta del absorbido quita del pool lo que ese pool contiene del
+        centro, ni un peso más.
+
+        Cuando un centro pasa a absorción, tres mecanismos distintos le sacan
+        su costo al pool y sólo uno de ellos es la resta del abono:
+
+          · `excluir_centros` saca las cuentas ETIQUETADAS al centro,
+          · `renta_centros` saca su renta contractual,
+          · la resta del abono a «costos fabriles aplicados» tiene que sacar
+            el REMANENTE — lo que el centro aportaba por cuentas sin etiquetar.
+
+        La tarifa por hora capitaliza el costo COMPLETO del centro, así que
+        restar el abono entero quitaba las dos primeras partidas por segunda
+        vez. Con datos de producción eran ~$463k/mes: la renta contractual de
+        TEJIDO ($284,269) más sus energéticos y agujados ($179k), etiquetados
+        a su centro. El `max(…, 0)` no lo veía porque el pool seguía positivo.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Centro = self.env['qb.costeo.centro']
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        period = date(2027, 3, 1)
+
+        # Componentes conocidos, uno por comportamiento
+        etiquetada, sin_etiqueta = 30000.0, 200000.0  # overhead fabril
+        deprec, renta_gl, renta_contractual = 12000.0, 44000.0, 80000.0
+        absorbido = 140000.0                          # lo que Odoo capitalizó
+
+        centro = Centro.create({
+            'code': 'TEST_ABS_NETO', 'name': 'Centro absorbido de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': renta_contractual})
+        # Centro sin costo alguno: sirve para fijar la MISMA ventana fabril en
+        # los dos escenarios (la ventana arranca en el corte de absorción), de
+        # forma que la única diferencia medida sea el régimen del centro real.
+        neutro = Centro.create({
+            'code': 'TEST_ABS_NEUTRO', 'name': 'Centro neutro de prueba',
+            'nature': 'fabril_indirecto', 'driver_principal': 'largo',
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period})
+
+        def cuenta(code, name, bucket, **kw):
+            acc = Account.create({'name': name, 'code': code,
+                                  'account_type': 'expense_direct_cost'})
+            Clase.create(dict(account_id=acc.id, bucket=bucket, **kw))
+            return acc
+
+        c_etq = cuenta('QBAB.0001', 'OVERHEAD DEL CENTRO TEST',
+                       'overhead_fab', centro_id=centro.id)
+        c_sin = cuenta('QBAB.0002', 'OVERHEAD GENERICO TEST', 'overhead_fab')
+        c_dep = cuenta('QBAB.0003', 'DEPRECIACION TEST', 'depreciacion')
+        c_ren = cuenta('QBAB.0004', 'RENTA DEL LOCAL TEST', 'no_costeo')
+        c_abs = cuenta('QBAB.0005', 'COSTOS FABRILES APLICADOS TEST',
+                       'absorcion_odoo')
+        contra = Account.create({'name': 'CONTRA ABS TEST', 'code': 'QBAB.0009',
+                                 'account_type': 'expense'})
+        cargos = etiquetada + sin_etiqueta + deprec + renta_gl
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': c_etq.id, 'debit': etiquetada}),
+                (0, 0, {'account_id': c_sin.id, 'debit': sin_etiqueta}),
+                (0, 0, {'account_id': c_dep.id, 'debit': deprec}),
+                (0, 0, {'account_id': c_ren.id, 'debit': renta_gl}),
+                (0, 0, {'account_id': c_abs.id, 'credit': absorbido}),
+                (0, 0, {'account_id': contra.id, 'debit': absorbido,
+                        'credit': 0.0}),
+                (0, 0, {'account_id': contra.id, 'credit': cargos}),
+            ]}).action_post()
+
+        # Escenario A: el centro real sigue en capa (sólo el neutro absorbe)
+        en_capa = self.Costo._compute_factores(period).fab_pool_month
+
+        # Escenario B: el centro real pasa a absorción
+        centro.write({'modo_costeo': 'absorcion_odoo',
+                      'fecha_absorcion': period})
+        f = self.Costo._compute_factores(period)
+
+        # El bruto es el hecho contable: el abono a la cuenta, tal cual
+        self.assertAlmostEqual(f.absorcion_bruta_month, absorbido, places=2)
+        # Ya fuera = cuentas etiquetadas al centro + su renta contractual.
+        # Ni la depreciación ni la renta del GL entran: la primera sigue
+        # DENTRO del pool (no tiene centro) y la segunda nunca estuvo en él
+        # (`no_costeo`). Meterlas aquí subvaluaría la resta.
+        self.assertAlmostEqual(f.absorcion_ya_fuera_month,
+                               etiquetada + renta_contractual, places=2)
+        # Y la resta neta es el remanente, no el abono entero
+        self.assertAlmostEqual(
+            f.absorcion_pool_month,
+            absorbido - etiquetada - renta_contractual, places=2)
+
+        # La consecuencia que importa: el pool cae por el mismo importe con
+        # el centro etiquetado que sin etiquetar. Restar el abono completo lo
+        # dejaba $110,000 más abajo (la etiquetada + la renta contractual) y
+        # ese hueco lo pagaban los centros que siguen en capa.
+        self.assertAlmostEqual(f.fab_pool_month, en_capa, places=2)
+
+        (centro | neutro).unlink()
+
+    def test_absorcion_neta_no_baja_de_cero_y_lo_avisa(self):
+        """Si la tarifa absorbe MENOS que lo que el centro ya tenía
+        etiquetado, la resta neta se queda en 0 —nunca devuelve dinero al
+        pool— y el bruto queda guardado para que el panel lo pueda avisar."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Centro = self.env['qb.costeo.centro']
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        period = date(2027, 4, 1)
+
+        centro = Centro.create({
+            'code': 'TEST_ABS_CORTA', 'name': 'Centro absorbido corto',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': 90000.0,
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period})
+        c_abs = Account.create({
+            'name': 'COSTOS FABRILES APLICADOS CORTO TEST',
+            'code': 'QBAC.0001', 'account_type': 'expense_direct_cost'})
+        Clase.create({'account_id': c_abs.id, 'bucket': 'absorcion_odoo'})
+        contra = Account.create({'name': 'CONTRA CORTO TEST',
+                                 'code': 'QBAC.0009', 'account_type': 'expense'})
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': c_abs.id, 'credit': 10000.0}),
+                (0, 0, {'account_id': contra.id, 'debit': 10000.0}),
+            ]}).action_post()
+
+        f = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(f.absorcion_bruta_month, 10000.0, places=2)
+        self.assertAlmostEqual(f.absorcion_ya_fuera_month, 90000.0, places=2)
+        self.assertEqual(f.absorcion_pool_month, 0.0)
+        centro.unlink()

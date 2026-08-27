@@ -5,6 +5,8 @@ Semáforo de configuración (qué falta y qué número desbloquea) + KPIs del
 mes. Es la respuesta a "¿por qué todo sale en cero?": cada prerequisito
 se muestra con su estado y un botón directo para resolverlo.
 """
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models
 
 OK = '✅'
@@ -78,6 +80,216 @@ class QbCosteoPanel(models.TransientModel):
         checks.append((OK if len(pending) < 10 else WARN,
                        'Clasificación de cuentas',
                        '%s cuentas de resultados sin clasificar' % len(pending)))
+
+        # 5.4 Régimen híbrido: un centro que Odoo ya capitaliza NO puede
+        # seguir en el pool del módulo, y su cuenta de costos aplicados tiene
+        # que estar clasificada para poder restarla. Las dos mitades del
+        # doble conteo son silenciosas.
+        Centro = env['qb.costeo.centro']
+        Clase = env['qb.costeo.cuenta.class']
+        hoy = fields.Date.today()
+        absorbidos = Centro.absorbidos_en(hoy)
+        n_absorcion = Clase.search_count([('bucket', '=', 'absorcion_odoo')])
+        ultimo = env['qb.costo.factores'].search(
+            [], order='period DESC', limit=1)
+        if absorbidos and not n_absorcion:
+            checks.append((
+                BAD, 'Absorción por workcenter',
+                '%s ya capitaliza por workcenter, pero NINGUNA cuenta está '
+                'clasificada como «Absorbido por Odoo». Sin ella el módulo no '
+                'puede restar lo capitalizado y ese costo se cuenta DOS '
+                'veces: una en el AVCO del producto y otra en el pool.'
+                % ', '.join(absorbidos.mapped('code'))))
+        elif absorbidos and ultimo and not ultimo.absorcion_bruta_month:
+            checks.append((
+                WARN, 'Absorción por workcenter',
+                '%s está marcado como absorbido y la cuenta está clasificada, '
+                'pero el período %s no registra nada capitalizado. O la '
+                'tarifa por hora sigue en 0, o la fecha de corte se adelantó.'
+                % (', '.join(absorbidos.mapped('code')), ultimo.period)))
+        elif (absorbidos and ultimo and ultimo.absorcion_bruta_month
+                and not ultimo.absorcion_pool_month):
+            checks.append((
+                WARN, 'Absorción por workcenter',
+                'Odoo capitalizó $%s/mes de %s, pero sus cuentas etiquetadas '
+                'y su renta contractual ya sumaban $%s/mes fuera del pool: la '
+                'resta neta queda en 0. La tarifa por hora absorbe menos que '
+                'el costo que el centro ya tenía identificado — revisa la '
+                'tarifa, o que sus cuentas no estén etiquetadas de más.'
+                % (f'{ultimo.absorcion_bruta_month:,.0f}',
+                   ', '.join(absorbidos.mapped('code')),
+                   f'{ultimo.absorcion_ya_fuera_month:,.0f}')))
+        elif absorbidos:
+            checks.append((
+                OK, 'Absorción por workcenter',
+                '%s fuera del pool desde %s; Odoo capitalizó $%s/mes, de los '
+                'que $%s ya estaban excluidos por centro y renta → se restan '
+                '$%s/mes'
+                % (', '.join(absorbidos.mapped('code')),
+                   min(absorbidos.mapped('fecha_absorcion')),
+                   f'{ultimo.absorcion_bruta_month:,.0f}' if ultimo else '0',
+                   f'{ultimo.absorcion_ya_fuera_month:,.0f}' if ultimo else '0',
+                   f'{ultimo.absorcion_pool_month:,.0f}' if ultimo else '0')))
+        elif ultimo and ultimo.absorcion_bruta_month:
+            checks.append((
+                BAD, 'Absorción por workcenter',
+                'Odoo capitalizó $%s/mes de costos fabriles aplicados pero '
+                'ningún centro está marcado como absorbido. Marca su modo de '
+                'costeo y su fecha de corte, o el pool seguirá arrastrando un '
+                'gasto que ya viaja dentro del inventario.'
+                % f'{ultimo.absorcion_bruta_month:,.0f}'))
+
+        # 5.5 Renta: contractual vs. GL — el doble conteo es silencioso
+        renta_contractual = sum(env['qb.costeo.centro'].search([
+            ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
+        ]).mapped('renta_contractual_mxn'))
+        if renta_contractual:
+            sin_marcar = Clase.search([
+                ('es_renta', '=', False),
+                ('bucket', 'in', ('mod', 'overhead_fab', 'depreciacion',
+                                  'arrend_maquinaria')),
+            ]).filtered(lambda c: any(
+                Clase._es_cuenta_de_renta(a) for a in c.account_ids))
+            if sin_marcar:
+                detalle = (
+                    'la renta se está contando DOS VECES: $%s/mes por '
+                    'contrato y además por %s, que está en un bucket fabril. '
+                    'Márcalas «es renta de inmueble» en Clasificación de '
+                    'cuentas.' % (f'{renta_contractual:,.0f}',
+                                  ', '.join(sin_marcar.mapped('name'))))
+            else:
+                detalle = ('renta contractual $%s/mes en el pool; las cuentas '
+                           'de renta del GL están marcadas y fuera'
+                           % f'{renta_contractual:,.0f}')
+            checks.append((BAD if sin_marcar else OK,
+                           'Renta sin doble conteo', detalle))
+
+        # 5.6 Aduana: ¿se está capitalizando con landed costs, o se queda en
+        # resultados? El pedimento sabe a qué embarque pertenece; prorratearlo
+        # con una fórmula le cobra al hilo el pedimento de una máquina.
+        mal_ubicadas = Clase.cuentas_de_importacion_mal_ubicadas()
+        n_import = Clase.search_count([('bucket', '=', 'importacion')])
+        if mal_ubicadas:
+            checks.append((
+                WARN, 'Cuentas de aduana',
+                'estas cuentas de aduana están en un bucket que las reparte '
+                'por el driver equivocado (sobre TODAS las ventas, o fuera de '
+                'costeo): %s. Muévelas al bucket «Gastos e impuestos de '
+                'importación» para al menos poder medirlas.'
+                % ', '.join(mal_ubicadas.mapped('name'))))
+        elif not n_import:
+            checks.append((
+                WARN, 'Cuentas de aduana',
+                'ninguna cuenta en el bucket «Gastos e impuestos de '
+                'importación» — si importas, no hay forma de saber cuánta '
+                'aduana se está quedando en resultados'))
+        else:
+            checks.append((OK, 'Cuentas de aduana',
+                           '%s cuentas clasificadas' % n_import))
+
+        if n_import:
+            desde = fields.Date.today() - relativedelta(months=12)
+            aduana = env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1).importacion_pool_month or 0.0
+            capitalizado = sum(env['stock.landed.cost'].search([
+                ('state', '=', 'done'), ('date', '>=', desde),
+            ]).mapped('amount_total')) / 12.0
+            if aduana and capitalizado < 0.25 * aduana:
+                checks.append((
+                    BAD, 'Aduana capitalizada (landed cost)',
+                    '$%s/mes de aduana en resultados contra solo $%s/mes '
+                    'capitalizado con landed costs. El pedimento sabe a qué '
+                    'embarque pertenece: captúralo en la recepción y caerá en '
+                    'los productos que lo causaron. Prorratearlo con una '
+                    'fórmula le cobra al hilo el pedimento de una máquina.'
+                    % (f'{aduana:,.0f}', f'{capitalizado:,.0f}')))
+            else:
+                checks.append((
+                    OK, 'Aduana capitalizada (landed cost)',
+                    '$%s/mes capitalizado con landed costs contra $%s/mes en '
+                    'resultados' % (f'{capitalizado:,.0f}', f'{aduana:,.0f}')))
+
+        # 5.7 MP: ¿hay contra qué conciliar la receta?
+        n_mp = Clase.search_count([('bucket', '=', 'mp')])
+        if not n_mp:
+            checks.append((
+                WARN, 'Conciliación de materia prima',
+                'ninguna cuenta en el bucket «Materia prima» — la MP de '
+                'receta no se está comparando contra el costo primo del '
+                'mayor, así que la merma y la variación de precio no entran '
+                'al costo'))
+        else:
+            ajuste = env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1).mp_ajuste or 1.0
+            checks.append((
+                OK, 'Conciliación de materia prima',
+                '%s cuentas de costo primo; ajuste vigente ×%.3f '
+                '(receta → consumo real)' % (n_mp, ajuste)))
+
+        # 5.8 Capacidad normal: sin ella el producto carga la ociosidad
+        denominadores = env['qb.costeo.centro'].search(
+            ['|', ('es_denominador_kg', '=', True),
+             ('es_denominador_m', '=', True)])
+        caps = {o.centro_id.id: o.capacity_month_units
+                for o in env['qb.ociosidad'].search(
+                    [('centro_id', 'in', denominadores.ids)])}
+        sin_normal = denominadores.filtered(lambda c: caps.get(c.id, 0.0) <= 0)
+        if sin_normal:
+            checks.append((
+                WARN, 'Capacidad normal (IAS 2)',
+                'estos centros definen el denominador y NO tienen capacidad '
+                'normal derivable: %s. Su pool fijo se divide entre la '
+                'producción real, así que un mes flojo encarece el producto. '
+                'Captura su throughput nominal (o su capacidad normal) en '
+                'Centros de costo.' % ', '.join(sin_normal.mapped('code'))))
+        else:
+            checks.append((
+                OK, 'Capacidad normal (IAS 2)',
+                'el pool fijo se divide entre capacidad normal; la ociosidad '
+                'va al resultado del período, no al producto'))
+
+        # 5.9 Cuello de botella: sin throughput el ranking apunta al centro
+        # equivocado
+        sin_throughput = env['qb.costeo.centro'].search([
+            ('nature', '=', 'fabril_directo'),
+            ('std_output_per_hour', '=', 0),
+        ])
+        if sin_throughput:
+            checks.append((
+                WARN, 'Throughput por centro',
+                'sin throughput nominal: %s. La contribución por '
+                'hora-máquina los ignora, así que el ranking mide el centro '
+                'equivocado cuando el cuello real está en uno de ellos.'
+                % ', '.join(sin_throughput.mapped('code'))))
+
+        # 5.9.5 Ventana fabril corta tras un corte de absorción
+        if ultimo and ultimo.fab_ventana_meses and \
+                ultimo.fab_ventana_meses < 3 and absorbidos:
+            checks.append((
+                WARN, 'Ventana del pool fabril',
+                'solo %s mes(es) desde el corte de %s. El pool no se puede '
+                'promediar con meses del régimen anterior —llevaban el gasto '
+                'del centro completo— así que arranca corto y ruidoso. Se '
+                'estabiliza solo; mientras tanto, lee los factores del mes '
+                'con esa reserva.'
+                % (ultimo.fab_ventana_meses,
+                   ', '.join(absorbidos.mapped('code')))))
+
+        # 5.10 El ajuste de metros pierde su contrapeso si el estiramiento
+        # se detiene: resta encogimiento y suma estiramiento, y se compensan.
+        desde = fields.Date.today().replace(day=1) - relativedelta(months=6)
+        sin_est = env['qb.costo.producto']._meses_sin_estiramiento(
+            desde, fields.Date.today() + relativedelta(months=1))
+        if sin_est:
+            checks.append((
+                WARN, 'Ajuste de metros (encogimiento/estiramiento)',
+                'estos meses tienen encogimiento pero CERO estiramiento: %s. '
+                'El ajuste resta metros sin su contrapeso, así que el costo '
+                'por metro sale alto por una operación que dejó de hacerse, '
+                'no porque la planta gaste más. Si el estiramiento se '
+                'suspendió de verdad, revisa si el encogimiento debe seguir '
+                'descontándose.'
+                % ', '.join(str(m) for m in sin_est)))
 
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
