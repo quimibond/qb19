@@ -1119,23 +1119,40 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(rec.company_currency_id,
                          self.env.company.currency_id)
 
-    def test_encogimiento_sale_del_denominador_de_metros(self):
-        """El encogimiento no destruye material: la misma tela mide menos.
+    def test_ajuste_de_metros_sale_del_denominador(self):
+        """Encogimiento y estiramiento no destruyen ni crean material: la
+        misma tela mide menos o mide más.
 
-        Sus metros tienen que salir del denominador, porque el pool sí se
-        gastó pero se recupera sobre menos metros vendibles. Si se quedan,
-        el costo unitario queda subvaluado en esa proporción y la merma
-        termina en resultados en vez de en el costo de lo que queda.
+        Los dos ocurren después de la orden, en Inspección, así que el
+        denominador los ignora. El encogimiento tiene que restarse —el pool
+        sí se gastó pero se recupera sobre menos metros vendibles— y el
+        estiramiento sumarse, por la razón inversa. Si sólo se resta uno, la
+        corrección queda sesgada hacia arriba.
         """
         Costo = self.env['qb.costo.producto']
         desde, hasta = date(2026, 1, 1), date(2026, 9, 1)
 
         # La consulta corre contra la BD real: lo que se prueba es que no
         # truene y devuelva metros por mes (el riesgo del cambio es el SQL).
-        enc = Costo._encogimiento_by_month(desde, hasta)
-        self.assertIsInstance(enc, dict)
-        for mes, metros in enc.items():
+        ajuste = Costo._ajuste_metros_by_month(desde, hasta)
+        self.assertIsInstance(ajuste, dict)
+        for mes, metros in ajuste.items():
             self.assertIsInstance(metros, float)
+
+        # El signo lo da la dirección del movimiento, no una constante: el
+        # ajuste puede ser negativo si en un mes el estiramiento supera al
+        # encogimiento, y entonces devuelve metros al denominador.
+        estira = self.env['stock.picking.type'].with_context(
+            active_test=False).search(
+                [('sequence_code', 'like', 'OP-EST')])
+        encoge = self.env['stock.picking.type'].with_context(
+            active_test=False).search(
+                [('sequence_code', 'like', 'ENC')])
+        # 'EST' a secas matchearía 'DEST-' (DESTRUCCIÓN), que es material
+        # perdido de verdad y no debe entrar al ajuste.
+        self.assertFalse(
+            estira.filtered(lambda t: 'DEST' in (t.sequence_code or '')))
+        self.assertFalse(encoge & estira)
 
         acabado = self.env.ref('qb_capacidad_costeo.centro_acabado')
         base = Costo._production_month_avg(acabado, desde, hasta)
@@ -1148,6 +1165,15 @@ class TestQbCosteo(TransactionCase):
             restar_by_month={date(2026, m, 1): 1e12 for m in range(1, 9)})
         self.assertGreaterEqual(exagerado, 0.0)
         self.assertLessEqual(exagerado, base if base else 0.0)
+
+        # Un ajuste negativo (estiramiento neto) sube el denominador, no lo
+        # baja: es la mitad de la simetría que este cambio agrega.
+        if base:
+            devuelto = Costo._production_month_avg(
+                acabado, desde, hasta,
+                restar_by_month={date(2026, m, 1): -1.0
+                                 for m in range(1, 9)})
+            self.assertGreaterEqual(devuelto, base)
 
         # Sin resta, el resultado es idéntico al de la firma de 3 argumentos:
         # el parámetro es opcional y no altera el camino existente.
