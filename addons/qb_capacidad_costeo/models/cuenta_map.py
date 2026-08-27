@@ -43,6 +43,24 @@ def wo_qty_sql(env, alias='wo'):
             'FROM mrp_production p WHERE p.id = %s.production_id)' % alias)
 
 
+# Los asientos de CIERRE ANUAL reversan las cuentas de resultados del año
+# ENTERO contra una sola póliza de diciembre. En producción es una sola:
+# `Dr/2025/12/32`, ref «POLIZA DE CIERRE ANUAL», $190,684,760.
+#
+# Dejarla dentro hace dos daños. La conciliación de diciembre sale sin
+# sentido —$-163M de "ventas" y $-147M de "gasto"— y el promedio de cada
+# pool pierde diciembre entero, porque `_smooth` descarta el mes por salir
+# negativo. O sea: cada año que se quiera ver pierde un mes real.
+#
+# Se filtra por la referencia del asiento. Sin `%` en la expresión: el SQL de
+# las vistas pasa por formateo estilo printf y un porcentaje suelto lo
+# rompería, así que se usa `position(... in ...)` en vez de ILIKE.
+CIERRE_ANUAL_REF = 'CIERRE ANUAL'
+
+EXCLUIR_CIERRE_SQL = (
+    "position('" + CIERRE_ANUAL_REF + "' in upper(coalesce(am.ref, ''))) = 0")
+
+
 # CTE reutilizable: una fila por cuenta con su mejor clasificación activa.
 CUENTA_MAP_SQL = """
     SELECT DISTINCT ON (rel.account_id)
