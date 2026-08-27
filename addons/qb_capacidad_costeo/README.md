@@ -31,13 +31,14 @@ su lógica ni su versión de manifest.
 | `qb.balance` | Por centro, en **metros-equivalentes**: capacidad vs producción, cuello de botella (= techo de planta) |
 | `qb.rh.centro` | Dotación, horas y costo MOD/hora (desde sueldos de `hr.version` y desde GL — ambos) |
 | `qb.ociosidad` | Costo fijo del centro × (1 − utilización) = capacidad hundida (IAS 2); fijo unitario a capacidad normal vs a producción real |
+| `qb.costo.conciliacion` | **El control de calidad del costeo**: mes a mes, ventas y costo del modelo contra el mayor — gasto fuera de costeo, gasto sin clasificar, resultado contable vs. resultado del modelo y la **brecha** en monto y % de ventas. Verde bajo ±2%. Ver `docs/COSTEO_REVISION.md` |
 
 ### Motor de costeo (stored, por período)
 
 | Modelo | Qué guarda |
 |---|---|
 | `qb.costo.factores` | Los factores del mes: pools GL suavizados, denominadores kg/m, factor $/kg y $/m, energía $/kg, op %, factor entretela, **cobertura del pool** — trazabilidad completa |
-| `qb.costo.producto` | Costo por capa por producto: MP (BOM recursiva a último costo), energía, fabricación híbrida, operación; márgenes de contribución y absorbido; **contribución por hora-máquina** |
+| `qb.costo.producto` | Costo por capa por producto: MP (BOM recursiva a último costo), energía, fabricación híbrida, operación; márgenes de contribución, bruto y neto en $/u, % y **total del período**; **contribución por hora-máquina**. Trae además el dinero real del mes: `ventas_total` (facturado en pesos, cuadra contra el estado de resultados), los totales por capa (`mp_total` … `costo_absorbido_total` = costo de lo vendido) y el precio **en la divisa original** (`divisa_id`, `precio_prom_divisa`, `ventas_total_divisa`, `tc_prom` = TC efectivo de las facturas) |
 | `qb.cotizacion` | Cotizaciones guardadas con supuestos (para comparar antes/después). El wizard es una **calculadora viva**: los resultados (costo por capa, pisos, contribución, capacidad) se recalculan al instante al cambiar producto/volumen/precio/margen; el botón solo guarda el escenario |
 | — claridad de términos | **Glosario único** (`models/glosario.py`) visible en el wizard, en la cotización guardada y en el PDF: precio objetivo, precio de mercado, TC, márgenes bruto/neto/contribución, pisos, capacidad, ociosidad, semáforo. Toda cifra indica su moneda (MXN vs divisa); el precio objetivo capturado en divisa muestra su espejo `= en MXN` con el TC del día |
 | — comparativa | Pestaña **«¿A cuánto lo vendo hoy?»** (`comparativa_html`, snapshot en la cotización y en el PDF): precio promedio real de los últimos 12 meses **cliente por cliente** (en MXN vía `aml.balance` — las facturas en USD salen en pesos reales) con contribución % y margen neto % al costo VIGENTE, + **otras presentaciones del mismo artículo** por nomenclatura (prefijo `I` = venta en kg, ej. WJ038Q22JNT160 ↔ IWJ038Q22JNT160; sufijo ` I` = importado) con el margen de cada una a su precio actual y el equivalente $/m de la versión en kg |
@@ -158,9 +159,36 @@ refresca al guardar y cada noche (cron), así las cuentas nuevas de una
 familia ya clasificada entran solas. El menú **Cuentas sin clasificar**
 lista las 4xx-7xx pendientes.
 
+## Conciliación contra la contabilidad
+
+**Análisis → Costos → Conciliación vs. contabilidad.** El costeo reparte
+gasto con un modelo; esta vista lo confronta contra el mayor mes a mes. Si la
+brecha no está cerca de cero, el costo unitario todavía no sirve como piso de
+precio — por muy detallado que se vea.
+
+Tres caminos por los que el modelo se desvía, y los tres se ven ahí:
+
+1. **Gasto que nunca llega a un producto** — cuentas `no_costeo` o sin
+   clasificar. Parte es correcta (el costo primo se sustituye por la receta),
+   parte es fuga.
+2. **Sobre o sub absorción** — `cobertura_fab_pct` ya lo medía para
+   fabricación; la conciliación lo cierra para el gasto completo.
+3. **MP modelada ≠ MP consumida** — la receta al último precio de compra no
+   lleva merma ni variación de precio. La cuenta de costo primo del mayor es
+   el número duro.
+
+El diagnóstico con datos reales de ene–ago 2026 (y la lista priorizada de qué
+arreglar) está en **`docs/COSTEO_REVISION.md`**.
+
 ## Validaciones (§ pruebas)
 
 - `costo_absorbido = MP + energía + fab + op` exacto (test).
+- Totales del período aditivos y cuadrados contra el dinero real (test):
+  `ventas_total − costo_produccion_total = margen_bruto_total`,
+  `ventas_total − costo_absorbido_total = margen_neto_total`,
+  `ventas_total − costo_variable_total = contrib_total`.
+- La conciliación cuadra con el motor: su lado "modelo" es exactamente la Σ
+  de `qb.costo.producto` del mes (test).
 - Importados sin fabricación; subproductos MP $0 (tests).
 - `qb.costo.factores.cobertura_fab_pct`: Σ fab absorbida en vendidos ÷ pool
   (~90% es sano; mucho menos = revisar denominadores/clasificación).

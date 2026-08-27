@@ -42,6 +42,10 @@
               parent="menu_qb_costos_group" action="cliente_rentabilidad_action" sequence="17"/>
     <menuitem id="menu_qb_factores" name="Factores por período"
               parent="menu_qb_costos_group" action="costo_factores_action" sequence="20"/>
+    <!-- El control de calidad del costeo: ¿cuadra con la contabilidad? -->
+    <menuitem id="menu_qb_conciliacion" name="Conciliación vs. contabilidad"
+              parent="menu_qb_costos_group" action="costo_conciliacion_action"
+              sequence="25"/>
 
     <!-- 4. Capacidad: cuánto cabe, dónde está el cuello, cuánto cuesta lo ocioso -->
     <menuitem id="menu_qb_capacidad_group" name="Capacidad"

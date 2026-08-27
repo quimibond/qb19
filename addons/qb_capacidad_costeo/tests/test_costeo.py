@@ -175,11 +175,18 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18})
         ctx = self.Costo._engine_ctx([self.tela.id])
-        sales = {self.tela.id: (-5.0, -100.0, '')}  # qty neta negativa
+        # qty neta negativa (devoluciones > ventas)
+        sales = {self.tela.id: {'qty': -5.0, 'revenue': -100.0,
+                                'divisas': ''}}
         vals, _ = self.Costo._compute_product_vals(
             self.tela, period, factores, sales, ctx, self.Ruteo, self.Peso)
         self.assertEqual(vals['precio_prom'], 0.0)
         self.assertNotEqual(vals['alerta'], 'bajo_variable')
+        # El monto facturado SÍ se conserva (es un hecho contable), pero sin
+        # precio unitario válido no hay costo ni margen que totalizar.
+        self.assertEqual(vals['ventas_total'], -100.0)
+        self.assertEqual(vals['costo_absorbido_total'], 0.0)
+        self.assertEqual(vals['margen_bruto_total'], 0.0)
 
     def test_precio_sugerido_con_margen_meta(self):
         """El precio sugerido = costo_producción ÷ (1 − op − margen_meta),
@@ -791,6 +798,26 @@ class TestQbCosteo(TransactionCase):
                 self.assertAlmostEqual(
                     rec.margen_neto_total,
                     rec.margen_absorbido * rec.qty_vendida, places=2)
+                # Los totales del período cuadran con lo facturado: el
+                # revenue de la contabilidad menos el costo de lo vendido
+                # ES el margen total (nada se calcula dos veces por caminos
+                # distintos).
+                self.assertAlmostEqual(
+                    rec.ventas_total, rec.precio_prom * rec.qty_vendida,
+                    places=2)
+                self.assertAlmostEqual(
+                    rec.costo_absorbido_total,
+                    rec.mp_total + rec.energia_total + rec.fab_total
+                    + rec.op_total, places=2)
+                self.assertAlmostEqual(
+                    rec.margen_bruto_total,
+                    rec.ventas_total - rec.costo_produccion_total, places=2)
+                self.assertAlmostEqual(
+                    rec.margen_neto_total,
+                    rec.ventas_total - rec.costo_absorbido_total, places=2)
+                self.assertAlmostEqual(
+                    rec.contrib_total,
+                    rec.ventas_total - rec.costo_variable_total, places=2)
             else:
                 self.assertEqual(rec.margen_bruto, 0.0)
                 self.assertEqual(rec.margen_bruto_total, 0.0)
@@ -930,6 +957,47 @@ class TestQbCosteo(TransactionCase):
             # neto ≤ bruto siempre (op% ≥ 0 sobre el facturado)
             self.assertGreaterEqual(
                 r.margen_bruto_12m + 0.01, r.margen_neto_12m)
+
+    def test_conciliacion_modelo_vs_mayor(self):
+        """La conciliación compila, cuadra con el motor y expone la brecha.
+
+        Es el control de calidad del costeo: el modelo reparte costos con
+        recetas y pools, y esta vista lo confronta contra el mayor. Si las
+        ventas del modelo no empatan con las del mayor, o el costo repartido
+        no se parece al gasto real, aquí se ve — antes se decidían precios
+        sin saberlo."""
+        period = date.today().replace(day=1)
+        self.Costo.action_recompute_period(period)
+        Conc = self.env['qb.costo.conciliacion']
+        rows = Conc.search([])
+        # La vista lee sin reventar y trae todas sus columnas
+        rows.read([
+            'period', 'gl_ventas', 'modelo_ventas', 'ventas_dif',
+            'gl_costo_ventas', 'gl_gastos_operacion', 'gl_gasto_total',
+            'modelo_mp', 'modelo_energia', 'modelo_fab', 'modelo_op',
+            'modelo_costo_total', 'gl_mp', 'gl_no_costeo',
+            'gl_sin_clasificar', 'resultado_gl', 'resultado_modelo',
+            'brecha', 'brecha_pct', 'cobertura_pct'])
+        row = Conc.search([('period', '=', period)], limit=1)
+        if not row:
+            self.skipTest('sin movimientos de resultados en el período')
+        # El lado "modelo" es exactamente lo que suma qb.costo.producto:
+        # si esto se desalinea, la brecha deja de significar algo.
+        recs = self.Costo.search([('period', '=', period)])
+        self.assertAlmostEqual(
+            row.modelo_ventas, sum(recs.mapped('ventas_total')), places=2)
+        self.assertAlmostEqual(
+            row.modelo_costo_total,
+            sum(recs.mapped('costo_absorbido_total')), places=2)
+        self.assertAlmostEqual(
+            row.resultado_modelo,
+            sum(recs.mapped('margen_neto_total')), places=2)
+        # Y la brecha es, por definición, modelo − mayor
+        self.assertAlmostEqual(
+            row.brecha, row.resultado_modelo - row.resultado_gl, places=2)
+        self.assertAlmostEqual(
+            row.gl_gasto_total,
+            row.gl_costo_ventas + row.gl_gastos_operacion, places=2)
 
     def test_cuenta_especifica_gana_sobre_patron(self):
         """Una clase de CUENTA ESPECIFICA gana sobre una de patrón para la
@@ -1103,7 +1171,9 @@ class TestQbCosteo(TransactionCase):
         move.action_post()
 
         sales = self.Costo._sales_by_product(period)
-        qty, revenue, divisa = sales[self.tela.id]
+        venta = sales[self.tela.id]
+        qty, revenue, divisa = (venta['qty'], venta['revenue'],
+                                venta['divisas'])
         self.assertAlmostEqual(qty, 100.0, places=2)
         # 100 u × 5 EUR × 20 = 10,000 en moneda cía — NO 500 (el crudo EUR)
         self.assertAlmostEqual(revenue, 10000.0, places=0,
@@ -1118,6 +1188,14 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('EUR', rec.divisa_venta)
         self.assertEqual(rec.company_currency_id,
                          self.env.company.currency_id)
+        # …y ADEMÁS el precio en la divisa original, sin convertir: 5 EUR/u
+        self.assertEqual(rec.divisa_id, eur)
+        self.assertAlmostEqual(rec.qty_divisa, 100.0, places=2)
+        self.assertAlmostEqual(rec.ventas_total_divisa, 500.0, places=2)
+        self.assertAlmostEqual(rec.precio_prom_divisa, 5.0, places=2)
+        self.assertAlmostEqual(rec.tc_prom, 20.0, places=2)
+        # Ventas del período = el facturado real en pesos
+        self.assertAlmostEqual(rec.ventas_total, 10000.0, places=0)
 
     def test_ajuste_de_metros_sale_del_denominador(self):
         """Encogimiento y estiramiento no destruyen ni crean material: la

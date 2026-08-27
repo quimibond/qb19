@@ -117,6 +117,41 @@ class QbCostoProducto(models.Model):
         help='Revenue ÷ qty deduplicada por el triplete lista/descuento/neta '
              '(DISTINCT ON move, product, qty) — sin el dedup el precio '
              'saldría ~1/3 en productos con triplete.')
+    ventas_total = fields.Float(
+        string='Ventas $ (período)',
+        help='Lo REALMENTE facturado del producto en el mes, en moneda de la '
+             'compañía: Σ de aml.balance de las líneas de factura contra '
+             'cuentas de ingreso (las notas de crédito restan). Una factura '
+             'en divisa entra con su valor real en pesos, al TC de la '
+             'factura. Es un hecho contable, no un cálculo: cuadra contra el '
+             'estado de resultados.\n\n'
+             'Nota: si en el mes las devoluciones superaron a las ventas '
+             '(qty neta ≤ 0) este monto se muestra igual, pero los costos y '
+             'márgenes totales quedan en 0 — no hay precio unitario válido '
+             'que costear.')
+    divisa_id = fields.Many2one(
+        'res.currency', string='Divisa',
+        help='Divisa distinta a la de la compañía con MÁS facturación del '
+             'producto en el mes (p.ej. USD). Vacío = solo se vendió en '
+             'moneda local.')
+    qty_divisa = fields.Float(
+        string='Qty vendida en divisa',
+        help='Unidades facturadas en esa divisa (subconjunto de la qty '
+             'total del período).')
+    ventas_total_divisa = fields.Monetary(
+        string='Ventas en divisa', currency_field='divisa_id',
+        help='Facturado en la moneda ORIGINAL del documento '
+             '(Σ amount_currency), sin convertir. El número que ve el '
+             'cliente en su factura.')
+    precio_prom_divisa = fields.Monetary(
+        string='Precio en divisa', currency_field='divisa_id',
+        help='Ventas en divisa ÷ qty en divisa: el precio unitario tal cual '
+             'se cotizó y facturó en esa moneda.')
+    tc_prom = fields.Float(
+        string='TC promedio', digits=(16, 4),
+        help='Tipo de cambio implícito de lo facturado en divisa: pesos '
+             'reconocidos ÷ importe en divisa. Es el TC efectivo de las '
+             'facturas del mes, no el del día.')
     mp_unit = fields.Float(string='MP $/u', digits=(16, 4))
     energia_unit = fields.Float(string='Energía $/u', digits=(16, 4))
     costo_variable = fields.Float(
@@ -133,6 +168,28 @@ class QbCostoProducto(models.Model):
         string='Costo absorbido $/u', digits=(16, 4),
         help='Producción + operación (admin y ventas como % del precio): el '
              'costo COMPLETO. Base del margen neto.')
+    # --- Totales del período ($ del mes, no $/unidad) -------------------
+    # Aditivos: se pueden sumar entre productos y entre meses en el pivote.
+    # Todos son costo_unitario × qty vendida — o sea, costo de lo VENDIDO
+    # (COGS del modelo), no el gasto del mes ni el costo de lo producido.
+    mp_total = fields.Float(
+        string='MP $ (período)',
+        help='MP unitaria × qty vendida: cuánta materia prima cargó lo '
+             'vendido este mes.')
+    energia_total = fields.Float(string='Energía $ (período)')
+    fab_total = fields.Float(string='Fabricación $ (período)')
+    op_total = fields.Float(string='Operación $ (período)')
+    costo_variable_total = fields.Float(
+        string='Costo variable $ (período)',
+        help='(MP + energía) × qty vendida.')
+    costo_produccion_total = fields.Float(
+        string='Costo de producción $ (período)',
+        help='(variable + fabricación) × qty vendida. Ventas − esto = margen '
+             'bruto total.')
+    costo_absorbido_total = fields.Float(
+        string='Costo total $ (período)',
+        help='Costo absorbido × qty vendida: el costo COMPLETO de lo vendido. '
+             'Ventas − esto = margen neto total.')
     margen_contribucion = fields.Float(
         string='Contribución $/u', digits=(16, 4),
         help='Precio − costo VARIABLE (MP + energía). Lo que cada unidad '
@@ -643,17 +700,33 @@ class QbCostoProducto(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _sales_by_product(self, period):
-        """{product_id: (qty, revenue)} del período, con dedup del triplete
-        (lista+/descuento−/neta+) para qty; revenue suma las 3 líneas
-        (cancelan aritméticamente). out_refund resta.
+        """Ventas facturadas del período, por producto.
 
-        Revenue en MXN desde ``aml.balance`` (moneda de la compañía), NO desde
+        Devuelve ``{product_id: dict}`` con:
+
+        ==================  ====================================================
+        ``qty``             unidades netas (dedup del triplete lista/desc/neta)
+        ``revenue``         facturado en MONEDA DE LA COMPAÑÍA (Σ ``-balance``)
+        ``divisas``         texto con las divisas distintas a la local
+        ``divisa_id``       la divisa extranjera con MÁS facturación (o None)
+        ``qty_divisa``      unidades facturadas en esa divisa
+        ``revenue_divisa``  facturado en esa divisa, sin convertir
+                            (Σ ``-amount_currency``)
+        ``revenue_mxn_divisa``  esa misma facturación, en moneda local
+                            (el par de los dos da el TC efectivo)
+        ==================  ====================================================
+
+        Dedup del triplete (lista+/descuento−/neta+) para qty; el revenue suma
+        las 3 líneas (cancelan aritméticamente). ``out_refund`` resta.
+
+        El revenue en moneda local sale de ``aml.balance``, NO de
         ``price_subtotal`` (moneda del documento): así una factura en USD entra
         con su valor real en pesos y no mezcla dólares con pesos. Para una línea
         de ingreso, balance es crédito (negativo) en venta y débito (positivo)
         en nota de crédito → ``SUM(-balance)`` suma ventas y resta devoluciones
-        sin necesitar el CASE por move_type. Mismo criterio que el cotizador
-        (``sales_by_customer``).
+        sin necesitar el CASE por move_type. ``amount_currency`` lleva el mismo
+        signo, así que el importe en divisa se obtiene igual; el par de los dos
+        da el TC efectivo de las facturas del mes.
 
         Solo cuentas de tipo 'income' (401.x ventas, 402.x rebajas/dev):
         una factura contra 'utilidad en venta de activo fijo' (income_other,
@@ -661,10 +734,12 @@ class QbCostoProducto(models.Model):
         anticipos de clientes (liability) NO es venta de producto y antes
         contaminaba precio y contribución del mes."""
         date_to = period + relativedelta(months=1)
+        company_currency = self.env.company.currency_id
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
-                       aml.balance, am.move_type, am.currency_id
+                       aml.balance, aml.amount_currency,
+                       am.move_type, am.currency_id
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
                 JOIN account_account aa ON aa.id = aml.account_id
@@ -678,24 +753,65 @@ class QbCostoProducto(models.Model):
             ),
             qty_dedup AS (
                 SELECT DISTINCT ON (move_id, product_id, ABS(quantity))
-                       move_id, product_id, quantity, move_type
+                       move_id, product_id, currency_id, quantity, move_type
                 FROM lines
                 ORDER BY move_id, product_id, ABS(quantity)
+            ),
+            qty_agg AS (
+                SELECT product_id, currency_id,
+                       SUM(CASE WHEN move_type = 'out_refund'
+                                THEN -quantity ELSE quantity END) AS qty
+                FROM qty_dedup
+                GROUP BY 1, 2
+            ),
+            rev_agg AS (
+                SELECT product_id, currency_id,
+                       SUM(-balance) AS revenue,
+                       SUM(-amount_currency) AS revenue_cur
+                FROM lines
+                GROUP BY 1, 2
             )
-            SELECT l.product_id,
-                   COALESCE((SELECT SUM(CASE WHEN q.move_type = 'out_refund'
-                                             THEN -q.quantity ELSE q.quantity END)
-                             FROM qty_dedup q WHERE q.product_id = l.product_id), 0) AS qty,
-                   SUM(-l.balance) AS revenue,
-                   string_agg(DISTINCT CASE WHEN l.currency_id != %s
-                                            THEN cur.name END, ', ') AS divisas
-            FROM lines l
-            LEFT JOIN res_currency cur ON cur.id = l.currency_id
-            GROUP BY l.product_id
-        """, (period, date_to, self.env.company.id,
-              self.env.company.currency_id.id))
-        return {row[0]: (row[1] or 0.0, row[2] or 0.0, row[3] or '')
-                for row in self.env.cr.fetchall()}
+            SELECT r.product_id, r.currency_id, cur.name,
+                   COALESCE(q.qty, 0), r.revenue, r.revenue_cur
+            FROM rev_agg r
+            LEFT JOIN qty_agg q
+                   ON q.product_id = r.product_id
+                  AND q.currency_id IS NOT DISTINCT FROM r.currency_id
+            LEFT JOIN res_currency cur ON cur.id = r.currency_id
+        """, (period, date_to, self.env.company.id))
+
+        result = {}
+        # {product_id: {currency_id: (qty, revenue_mxn, revenue_cur)}} de las
+        # divisas EXTRANJERAS, para elegir después la dominante por facturación.
+        foreign = {}
+        for pid, cur_id, cur_name, qty, revenue, revenue_cur in \
+                self.env.cr.fetchall():
+            row = result.setdefault(pid, {
+                'qty': 0.0, 'revenue': 0.0, 'divisas': [],
+                'divisa_id': None, 'qty_divisa': 0.0, 'revenue_divisa': 0.0,
+                'revenue_mxn_divisa': 0.0,
+            })
+            row['qty'] += qty or 0.0
+            row['revenue'] += revenue or 0.0
+            if cur_id and cur_id != company_currency.id:
+                if cur_name and cur_name not in row['divisas']:
+                    row['divisas'].append(cur_name)
+                foreign.setdefault(pid, {})[cur_id] = (
+                    qty or 0.0, revenue or 0.0, revenue_cur or 0.0)
+        for pid, by_cur in foreign.items():
+            # La divisa dominante = la de mayor facturación (en pesos, para
+            # que sean comparables entre sí monedas distintas).
+            cur_id = max(by_cur, key=lambda c: abs(by_cur[c][1]))
+            qty, rev_mxn, rev_cur = by_cur[cur_id]
+            result[pid].update({
+                'divisa_id': cur_id,
+                'qty_divisa': qty,
+                'revenue_divisa': rev_cur,
+                'revenue_mxn_divisa': rev_mxn,
+            })
+        for row in result.values():
+            row['divisas'] = ', '.join(sorted(row['divisas']))
+        return result
 
     # ------------------------------------------------------------------
     # Recompute
@@ -819,10 +935,19 @@ class QbCostoProducto(models.Model):
         m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
         uom_name = (product.uom_id.name or '').lower()
         is_kg = uom_name in KG_UOM_NAMES
-        qty, revenue, divisa = sales.get(product.id, (0.0, 0.0, ''))
+        venta = sales.get(product.id) or {}
+        qty = venta.get('qty', 0.0)
+        revenue = venta.get('revenue', 0.0)
+        divisa = venta.get('divisas', '')
         # qty neta ≤ 0 (devoluciones > ventas en el período) daría un precio
         # negativo que envenena márgenes y alertas: se trata como sin ventas.
         precio = revenue / qty if qty > 0 else 0.0
+        # Los totales del período se calculan sobre la qty EFECTIVA: sin
+        # precio válido no hay nada que costear y todo total queda en 0
+        # (ventas_total sí conserva el hecho contable).
+        qty_efectiva = qty if precio else 0.0
+        qty_divisa = venta.get('qty_divisa', 0.0)
+        revenue_divisa = venta.get('revenue_divisa', 0.0)
 
         mp = self._mp_cost_unit(product, ctx=ctx)
         energia = 0.0 if bucket in ('importado', 'subproducto') \
@@ -861,7 +986,15 @@ class QbCostoProducto(models.Model):
             'm_per_kg': m_per_kg,
             'qty_vendida': qty,
             'precio_prom': precio,
+            'ventas_total': revenue,
             'divisa_venta': divisa or False,
+            'divisa_id': venta.get('divisa_id') or False,
+            'qty_divisa': qty_divisa,
+            'ventas_total_divisa': revenue_divisa,
+            'precio_prom_divisa':
+                revenue_divisa / qty_divisa if qty_divisa > 0 else 0.0,
+            'tc_prom': (venta.get('revenue_mxn_divisa', 0.0)
+                        / revenue_divisa) if revenue_divisa else 0.0,
             'mp_unit': mp,
             'energia_unit': energia,
             'costo_variable': variable,
@@ -869,6 +1002,13 @@ class QbCostoProducto(models.Model):
             'costo_produccion': produccion,
             'op_unit': op,
             'costo_absorbido': absorbido,
+            'mp_total': mp * qty_efectiva,
+            'energia_total': energia * qty_efectiva,
+            'fab_total': fab * qty_efectiva,
+            'op_total': op * qty_efectiva,
+            'costo_variable_total': variable * qty_efectiva,
+            'costo_produccion_total': produccion * qty_efectiva,
+            'costo_absorbido_total': absorbido * qty_efectiva,
             'margen_contribucion': contrib if precio else 0.0,
             'margen_contribucion_pct':
                 100.0 * contrib / precio if precio else 0.0,
