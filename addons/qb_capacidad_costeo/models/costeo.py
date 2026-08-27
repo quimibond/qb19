@@ -115,9 +115,10 @@ class QbCostoFactores(models.Model):
     entretela_pool_month = fields.Float(string='Pool entretelas/mes')
     renta_contractual_pool = fields.Float(
         string='Renta contractual/mes',
-        help='Σ de la renta contractual de los centros fabriles (sin '
-             'entretelas, que tienen la suya en su propio pool). Sustituye a '
-             'las cuentas de renta del GL, que se pagan a saltos.')
+        help='Σ de la renta contractual de TODOS los centros fabriles. '
+             'Sustituye a las cuentas de renta del GL, que se pagan a saltos. '
+             'La parte de entretelas entra aquí y sale otra vez con su pool '
+             'propio, para que el pool de tela no pague una renta ajena.')
     renta_gl_sustituida = fields.Float(
         string='Renta del GL sustituida/mes',
         help='Lo que las cuentas marcadas «es renta de inmueble» aportaban al '
@@ -163,6 +164,13 @@ class QbCostoFactores(models.Model):
              'precio hacía que vender con descuento «abaratara» el producto. '
              '0 = driver legacy sobre ventas (parámetro `op_driver`).')
     entretela_factor_m = fields.Float(string='Factor entretela $/m')
+    fab_pool_con_centro_pct = fields.Float(
+        string='Pool fabril asignado a un centro %',
+        help='Qué parte del pool de fabricación está clasificada CON centro '
+             'de costo. Es el prerrequisito para costear por ruta real: '
+             'mientras la mayoría del gasto no tenga centro, la fabricación '
+             'solo se puede repartir a nivel planta (el split peso/largo) y '
+             'un producto que se vende crudo termina pagando acabado.')
     cobertura_fab_pct = fields.Float(
         string='Cobertura del pool %',
         help='Σ fabricación absorbida en lo vendido ÷ pool. ~90% es sano '
@@ -366,7 +374,7 @@ class QbCostoProducto(models.Model):
     @api.model
     def _pool_by_month(self, buckets, date_from, date_to,
                        es_variable=None, centro_id=None, sign=1.0,
-                       es_renta=None):
+                       es_renta=None, con_centro=None):
         """Σ balance de las cuentas clasificadas en `buckets`, por mes.
 
         Devuelve {date_mes: monto}. sign=-1 para ingresos (saldo acreedor).
@@ -394,6 +402,9 @@ class QbCostoProducto(models.Model):
         if es_renta is not None:
             query += ' AND COALESCE(m.es_renta, FALSE) = %s'
             params.append(es_renta)
+        if con_centro is not None:
+            query += (' AND m.centro_id IS NOT NULL' if con_centro
+                      else ' AND m.centro_id IS NULL')
         query += ' GROUP BY 1'
         self.env.cr.execute(query, tuple(params))
         return {row[0]: sign * row[1] for row in self.env.cr.fetchall()}
@@ -595,6 +606,7 @@ class QbCostoProducto(models.Model):
                                      ('nature', '=', 'fabril_directo'),
                                      ('code', 'ilike', 'ENTRETELA')])
         entretela_pool = 0.0
+        entretela_en_pool = 0.0
         entretela_m = 0.0
         if ent_centros:
             # MOD sumado sobre TODOS los centros de entretela (antes tomaba
@@ -603,9 +615,17 @@ class QbCostoProducto(models.Model):
                 self._smooth(self._pool_by_month(
                     ('mod',), date_from, date_to, centro_id=c.id))
                 for c in ent_centros)
+            # Dos cifras distintas a propósito:
+            #  · `entretela_en_pool` es lo que entretelas toma de la bolsa
+            #    común (su MOD del GL y su renta contractual, que sí se sumó
+            #    al total). Eso es lo único que se le puede RESTAR a tela.
+            #  · `entretela_pool` financia además su overhead extra
+            #    capturado a mano, que nunca estuvo en la bolsa común: restarlo
+            #    de tela le quitaría dinero que tela nunca tuvo.
+            entretela_en_pool = (
+                ent_mod + sum(ent_centros.mapped('renta_contractual_mxn')))
             entretela_pool = (
-                ent_mod
-                + sum(ent_centros.mapped('renta_contractual_mxn'))
+                entretela_en_pool
                 + Config.get_param('entretela_overhead_extra_mxn', 0.0))
             entretela_m = self._production_month_avg(ent_centros, date_from, date_to)
 
@@ -624,14 +644,17 @@ class QbCostoProducto(models.Model):
         fab_sin_renta = {mes: monto - renta_by_month.get(mes, 0.0)
                          for mes, monto in fab_by_month.items()}
         renta_gl = sum(renta_by_month.values()) / window if window else 0.0
+        # La renta contractual entra al total de TODOS los centros fabriles,
+        # entretelas incluidas; lo que entretelas se lleva sale después con
+        # `entretela_en_pool`. Sumar solo las no-entretela y restar igual la de
+        # entretelas le quitaría a tela una renta que nunca se le sumó.
         renta_centros = Centro.search([
             ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
-            ('id', 'not in', ent_centros.ids),
         ])
         renta_contractual = sum(renta_centros.mapped('renta_contractual_mxn'))
 
-        fab_pool = max(self._smooth(fab_sin_renta) - entretela_pool
-                       + renta_contractual, 0.0)
+        fab_pool = max(self._smooth(fab_sin_renta) + renta_contractual
+                       - entretela_en_pool, 0.0)
         energia_pool = self._smooth(energia_by_month)
         op_pool = self._smooth(op_by_month)
         ventas_pool = self._smooth(ventas_by_month)
@@ -696,6 +719,15 @@ class QbCostoProducto(models.Model):
                   or (op_pool / ventas_pool if ventas_pool else 0.0))
         entretela_factor = entretela_pool / entretela_m if entretela_m else 0.0
 
+        # Qué tanto del pool fabril tiene centro asignado. No cambia ningún
+        # número: mide el camino que falta para poder costear por ruta real.
+        fab_con_centro = self._smooth(self._pool_by_month(
+            FAB_BUCKETS, date_from, date_to, es_variable=False,
+            con_centro=True), exclude_nonpositive=False)
+        fab_gl_total = self._smooth(fab_by_month)
+        fab_con_centro_pct = (100.0 * fab_con_centro / fab_gl_total
+                              if fab_gl_total else 0.0)
+
         # Costo de la capacidad ociosa: la parte del pool fijo que la
         # producción real NO alcanza a absorber contra la capacidad normal.
         # Con denominador = producción real esto da 0 por construcción, que es
@@ -726,6 +758,7 @@ class QbCostoProducto(models.Model):
             'utilizacion_kg_pct': 100.0 * util_kg,
             'utilizacion_m_pct': 100.0 * util_m,
             'fab_ocioso_month': fab_ocioso,
+            'fab_pool_con_centro_pct': fab_con_centro_pct,
             'entretela_m_denom_month': entretela_m,
             'fab_weight_share': ws,
             'factor_fab_kg': factor_fab_kg,

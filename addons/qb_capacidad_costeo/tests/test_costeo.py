@@ -1417,6 +1417,30 @@ class TestQbCosteo(TransactionCase):
             self.assertAlmostEqual(pool_con, 100000.0, places=2)
         centro.unlink()
 
+    def test_renta_de_entretelas_no_le_cuesta_a_tela(self):
+        """La renta contractual de entretelas entra al total y sale otra vez
+        con el pool propio de entretelas: el pool de TELA no se mueve.
+
+        Restarle a tela una renta que nunca se le sumó le quitaría dinero que
+        tela no tuvo, y su factor $/kg saldría bajo."""
+        Centro = self.env['qb.costeo.centro']
+        centro = Centro.create({
+            'code': 'ENTRETELA TEST', 'name': 'Entretela de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'renta_contractual_mxn': 0.0,
+        })
+        period = date.today().replace(day=1)
+        pool_sin = self.Costo._compute_factores(period).fab_pool_month
+
+        centro.renta_contractual_mxn = 70000.0
+        factores = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(
+            factores.fab_pool_month, pool_sin, places=2,
+            msg='la renta de entretelas no debe tocar el pool de tela')
+        self.assertGreaterEqual(factores.entretela_pool_month, 70000.0,
+                                'pero sí debe financiar su propio factor')
+        centro.unlink()
+
     def test_renta_del_gl_marcada_sale_del_pool(self):
         """Una cuenta marcada «es renta de inmueble» se saca del pool fabril:
         de otro modo la renta se contaría dos veces (GL + contrato)."""

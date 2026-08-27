@@ -165,6 +165,20 @@ class QbCosteoPanel(models.TransientModel):
                 'el pool fijo se divide entre capacidad normal; la ociosidad '
                 'va al resultado del período, no al producto'))
 
+        # 5.9 Cuello de botella: sin throughput el ranking apunta al centro
+        # equivocado
+        sin_throughput = env['qb.costeo.centro'].search([
+            ('nature', '=', 'fabril_directo'),
+            ('std_output_per_hour', '=', 0),
+        ])
+        if sin_throughput:
+            checks.append((
+                WARN, 'Throughput por centro',
+                'sin throughput nominal: %s. La contribución por '
+                'hora-máquina los ignora, así que el ranking mide el centro '
+                'equivocado cuando el cuello real está en uno de ellos.'
+                % ', '.join(sin_throughput.mapped('code'))))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:

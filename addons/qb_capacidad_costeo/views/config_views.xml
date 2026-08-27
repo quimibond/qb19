@@ -239,6 +239,7 @@
                 <field name="op_pct" widget="percentage"/>
                 <field name="op_rate" optional="show"/>
                 <field name="entretela_factor_m"/>
+                <field name="fab_pool_con_centro_pct" optional="show"/>
                 <field name="cobertura_fab_pct"/>
             </list>
         </field>
