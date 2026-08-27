@@ -234,11 +234,29 @@ propia cuenta de costos fabriles aplicados** (su saldo acreedor), no con un
 parámetro que haya que mantener al día: si la tarifa absorbe de más o de
 menos, el pool se ajusta solo.
 
+Ahora bien, **se resta el remanente, no el abono entero**. Tres mecanismos
+distintos le sacan su costo al pool y sólo uno es la resta del abono:
+
+| Qué lo saca | Qué saca | En TEJIDO |
+|---|---|---:|
+| Exclusión por centro | Cuentas **etiquetadas** al centro | energéticos + agujados, $179k/mes |
+| Renta de centros | Su **renta contractual** | $284,269/mes |
+| Resta del abono | El **remanente**: lo que aportaba por cuentas sin etiquetar (nómina 501.06, indirectos genéricos 504.01, depreciación 504.08) | el resto de la tarifa |
+
+La tarifa por hora capitaliza el costo **completo** del centro, así que restar
+el abono entero quitaría las dos primeras partidas por segunda vez —~$463k/mes
+con la tarifa de sep-2026, cerca del 12% del pool que se reparte a Acabado,
+Tintorería y Entretelas— y el `max(…, 0)` no lo vería, porque el pool sigue
+siendo positivo. El período guarda las tres cifras (`absorcion_bruta_month`,
+`absorcion_ya_fuera_month`, `absorcion_pool_month`) para que la resta se pueda
+auditar sin recalcular.
+
 Cuando un lado del split peso/largo se queda sin centros en capa, su share se
 va a 0 automáticamente — repartirle pool a un factor que ya no tiene
 denominador dejaría dinero sin absorber. El panel vigila las dos mitades del
 doble conteo: centro absorbido sin cuenta clasificada, y cuenta con saldo sin
-centro marcado.
+centro marcado. Y avisa un tercer caso: si la resta neta cae a 0 teniendo
+abono, la tarifa está absorbiendo menos que el costo ya etiquetado al centro.
 
 **Corte vigente:** TEJIDO desde 2026-09-01 (37 workcenters CIRCULAR).
 

@@ -236,6 +236,8 @@
                 <field name="reaperturas" optional="show"/>
                 <field name="window_months"/>
                 <field name="fab_pool_month" sum="Total"/>
+                <field name="absorcion_bruta_month" optional="hide" sum="Total"/>
+                <field name="absorcion_ya_fuera_month" optional="hide" sum="Total"/>
                 <field name="absorcion_pool_month" optional="show" sum="Total"/>
                 <field name="centros_absorbidos" optional="show"/>
                 <!-- Renta: contractual dentro del pool, GL sustituido fuera.
@@ -301,6 +303,8 @@
                             <field name="fab_ventana_desde"/>
                             <field name="fab_ventana_meses"/>
                             <field name="fab_pool_month"/>
+                            <field name="absorcion_bruta_month"/>
+                            <field name="absorcion_ya_fuera_month"/>
                             <field name="absorcion_pool_month"/>
                             <field name="centros_capa"/>
                             <field name="centros_absorbidos"/>

@@ -146,14 +146,28 @@ class QbCostoFactores(models.Model):
              'peso de valor de compra. 0.15 = 15% sobre el valor importado.')
     ventas_pool_month = fields.Float(string='Ventas/mes (promedio)')
     entretela_pool_month = fields.Float(string='Pool entretelas/mes')
-    absorcion_pool_month = fields.Float(
-        string='Absorbido por Odoo/mes',
+    absorcion_bruta_month = fields.Float(
+        string='Absorbido por Odoo/mes (bruto)',
         help='Saldo acreedor de la cuenta de costos fabriles aplicados a '
              'producción: lo que los workcenters capitalizaron al AVCO del '
-             'producto vía tarifa por hora. Se RESTA del pool, porque ese '
-             'costo ya viaja dentro del inventario y la venta lo libera solo. '
-             'Es el hecho contable, no un parámetro: si la tarifa absorbe de '
-             'más o de menos, esto se mueve solo y el pool se ajusta.')
+             'producto vía tarifa por hora. Es el hecho contable, no un '
+             'parámetro: si la tarifa absorbe de más o de menos, esto se '
+             'mueve solo.')
+    absorcion_ya_fuera_month = fields.Float(
+        string='Absorbido ya excluido/mes',
+        help='La parte de lo absorbido que el pool YA no traía: las cuentas '
+             'etiquetadas al centro absorbido (que salieron de los buckets '
+             'fabriles) más su renta contractual (que salió de la renta de '
+             'centros). Restar el bruto completo las quitaría dos veces.')
+    absorcion_pool_month = fields.Float(
+        string='Absorbido por Odoo/mes (neto)',
+        help='Bruto − ya excluido: el remanente que el centro absorbido '
+             'aportaba al pool por cuentas SIN etiquetar (nómina, indirectos '
+             'genéricos, depreciación). Es lo único que falta restar, porque '
+             'ese costo ya viaja dentro del inventario y la venta lo libera '
+             'solo. Si sale en 0 con bruto > 0, la tarifa absorbe menos que '
+             'lo que el centro ya tenía etiquetado: revisa la tarifa o la '
+             'clasificación de sus cuentas.')
     centros_absorbidos = fields.Char(
         string='Centros absorbidos por Odoo',
         help='Qué centros estaban en absorción por workcenter en ESTE '
@@ -500,12 +514,18 @@ class QbCostoProducto(models.Model):
     @api.model
     def _pool_by_month(self, buckets, date_from, date_to,
                        es_variable=None, centro_id=None, sign=1.0,
-                       es_renta=None, con_centro=None, excluir_centros=None):
+                       es_renta=None, con_centro=None, excluir_centros=None,
+                       incluir_centros=None):
         """Σ balance de las cuentas clasificadas en `buckets`, por mes.
 
         Devuelve {date_mes: monto}. sign=-1 para ingresos (saldo acreedor).
         `es_renta=True` aísla las cuentas de renta de inmueble (para poder
         sustituirlas por la renta contractual sin contarlas dos veces).
+        `excluir_centros` deja fuera las cuentas etiquetadas a esos centros
+        (conservando las sin centro) e `incluir_centros` hace lo contrario:
+        SOLO las de esos centros. Son complementarias a propósito — con las
+        dos se puede medir cuánto de un pool aporta un centro, que es lo que
+        permite restar lo absorbido sin restarlo dos veces.
         """
         query = """
             WITH cuenta_map AS (%s)
@@ -534,6 +554,9 @@ class QbCostoProducto(models.Model):
         if excluir_centros:
             query += ' AND (m.centro_id IS NULL OR m.centro_id != ALL(%s))'
             params.append(list(excluir_centros))
+        if incluir_centros:
+            query += ' AND m.centro_id = ANY(%s)'
+            params.append(list(incluir_centros))
         query += ' GROUP BY 1'
         self.env.cr.execute(query, tuple(params))
         return {row[0]: sign * row[1] for row in self.env.cr.fetchall()}
@@ -857,7 +880,8 @@ class QbCostoProducto(models.Model):
         # unos meses sí y otros no, así que promediarla sobre sus propios
         # meses de pago la escalaría distinto que al pool y sobre-restaría.
         renta_by_month = self._pool_by_month(
-            FAB_BUCKETS, fab_from, date_to, es_variable=False, es_renta=True)
+            FAB_BUCKETS, fab_from, date_to, es_variable=False, es_renta=True,
+            excluir_centros=excluir)
         fab_sin_renta = {mes: monto - renta_by_month.get(mes, 0.0)
                          for mes, monto in fab_by_month.items()}
         renta_gl = (sum(renta_by_month.values()) / fab_meses
@@ -876,9 +900,37 @@ class QbCostoProducto(models.Model):
         # costos fabriles aplicados a producción. No es un parámetro que haya
         # que mantener al día — es el hecho contable, y se autocorrige si la
         # tarifa por hora absorbe de más o de menos.
-        absorcion_pool = self._smooth(
+        absorcion_bruta = self._smooth(
             self._pool_by_month(('absorcion_odoo',), fab_from, date_to,
                                 sign=-1.0), meses=fab_meses)
+
+        # ...pero el pool del que se resta YA NO TRAE al centro completo. Dos
+        # exclusiones anteriores le quitaron su parte:
+        #  · `excluir_centros` sacó de `fab_by_month` las cuentas etiquetadas
+        #    al centro absorbido (en TEJIDO: energéticos y agujados, ~179k/mes)
+        #  · `renta_centros` dejó fuera su renta contractual (284,269/mes)
+        # La tarifa por hora, en cambio, capitaliza el costo COMPLETO del
+        # centro — renta y cuentas etiquetadas incluidas. Restar el abono
+        # entero quitaría esas dos partidas por segunda vez y subvaluaría el
+        # factor de los centros que siguen en capa (~463k/mes con la tarifa de
+        # sep-2026, ~12% del pool). Así que se resta solo el REMANENTE: lo que
+        # el centro absorbido aportaba al pool por cuentas SIN etiquetar
+        # (nómina de 501.06, indirectos genéricos de 504.01, depreciación),
+        # que es lo único que las exclusiones no pudieron quitar.
+        absorcion_ya_fuera = 0.0
+        if absorbidos:
+            absorcion_ya_fuera = (
+                self._smooth(self._pool_by_month(
+                    FAB_BUCKETS, fab_from, date_to, es_variable=False,
+                    es_renta=False, incluir_centros=excluir), meses=fab_meses)
+                # Sólo la renta que `renta_centros` habría sumado: la de un
+                # centro admin nunca estuvo en el pool, así que descontarla
+                # aquí haría lo contrario de lo que este bloque arregla.
+                + sum(absorbidos.filtered(
+                    lambda c: c.nature in ('fabril_directo',
+                                           'fabril_indirecto')
+                ).mapped('renta_contractual_mxn')))
+        absorcion_pool = max(absorcion_bruta - absorcion_ya_fuera, 0.0)
 
         fab_pool = max(self._smooth(fab_sin_renta, meses=fab_meses)
                        + renta_contractual
@@ -1002,6 +1054,8 @@ class QbCostoProducto(models.Model):
             'entretela_pool_month': entretela_pool,
             'renta_contractual_pool': renta_contractual,
             'absorcion_pool_month': absorcion_pool,
+            'absorcion_bruta_month': absorcion_bruta,
+            'absorcion_ya_fuera_month': absorcion_ya_fuera,
             'centros_absorbidos': ', '.join(absorbidos.mapped('code')),
             'centros_capa': ', '.join(Centro.search([
                 ('nature', '!=', 'admin'),

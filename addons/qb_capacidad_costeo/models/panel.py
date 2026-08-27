@@ -100,28 +100,44 @@ class QbCosteoPanel(models.TransientModel):
                 'puede restar lo capitalizado y ese costo se cuenta DOS '
                 'veces: una en el AVCO del producto y otra en el pool.'
                 % ', '.join(absorbidos.mapped('code'))))
-        elif absorbidos and ultimo and not ultimo.absorcion_pool_month:
+        elif absorbidos and ultimo and not ultimo.absorcion_bruta_month:
             checks.append((
                 WARN, 'Absorción por workcenter',
                 '%s está marcado como absorbido y la cuenta está clasificada, '
                 'pero el período %s no registra nada capitalizado. O la '
                 'tarifa por hora sigue en 0, o la fecha de corte se adelantó.'
                 % (', '.join(absorbidos.mapped('code')), ultimo.period)))
+        elif (absorbidos and ultimo and ultimo.absorcion_bruta_month
+                and not ultimo.absorcion_pool_month):
+            checks.append((
+                WARN, 'Absorción por workcenter',
+                'Odoo capitalizó $%s/mes de %s, pero sus cuentas etiquetadas '
+                'y su renta contractual ya sumaban $%s/mes fuera del pool: la '
+                'resta neta queda en 0. La tarifa por hora absorbe menos que '
+                'el costo que el centro ya tenía identificado — revisa la '
+                'tarifa, o que sus cuentas no estén etiquetadas de más.'
+                % (f'{ultimo.absorcion_bruta_month:,.0f}',
+                   ', '.join(absorbidos.mapped('code')),
+                   f'{ultimo.absorcion_ya_fuera_month:,.0f}')))
         elif absorbidos:
             checks.append((
                 OK, 'Absorción por workcenter',
-                '%s fuera del pool desde %s; Odoo capitalizó $%s/mes'
+                '%s fuera del pool desde %s; Odoo capitalizó $%s/mes, de los '
+                'que $%s ya estaban excluidos por centro y renta → se restan '
+                '$%s/mes'
                 % (', '.join(absorbidos.mapped('code')),
                    min(absorbidos.mapped('fecha_absorcion')),
+                   f'{ultimo.absorcion_bruta_month:,.0f}' if ultimo else '0',
+                   f'{ultimo.absorcion_ya_fuera_month:,.0f}' if ultimo else '0',
                    f'{ultimo.absorcion_pool_month:,.0f}' if ultimo else '0')))
-        elif ultimo and ultimo.absorcion_pool_month:
+        elif ultimo and ultimo.absorcion_bruta_month:
             checks.append((
                 BAD, 'Absorción por workcenter',
                 'Odoo capitalizó $%s/mes de costos fabriles aplicados pero '
                 'ningún centro está marcado como absorbido. Marca su modo de '
                 'costeo y su fecha de corte, o el pool seguirá arrastrando un '
                 'gasto que ya viaja dentro del inventario.'
-                % f'{ultimo.absorcion_pool_month:,.0f}'))
+                % f'{ultimo.absorcion_bruta_month:,.0f}'))
 
         # 5.5 Renta: contractual vs. GL — el doble conteo es silencioso
         renta_contractual = sum(env['qb.costeo.centro'].search([

@@ -1970,3 +1970,142 @@ class TestQbCosteo(TransactionCase):
             Costo._production_month_avg(acabado, desde, hasta,
                                         restar_by_month={}),
             base)
+
+    def test_absorcion_resta_solo_lo_que_el_pool_todavia_trae(self):
+        """La resta del absorbido quita del pool lo que ese pool contiene del
+        centro, ni un peso más.
+
+        Cuando un centro pasa a absorción, tres mecanismos distintos le sacan
+        su costo al pool y sólo uno de ellos es la resta del abono:
+
+          · `excluir_centros` saca las cuentas ETIQUETADAS al centro,
+          · `renta_centros` saca su renta contractual,
+          · la resta del abono a «costos fabriles aplicados» tiene que sacar
+            el REMANENTE — lo que el centro aportaba por cuentas sin etiquetar.
+
+        La tarifa por hora capitaliza el costo COMPLETO del centro, así que
+        restar el abono entero quitaba las dos primeras partidas por segunda
+        vez. Con datos de producción eran ~$463k/mes: la renta contractual de
+        TEJIDO ($284,269) más sus energéticos y agujados ($179k), etiquetados
+        a su centro. El `max(…, 0)` no lo veía porque el pool seguía positivo.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Centro = self.env['qb.costeo.centro']
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        period = date(2027, 3, 1)
+
+        # Componentes conocidos, uno por comportamiento
+        etiquetada, sin_etiqueta = 30000.0, 200000.0  # overhead fabril
+        deprec, renta_gl, renta_contractual = 12000.0, 44000.0, 80000.0
+        absorbido = 140000.0                          # lo que Odoo capitalizó
+
+        centro = Centro.create({
+            'code': 'TEST_ABS_NETO', 'name': 'Centro absorbido de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': renta_contractual})
+        # Centro sin costo alguno: sirve para fijar la MISMA ventana fabril en
+        # los dos escenarios (la ventana arranca en el corte de absorción), de
+        # forma que la única diferencia medida sea el régimen del centro real.
+        neutro = Centro.create({
+            'code': 'TEST_ABS_NEUTRO', 'name': 'Centro neutro de prueba',
+            'nature': 'fabril_indirecto', 'driver_principal': 'largo',
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period})
+
+        def cuenta(code, name, bucket, **kw):
+            acc = Account.create({'name': name, 'code': code,
+                                  'account_type': 'expense_direct_cost'})
+            Clase.create(dict(account_id=acc.id, bucket=bucket, **kw))
+            return acc
+
+        c_etq = cuenta('QBAB.0001', 'OVERHEAD DEL CENTRO TEST',
+                       'overhead_fab', centro_id=centro.id)
+        c_sin = cuenta('QBAB.0002', 'OVERHEAD GENERICO TEST', 'overhead_fab')
+        c_dep = cuenta('QBAB.0003', 'DEPRECIACION TEST', 'depreciacion')
+        c_ren = cuenta('QBAB.0004', 'RENTA DEL LOCAL TEST', 'no_costeo')
+        c_abs = cuenta('QBAB.0005', 'COSTOS FABRILES APLICADOS TEST',
+                       'absorcion_odoo')
+        contra = Account.create({'name': 'CONTRA ABS TEST', 'code': 'QBAB.0009',
+                                 'account_type': 'expense'})
+        cargos = etiquetada + sin_etiqueta + deprec + renta_gl
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': c_etq.id, 'debit': etiquetada}),
+                (0, 0, {'account_id': c_sin.id, 'debit': sin_etiqueta}),
+                (0, 0, {'account_id': c_dep.id, 'debit': deprec}),
+                (0, 0, {'account_id': c_ren.id, 'debit': renta_gl}),
+                (0, 0, {'account_id': c_abs.id, 'credit': absorbido}),
+                (0, 0, {'account_id': contra.id, 'debit': absorbido,
+                        'credit': 0.0}),
+                (0, 0, {'account_id': contra.id, 'credit': cargos}),
+            ]}).action_post()
+
+        # Escenario A: el centro real sigue en capa (sólo el neutro absorbe)
+        en_capa = self.Costo._compute_factores(period).fab_pool_month
+
+        # Escenario B: el centro real pasa a absorción
+        centro.write({'modo_costeo': 'absorcion_odoo',
+                      'fecha_absorcion': period})
+        f = self.Costo._compute_factores(period)
+
+        # El bruto es el hecho contable: el abono a la cuenta, tal cual
+        self.assertAlmostEqual(f.absorcion_bruta_month, absorbido, places=2)
+        # Ya fuera = cuentas etiquetadas al centro + su renta contractual.
+        # Ni la depreciación ni la renta del GL entran: la primera sigue
+        # DENTRO del pool (no tiene centro) y la segunda nunca estuvo en él
+        # (`no_costeo`). Meterlas aquí subvaluaría la resta.
+        self.assertAlmostEqual(f.absorcion_ya_fuera_month,
+                               etiquetada + renta_contractual, places=2)
+        # Y la resta neta es el remanente, no el abono entero
+        self.assertAlmostEqual(
+            f.absorcion_pool_month,
+            absorbido - etiquetada - renta_contractual, places=2)
+
+        # La consecuencia que importa: el pool cae por el mismo importe con
+        # el centro etiquetado que sin etiquetar. Restar el abono completo lo
+        # dejaba $110,000 más abajo (la etiquetada + la renta contractual) y
+        # ese hueco lo pagaban los centros que siguen en capa.
+        self.assertAlmostEqual(f.fab_pool_month, en_capa, places=2)
+
+        (centro | neutro).unlink()
+
+    def test_absorcion_neta_no_baja_de_cero_y_lo_avisa(self):
+        """Si la tarifa absorbe MENOS que lo que el centro ya tenía
+        etiquetado, la resta neta se queda en 0 —nunca devuelve dinero al
+        pool— y el bruto queda guardado para que el panel lo pueda avisar."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Centro = self.env['qb.costeo.centro']
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        period = date(2027, 4, 1)
+
+        centro = Centro.create({
+            'code': 'TEST_ABS_CORTA', 'name': 'Centro absorbido corto',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'renta_contractual_mxn': 90000.0,
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period})
+        c_abs = Account.create({
+            'name': 'COSTOS FABRILES APLICADOS CORTO TEST',
+            'code': 'QBAC.0001', 'account_type': 'expense_direct_cost'})
+        Clase.create({'account_id': c_abs.id, 'bucket': 'absorcion_odoo'})
+        contra = Account.create({'name': 'CONTRA CORTO TEST',
+                                 'code': 'QBAC.0009', 'account_type': 'expense'})
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': c_abs.id, 'credit': 10000.0}),
+                (0, 0, {'account_id': contra.id, 'debit': 10000.0}),
+            ]}).action_post()
+
+        f = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(f.absorcion_bruta_month, 10000.0, places=2)
+        self.assertAlmostEqual(f.absorcion_ya_fuera_month, 90000.0, places=2)
+        self.assertEqual(f.absorcion_pool_month, 0.0)
+        centro.unlink()
