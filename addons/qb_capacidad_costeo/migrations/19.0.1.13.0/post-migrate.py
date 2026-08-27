@@ -18,34 +18,17 @@ De paso corrige el denominador de la ENERGÍA, que es variable y por lo tanto
 va sobre los kilos realmente producidos: con capacidad normal, un mes al 60%
 de utilización habría dado una energía por kilo 40% baja.
 
-Se recalculan los períodos existentes.
+El recálculo de los períodos lo hace la migración MÁS NUEVA de la cadena,
+una sola vez y con todos los cambios de datos ya aplicados: recalcular en
+cada una dejaba ~130,600 recálculos de producto por build para un
+resultado que la siguiente migración pisaba enseguida.
 """
-import logging
-
-from odoo import SUPERUSER_ID, api
-
-_logger = logging.getLogger(__name__)
 
 
 def migrate(cr, version):
-    env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
+    """No-op: este cambio es de MOTOR, no de datos.
 
-    ultimo = env['qb.costo.factores'].search([], order='period DESC', limit=1)
-    if ultimo:
-        _logger.info(
-            'qb_capacidad_costeo: %s períodos recalculados con capacidad '
-            'normal. Utilización kg %.1f%%, m %.1f%%; fabricación no '
-            'absorbida %.2f/mes (esa ociosidad va al resultado del período, '
-            'no al costo del producto).', len(set(periodos)),
-            ultimo.utilizacion_kg_pct, ultimo.utilizacion_m_pct,
-            ultimo.fab_ocioso_month)
-        if ultimo.utilizacion_kg_pct and ultimo.utilizacion_kg_pct < 25.0:
-            _logger.warning(
-                'qb_capacidad_costeo: utilización de kg en %.1f%%. Si no es '
-                'real, el throughput nominal o los calendarios están '
-                'inflando la capacidad normal y el costo unitario saldrá '
-                'bajo — revísalos en Centros de costo.',
-                ultimo.utilizacion_kg_pct)
+    El archivo existe para dejar registro de qué cambió en esta versión y
+    para que la cadena de migraciones no tenga huecos. El recálculo que
+    aplica el cambio lo hace la migración más nueva, una sola vez.
+    """

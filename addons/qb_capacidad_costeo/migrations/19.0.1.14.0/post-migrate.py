@@ -17,25 +17,17 @@ siendo lo correcto, porque el piso a planta llena resuelve qué precio deja
 cubierta una operación que es porcentaje de la venta. La circularidad ahí es
 la fórmula, no un error.
 
-Se recalculan los períodos existentes.
+El recálculo de los períodos lo hace la migración MÁS NUEVA de la cadena,
+una sola vez y con todos los cambios de datos ya aplicados: recalcular en
+cada una dejaba ~130,600 recálculos de producto por build para un
+resultado que la siguiente migración pisaba enseguida.
 """
-import logging
-
-from odoo import SUPERUSER_ID, api
-
-_logger = logging.getLogger(__name__)
 
 
 def migrate(cr, version):
-    env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
+    """No-op: este cambio es de MOTOR, no de datos.
 
-    ultimo = env['qb.costo.factores'].search([], order='period DESC', limit=1)
-    if ultimo:
-        _logger.info(
-            'qb_capacidad_costeo: %s períodos recalculados. Operación: '
-            '%.2f%% sobre ventas (cotizador) / x%.4f sobre costo de '
-            'producción (reporte).', len(set(periodos)),
-            (ultimo.op_pct or 0.0) * 100.0, ultimo.op_rate or 0.0)
+    El archivo existe para dejar registro de qué cambió en esta versión y
+    para que la cadena de migraciones no tenga huecos. El recálculo que
+    aplica el cambio lo hace la migración más nueva, una sola vez.
+    """

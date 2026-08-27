@@ -28,6 +28,14 @@ así en vez de pedir que se marque el patrón.
 Se resincroniza la bandera y se recalculan los períodos abiertos. Los
 cerrados se respetan.
 
+**Esta migración carga con el recálculo de TODA la cadena.** Las anteriores
+ya no recalculan: corren en orden y cada una pisaba el resultado de la
+previa, así que trece pasadas de 8 períodos x ~1,256 productos dejaban
+~130,600 recálculos por build para quedarse con los de la última. Al ser la
+más nueva, esta corre con todos los cambios de datos ya aplicados. Si se
+agrega otra migración después, el recálculo se mueve a ella y de aquí se
+quita.
+
 En la misma versión: el conjunto de productos que recibe el recargo de
 importación ya no incluye activo fijo ni servicios. Se quedan en la BASE del
 factor —su pedimento existe y lo diluye correctamente— pero su aduana se
