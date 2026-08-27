@@ -31,6 +31,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 from odoo.tools import html_escape
 
 from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
@@ -38,37 +39,201 @@ from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
 _logger = logging.getLogger(__name__)
 
 KG_UOM_NAMES = ('kg', 'kgs', 'kilogramo', 'kilogramos')
+
+# Dedup del "triplete" de facturación (línea de lista +, de descuento −, y
+# neta +): las tres repiten la MISMA cantidad y sin colapsarlas la qty saldría
+# al triple. El revenue no necesita dedup — las tres suman el neto.
+#
+# La regla mira el TAMAÑO del grupo, no solo la cantidad repetida: un triplete
+# son exactamente tres líneas, mientras que dos rollos iguales en la misma
+# factura son dos. Antes se colapsaba cualquier repetición, así que dos rollos
+# de 100 m se contaban como uno y el precio promedio salía al doble. Medido
+# sobre ene–ago 2026 (2,116 líneas de factura) ningún grupo llega a tres: hoy
+# el dedup no descarta nada y solo estaba el riesgo.
+QTY_DEDUP_SQL = """
+    SELECT move_id, product_id, currency_id, quantity, move_type, mes
+    FROM (
+        SELECT l.*,
+               COUNT(*) OVER (
+                   PARTITION BY l.move_id, l.product_id, ABS(l.quantity)) AS n,
+               ROW_NUMBER() OVER (
+                   PARTITION BY l.move_id, l.product_id, ABS(l.quantity)
+                   ORDER BY l.move_id) AS rn
+        FROM lines l
+    ) g
+    WHERE g.n < 3 OR g.rn = 1
+"""
 FAB_BUCKETS = ('mod', 'overhead_fab', 'depreciacion', 'arrend_maquinaria')
 
 
 class QbCostoFactores(models.Model):
     _name = 'qb.costo.factores'
     _description = 'Factores de costeo por período (trazabilidad)'
+    _inherit = ['mail.thread']
     _order = 'period DESC'
     _rec_name = 'period'
 
     period = fields.Date(required=True, index=True,
                          help='Primer día del mes calculado.')
+    state = fields.Selection([
+        ('borrador', 'Borrador'),
+        ('cerrado', 'Cerrado'),
+    ], default='borrador', required=True, tracking=True, string='Estado',
+        help='CERRADO congela el período: ni el cron ni un recálculo manual '
+             'pueden volver a tocar sus factores ni sus costos por producto. '
+             'Sin esto, el número que presentaste el mes pasado cambia solo '
+             'la próxima vez que alguien recalcula, y no hay forma de '
+             'defenderlo.')
+    cerrado_por = fields.Many2one('res.users', string='Cerrado por',
+                                  readonly=True, tracking=True)
+    cerrado_el = fields.Datetime(string='Cerrado el', readonly=True,
+                                 tracking=True)
+    reaperturas = fields.Integer(
+        string='Reaperturas', readonly=True, default=0, tracking=True,
+        help='Cuántas veces se reabrió un período ya cerrado. Cualquier '
+             'número distinto de cero es una señal para el auditor.')
+    motivo_reapertura = fields.Text(
+        string='Motivo de reapertura', tracking=True,
+        help='Obligatorio para reabrir. Queda en el historial del período.')
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, required=True)
     window_months = fields.Integer(string='Ventana de suavizado (meses)')
+    fab_ventana_desde = fields.Date(
+        string='Ventana del pool fabril desde',
+        help='Normalmente el inicio de la ventana de suavizado. Cuando un '
+             'centro migra a absorción por workcenter, la ventana del pool '
+             'fabril arranca en esa fecha de corte: promediar meses del '
+             'régimen viejo con meses del nuevo mezclaría dos cosas distintas '
+             'y el factor del mes describiría a un mes que ya no existe.')
+    fab_ventana_meses = fields.Integer(
+        string='Meses en la ventana fabril',
+        help='Con pocos meses el pool sale ruidoso — es el precio de que el '
+             'régimen acabe de cambiar. Se estabiliza solo al acumular meses.')
     fab_pool_month = fields.Float(
         string='Pool fabricación/mes',
         help='MOD + overhead + depreciación + arrendamiento maquinaria, '
              'promedio suavizado, sin la parte de entretelas.')
     energia_pool_month = fields.Float(string='Pool energía/mes')
     op_pool_month = fields.Float(string='Pool operación/mes')
+    mp_gl_month = fields.Float(
+        string='MP consumida/mes (mayor)',
+        help='Costo primo más ajustes de inventario del mayor: la materia '
+             'prima que la planta REALMENTE consumió. Sale de las cuentas '
+             'clasificadas en el bucket «Materia prima».')
+    mp_modelada_month = fields.Float(
+        string='MP modelada/mes (receta)',
+        help='Σ (MP de receta × cantidad vendida) de producto nacional, en la '
+             'misma ventana. Es lo que el motor le cobra a los productos '
+             'antes del ajuste.')
+    mp_ajuste = fields.Float(
+        string='Ajuste de MP', digits=(16, 6), default=1.0,
+        help='MP consumida ÷ MP modelada. Acerca la receta al último precio '
+             'de compra (un costo de reposición teórico, sin merma ni '
+             'rendimiento real) a lo que de verdad se consumió. 1.0 = no hay '
+             'nada que conciliar (bucket «mp» vacío) o ya cuadran.')
+    importacion_pool_month = fields.Float(
+        string='Pool importación/mes',
+        help='Gastos e impuestos de importación (IGI, DTA, PRV, agente '
+             'aduanal, flete). No se prorratean sobre las ventas: se cargan '
+             'al valor de lo importado, que es lo que los causa.')
+    importacion_base_month = fields.Float(
+        string='Compras importadas/mes',
+        help='Valor de compra mensual promedio de los productos importados, '
+             'en moneda de la compañía. Es la base del factor.')
+    factor_importacion = fields.Float(
+        string='Factor importación', digits=(16, 6),
+        help='Pool ÷ base: cuánto se suma al costo de un importado por cada '
+             'peso de valor de compra. 0.15 = 15% sobre el valor importado.')
     ventas_pool_month = fields.Float(string='Ventas/mes (promedio)')
     entretela_pool_month = fields.Float(string='Pool entretelas/mes')
-    kg_denom_month = fields.Float(string='Denominador kg/mes')
-    m_denom_month = fields.Float(string='Denominador m/mes')
+    absorcion_bruta_month = fields.Float(
+        string='Absorbido por Odoo/mes (bruto)',
+        help='Saldo acreedor de la cuenta de costos fabriles aplicados a '
+             'producción: lo que los workcenters capitalizaron al AVCO del '
+             'producto vía tarifa por hora. Es el hecho contable, no un '
+             'parámetro: si la tarifa absorbe de más o de menos, esto se '
+             'mueve solo.')
+    absorcion_ya_fuera_month = fields.Float(
+        string='Absorbido ya excluido/mes',
+        help='La parte de lo absorbido que el pool YA no traía: las cuentas '
+             'etiquetadas al centro absorbido (que salieron de los buckets '
+             'fabriles) más su renta contractual (que salió de la renta de '
+             'centros). Restar el bruto completo las quitaría dos veces.')
+    absorcion_pool_month = fields.Float(
+        string='Absorbido por Odoo/mes (neto)',
+        help='Bruto − ya excluido: el remanente que el centro absorbido '
+             'aportaba al pool por cuentas SIN etiquetar (nómina, indirectos '
+             'genéricos, depreciación). Es lo único que falta restar, porque '
+             'ese costo ya viaja dentro del inventario y la venta lo libera '
+             'solo. Si sale en 0 con bruto > 0, la tarifa absorbe menos que '
+             'lo que el centro ya tenía etiquetado: revisa la tarifa o la '
+             'clasificación de sus cuentas.')
+    centros_absorbidos = fields.Char(
+        string='Centros absorbidos por Odoo',
+        help='Qué centros estaban en absorción por workcenter en ESTE '
+             'período. Queda guardado para que un mes viejo se pueda leer '
+             'con el régimen que de verdad tuvo.')
+    centros_capa = fields.Char(
+        string='Centros en capa',
+        help='Qué centros repartió el módulo con sus factores en este período.')
+    renta_contractual_pool = fields.Float(
+        string='Renta contractual/mes',
+        help='Σ de la renta contractual de TODOS los centros fabriles. '
+             'Sustituye a las cuentas de renta del GL, que se pagan a saltos. '
+             'La parte de entretelas entra aquí y sale otra vez con su pool '
+             'propio, para que el pool de tela no pague una renta ajena.')
+    renta_gl_sustituida = fields.Float(
+        string='Renta del GL sustituida/mes',
+        help='Lo que las cuentas marcadas «es renta de inmueble» aportaban al '
+             'pool fabril y que se saca para no contar la renta dos veces. Si '
+             'sale en 0 con renta contractual > 0, revisa que las cuentas de '
+             'renta estén marcadas — puede haber doble conteo.')
+    kg_denom_month = fields.Float(
+        string='Denominador kg/mes',
+        help='Capacidad NORMAL en kg de los centros que definen el peso '
+             '(IAS 2), o su producción real si no hay capacidad derivable.')
+    m_denom_month = fields.Float(
+        string='Denominador m/mes',
+        help='Capacidad NORMAL en metros, misma regla que el de kg.')
+    kg_produccion_month = fields.Float(string='Producción kg/mes (real)')
+    m_produccion_month = fields.Float(string='Producción m/mes (real)')
+    utilizacion_kg_pct = fields.Float(
+        string='Utilización kg %',
+        help='Producción real ÷ capacidad normal. Si sale absurdamente baja, '
+             'revisa el throughput nominal y los calendarios: el denominador '
+             'estará inflado y el costo unitario saldrá bajo.')
+    utilizacion_m_pct = fields.Float(string='Utilización m %')
+    fab_ocioso_month = fields.Float(
+        string='Fabricación no absorbida/mes',
+        help='La parte del pool fijo que la producción real no alcanza a '
+             'absorber contra la capacidad normal: el costo de la capacidad '
+             'ociosa. Bajo IAS 2 va al resultado del período, NO al costo del '
+             'producto — por eso el modelo reparte menos que el gasto total, '
+             'y esa diferencia es deliberada.')
     entretela_m_denom_month = fields.Float(string='Metros entretela/mes')
     fab_weight_share = fields.Float(string='Share peso')
     factor_fab_kg = fields.Float(string='Factor fabricación $/kg')
     factor_fab_m = fields.Float(string='Factor fabricación $/m')
     energia_por_kg = fields.Float(string='Energía $/kg')
-    op_pct = fields.Float(string='Operación % sobre ventas')
+    op_pct = fields.Float(
+        string='Operación % sobre ventas',
+        help='Σ cuentas de operación ÷ Σ ventas. Es lo correcto para COTIZAR '
+             '(el piso a planta llena resuelve qué precio deja cubierta una '
+             'operación que es % de la venta), pero no para reportar costo.')
+    op_rate = fields.Float(
+        string='Operación sobre costo de producción', digits=(16, 6),
+        help='Pool de operación ÷ costo de producción de lo vendido. Es el '
+             'driver del costo REPORTADO: repartir la operación sobre el '
+             'precio hacía que vender con descuento «abaratara» el producto. '
+             '0 = driver legacy sobre ventas (parámetro `op_driver`).')
     entretela_factor_m = fields.Float(string='Factor entretela $/m')
+    fab_pool_con_centro_pct = fields.Float(
+        string='Pool fabril asignado a un centro %',
+        help='Qué parte del pool de fabricación está clasificada CON centro '
+             'de costo. Es el prerrequisito para costear por ruta real: '
+             'mientras la mayoría del gasto no tenga centro, la fabricación '
+             'solo se puede repartir a nivel planta (el split peso/largo) y '
+             'un producto que se vende crudo termina pagando acabado.')
     cobertura_fab_pct = fields.Float(
         string='Cobertura del pool %',
         help='Σ fabricación absorbida en lo vendido ÷ pool. ~90% es sano '
@@ -80,6 +245,48 @@ class QbCostoFactores(models.Model):
         'unique(period, company_id)',
         "Ya existen factores para ese período.",
     )
+
+    # ------------------------------------------------------------------
+    # Cierre de período: el costo deja de ser un número que se mueve solo
+    # ------------------------------------------------------------------
+    @api.model
+    def periodo_cerrado(self, period, company=None):
+        """¿El período está cerrado? Lo consultan el motor y el cron antes
+        de escribir nada."""
+        return bool(self.search_count([
+            ('period', '=', period),
+            ('company_id', '=', (company or self.env.company).id),
+            ('state', '=', 'cerrado'),
+        ]))
+
+    def action_cerrar(self):
+        for rec in self:
+            if rec.state == 'cerrado':
+                continue
+            rec.write({
+                'state': 'cerrado',
+                'cerrado_por': self.env.user.id,
+                'cerrado_el': fields.Datetime.now(),
+            })
+            rec.message_post(body='Período cerrado. Sus factores y sus costos '
+                                  'por producto quedan congelados.')
+        return True
+
+    def action_reabrir(self):
+        for rec in self:
+            if rec.state != 'cerrado':
+                continue
+            if not (rec.motivo_reapertura or '').strip():
+                raise UserError(
+                    'Escribe el motivo de reapertura antes de reabrir %s. '
+                    'Reabrir un período cerrado cambia números que ya se '
+                    'reportaron: tiene que quedar por qué.' % rec.period)
+            rec.write({'state': 'borrador',
+                       'reaperturas': rec.reaperturas + 1})
+            rec.message_post(
+                body='Período REABIERTO (%s vez/veces). Motivo: %s'
+                     % (rec.reaperturas, rec.motivo_reapertura))
+        return True
 
 
 class QbCostoProducto(models.Model):
@@ -115,9 +322,58 @@ class QbCostoProducto(models.Model):
     precio_prom = fields.Float(
         string='Precio promedio',
         help='Revenue ÷ qty deduplicada por el triplete lista/descuento/neta '
-             '(DISTINCT ON move, product, qty) — sin el dedup el precio '
-             'saldría ~1/3 en productos con triplete.')
+             '— sin el dedup el precio saldría ~1/3 en productos con '
+             'triplete. La regla mira el tamaño del grupo (un triplete son '
+             'tres líneas), así que dos rollos iguales en la misma factura '
+             'siguen contando como dos.')
+    ventas_total = fields.Float(
+        string='Ventas $ (período)',
+        help='Lo REALMENTE facturado del producto en el mes, en moneda de la '
+             'compañía: Σ de aml.balance de las líneas de factura contra '
+             'cuentas de ingreso (las notas de crédito restan). Una factura '
+             'en divisa entra con su valor real en pesos, al TC de la '
+             'factura. Es un hecho contable, no un cálculo: cuadra contra el '
+             'estado de resultados.\n\n'
+             'Nota: si en el mes las devoluciones superaron a las ventas '
+             '(qty neta ≤ 0) este monto se muestra igual, pero los costos y '
+             'márgenes totales quedan en 0 — no hay precio unitario válido '
+             'que costear.')
+    divisa_id = fields.Many2one(
+        'res.currency', string='Divisa',
+        help='Divisa distinta a la de la compañía con MÁS facturación del '
+             'producto en el mes (p.ej. USD). Vacío = solo se vendió en '
+             'moneda local.')
+    qty_divisa = fields.Float(
+        string='Qty vendida en divisa',
+        help='Unidades facturadas en esa divisa (subconjunto de la qty '
+             'total del período).')
+    ventas_total_divisa = fields.Monetary(
+        string='Ventas en divisa', currency_field='divisa_id',
+        help='Facturado en la moneda ORIGINAL del documento '
+             '(Σ amount_currency), sin convertir. El número que ve el '
+             'cliente en su factura.')
+    precio_prom_divisa = fields.Monetary(
+        string='Precio en divisa', currency_field='divisa_id',
+        help='Ventas en divisa ÷ qty en divisa: el precio unitario tal cual '
+             'se cotizó y facturó en esa moneda.')
+    tc_prom = fields.Float(
+        string='TC promedio', digits=(16, 4),
+        help='Tipo de cambio implícito de lo facturado en divisa: pesos '
+             'reconocidos ÷ importe en divisa. Es el TC efectivo de las '
+             'facturas del mes, no el del día.')
     mp_unit = fields.Float(string='MP $/u', digits=(16, 4))
+    importacion_unit = fields.Float(
+        string='de eso, importación $/u', digits=(16, 4),
+        help='Cuánto de la MP de arriba son gastos e impuestos de aduana '
+             '(IGI, DTA, PRV, agente aduanal, flete). NO es una capa aparte: '
+             'ya está dentro de la MP, se muestra para poder auditarla.\n\n'
+             'Solo el recargo de ESTE producto, cuando él mismo se compra '
+             'importado. La aduana de un componente importado (el hilo, por '
+             'ejemplo) vive dentro de la MP del componente y llega a la tela '
+             'por la receta, sin aparecer en este renglón.\n\n'
+             'Sale en 0 con el driver «landed» (el default), que es el que no '
+             'prorratea: ahí la aduana se captura con el landed cost de Odoo '
+             'sobre cada recepción.')
     energia_unit = fields.Float(string='Energía $/u', digits=(16, 4))
     costo_variable = fields.Float(
         string='Costo variable $/u', digits=(16, 4),
@@ -133,6 +389,32 @@ class QbCostoProducto(models.Model):
         string='Costo absorbido $/u', digits=(16, 4),
         help='Producción + operación (admin y ventas como % del precio): el '
              'costo COMPLETO. Base del margen neto.')
+    # --- Totales del período ($ del mes, no $/unidad) -------------------
+    # Aditivos: se pueden sumar entre productos y entre meses en el pivote.
+    # Todos son costo_unitario × qty vendida — o sea, costo de lo VENDIDO
+    # (COGS del modelo), no el gasto del mes ni el costo de lo producido.
+    mp_total = fields.Float(
+        string='MP $ (período)',
+        help='MP unitaria × qty vendida: cuánta materia prima cargó lo '
+             'vendido este mes.')
+    importacion_total = fields.Float(
+        string='de eso, importación $ (período)',
+        help='La parte de la MP del período que es aduana. Ya está dentro de '
+             '«MP $ (período)» — no se suma aparte.')
+    energia_total = fields.Float(string='Energía $ (período)')
+    fab_total = fields.Float(string='Fabricación $ (período)')
+    op_total = fields.Float(string='Operación $ (período)')
+    costo_variable_total = fields.Float(
+        string='Costo variable $ (período)',
+        help='(MP + energía) × qty vendida.')
+    costo_produccion_total = fields.Float(
+        string='Costo de producción $ (período)',
+        help='(variable + fabricación) × qty vendida. Ventas − esto = margen '
+             'bruto total.')
+    costo_absorbido_total = fields.Float(
+        string='Costo total $ (período)',
+        help='Costo absorbido × qty vendida: el costo COMPLETO de lo vendido. '
+             'Ventas − esto = margen neto total.')
     margen_contribucion = fields.Float(
         string='Contribución $/u', digits=(16, 4),
         help='Precio − costo VARIABLE (MP + energía). Lo que cada unidad '
@@ -194,15 +476,56 @@ class QbCostoProducto(models.Model):
         "Ya existe el costo de ese producto para ese período.",
     )
 
+    def _bloquear_si_cerrado(self):
+        """Un período cerrado es un snapshot: sus filas no se escriben ni se
+        borran. El guard del recálculo ya lo evita por el camino normal; esto
+        cierra la puerta también a un write suelto desde la UI o un script.
+
+        `qb_periodo_verificado` lo pone el propio recálculo cuando YA comprobó
+        el estado: sin eso, el loop haría una consulta de períodos cerrados por
+        cada uno de los ~1,250 productos.
+        """
+        ctx = self.env.context
+        if ctx.get('qb_periodo_verificado') or \
+                ctx.get('qb_forzar_periodo_cerrado'):
+            return
+        Factores = self.env['qb.costo.factores']
+        cerrados = {
+            (f.period, f.company_id.id)
+            for f in Factores.search([('state', '=', 'cerrado')])}
+        for rec in self:
+            if (rec.period, rec.company_id.id) in cerrados:
+                raise UserError(
+                    'El período %s está cerrado: su costo por producto es un '
+                    'snapshot y no se modifica. Reábrelo con motivo si de '
+                    'verdad hay que moverlo.' % rec.period)
+
+    def write(self, vals):
+        self._bloquear_si_cerrado()
+        return super().write(vals)
+
+    def unlink(self):
+        self._bloquear_si_cerrado()
+        return super().unlink()
+
     # ------------------------------------------------------------------
     # Pools GL
     # ------------------------------------------------------------------
     @api.model
     def _pool_by_month(self, buckets, date_from, date_to,
-                       es_variable=None, centro_id=None, sign=1.0):
+                       es_variable=None, centro_id=None, sign=1.0,
+                       es_renta=None, con_centro=None, excluir_centros=None,
+                       incluir_centros=None):
         """Σ balance de las cuentas clasificadas en `buckets`, por mes.
 
         Devuelve {date_mes: monto}. sign=-1 para ingresos (saldo acreedor).
+        `es_renta=True` aísla las cuentas de renta de inmueble (para poder
+        sustituirlas por la renta contractual sin contarlas dos veces).
+        `excluir_centros` deja fuera las cuentas etiquetadas a esos centros
+        (conservando las sin centro) e `incluir_centros` hace lo contrario:
+        SOLO las de esos centros. Son complementarias a propósito — con las
+        dos se puede medir cuánto de un pool aporta un centro, que es lo que
+        permite restar lo absorbido sin restarlo dos veces.
         """
         query = """
             WITH cuenta_map AS (%s)
@@ -222,17 +545,65 @@ class QbCostoProducto(models.Model):
         if centro_id is not None:
             query += ' AND m.centro_id = %s'
             params.append(centro_id)
+        if es_renta is not None:
+            query += ' AND COALESCE(m.es_renta, FALSE) = %s'
+            params.append(es_renta)
+        if con_centro is not None:
+            query += (' AND m.centro_id IS NOT NULL' if con_centro
+                      else ' AND m.centro_id IS NULL')
+        if excluir_centros:
+            query += ' AND (m.centro_id IS NULL OR m.centro_id != ALL(%s))'
+            params.append(list(excluir_centros))
+        if incluir_centros:
+            query += ' AND m.centro_id = ANY(%s)'
+            params.append(list(incluir_centros))
         query += ' GROUP BY 1'
         self.env.cr.execute(query, tuple(params))
         return {row[0]: sign * row[1] for row in self.env.cr.fetchall()}
 
     @api.model
-    def _smooth(self, by_month, exclude_nonpositive=True):
-        """Promedio de meses válidos (guard pool>0: excluye reversos de
-        cierre anual que meterían meses negativos/cero a la media)."""
-        values = [v for v in by_month.values()
-                  if not exclude_nonpositive or v > 0]
-        return sum(values) / len(values) if values else 0.0
+    def _meses_con_actividad(self, date_from, date_to):
+        """Meses de la ventana con pólizas posteadas.
+
+        Es el denominador correcto de cualquier pool: un gasto que se registra
+        al PAGARSE aparece en unos meses sí y otros no, y dividir entre los
+        meses en que apareció da el cargo por factura, no el costo mensual.
+        Con energía en 53k / 65k / 173k según cuándo llegó el recibo, dividir
+        entre tres da $97k y dividir entre los siete meses de la ventana da
+        $112,678 — el segundo es el que se parece al consumo real.
+        """
+        self.env.cr.execute("""
+            SELECT COUNT(DISTINCT date_trunc('month', aml.date))
+            FROM account_move_line aml
+            WHERE aml.parent_state = 'posted'
+              AND aml.company_id = %s
+              AND aml.date >= %s AND aml.date < %s
+        """, (self.env.company.id, date_from, date_to))
+        return self.env.cr.fetchone()[0] or 0
+
+    @api.model
+    def _smooth(self, by_month, meses=None, exclude_negative=True):
+        """Promedio mensual de un pool.
+
+        `meses` es el número de meses de la VENTANA, no de los meses en que la
+        cuenta tuvo movimiento: ver `_meses_con_actividad`. Sin él se conserva
+        el comportamiento viejo (dividir entre los meses con dato), que sirve
+        para llamadas sueltas donde la ventana no se conoce.
+
+        Los meses NEGATIVOS se descartan de los dos lados de la división: son
+        los reversos del cierre anual (diciembre 2025 metió +$163M de débito a
+        cuentas de ingreso), y dejarlos en el denominador subvaluaría el
+        promedio tanto como dejarlos en el numerador lo hundiría.
+        """
+        valores = [v for v in by_month.values()
+                   if not exclude_negative or v >= 0]
+        if meses is None:
+            positivos = [v for v in valores if v > 0]
+            return sum(positivos) / len(positivos) if positivos else 0.0
+        descartados = len([v for v in by_month.values() if v < 0]) \
+            if exclude_negative else 0
+        n = max(meses - descartados, 1)
+        return sum(valores) / n
 
     # ------------------------------------------------------------------
     # Denominadores de producción (kg / m)
@@ -270,24 +641,32 @@ class QbCostoProducto(models.Model):
                 FROM mrp_production mp
                 WHERE mp.name LIKE ANY(string_to_array(%%s, ','))
                   AND mp.state = 'done'
+                  AND mp.company_id = %%s
                   AND mp.date_finished >= %%s AND mp.date_finished < %%s
                 GROUP BY 1
             """ % mo_qty_sql(self.env),
-                (centro.mo_name_pattern, date_from, date_to))
+                (centro.mo_name_pattern, self.env.company.id,
+                 date_from, date_to))
             for mes, qty in self.env.cr.fetchall():
                 by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
         wc_ids = centros.filtered(
             lambda c: c.workcenter_ids and not c.mo_name_pattern
         ).mapped('workcenter_ids').ids
         if wc_ids:
+            # El pool de gasto se lee SOLO de la compañía activa; el
+            # denominador de producción tiene que leerse igual o el factor
+            # $/kg queda dividido entre la producción de todo el grupo.
             self.env.cr.execute("""
                 SELECT date_trunc('month', wo.date_finished)::date,
                        COALESCE(SUM(%s), 0)
                 FROM mrp_workorder wo
+                JOIN mrp_production mp ON mp.id = wo.production_id
                 WHERE wo.workcenter_id IN %%s AND wo.state = 'done'
+                  AND mp.company_id = %%s
                   AND wo.date_finished >= %%s AND wo.date_finished < %%s
                 GROUP BY 1
-            """ % wo_qty_sql(self.env), (tuple(wc_ids), date_from, date_to))
+            """ % wo_qty_sql(self.env),
+                (tuple(wc_ids), self.env.company.id, date_from, date_to))
             for mes, qty in self.env.cr.fetchall():
                 by_month[mes] = by_month.get(mes, 0.0) + (qty or 0.0)
         for mes, qty in (restar_by_month or {}).items():
@@ -295,6 +674,60 @@ class QbCostoProducto(models.Model):
                 by_month[mes] -= qty
         activos = [q for q in by_month.values() if q > 0]
         return sum(activos) / len(activos) if activos else 0.0
+
+    @api.model
+    def _capacidad_normal_map(self, centros):
+        """{centro_id: capacidad normal/mes} desde `qb.ociosidad`.
+
+        Se resuelve UNA vez por corrida y se pasa a los denominadores: la
+        vista de ociosidad arma calendarios, pools del GL y producción, y
+        `action_recompute_year` llamaría a ese query veinticuatro veces.
+        """
+        if not centros:
+            return {}
+        return {o.centro_id.id: o.capacity_month_units
+                for o in self.env['qb.ociosidad'].search(
+                    [('centro_id', 'in', centros.ids)])}
+
+    def _denominador_capacidad(self, centros, date_from, date_to,
+                               restar_by_month=None, caps=None):
+        """Denominador del factor de fabricación: capacidad NORMAL del centro,
+        no su producción real (costeo normal, IAS 2).
+
+        Dividir el pool fijo entre la producción del mes le carga la ociosidad
+        al producto: un mes flojo lo encarece, y el modelo entonces recomienda
+        subir el precio justo cuando lo que hace falta es vender más. Bajo
+        IAS 2 el costo no absorbido por la capacidad ociosa va al resultado
+        del período, no al inventario.
+
+        La capacidad normal sale de `qb.ociosidad`, que ya la deriva igual que
+        el campo promete: `capacidad_normal` capturada, o calendario real ×
+        throughput nominal. Usar la misma fuente que la vista de ociosidad es
+        lo que hace que las dos mitades del módulo digan lo mismo — antes el
+        motor dividía entre producción real y la vista entre capacidad normal.
+
+        Un centro sin capacidad derivable (sin throughput nominal, sin
+        workcenters y sin turnos) cae a su producción real: degradar con
+        gracia es preferible a dejar el denominador en cero.
+        """
+        if not centros:
+            return 0.0
+        Config = self.env['qb.costeo.factor.config']
+        if not Config.get_param('denominador_capacidad_normal', 1.0):
+            return self._production_month_avg(
+                centros, date_from, date_to, restar_by_month)
+        if caps is None:
+            caps = self._capacidad_normal_map(centros)
+        con_normal = centros.filtered(lambda c: caps.get(c.id, 0.0) > 0)
+        sin_normal = centros - con_normal
+        total = sum(caps[c.id] for c in con_normal)
+        if sin_normal:
+            # El ajuste de metros (encogimiento/estiramiento) solo aplica al
+            # lado que se mide con producción: la capacidad normal es un techo
+            # teórico y no encoge.
+            total += self._production_month_avg(
+                sin_normal, date_from, date_to, restar_by_month)
+        return total
 
     def _ajuste_metros_by_month(self, date_from, date_to):
         """Metros que la orden reportó y que ya no coinciden al vender.
@@ -337,6 +770,35 @@ class QbCostoProducto(models.Model):
         """, (self.env.company.id, date_from, date_to))
         return {mes: (qty or 0.0) for mes, qty in self.env.cr.fetchall()}
 
+    @api.model
+    def _meses_sin_estiramiento(self, date_from, date_to):
+        """Meses de la ventana con encogimiento pero SIN estiramiento.
+
+        El ajuste de metros resta el encogimiento y suma el estiramiento, que
+        se compensan. Si el estiramiento se detiene y el encogimiento no, la
+        resta queda sin su contrapeso y el denominador se sobrecorrige: el
+        costo por metro sube por una operación que dejó de hacerse, no porque
+        la planta gaste más. Se detectó parado desde el 30-jun-2026.
+        """
+        self.env.cr.execute("""
+            SELECT date_trunc('month', sm.date)::date AS mes,
+                   COUNT(*) FILTER (WHERE spt.sequence_code LIKE '%%ENC%%')
+                       AS encogimiento,
+                   COUNT(*) FILTER (WHERE spt.sequence_code LIKE '%%OP-EST%%')
+                       AS estiramiento
+            FROM stock_move sm
+            JOIN stock_picking_type spt ON spt.id = sm.picking_type_id
+            WHERE sm.state = 'done'
+              AND sm.company_id = %s
+              AND (spt.sequence_code LIKE '%%ENC%%'
+                   OR spt.sequence_code LIKE '%%OP-EST%%')
+              AND sm.date >= %s AND sm.date < %s
+            GROUP BY 1
+            ORDER BY 1
+        """, (self.env.company.id, date_from, date_to))
+        return [mes for mes, enc, est in self.env.cr.fetchall()
+                if enc and not est]
+
     # ------------------------------------------------------------------
     # Factores del período
     # ------------------------------------------------------------------
@@ -348,8 +810,29 @@ class QbCostoProducto(models.Model):
         date_to = period + relativedelta(months=1)
         date_from = date_to - relativedelta(months=window)
 
-        fab_by_month = self._pool_by_month(FAB_BUCKETS, date_from, date_to,
-                                           es_variable=False)
+        # Régimen híbrido. Un centro cuyos workcenters ya capitalizan (tarifa
+        # por hora + cuenta de costos aplicados) NO puede seguir en el pool:
+        # Odoo mete su costo al AVCO del producto y la venta lo libera. Si el
+        # módulo lo repartiera además con sus factores, el mismo peso se
+        # cobraría dos veces.
+        absorbidos = Centro.absorbidos_en(period)
+        excluir = absorbidos.ids
+
+        # Durante una migración, promediar el pool a doce meses MEZCLA
+        # REGÍMENES: los meses anteriores al corte llevan el gasto del centro
+        # completo y los posteriores no. El factor de septiembre tiene que
+        # describir a septiembre, así que la ventana del pool fabril arranca
+        # en el corte más reciente. Sale ruidosa el primer mes y se estabiliza
+        # sola conforme se acumulan meses del régimen nuevo.
+        fab_from = date_from
+        if absorbidos:
+            fab_from = max([date_from] + absorbidos.mapped('fecha_absorcion'))
+        fab_meses = self._meses_con_actividad(fab_from, date_to)
+        meses = self._meses_con_actividad(date_from, date_to)
+
+        fab_by_month = self._pool_by_month(FAB_BUCKETS, fab_from, date_to,
+                                           es_variable=False,
+                                           excluir_centros=excluir)
         energia_by_month = self._pool_by_month(('energia',), date_from, date_to)
         op_by_month = self._pool_by_month(('operacion',), date_from, date_to)
         ventas_by_month = self._pool_by_month(('ventas',), date_from, date_to,
@@ -359,57 +842,233 @@ class QbCostoProducto(models.Model):
         # Se RESTA del pool de tela (split quirúrgico) y forma su factor $/m.
         ent_centros = Centro.search([('driver_principal', '=', 'largo'),
                                      ('nature', '=', 'fabril_directo'),
-                                     ('code', 'ilike', 'ENTRETELA')])
+                                     ('code', 'ilike', 'ENTRETELA'),
+                                     ('id', 'not in', excluir)])
         entretela_pool = 0.0
+        entretela_en_pool = 0.0
         entretela_m = 0.0
         if ent_centros:
             # MOD sumado sobre TODOS los centros de entretela (antes tomaba
             # sólo el primero mientras la renta sí sumaba todos → asimétrico).
             ent_mod = sum(
                 self._smooth(self._pool_by_month(
-                    ('mod',), date_from, date_to, centro_id=c.id))
+                    ('mod',), fab_from, date_to, centro_id=c.id),
+                    meses=fab_meses)
                 for c in ent_centros)
+            # Dos cifras distintas a propósito:
+            #  · `entretela_en_pool` es lo que entretelas toma de la bolsa
+            #    común (su MOD del GL y su renta contractual, que sí se sumó
+            #    al total). Eso es lo único que se le puede RESTAR a tela.
+            #  · `entretela_pool` financia además su overhead extra
+            #    capturado a mano, que nunca estuvo en la bolsa común: restarlo
+            #    de tela le quitaría dinero que tela nunca tuvo.
+            entretela_en_pool = (
+                ent_mod + sum(ent_centros.mapped('renta_contractual_mxn')))
             entretela_pool = (
-                ent_mod
-                + sum(ent_centros.mapped('renta_contractual_mxn'))
+                entretela_en_pool
                 + Config.get_param('entretela_overhead_extra_mxn', 0.0))
             entretela_m = self._production_month_avg(ent_centros, date_from, date_to)
 
-        fab_pool = max(self._smooth(fab_by_month) - entretela_pool, 0.0)
-        energia_pool = self._smooth(energia_by_month)
-        op_pool = self._smooth(op_by_month)
-        ventas_pool = self._smooth(ventas_by_month)
+        # Renta: el GL se paga a saltos, así que las cuentas marcadas
+        # `es_renta` SALEN del pool y en su lugar entra la renta contractual
+        # de los centros fabriles. Antes la contractual solo se aplicaba a
+        # entretelas — tejido, tintorería y acabado tenían su renta capturada
+        # y nunca llegaba al costo del producto (y la que sí llegaba, por una
+        # cuenta de renta clasificada en un bucket fabril, se contaba doble
+        # en cuanto se activaba el contrato).
+        # La resta va MES A MES, no contra el promedio: la renta se postea en
+        # unos meses sí y otros no, así que promediarla sobre sus propios
+        # meses de pago la escalaría distinto que al pool y sobre-restaría.
+        renta_by_month = self._pool_by_month(
+            FAB_BUCKETS, fab_from, date_to, es_variable=False, es_renta=True,
+            excluir_centros=excluir)
+        fab_sin_renta = {mes: monto - renta_by_month.get(mes, 0.0)
+                         for mes, monto in fab_by_month.items()}
+        renta_gl = (sum(renta_by_month.values()) / fab_meses
+                    if fab_meses else 0.0)
+        # La renta contractual entra al total de TODOS los centros fabriles,
+        # entretelas incluidas; lo que entretelas se lleva sale después con
+        # `entretela_en_pool`. Sumar solo las no-entretela y restar igual la de
+        # entretelas le quitaría a tela una renta que nunca se le sumó.
+        renta_centros = Centro.search([
+            ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
+            ('id', 'not in', excluir),
+        ])
+        renta_contractual = sum(renta_centros.mapped('renta_contractual_mxn'))
 
-        kg_centros = Centro.search([('es_denominador_kg', '=', True)])
-        m_centros = Centro.search([('es_denominador_m', '=', True)])
+        # Lo que Odoo capitalizó de verdad: el saldo ACREEDOR de la cuenta de
+        # costos fabriles aplicados a producción. No es un parámetro que haya
+        # que mantener al día — es el hecho contable, y se autocorrige si la
+        # tarifa por hora absorbe de más o de menos.
+        absorcion_bruta = self._smooth(
+            self._pool_by_month(('absorcion_odoo',), fab_from, date_to,
+                                sign=-1.0), meses=fab_meses)
+
+        # ...pero el pool del que se resta YA NO TRAE al centro completo. Dos
+        # exclusiones anteriores le quitaron su parte:
+        #  · `excluir_centros` sacó de `fab_by_month` las cuentas etiquetadas
+        #    al centro absorbido (en TEJIDO: energéticos y agujados, ~179k/mes)
+        #  · `renta_centros` dejó fuera su renta contractual (284,269/mes)
+        # La tarifa por hora, en cambio, capitaliza el costo COMPLETO del
+        # centro — renta y cuentas etiquetadas incluidas. Restar el abono
+        # entero quitaría esas dos partidas por segunda vez y subvaluaría el
+        # factor de los centros que siguen en capa (~463k/mes con la tarifa de
+        # sep-2026, ~12% del pool). Así que se resta solo el REMANENTE: lo que
+        # el centro absorbido aportaba al pool por cuentas SIN etiquetar
+        # (nómina de 501.06, indirectos genéricos de 504.01, depreciación),
+        # que es lo único que las exclusiones no pudieron quitar.
+        absorcion_ya_fuera = 0.0
+        if absorbidos:
+            absorcion_ya_fuera = (
+                self._smooth(self._pool_by_month(
+                    FAB_BUCKETS, fab_from, date_to, es_variable=False,
+                    es_renta=False, incluir_centros=excluir), meses=fab_meses)
+                # Sólo la renta que `renta_centros` habría sumado: la de un
+                # centro admin nunca estuvo en el pool, así que descontarla
+                # aquí haría lo contrario de lo que este bloque arregla.
+                + sum(absorbidos.filtered(
+                    lambda c: c.nature in ('fabril_directo',
+                                           'fabril_indirecto')
+                ).mapped('renta_contractual_mxn')))
+        absorcion_pool = max(absorcion_bruta - absorcion_ya_fuera, 0.0)
+
+        fab_pool = max(self._smooth(fab_sin_renta, meses=fab_meses)
+                       + renta_contractual
+                       - entretela_en_pool - absorcion_pool, 0.0)
+        energia_pool = self._smooth(energia_by_month, meses=meses)
+        op_pool = self._smooth(op_by_month, meses=meses)
+        ventas_pool = self._smooth(ventas_by_month, meses=meses)
+
+        kg_centros = Centro.search([('es_denominador_kg', '=', True),
+                                    ('id', 'not in', excluir)])
+        m_centros = Centro.search([('es_denominador_m', '=', True),
+                                   ('id', 'not in', excluir)])
+        ajuste_m = self._ajuste_metros_by_month(date_from, date_to)
+        caps = self._capacidad_normal_map(kg_centros | m_centros)
+        # Denominador = capacidad NORMAL (IAS 2). La producción real se sigue
+        # midiendo aparte para saber cuánto del pool NO se absorbió: ese es el
+        # costo de la ociosidad, y va al resultado del período, no al producto.
         kg_denom = (Config.get_param('denominador_kg_override', 0.0)
-                    or self._production_month_avg(kg_centros, date_from, date_to))
+                    or self._denominador_capacidad(
+                        kg_centros, date_from, date_to, caps=caps))
         m_denom = (Config.get_param('denominador_m_override', 0.0)
-                   or self._production_month_avg(
+                   or self._denominador_capacidad(
                        m_centros, date_from, date_to,
-                       restar_by_month=self._ajuste_metros_by_month(
-                           date_from, date_to)))
+                       restar_by_month=ajuste_m, caps=caps))
+        kg_real = self._production_month_avg(kg_centros, date_from, date_to)
+        m_real = self._production_month_avg(
+            m_centros, date_from, date_to, restar_by_month=ajuste_m)
+
+        # Importación: los gastos e impuestos de aduana se cargan al valor de
+        # lo importado (el IGI se calcula sobre el valor en aduana; flete y
+        # agente escalan con el valor embarcado). Antes caían en `no_costeo` y
+        # ningún producto los pagaba, o peor, en `operacion` y se prorrateaban
+        # sobre TODAS las ventas — incluidas las de producto nacional.
+        importacion_pool = self._smooth(
+            self._pool_by_month(('importacion',), date_from, date_to),
+            meses=meses)
+        # Driver por default: `landed`. La aduana NO se prorratea con una
+        # fórmula, porque el pedimento ya dice a qué embarque pertenece: se
+        # captura con el landed cost de Odoo sobre la recepción y cae en los
+        # productos que de verdad lo causaron. Prorratear sobre una base
+        # promedio le cobra al hilo el pedimento de una máquina y viceversa.
+        #
+        # `compras` habilita el prorrateo como aproximación explícita, para
+        # quien no vaya a capturar los pedimentos. Sigue siendo un proxy.
+        driver = Config.get_param_text('importacion_driver', 'landed')
+        importacion_base = 0.0
+        import_ids = set()
+        if importacion_pool and driver == 'compras':
+            importacion_base, import_ids = self._import_purchase_base(
+                date_from, date_to)
+        factor_importacion = (
+            Config.get_param('importacion_factor_override', 0.0)
+            or (importacion_pool / importacion_base if importacion_base else 0.0))
+        # Guarda contra base mal medida o cuenta mal clasificada: cualquiera
+        # de las dos dispararía el costo de TODOS los importados sin aviso.
+        factor_max = Config.get_param('importacion_factor_max', 1.0) or 1.0
+        if factor_importacion > factor_max:
+            _logger.warning(
+                'qb.costo.factores %s: factor de importación %.3f supera el '
+                'máximo %.3f (pool %.2f ÷ base %.2f). Se recorta — casi '
+                'siempre significa que la base está incompleta (proveedores '
+                'sin país capturado) o que hay una cuenta ajena en el bucket '
+                '«importacion».',
+                period, factor_importacion, factor_max,
+                importacion_pool, importacion_base)
+            factor_importacion = factor_max
 
         ws = Config.get_param('fab_weight_share', 0.67)
+        # El share se calibró con TODOS los centros dentro. Cuando un lado se
+        # queda sin centros en capa, repartirle una fracción del pool dejaría
+        # dinero sin absorber en un factor que ya no tiene denominador.
+        if not kg_centros and m_centros:
+            ws = 0.0
+        elif not m_centros and kg_centros:
+            ws = 1.0
         factor_fab_kg = ws * fab_pool / kg_denom if kg_denom else 0.0
         factor_fab_m = (1 - ws) * fab_pool / m_denom if m_denom else 0.0
+        # La energía es VARIABLE: su $/kg se divide entre los kilos que de
+        # verdad se produjeron, no entre la capacidad normal. Con capacidad
+        # normal en el denominador, un mes al 60% de utilización daría una
+        # energía por kilo 40% baja — justo al revés de la realidad física.
+        # (El override manual sigue mandando sobre los dos.)
+        kg_energia = Config.get_param('denominador_kg_override', 0.0) or kg_real
         energia_por_kg = (Config.get_param('energia_por_kg', 0.0)
-                          or (energia_pool / kg_denom if kg_denom else 0.0))
+                          or (energia_pool / kg_energia if kg_energia else 0.0))
         op_pct = (Config.get_param('op_pct_override', 0.0)
                   or (op_pool / ventas_pool if ventas_pool else 0.0))
         entretela_factor = entretela_pool / entretela_m if entretela_m else 0.0
+
+        # Qué tanto del pool fabril tiene centro asignado. No cambia ningún
+        # número: mide el camino que falta para poder costear por ruta real.
+        fab_con_centro = self._smooth(self._pool_by_month(
+            FAB_BUCKETS, fab_from, date_to, es_variable=False,
+            con_centro=True, excluir_centros=excluir), meses=fab_meses)
+        fab_gl_total = self._smooth(fab_by_month, meses=fab_meses)
+        fab_con_centro_pct = (100.0 * fab_con_centro / fab_gl_total
+                              if fab_gl_total else 0.0)
+
+        # Costo de la capacidad ociosa: la parte del pool fijo que la
+        # producción real NO alcanza a absorber contra la capacidad normal.
+        # Con denominador = producción real esto da 0 por construcción, que es
+        # justo el problema que el costeo normal evita.
+        util_kg = kg_real / kg_denom if kg_denom else 0.0
+        util_m = m_real / m_denom if m_denom else 0.0
+        fab_absorbible = fab_pool * (ws * util_kg + (1 - ws) * util_m)
+        fab_ocioso = max(fab_pool - fab_absorbible, 0.0)
 
         Factores = self.env['qb.costo.factores']
         vals = {
             'period': period,
             'window_months': window,
+            'fab_ventana_desde': fab_from,
+            'fab_ventana_meses': fab_meses,
             'fab_pool_month': fab_pool,
             'energia_pool_month': energia_pool,
             'op_pool_month': op_pool,
+            'importacion_pool_month': importacion_pool,
+            'importacion_base_month': importacion_base,
+            'factor_importacion': factor_importacion,
             'ventas_pool_month': ventas_pool,
             'entretela_pool_month': entretela_pool,
+            'renta_contractual_pool': renta_contractual,
+            'absorcion_pool_month': absorcion_pool,
+            'absorcion_bruta_month': absorcion_bruta,
+            'absorcion_ya_fuera_month': absorcion_ya_fuera,
+            'centros_absorbidos': ', '.join(absorbidos.mapped('code')),
+            'centros_capa': ', '.join(Centro.search([
+                ('nature', '!=', 'admin'),
+                ('id', 'not in', excluir)]).mapped('code')),
+            'renta_gl_sustituida': renta_gl,
             'kg_denom_month': kg_denom,
             'm_denom_month': m_denom,
+            'kg_produccion_month': kg_real,
+            'm_produccion_month': m_real,
+            'utilizacion_kg_pct': 100.0 * util_kg,
+            'utilizacion_m_pct': 100.0 * util_m,
+            'fab_ocioso_month': fab_ocioso,
+            'fab_pool_con_centro_pct': fab_con_centro_pct,
             'entretela_m_denom_month': entretela_m,
             'fab_weight_share': ws,
             'factor_fab_kg': factor_fab_kg,
@@ -422,9 +1081,226 @@ class QbCostoProducto(models.Model):
             ('period', '=', period),
             ('company_id', '=', self.env.company.id)], limit=1)
         if existing:
+            if existing.state == 'cerrado' and not self.env.context.get(
+                    'qb_forzar_periodo_cerrado'):
+                # Puerta trasera: alguien llamando _compute_factores directo,
+                # sin pasar por el guard de action_recompute_period.
+                _logger.info('qb.costo.factores: %s está CERRADO — se '
+                             'devuelven los factores congelados.', period)
+                return existing
             existing.write(vals)
             return existing
         return Factores.create(vals)
+
+    # ------------------------------------------------------------------
+    # Ajuste de MP: receta teórica vs. materia prima realmente consumida
+    # ------------------------------------------------------------------
+    @api.model
+    def _sales_qty_by_month(self, date_from, date_to):
+        """{(mes, product_id): qty} vendida, con el mismo dedup del triplete
+        que usa `_sales_by_product`.
+
+        Una sola query para TODA la ventana: el ajuste de MP necesita doce
+        meses, y hacer doce consultas por recálculo no escala — un
+        `action_recompute_year` haría ciento cuarenta y cuatro.
+        """
+        self.env.cr.execute("""
+            WITH lines AS (
+                SELECT aml.move_id, aml.product_id, aml.quantity,
+                       am.move_type, am.currency_id,
+                       date_trunc('month', am.invoice_date)::date AS mes
+                FROM account_move_line aml
+                JOIN account_move am ON am.id = aml.move_id
+                JOIN account_account aa ON aa.id = aml.account_id
+                WHERE am.move_type IN ('out_invoice', 'out_refund')
+                  AND am.state = 'posted'
+                  AND aml.display_type = 'product'
+                  AND aml.product_id IS NOT NULL
+                  AND aa.account_type = 'income'
+                  AND am.invoice_date >= %s AND am.invoice_date < %s
+                  AND aml.company_id = %s
+            ),
+            dedup AS (
+                {QTY_DEDUP}
+            )
+            SELECT mes, product_id,
+                   SUM(CASE WHEN move_type = 'out_refund'
+                            THEN -quantity ELSE quantity END)
+            FROM dedup
+            GROUP BY 1, 2
+        """.format(QTY_DEDUP=QTY_DEDUP_SQL),
+            (date_from, date_to, self.env.company.id))
+        return {(mes, pid): qty or 0.0
+                for mes, pid, qty in self.env.cr.fetchall()}
+
+    @api.model
+    def _mp_ajuste(self, date_from, date_to, ctx, qty_by_month=None):
+        """Factor que acerca la MP de receta a la MP realmente consumida.
+
+        Devuelve `(gl_mes, modelada_mes, factor)`.
+
+        La MP del motor es la receta explotada al ÚLTIMO precio de compra: un
+        costo de reposición teórico. No lleva merma, ni rendimiento real, ni
+        la variación entre ese último precio y lo que de verdad se pagó. La
+        contabilidad sí sabe cuánta materia prima se consumió — es el costo
+        primo, más los ajustes de inventario. El cociente entre las dos es el
+        factor.
+
+        Ambos lados se suman sobre la MISMA ventana antes de dividir, no se
+        promedian por separado: una ventana con meses de venta desigual daría
+        un factor sesgado hacia los meses flojos.
+
+        El factor NO se aplica a los importados: su MP es el precio de compra
+        más aduana, no materia prima que la planta consuma, y meterla al
+        cociente contaminaría las dos partes.
+
+        Factor 1.0 (inerte) si no hay cuentas clasificadas en el bucket
+        `mp` — el ajuste solo existe cuando hay contra qué conciliar.
+
+        Aproximación conocida: la MP modelada usa la receta y el último precio
+        de compra de HOY sobre las ventas de los doce meses, mientras el GL es
+        histórico. Es la misma convención que usa todo el motor (el costo se
+        expresa a precios de reposición), y por eso el factor se lee como
+        "cuánto se desvía la receta del consumo real", no como una
+        reexpresión contable de cada mes.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        gl_by_month = self._pool_by_month(('mp',), date_from, date_to)
+        if not gl_by_month:
+            return 0.0, 0.0, 1.0
+
+        if qty_by_month is None:
+            qty_by_month = self._sales_qty_by_month(date_from, date_to)
+        Ruteo = self.env['qb.producto.ruteo']
+        rules = ctx['rules']
+        Product = self.env['product.product']
+        products = {p.id: p for p in Product.browse(
+            list({pid for _mes, pid in qty_by_month})).exists()}
+        modelada_by_month = {}
+        nacional = {}
+        for (mes, pid), qty in qty_by_month.items():
+            if qty <= 0:
+                continue
+            product = products.get(pid)
+            if product is None:
+                continue
+            es_nac = nacional.get(pid)
+            if es_nac is None:
+                bucket, _centros = Ruteo.resolve(product, rules)
+                es_nac = not self._es_importado(product, bucket) \
+                    and bucket != 'subproducto'
+                nacional[pid] = es_nac
+            if not es_nac:
+                continue
+            mp = self._mp_cost_unit(product, ctx=ctx)
+            modelada_by_month[mes] = modelada_by_month.get(mes, 0.0) + mp * qty
+
+        # Solo los meses con dato de los DOS lados: un mes sin póliza de costo
+        # primo (o sin ventas) sesgaría el cociente.
+        meses = [m for m in gl_by_month
+                 if gl_by_month[m] > 0 and modelada_by_month.get(m, 0.0) > 0]
+        if not meses:
+            return 0.0, 0.0, 1.0
+        gl = sum(gl_by_month[m] for m in meses)
+        modelada = sum(modelada_by_month[m] for m in meses)
+        factor = (Config.get_param('mp_ajuste_override', 0.0)
+                  or (gl / modelada if modelada else 1.0))
+
+        # Banda de cordura: un factor disparado casi siempre significa una
+        # cuenta mal clasificada en el bucket `mp`, no que la receta esté
+        # equivocada por 3×. Se recorta y se loggea en vez de reescribir todos
+        # los costos en silencio.
+        f_min = Config.get_param('mp_ajuste_min', 0.5) or 0.5
+        f_max = Config.get_param('mp_ajuste_max', 1.5) or 1.5
+        if not f_min <= factor <= f_max:
+            _logger.warning(
+                'qb.costo.factores: ajuste de MP %.4f fuera de la banda '
+                '[%.2f, %.2f] (GL %.2f ÷ modelada %.2f en %s meses). Se '
+                'recorta — revisa qué cuentas están en el bucket «mp».',
+                factor, f_min, f_max, gl, modelada, len(meses))
+            factor = min(max(factor, f_min), f_max)
+        return gl / len(meses), modelada / len(meses), factor
+
+    # ------------------------------------------------------------------
+    # Base de importación: valor comprado de producto importado
+    # ------------------------------------------------------------------
+    @api.model
+    def _es_importado(self, product, bucket=None):
+        """¿El producto se compra importado? Mismo criterio que usa la MP:
+        la familia de ruteo, o el sufijo ' I' de la nomenclatura."""
+        if bucket is None:
+            bucket, _c = self.env['qb.producto.ruteo'].resolve(product)
+        return bucket == 'importado' or (product.default_code or '').endswith(' I')
+
+    @api.model
+    def _import_purchase_base(self, date_from, date_to, rules=None):
+        """Valor de compra mensual promedio de lo IMPORTADO, y qué productos
+        lo son. Devuelve `(base_mensual, {product_id})`.
+
+        Es la base sobre la que se reparten los gastos e impuestos de aduana:
+        el IGI se calcula sobre el valor en aduana, y flete y agente escalan
+        con el valor embarcado. Se promedian solo los meses CON compras — si
+        se importa cada dos meses, dividir entre la ventana completa partiría
+        el factor a la mitad.
+
+        **Qué cuenta como importado.** El país del proveedor, no la moneda de
+        la orden. Comprarle en dólares a un proveedor mexicano (ALPEK POLYESTER
+        MEXICO, HILADOS DE ALTA CALIDAD) NO es una importación y no causa
+        pedimento; comprarle a NINGBO MH INDUSTRY sí, se facture en la moneda
+        que se facture.
+
+        **La base es TODO lo importado, no solo lo que se revende.** Medido
+        sobre sep 2025 – ago 2026, el valor importado se reparte ~83% materia
+        prima (hilo, fibra, resina), ~9% producto de reventa y ~6% activo fijo.
+        Tomar como base solo la familia de reventa multiplicaba el factor por
+        once: el pedimento del hilo lo causa el hilo.
+
+        El activo fijo se queda en la base a propósito —su pedimento existe y
+        diluye el factor correctamente— pero nunca recibe el recargo, porque
+        una máquina no pasa por el costo del producto. Esa parte del pool
+        queda sin absorber, que es justo lo que debe pasar.
+        """
+        company = self.env.company
+        # El país del PROVEEDOR es el discriminante. Se compara contra el país
+        # de la compañía: sin país capturado, la compra no se cuenta como
+        # importación (mejor dejar dinero fuera del reparto que inventarlo).
+        self.env.cr.execute("""
+            SELECT date_trunc('month', po.date_order)::date AS mes,
+                   pol.product_id, po.currency_id,
+                   SUM(pol.price_unit * pol.product_qty
+                       * (1 - COALESCE(pol.discount, 0) / 100.0)) AS monto
+            FROM purchase_order_line pol
+            JOIN purchase_order po ON po.id = pol.order_id
+            JOIN res_partner prov ON prov.id = po.partner_id
+            JOIN res_company cia ON cia.id = po.company_id
+            JOIN res_partner cia_p ON cia_p.id = cia.partner_id
+            WHERE po.state IN ('purchase', 'done')
+              AND po.company_id = %s
+              AND po.date_order >= %s AND po.date_order < %s
+              AND pol.product_id IS NOT NULL
+              AND prov.country_id IS NOT NULL
+              AND prov.country_id IS DISTINCT FROM cia_p.country_id
+            GROUP BY 1, 2, 3
+        """, (company.id, date_from, date_to))
+        rows = self.env.cr.fetchall()
+        if not rows:
+            return 0.0, set()
+
+        currencies = {c.id: c for c in self.env['res.currency'].browse(
+            list({r[2] for r in rows if r[2]})).exists()}
+        by_month = {}
+        importados = set()
+        for mes, product_id, currency_id, monto in rows:
+            monto = monto or 0.0
+            currency = currencies.get(currency_id)
+            if currency and currency != company.currency_id:
+                monto = currency._convert(
+                    monto, company.currency_id, company, mes)
+            by_month[mes] = by_month.get(mes, 0.0) + monto
+            importados.add(product_id)
+        activos = [v for v in by_month.values() if v > 0]
+        base = sum(activos) / len(activos) if activos else 0.0
+        return base, importados
 
     # ------------------------------------------------------------------
     # MP: último costo de compra, explosión recursiva
@@ -494,10 +1370,11 @@ class QbCostoProducto(models.Model):
         return price
 
     @api.model
-    def _engine_ctx(self, product_ids=None):
+    def _engine_ctx(self, product_ids=None, factores=None):
         """Contexto de una corrida del motor: todo lo que se resuelve UNA vez
         y se comparte en el loop (reglas de ruteo, mapa de últimas compras,
-        cachés de peso y MP). Mantiene el motor O(productos), no O(queries).
+        factor de importación, cachés de peso y MP). Mantiene el motor
+        O(productos), no O(queries).
         """
         leaf_ids = set(product_ids or [])
         # Todas las hojas posibles de las recetas, en un query
@@ -510,20 +1387,38 @@ class QbCostoProducto(models.Model):
             pols = self.env['purchase.order.line'].browse(list(pol_map.values()))
             pols.read(['price_unit', 'discount', 'order_id'])
             pols.order_id.read(['currency_id', 'date_order'])
+        # Qué productos se COMPRAN importados: son los que cargan el recargo
+        # de aduana. Incluye la materia prima importada (el hilo es el 83% del
+        # valor importado), no solo la familia de reventa — y por eso el
+        # recargo llega a la tela nacional por la receta, sin tratarla como
+        # importada.
+        import_ids = set()
+        if factores and factores.factor_importacion:
+            win_to = factores.period + relativedelta(months=1)
+            win_from = win_to - relativedelta(
+                months=factores.window_months or 12)
+            _base, import_ids = self._import_purchase_base(win_from, win_to)
         return {
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,
             'multi_bom_ids': self._multi_bom_ids_set(),
+            # El caché de MP guarda el costo YA con aduana, así que el factor
+            # tiene que vivir en el contexto de la corrida: mezclar dos
+            # factores en el mismo caché daría costos incoherentes.
+            'import_factor': factores.factor_importacion if factores else 0.0,
+            'import_ids': import_ids,
             'peso_cache': {},
             'mp_cache': {},
         }
 
     @api.model
-    def _mp_cost_unit(self, product, cache=None, seen=None, ctx=None):
+    def _mp_cost_unit(self, product, cache=None, seen=None, ctx=None,
+                      import_factor=None):
         """Costo primo MP por unidad: BOM recursiva a último costo.
 
         Reglas: subproducto → $0 (su MP ya está en la receta del principal);
-        importado → landed (avg de Odoo), sin costo propio → gemelo nacional;
+        importado → costo de compra MÁS gastos e impuestos de aduana
+        (`import_factor`); sin costo propio → gemelo nacional;
         receta AMBIGUA (>1 BOM activa) con AVCO válido → costo AVCO de Odoo
         (evita colapsar el costo eligiendo una receta al azar);
         hoja sin BOM → último costo de compra (fallback avg).
@@ -531,6 +1426,16 @@ class QbCostoProducto(models.Model):
         `ctx` (de _engine_ctx) comparte reglas/pol_map/cachés en loops
         grandes; sin él (cotizador, tests) resuelve todo al vuelo.
         """
+        # El landed va DENTRO de la MP y no como capa aparte: así lo recoge
+        # también la receta que consume el importado como componente, y la
+        # cascada del cotizador y del PDF sigue cuadrando sin cambios.
+        if import_factor is None:
+            import_factor = (ctx or {}).get('import_factor', 0.0)
+        # El recargo de aduana se aplica SOLO donde el costo viene de una
+        # compra importada. Nunca después de explotar una receta: los
+        # componentes importados ya lo traen dentro, y volver a aplicarlo
+        # sobre el total lo contaría dos veces.
+        import_ids = (ctx or {}).get('import_ids') or set()
         cache = cache if cache is not None \
             else (ctx['mp_cache'] if ctx else {})
         seen = seen if seen is not None else set()
@@ -554,7 +1459,12 @@ class QbCostoProducto(models.Model):
                 twin = self.env['product.product'].search(
                     [('default_code', '=', ref[:-2].strip())], limit=1)
                 if twin:
-                    cost = self._mp_cost_unit(twin, cache, seen, ctx)
+                    # El gemelo nacional ya viene con su propio tratamiento;
+                    # no se le vuelve a aplicar el recargo encima.
+                    cost = self._mp_cost_unit(twin, cache, seen, ctx,
+                                              import_factor)
+                    import_factor = 0.0
+            cost *= 1.0 + import_factor
         else:
             std = product.standard_price or 0.0
             is_multi = self._has_multiple_boms(product, ctx)
@@ -571,15 +1481,32 @@ class QbCostoProducto(models.Model):
                 # En vez de explotar una al azar (que colapsaría el costo),
                 # explota TODAS y toma la MÁS CARA — conservador para cotizar.
                 boms = self._applicable_boms(product)
-                costs = [self._explode_bom(b, product, cache, seen, ctx)
+                costs = [self._explode_bom(b, product, cache, seen, ctx,
+                                           import_factor)
                          for b in boms]
-                cost = max(costs) if costs else \
-                    self._last_purchase_cost(product, pol_map)
+                cost = max(costs) if costs else self._costo_de_compra(
+                    product, pol_map, import_factor, import_ids)
             else:
                 bom = self.env['mrp.bom']._bom_find(product).get(product)
-                cost = self._explode_bom(bom, product, cache, seen, ctx) \
-                    if bom else self._last_purchase_cost(product, pol_map)
+                cost = self._explode_bom(bom, product, cache, seen, ctx,
+                                         import_factor) \
+                    if bom else self._costo_de_compra(
+                        product, pol_map, import_factor, import_ids)
         cache[product.id] = cost
+        return cost
+
+    @api.model
+    def _costo_de_compra(self, product, pol_map, import_factor, import_ids):
+        """Último costo de compra de una hoja, con el recargo de aduana si esa
+        hoja se compra importada.
+
+        Aquí es donde el pedimento del hilo llega al costo de la tela: el hilo
+        importado carga su aduana en SU costo, y la receta lo arrastra a cada
+        tela que lo consume. La tela no se trata como importada — no lo es.
+        """
+        cost = self._last_purchase_cost(product, pol_map)
+        if import_factor and product.id in import_ids:
+            cost *= 1.0 + import_factor
         return cost
 
     @api.model
@@ -593,17 +1520,24 @@ class QbCostoProducto(models.Model):
         ])
 
     @api.model
-    def _explode_bom(self, bom, product, cache, seen, ctx):
+    def _explode_bom(self, bom, product, cache, seen, ctx,
+                     import_factor=0.0):
         """Costo MP/unidad explotando UNA receta: Σ(qty × costo_hoja) ÷ salida.
         raise_if_failure=False evita que una conversión entre categorías de
         UoM (kg vs m) tumbe el costeo — deja la cantidad sin convertir."""
         total = 0.0
         for line in bom.bom_line_ids:
+            # Una receta con atributos trae líneas que solo aplican a ciertas
+            # variantes. Sin este filtro, el producto cargaba componentes que
+            # NO consume — su MP salía inflada por todo lo de sus hermanas.
+            if line._skip_bom_line(product):
+                continue
             comp = line.product_id
             qty = line.product_uom_id._compute_quantity(
                 line.product_qty, comp.uom_id, round=False,
                 raise_if_failure=False)
-            total += qty * self._mp_cost_unit(comp, cache, seen, ctx)
+            total += qty * self._mp_cost_unit(comp, cache, seen, ctx,
+                                              import_factor)
         bom_qty = bom.product_uom_id._compute_quantity(
             bom.product_qty, product.uom_id, round=False,
             raise_if_failure=False) or 1.0
@@ -643,17 +1577,36 @@ class QbCostoProducto(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _sales_by_product(self, period):
-        """{product_id: (qty, revenue)} del período, con dedup del triplete
-        (lista+/descuento−/neta+) para qty; revenue suma las 3 líneas
-        (cancelan aritméticamente). out_refund resta.
+        """Ventas facturadas del período, por producto.
 
-        Revenue en MXN desde ``aml.balance`` (moneda de la compañía), NO desde
+        Devuelve ``{product_id: dict}`` con:
+
+        ==================  ====================================================
+        ``qty``             unidades netas (dedup del triplete lista/desc/neta)
+        ``revenue``         facturado en MONEDA DE LA COMPAÑÍA (Σ ``-balance``)
+        ``divisas``         texto con las divisas distintas a la local
+        ``divisa_id``       la divisa extranjera con MÁS facturación (o None)
+        ``qty_divisa``      unidades facturadas en esa divisa
+        ``revenue_divisa``  facturado en esa divisa, sin convertir
+                            (Σ ``-amount_currency``)
+        ``revenue_mxn_divisa``  esa misma facturación, en moneda local
+                            (el par de los dos da el TC efectivo)
+        ==================  ====================================================
+
+        Dedup del triplete (lista+/descuento−/neta+) para qty; el revenue suma
+        las 3 líneas (cancelan aritméticamente). ``out_refund`` resta.
+        El dedup colapsa solo grupos de TRES o más líneas con la misma
+        cantidad: dos rollos iguales en una factura son dos ventas, no un
+        triplete (ver ``QTY_DEDUP_SQL``).
+
+        El revenue en moneda local sale de ``aml.balance``, NO de
         ``price_subtotal`` (moneda del documento): así una factura en USD entra
         con su valor real en pesos y no mezcla dólares con pesos. Para una línea
         de ingreso, balance es crédito (negativo) en venta y débito (positivo)
         en nota de crédito → ``SUM(-balance)`` suma ventas y resta devoluciones
-        sin necesitar el CASE por move_type. Mismo criterio que el cotizador
-        (``sales_by_customer``).
+        sin necesitar el CASE por move_type. ``amount_currency`` lleva el mismo
+        signo, así que el importe en divisa se obtiene igual; el par de los dos
+        da el TC efectivo de las facturas del mes.
 
         Solo cuentas de tipo 'income' (401.x ventas, 402.x rebajas/dev):
         una factura contra 'utilidad en venta de activo fijo' (income_other,
@@ -661,10 +1614,13 @@ class QbCostoProducto(models.Model):
         anticipos de clientes (liability) NO es venta de producto y antes
         contaminaba precio y contribución del mes."""
         date_to = period + relativedelta(months=1)
+        company_currency = self.env.company.currency_id
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
-                       aml.balance, am.move_type, am.currency_id
+                       aml.balance, aml.amount_currency,
+                       am.move_type, am.currency_id,
+                       date_trunc('month', am.invoice_date)::date AS mes
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
                 JOIN account_account aa ON aa.id = aml.account_id
@@ -677,25 +1633,64 @@ class QbCostoProducto(models.Model):
                   AND aml.company_id = %s
             ),
             qty_dedup AS (
-                SELECT DISTINCT ON (move_id, product_id, ABS(quantity))
-                       move_id, product_id, quantity, move_type
+                {QTY_DEDUP}
+            ),
+            qty_agg AS (
+                SELECT product_id, currency_id,
+                       SUM(CASE WHEN move_type = 'out_refund'
+                                THEN -quantity ELSE quantity END) AS qty
+                FROM qty_dedup
+                GROUP BY 1, 2
+            ),
+            rev_agg AS (
+                SELECT product_id, currency_id,
+                       SUM(-balance) AS revenue,
+                       SUM(-amount_currency) AS revenue_cur
                 FROM lines
-                ORDER BY move_id, product_id, ABS(quantity)
+                GROUP BY 1, 2
             )
-            SELECT l.product_id,
-                   COALESCE((SELECT SUM(CASE WHEN q.move_type = 'out_refund'
-                                             THEN -q.quantity ELSE q.quantity END)
-                             FROM qty_dedup q WHERE q.product_id = l.product_id), 0) AS qty,
-                   SUM(-l.balance) AS revenue,
-                   string_agg(DISTINCT CASE WHEN l.currency_id != %s
-                                            THEN cur.name END, ', ') AS divisas
-            FROM lines l
-            LEFT JOIN res_currency cur ON cur.id = l.currency_id
-            GROUP BY l.product_id
-        """, (period, date_to, self.env.company.id,
-              self.env.company.currency_id.id))
-        return {row[0]: (row[1] or 0.0, row[2] or 0.0, row[3] or '')
-                for row in self.env.cr.fetchall()}
+            SELECT r.product_id, r.currency_id, cur.name,
+                   COALESCE(q.qty, 0), r.revenue, r.revenue_cur
+            FROM rev_agg r
+            LEFT JOIN qty_agg q
+                   ON q.product_id = r.product_id
+                  AND q.currency_id IS NOT DISTINCT FROM r.currency_id
+            LEFT JOIN res_currency cur ON cur.id = r.currency_id
+        """.format(QTY_DEDUP=QTY_DEDUP_SQL),
+            (period, date_to, self.env.company.id))
+
+        result = {}
+        # {product_id: {currency_id: (qty, revenue_mxn, revenue_cur)}} de las
+        # divisas EXTRANJERAS, para elegir después la dominante por facturación.
+        foreign = {}
+        for pid, cur_id, cur_name, qty, revenue, revenue_cur in \
+                self.env.cr.fetchall():
+            row = result.setdefault(pid, {
+                'qty': 0.0, 'revenue': 0.0, 'divisas': [],
+                'divisa_id': None, 'qty_divisa': 0.0, 'revenue_divisa': 0.0,
+                'revenue_mxn_divisa': 0.0,
+            })
+            row['qty'] += qty or 0.0
+            row['revenue'] += revenue or 0.0
+            if cur_id and cur_id != company_currency.id:
+                if cur_name and cur_name not in row['divisas']:
+                    row['divisas'].append(cur_name)
+                foreign.setdefault(pid, {})[cur_id] = (
+                    qty or 0.0, revenue or 0.0, revenue_cur or 0.0)
+        for pid, by_cur in foreign.items():
+            # La divisa dominante = la de mayor facturación (en pesos, para
+            # que sean comparables entre sí monedas distintas).
+            cur_id = max(by_cur, key=lambda c: abs(by_cur[c][1]))
+            qty, rev_mxn, rev_cur = by_cur[cur_id]
+            result[pid].update({
+                'divisa_id': cur_id,
+                'qty_divisa': qty,
+                'revenue_divisa': rev_cur,
+                'revenue_mxn_divisa': rev_mxn,
+            })
+        for row in result.values():
+            row['divisas'] = ', '.join(sorted(row['divisas']))
+        return result
 
     # ------------------------------------------------------------------
     # Recompute
@@ -714,6 +1709,15 @@ class QbCostoProducto(models.Model):
             period = fields.Date.from_string(period)
         period = date(period.year, period.month, 1)
 
+        Factores = self.env['qb.costo.factores']
+        if Factores.periodo_cerrado(period) and not self.env.context.get(
+                'qb_forzar_periodo_cerrado'):
+            _logger.info(
+                'qb.costo.producto: %s está CERRADO — no se recalcula. '
+                'Reábrelo con motivo si de verdad hay que moverlo.', period)
+            return False
+        self = self.with_context(qb_periodo_verificado=True)
+
         factores = self._compute_factores(period)
         sales = self._sales_by_product(period)
 
@@ -728,7 +1732,28 @@ class QbCostoProducto(models.Model):
 
         Ruteo = self.env['qb.producto.ruteo']
         Peso = self.env['qb.producto.peso']
-        ctx = self._engine_ctx(product_ids)
+        ctx = self._engine_ctx(product_ids, factores)
+
+        # El ajuste de MP necesita el caché de costos ya caliente, así que se
+        # resuelve DESPUÉS del contexto y antes del loop. Compara la receta
+        # contra el costo primo del mayor sobre la misma ventana de suavizado.
+        window = factores.window_months or 12
+        win_to = period + relativedelta(months=1)
+        win_from = win_to - relativedelta(months=window)
+        # Las cantidades de la ventana las comparten los dos factores: una
+        # sola query en vez de dos idénticas por recálculo.
+        qty_ventana = self._sales_qty_by_month(win_from, win_to)
+        mp_gl, mp_modelada, mp_ajuste = self._mp_ajuste(
+            win_from, win_to, ctx, qty_by_month=qty_ventana)
+        factores.write({'mp_gl_month': mp_gl,
+                        'mp_modelada_month': mp_modelada,
+                        'mp_ajuste': mp_ajuste})
+        # La tasa de operación se reparte sobre el costo de producción, que ya
+        # incorpora el ajuste de MP recién escrito — de ahí el orden.
+        factores.op_rate = self._op_rate(
+            win_from, win_to, factores, ctx, Ruteo, Peso,
+            qty_by_month=qty_ventana)
+
         existing = {r.product_id.id: r for r in self.search(
             [('period', '=', period),
              ('company_id', '=', self.env.company.id)])}
@@ -813,24 +1838,40 @@ class QbCostoProducto(models.Model):
                               Ruteo, Peso):
         """Vals de qb.costo.producto para UN producto. Devuelve
         (vals, fab_absorbida × qty) para el acumulado de cobertura."""
-        bucket, centros = Ruteo.resolve(product, ctx['rules'])
-        kg = Peso.resolve_kg_per_unit(product, ctx['peso_cache'])
+        bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab = \
+            self._capas_produccion(product, factores, ctx, Ruteo, Peso)
         peso_source = Peso.resolve_kg_source(product, ctx['peso_cache'])
-        m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
-        uom_name = (product.uom_id.name or '').lower()
-        is_kg = uom_name in KG_UOM_NAMES
-        qty, revenue, divisa = sales.get(product.id, (0.0, 0.0, ''))
+        venta = sales.get(product.id) or {}
+        qty = venta.get('qty', 0.0)
+        revenue = venta.get('revenue', 0.0)
+        divisa = venta.get('divisas', '')
         # qty neta ≤ 0 (devoluciones > ventas en el período) daría un precio
         # negativo que envenena márgenes y alertas: se trata como sin ventas.
         precio = revenue / qty if qty > 0 else 0.0
+        # Los totales del período se calculan sobre la qty EFECTIVA: sin
+        # precio válido no hay nada que costear y todo total queda en 0
+        # (ventas_total sí conserva el hecho contable).
+        qty_efectiva = qty if precio else 0.0
+        qty_divisa = venta.get('qty_divisa', 0.0)
+        revenue_divisa = venta.get('revenue_divisa', 0.0)
 
-        mp = self._mp_cost_unit(product, ctx=ctx)
-        energia = 0.0 if bucket in ('importado', 'subproducto') \
-            else factores.energia_por_kg * kg
-        fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
-        op = factores.op_pct * precio
+        # Parte de la MP que es aduana (informativa: ya está dentro de mp).
+        # Solo la de ESTE producto si él mismo se compra importado; la aduana
+        # de un componente importado vive dentro de la MP del componente.
+        f_imp = ctx.get('import_factor', 0.0)
+        es_compra_importada = (
+            product.id in (ctx.get('import_ids') or set())
+            or self._es_importado(product, bucket))
+        importacion = (mp * f_imp / (1.0 + f_imp)
+                       if f_imp and es_compra_importada else 0.0)
         variable = mp + energia
         produccion = variable + fab
+        # Operación sobre el costo de producción, no sobre el precio: si el
+        # costo depende del precio, vender con descuento «abarata» el
+        # producto y su margen se ve sano. Con op_rate en 0 (driver legacy
+        # «ventas») se mantiene el reparto sobre el precio.
+        op = (factores.op_rate * produccion if factores.op_rate
+              else factores.op_pct * precio)
         absorbido = produccion + op
         contrib = precio - variable
         bruto = precio - produccion
@@ -861,14 +1902,31 @@ class QbCostoProducto(models.Model):
             'm_per_kg': m_per_kg,
             'qty_vendida': qty,
             'precio_prom': precio,
+            'ventas_total': revenue,
             'divisa_venta': divisa or False,
+            'divisa_id': venta.get('divisa_id') or False,
+            'qty_divisa': qty_divisa,
+            'ventas_total_divisa': revenue_divisa,
+            'precio_prom_divisa':
+                revenue_divisa / qty_divisa if qty_divisa > 0 else 0.0,
+            'tc_prom': (venta.get('revenue_mxn_divisa', 0.0)
+                        / revenue_divisa) if revenue_divisa else 0.0,
             'mp_unit': mp,
+            'importacion_unit': importacion,
             'energia_unit': energia,
             'costo_variable': variable,
             'fab_unit': fab,
             'costo_produccion': produccion,
             'op_unit': op,
             'costo_absorbido': absorbido,
+            'mp_total': mp * qty_efectiva,
+            'importacion_total': importacion * qty_efectiva,
+            'energia_total': energia * qty_efectiva,
+            'fab_total': fab * qty_efectiva,
+            'op_total': op * qty_efectiva,
+            'costo_variable_total': variable * qty_efectiva,
+            'costo_produccion_total': produccion * qty_efectiva,
+            'costo_absorbido_total': absorbido * qty_efectiva,
             'margen_contribucion': contrib if precio else 0.0,
             'margen_contribucion_pct':
                 100.0 * contrib / precio if precio else 0.0,
@@ -888,6 +1946,80 @@ class QbCostoProducto(models.Model):
             'factores_id': factores.id,
         }
         return vals, fab * qty
+
+    @api.model
+    def _capas_produccion(self, product, factores, ctx, Ruteo, Peso):
+        """Las capas de costo de FABRICAR una unidad, en un solo lugar.
+
+        Devuelve `(bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab)`.
+
+        Vive aparte porque lo consumen dos caminos que NO pueden divergir: el
+        costo por producto del reporte, y la base sobre la que se reparte la
+        operación. Si cada uno lo calculara por su cuenta, la tasa de
+        operación dejaría de cuadrar contra el costo al que se aplica.
+        """
+        bucket, centros = Ruteo.resolve(product, ctx['rules'])
+        kg = Peso.resolve_kg_per_unit(product, ctx['peso_cache'])
+        m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
+        is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
+        mp = self._mp_cost_unit(product, ctx=ctx)
+        if not self._es_importado(product, bucket) and bucket != 'subproducto':
+            mp *= factores.mp_ajuste or 1.0
+        energia = 0.0 if bucket in ('importado', 'subproducto') \
+            else factores.energia_por_kg * kg
+        fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
+        return bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab
+
+    @api.model
+    def _op_rate(self, date_from, date_to, factores, ctx, Ruteo, Peso,
+                 qty_by_month=None):
+        """Tasa de operación sobre el COSTO DE PRODUCCIÓN.
+
+        El modelo cobraba la operación como porcentaje del precio de venta
+        (`op = op_pct × precio`). Eso hace que el costo dependa del precio:
+        si vendes más barato, el modelo te dice que costó menos, y el
+        producto vendido con descuento se ve artificialmente sano. Peor aún,
+        un producto SIN ventas en el mes tenía precio 0 y por lo tanto
+        operación 0 — justo los productos que hay que evaluar para decidir si
+        vale la pena empujarlos.
+
+        Con driver de producción la operación se reparte sobre lo que cuesta
+        fabricar, que no se mueve con el descuento del vendedor.
+
+        OJO: esto cambia el costo REPORTADO, no el piso de precio. Para
+        cotizar, `op_pct` sobre el precio sigue siendo lo correcto — el piso a
+        planta llena resuelve «qué precio deja cubierta una operación que es
+        % de la venta», y ahí la circularidad es la fórmula, no un error.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        if Config.get_param_text('op_driver', 'produccion') != 'produccion':
+            return 0.0
+        if qty_by_month is None:
+            qty_by_month = self._sales_qty_by_month(date_from, date_to)
+        if not qty_by_month:
+            return 0.0
+        Product = self.env['product.product']
+        products = {p.id: p for p in Product.browse(
+            list({pid for _mes, pid in qty_by_month})).exists()}
+        unitario = {}
+        base = 0.0
+        meses = set()
+        for (mes, pid), qty in qty_by_month.items():
+            if qty <= 0:
+                continue
+            product = products.get(pid)
+            if product is None:
+                continue
+            costo = unitario.get(pid)
+            if costo is None:
+                _b, _c, _kg, _mkg, _ik, mp, energia, fab = \
+                    self._capas_produccion(product, factores, ctx, Ruteo, Peso)
+                costo = mp + energia + fab
+                unitario[pid] = costo
+            base += costo * qty
+            meses.add(mes)
+        base_mes = base / len(meses) if meses else 0.0
+        return factores.op_pool_month / base_mes if base_mes else 0.0
 
     @api.model
     def _fab_unit(self, bucket, is_kg, kg, m_per_kg, factores):
@@ -956,7 +2088,10 @@ class QbCostoProducto(models.Model):
         peso_source = Peso.resolve_kg_source(product)
         m_per_kg = Peso.resolve_m_per_kg(product)
         is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
-        mp = self._mp_cost_unit(product)
+        mp = self._mp_cost_unit(
+            product, import_factor=factores.factor_importacion)
+        if not self._es_importado(product, bucket) and bucket != 'subproducto':
+            mp *= factores.mp_ajuste or 1.0
         energia = 0.0 if bucket in ('importado', 'subproducto') \
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)

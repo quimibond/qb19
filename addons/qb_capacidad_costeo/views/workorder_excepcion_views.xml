@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Excepciones de tiempo en workorders ============
+         Desde que los workcenters capitalizan horas × tarifa, el tiempo
+         registrado es dinero: un timer desbocado le mete costo a un producto
+         que no lo trabajó. -->
+    <record id="workorder_excepcion_view_list" model="ir.ui.view">
+        <field name="name">qb.workorder.excepcion.list</field>
+        <field name="model">qb.workorder.excepcion</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="tipo == 'lento'"
+                  decoration-warning="tipo == 'sin_horas'"
+                  decoration-info="tipo == 'rapido'">
+                <field name="semana"/>
+                <field name="production_id"/>
+                <field name="workcenter_id"/>
+                <field name="centro_id" optional="show"/>
+                <field name="product_id" optional="hide"/>
+                <field name="qty" sum="Total"/>
+                <field name="horas" sum="Total"/>
+                <field name="rendimiento"/>
+                <field name="horas_a_nominal" optional="show" sum="Total"/>
+                <field name="horas_desviadas" sum="Total"/>
+                <field name="tipo" widget="badge"
+                       decoration-danger="tipo == 'lento'"
+                       decoration-warning="tipo == 'sin_horas'"/>
+                <field name="date_finished" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="workorder_excepcion_view_search" model="ir.ui.view">
+        <field name="name">qb.workorder.excepcion.search</field>
+        <field name="model">qb.workorder.excepcion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="production_id"/>
+                <field name="workcenter_id"/>
+                <field name="product_id"/>
+                <filter name="lento" string="🔴 Timer desbocado"
+                        domain="[('tipo', '=', 'lento')]"/>
+                <filter name="sin_horas" string="🟡 Sin horas registradas"
+                        domain="[('tipo', '=', 'sin_horas')]"/>
+                <filter name="rapido" string="🔵 Horas sin registrar"
+                        domain="[('tipo', '=', 'rapido')]"/>
+                <separator/>
+                <filter name="group_semana" string="Agrupar por semana"
+                        context="{'group_by': 'semana'}"/>
+                <filter name="group_centro" string="Agrupar por centro"
+                        context="{'group_by': 'centro_id'}"/>
+                <filter name="group_wc" string="Agrupar por máquina"
+                        context="{'group_by': 'workcenter_id'}"/>
+                <filter name="group_tipo" string="Agrupar por tipo"
+                        context="{'group_by': 'tipo'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="workorder_excepcion_action" model="ir.actions.act_window">
+        <field name="name">Excepciones de tiempo (workorders)</field>
+        <field name="res_model">qb.workorder.excepcion</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_semana': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ningún timer fuera de rango</p>
+            <p>
+                Aquí salen las operaciones cuyo rendimiento (cantidad ÷ horas
+                registradas) queda fuera de la banda sana. Con la tarifa por
+                hora activa, ese tiempo es dinero: un timer desbocado le carga
+                al producto horas que no trabajó.
+            </p>
+            <p>
+                La banda se ajusta en Configuración → Parámetros
+                (<b>rendimiento_min</b>, <b>rendimiento_max</b>). Este reporte
+                mira siempre la duración REAL registrada, nunca la esperada:
+                la esperada trae rutas con minutos capturados donde van horas.
+            </p>
+        </field>
+    </record>
+
+</odoo>
