@@ -71,9 +71,12 @@ class QbComparadorWizard(models.TransientModel):
                             ('product_id', '=', product.id),
                             ('company_id', '=', self.env.company.id)], limit=1)
         if rec:
-            op_pct = (rec.factores_id.op_pct if rec.factores_id
-                      else (rec.op_unit / rec.precio_prom
-                            if rec.precio_prom else 0.0))
+            # op_pct SIEMPRE de los factores, nunca del cociente
+            # op_unit/precio: con el driver de producción la operación ya no
+            # es un porcentaje del precio y ese cociente daría un piso falso.
+            factores = rec.factores_id or self.env['qb.costo.factores'].search(
+                [], order='period DESC', limit=1)
+            op_pct = factores.op_pct if factores else 0.0
             piso_lleno = ((rec.costo_variable + rec.fab_unit) / (1.0 - op_pct)
                           if op_pct < 1 else 0.0)
             sug, sug_neto = self._sugerido(

@@ -66,7 +66,14 @@ fab/u       = híbrida:  tela en m  → kg/m × factor_kg + factor_m
               entretela carda → factor propio $/m (su MOD + renta ÷ sus metros)
               entretela tejida → factor_kg (tejido+tint) + factor entretela
               importados y subproductos NO cargan fabricación
-op/u        = op_pct × precio    (op_pct = Σ operación ÷ Σ ventas, suavizado)
+op/u        = op_rate × costo_producción   (REPORTE: op_rate = pool de
+                operación ÷ costo de producción de lo vendido). Repartirlo
+                sobre el PRECIO hacía que vender con descuento «abaratara» el
+                producto, y dejaba en $0 la operación de lo no vendido.
+                Reversible a % sobre ventas con el parámetro `op_driver`
+              op_pct × precio  (COTIZADOR: para el piso a planta llena sí es
+                lo correcto — resuelve qué precio deja cubierta una operación
+                que es % de la venta)
 
 costo_variable  = MP + energía            → margen de CONTRIBUCIÓN
 costo_absorbido = variable + fab + op     → P&L / piso a planta llena

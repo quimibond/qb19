@@ -237,6 +237,7 @@
                 <field name="importacion_base_month" optional="hide"/>
                 <field name="factor_importacion" optional="show"/>
                 <field name="op_pct" widget="percentage"/>
+                <field name="op_rate" optional="show"/>
                 <field name="entretela_factor_m"/>
                 <field name="cobertura_fab_pct"/>
             </list>

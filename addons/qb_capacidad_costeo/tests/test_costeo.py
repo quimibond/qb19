@@ -962,6 +962,76 @@ class TestQbCosteo(TransactionCase):
         return (period + relativedelta(months=1) - relativedelta(months=window),
                 period + relativedelta(months=1))
 
+    def test_operacion_no_depende_del_precio(self):
+        """El costo reportado deja de moverse con el descuento del vendedor.
+
+        Con `op = op_pct × precio`, el mismo producto vendido a la mitad
+        «costaba» la mitad de operación y su margen se veía sano. Con driver
+        de producción la operación se reparte sobre lo que cuesta fabricar,
+        que no se mueve con el precio."""
+        period = date(2027, 6, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18, 'op_rate': 0.10})
+        ctx = self.Costo._engine_ctx([self.tela.id], factores)
+
+        def vals_a(precio):
+            ventas = {self.tela.id: {
+                'qty': 100.0, 'revenue': precio * 100.0, 'divisas': ''}}
+            v, _f = self.Costo._compute_product_vals(
+                self.tela, period, factores, ventas, ctx, self.Ruteo, self.Peso)
+            return v
+
+        caro, barato = vals_a(50.0), vals_a(25.0)
+        self.assertAlmostEqual(caro['op_unit'], barato['op_unit'], places=4,
+                               msg='la operación no debe seguir al precio')
+        self.assertAlmostEqual(
+            caro['op_unit'], caro['costo_produccion'] * 0.10, places=4)
+        self.assertAlmostEqual(caro['costo_absorbido'],
+                               barato['costo_absorbido'], places=4)
+        # Y la identidad de capas sigue exacta
+        self.assertAlmostEqual(
+            caro['costo_absorbido'],
+            caro['mp_unit'] + caro['energia_unit'] + caro['fab_unit']
+            + caro['op_unit'], places=4)
+
+    def test_operacion_driver_legacy_sigue_sobre_ventas(self):
+        """Con `op_rate` en 0 (driver «ventas») se mantiene el reparto viejo:
+        el cambio es reversible desde Parámetros."""
+        period = date(2027, 7, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18, 'op_rate': 0.0})
+        ctx = self.Costo._engine_ctx([self.tela.id], factores)
+        ventas = {self.tela.id: {
+            'qty': 100.0, 'revenue': 5000.0, 'divisas': ''}}
+        vals, _f = self.Costo._compute_product_vals(
+            self.tela, period, factores, ventas, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(vals['op_unit'], 0.18 * 50.0, places=4)
+
+    def test_capas_produccion_es_la_misma_cuenta_en_los_dos_caminos(self):
+        """El reporte y la base de la tasa de operación tienen que salir del
+        MISMO cálculo: si divergieran, la tasa no cuadraría contra el costo al
+        que se aplica."""
+        period = date(2027, 8, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18, 'mp_ajuste': 0.9})
+        ctx = self.Costo._engine_ctx([self.tela.id], factores)
+        _b, _c, _kg, _mkg, _ik, mp, energia, fab = \
+            self.Costo._capas_produccion(
+                self.tela, factores, ctx, self.Ruteo, self.Peso)
+        vals, _f = self.Costo._compute_product_vals(
+            self.tela, period, factores, {}, ctx, self.Ruteo, self.Peso)
+        self.assertAlmostEqual(vals['mp_unit'], mp, places=6)
+        self.assertAlmostEqual(vals['energia_unit'], energia, places=6)
+        self.assertAlmostEqual(vals['fab_unit'], fab, places=6)
+        self.assertAlmostEqual(
+            vals['costo_produccion'], mp + energia + fab, places=6)
+
     def test_denominador_usa_capacidad_normal_no_produccion(self):
         """El pool fijo se divide entre capacidad NORMAL, no entre producción
         real (IAS 2). Con producción en el denominador, un mes flojo encarece

@@ -127,7 +127,17 @@ class QbCostoFactores(models.Model):
     factor_fab_kg = fields.Float(string='Factor fabricación $/kg')
     factor_fab_m = fields.Float(string='Factor fabricación $/m')
     energia_por_kg = fields.Float(string='Energía $/kg')
-    op_pct = fields.Float(string='Operación % sobre ventas')
+    op_pct = fields.Float(
+        string='Operación % sobre ventas',
+        help='Σ cuentas de operación ÷ Σ ventas. Es lo correcto para COTIZAR '
+             '(el piso a planta llena resuelve qué precio deja cubierta una '
+             'operación que es % de la venta), pero no para reportar costo.')
+    op_rate = fields.Float(
+        string='Operación sobre costo de producción', digits=(16, 6),
+        help='Pool de operación ÷ costo de producción de lo vendido. Es el '
+             'driver del costo REPORTADO: repartir la operación sobre el '
+             'precio hacía que vender con descuento «abaratara» el producto. '
+             '0 = driver legacy sobre ventas (parámetro `op_driver`).')
     entretela_factor_m = fields.Float(string='Factor entretela $/m')
     cobertura_fab_pct = fields.Float(
         string='Cobertura del pool %',
@@ -750,7 +760,7 @@ class QbCostoProducto(models.Model):
                 for mes, pid, qty in self.env.cr.fetchall()}
 
     @api.model
-    def _mp_ajuste(self, date_from, date_to, ctx):
+    def _mp_ajuste(self, date_from, date_to, ctx, qty_by_month=None):
         """Factor que acerca la MP de receta a la MP realmente consumida.
 
         Devuelve `(gl_mes, modelada_mes, factor)`.
@@ -785,7 +795,8 @@ class QbCostoProducto(models.Model):
         if not gl_by_month:
             return 0.0, 0.0, 1.0
 
-        qty_by_month = self._sales_qty_by_month(date_from, date_to)
+        if qty_by_month is None:
+            qty_by_month = self._sales_qty_by_month(date_from, date_to)
         Ruteo = self.env['qb.producto.ruteo']
         rules = ctx['rules']
         Product = self.env['product.product']
@@ -1294,10 +1305,19 @@ class QbCostoProducto(models.Model):
         window = factores.window_months or 12
         win_to = period + relativedelta(months=1)
         win_from = win_to - relativedelta(months=window)
-        mp_gl, mp_modelada, mp_ajuste = self._mp_ajuste(win_from, win_to, ctx)
+        # Las cantidades de la ventana las comparten los dos factores: una
+        # sola query en vez de dos idénticas por recálculo.
+        qty_ventana = self._sales_qty_by_month(win_from, win_to)
+        mp_gl, mp_modelada, mp_ajuste = self._mp_ajuste(
+            win_from, win_to, ctx, qty_by_month=qty_ventana)
         factores.write({'mp_gl_month': mp_gl,
                         'mp_modelada_month': mp_modelada,
                         'mp_ajuste': mp_ajuste})
+        # La tasa de operación se reparte sobre el costo de producción, que ya
+        # incorpora el ajuste de MP recién escrito — de ahí el orden.
+        factores.op_rate = self._op_rate(
+            win_from, win_to, factores, ctx, Ruteo, Peso,
+            qty_by_month=qty_ventana)
 
         existing = {r.product_id.id: r for r in self.search(
             [('period', '=', period),
@@ -1383,12 +1403,9 @@ class QbCostoProducto(models.Model):
                               Ruteo, Peso):
         """Vals de qb.costo.producto para UN producto. Devuelve
         (vals, fab_absorbida × qty) para el acumulado de cobertura."""
-        bucket, centros = Ruteo.resolve(product, ctx['rules'])
-        kg = Peso.resolve_kg_per_unit(product, ctx['peso_cache'])
+        bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab = \
+            self._capas_produccion(product, factores, ctx, Ruteo, Peso)
         peso_source = Peso.resolve_kg_source(product, ctx['peso_cache'])
-        m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
-        uom_name = (product.uom_id.name or '').lower()
-        is_kg = uom_name in KG_UOM_NAMES
         venta = sales.get(product.id) or {}
         qty = venta.get('qty', 0.0)
         revenue = venta.get('revenue', 0.0)
@@ -1403,23 +1420,18 @@ class QbCostoProducto(models.Model):
         qty_divisa = venta.get('qty_divisa', 0.0)
         revenue_divisa = venta.get('revenue_divisa', 0.0)
 
-        mp = self._mp_cost_unit(product, ctx=ctx)
-        es_importado = self._es_importado(product, bucket)
-        # Ajuste de MP: acerca la receta teórica a la materia prima que de
-        # verdad se consumió. NO aplica a importados — su MP es precio de
-        # compra más aduana, no materia prima que la planta consuma.
-        if not es_importado and bucket != 'subproducto':
-            mp *= factores.mp_ajuste or 1.0
         # Parte de la MP que es aduana (informativa: ya está dentro de mp).
         f_imp = ctx.get('import_factor', 0.0)
         importacion = (mp * f_imp / (1.0 + f_imp)
-                       if f_imp and es_importado else 0.0)
-        energia = 0.0 if bucket in ('importado', 'subproducto') \
-            else factores.energia_por_kg * kg
-        fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
-        op = factores.op_pct * precio
+                       if f_imp and self._es_importado(product, bucket) else 0.0)
         variable = mp + energia
         produccion = variable + fab
+        # Operación sobre el costo de producción, no sobre el precio: si el
+        # costo depende del precio, vender con descuento «abarata» el
+        # producto y su margen se ve sano. Con op_rate en 0 (driver legacy
+        # «ventas») se mantiene el reparto sobre el precio.
+        op = (factores.op_rate * produccion if factores.op_rate
+              else factores.op_pct * precio)
         absorbido = produccion + op
         contrib = precio - variable
         bruto = precio - produccion
@@ -1494,6 +1506,80 @@ class QbCostoProducto(models.Model):
             'factores_id': factores.id,
         }
         return vals, fab * qty
+
+    @api.model
+    def _capas_produccion(self, product, factores, ctx, Ruteo, Peso):
+        """Las capas de costo de FABRICAR una unidad, en un solo lugar.
+
+        Devuelve `(bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab)`.
+
+        Vive aparte porque lo consumen dos caminos que NO pueden divergir: el
+        costo por producto del reporte, y la base sobre la que se reparte la
+        operación. Si cada uno lo calculara por su cuenta, la tasa de
+        operación dejaría de cuadrar contra el costo al que se aplica.
+        """
+        bucket, centros = Ruteo.resolve(product, ctx['rules'])
+        kg = Peso.resolve_kg_per_unit(product, ctx['peso_cache'])
+        m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
+        is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
+        mp = self._mp_cost_unit(product, ctx=ctx)
+        if not self._es_importado(product, bucket) and bucket != 'subproducto':
+            mp *= factores.mp_ajuste or 1.0
+        energia = 0.0 if bucket in ('importado', 'subproducto') \
+            else factores.energia_por_kg * kg
+        fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
+        return bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab
+
+    @api.model
+    def _op_rate(self, date_from, date_to, factores, ctx, Ruteo, Peso,
+                 qty_by_month=None):
+        """Tasa de operación sobre el COSTO DE PRODUCCIÓN.
+
+        El modelo cobraba la operación como porcentaje del precio de venta
+        (`op = op_pct × precio`). Eso hace que el costo dependa del precio:
+        si vendes más barato, el modelo te dice que costó menos, y el
+        producto vendido con descuento se ve artificialmente sano. Peor aún,
+        un producto SIN ventas en el mes tenía precio 0 y por lo tanto
+        operación 0 — justo los productos que hay que evaluar para decidir si
+        vale la pena empujarlos.
+
+        Con driver de producción la operación se reparte sobre lo que cuesta
+        fabricar, que no se mueve con el descuento del vendedor.
+
+        OJO: esto cambia el costo REPORTADO, no el piso de precio. Para
+        cotizar, `op_pct` sobre el precio sigue siendo lo correcto — el piso a
+        planta llena resuelve «qué precio deja cubierta una operación que es
+        % de la venta», y ahí la circularidad es la fórmula, no un error.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        if Config.get_param_text('op_driver', 'produccion') != 'produccion':
+            return 0.0
+        if qty_by_month is None:
+            qty_by_month = self._sales_qty_by_month(date_from, date_to)
+        if not qty_by_month:
+            return 0.0
+        Product = self.env['product.product']
+        products = {p.id: p for p in Product.browse(
+            list({pid for _mes, pid in qty_by_month})).exists()}
+        unitario = {}
+        base = 0.0
+        meses = set()
+        for (mes, pid), qty in qty_by_month.items():
+            if qty <= 0:
+                continue
+            product = products.get(pid)
+            if product is None:
+                continue
+            costo = unitario.get(pid)
+            if costo is None:
+                _b, _c, _kg, _mkg, _ik, mp, energia, fab = \
+                    self._capas_produccion(product, factores, ctx, Ruteo, Peso)
+                costo = mp + energia + fab
+                unitario[pid] = costo
+            base += costo * qty
+            meses.add(mes)
+        base_mes = base / len(meses) if meses else 0.0
+        return factores.op_pool_month / base_mes if base_mes else 0.0
 
     @api.model
     def _fab_unit(self, bucket, is_kg, kg, m_per_kg, factores):

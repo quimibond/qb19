@@ -16,6 +16,32 @@
             <field name="value">0</field>
             <field name="descripcion">Energía variable $/kg. 0 = automático (pool cuentas bucket=energia ÷ kg producidos).</field>
         </record>
+        <record id="factor_op_driver" model="qb.costeo.factor.config">
+            <field name="key">op_driver</field>
+            <field name="value">0</field>
+            <field name="value_text">produccion</field>
+            <field name="descripcion">Driver del costo de OPERACIÓN en el reporte: "produccion" reparte sobre el costo de producción (recomendado: el costo deja de depender del precio); "ventas" lo reparte como % del precio, como antes. El piso de precio del cotizador usa op% sobre venta en los dos casos.</field>
+        </record>
+        <record id="factor_mp_ajuste_min" model="qb.costeo.factor.config">
+            <field name="key">mp_ajuste_min</field>
+            <field name="value">0.5</field>
+            <field name="descripcion">Piso del ajuste de MP (receta vs. costo primo del mayor). Fuera de la banda se recorta y se loggea: casi siempre es una cuenta mal clasificada en el bucket "mp".</field>
+        </record>
+        <record id="factor_mp_ajuste_max" model="qb.costeo.factor.config">
+            <field name="key">mp_ajuste_max</field>
+            <field name="value">1.5</field>
+            <field name="descripcion">Techo del ajuste de MP. Ver mp_ajuste_min.</field>
+        </record>
+        <record id="factor_importacion_factor_max" model="qb.costeo.factor.config">
+            <field name="key">importacion_factor_max</field>
+            <field name="value">1.0</field>
+            <field name="descripcion">Techo del factor de importación (aduana ÷ valor importado). Arriba de esto se recorta y se loggea: una cuenta grande mal puesta en el bucket dispararía el costo de todos los importados.</field>
+        </record>
+        <record id="factor_denominador_capacidad_normal" model="qb.costeo.factor.config">
+            <field name="key">denominador_capacidad_normal</field>
+            <field name="value">1</field>
+            <field name="descripcion">1 = el pool fijo se divide entre capacidad NORMAL (IAS 2: la ociosidad va al resultado del período, no al producto). 0 = entre producción real, como antes.</field>
+        </record>
         <record id="factor_op_pct_override" model="qb.costeo.factor.config">
             <field name="key">op_pct_override</field>
             <field name="value">0</field>
