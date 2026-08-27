@@ -42,6 +42,16 @@
             <field name="value">25</field>
             <field name="descripcion">Techo del rendimiento sano (unidades/hora). Arriba de esto casi siempre son horas sin registrar, no una máquina rapidísima.</field>
         </record>
+        <record id="factor_utilizacion_min_comparable" model="qb.costeo.factor.config">
+            <field name="key">utilizacion_min_comparable</field>
+            <field name="value">0.70</field>
+            <field name="descripcion">Debajo de esta utilización ponderada, el período se marca «Producción baja en la ventana»: la energía se divide entre kilos reales, así que su $/kg —y con él el costo unitario— sale inflado y no compara contra un mes normal. Un mes sano ronda 93-98%.</field>
+        </record>
+        <record id="factor_utilizacion_min_utilizable" model="qb.costeo.factor.config">
+            <field name="key">utilizacion_min_utilizable</field>
+            <field name="value">0.40</field>
+            <field name="descripcion">Debajo de esto el período se marca «Ventana casi sin producción». Enero-2024 salió en 26.6% porque su ventana cae en 2023, cuando las órdenes todavía no se registraban en Odoo: la energía dio $34.22/kg contra $11.09 en diciembre del mismo año.</field>
+        </record>
         <record id="factor_importacion_driver" model="qb.costeo.factor.config">
             <field name="key">importacion_driver</field>
             <field name="value">0</field>

@@ -2425,3 +2425,52 @@ class TestQbCosteo(TransactionCase):
             con_cierre, 0.0,
             'y el mes conserva su gasto real en vez de irse a negativo y '
             'caerse del promedio')
+
+    def test_periodo_con_ventana_sin_produccion_se_marca_no_comparable(self):
+        """Un período cuya ventana produjo muy por debajo de la capacidad NO
+        es comparable con uno normal, y el reporte tiene que decirlo.
+
+        La fabricación se divide entre capacidad normal, así que no se mueve
+        con la producción. La ENERGÍA sí: es variable y se divide entre los
+        kilos REALES, que es lo correcto físicamente. Pero si los kilos de la
+        ventana están muy abajo, su $/kg se infla en esa proporción y el
+        producto sale caro por una razón que no es su costo.
+
+        Medido en producción: enero-2024 dio energía a $34.22/kg y
+        diciembre-2024 a $11.09/kg —3.1×— porque la ventana de los primeros
+        meses cae en 2023, cuando las órdenes todavía no se registraban en
+        Odoo (372 en todo 2023 contra 4,715 en 2024). El margen de esos meses
+        salía negativo por eso, no por el negocio.
+        """
+        Costo = self.Costo
+        Factores = self.env['qb.costo.factores']
+        Config = self.env['qb.costeo.factor.config']
+        parcial = Config.get_param('utilizacion_min_comparable', 0.70)
+        mala = Config.get_param('utilizacion_min_utilizable', 0.40)
+        self.assertGreater(parcial, mala, 'la banda debe ir de menor a mayor')
+
+        # Los períodos ya calculados de la DB: si alguno tiene la ventana
+        # floja, tiene que estar marcado; si está a capacidad, no.
+        for f in Factores.search([], limit=25):
+            util = (f.utilizacion_pond_pct or 0.0) / 100.0
+            if not util:
+                continue
+            if util < mala:
+                self.assertEqual(f.confiabilidad, 'mala', f.period)
+            elif util < parcial:
+                self.assertEqual(f.confiabilidad, 'parcial', f.period)
+            else:
+                self.assertEqual(f.confiabilidad, 'ok', f.period)
+            # Y el marcado siempre viene con su explicación, o sin ella
+            self.assertEqual(bool(f.confiabilidad_detalle),
+                             f.confiabilidad != 'ok', f.period)
+
+        # La ponderada usa el share, no solo los kilos: cuando un lado se
+        # queda sin centros en capa su share es 0, y mirar solo la de kg
+        # marcaría el período como malo sin serlo.
+        period = date(2027, 10, 1)
+        f = Costo._compute_factores(period)
+        ws = f.fab_weight_share
+        esperado = (ws * (f.utilizacion_kg_pct or 0.0)
+                    + (1 - ws) * (f.utilizacion_m_pct or 0.0))
+        self.assertAlmostEqual(f.utilizacion_pond_pct, esperado, places=4)
