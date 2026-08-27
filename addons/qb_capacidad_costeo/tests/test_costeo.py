@@ -1432,6 +1432,57 @@ class TestQbCosteo(TransactionCase):
         self.assertIn(en_operacion,
                       Clase.cuentas_de_importacion_mal_ubicadas())
 
+    def test_smooth_divide_entre_meses_de_ventana_no_de_facturas(self):
+        """Un gasto que se registra al PAGARSE aparece en unos meses sí y
+        otros no. Dividir entre los meses en que apareció da el cargo por
+        factura, no el costo mensual: energía en 53k/65k/173k son $97k por
+        recibo pero $41k al mes si la ventana es de siete."""
+        Costo = self.Costo
+        por_mes = {date(2026, 1, 1): 53000.0,
+                   date(2026, 3, 1): 65000.0,
+                   date(2026, 6, 1): 173000.0}
+        self.assertAlmostEqual(
+            Costo._smooth(por_mes, meses=7), 291000.0 / 7, places=2)
+        # Sin `meses` se conserva el comportamiento viejo (por factura)
+        self.assertAlmostEqual(
+            Costo._smooth(por_mes), 291000.0 / 3, places=2)
+
+    def test_smooth_descarta_el_reverso_de_cierre_de_los_dos_lados(self):
+        """El reverso del cierre anual es un mes negativo. Dejarlo en el
+        numerador hundiría el promedio; dejarlo en el denominador lo
+        subvaluaría igual. Sale de los dos."""
+        por_mes = {date(2025, 11, 1): 100.0,
+                   date(2025, 12, 1): -5000.0,
+                   date(2026, 1, 1): 200.0}
+        # 3 meses de ventana, uno descartado -> 300 / 2
+        self.assertAlmostEqual(
+            self.Costo._smooth(por_mes, meses=3), 150.0, places=2)
+
+    def test_ventana_fabril_arranca_en_el_corte_de_absorcion(self):
+        """Promediar meses del régimen viejo con meses del nuevo mezcla dos
+        cosas distintas: los anteriores al corte llevan el gasto del centro
+        completo. El factor del mes tiene que describir a ese mes."""
+        Centro = self.env['qb.costeo.centro']
+        period = date.today().replace(day=1)
+        corte = period - relativedelta(months=1)
+        centro = Centro.create({
+            'code': 'TEST_VENTANA', 'name': 'Corte de prueba',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': corte,
+        })
+        factores = self.Costo._compute_factores(period)
+        self.assertEqual(factores.fab_ventana_desde, corte,
+                         'la ventana fabril arranca en el corte')
+        self.assertLessEqual(factores.fab_ventana_meses,
+                             factores.window_months)
+        centro.unlink()
+
+        # Sin centros absorbidos, la ventana fabril es la de suavizado
+        factores = self.Costo._compute_factores(period)
+        esperado = (period + relativedelta(months=1)
+                    - relativedelta(months=factores.window_months))
+        self.assertEqual(factores.fab_ventana_desde, esperado)
+
     def test_periodo_cerrado_no_se_recalcula(self):
         """Un período cerrado es un snapshot: ni el cron ni un recálculo
         manual lo tocan. Sin esto, el número que presentaste el mes pasado

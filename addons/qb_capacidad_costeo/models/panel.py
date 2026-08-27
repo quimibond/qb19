@@ -246,6 +246,19 @@ class QbCosteoPanel(models.TransientModel):
                 'equivocado cuando el cuello real está en uno de ellos.'
                 % ', '.join(sin_throughput.mapped('code'))))
 
+        # 5.9.5 Ventana fabril corta tras un corte de absorción
+        if ultimo and ultimo.fab_ventana_meses and \
+                ultimo.fab_ventana_meses < 3 and absorbidos:
+            checks.append((
+                WARN, 'Ventana del pool fabril',
+                'solo %s mes(es) desde el corte de %s. El pool no se puede '
+                'promediar con meses del régimen anterior —llevaban el gasto '
+                'del centro completo— así que arranca corto y ruidoso. Se '
+                'estabiliza solo; mientras tanto, lee los factores del mes '
+                'con esa reserva.'
+                % (ultimo.fab_ventana_meses,
+                   ', '.join(absorbidos.mapped('code')))))
+
         # 5.10 El ajuste de metros pierde su contrapeso si el estiramiento
         # se detiene: resta encogimiento y suma estiramiento, y se compensan.
         desde = fields.Date.today().replace(day=1) - relativedelta(months=6)

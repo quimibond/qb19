@@ -128,8 +128,20 @@ por correo.
 
 ## Ventanas de datos
 
-- Gastos GL: promedio móvil `smoothing_months` (12m default), **excluyendo
-  meses con pool ≤ 0** (reversos de cierre anual).
+**Política:** los dos lados de cualquier cociente se miden sobre la MISMA
+ventana, y el denominador de un pool son los meses de la VENTANA — no los
+meses en que la cuenta tuvo movimiento. La renta y la energía se registran al
+pagarse (la renta oscila entre $506k y $1,490k contra un contrato de ~$1,065k;
+la energía entre $53k y $173k según cuándo llegó el recibo), así que dividir
+entre los meses con factura da el cargo por recibo, no el costo mensual.
+
+- Gastos GL: promedio móvil `smoothing_months` (12m default) sobre los meses
+  de la ventana con pólizas posteadas. Los meses **negativos** (reversos del
+  cierre anual: diciembre 2025 metió +$163M de débito a cuentas de ingreso)
+  se descartan de los dos lados de la división.
+- Pool fabril durante una migración: la ventana arranca en la **fecha de
+  corte** del centro absorbido más reciente. Promediar meses del régimen
+  viejo con meses del nuevo describiría un mes que ya no existe.
 - Producción: promedio `production_window_months` (3m default) de meses completos.
 - Renta: **contractual fija** por centro, para TODOS los centros fabriles
   (el GL de renta se paga a saltos). Las cuentas de renta de inmueble se

@@ -298,6 +298,8 @@
                     <group>
                         <group string="Ventanas y pools">
                             <field name="window_months"/>
+                            <field name="fab_ventana_desde"/>
+                            <field name="fab_ventana_meses"/>
                             <field name="fab_pool_month"/>
                             <field name="absorcion_pool_month"/>
                             <field name="centros_capa"/>

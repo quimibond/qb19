@@ -98,6 +98,17 @@ class QbCostoFactores(models.Model):
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, required=True)
     window_months = fields.Integer(string='Ventana de suavizado (meses)')
+    fab_ventana_desde = fields.Date(
+        string='Ventana del pool fabril desde',
+        help='Normalmente el inicio de la ventana de suavizado. Cuando un '
+             'centro migra a absorción por workcenter, la ventana del pool '
+             'fabril arranca en esa fecha de corte: promediar meses del '
+             'régimen viejo con meses del nuevo mezclaría dos cosas distintas '
+             'y el factor del mes describiría a un mes que ya no existe.')
+    fab_ventana_meses = fields.Integer(
+        string='Meses en la ventana fabril',
+        help='Con pocos meses el pool sale ruidoso — es el precio de que el '
+             'régimen acabe de cambiar. Se estabiliza solo al acumular meses.')
     fab_pool_month = fields.Float(
         string='Pool fabricación/mes',
         help='MOD + overhead + depreciación + arrendamiento maquinaria, '
@@ -528,12 +539,48 @@ class QbCostoProducto(models.Model):
         return {row[0]: sign * row[1] for row in self.env.cr.fetchall()}
 
     @api.model
-    def _smooth(self, by_month, exclude_nonpositive=True):
-        """Promedio de meses válidos (guard pool>0: excluye reversos de
-        cierre anual que meterían meses negativos/cero a la media)."""
-        values = [v for v in by_month.values()
-                  if not exclude_nonpositive or v > 0]
-        return sum(values) / len(values) if values else 0.0
+    def _meses_con_actividad(self, date_from, date_to):
+        """Meses de la ventana con pólizas posteadas.
+
+        Es el denominador correcto de cualquier pool: un gasto que se registra
+        al PAGARSE aparece en unos meses sí y otros no, y dividir entre los
+        meses en que apareció da el cargo por factura, no el costo mensual.
+        Con energía en 53k / 65k / 173k según cuándo llegó el recibo, dividir
+        entre tres da $97k y dividir entre los siete meses de la ventana da
+        $112,678 — el segundo es el que se parece al consumo real.
+        """
+        self.env.cr.execute("""
+            SELECT COUNT(DISTINCT date_trunc('month', aml.date))
+            FROM account_move_line aml
+            WHERE aml.parent_state = 'posted'
+              AND aml.company_id = %s
+              AND aml.date >= %s AND aml.date < %s
+        """, (self.env.company.id, date_from, date_to))
+        return self.env.cr.fetchone()[0] or 0
+
+    @api.model
+    def _smooth(self, by_month, meses=None, exclude_negative=True):
+        """Promedio mensual de un pool.
+
+        `meses` es el número de meses de la VENTANA, no de los meses en que la
+        cuenta tuvo movimiento: ver `_meses_con_actividad`. Sin él se conserva
+        el comportamiento viejo (dividir entre los meses con dato), que sirve
+        para llamadas sueltas donde la ventana no se conoce.
+
+        Los meses NEGATIVOS se descartan de los dos lados de la división: son
+        los reversos del cierre anual (diciembre 2025 metió +$163M de débito a
+        cuentas de ingreso), y dejarlos en el denominador subvaluaría el
+        promedio tanto como dejarlos en el numerador lo hundiría.
+        """
+        valores = [v for v in by_month.values()
+                   if not exclude_negative or v >= 0]
+        if meses is None:
+            positivos = [v for v in valores if v > 0]
+            return sum(positivos) / len(positivos) if positivos else 0.0
+        descartados = len([v for v in by_month.values() if v < 0]) \
+            if exclude_negative else 0
+        n = max(meses - descartados, 1)
+        return sum(valores) / n
 
     # ------------------------------------------------------------------
     # Denominadores de producción (kg / m)
@@ -748,7 +795,19 @@ class QbCostoProducto(models.Model):
         absorbidos = Centro.absorbidos_en(period)
         excluir = absorbidos.ids
 
-        fab_by_month = self._pool_by_month(FAB_BUCKETS, date_from, date_to,
+        # Durante una migración, promediar el pool a doce meses MEZCLA
+        # REGÍMENES: los meses anteriores al corte llevan el gasto del centro
+        # completo y los posteriores no. El factor de septiembre tiene que
+        # describir a septiembre, así que la ventana del pool fabril arranca
+        # en el corte más reciente. Sale ruidosa el primer mes y se estabiliza
+        # sola conforme se acumulan meses del régimen nuevo.
+        fab_from = date_from
+        if absorbidos:
+            fab_from = max([date_from] + absorbidos.mapped('fecha_absorcion'))
+        fab_meses = self._meses_con_actividad(fab_from, date_to)
+        meses = self._meses_con_actividad(date_from, date_to)
+
+        fab_by_month = self._pool_by_month(FAB_BUCKETS, fab_from, date_to,
                                            es_variable=False,
                                            excluir_centros=excluir)
         energia_by_month = self._pool_by_month(('energia',), date_from, date_to)
@@ -770,7 +829,8 @@ class QbCostoProducto(models.Model):
             # sólo el primero mientras la renta sí sumaba todos → asimétrico).
             ent_mod = sum(
                 self._smooth(self._pool_by_month(
-                    ('mod',), date_from, date_to, centro_id=c.id))
+                    ('mod',), fab_from, date_to, centro_id=c.id),
+                    meses=fab_meses)
                 for c in ent_centros)
             # Dos cifras distintas a propósito:
             #  · `entretela_en_pool` es lo que entretelas toma de la bolsa
@@ -797,10 +857,11 @@ class QbCostoProducto(models.Model):
         # unos meses sí y otros no, así que promediarla sobre sus propios
         # meses de pago la escalaría distinto que al pool y sobre-restaría.
         renta_by_month = self._pool_by_month(
-            FAB_BUCKETS, date_from, date_to, es_variable=False, es_renta=True)
+            FAB_BUCKETS, fab_from, date_to, es_variable=False, es_renta=True)
         fab_sin_renta = {mes: monto - renta_by_month.get(mes, 0.0)
                          for mes, monto in fab_by_month.items()}
-        renta_gl = sum(renta_by_month.values()) / window if window else 0.0
+        renta_gl = (sum(renta_by_month.values()) / fab_meses
+                    if fab_meses else 0.0)
         # La renta contractual entra al total de TODOS los centros fabriles,
         # entretelas incluidas; lo que entretelas se lleva sale después con
         # `entretela_en_pool`. Sumar solo las no-entretela y restar igual la de
@@ -816,14 +877,15 @@ class QbCostoProducto(models.Model):
         # que mantener al día — es el hecho contable, y se autocorrige si la
         # tarifa por hora absorbe de más o de menos.
         absorcion_pool = self._smooth(
-            self._pool_by_month(('absorcion_odoo',), date_from, date_to,
-                                sign=-1.0))
+            self._pool_by_month(('absorcion_odoo',), fab_from, date_to,
+                                sign=-1.0), meses=fab_meses)
 
-        fab_pool = max(self._smooth(fab_sin_renta) + renta_contractual
+        fab_pool = max(self._smooth(fab_sin_renta, meses=fab_meses)
+                       + renta_contractual
                        - entretela_en_pool - absorcion_pool, 0.0)
-        energia_pool = self._smooth(energia_by_month)
-        op_pool = self._smooth(op_by_month)
-        ventas_pool = self._smooth(ventas_by_month)
+        energia_pool = self._smooth(energia_by_month, meses=meses)
+        op_pool = self._smooth(op_by_month, meses=meses)
+        ventas_pool = self._smooth(ventas_by_month, meses=meses)
 
         kg_centros = Centro.search([('es_denominador_kg', '=', True),
                                     ('id', 'not in', excluir)])
@@ -851,7 +913,8 @@ class QbCostoProducto(models.Model):
         # ningún producto los pagaba, o peor, en `operacion` y se prorrateaban
         # sobre TODAS las ventas — incluidas las de producto nacional.
         importacion_pool = self._smooth(
-            self._pool_by_month(('importacion',), date_from, date_to))
+            self._pool_by_month(('importacion',), date_from, date_to),
+            meses=meses)
         # Driver por default: `landed`. La aduana NO se prorratea con una
         # fórmula, porque el pedimento ya dice a qué embarque pertenece: se
         # captura con el landed cost de Odoo sobre la recepción y cae en los
@@ -908,9 +971,9 @@ class QbCostoProducto(models.Model):
         # Qué tanto del pool fabril tiene centro asignado. No cambia ningún
         # número: mide el camino que falta para poder costear por ruta real.
         fab_con_centro = self._smooth(self._pool_by_month(
-            FAB_BUCKETS, date_from, date_to, es_variable=False,
-            con_centro=True), exclude_nonpositive=False)
-        fab_gl_total = self._smooth(fab_by_month)
+            FAB_BUCKETS, fab_from, date_to, es_variable=False,
+            con_centro=True, excluir_centros=excluir), meses=fab_meses)
+        fab_gl_total = self._smooth(fab_by_month, meses=fab_meses)
         fab_con_centro_pct = (100.0 * fab_con_centro / fab_gl_total
                               if fab_gl_total else 0.0)
 
@@ -927,6 +990,8 @@ class QbCostoProducto(models.Model):
         vals = {
             'period': period,
             'window_months': window,
+            'fab_ventana_desde': fab_from,
+            'fab_ventana_meses': fab_meses,
             'fab_pool_month': fab_pool,
             'energia_pool_month': energia_pool,
             'op_pool_month': op_pool,
