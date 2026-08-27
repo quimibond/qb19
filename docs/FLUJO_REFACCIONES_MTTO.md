@@ -70,6 +70,18 @@ facturar la compra, por categoría y a costo exacto, y los traslados nunca gener
 asientos — el flujo de mantenimiento es control puro de cantidades. Con esto,
 115.01.03 Inventario refacciones deja de recibir movimientos.
 
+**La baja de empaque va a costo (5xx), no a gasto** (instrucción de José,
+27/08/26). Se creó la cuenta **501.01.09 COSTO MATERIAL DE EMPAQUE** y el flujo
+dedicado: tipo de operación **"Toluca: Consumo Empaque"** (`EMP-CON`, id 266),
+`Toluca/Stock/2 PRODUCCIÓN` → **`Virtual/Consumo Empaque`** (ubicación 360, con
+cuenta 501.01.09) ⇒ asiento automático **Dr 501.01.09 / Cr 115.02.01**. Las tres
+categorías de Empaque (Bolsas, Cintas, Tubos) cambiaron su cuenta de gastos de
+602.84.0003 a 501.01.09 — en Cintas (periódica) eso hace que sus facturas
+carguen costo directamente. Antes el consumo se capturaba contra Virtual/Scrap
+(cargaba 501.01.02 COSTO POR AJUSTES, $877k en 2026) o Virtual/Ajuste de
+Inventario (sin cuenta: no generaba asiento, $89k sin registrar): Scrap queda
+solo para mermas reales y Ajuste de Inventario no debe usarse para empaque.
+
 Ajustes aplicados ese día vía MCP:
 
 - Se regresaron a Periódica: Agujados (336), Consumibles de cómputo (337) y
