@@ -27,6 +27,13 @@ así en vez de pedir que se marque el patrón.
 
 Se resincroniza la bandera y se recalculan los períodos abiertos. Los
 cerrados se respetan.
+
+En la misma versión: el conjunto de productos que recibe el recargo de
+importación ya no incluye activo fijo ni servicios. Se quedan en la BASE del
+factor —su pedimento existe y lo diluye correctamente— pero su aduana se
+queda en resultados. La ventana sep-2025/ago-2026 traía una ROPE OPENER AND
+SLITTING LINE de €95,000 y una decena de seguros, fletes y licencias dentro
+del conjunto que lo recibía.
 """
 import logging
 

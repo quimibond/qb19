@@ -26,6 +26,7 @@ Los factores del período se guardan en qb.costo.factores para que cada
 número sea auditable (pool, denominadores, ventana usada).
 """
 import logging
+import re
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
@@ -64,6 +65,12 @@ QTY_DEDUP_SQL = """
     WHERE g.n < 3 OR g.rn = 1
 """
 FAB_BUCKETS = ('mod', 'overhead_fab', 'depreciacion', 'arrend_maquinaria')
+
+# Categorías cuyo pedimento NO puede viajar al costo de un producto: un
+# activo fijo se deprecia, no se vende. Se quedan en la BASE del factor de
+# importación —su pedimento existe y lo diluye correctamente— pero nunca
+# reciben el recargo, así que esa parte del pool se queda en resultados.
+ACTIVO_FIJO_RE = re.compile(r'ACTIVO FIJO')
 
 
 class QbCostoFactores(models.Model):
@@ -139,7 +146,15 @@ class QbCostoFactores(models.Model):
     importacion_base_month = fields.Float(
         string='Compras importadas/mes',
         help='Valor de compra mensual promedio de los productos importados, '
-             'en moneda de la compañía. Es la base del factor.')
+             'en moneda de la compañía. Es la base del factor. Incluye el '
+             'activo fijo y los servicios: su pedimento existe y diluye el '
+             'factor correctamente, aunque nunca reciban el recargo.')
+    importacion_base_costeable = fields.Float(
+        string='Compras importadas costeables/mes',
+        help='La parte de la base que SÍ puede recibir el recargo: materia '
+             'prima y producto, sin activo fijo ni servicios. La diferencia '
+             'contra la base total es aduana que se queda en resultados a '
+             'propósito — la de una máquina no la paga el hilo.')
     factor_importacion = fields.Float(
         string='Factor importación', digits=(16, 6),
         help='Pool ÷ base: cuánto se suma al costo de un importado por cada '
@@ -977,9 +992,11 @@ class QbCostoProducto(models.Model):
         # quien no vaya a capturar los pedimentos. Sigue siendo un proxy.
         driver = Config.get_param_text('importacion_driver', 'landed')
         importacion_base = 0.0
+        importacion_base_costeable = 0.0
         import_ids = set()
         if importacion_pool and driver == 'compras':
-            importacion_base, import_ids = self._import_purchase_base(
+            (importacion_base, import_ids,
+             importacion_base_costeable) = self._import_purchase_base(
                 date_from, date_to)
         factor_importacion = (
             Config.get_param('importacion_factor_override', 0.0)
@@ -1049,6 +1066,7 @@ class QbCostoProducto(models.Model):
             'op_pool_month': op_pool,
             'importacion_pool_month': importacion_pool,
             'importacion_base_month': importacion_base,
+            'importacion_base_costeable': importacion_base_costeable,
             'factor_importacion': factor_importacion,
             'ventas_pool_month': ventas_pool,
             'entretela_pool_month': entretela_pool,
@@ -1233,6 +1251,20 @@ class QbCostoProducto(models.Model):
         return bucket == 'importado' or (product.default_code or '').endswith(' I')
 
     @api.model
+    def _es_importado_costeable(self, product):
+        """¿El pedimento de este producto puede viajar al costo de otro?
+
+        No, si es un servicio (seguro, flete, licencia: no hay inventario que
+        cargar) ni si vive en una categoría de activo fijo (una máquina se
+        deprecia, no se vende). Su aduana se queda en resultados.
+        """
+        if product.type == 'service' or not product.is_storable:
+            return False
+        categ = product.categ_id
+        nombre = (categ.complete_name or categ.name or '').upper()
+        return not ACTIVO_FIJO_RE.search(nombre)
+
+    @api.model
     def _import_purchase_base(self, date_from, date_to, rules=None):
         """Valor de compra mensual promedio de lo IMPORTADO, y qué productos
         lo son. Devuelve `(base_mensual, {product_id})`.
@@ -1259,6 +1291,15 @@ class QbCostoProducto(models.Model):
         diluye el factor correctamente— pero nunca recibe el recargo, porque
         una máquina no pasa por el costo del producto. Esa parte del pool
         queda sin absorber, que es justo lo que debe pasar.
+
+        Eso último no basta con documentarlo: el conjunto que devuelve esta
+        función es QUIÉN recibe el recargo, así que se filtra aquí. En la
+        ventana sep-2025/ago-2026 la base traía una ROPE OPENER AND SLITTING
+        LINE de €95,000 y una decena de seguros, fletes y licencias — todos
+        habrían recibido recargo de haber entrado al costeo. Su pedimento se
+        queda en resultados: la aduana de una máquina no la paga el hilo.
+
+        Devuelve `(base_mensual, {product_id costeables}, base_costeable)`.
         """
         company = self.env.company
         # El país del PROVEEDOR es el discriminante. Se compara contra el país
@@ -1284,11 +1325,16 @@ class QbCostoProducto(models.Model):
         """, (company.id, date_from, date_to))
         rows = self.env.cr.fetchall()
         if not rows:
-            return 0.0, set()
+            return 0.0, set(), 0.0
 
         currencies = {c.id: c for c in self.env['res.currency'].browse(
             list({r[2] for r in rows if r[2]})).exists()}
+        productos = self.env['product.product'].browse(
+            list({r[1] for r in rows})).exists()
+        costeables = {p.id for p in productos
+                      if self._es_importado_costeable(p)}
         by_month = {}
+        by_month_costeable = {}
         importados = set()
         for mes, product_id, currency_id, monto in rows:
             monto = monto or 0.0
@@ -1297,10 +1343,19 @@ class QbCostoProducto(models.Model):
                 monto = currency._convert(
                     monto, company.currency_id, company, mes)
             by_month[mes] = by_month.get(mes, 0.0) + monto
-            importados.add(product_id)
+            if product_id in costeables:
+                by_month_costeable[mes] = (
+                    by_month_costeable.get(mes, 0.0) + monto)
+                importados.add(product_id)
         activos = [v for v in by_month.values() if v > 0]
         base = sum(activos) / len(activos) if activos else 0.0
-        return base, importados
+        # El promedio de la parte costeable se divide entre los MISMOS meses
+        # que el total: si se dividiera entre sus propios meses con compra,
+        # las dos cifras no serían comparables y el porcentaje mentiría.
+        base_costeable = (
+            sum(by_month_costeable.get(m, 0.0) for m in by_month
+                if by_month[m] > 0) / len(activos) if activos else 0.0)
+        return base, importados, base_costeable
 
     # ------------------------------------------------------------------
     # MP: último costo de compra, explosión recursiva
@@ -1397,7 +1452,8 @@ class QbCostoProducto(models.Model):
             win_to = factores.period + relativedelta(months=1)
             win_from = win_to - relativedelta(
                 months=factores.window_months or 12)
-            _base, import_ids = self._import_purchase_base(win_from, win_to)
+            _base, import_ids, _cost = self._import_purchase_base(
+                win_from, win_to)
         return {
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,

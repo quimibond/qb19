@@ -2254,3 +2254,55 @@ class TestQbCosteo(TransactionCase):
         clase.es_renta = True          # como lo dejó la regla vieja
         Clase.marcar_cuentas_de_renta()
         self.assertFalse(clase.es_renta)
+
+    def test_la_aduana_de_una_maquina_no_la_paga_el_hilo(self):
+        """El activo fijo y los servicios se quedan en la BASE del factor de
+        importación, pero nunca reciben el recargo.
+
+        Quedarse en la base es correcto: su pedimento existe y diluye el
+        factor. Recibir el recargo no lo sería: una máquina se deprecia, no se
+        vende, y un seguro no tiene inventario que cargar. Esa parte del pool
+        se queda en resultados a propósito.
+
+        En producción la ventana sep-2025/ago-2026 traía una ROPE OPENER AND
+        SLITTING LINE de €95,000 y una decena de seguros, fletes y licencias
+        dentro del conjunto que recibe recargo.
+        """
+        Costo = self.Costo
+        Categ = self.env['product.category']
+        Product = self.env['product.product']
+        fijo = Categ.create({'name': 'Maquinaria', 'parent_id': Categ.create(
+            {'name': 'Activo Fijo'}).id})
+        mp = Categ.create({'name': 'Hilo QB TEST'})
+
+        maquina = Product.create({
+            'name': 'ROPE OPENER TEST', 'is_storable': True,
+            'categ_id': fijo.id})
+        seguro = Product.create({
+            'name': 'SEGURO TEST', 'type': 'service', 'categ_id': mp.id})
+        hilo = Product.create({
+            'name': 'HILO IMPORTADO TEST', 'is_storable': True,
+            'categ_id': mp.id})
+
+        self.assertTrue(Costo._es_importado_costeable(hilo))
+        self.assertFalse(Costo._es_importado_costeable(maquina),
+                         'una máquina se deprecia, no se vende')
+        self.assertFalse(Costo._es_importado_costeable(seguro),
+                         'un servicio no tiene inventario que cargar')
+
+    def test_base_de_importacion_separa_lo_costeable(self):
+        """La base total incluye todo lo importado; la costeable, solo lo que
+        puede recibir el recargo. Las dos se promedian sobre los MISMOS meses,
+        o el porcentaje entre ellas mentiría."""
+        base, ids, costeable = self.Costo._import_purchase_base(
+            date(2025, 9, 1), date(2026, 9, 1))
+        self.assertGreaterEqual(base, costeable,
+                                'lo costeable es un subconjunto de la base')
+        self.assertGreaterEqual(costeable, 0.0)
+        Product = self.env['product.product']
+        for pid in list(ids)[:25]:
+            self.assertTrue(
+                self.Costo._es_importado_costeable(Product.browse(pid)),
+                'solo productos costeables reciben el recargo')
+        if not base:
+            self.skipTest('sin compras de importación en la ventana')
