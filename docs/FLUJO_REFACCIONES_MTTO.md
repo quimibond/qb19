@@ -59,27 +59,33 @@ Devolución de pieza no usada: botón Regresar sobre la salida
 El costo por orden de mantenimiento = suma del valor (`value`, a costo promedio) de
 los movimientos `REF-CON` cuyo Origen es la solicitud.
 
-## Decisión pendiente (contabilidad)
+## Esquema contable definitivo (decidido 27/08/26)
 
-El PDF dibuja dos asientos (entrada a 115.01.03 en la recepción; cargo a gasto /
-abono a 115.01.03 en la salida). Eso corresponde a valuación **Perpetua**. Con la
-valuación **Periódica** actual el efecto neto es el mismo (gasto por categoría, a
-costo exacto, en la factura) pero 115.01.03 no refleja las refacciones en almacén.
+**Solo Bolsas (326) y Tubos (328) llevan inventario** en valuación Perpetua: su
+factura carga 115.01.03 y su consumo lo descarga. **Todo lo demás del árbol
+"Refacciones y Consumibles" es Periódico**: el gasto se registra directo al
+facturar la compra, por categoría y a costo exacto, y los traslados nunca generan
+asientos — el flujo de mantenimiento es control puro de cantidades.
 
-- **Si contabilidad mantiene Periódica** (recomendado por simplicidad): no hay nada
-  más que hacer; todo el flujo es de control puro, cero asientos.
-- **Si contabilidad confirma Perpetua**: (1) validar PRIMERO el traslado 97709,
-  (2) después cambiar las categorías del árbol "Refacciones y Consumibles" a
-  Perpetua, (3) decidir cómo lograr el "gasto por categoría" en la salida, que la
-  config estándar no da (regla 2): sub-ubicaciones virtuales por cuenta de gasto
-  (10 cuentas distintas) o un addon chico que sustituya la contrapartida por la
-  cuenta de gasto de la categoría del producto. **El orden importa**: validar el
-  traslado después del cambio duplicaría el gasto del stock viejo (~$701k).
+Ajustes aplicados ese día vía MCP:
+
+- Se regresaron a Periódica: Agujados (336), Consumibles de cómputo (337) y
+  Despensa (338) — alguien las había puesto en Perpetua — además de Cintas (327)
+  y el padre Empaque (317), por instrucción de José ("la cinta no lleva
+  inventario, solo el tubo y la bolsa"). No hizo falta crear categorías nuevas.
+- Con esto el traslado de migración 97709 puede validarse **en cualquier
+  momento**: cero asientos garantizado.
+- **Pendiente para contabilidad:** quedaron **$125,955.90** cargados en 115.01.03
+  por facturas de Agujados registradas mientras esa categoría estuvo en Perpetua
+  (detalle producto por producto en el chatter del picking 97709). Requiere
+  reclasificación manual Dr 504.01.0007 AGUJADOS / Cr 115.01.03. Cintas se
+  verificó sin saldo: no requiere nada.
 
 ## Reglas fijas
 
-- **Empaque** (única familia con valuación perpetua) jamás pasa por estos tipos de
-  operación: un traslado suyo a la ubicación 358 sí generaría asiento (cargo a
-  504.01.0005, que no es su cuenta).
+- **Bolsas y Tubos** (únicas familias con valuación perpetua) jamás pasan por los
+  tipos de operación de mantenimiento: un traslado suyo a la ubicación 358 sí
+  generaría asiento (cargo a 504.01.0005, que no es su cuenta). Se consumen por
+  sus flujos de producción.
 - Las existencias virtuales se consultan filtrando ubicación = Virtual/Refacciones
   Mantenimiento (es inventario de control, ya sin valor en libros).
