@@ -307,15 +307,33 @@ class QbCosteoCuentaClass(models.Model):
 
     @api.model
     def clases_con_renta_mezclada(self):
-        """Clases NO marcadas que abarcan alguna cuenta de renta de inmueble
-        junto a cuentas que no lo son, estando en un bucket fabril. Ahí la
-        renta del GL se cuela al pool y se cuenta dos veces con la contractual,
-        pero marcar la clase entera sería peor: hay que separar la cuenta."""
-        return self.with_context(active_test=False).search([
+        """Clases NO marcadas que se QUEDAN con alguna cuenta de renta de
+        inmueble junto a cuentas que no lo son, estando en un bucket fabril.
+        Ahí la renta del GL se cuela al pool y se cuenta dos veces con la
+        contractual, pero marcar la clase entera sería peor: hay que separar
+        la cuenta en su propia clasificación.
+
+        Se mira lo que la clase RESUELVE, no lo que su patrón matchea. El
+        patrón `504.01%` matchea `504.01.0008 RENTA DEL LOCAL`, pero esa
+        cuenta ya tiene clasificación propia y se la lleva por ser más
+        específica (ver `CUENTA_MAP_SQL`): nunca llega al pool fabril y no
+        hay nada que separar. Con `account_ids` el aviso salía igual y mandaba
+        a arreglar algo que ya estaba bien.
+        """
+        candidatas = self.with_context(active_test=False).search([
             ('es_renta', '=', False),
             ('bucket', 'in', ('mod', 'overhead_fab', 'depreciacion')),
-        ]).filtered(lambda c: any(
-            self._es_cuenta_de_renta(a) for a in c.account_ids))
+        ])
+        if not candidatas:
+            return candidatas
+        resueltas = {}
+        for fila in self.env['qb.costeo.cuenta.map'].search(
+                [('class_id', 'in', candidatas.ids)]):
+            resueltas.setdefault(fila.class_id.id, self.env['account.account'])
+            resueltas[fila.class_id.id] |= fila.account_id
+        return candidatas.filtered(lambda c: any(
+            self._es_cuenta_de_renta(a)
+            for a in resueltas.get(c.id, self.env['account.account'])))
 
     @api.model
     def marcar_cuentas_de_renta(self):

@@ -2212,10 +2212,19 @@ class TestQbCosteo(TransactionCase):
         # La salida correcta: la cuenta de renta con clasificación propia.
         # Gana por más específica, y esa SÍ se marca.
         propia = Clase.create({'account_id': renta.id,
-                               'bucket': 'overhead_fab'})
+                               'bucket': 'no_costeo'})
         Clase.marcar_cuentas_de_renta()
         self.assertTrue(propia.es_renta)
         self.assertFalse(patron.es_renta)
+        # Y el aviso se apaga: la cuenta de renta ya no la resuelve el
+        # patrón, aunque su `code_pattern` la siga matcheando. Mirar
+        # `account_ids` en vez de lo resuelto dejaba el aviso prendido para
+        # siempre, mandando a arreglar algo que ya estaba bien — es lo que
+        # pasó en producción con `504.01%` y `504.01.0008 RENTA DEL LOCAL`.
+        self.assertIn(renta, patron.account_ids,
+                      'el patrón la sigue matcheando...')
+        self.assertNotIn(patron, Clase.clases_con_renta_mezclada(),
+                         '...pero ya no se la queda, y el aviso se apaga')
 
     def test_arrendamiento_de_maquinaria_nunca_sale_del_pool(self):
         """El arrendamiento de maquinaria es costo de producción: no hay renta
