@@ -28,13 +28,12 @@ así en vez de pedir que se marque el patrón.
 Se resincroniza la bandera y se recalculan los períodos abiertos. Los
 cerrados se respetan.
 
-**Esta migración carga con el recálculo de TODA la cadena.** Las anteriores
-ya no recalculan: corren en orden y cada una pisaba el resultado de la
-previa, así que trece pasadas de 8 períodos x ~1,256 productos dejaban
-~130,600 recálculos por build para quedarse con los de la última. Al ser la
-más nueva, esta corre con todos los cambios de datos ya aplicados. Si se
-agrega otra migración después, el recálculo se mueve a ella y de aquí se
-quita.
+El recálculo lo hace la migración MÁS NUEVA de la cadena, una sola vez: las
+migraciones corren en orden y cada una pisaba el resultado de la previa, así
+que trece pasadas de 8 períodos x ~1,256 productos dejaban ~130,600
+recálculos por build para quedarse con los de la última. Esta lo hizo
+mientras fue la más nueva; al agregarse la 19.0.1.23.0 se movió allá, tal
+como decía esta nota.
 
 En la misma versión: el conjunto de productos que recibe el recargo de
 importación ya no incluye activo fijo ni servicios. Se quedan en la BASE del
@@ -70,14 +69,6 @@ def migrate(cr, version):
             'esa cuenta su propia clasificación: %s',
             len(mezcladas), ', '.join(mezcladas.mapped('name')))
 
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
-
-    ultimo = env['qb.costo.factores'].search([], order='period DESC', limit=1)
-    if ultimo:
-        _logger.info(
-            'qb_capacidad_costeo: %s períodos recalculados; pool fabril '
-            '%.2f/mes, renta del GL sustituida %.2f/mes.',
-            len(set(periodos)), ultimo.fab_pool_month,
-            ultimo.renta_gl_sustituida)
+    # El recálculo lo hace la migración MÁS NUEVA de la cadena, una sola vez.
+    # Al agregarse la 19.0.1.23.0, se movió allá: recalcular aquí dejaría dos
+    # pasadas completas en el mismo build para el mismo resultado.

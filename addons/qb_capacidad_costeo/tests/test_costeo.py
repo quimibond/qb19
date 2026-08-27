@@ -2315,3 +2315,113 @@ class TestQbCosteo(TransactionCase):
                 'solo productos costeables reciben el recargo')
         if not base:
             self.skipTest('sin compras de importación en la ventana')
+
+    def test_wizard_de_recalculo_cubre_el_rango_y_respeta_lo_cerrado(self):
+        """El asistente de rango es lo que permite ver años anteriores.
+
+        El motor siempre supo costear cualquier período, pero desde la UI solo
+        se podía pedir el mes anterior o el año EN CURSO: el menú llamaba
+        `action_recompute_year()` sin argumento. Para ver 2025 había que entrar
+        al shell, así que en la práctica no se veía.
+        """
+        Wizard = self.env['qb.recalculo.wizard']
+        w = Wizard.create({'desde': date(2025, 3, 1), 'hasta': date(2025, 6, 30)})
+        # El rango incluye los dos extremos y normaliza al día 1
+        self.assertEqual(
+            w._meses(),
+            [date(2025, m, 1) for m in (3, 4, 5, 6)])
+
+        # Un solo mes es un rango válido de un elemento
+        self.assertEqual(
+            Wizard.create({'desde': date(2025, 3, 15),
+                           'hasta': date(2025, 3, 20)})._meses(),
+            [date(2025, 3, 1)])
+
+        # Al revés no: es casi siempre un dedazo, y correrlo daría cero meses
+        # en silencio en vez de avisar.
+        with self.assertRaises(UserError):
+            Wizard.create({'desde': date(2025, 6, 1), 'hasta': date(2025, 3, 1)})
+
+        # Por defecto propone el año ANTERIOR completo, que es justo lo que el
+        # menú de «año en curso» no alcanza.
+        d = Wizard.default_get(['desde', 'hasta'])
+        self.assertEqual(d['desde'].month, 1)
+        self.assertEqual(d['hasta'].month, 12)
+        self.assertEqual(d['desde'].year, date.today().year - 1)
+        self.assertEqual(d['hasta'].year, date.today().year - 1)
+
+    def test_wizard_de_recalculo_no_pisa_un_periodo_cerrado(self):
+        """Un período cerrado se congeló a propósito: el asistente lo salta y
+        lo dice, en vez de reescribir un número que ya se reportó."""
+        period = date(2027, 9, 1)
+        factores = self.env['qb.costo.factores'].create({
+            'period': period, 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0})
+        factores.action_cerrar()
+        self.assertEqual(factores.state, 'cerrado')
+
+        w = self.env['qb.recalculo.wizard'].create({
+            'desde': period, 'hasta': period})
+        w.action_recalcular()
+        self.assertIn('0 meses recalculados', w.resultado)
+        self.assertIn('2027-09', w.resultado)
+        self.assertIn('CERRADOS', w.resultado)
+
+    def test_la_poliza_de_cierre_anual_no_entra_a_los_pools(self):
+        """El asiento de CIERRE ANUAL reversa las cuentas de resultados del año
+        entero contra una sola póliza de diciembre. En producción es
+        `Dr/2025/12/32`, «POLIZA DE CIERRE ANUAL», $190,684,760.
+
+        Dejarla dentro hace dos daños: la conciliación de diciembre sale sin
+        sentido (−$163M de "ventas", −$147M de "gasto") y el promedio de cada
+        pool pierde diciembre entero, porque `_smooth` descarta el mes por
+        salir negativo. Cada año que se quiera ver pierde un mes real.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mes = date(2027, 11, 1)
+
+        cuenta = Account.create({
+            'name': 'OVERHEAD CIERRE TEST', 'code': 'QBCI.0001',
+            'account_type': 'expense_direct_cost'})
+        Clase.create({'account_id': cuenta.id, 'bucket': 'overhead_fab'})
+        contra = Account.create({'name': 'CONTRA CIERRE TEST',
+                                 'code': 'QBCI.0009',
+                                 'account_type': 'expense'})
+
+        def poliza(monto, ref=False):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id,
+                'date': mes, 'ref': ref,
+                'line_ids': [
+                    (0, 0, {'account_id': cuenta.id,
+                            'debit': monto if monto > 0 else 0.0,
+                            'credit': -monto if monto < 0 else 0.0}),
+                    (0, 0, {'account_id': contra.id,
+                            'credit': monto if monto > 0 else 0.0,
+                            'debit': -monto if monto < 0 else 0.0}),
+                ]}).action_post()
+
+        poliza(400000.0)                                 # el gasto real del mes
+        Costo = self.Costo
+        solo_real = Costo._pool_by_month(
+            ('overhead_fab',), mes, mes + relativedelta(months=1),
+            es_variable=False).get(mes, 0.0)
+
+        # Y ahora el cierre, que reversa mucho más que el mes
+        poliza(-9000000.0, ref='POLIZA DE CIERRE ANUAL')
+        con_cierre = Costo._pool_by_month(
+            ('overhead_fab',), mes, mes + relativedelta(months=1),
+            es_variable=False).get(mes, 0.0)
+
+        self.assertAlmostEqual(
+            con_cierre, solo_real, places=2,
+            msg='la póliza de cierre no debe mover el pool del mes')
+        self.assertGreater(
+            con_cierre, 0.0,
+            'y el mes conserva su gasto real en vez de irse a negativo y '
+            'caerse del promedio')

@@ -35,7 +35,8 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import html_escape
 
-from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
+from .cuenta_map import (CUENTA_MAP_SQL, EXCLUIR_CIERRE_SQL,
+                         mo_qty_sql, wo_qty_sql)
 
 _logger = logging.getLogger(__name__)
 
@@ -547,12 +548,14 @@ class QbCostoProducto(models.Model):
             SELECT date_trunc('month', aml.date)::date AS mes,
                    SUM(aml.balance * m.allocation_pct / 100.0) AS monto
             FROM account_move_line aml
+            JOIN account_move am ON am.id = aml.move_id
             JOIN cuenta_map m ON m.account_id = aml.account_id
             WHERE m.bucket IN %%s
               AND aml.parent_state = 'posted'
               AND aml.date >= %%s AND aml.date < %%s
               AND aml.company_id = %%s
-        """ % CUENTA_MAP_SQL
+              AND {CIERRE}
+        """.replace('{CIERRE}', EXCLUIR_CIERRE_SQL) % CUENTA_MAP_SQL
         params = [tuple(buckets), date_from, date_to, self.env.company.id]
         if es_variable is not None:
             query += ' AND COALESCE(m.es_variable, FALSE) = %s'
