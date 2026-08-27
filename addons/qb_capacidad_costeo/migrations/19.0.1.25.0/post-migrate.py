@@ -23,34 +23,9 @@ gana por patrón más largo sobre `501.01%`.
 
 Se recalculan los períodos abiertos. Los cerrados se respetan.
 """
-import logging
-
-from odoo import SUPERUSER_ID, api
-
-_logger = logging.getLogger(__name__)
-
-
 def migrate(cr, version):
-    env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
+    """No-op: este cambio es de MOTOR y de un campo, no de datos.
 
-    ultimo = env['qb.costo.factores'].search([], order='period DESC', limit=1)
-    if ultimo:
-        _logger.info(
-            'qb_capacidad_costeo: %s períodos recalculados sin los ajustes de '
-            'cantidad en el costo. Ajuste de MP %.4f (MP del mayor %.2f/mes '
-            'contra %.2f modelada).', len(set(periodos)), ultimo.mp_ajuste,
-            ultimo.mp_gl_month, ultimo.mp_modelada_month)
-
-    # El marcado de períodos no comparables (19.0.1.24.0) se puebla en este
-    # recálculo, así que se reporta aquí y no allá.
-    marcados = env['qb.costo.factores'].search(
-        [('confiabilidad', '!=', 'ok')], order='period')
-    _logger.info(
-        'qb_capacidad_costeo: %s períodos marcados como no comparables: %s',
-        len(marcados),
-        ', '.join('%s (%s, %.1f%%)' % (m.period, m.confiabilidad,
-                                       m.utilizacion_pond_pct)
-                  for m in marcados) or 'ninguno')
+    La clasificación de `501.01.02%` con `SP/` la crea el seed. El recálculo
+    lo hace la migración más nueva de la cadena, una sola vez.
+    """

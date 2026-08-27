@@ -29,7 +29,7 @@ Convención de signos: todo se expresa en POSITIVO como gasto e ingreso
 """
 from odoo import fields, models
 
-from .cuenta_map import CUENTA_MAP_SQL, EXCLUIR_CIERRE_SQL
+from .cuenta_map import CUENTA_MAP_SQL, excluir_refs_sql
 
 
 class QbCostoConciliacion(models.Model):
@@ -188,7 +188,7 @@ class QbCostoConciliacion(models.Model):
                   AND aml.company_id = {company_id}
                   AND aa.account_type IN ('income', 'expense_direct_cost',
                                           'expense', 'expense_depreciation')
-                  AND {EXCLUIR_CIERRE_SQL}
+                  AND {excluir_refs_sql(self.env)}
                 GROUP BY 1, 2
             ),
             factores AS (

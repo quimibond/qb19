@@ -42,6 +42,12 @@
             <field name="value">25</field>
             <field name="descripcion">Techo del rendimiento sano (unidades/hora). Arriba de esto casi siempre son horas sin registrar, no una máquina rapidísima.</field>
         </record>
+        <record id="factor_refs_fuera_de_costeo" model="qb.costeo.factor.config">
+            <field name="key">refs_fuera_de_costeo</field>
+            <field name="value">0</field>
+            <field name="value_text">CIERRE ANUAL,ENAJENACI</field>
+            <field name="descripcion">Referencias de asiento que NO entran al costeo, separadas por coma (se comparan en mayúsculas, como subcadena). CIERRE ANUAL: la póliza que reversa el año entero contra diciembre. ENAJENACI: la baja de un activo vendido — en dic-2025 fueron $5,827,157 de dos máquinas que hoy se arriendan, ya compensados por $5,896,997 de utilidad en venta que el costeo no mira, y cuyo costo actual ya entra al pool por el arrendamiento. Cargarlos además sería cobrar la misma máquina dos veces.</field>
+        </record>
         <record id="factor_utilizacion_min_comparable" model="qb.costeo.factor.config">
             <field name="key">utilizacion_min_comparable</field>
             <field name="value">0.70</field>
