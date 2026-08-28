@@ -1544,9 +1544,9 @@ class QbCostoProducto(models.Model):
         Reglas: subproducto → $0 (su MP ya está en la receta del principal);
         importado → costo de compra MÁS gastos e impuestos de aduana
         (`import_factor`); sin costo propio → gemelo nacional;
-        receta AMBIGUA (>1 BOM activa) con AVCO válido → costo AVCO de Odoo
-        (evita colapsar el costo eligiendo una receta al azar);
-        hoja sin BOM → último costo de compra (fallback avg).
+        receta AMBIGUA (>1 BOM activa) → explota TODAS y toma la MÁS CARA
+        (nunca el AVCO de un fabricado: trae conversión de MOs, no solo
+        materiales); hoja sin BOM → último costo de compra (fallback avg).
 
         `ctx` (de _engine_ctx) comparte reglas/pol_map/cachés en loops
         grandes; sin él (cotizador, tests) resuelve todo al vuelo.
@@ -1591,26 +1591,38 @@ class QbCostoProducto(models.Model):
                     import_factor = 0.0
             cost *= 1.0 + import_factor
         else:
-            std = product.standard_price or 0.0
             is_multi = self._has_multiple_boms(product, ctx)
-            if std > 0.0 and is_multi:
-                # Receta AMBIGUA: el producto tiene VARIAS BOMs activas (típico
-                # de semiterminados genéricos "MUESTRA PILOTO", que llegan a
-                # tener 26 recetas). _bom_find elegiría una al azar y el costo
-                # se colapsa (bug WD080: MP $0.13 en vez de ~$12). En vez de
-                # explotar una receta arbitraria, usa el AVCO que Odoo ya
-                # mantiene para el intermedio: es nativo y confiable.
-                cost = std
-            elif is_multi:
-                # Varias recetas y SIN AVCO confiable: no hay una "correcta".
-                # En vez de explotar una al azar (que colapsaría el costo),
-                # explota TODAS y toma la MÁS CARA — conservador para cotizar.
+            if is_multi:
+                # Receta AMBIGUA: el producto tiene VARIAS BOMs activas.
+                # NUNCA usar el AVCO de un fabricado: ese promedio trae las
+                # capas de conversión de las órdenes de producción (horas ×
+                # tarifa de workcenter), no solo materiales, y el modelo ya
+                # cobra la conversión vía fab_unit — usarlo aquí la cobraba
+                # DOS veces (caso CONTITECH: la cruda de WC090 con AVCO de
+                # $107/kg cuando el hilo cuesta ~$40/kg → todo el segmento
+                # industrial salía en rojo). Tampoco explotar UNA al azar
+                # (_bom_find, colapsaba el costo — bug WD080): explota TODAS
+                # y toma la MÁS CARA, conservador para cotizar.
                 boms = self._applicable_boms(product)
                 costs = [self._explode_bom(b, product, cache, seen, ctx,
                                            import_factor)
                          for b in boms]
-                cost = max(costs) if costs else self._costo_de_compra(
-                    product, pol_map, import_factor, import_ids)
+                cost = max(costs) if costs else 0.0
+                if cost <= 0.0:
+                    cost = self._costo_de_compra(
+                        product, pol_map, import_factor, import_ids)
+                std = product.standard_price or 0.0
+                if std > 0.0 and cost < std * 0.05:
+                    # Todas las recetas explotan a casi nada frente al AVCO
+                    # (típico de genéricos "MUESTRA PILOTO" con recetas de
+                    # relleno): el costo queda el explotado igual — el AVCO
+                    # de un fabricado no es MP — pero se avisa para que
+                    # alguien arregle las BOMs.
+                    _logger.warning(
+                        'qb_capacidad_costeo: receta ambigua de [%s] %s '
+                        'explota a %.4f frente a AVCO %.2f — las BOMs '
+                        'parecen degeneradas, revisarlas.',
+                        ref, product.name, cost, std)
             else:
                 bom = self.env['mrp.bom']._bom_find(product).get(product)
                 cost = self._explode_bom(bom, product, cache, seen, ctx,
@@ -2680,14 +2692,17 @@ class QbCostoProducto(models.Model):
             return [dict(base, unit_cost=cost, total=cost * qty,
                          fuente='Importado: landed cost (promedio Odoo, '
                                 'incluye flete/aduana)')]
-        std = product.standard_price or 0.0
-        if std > 0.0 and self._has_multiple_boms(product):
+        if self._has_multiple_boms(product):
             # Receta ambigua (>1 BOM): mismo criterio que _mp_cost_unit —
-            # usa el AVCO del intermedio en vez de explotar una receta al azar.
-            return [dict(base, unit_cost=std, total=std * qty,
-                         fuente='Semiterminado con receta ambigua (varias '
-                                'BOMs) → costo AVCO de Odoo')]
-        bom = self.env['mrp.bom']._bom_find(product).get(product)
+            # explota todas y sigue la MÁS CARA (nunca el AVCO de un
+            # fabricado: trae conversión de MOs, no solo materiales).
+            boms = self._applicable_boms(product)
+            bom = max(
+                boms,
+                key=lambda b: self._explode_bom(b, product, {}, set(), None),
+            ) if boms else self.env['mrp.bom']
+        else:
+            bom = self.env['mrp.bom']._bom_find(product).get(product)
         if bom:
             rows = []
             bom_qty = bom.product_uom_id._compute_quantity(
