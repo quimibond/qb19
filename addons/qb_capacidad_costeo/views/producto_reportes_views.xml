@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Rentabilidad por producto (12m) ============ -->
+    <record id="producto_rentabilidad_view_list" model="ir.ui.view">
+        <field name="name">qb.producto.rentabilidad.list</field>
+        <field name="model">qb.producto.rentabilidad</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="margen_neto_pct &lt; 0"
+                  decoration-warning="margen_neto_pct &gt;= 0 and margen_neto_pct &lt; 5">
+                <field name="product_id"/>
+                <field name="revenue_12m" sum="Total"/>
+                <field name="qty_12m" sum="Total"/>
+                <field name="precio_prom"/>
+                <field name="contrib_pct" optional="show"/>
+                <field name="margen_bruto_12m" optional="hide" sum="Total"/>
+                <field name="margen_bruto_pct" optional="show"/>
+                <field name="margen_neto_12m" sum="Total"/>
+                <field name="margen_neto_pct"/>
+                <field name="n_clientes"/>
+                <field name="horas_cuello_12m" optional="hide" sum="Total"/>
+                <field name="contrib_por_hora" optional="show"/>
+                <field name="costo_cobertura_pct" optional="hide"/>
+                <field name="meses_activo" optional="hide"/>
+                <field name="ultima_venta" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="producto_rentabilidad_view_graph" model="ir.ui.view">
+        <field name="name">qb.producto.rentabilidad.graph</field>
+        <field name="model">qb.producto.rentabilidad</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="product_id"/>
+                <field name="margen_neto_12m" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="producto_rentabilidad_action" model="ir.actions.act_window">
+        <field name="name">Rentabilidad por producto (12m)</field>
+        <field name="res_model">qb.producto.rentabilidad</field>
+        <field name="view_mode">list,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Rentabilidad por producto</p>
+            <p>Márgenes REALES por producto en 12 meses: lo facturado contra
+            el costo vigente en el mes de cada factura. Rojo = margen neto
+            negativo; ámbar = menos de 5. Requiere costos calculados
+            (Configuración → Recalcular costeo).</p>
+        </field>
+    </record>
+
+    <!-- ============ Producto × Cliente ============ -->
+    <record id="producto_cliente_view_list" model="ir.ui.view">
+        <field name="name">qb.producto.cliente.list</field>
+        <field name="model">qb.producto.cliente</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="delta_precio_pct &lt; -10"
+                  decoration-success="delta_precio_pct &gt; 10">
+                <field name="product_id"/>
+                <field name="partner_id"/>
+                <field name="revenue_12m" sum="Total"/>
+                <field name="qty_12m" sum="Total"/>
+                <field name="precio_prom"/>
+                <field name="precio_prom_producto" optional="show"/>
+                <field name="delta_precio_pct"/>
+                <field name="margen_neto_12m" sum="Total" optional="show"/>
+                <field name="margen_neto_pct" optional="show"/>
+                <field name="meses_activo" optional="hide"/>
+                <field name="ultima_compra" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="producto_cliente_view_pivot" model="ir.ui.view">
+        <field name="name">qb.producto.cliente.pivot</field>
+        <field name="model">qb.producto.cliente</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="product_id" type="row"/>
+                <field name="partner_id" type="col"/>
+                <field name="revenue_12m" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="producto_cliente_view_search" model="ir.ui.view">
+        <field name="name">qb.producto.cliente.search</field>
+        <field name="model">qb.producto.cliente</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="partner_id"/>
+                <filter string="Compra barato (&lt; −10% vs prom)"
+                        name="baratos"
+                        domain="[('delta_precio_pct', '&lt;', -10)]"/>
+                <filter string="Margen neto negativo" name="negativos"
+                        domain="[('margen_neto_pct', '&lt;', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Producto" name="por_producto"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter string="Cliente" name="por_cliente"
+                            context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="producto_cliente_action" model="ir.actions.act_window">
+        <field name="name">Producto × Cliente (12m)</field>
+        <field name="res_model">qb.producto.cliente</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="context">{'search_default_por_producto': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">¿A quién le vendo cada producto y a qué precio?</p>
+            <p>Cada renglón es una pareja producto-cliente con su precio
+            promedio y su delta contra el promedio del producto: rojo =
+            ese cliente compra más de 10 abajo del resto — el insumo de la
+            renegociación.</p>
+        </field>
+    </record>
+
+    <!-- ============ Programa mensual por producto ============ -->
+    <record id="producto_mensual_view_pivot" model="ir.ui.view">
+        <field name="name">qb.producto.mensual.pivot</field>
+        <field name="model">qb.producto.mensual</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="product_id" type="row"/>
+                <field name="mes" type="col" interval="month"/>
+                <field name="qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="producto_mensual_view_list" model="ir.ui.view">
+        <field name="name">qb.producto.mensual.list</field>
+        <field name="model">qb.producto.mensual</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="mes"/>
+                <field name="product_id"/>
+                <field name="qty" sum="Total"/>
+                <field name="revenue" sum="Total"/>
+                <field name="precio_prom"/>
+                <field name="margen_neto" sum="Total"/>
+                <field name="n_clientes"/>
+            </list>
+        </field>
+    </record>
+    <record id="producto_mensual_view_graph" model="ir.ui.view">
+        <field name="name">qb.producto.mensual.graph</field>
+        <field name="model">qb.producto.mensual</field>
+        <field name="arch" type="xml">
+            <graph type="line">
+                <field name="mes" interval="month"/>
+                <field name="qty" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="producto_mensual_action" model="ir.actions.act_window">
+        <field name="name">Programa mensual por producto</field>
+        <field name="res_model">qb.producto.mensual</field>
+        <field name="view_mode">pivot,list,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El programa anual, mes a mes</p>
+            <p>Volumen, venta y margen por producto por mes. En el pivot
+            (meses en columnas) es el programa anual corrido; en la gráfica
+            se ve la tendencia de un producto filtrado.</p>
+        </field>
+    </record>
+
+    <!-- ============ Auditoría de pesos ============ -->
+    <record id="peso_auditoria_view_list" model="ir.ui.view">
+        <field name="name">qb.peso.auditoria.list</field>
+        <field name="model">qb.peso.auditoria</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false"
+                  decoration-danger="estado == 'critico'"
+                  decoration-warning="estado in ('revisar', 'sin_peso')">
+                <header>
+                    <button name="action_generar" type="object"
+                            string="↻ Regenerar auditoría"
+                            display="always"
+                            groups="mrp.group_mrp_manager,base.group_system"/>
+                </header>
+                <field name="default_code"/>
+                <field name="product_id" optional="show"/>
+                <field name="uom_name"/>
+                <field name="kg_motor"/>
+                <field name="kg_teorico"/>
+                <field name="desviacion_pct"/>
+                <field name="fuente"/>
+                <field name="revenue_12m" sum="Total"/>
+                <field name="estado" widget="badge"
+                       decoration-danger="estado == 'critico'"
+                       decoration-warning="estado in ('revisar', 'sin_peso')"
+                       decoration-success="estado == 'ok'"/>
+            </list>
+        </field>
+    </record>
+    <record id="peso_auditoria_view_search" model="ir.ui.view">
+        <field name="name">qb.peso.auditoria.search</field>
+        <field name="model">qb.peso.auditoria</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="default_code"/>
+                <field name="product_id"/>
+                <filter string="Crítico" name="critico"
+                        domain="[('estado', '=', 'critico')]"/>
+                <filter string="Revisar" name="revisar"
+                        domain="[('estado', 'in', ('revisar', 'sin_peso'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="por_estado"
+                            context="{'group_by': 'estado'}"/>
+                    <filter string="Fuente" name="por_fuente"
+                            context="{'group_by': 'fuente'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="peso_auditoria_action" model="ir.actions.act_window">
+        <field name="name">Auditoría de pesos</field>
+        <field name="res_model">qb.peso.auditoria</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Auditoría de pesos</p>
+            <p>Compara el peso que USA el motor contra el teórico de la
+            nomenclatura, para todo producto vendido en 12 meses, ordenado
+            por venta (dinero en riesgo). Pulsa «Regenerar auditoría» para
+            calcularla con los datos de hoy. Un peso mal capturado infla o
+            esconde energía y fabricación — la familia m² traía +50 de peso
+            y nadie lo veía hasta cruzarlo así.</p>
+        </field>
+    </record>
+
+</odoo>

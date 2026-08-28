@@ -55,3 +55,9 @@ access_qb_costo_conciliacion_user,qb.costo.conciliacion.user,model_qb_costo_conc
 access_qb_workorder_excepcion_user,qb.workorder.excepcion.user,model_qb_workorder_excepcion,base.group_user,1,0,0,0
 access_qb_recalculo_wizard,qb.recalculo.wizard,model_qb_recalculo_wizard,mrp.group_mrp_manager,1,1,1,1
 access_qb_recalculo_wizard_sys,qb.recalculo.wizard.sys,model_qb_recalculo_wizard,base.group_system,1,1,1,1
+access_qb_producto_rentab_user,qb.producto.rentabilidad.user,model_qb_producto_rentabilidad,base.group_user,1,0,0,0
+access_qb_producto_cliente_user,qb.producto.cliente.user,model_qb_producto_cliente,base.group_user,1,0,0,0
+access_qb_producto_mensual_user,qb.producto.mensual.user,model_qb_producto_mensual,base.group_user,1,0,0,0
+access_qb_peso_auditoria_user,qb.peso.auditoria.user,model_qb_peso_auditoria,base.group_user,1,0,0,0
+access_qb_peso_auditoria_mgr,qb.peso.auditoria.mgr,model_qb_peso_auditoria,mrp.group_mrp_manager,1,1,1,1
+access_qb_peso_auditoria_sys,qb.peso.auditoria.sys,model_qb_peso_auditoria,base.group_system,1,1,1,1
