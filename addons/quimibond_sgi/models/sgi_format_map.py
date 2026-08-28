@@ -147,6 +147,9 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.sgi_ind_producido_capacidad': 'produccion_vs_capacidad',
         'quimibond_sgi.sgi_ind_consumo_energia': 'consumo_energia',
         'quimibond_sgi.sgi_ind_capacitacion': 'capacitacion',
+        # MA-03: el revisado de telas (mrp.revision.log) ya opera en producción
+        # (>1,400 registros/mes), así que el modo calidad_pq tiene fuente real.
+        'quimibond_sgi.sgi_ind_calidad_pq': 'calidad_pq',
     }
 
     @api.model
@@ -157,6 +160,60 @@ class SgiConfig(models.AbstractModel):
             indicator = self.env.ref(xmlid, raise_if_not_found=False)
             if indicator and indicator.calc_mode == 'manual':
                 indicator.calc_mode = mode
+        return True
+
+    @api.model
+    def fix_kpi_seeds(self):
+        """Correcciones puntuales de siembras, idempotentes (solo actúan
+        mientras el valor siga siendo el sembrado — no pisan decisiones de
+        MAST):
+
+        - TR-03 mide MXN facturado del proveedor de energía, no kWh; y su
+          medición 'capturada' en 0 sin proveedor configurado era un verde
+          falso (lower_better con metas 0/0): regresa a pendiente.
+        - AL-02 con objetivo 100 pintaba rojo con UNA sola devolución en el
+          mes; objetivo 99 mantiene la exigencia sin volverla imposible.
+        """
+        energia = self.env.ref('quimibond_sgi.sgi_ind_consumo_energia',
+                               raise_if_not_found=False)
+        if energia:
+            if energia.uom == 'kWh':
+                energia.uom = 'MXN'
+            broken = energia.measure_ids.filtered(
+                lambda m: m.state == 'capturado' and not m.value
+                and (m.note or '').startswith('Configure el proveedor'))
+            if broken:
+                broken.write({'state': 'pendiente'})
+        embarques = self.env.ref('quimibond_sgi.sgi_ind_embarques_sin_error',
+                                 raise_if_not_found=False)
+        if embarques and embarques.target_objective == 100 \
+                and embarques.target_acceptable == 98:
+            embarques.target_objective = 99
+        return True
+
+    @api.model
+    def recompute_pending_measures(self):
+        """Re-mide las mediciones PENDIENTES de indicadores automáticos.
+        Es la contracara de la deuda B.16: el cron solo crea la medición
+        faltante, así que activar un modo o corregir el motor dejaba los
+        meses ya generados en blanco para siempre. Solo escribe cuando el
+        cálculo ahora sí devuelve valor; sin dato sigue pendiente y no se
+        toca (cero ruido en el chatter). Las validadas jamás se tocan."""
+        measures = self.env['sgi.indicator.measure'].search([
+            ('state', '=', 'pendiente'),
+            ('indicator_id.calc_mode', '!=', 'manual'),
+        ])
+        for measure in measures:
+            indicator = measure.indicator_id
+            date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
+            value = indicator._sgi_compute_value(date_from, date_to)
+            if value is None:
+                continue
+            vals = {'value': value, 'state': 'capturado'}
+            note = indicator._sgi_compute_note(date_from, date_to)
+            if note:
+                vals['note'] = note
+            measure.write(vals)
         return True
 
     # Objetivo de cada proceso, tomado de las caracterizaciones/SIPOC reales del

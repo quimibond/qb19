@@ -210,3 +210,59 @@ class TestExpansionKpis(TransactionCase):
         expected = round((payable0 + 900.0) / 900.0 * 90.0, 1)
         value = ind._calc_dpo_pagos(self.period, self.period_end)
         self.assertEqual(value, expected)
+
+    def test_14_filtro_de_compania(self):
+        # Los KPIs financieros miden UNA compañía (la principal, o la del
+        # parámetro): sin el filtro, el motor sumaba todo el grupo.
+        ind = self._indicator('notas_credito')
+        self.assertEqual(ind._sgi_kpi_company(),
+                         self.env.ref('base.main_company'))
+        self._invoice('out_invoice', self.customer_a, 1000.0, self.period)
+        self._invoice('out_refund', self.customer_a, 15.0, self.period)
+        self.assertEqual(
+            ind._calc_notas_credito(self.period, self.period_end), 1.5)
+        # Apuntando el parámetro a otra compañía (sin facturas), el mismo
+        # periodo queda sin datos: prueba que el filtro sí corta.
+        other = self.env['res.company'].create({'name': 'Otra Cía KPI'})
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.kpi_company_id', other.id)
+        self.assertEqual(ind._sgi_kpi_company(), other)
+        self.assertIsNone(
+            ind._calc_notas_credito(self.period, self.period_end))
+
+    def test_15_recompute_pending_measures(self):
+        # Una medición que nació pendiente se llena sola cuando el modo ya
+        # calcula (deuda B.16); si sigue sin datos, no se toca.
+        self._invoice('out_invoice', self.customer_a, 1000.0, self.period)
+        self._invoice('out_refund', self.customer_a, 15.0, self.period)
+        ind = self._indicator('notas_credito')
+        measure = self.env['sgi.indicator.measure'].create({
+            'indicator_id': ind.id, 'period_date': self.period,
+            'value': 0.0, 'state': 'pendiente'})
+        empty = self.env['sgi.indicator.measure'].create({
+            'indicator_id': ind.id, 'period_date': date(2043, 5, 1),
+            'value': 0.0, 'state': 'pendiente'})
+        self.env['sgi.config'].recompute_pending_measures()
+        self.assertEqual(measure.state, 'capturado')
+        self.assertEqual(measure.value, 1.5)
+        self.assertEqual(empty.state, 'pendiente')
+
+    def test_16_fix_kpi_seeds_idempotente(self):
+        energia = self.env.ref('quimibond_sgi.sgi_ind_consumo_energia')
+        embarques = self.env.ref('quimibond_sgi.sgi_ind_embarques_sin_error')
+        energia.uom = 'kWh'
+        embarques.write({'target_objective': 100, 'target_acceptable': 98})
+        broken = self.env['sgi.indicator.measure'].create({
+            'indicator_id': energia.id, 'period_date': date(2042, 3, 1),
+            'value': 0.0, 'state': 'capturado',
+            'note': "Configure el proveedor de energía en Ajustes para medir "
+                    "este indicador automáticamente."})
+        self.env['sgi.config'].fix_kpi_seeds()
+        self.assertEqual(energia.uom, 'MXN')
+        self.assertEqual(embarques.target_objective, 99)
+        self.assertEqual(broken.state, 'pendiente')
+        # Segunda corrida: no vuelve a tocar nada (una meta ajustada por MAST
+        # a otro valor se respeta).
+        embarques.target_objective = 97
+        self.env['sgi.config'].fix_kpi_seeds()
+        self.assertEqual(embarques.target_objective, 97)

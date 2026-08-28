@@ -8,6 +8,13 @@
     <!-- KPIs 2.0: fija el calc_mode automático de los indicadores listos, solo
          donde siguen en 'manual' (idempotente; no pisa decisiones de MAST). -->
     <function model="sgi.config" name="activate_auto_indicators"/>
+    <!-- Correcciones puntuales de siembras (TR-03 uom/medición falsa,
+         AL-02 objetivo) — idempotentes, no pisan capturas de MAST. -->
+    <function model="sgi.config" name="fix_kpi_seeds"/>
+    <!-- Re-mide las mediciones pendientes de KPIs automáticos: los meses
+         creados antes de activar un modo (o de corregir el motor) quedaban
+         en blanco para siempre (deuda B.16). Solo escribe si hay valor. -->
+    <function model="sgi.config" name="recompute_pending_measures"/>
     <function model="sgi.config" name="harden_noupdate"/>
     <function model="sgi.config" name="seed_process_purposes"/>
     <!-- H21: siembra el FK de familia documental donde esté vacío, por la
