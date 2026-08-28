@@ -63,13 +63,80 @@ class TestQbCosteo(TransactionCase):
         mp = self.Costo._mp_cost_unit(self.tela)
         self.assertAlmostEqual(mp, 0.072 * 50.0, places=4)
 
-    def test_mp_receta_ambigua_usa_avco(self):
-        """Semiterminado con VARIAS BOMs activas (receta ambigua, como los
-        genéricos 'MUESTRA PILOTO' con 26 recetas): _bom_find elegiría una al
-        azar y el costo se colapsa. Con AVCO válido el modelo usa el
-        standard_price de Odoo en vez de explotar una receta arbitraria
-        (bug WD080: MP $0.13 en vez de ~$12)."""
+    def test_mp_receta_ambigua_no_usa_avco_de_fabricado(self):
+        """Semiterminado FABRICADO con varias BOMs activas: el AVCO de Odoo
+        trae las capas de conversión de las MOs (horas × tarifa), no solo
+        materiales, y el modelo ya cobra la conversión vía fab_unit —
+        usarlo como MP la cobraba DOS veces. El caso real: la cruda de
+        WC090 (3 BOMs) con AVCO $107/kg cuando el hilo cuesta ~$40/kg →
+        CONTITECH y todo el segmento industrial salían con margen neto
+        negativo por costo fantasma. La regla: explotar TODAS las recetas
+        y tomar la MÁS CARA — nunca el AVCO de un fabricado."""
         uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        hilo_z = self.env['product.product'].create({
+            'name': 'HILO PES Z TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 40.0,
+        })
+        hilo_set = self.env['product.product'].create({
+            'name': 'HILO PES SET TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 30.0,
+        })
+        cruda = self.env['product.product'].create({
+            'name': 'CRUDA CREP TEST', 'is_storable': True,
+            'uom_id': uom_kg.id,
+            'standard_price': 107.0,  # AVCO con conversión adentro
+        })
+        # DOS recetas (mezclas de hilo distintas) → receta ambigua
+        for lineas in ([(hilo_z, 1.0)], [(hilo_z, 0.5), (hilo_set, 0.5)]):
+            self.env['mrp.bom'].create({
+                'product_tmpl_id': cruda.product_tmpl_id.id,
+                'product_id': cruda.id,
+                'product_qty': 1.0, 'product_uom_id': uom_kg.id,
+                'bom_line_ids': [(0, 0, {
+                    'product_id': comp.id, 'product_qty': qty,
+                    'product_uom_id': uom_kg.id}) for comp, qty in lineas],
+            })
+        self.assertTrue(self.Costo._has_multiple_boms(cruda))
+        # 1×40 vs 0.5×40+0.5×30=35 → la más cara (40), NUNCA el AVCO 107
+        self.assertAlmostEqual(self.Costo._mp_cost_unit(cruda), 40.0,
+                               places=4)
+        # Un producto final que consume 0.167 kg de la cruda hereda el
+        # costo de hilo, no el AVCO inflado
+        tela2 = self.env['product.product'].create({
+            'name': 'CREP TERMINADA TEST', 'default_code': 'WD080Q46JNT161',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True,
+        })
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tela2.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': cruda.id, 'product_qty': 0.167,
+                'product_uom_id': uom_kg.id})],
+        })
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela2), 0.167 * 40.0, places=3)
+        # El camino batch (ctx precomputa multi_bom_ids) da lo mismo
+        ctx = self.Costo._engine_ctx([tela2.id])
+        self.assertIn(cruda.id, ctx['multi_bom_ids'])
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela2, ctx=ctx), 0.167 * 40.0, places=3)
+        # Y el desglose explicado sigue a la receta más cara, no al AVCO
+        rows = self.Costo.mp_breakdown(tela2)
+        self.assertAlmostEqual(sum(r['total'] for r in rows), 0.167 * 40.0,
+                               places=3)
+        self.assertTrue(all('AVCO de Odoo' not in r['fuente'] for r in rows))
+        # Receta ÚNICA sigue explotando normal (no se toca ese camino)
+        self.assertFalse(self.Costo._has_multiple_boms(self.tela))
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(self.tela), 0.072 * 50.0, places=4)
+
+    def test_mp_receta_ambigua_degenerada_avisa(self):
+        """Recetas ambiguas DEGENERADAS (genéricos 'MUESTRA PILOTO' con
+        recetas de relleno que explotan a casi nada frente al AVCO): el
+        costo se queda el explotado — el AVCO de un fabricado no es MP —
+        pero el motor AVISA en el log para que alguien arregle las BOMs.
+        Ya no se tapa el hoyo con el AVCO (así entró el doble conteo)."""
         uom_kg = self.env.ref('uom.product_uom_kgm')
         barato = self.env['product.product'].create({
             'name': 'INSUMO BARATO', 'is_storable': True,
@@ -79,7 +146,6 @@ class TestQbCosteo(TransactionCase):
             'name': 'MUESTRA PILOTO TEST', 'is_storable': True,
             'uom_id': uom_kg.id, 'standard_price': 88.0,
         })
-        # DOS recetas para el mismo semiterminado → receta ambigua
         for _i in range(2):
             self.env['mrp.bom'].create({
                 'product_tmpl_id': semi.product_tmpl_id.id,
@@ -89,32 +155,12 @@ class TestQbCosteo(TransactionCase):
                     'product_id': barato.id, 'product_qty': 0.01,
                     'product_uom_id': uom_kg.id})],
             })
-        self.assertTrue(self.Costo._has_multiple_boms(semi))
-        # Explotar daría ~$0.01/kg (colapsado); el AVCO da $88
-        self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 88.0, places=4)
-        # Un producto final que consume 0.1446 kg del semi → 0.1446 × 88
-        tela2 = self.env['product.product'].create({
-            'name': 'DESAGUJADO TEST', 'default_code': 'WD080Q46JNT161',
-            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True,
-        })
-        self.env['mrp.bom'].create({
-            'product_tmpl_id': tela2.product_tmpl_id.id,
-            'product_qty': 1.0, 'product_uom_id': uom_m.id,
-            'bom_line_ids': [(0, 0, {
-                'product_id': semi.id, 'product_qty': 0.1446,
-                'product_uom_id': uom_kg.id})],
-        })
-        self.assertAlmostEqual(
-            self.Costo._mp_cost_unit(tela2), 0.1446 * 88.0, places=3)
-        # El camino batch (ctx precomputa multi_bom_ids) da lo mismo
-        ctx = self.Costo._engine_ctx([tela2.id])
-        self.assertIn(semi.id, ctx['multi_bom_ids'])
-        self.assertAlmostEqual(
-            self.Costo._mp_cost_unit(tela2, ctx=ctx), 0.1446 * 88.0, places=3)
-        # Receta ÚNICA sigue explotando normal (no se toca ese camino)
-        self.assertFalse(self.Costo._has_multiple_boms(self.tela))
-        self.assertAlmostEqual(
-            self.Costo._mp_cost_unit(self.tela), 0.072 * 50.0, places=4)
+        with self.assertLogs(
+                'odoo.addons.qb_capacidad_costeo.models.costeo',
+                level='WARNING') as capturado:
+            self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 0.01,
+                                   places=4)
+        self.assertTrue(any('degeneradas' in m for m in capturado.output))
 
     def test_peso_estimado_se_marca(self):
         """El peso adivinado del código (ref_gramaje) o del weight de Odoo se
