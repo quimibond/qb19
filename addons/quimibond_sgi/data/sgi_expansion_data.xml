@@ -98,4 +98,113 @@
         <field name="frequency">monthly</field>
         <field name="calc_mode">dso_cartera</field>
     </record>
+
+    <!-- Nivel 1 adicional: línea base medida en ago-2026 sobre datos reales
+         (cartera vencida 17.5% / >60d 12.3%; retención 24→25 70.3%;
+         fuera del top 10 25.9%; top 5 productos 33.2%; cancelados 10.4%).
+         El aceptable es esa partida: mejorar desde ahí, no maquillar. -->
+    <record id="sgi_ind_ex_cartera_vencida" model="sgi.indicator">
+        <field name="code">EX-08</field>
+        <field name="name">Cartera vencida</field>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">10</field>
+        <field name="target_acceptable">17.5</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">cartera_vencida</field>
+    </record>
+    <record id="sgi_ind_ex_cartera_vencida_60" model="sgi.indicator">
+        <field name="code">EX-09</field>
+        <field name="name">Cartera vencida a más de 60 días</field>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">5</field>
+        <field name="target_acceptable">12.5</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">cartera_vencida_60</field>
+    </record>
+    <record id="sgi_ind_ex_retencion" model="sgi.indicator">
+        <field name="code">EX-10</field>
+        <field name="name">Retención de clientes (12 meses)</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">85</field>
+        <field name="target_acceptable">70</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">retencion_clientes</field>
+    </record>
+    <record id="sgi_ind_ex_reactivados" model="sgi.indicator">
+        <field name="code">EX-11</field>
+        <field name="name">Clientes reactivados</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">clientes</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">3</field>
+        <field name="target_acceptable">1</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">clientes_reactivados</field>
+    </record>
+    <record id="sgi_ind_ex_fuera_top10" model="sgi.indicator">
+        <field name="code">EX-12</field>
+        <field name="name">Ventas fuera del top 10 clientes (12 meses)</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">35</field>
+        <field name="target_acceptable">26</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">ventas_fuera_top10</field>
+    </record>
+    <record id="sgi_ind_ex_conc_productos" model="sgi.indicator">
+        <field name="code">EX-13</field>
+        <field name="name">Concentración top 5 productos (12 meses)</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">30</field>
+        <field name="target_acceptable">34</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">concentracion_productos</field>
+    </record>
+    <record id="sgi_ind_ex_cancelados" model="sgi.indicator">
+        <field name="code">EX-14</field>
+        <field name="name">Pedidos de venta cancelados</field>
+        <field name="sgi_area_id" ref="sgi_area_v"/>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">%</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">5</field>
+        <field name="target_acceptable">10</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">pedidos_cancelados</field>
+    </record>
+    <record id="sgi_ind_ex_entregas" model="sgi.indicator">
+        <field name="code">EX-15</field>
+        <field name="name">Entregas completas a la primera</field>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">95</field>
+        <field name="target_acceptable">90</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">entregas_completas</field>
+    </record>
+    <record id="sgi_ind_ex_dpo" model="sgi.indicator">
+        <field name="code">EX-16</field>
+        <field name="name">Días de pago a proveedores (DPO)</field>
+        <field name="objective_id" ref="sgi_objective_expansion"/>
+        <field name="uom">días</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">49</field>
+        <field name="target_acceptable">42</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">dpo_pagos</field>
+    </record>
 </odoo>

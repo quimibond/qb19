@@ -40,6 +40,15 @@ CALC_MODES = [
     ('facturacion_usd', "Participación de facturación en USD"),
     ('notas_credito', "Notas de crédito vs facturación"),
     ('dso_cartera', "Días de cartera (DSO)"),
+    ('cartera_vencida', "Cartera vencida"),
+    ('cartera_vencida_60', "Cartera vencida a más de 60 días"),
+    ('retencion_clientes', "Retención de clientes (12 meses)"),
+    ('clientes_reactivados', "Clientes reactivados"),
+    ('ventas_fuera_top10', "Ventas fuera del top 10 clientes (12 meses)"),
+    ('concentracion_productos', "Concentración top 5 productos (12 meses)"),
+    ('pedidos_cancelados', "Pedidos de venta cancelados"),
+    ('entregas_completas', "Entregas completas a la primera (sin backorder)"),
+    ('dpo_pagos', "Días de pago a proveedores (DPO)"),
 ]
 
 
@@ -121,6 +130,15 @@ class SgiIndicator(models.Model):
         'facturacion_usd': "Contabilidad → % de la facturación neta del periodo emitida en USD (importes en moneda de la compañía).",
         'notas_credito': "Contabilidad → notas de crédito del periodo vs facturación bruta de clientes (sin impuestos).",
         'dso_cartera': "Contabilidad → cartera de clientes pendiente al medir vs facturación neta de los últimos 90 días, por 90 (aproximación: usa el estado de pago actual, no el histórico).",
+        'cartera_vencida': "Contabilidad → % del saldo de clientes pendiente cuyo vencimiento ya pasó al cierre del periodo (estado de pago actual).",
+        'cartera_vencida_60': "Contabilidad → % del saldo de clientes pendiente vencido hace más de 60 días al cierre del periodo (estado de pago actual).",
+        'retencion_clientes': "Contabilidad → % de los clientes que facturaron en los 12 meses previos que también facturaron en los últimos 12 meses (rodante al cierre del periodo).",
+        'clientes_reactivados': "Contabilidad → clientes que facturan en el periodo tras 6 a 18 meses sin facturar (dormidos recuperados).",
+        'ventas_fuera_top10': "Contabilidad → % de la facturación neta de los últimos 12 meses que NO está en los 10 clientes principales.",
+        'concentracion_productos': "Contabilidad → % de la facturación de los últimos 12 meses en los 5 productos principales (líneas de factura, moneda de la compañía).",
+        'pedidos_cancelados': "Ventas → pedidos cancelados del periodo vs pedidos confirmados más cancelados.",
+        'entregas_completas': "Inventario → entregas a clientes del periodo que NO generaron backorder (completas a la primera).",
+        'dpo_pagos': "Contabilidad → saldo pendiente a proveedores al medir vs compras netas de los últimos 90 días, por 90 (aproximación: estado de pago actual).",
     }
 
     @api.depends('calc_mode')
@@ -809,6 +827,151 @@ class SgiIndicator(models.Model):
             return None
         return round(receivable / sales_90 * 90.0, 1)
 
+    def _sgi_open_moves(self, move_types, date_to):
+        """Documentos timbrados con saldo pendiente al medir (aprox.: estado
+        de pago actual — Odoo no guarda la foto histórica de la cartera)."""
+        return self.env['account.move'].search([
+            ('move_type', 'in', move_types),
+            ('state', '=', 'posted'),
+            ('invoice_date', '<=', date_to),
+            ('payment_state', 'in', ('not_paid', 'partial')),
+        ])
+
+    def _sgi_overdue_pct(self, date_to, min_days):
+        """% del saldo de clientes pendiente vencido hace más de min_days al
+        cierre del periodo."""
+        moves = self._sgi_open_moves(('out_invoice', 'out_refund'), date_to)
+        total = sum(moves.mapped('amount_residual_signed'))
+        if total <= 0:
+            return None
+        limit = date_to - relativedelta(days=min_days)
+        overdue = sum(moves.filtered(
+            lambda m: (m.invoice_date_due or m.invoice_date) < limit
+        ).mapped('amount_residual_signed'))
+        return round(overdue / total * 100.0, 2)
+
+    def _calc_cartera_vencida(self, date_from, date_to):
+        return self._sgi_overdue_pct(date_to, 0)
+
+    def _calc_cartera_vencida_60(self, date_from, date_to):
+        return self._sgi_overdue_pct(date_to, 60)
+
+    def _sgi_invoiced_partner_ids(self, date_from, date_to):
+        groups = self.env['account.move']._read_group([
+            ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
+            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
+        ], ['commercial_partner_id'], [])
+        return {partner.id for (partner,) in groups}
+
+    def _calc_retencion_clientes(self, date_from, date_to):
+        """% de los clientes de la ventana previa de 12 meses que repiten en
+        la ventana actual de 12 meses (rodante al cierre del periodo)."""
+        curr_start = date_to - relativedelta(years=1) + relativedelta(days=1)
+        prev_start = date_to - relativedelta(years=2) + relativedelta(days=1)
+        prev = self._sgi_invoiced_partner_ids(
+            prev_start, curr_start - relativedelta(days=1))
+        if not prev:
+            return None
+        curr = self._sgi_invoiced_partner_ids(curr_start, date_to)
+        return round(len(prev & curr) / len(prev) * 100.0, 2)
+
+    def _calc_clientes_reactivados(self, date_from, date_to):
+        """Clientes que facturan en el periodo después de 6 a 18 meses sin
+        facturar. Cero reactivados con facturación en el mes ES un dato."""
+        Move = self.env['account.move']
+        base_domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]
+        groups = Move._read_group(
+            base_domain + [('invoice_date', '>=', date_from),
+                           ('invoice_date', '<=', date_to)],
+            ['commercial_partner_id'], [])
+        if not groups:
+            return None
+        count = 0
+        for (partner,) in groups:
+            last = Move.search(
+                base_domain + [('commercial_partner_id', '=', partner.id),
+                               ('invoice_date', '<', date_from)],
+                order='invoice_date desc', limit=1)
+            if not last:
+                continue
+            gap = (date_from - last.invoice_date).days
+            if 180 <= gap <= 540:
+                count += 1
+        return float(count)
+
+    def _sgi_customer_amounts_12m(self, date_to):
+        """Facturación neta por cliente de los últimos 12 meses, ordenada de
+        mayor a menor (moneda de la compañía)."""
+        start = date_to - relativedelta(years=1) + relativedelta(days=1)
+        groups = self.env['account.move']._read_group(
+            self._sgi_customer_moves_domain(start, date_to),
+            ['commercial_partner_id'], ['amount_untaxed_signed:sum'])
+        return sorted((amount for _partner, amount in groups), reverse=True)
+
+    def _calc_ventas_fuera_top10(self, date_from, date_to):
+        """% de la facturación neta de los últimos 12 meses fuera de los 10
+        clientes principales: la expansión medida en dinero, no en cuentas."""
+        amounts = self._sgi_customer_amounts_12m(date_to)
+        total = sum(amounts)
+        if total <= 0:
+            return None
+        return round((total - sum(amounts[:10])) / total * 100.0, 2)
+
+    def _calc_concentracion_productos(self, date_from, date_to):
+        """% de la facturación de los últimos 12 meses en los 5 productos
+        principales (líneas de factura; balance = importe en moneda de la
+        compañía, con las notas de crédito restando)."""
+        start = date_to - relativedelta(years=1) + relativedelta(days=1)
+        groups = self.env['account.move.line']._read_group([
+            ('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
+            ('move_id.state', '=', 'posted'),
+            ('display_type', '=', 'product'),
+            ('product_id', '!=', False),
+            ('move_id.invoice_date', '>=', start),
+            ('move_id.invoice_date', '<=', date_to),
+        ], ['product_id'], ['balance:sum'])
+        # En facturas de cliente el ingreso queda en crédito (balance
+        # negativo): el ingreso por producto es -balance.
+        amounts = sorted((-balance for _product, balance in groups), reverse=True)
+        total = sum(amounts)
+        if total <= 0:
+            return None
+        return round(sum(amounts[:5]) / total * 100.0, 2)
+
+    def _calc_pedidos_cancelados(self, date_from, date_to):
+        """Pedidos cancelados del periodo sobre confirmados más cancelados."""
+        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        Order = self.env['sale.order']
+        domain = [('date_order', '>=', dt_from), ('date_order', '<', dt_to)]
+        total = Order.search_count(domain + [('state', 'in', ('sale', 'cancel'))])
+        if not total:
+            return None
+        cancelled = Order.search_count(domain + [('state', '=', 'cancel')])
+        return round(cancelled / total * 100.0, 2)
+
+    def _calc_entregas_completas(self, date_from, date_to):
+        """% de entregas a clientes del periodo que NO generaron backorder:
+        el pedido salió completo a la primera."""
+        pickings = self._sgi_outgoing_done(date_from, date_to)
+        total = len(pickings)
+        if not total:
+            return None
+        with_backorder = len(pickings.filtered('backorder_ids'))
+        return round((total - with_backorder) / total * 100.0, 2)
+
+    def _calc_dpo_pagos(self, date_from, date_to):
+        """DPO por countback simple, espejo del DSO: saldo pendiente a
+        proveedores sobre compras netas de los últimos 90 días, por 90.
+        Junto con EX-07 da el ciclo de caja."""
+        payable = -sum(self._sgi_open_moves(
+            ('in_invoice', 'in_refund'), date_to
+        ).mapped('amount_residual_signed'))
+        purchases_90 = self._sgi_net_purchased(
+            date_to - relativedelta(days=89), date_to)
+        if purchases_90 <= 0:
+            return None
+        return round(payable / purchases_90 * 90.0, 1)
+
 
 class SgiIndicatorMeasure(models.Model):
     _name = 'sgi.indicator.measure'
@@ -908,6 +1071,8 @@ class SgiIndicatorMeasure(models.Model):
         'clientes_nuevos': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
         'facturacion_usd': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted'), ('currency_id.name', '=', 'USD')], 'invoice_date', False),
         'notas_credito': ('account.move', [('move_type', '=', 'out_refund'), ('state', '=', 'posted')], 'invoice_date', False),
+        'clientes_reactivados': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
+        'pedidos_cancelados': ('sale.order', [('state', 'in', ('sale', 'cancel'))], 'date_order', True),
         # requisiciones, embarques_sin_error, consumo_energia,
         # compras_sin_devolucion y capacitacion no caben en un dominio de fecha
         # simple (categoría/proveedor dinámicos, relación de devolución, o foto de
@@ -954,9 +1119,11 @@ class SgiIndicatorMeasure(models.Model):
                 'view_mode': 'list,form',
                 'domain': [('id', 'in', errors.ids)],
             }
-        if mode == 'concentracion_top3':
+        if mode in ('concentracion_top3', 'ventas_fuera_top10',
+                    'retencion_clientes'):
             # Evidencia = las facturas de los últimos 12 meses al cierre del
-            # periodo, agrupadas por cliente (misma ventana rodante del cálculo).
+            # periodo, agrupadas por cliente (misma ventana rodante del cálculo;
+            # en retención, la ventana actual).
             start = date_to - relativedelta(years=1) + relativedelta(days=1)
             return {
                 'type': 'ir.actions.act_window',
@@ -965,6 +1132,57 @@ class SgiIndicatorMeasure(models.Model):
                 'view_mode': 'list,pivot,form',
                 'domain': indicator._sgi_customer_moves_domain(start, date_to),
                 'context': {'search_default_group_by_partner': 1},
+            }
+        if mode == 'concentracion_productos':
+            start = date_to - relativedelta(years=1) + relativedelta(days=1)
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Facturación 12 meses por producto — evidencia de %s" % self.period_date,
+                'res_model': 'account.move.line',
+                'view_mode': 'list,pivot',
+                'domain': [('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
+                           ('move_id.state', '=', 'posted'),
+                           ('display_type', '=', 'product'),
+                           ('product_id', '!=', False),
+                           ('move_id.invoice_date', '>=', start),
+                           ('move_id.invoice_date', '<=', date_to)],
+            }
+        if mode in ('cartera_vencida', 'cartera_vencida_60'):
+            # Evidencia = las facturas vencidas que componen el numerador.
+            min_days = 60 if mode == 'cartera_vencida_60' else 0
+            limit = date_to - relativedelta(days=min_days)
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Cartera vencida — evidencia de %s" % self.period_date,
+                'res_model': 'account.move',
+                'view_mode': 'list,form',
+                'domain': [('move_type', 'in', ('out_invoice', 'out_refund')),
+                           ('state', '=', 'posted'),
+                           ('invoice_date', '<=', date_to),
+                           ('payment_state', 'in', ('not_paid', 'partial')),
+                           ('invoice_date_due', '<', limit)],
+            }
+        if mode == 'entregas_completas':
+            # Evidencia = las entregas CON backorder (las incompletas).
+            pickings = indicator._sgi_outgoing_done(date_from, date_to)
+            incomplete = pickings.filtered('backorder_ids')
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Entregas con backorder — evidencia de %s" % self.period_date,
+                'res_model': 'stock.picking',
+                'view_mode': 'list,form',
+                'domain': [('id', 'in', incomplete.ids)],
+            }
+        if mode == 'dpo_pagos':
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Saldo a proveedores — evidencia de %s" % self.period_date,
+                'res_model': 'account.move',
+                'view_mode': 'list,form',
+                'domain': [('move_type', 'in', ('in_invoice', 'in_refund')),
+                           ('state', '=', 'posted'),
+                           ('invoice_date', '<=', date_to),
+                           ('payment_state', 'in', ('not_paid', 'partial'))],
             }
         if mode == 'dso_cartera':
             # Evidencia = la cartera pendiente (facturas no pagadas al medir).

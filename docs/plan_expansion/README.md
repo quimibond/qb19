@@ -26,7 +26,7 @@ lectura) y fueron validados contra Odoo directamente (mismos totales al peso).
    y/o como páginas compartibles. No requieren modelos de Odoo.
 2. **El seguimiento operativo (KPIs, objetivos, revisión periódica)** → hecho en el
    addon `quimibond_sgi` **sin modelos nuevos**: los KPIs del plan están sembrados
-   como indicadores automáticos EX-01…EX-07 (nuevos `calc_mode` en `sgi.indicator`,
+   como indicadores automáticos EX-01…EX-16 (nuevos `calc_mode` en `sgi.indicator`,
    medidos por el cron mensual con semáforo y evidencia) colgados del objetivo
    "Expansión comercial rentable y diversificada (2028)" en `sgi.objective`.
    Encaja con ISO 9001 cláusulas 4 y 6.2.

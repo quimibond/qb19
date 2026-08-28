@@ -167,8 +167,10 @@ cuando el arancel presione, y ganar las cuentas que Asia suelta.
 - **Dónde se da seguimiento:** los KPIs del plan ya están sembrados en el addon
   `quimibond_sgi` como indicadores **automáticos** (los mide el cron mensual, con
   semáforo y evidencia): EX-01 margen, EX-02 compras/ventas, EX-03 clientes nuevos,
-  EX-04 concentración top 3 (12 m), EX-05 facturación USD, EX-06 notas de crédito y
-  EX-07 DSO — todos colgados del objetivo `sgi.objective` "Expansión comercial
+  EX-04 concentración top 3 (12 m), EX-05 facturación USD, EX-06 notas de crédito,
+  EX-07 DSO, EX-08/09 cartera vencida (total y >60 días), EX-10 retención, EX-11
+  reactivados, EX-12 ventas fuera del top 10, EX-13 concentración de productos,
+  EX-14 pedidos cancelados, EX-15 entregas completas y EX-16 DPO — todos colgados del objetivo `sgi.objective` "Expansión comercial
   rentable y diversificada (2028)". Encaja con ISO 9001 6.2 y la Revisión por la
   Dirección; los tableros con detalle salen del espejo Supabase vía
   quimibond-intelligence.
