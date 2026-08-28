@@ -164,10 +164,14 @@ cuando el arancel presione, y ganar las cuentas que Asia suelta.
 
 ## 13. Gobernanza del plan
 
-- **Dónde se da seguimiento:** los objetivos e indicadores se cargan en los modelos
-  existentes del SGI (`sgi.objective`, `sgi.indicator`) — encaja con ISO 9001 6.2 y
-  la Revisión por la Dirección; los datos vivos (margen, concentración, clientes
-  nuevos) salen del espejo Supabase vía quimibond-intelligence.
+- **Dónde se da seguimiento:** los KPIs del plan ya están sembrados en el addon
+  `quimibond_sgi` como indicadores **automáticos** (los mide el cron mensual, con
+  semáforo y evidencia): EX-01 margen, EX-02 compras/ventas, EX-03 clientes nuevos,
+  EX-04 concentración top 3 (12 m), EX-05 facturación USD, EX-06 notas de crédito y
+  EX-07 DSO — todos colgados del objetivo `sgi.objective` "Expansión comercial
+  rentable y diversificada (2028)". Encaja con ISO 9001 6.2 y la Revisión por la
+  Dirección; los tableros con detalle salen del espejo Supabase vía
+  quimibond-intelligence.
 - **Cadencia:** revisión mensual de KPIs (margen, compras, nuevos, concentración);
   revisión trimestral de OKRs; revisión anual de escenarios (o inmediata si se
   dispara un trigger del §8).

@@ -24,12 +24,12 @@ lectura) y fueron validados contra Odoo directamente (mismos totales al peso).
 
 1. **El plan y los análisis (contenido)** → viven aquí en `docs/plan_expansion/`
    y/o como páginas compartibles. No requieren modelos de Odoo.
-2. **El seguimiento operativo (KPIs, objetivos, revisión periódica)** → el addon
-   `quimibond_sgi` **ya tiene** los modelos para esto: `sgi.objective`,
-   `sgi.indicator`, `sgi.context`, `sgi.risk` y `sgi.sales_budget`. Los objetivos de
-   la estrategia se cargan como registros en esos modelos existentes — **sin crear
-   modelos nuevos** (regla del CI: modelo nuevo sin bump de versión = error, y el
-   riesgo de ramas superconjunto). Encaja con ISO 9001 cláusulas 4 y 6.2.
+2. **El seguimiento operativo (KPIs, objetivos, revisión periódica)** → hecho en el
+   addon `quimibond_sgi` **sin modelos nuevos**: los KPIs del plan están sembrados
+   como indicadores automáticos EX-01…EX-07 (nuevos `calc_mode` en `sgi.indicator`,
+   medidos por el cron mensual con semáforo y evidencia) colgados del objetivo
+   "Expansión comercial rentable y diversificada (2028)" en `sgi.objective`.
+   Encaja con ISO 9001 cláusulas 4 y 6.2.
 3. **El análisis vivo con datos (margen, concentración, clientes nuevos)** →
    `quimibond-intelligence` (frontend en Vercel sobre Supabase), donde un tablero
    "Plan de expansión" se actualiza solo.
