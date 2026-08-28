@@ -35,7 +35,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import html_escape
 
-from .cuenta_map import (CUENTA_MAP_SQL, EXCLUIR_CIERRE_SQL,
+from .cuenta_map import (CUENTA_MAP_SQL, excluir_refs_sql,
                          mo_qty_sql, wo_qty_sql)
 
 _logger = logging.getLogger(__name__)
@@ -575,7 +575,14 @@ class QbCostoProducto(models.Model):
               AND aml.date >= %%s AND aml.date < %%s
               AND aml.company_id = %%s
               AND {CIERRE}
-        """.replace('{CIERRE}', EXCLUIR_CIERRE_SQL) % CUENTA_MAP_SQL
+              -- Filtro de LÍNEA: una cuenta que mezcla naturalezas deja
+              -- pasar solo las líneas cuyo concepto lo diga. Hoy:
+              -- `501.01.02` solo cuenta con `SP/`, que es la merma real;
+              -- los embarques y el encogimiento son ajustes, no costo.
+              AND (m.filtro_etiqueta = ''
+                   OR position(m.filtro_etiqueta in
+                               coalesce(aml.name, '')) > 0)
+        """.replace('{CIERRE}', excluir_refs_sql(self.env)) % CUENTA_MAP_SQL
         params = [tuple(buckets), date_from, date_to, self.env.company.id]
         if es_variable is not None:
             query += ' AND COALESCE(m.es_variable, FALSE) = %s'

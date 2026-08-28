@@ -2474,3 +2474,262 @@ class TestQbCosteo(TransactionCase):
         esperado = (ws * (f.utilizacion_kg_pct or 0.0)
                     + (1 - ws) * (f.utilizacion_m_pct or 0.0))
         self.assertAlmostEqual(f.utilizacion_pond_pct, esperado, places=4)
+
+    def test_filtro_de_etiqueta_deja_pasar_solo_la_merma(self):
+        """Una cuenta que mezcla naturalezas deja pasar al pool solo las
+        líneas cuyo concepto lo diga.
+
+        `501.01.02 COSTO POR AJUSTES A CANTIDAD` junta la merma real
+        —etiquetada `SP/`, el scrap de Odoo— con embarques (`TL/EMB/`),
+        encogimiento (`TL/ENC/`) y entradas de refacciones (`TVAR/ENT-REF/`).
+        Solo la merma es costo del producto; los ajustes de cantidad no.
+
+        Sin el filtro, un asiento de regularización de $5,822,686 en diciembre
+        de 2025 —1,136 scraps sin asiento, revueltos con ajustes— entraba
+        entero al ajuste de MP y subía el costo de materia prima de TODOS los
+        productos.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mes = date(2027, 7, 1)
+
+        cuenta = Account.create({
+            'name': 'AJUSTES A CANTIDAD TEST', 'code': 'QBSP.0001',
+            'account_type': 'expense_direct_cost'})
+        contra = Account.create({'name': 'CONTRA SP TEST', 'code': 'QBSP.0009',
+                                 'account_type': 'expense'})
+        clase = Clase.create({'account_id': cuenta.id, 'bucket': 'mp'})
+
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': mes,
+            'line_ids': [
+                (0, 0, {'account_id': cuenta.id, 'debit': 30000.0,
+                        'name': 'SP/10758 - TC210X5.2X0.2X 3.99'}),
+                (0, 0, {'account_id': cuenta.id, 'debit': 70000.0,
+                        'name': 'TL/EMB/04840 - Entretela no tejida'}),
+                (0, 0, {'account_id': cuenta.id, 'debit': 50000.0,
+                        'name': 'TL/ENC//00103 - TEJIDO CIRCULAR'}),
+                (0, 0, {'account_id': contra.id, 'credit': 150000.0}),
+            ]}).action_post()
+
+        ventana = (mes, mes + relativedelta(months=1))
+        sin_filtro = self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0)
+        self.assertAlmostEqual(sin_filtro, 150000.0, places=2,
+                               msg='sin filtro entra la cuenta completa')
+
+        clase.filtro_etiqueta = 'SP/'
+        con_filtro = self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0)
+        self.assertAlmostEqual(
+            con_filtro, 30000.0, places=2,
+            msg='con filtro entra solo la merma, no los ajustes')
+
+        # Vaciarlo lo apaga: el filtro es opt-in, no un default escondido
+        clase.filtro_etiqueta = False
+        self.assertAlmostEqual(
+            self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0),
+            150000.0, places=2)
+
+    def test_refs_fuera_de_costeo_es_configurable_y_no_inyecta(self):
+        """La lista de referencias fuera del costeo sale de un parámetro, y su
+        valor se INTERPOLA en el SQL porque `_table_query` no admite
+        parámetros. La lista blanca de caracteres es lo que sostiene eso."""
+        from odoo.addons.qb_capacidad_costeo.models.cuenta_map import (
+            excluir_refs_sql)
+        Config = self.env['qb.costeo.factor.config']
+
+        sql = excluir_refs_sql(self.env)
+        self.assertNotIn('%', sql, 'un porcentaje rompe el formateo printf')
+        self.assertIn('CIERRE ANUAL', sql)
+        self.assertIn('ENAJENACI', sql)
+
+        def poner(texto):
+            rec = Config.search([('key', '=', 'refs_fuera_de_costeo')], limit=1)
+            if rec:
+                rec.value_text = texto
+            else:
+                Config.create({'key': 'refs_fuera_de_costeo',
+                               'value_text': texto})
+
+        poner("X'; DROP TABLE x; --")
+        sql = excluir_refs_sql(self.env)
+        # Lo que hace segura la interpolación es que la comilla no pasa: sin
+        # ella el valor no puede salirse de su literal. El punto y coma
+        # tampoco, así que no hay forma de encadenar otra sentencia. Un `--`
+        # sobrevive y da igual: dentro de comillas es texto, no comentario.
+        self.assertNotIn(';', sql,
+                         'la lista blanca no deja pasar el punto y coma')
+        self.assertEqual(
+            sql.count("'") % 2, 0,
+            'las comillas quedan balanceadas: el valor no se sale del literal')
+        self.assertNotIn('%', sql)
+
+        poner('')
+        self.assertEqual(
+            excluir_refs_sql(self.env), 'TRUE',
+            'vacío = no se excluye nada, y el SQL sigue siendo válido')
+
+    def test_la_baja_de_activo_vendido_no_entra_al_pool(self):
+        """La depreciación de un activo que salió no es costo del período
+        cuando su reemplazo ya está en el pool.
+
+        En dic-2025 se cargaron $5,827,157 a `504.08.0001 DEPRECIACIÓN
+        MAQUINARIA` por dos máquinas —FONGS JET y CIRCULAR INTERLOCK— que se
+        vendieron. Tres razones para que no sea costo, y apuntan al mismo lado:
+
+          1. Ya está compensado: `704.23.0003 UTILIDAD EN VENTA DE ACTIVO
+             FIJO` trae $5,896,997 el mismo mes, en una cuenta `income_other`
+             que el costeo no mira ni debe mirar. El módulo veía media
+             operación.
+          2. Es un evento único, y el suavizado a 12 meses lo vuelve
+             recurrente: $485,596/mes, el 7.8% del pool fabril.
+          3. Fue una venta con arrendamiento en reversa. Esas máquinas hoy se
+             pagan como renta y la renta YA está en el pool —`701.11%` saltó
+             de 10 a 16 contratos justo en dic-2025—. Repartir además su
+             depreciación de cuando eran propias le cobra a cada producto la
+             misma máquina dos veces.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mes = date(2027, 8, 1)
+
+        deprec = Account.create({
+            'name': 'DEPRECIACION MAQUINARIA TEST', 'code': 'QBEN.0001',
+            'account_type': 'expense_direct_cost'})
+        Clase.create({'account_id': deprec.id, 'bucket': 'depreciacion'})
+        acum = Account.create({'name': 'DEPRE ACUM TEST', 'code': 'QBEN.0002',
+                               'account_type': 'asset_fixed'})
+
+        def poliza(monto, ref):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id,
+                'date': mes, 'ref': ref,
+                'line_ids': [
+                    (0, 0, {'account_id': deprec.id, 'debit': monto}),
+                    (0, 0, {'account_id': acum.id, 'credit': monto}),
+                ]}).action_post()
+
+        poliza(90000.0, 'DEPRECIACION DEL MES')
+        ventana = (mes, mes + relativedelta(months=1))
+        normal = self.Costo._pool_by_month(
+            ('depreciacion',), *ventana, es_variable=False).get(mes, 0.0)
+        self.assertAlmostEqual(normal, 90000.0, places=2)
+
+        poliza(5827156.83, 'REGISTRO ENAJENACIÓN DE ACTIVO MAQUINA')
+        con_baja = self.Costo._pool_by_month(
+            ('depreciacion',), *ventana, es_variable=False).get(mes, 0.0)
+        self.assertAlmostEqual(
+            con_baja, 90000.0, places=2,
+            msg='la baja del activo vendido no mueve el pool; la '
+                'depreciación del mes sí sigue contando')
+
+    def test_la_conciliacion_ve_el_costeo_que_vive_en_otras_cuentas(self):
+        """La conciliación filtraba por TIPO de cuenta; el motor filtra por
+        BUCKET. Esa asimetría dejaba fuera del mayor gasto que el modelo sí le
+        cobraba al producto.
+
+        El caso real: `701.11.0001 ARRENDAMIENTO FINANCIERO` tiene
+        `account_type = income_other` pero está en el bucket
+        `arrend_maquinaria`. Son las máquinas con las que se produce —una
+        venta con arrendamiento en reversa—, así que el modelo lo cobra bien;
+        pero el mayor no lo contaba como gasto y la brecha salía baja por ese
+        lado: $13,907,465 entre 2025 y 2026.
+
+        Lo demás que vive en `income_other` —cambiaria, intereses, comisiones,
+        utilidad en venta de activo— no es costo de producto ni debe serlo,
+        pero sí es resultado de la empresa: va en su propia línea para que el
+        resultado del mayor sea el de la empresa.
+        """
+        Concil = self.env['qb.costo.conciliacion']
+        campos = Concil._fields
+        self.assertIn('gl_otros_costeo', campos)
+        self.assertIn('gl_resultado_integral', campos)
+
+        # La identidad que debe cumplirse en toda fila
+        for c in Concil.search([], limit=24):
+            self.assertAlmostEqual(
+                c.gl_gasto_total,
+                c.gl_costo_ventas + c.gl_gastos_operacion + c.gl_otros_costeo,
+                places=2, msg='%s: el gasto total suma sus tres partes'
+                              % c.period)
+            self.assertAlmostEqual(
+                c.resultado_gl,
+                c.gl_ventas - c.gl_gasto_total - c.gl_resultado_integral,
+                places=2, msg='%s: el resultado del mayor es ventas menos '
+                              'todo lo que se gastó' % c.period)
+
+    def test_el_margen_de_una_cotizacion_sigue_al_precio(self):
+        """Editar el precio objetivo de una cotización recalcula margen y
+        semáforo. Antes eran floats sueltos que el cotizador escribía una
+        vez: al rebajar después el precio, el margen se quedaba con el del
+        precio anterior.
+
+        El caso real: una cotización a $16.00 presumía 5.0% de margen cuando
+        a ese precio el real era 1.5% — el 5.0% correspondía a $16.72, el
+        precio de antes de la rebaja. Prácticamente en el piso, presentada
+        como si tuviera colchón.
+        """
+        cot = self.env['qb.cotizacion'].create({
+            'name': 'COT MARGEN VIVO TEST',
+            'costo_variable': 6.3254,
+            'costo_absorbido_sin_op': 12.9706,
+            'op_pct': 17.38926082589547,
+            'piso_ocioso': 6.3254,
+            'piso_lleno': 15.7009,
+            'precio_objetivo': 16.7214,
+        })
+        self.assertAlmostEqual(cot.margen_neto_pct, 5.04, places=1)
+        self.assertEqual(cot.semaforo, 'verde')
+
+        # La rebaja que en producción dejó el margen viejo
+        cot.precio_objetivo = 16.0
+        self.assertAlmostEqual(
+            cot.margen_neto_pct, 1.54, places=1,
+            msg='el margen debe seguir al precio, no quedarse con el viejo')
+        self.assertAlmostEqual(cot.margen_contribucion, 16.0 - 6.3254,
+                               places=4)
+        self.assertEqual(cot.semaforo, 'verde')
+
+        # Y el semáforo también es vivo: entre pisos = ámbar, bajo variable
+        # = rojo
+        cot.precio_objetivo = 10.0
+        self.assertEqual(cot.semaforo, 'ambar')
+        self.assertLess(cot.margen_neto_pct, 0.0)
+        cot.precio_objetivo = 5.0
+        self.assertEqual(cot.semaforo, 'rojo')
+
+        # Sin precio objetivo cae al mercado, y sin mercado al piso lleno —
+        # el mismo fallback del precio evaluado
+        cot.precio_objetivo = 0.0
+        cot.precio_mercado = 18.0
+        self.assertAlmostEqual(
+            cot.margen_bruto_pct, 100.0 * (18.0 - 12.9706) / 18.0, places=2)
+
+    def test_capacidad_sin_datos_no_reprueba(self):
+        """Un centro sin workcenters NI turnos no tiene dato de capacidad
+        práctica: el check dice «no se puede validar» y NO reprueba.
+
+        Antes caía a `libres = 0` y cualquier volumen reprobaba por ese
+        centro: las 15 cotizaciones de agosto salieron «no cabe» porque a
+        ACABADO le faltaba 1 hora contra un cero inventado. Un check que
+        siempre dice que no es ruido, no una validación.
+        """
+        Centro = self.env['qb.costeo.centro']
+        sin_datos = Centro.create({
+            'code': 'TEST_CAP_SIN', 'name': 'Sin datos de capacidad',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'std_output_per_hour': 1779.0})
+        wiz = self.env['qb.cotizador.wizard'].new({})
+        ok, detail = wiz._check_capacity(
+            sin_datos, is_kg=False, kg=0.22, m_per_kg=4.5, volumen=2500.0)
+        self.assertTrue(ok, 'sin dato de capacidad no se puede reprobar')
+        self.assertIn('no se puede validar', detail)
+        self.assertNotIn('FALTAN', detail)
+        sin_datos.unlink()
