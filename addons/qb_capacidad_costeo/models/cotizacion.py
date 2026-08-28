@@ -86,18 +86,63 @@ class QbCotizacion(models.Model):
         string='Piso a planta llena $/u MXN',
         help='= (variable + fab) ÷ (1 − op%): margen cero absorbiendo todo. '
              'Con la planta llena no aceptar debajo de esto.')
+    # Los márgenes y el semáforo se COMPUTAN del precio y del snapshot de
+    # costos, no se guardan sueltos. Antes eran floats que el cotizador
+    # escribía una vez: al editar después el precio objetivo sobre la
+    # cotización, el margen se quedaba con el del precio anterior. Pasó tres
+    # veces en producción — la peor, una cotización a $16.00 presumiendo 5.0%
+    # de margen cuando a ese precio el real era 1.5% (el 5.0% correspondía a
+    # $16.72, el precio de antes de la rebaja).
+    #
+    # Los COSTOS sí son snapshot a propósito: son la foto de los factores del
+    # día en que se cotizó, y recalcularlos al vuelo cambiaría una cotización
+    # ya presentada. Lo que no puede quedarse viejo es la aritmética entre
+    # el precio vigente y esa foto.
     margen_contribucion = fields.Float(
+        compute='_compute_margenes', store=True,
         string='Contribución $/u MXN', digits=(16, 4),
         help='Precio − costo variable: lo que cada unidad aporta para pagar '
-             'los costos fijos.')
-    margen_contribucion_pct = fields.Float(string='Contribución %')
+             'los costos fijos. Calculado siempre del precio vigente.')
+    margen_contribucion_pct = fields.Float(
+        compute='_compute_margenes', store=True, string='Contribución %')
     margen_bruto_pct = fields.Float(
+        compute='_compute_margenes', store=True,
         string='Margen bruto %',
         help='(precio − costo de producción) ÷ precio, al precio cotizado. '
              'Utilidad después de fabricar, ANTES de admin/ventas.')
     margen_neto_pct = fields.Float(
+        compute='_compute_margenes', store=True,
         string='Margen neto %',
-        help='Margen bruto − %operación: lo que queda después de TODO.')
+        help='Margen bruto − %operación: lo que queda después de TODO. '
+             'Calculado siempre del precio vigente — editar el precio '
+             'objetivo lo actualiza solo.')
+
+    @api.depends('precio_objetivo', 'precio_mercado', 'piso_lleno',
+                 'piso_ocioso', 'costo_variable', 'costo_absorbido_sin_op',
+                 'op_pct')
+    def _compute_margenes(self):
+        for rec in self:
+            # Mismo fallback que el precio evaluado: objetivo → mercado →
+            # piso lleno. No se usa precio_evaluado directo porque este
+            # compute es almacenado y aquél no.
+            precio = (rec.precio_objetivo or rec.precio_mercado
+                      or rec.piso_lleno)
+            if not precio:
+                rec.margen_contribucion = 0.0
+                rec.margen_contribucion_pct = 0.0
+                rec.margen_bruto_pct = 0.0
+                rec.margen_neto_pct = 0.0
+                rec.semaforo = False
+                continue
+            contrib = precio - rec.costo_variable
+            bruto = 100.0 * (precio - rec.costo_absorbido_sin_op) / precio
+            rec.margen_contribucion = contrib
+            rec.margen_contribucion_pct = 100.0 * contrib / precio
+            rec.margen_bruto_pct = bruto
+            # op_pct está guardado en puntos porcentuales (14.85, no 0.1485)
+            rec.margen_neto_pct = bruto - rec.op_pct
+            rec.semaforo = self.env['qb.costo.producto'].semaforo_for(
+                precio, rec.piso_ocioso, rec.piso_lleno)
 
     # Espejo en divisa (desde el TC guardado al cotizar)
     precio_mercado_divisa = fields.Float(
@@ -157,10 +202,11 @@ class QbCotizacion(models.Model):
         ('rojo', 'Debajo del costo variable'),
         ('ambar', 'Aporta a fijos (no absorbe todo)'),
         ('verde', 'Cubre costo total + operación'),
-    ], string='Semáforo de precio',
+    ], compute='_compute_margenes', store=True, string='Semáforo de precio',
         help='Precio evaluado contra los pisos: rojo = destruye valor; '
              'ámbar = con capacidad ociosa conviene (aporta a fijos); '
-             'verde = cubre el costo absorbido completo.')
+             'verde = cubre el costo absorbido completo. Se recalcula solo '
+             'al cambiar el precio.')
     sale_order_id = fields.Many2one(
         'sale.order', string='Orden de venta', readonly=True,
         help='Orden desde la que se generó la cotización (si aplica).')

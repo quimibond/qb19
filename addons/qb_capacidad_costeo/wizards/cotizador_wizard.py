@@ -806,16 +806,12 @@ class QbCotizadorWizard(models.TransientModel):
             'precio_mercado': res['precio_mercado'],
             'piso_ocioso': res['piso_ocioso'],
             'piso_lleno': res['piso_lleno'],
-            'margen_contribucion': res['contrib'],
-            'margen_contribucion_pct':
-                100.0 * res['contrib'] / res['precio_ref']
-                if res['precio_ref'] else 0.0,
-            'margen_bruto_pct': self.margen_bruto_pct,
-            'margen_neto_pct': self.margen_neto_pct,
+            # margen_* y semaforo NO se pasan: en qb.cotizacion son
+            # computados del precio vigente y el snapshot de costos, para que
+            # editar el precio después no deje un margen viejo.
             'contrib_hora_maquina': res['contrib_hora'],
             'capacity_ok': res['capacity_ok'],
             'capacity_detail': res['capacity_detail'],
-            'semaforo': res['semaforo'],
             'sale_order_id': self.sale_order_id.id,
             'factores_id': factores.id,
             'supuestos': supuestos,
@@ -918,6 +914,19 @@ class QbCotizadorWizard(models.TransientModel):
                 turnos = self.env['qb.turno.config'].search(
                     [('centro_id', '=', centro.id)])
                 total_hours = sum(t.hours_per_month() for t in turnos)
+                if not total_hours:
+                    # Sin workcenters Y sin turnos no hay dato de capacidad
+                    # práctica: "no se puede validar" es la verdad, y no
+                    # cuenta como reprobado. Antes esto caía a `free = 0` y
+                    # CUALQUIER volumen reprobaba por este centro — las 15
+                    # cotizaciones de agosto salieron «no cabe» porque a
+                    # ACABADO le faltaba 1 hora contra un cero inventado,
+                    # y el campo se volvió ruido que nadie podía usar.
+                    lines.append(
+                        '%s: sin datos de capacidad práctica (ni workcenters '
+                        'ni turnos configurados) — no se puede validar.'
+                        % centro.code)
+                    continue
                 balance = self.env['qb.balance'].search(
                     [('centro_id', '=', centro.id)], limit=1)
                 used_pct = balance.utilization_pct if balance else 0.0
