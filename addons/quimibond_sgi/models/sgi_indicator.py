@@ -221,6 +221,20 @@ class SgiIndicator(models.Model):
         return (fields.Datetime.to_datetime(date_from),
                 fields.Datetime.to_datetime(date_to) + relativedelta(days=1))
 
+    def _sgi_kpi_company(self):
+        """Compañía cuyos números miden los KPIs financieros. Sin este filtro
+        el motor sumaba las compañías del grupo completo (VE-01 jul-2026:
+        +12.76% grupo vs +14.6% solo PNTQ). Configurable en Ajustes
+        (quimibond_sgi.kpi_company_id); por defecto la compañía principal."""
+        param = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.kpi_company_id', 0) or 0)
+        if param:
+            company = self.env['res.company'].browse(param).exists()
+            if company:
+                return company
+        return self.env.ref('base.main_company', raise_if_not_found=False) \
+            or self.env.company
+
     def _calc_otif_ventas(self, date_from, date_to):
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
         pickings = self.env['stock.picking'].search([
@@ -434,6 +448,7 @@ class SgiIndicator(models.Model):
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('out_invoice', 'out_refund')),
             ('state', '=', 'posted'),
+            ('company_id', '=', self._sgi_kpi_company().id),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
         return sum(moves.mapped('amount_untaxed_signed'))
@@ -561,6 +576,7 @@ class SgiIndicator(models.Model):
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('in_invoice', 'in_refund')),
             ('state', '=', 'posted'),
+            ('company_id', '=', self._sgi_kpi_company().id),
             ('partner_id', 'child_of', partner.id),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
@@ -574,6 +590,13 @@ class SgiIndicator(models.Model):
         if not self._sgi_energy_partner():
             return ("Configure el proveedor de energía en Ajustes para medir este "
                     "indicador automáticamente.")
+        return ''
+
+    def _note_produccion_vs_capacidad(self, date_from, date_to):
+        if not float(self.env['ir.config_parameter'].sudo().get_param(
+                'quimibond_sgi.production_monthly_capacity', 0) or 0):
+            return ("Configure la capacidad instalada mensual en Ajustes para "
+                    "medir este indicador automáticamente.")
         return ''
 
     def _calc_compras_sin_devolucion(self, date_from, date_to):
@@ -705,6 +728,7 @@ class SgiIndicator(models.Model):
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('in_invoice', 'in_refund')),
             ('state', '=', 'posted'),
+            ('company_id', '=', self._sgi_kpi_company().id),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
         return -sum(moves.mapped('amount_untaxed_signed'))
@@ -718,11 +742,12 @@ class SgiIndicator(models.Model):
         if 'margin' not in Order._fields:
             return None
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
+        company = self._sgi_kpi_company()
         orders = Order.search([
             ('state', '=', 'sale'),
+            ('company_id', '=', company.id),
             ('date_order', '>=', dt_from), ('date_order', '<', dt_to),
         ])
-        company = self.env.company
         base = margin = 0.0
         for order in orders:
             when = order.date_order.date()
@@ -747,7 +772,8 @@ class SgiIndicator(models.Model):
         clientes nuevos con facturación en el mes ES un dato (rojo legítimo);
         sin facturación alguna, no hay medición."""
         Move = self.env['account.move']
-        base_domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]
+        base_domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
+                       ('company_id', '=', self._sgi_kpi_company().id)]
         groups = Move._read_group(
             base_domain + [('invoice_date', '>=', date_from),
                            ('invoice_date', '<=', date_to)],
@@ -766,6 +792,7 @@ class SgiIndicator(models.Model):
     def _sgi_customer_moves_domain(self, date_from, date_to):
         return [('move_type', 'in', ('out_invoice', 'out_refund')),
                 ('state', '=', 'posted'),
+                ('company_id', '=', self._sgi_kpi_company().id),
                 ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to)]
 
     def _calc_concentracion_top3(self, date_from, date_to):
@@ -833,6 +860,7 @@ class SgiIndicator(models.Model):
         return self.env['account.move'].search([
             ('move_type', 'in', move_types),
             ('state', '=', 'posted'),
+            ('company_id', '=', self._sgi_kpi_company().id),
             ('invoice_date', '<=', date_to),
             ('payment_state', 'in', ('not_paid', 'partial')),
         ])
@@ -859,6 +887,7 @@ class SgiIndicator(models.Model):
     def _sgi_invoiced_partner_ids(self, date_from, date_to):
         groups = self.env['account.move']._read_group([
             ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
+            ('company_id', '=', self._sgi_kpi_company().id),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ], ['commercial_partner_id'], [])
         return {partner.id for (partner,) in groups}
@@ -879,7 +908,8 @@ class SgiIndicator(models.Model):
         """Clientes que facturan en el periodo después de 6 a 18 meses sin
         facturar. Cero reactivados con facturación en el mes ES un dato."""
         Move = self.env['account.move']
-        base_domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]
+        base_domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
+                       ('company_id', '=', self._sgi_kpi_company().id)]
         groups = Move._read_group(
             base_domain + [('invoice_date', '>=', date_from),
                            ('invoice_date', '<=', date_to)],
@@ -925,6 +955,7 @@ class SgiIndicator(models.Model):
         groups = self.env['account.move.line']._read_group([
             ('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
             ('move_id.state', '=', 'posted'),
+            ('company_id', '=', self._sgi_kpi_company().id),
             ('display_type', '=', 'product'),
             ('product_id', '!=', False),
             ('move_id.invoice_date', '>=', start),
@@ -942,7 +973,8 @@ class SgiIndicator(models.Model):
         """Pedidos cancelados del periodo sobre confirmados más cancelados."""
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
         Order = self.env['sale.order']
-        domain = [('date_order', '>=', dt_from), ('date_order', '<', dt_to)]
+        domain = [('company_id', '=', self._sgi_kpi_company().id),
+                  ('date_order', '>=', dt_from), ('date_order', '<', dt_to)]
         total = Order.search_count(domain + [('state', 'in', ('sale', 'cancel'))])
         if not total:
             return None
@@ -1142,6 +1174,7 @@ class SgiIndicatorMeasure(models.Model):
                 'view_mode': 'list,pivot',
                 'domain': [('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
                            ('move_id.state', '=', 'posted'),
+                           ('company_id', '=', indicator._sgi_kpi_company().id),
                            ('display_type', '=', 'product'),
                            ('product_id', '!=', False),
                            ('move_id.invoice_date', '>=', start),
@@ -1158,6 +1191,7 @@ class SgiIndicatorMeasure(models.Model):
                 'view_mode': 'list,form',
                 'domain': [('move_type', 'in', ('out_invoice', 'out_refund')),
                            ('state', '=', 'posted'),
+                           ('company_id', '=', indicator._sgi_kpi_company().id),
                            ('invoice_date', '<=', date_to),
                            ('payment_state', 'in', ('not_paid', 'partial')),
                            ('invoice_date_due', '<', limit)],
@@ -1181,6 +1215,7 @@ class SgiIndicatorMeasure(models.Model):
                 'view_mode': 'list,form',
                 'domain': [('move_type', 'in', ('in_invoice', 'in_refund')),
                            ('state', '=', 'posted'),
+                           ('company_id', '=', indicator._sgi_kpi_company().id),
                            ('invoice_date', '<=', date_to),
                            ('payment_state', 'in', ('not_paid', 'partial'))],
             }
@@ -1275,6 +1310,10 @@ class SgiIndicatorMeasure(models.Model):
             domain += [(date_field, '>=', dt_from), (date_field, '<', dt_to)]
         else:
             domain += [(date_field, '>=', date_from), (date_field, '<=', date_to)]
+        # La evidencia financiera respeta el mismo filtro de compañía que el
+        # cálculo — sin él, la lista mezclaba las compañías del grupo.
+        if model in ('account.move', 'account.move.line', 'sale.order'):
+            domain += [('company_id', '=', indicator._sgi_kpi_company().id)]
         return {
             'type': 'ir.actions.act_window',
             'name': "%s — evidencia de %s" % (indicator.name, self.period_date),
