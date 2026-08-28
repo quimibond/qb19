@@ -32,7 +32,7 @@ CALC_MODES = [
     ('compras_sin_devolucion', "Compras sin devolución a proveedor (proxy de errores en OC)"),
     ('capacitacion', "Capacitación (competencias vigentes vs requeridas)"),
     ('satisfaccion_cliente', "Satisfacción del cliente (encuesta)"),
-    # Plan de expansión comercial (docs/plan_expansion/ESTRATEGIA_2026_2028.md)
+    # Plan de expansión comercial (indicadores EX-*)
     ('margen_ventas', "Margen sobre órdenes de venta"),
     ('compras_vs_ventas', "Compras vs ventas facturadas"),
     ('clientes_nuevos', "Clientes nuevos (primera factura)"),

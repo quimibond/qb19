@@ -2,7 +2,6 @@
 <odoo noupdate="1">
     <!-- ============================================================= -->
     <!-- Plan de Expansión Comercial 2026-2028                         -->
-    <!-- (docs/plan_expansion/ESTRATEGIA_2026_2028.md)                 -->
     <!-- KPIs automáticos: los mide el cron mensual de indicadores.    -->
     <!-- Metas = objetivos SMART de la estrategia; el aceptable es el  -->
     <!-- nivel de partida 2025 (mejorar desde ahí, no maquillar).      -->
@@ -13,7 +12,7 @@
     <record id="sgi_objective_expansion" model="sgi.objective">
         <field name="name">Expansión comercial rentable y diversificada</field>
         <field name="target_year">2028</field>
-        <field name="description">Convertir un negocio récord-pero-frágil en uno rentable y diversificado, usando la ventana T-MEC: (1) rentabilizar — margen ≥9% y compras ≤78% de ventas en 2026; (2) expandir — 100 clientes nuevos/año y top 3 &lt;40% en 2027; (3) plataformas — capacidad, reciclados y venta directa EUA en 2028. Detalle en docs/plan_expansion/ESTRATEGIA_2026_2028.md.</field>
+        <field name="description">Convertir un negocio récord-pero-frágil en uno rentable y diversificado, usando la ventana T-MEC: (1) rentabilizar — margen ≥9% y compras ≤78% de ventas en 2026; (2) expandir — 100 clientes nuevos/año y top 3 &lt;40% en 2027; (3) plataformas — capacidad, reciclados y venta directa EUA en 2028.</field>
     </record>
 
     <record id="sgi_ind_ex_margen" model="sgi.indicator">
