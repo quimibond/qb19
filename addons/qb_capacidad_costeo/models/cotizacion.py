@@ -254,7 +254,122 @@ class QbCotizacion(models.Model):
         ('done', 'Presentada'),
         ('won', 'Ganada'),
         ('lost', 'Perdida'),
+        ('superseded', 'Reemplazada'),
     ], default='draft', tracking=True)
+
+    # ------------------------------------------------------------------
+    # Historial de revisiones: cotizar el MISMO producto al MISMO cliente
+    # otra vez crea la revisión siguiente y reemplaza a la anterior.
+    # Sin esto, cada recotización quedaba como borrador suelto y nadie
+    # sabía cuál era la vigente ni qué precio se había ofrecido antes.
+    # ------------------------------------------------------------------
+    revision = fields.Integer(
+        string='Revisión', default=1, readonly=True, copy=False,
+        help='Número de revisión dentro de la cadena cliente+producto. '
+             'Sube solo al cotizar de nuevo el mismo producto al mismo '
+             'cliente.')
+    revision_anterior_id = fields.Many2one(
+        'qb.cotizacion', string='Sustituye a', readonly=True, copy=False,
+        help='La cotización que esta revisión reemplaza. La anterior pasa a '
+             '«Reemplazada» automáticamente si estaba en borrador o '
+             'presentada; una ganada o perdida conserva su estado (es '
+             'historia del trato, no una oferta viva).')
+    revision_siguiente_ids = fields.One2many(
+        'qb.cotizacion', 'revision_anterior_id', string='Sustituida por')
+    historial_count = fields.Integer(compute='_compute_historial_count')
+
+    @api.depends('partner_id', 'product_id')
+    def _compute_historial_count(self):
+        for rec in self:
+            if rec.product_id and rec.partner_id:
+                rec.historial_count = self.search_count([
+                    ('product_id', '=', rec.product_id.id),
+                    ('partner_id', '=', rec.partner_id.id)])
+            else:
+                rec.historial_count = 1
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if not (rec.product_id and rec.partner_id):
+                continue
+            anterior = self.search([
+                ('product_id', '=', rec.product_id.id),
+                ('partner_id', '=', rec.partner_id.id),
+                ('id', 'not in', records.ids),
+            ], order='revision desc, create_date desc, id desc', limit=1)
+            if anterior:
+                rec.write({'revision': anterior.revision + 1,
+                           'revision_anterior_id': anterior.id})
+                # Solo una oferta VIVA se reemplaza; ganada/perdida son
+                # historia del trato y conservan su estado.
+                if anterior.state in ('draft', 'done'):
+                    anterior.state = 'superseded'
+        return records
+
+    def action_ver_historial(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Historial: %s · %s' % (
+                self.partner_id.name or 'sin cliente',
+                self.product_id.default_code or self.name),
+            'res_model': 'qb.cotizacion',
+            'view_mode': 'list,form',
+            'domain': [('product_id', '=', self.product_id.id),
+                       ('partner_id', '=', self.partner_id.id)],
+            'context': {'search_default_order_revision': 1},
+        }
+
+    # ------------------------------------------------------------------
+    # Campos del PDF para cliente (formato FPA2812, clave F-P-A28-12).
+    # Todo editable por cotización; los defaults son las condiciones
+    # estándar del formato viejo.
+    # ------------------------------------------------------------------
+    atencion_a = fields.Char(
+        string='En atención a',
+        help='Nombre y puesto del contacto del cliente, como debe salir en '
+             'el PDF. Vacío = el nombre del cliente.')
+    lote_minimo = fields.Char(
+        string='Lote mínimo', default='5,000 m',
+        help='Cantidad mínima por lote / Minimum lot quantity.')
+    presentacion_rollos = fields.Char(
+        string='Presentación de rollos', default='500 m ± 100 m',
+        help='Presentación estándar de los rollos / Roll presentation.')
+    lugar_entrega = fields.Char(
+        string='Lugar y condición de entrega',
+        default='Toluca, Estado de México (EXWORKS)',
+        help='Incoterm y plaza donde aplica el precio.')
+    tiempo_entrega = fields.Char(
+        string='Tiempo de entrega',
+        default='4 semanas a partir de la liberación o forecast / '
+                '4 weeks after release or forecast')
+    muestra_leyenda = fields.Char(
+        string='Leyenda de muestra',
+        default='Muestra menor a 50 m sin costo / Sample less than 50 '
+                'meters free of charge')
+    tc_coa = fields.Boolean(string='CoA al 100%', default=True)
+    tc_ppap = fields.Boolean(string='PPAP', default=True)
+    tc_inspeccion_total = fields.Boolean(
+        string='Inspección total / 100% inspection', default=True)
+    tc_cpk = fields.Boolean(string='CPK 3 sigma')
+    tc_pscr = fields.Boolean(string='PSCR')
+    tc_pruebas_lab = fields.Boolean(
+        string='Pruebas especiales de laboratorio')
+    tc_apqp = fields.Boolean(string='APQP')
+    tc_ctpat = fields.Boolean(string='Evidencia de carga C-TPAT')
+    tc_lta = fields.Boolean(string='LTA')
+
+    folio = fields.Char(compute='_compute_folio', string='Folio')
+
+    @api.depends('create_date')
+    def _compute_folio(self):
+        # Mismo estilo que el folio del formato viejo (año + consecutivo:
+        # «20260096»). El consecutivo es el id, que no se recicla.
+        for rec in self:
+            year = (rec.create_date or fields.Datetime.now()).year
+            rec.folio = '%s%04d' % (year, rec.id or 0)
     precio_vs_piso_pct = fields.Float(
         compute='_compute_precio_vs_piso', store=True,
         string='% sobre el piso lleno',
