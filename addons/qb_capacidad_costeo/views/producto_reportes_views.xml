@@ -152,12 +152,11 @@
                         domain="[('delta_precio_pct', '&lt;', -10)]"/>
                 <filter string="Margen neto negativo" name="negativos"
                         domain="[('margen_neto_pct', '&lt;', 0)]"/>
-                <group expand="0" string="Agrupar por">
-                    <filter string="Producto" name="por_producto"
-                            context="{'group_by': 'product_id'}"/>
-                    <filter string="Cliente" name="por_cliente"
-                            context="{'group_by': 'partner_id'}"/>
-                </group>
+                <separator/>
+                <filter string="Agrupar por producto" name="por_producto"
+                        context="{'group_by': 'product_id'}"/>
+                <filter string="Agrupar por cliente" name="por_cliente"
+                        context="{'group_by': 'partner_id'}"/>
             </search>
         </field>
     </record>
@@ -264,12 +263,11 @@
                         domain="[('estado', '=', 'critico')]"/>
                 <filter string="Revisar" name="revisar"
                         domain="[('estado', 'in', ('revisar', 'sin_peso'))]"/>
-                <group expand="0" string="Agrupar por">
-                    <filter string="Estado" name="por_estado"
-                            context="{'group_by': 'estado'}"/>
-                    <filter string="Fuente" name="por_fuente"
-                            context="{'group_by': 'fuente'}"/>
-                </group>
+                <separator/>
+                <filter string="Agrupar por estado" name="por_estado"
+                        context="{'group_by': 'estado'}"/>
+                <filter string="Agrupar por fuente" name="por_fuente"
+                        context="{'group_by': 'fuente'}"/>
             </search>
         </field>
     </record>

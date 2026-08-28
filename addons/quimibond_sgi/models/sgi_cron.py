@@ -369,6 +369,7 @@ class SgiCron(models.AbstractModel):
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('out_invoice', 'out_refund')),
             ('state', '=', 'posted'),
+            ('company_id', '=', self.env['sgi.indicator']._sgi_kpi_company().id),
             ('team_id', '=', team.id),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
