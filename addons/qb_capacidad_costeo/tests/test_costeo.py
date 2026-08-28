@@ -2733,3 +2733,61 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('no se puede validar', detail)
         self.assertNotIn('FALTAN', detail)
         sin_datos.unlink()
+
+    def test_recalculo_diferido_vacia_la_cola_y_apaga_su_cron(self):
+        """El cron de recálculo diferido procesa la cola por lotes y se apaga
+        solo al terminar.
+
+        Existe porque la migración que recalculaba TODOS los períodos pasó de
+        ~80 s (8 períodos) a 5-6 minutos (32, al cargar 2024 y 2025) y todo
+        build de migración los pagaba. Ahora la migración recalcula síncrono
+        solo el año corriente y difiere la historia a esta cola.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        Costo = self.env['qb.costo.producto']
+        cron = self.env.ref('qb_capacidad_costeo.cron_recalculo_pendientes')
+        cron.active = True
+
+        # Dos períodos sintéticos en la cola
+        pendientes = '2028-03-01,2028-02-01'
+        rec = Config.search([('key', '=', 'recalculo_pendiente')], limit=1)
+        if rec:
+            rec.value_text = pendientes
+        else:
+            rec = Config.create({'key': 'recalculo_pendiente', 'value': 0,
+                                 'value_text': pendientes})
+
+        Costo.cron_recompute_pendientes()
+
+        # La cola quedó vacía, los períodos existen y el cron se apagó solo
+        self.assertFalse(rec.value_text)
+        Factores = self.env['qb.costo.factores']
+        self.assertTrue(Factores.search_count(
+            [('period', '=', date(2028, 3, 1))]))
+        self.assertTrue(Factores.search_count(
+            [('period', '=', date(2028, 2, 1))]))
+        self.assertFalse(cron.active, 'sin pendientes, el cron se apaga solo')
+
+        # Con la cola vacía es un no-op inofensivo
+        Costo.cron_recompute_pendientes()
+        self.assertFalse(rec.value_text)
+
+    def test_recalculo_diferido_respeta_el_lote(self):
+        """Un lote procesa a lo más 6 períodos y deja el resto en la cola,
+        con el cron todavía prendido."""
+        Config = self.env['qb.costeo.factor.config']
+        cron = self.env.ref('qb_capacidad_costeo.cron_recalculo_pendientes')
+        cron.active = True
+        # 7 períodos: 6 entran al lote, 1 se queda
+        meses = ['2028-%02d-01' % m for m in range(11, 4, -1)]
+        rec = Config.search([('key', '=', 'recalculo_pendiente')], limit=1)
+        if rec:
+            rec.value_text = ','.join(meses)
+        else:
+            rec = Config.create({'key': 'recalculo_pendiente', 'value': 0,
+                                 'value_text': ','.join(meses)})
+        self.env['qb.costo.producto'].cron_recompute_pendientes()
+        self.assertEqual(rec.value_text, '2028-05-01',
+                         'el séptimo se queda para el siguiente lote')
+        self.assertTrue(cron.active,
+                        'con pendientes, el cron sigue prendido')
