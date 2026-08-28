@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.26.0.0',
+    'version': '19.0.27.0.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -57,6 +57,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
+        'data/sgi_expansion_data.xml',
         'data/sgi_risk_data.xml',
         'data/sgi_audit_data.xml',
         'data/sgi_helpdesk_interno.xml',
