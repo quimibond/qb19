@@ -68,7 +68,10 @@ class QbCostoConciliacion(models.Model):
         help='Cuentas de gasto y depreciación (602/603): administración, '
              'ventas y corporativo.')
     gl_gasto_total = fields.Float(
-        string='Gasto total (mayor)', readonly=True)
+        string='Gasto total (mayor)', readonly=True,
+        help='Costo de ventas + gastos de operación + el costeo que vive en '
+             'otras cuentas. Es contra esto que se compara lo que el modelo '
+             'le cobró a los productos.')
 
     # --- Costo que el modelo cargó a los productos --------------------
     modelo_mp = fields.Float(
@@ -110,6 +113,22 @@ class QbCostoConciliacion(models.Model):
              'producto carga. Parte es correcto (el costo primo se '
              'sustituye por la receta), parte es fuga (impuestos de '
              'importación, ajustes de inventario, renta excluida).')
+    gl_otros_costeo = fields.Float(
+        string='Costeo en otras cuentas', readonly=True,
+        help='Gasto que SÍ entra al costo del producto pero vive en cuentas '
+             'de tipo «otros ingresos». Hoy es el arrendamiento de '
+             'maquinaria (701.11), que el modelo le cobra al producto porque '
+             'son las máquinas con las que se produce. Sin esta línea el '
+             'mayor no lo contaba como gasto y la brecha salía baja por ese '
+             'lado: $13,907,465 entre 2025 y 2026.')
+    gl_resultado_integral = fields.Float(
+        string='Resultado integral de financiamiento', readonly=True,
+        help='Lo demás que vive en «otros ingresos»: pérdida y utilidad '
+             'cambiaria, intereses, comisiones bancarias, utilidad en venta '
+             'de activo fijo, otros ingresos. NO es costo de producto ni '
+             'debe serlo — pero SÍ es resultado de la empresa, y sin él el '
+             'resultado del mayor no era el de la empresa. Positivo = gasto '
+             'neto.')
     gl_sin_clasificar = fields.Float(
         string='Gasto sin clasificar', readonly=True,
         help='Cuentas de resultados que NADIE clasificó: no entran a ningún '
@@ -177,16 +196,36 @@ class QbCostoConciliacion(models.Model):
                                 THEN aml.balance * m.allocation_pct / 100.0
                                 ELSE 0 END) AS gl_no_costeo,
                        SUM(CASE WHEN m.bucket IS NULL
-                                     AND aa.account_type != 'income'
+                                     AND aa.account_type NOT IN
+                                         ('income', 'income_other')
                                 THEN aml.balance ELSE 0 END)
-                           AS gl_sin_clasificar
+                           AS gl_sin_clasificar,
+                       -- `income_other` con bucket de COSTEO: hoy es el
+                       -- arrendamiento de maquinaria (701.11), que el modelo
+                       -- SÍ le cobra al producto. Sin esto el mayor no lo
+                       -- contaba y la brecha salía baja por ese lado.
+                       SUM(CASE WHEN aa.account_type = 'income_other'
+                                     AND m.bucket IS NOT NULL
+                                     AND m.bucket NOT IN ('ventas',
+                                                          'no_costeo')
+                                THEN aml.balance * m.allocation_pct / 100.0
+                                ELSE 0 END) AS gl_otros_costeo,
+                       -- El resto de `income_other`: resultado integral de
+                       -- financiamiento (cambiaria, intereses, comisiones) y
+                       -- otros ingresos. No es costo de producto ni debe
+                       -- serlo, pero SÍ es resultado de la empresa.
+                       SUM(CASE WHEN aa.account_type = 'income_other'
+                                     AND m.bucket IS NULL
+                                THEN aml.balance ELSE 0 END)
+                           AS gl_resultado_integral
                 FROM account_move_line aml
                 JOIN account_move am ON am.id = aml.move_id
                 JOIN account_account aa ON aa.id = aml.account_id
                 LEFT JOIN cuenta_map m ON m.account_id = aml.account_id
                 WHERE aml.parent_state = 'posted'
                   AND aml.company_id = {company_id}
-                  AND aa.account_type IN ('income', 'expense_direct_cost',
+                  AND aa.account_type IN ('income', 'income_other',
+                                          'expense_direct_cost',
                                           'expense', 'expense_depreciation')
                   AND {excluir_refs_sql(self.env)}
                 GROUP BY 1, 2
@@ -222,7 +261,10 @@ class QbCostoConciliacion(models.Model):
                 COALESCE(mo.ventas, 0) - gl.gl_ventas AS ventas_dif,
                 gl.gl_costo_ventas,
                 gl.gl_operacion AS gl_gastos_operacion,
-                gl.gl_costo_ventas + gl.gl_operacion AS gl_gasto_total,
+                gl.gl_otros_costeo,
+                gl.gl_resultado_integral,
+                gl.gl_costo_ventas + gl.gl_operacion + gl.gl_otros_costeo
+                    AS gl_gasto_total,
                 COALESCE(mo.mp, 0) AS modelo_mp,
                 COALESCE(mo.energia, 0) AS modelo_energia,
                 COALESCE(mo.fab, 0) AS modelo_fab,
@@ -234,6 +276,7 @@ class QbCostoConciliacion(models.Model):
                 gl.gl_no_costeo,
                 gl.gl_sin_clasificar,
                 gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion
+                    - gl.gl_otros_costeo - gl.gl_resultado_integral
                     AS resultado_gl,
                 COALESCE(mo.resultado, 0) AS resultado_modelo,
                 COALESCE(fa.ociosidad, 0) AS ociosidad_ias2,

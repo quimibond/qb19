@@ -270,6 +270,24 @@ el historial del registro.
 Sin esto, el número que se presentó el mes pasado cambiaba solo la próxima vez
 que alguien recalculaba, y no había forma de defenderlo.
 
+## Asientos que no se reparten
+
+El modelo promedia doce meses y los reparte sobre la producción, así que una
+partida **única** —un cierre, una regularización, la baja de un activo— el
+suavizado la vuelve costo **recurrente** de cada mes. Y una partida cuya
+contrapartida vive fuera de los buckets se ve a medias.
+
+Las que ya se encontraron, con cuánto pesaban y cómo se sacaron, están en
+**`docs/COSTEO_ASIENTOS_ATIPICOS.md`**. Ahí también está cómo detectar la
+siguiente. Los mecanismos:
+
+| Qué hace | Dónde |
+|---|---|
+| Sacar asientos enteros por su referencia | `refs_fuera_de_costeo` (parámetro) |
+| Dejar pasar solo ciertas líneas de una cuenta | `filtro_etiqueta` (clasificación) |
+| Sacar una cuenta del costeo | bucket `no_costeo` |
+| Sacar un centro completo del pool | `modo_costeo` + fecha de corte |
+
 ## Conciliación contra la contabilidad
 
 **Análisis → Costos → Conciliación vs. contabilidad.** El costeo reparte
