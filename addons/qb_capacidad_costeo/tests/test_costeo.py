@@ -2950,6 +2950,16 @@ class TestQbCosteo(TransactionCase):
         suyo: los botones devuelven acciones filtradas al registro."""
         prod = self.env['qb.producto.rentabilidad'].search([], limit=1)
         if prod:
+            # Ficha 360 del producto: semáforo coherente y pestañas con
+            # contenido
+            esperado = ('rojo' if prod.margen_neto_pct < 0
+                        else 'ambar' if prod.margen_neto_pct < 5
+                        else 'verde')
+            self.assertEqual(prod.semaforo, esperado)
+            self.assertTrue(prod.veredicto)
+            self.assertIn('<table', prod.clientes_html)
+            self.assertIn('<table', prod.tendencia_html)
+            self.assertTrue(prod.cotizaciones_html)
             acc = prod.action_ver_clientes()
             self.assertEqual(acc['res_model'], 'qb.producto.cliente')
             self.assertIn(('product_id', '=', prod.product_id.id),
@@ -2980,6 +2990,16 @@ class TestQbCosteo(TransactionCase):
             self.assertIn('<table', cli.productos_html)
             self.assertIn('<table', cli.tendencia_html)
             self.assertTrue(cli.cotizaciones_html)
+
+    def test_panel_negocio_primero_config_colapsada(self):
+        """El panel abre con el negocio (mes, quién deja y quién cuesta,
+        acciones) y la configuración queda SIEMPRE colapsada con resumen —
+        es de la puesta a punto, no del día a día."""
+        panel = self.env['qb.costeo.panel'].create({})
+        self.assertIn('¿Cómo va el negocio?', panel.negocio_html)
+        self.assertIn('<details', panel.estado_html,
+                      'la configuración siempre va colapsada')
+        self.assertIn('Configuración', panel.estado_html)
 
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la
