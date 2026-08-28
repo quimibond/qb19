@@ -121,6 +121,56 @@ class QbProductoRentabilidad(models.Model):
     ultima_venta = fields.Date(string='Última venta', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
 
+    # ------------------------------------------------------------------
+    # Drill-down: desde el renglón del producto, todo lo suyo a un clic.
+    # El id de la vista ES el product_id, así que la navegación es directa.
+    # ------------------------------------------------------------------
+    def _accion(self, nombre, res_model, domain, view_mode='list'):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': nombre,
+            'res_model': res_model,
+            'view_mode': view_mode,
+            'domain': domain,
+            'target': 'current',
+        }
+
+    def action_ver_clientes(self):
+        return self._accion(
+            'Clientes de %s' % self.product_id.display_name,
+            'qb.producto.cliente',
+            [('product_id', '=', self.product_id.id)])
+
+    def action_ver_programa(self):
+        return self._accion(
+            'Programa mensual: %s' % self.product_id.display_name,
+            'qb.producto.mensual',
+            [('product_id', '=', self.product_id.id)],
+            view_mode='list,graph,pivot')
+
+    def action_ver_costos(self):
+        return self._accion(
+            'Costos por período: %s' % self.product_id.display_name,
+            'qb.costo.producto',
+            [('product_id', '=', self.product_id.id)])
+
+    def action_ver_cotizaciones(self):
+        return self._accion(
+            'Cotizaciones: %s' % self.product_id.display_name,
+            'qb.cotizacion',
+            [('product_id', '=', self.product_id.id)])
+
+    def action_abrir_producto(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.product',
+            'res_id': self.product_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     @property
     def _table_query(self):
         company_id = int(self.env.company.id)
