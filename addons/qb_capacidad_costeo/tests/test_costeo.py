@@ -2629,3 +2629,38 @@ class TestQbCosteo(TransactionCase):
             con_baja, 90000.0, places=2,
             msg='la baja del activo vendido no mueve el pool; la '
                 'depreciación del mes sí sigue contando')
+
+    def test_la_conciliacion_ve_el_costeo_que_vive_en_otras_cuentas(self):
+        """La conciliación filtraba por TIPO de cuenta; el motor filtra por
+        BUCKET. Esa asimetría dejaba fuera del mayor gasto que el modelo sí le
+        cobraba al producto.
+
+        El caso real: `701.11.0001 ARRENDAMIENTO FINANCIERO` tiene
+        `account_type = income_other` pero está en el bucket
+        `arrend_maquinaria`. Son las máquinas con las que se produce —una
+        venta con arrendamiento en reversa—, así que el modelo lo cobra bien;
+        pero el mayor no lo contaba como gasto y la brecha salía baja por ese
+        lado: $13,907,465 entre 2025 y 2026.
+
+        Lo demás que vive en `income_other` —cambiaria, intereses, comisiones,
+        utilidad en venta de activo— no es costo de producto ni debe serlo,
+        pero sí es resultado de la empresa: va en su propia línea para que el
+        resultado del mayor sea el de la empresa.
+        """
+        Concil = self.env['qb.costo.conciliacion']
+        campos = Concil._fields
+        self.assertIn('gl_otros_costeo', campos)
+        self.assertIn('gl_resultado_integral', campos)
+
+        # La identidad que debe cumplirse en toda fila
+        for c in Concil.search([], limit=24):
+            self.assertAlmostEqual(
+                c.gl_gasto_total,
+                c.gl_costo_ventas + c.gl_gastos_operacion + c.gl_otros_costeo,
+                places=2, msg='%s: el gasto total suma sus tres partes'
+                              % c.period)
+            self.assertAlmostEqual(
+                c.resultado_gl,
+                c.gl_ventas - c.gl_gasto_total - c.gl_resultado_integral,
+                places=2, msg='%s: el resultado del mayor es ventas menos '
+                              'todo lo que se gastó' % c.period)
