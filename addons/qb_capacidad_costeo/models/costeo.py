@@ -1944,6 +1944,42 @@ class QbCostoProducto(models.Model):
         return True
 
     @api.model
+    def cron_recompute_pendientes(self):
+        """Recalcula por LOTES los períodos que una migración dejó diferidos.
+
+        Una migración que recalcula TODOS los períodos guardados bloquea el
+        build lo que tarden: con 8 períodos eran ~80 s, pero al cargar 2024 y
+        2025 son 32 y el mismo build pasó a 5-6 minutos. La migración ahora
+        recalcula síncrono solo el año corriente —lo que se usa para decidir—
+        y deja los históricos en el parámetro `recalculo_pendiente`; este
+        cron los va vaciando por lotes y se APAGA solo al terminar.
+
+        Idempotente: un período cerrado se salta (el guard de
+        `action_recompute_period` ya lo hace) y un lote interrumpido se
+        repite sin daño."""
+        Config = self.env['qb.costeo.factor.config']
+        crudo = Config.get_param_text('recalculo_pendiente', '')
+        pendientes = [p.strip() for p in (crudo or '').split(',')
+                      if p.strip()]
+        lote, resto = pendientes[:6], pendientes[6:]
+        for iso in lote:
+            self.action_recompute_period(fields.Date.from_string(iso))
+        rec = Config.search([('key', '=', 'recalculo_pendiente')], limit=1)
+        if rec:
+            rec.value_text = ','.join(resto)
+        if not resto:
+            cron = self.env.ref(
+                'qb_capacidad_costeo.cron_recalculo_pendientes',
+                raise_if_not_found=False)
+            if cron:
+                cron.active = False
+        _logger.info(
+            'qb.costo.producto: lote diferido de %s períodos recalculado '
+            '(%s); quedan %s.', len(lote), ', '.join(lote) or 'ninguno',
+            len(resto))
+        return True
+
+    @api.model
     def action_recompute_year(self, year=None):
         """Recalcula el costo por producto de TODOS los meses del año, de enero
         al mes en curso (o a diciembre para un año pasado). Corre

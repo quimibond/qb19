@@ -28,6 +28,23 @@
             <field name="priority">15</field>
         </record>
 
+        <!-- Recalcular por lotes los períodos históricos que una migración
+             dejó diferidos (parámetro `recalculo_pendiente`). Apagado por
+             default: lo prende la migración que difiere, y el propio método
+             lo apaga al vaciar la lista. noupdate para que un -u posterior
+             no lo re-prenda ni lo re-apague a mitad de la cola. -->
+        <record id="cron_recalculo_pendientes" model="ir.cron"
+                forcecreate="True">
+            <field name="name">Capacidad &amp; Costeo - Recálculo diferido de históricos</field>
+            <field name="model_id" ref="model_qb_costo_producto"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_recompute_pendientes()</field>
+            <field name="interval_number">10</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="False"/>
+            <field name="priority">20</field>
+        </record>
+
         <!-- Snapshot mensual + recálculo de costos del mes cerrado -->
         <record id="cron_snapshot_monthly" model="ir.cron">
             <field name="name">Capacidad &amp; Costeo - Snapshot y costeo mensual (día 1)</field>
