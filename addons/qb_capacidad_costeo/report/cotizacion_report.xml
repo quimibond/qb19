@@ -232,33 +232,96 @@
         <field name="binding_type">report</field>
     </record>
 
+    <!-- Estructura del formato viejo F-P-A28-12 (FPA2812) con el diseño
+         nuevo: folio + revisión, atención a, tabla de producto/precio,
+         escalera de volumen, condiciones de venta, checklist ✓/✗ de
+         términos, muestra, firmas y línea de control ISO. Bilingüe
+         español/inglés como el original. -->
     <template id="report_cotizacion_cliente">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <h2>Cotización</h2>
-                        <p style="font-size:13px;">
-                            <strong>Cliente:</strong> <span t-field="o.partner_id"/><br/>
-                            <strong>Fecha:</strong> <span t-field="o.create_date" t-options='{"widget": "date"}'/>
-                            <t t-if="o.validez_hasta"><br/>
-                                <strong>Vigencia:</strong> hasta el <span t-field="o.validez_hasta"/>
+
+                        <!-- Título + folio -->
+                        <div style="text-align:center; margin-bottom:6px;">
+                            <h3 style="margin-bottom:2px;">COTIZACIÓN DE PRODUCTO
+                                <span style="color:#888; font-weight:normal;">/ PRODUCT QUOTATION</span></h3>
+                        </div>
+                        <table class="table table-sm table-borderless" style="font-size:12px; margin-bottom:6px;">
+                            <tbody>
+                                <tr>
+                                    <td style="width:50%; padding:2px;">
+                                        <strong>Cotización / Quotation:</strong>
+                                        # <span t-esc="o.folio"/>
+                                        <t t-if="o.revision &gt; 1">
+                                            · <strong>Rev. <span t-esc="o.revision"/></strong>
+                                        </t><br/>
+                                        <strong>Emitida el / Issued on:</strong>
+                                        <span t-field="o.create_date" t-options='{"widget": "date"}'/>
+                                    </td>
+                                    <td style="padding:2px;">
+                                        <t t-if="o.validez_hasta">
+                                            <strong>Fecha de vencimiento / Due date:</strong>
+                                            <span t-field="o.validez_hasta"/><br/>
+                                        </t>
+                                        <t t-if="o.es_divisa">
+                                            <strong>Moneda / Currency:</strong>
+                                            <span t-esc="o.currency_id.name or ''"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="o.revision_anterior_id" style="font-size:11px; color:#888; margin-bottom:6px;">
+                            Esta revisión sustituye a la cotización
+                            # <span t-esc="o.revision_anterior_id.folio"/> del
+                            <span t-field="o.revision_anterior_id.create_date" t-options='{"widget": "date"}'/>
+                            / This revision supersedes the previous quotation.
+                        </p>
+
+                        <!-- En atención a -->
+                        <p style="font-size:13px; margin-bottom:6px;">
+                            <strong>En atención a / Attention to:</strong>
+                            <span t-esc="o.atencion_a or o.partner_id.name"/><br/>
+                            <t t-if="o.atencion_a">
+                                <strong>Empresa / Company:</strong> <span t-field="o.partner_id"/><br/>
+                            </t>
+                            <t t-if="o.partner_id.contact_address">
+                                <strong>Dirección / Address:</strong>
+                                <span t-esc="' '.join(o.partner_id.contact_address.split())"/><br/>
+                            </t>
+                            <t t-if="o.partner_id.phone">
+                                <strong>Número de contacto / Contact number:</strong>
+                                <span t-field="o.partner_id.phone"/>
                             </t>
                         </p>
 
+                        <p style="font-size:12px;">
+                            Agradecemos su preferencia; a continuación presentamos
+                            nuestra cotización. <span style="color:#888;">/ Thank you
+                            for your preference; please find our quotation below.</span>
+                        </p>
+
+                        <!-- Producto y precio -->
                         <table class="table table-sm" style="font-size:13px;">
                             <thead>
                                 <tr>
-                                    <th>Producto</th>
-                                    <th class="text-end">Volumen estimado</th>
-                                    <th class="text-end">Precio unitario</th>
+                                    <th>ITEM</th>
+                                    <th class="text-end">Volumen estimado<br/>
+                                        <span style="font-weight:normal; color:#888;">Estimated volume</span></th>
+                                    <th class="text-end">Precio unitario<br/>
+                                        <span style="font-weight:normal; color:#888;">Unit price</span></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>
                                         <t t-if="o.product_id">
-                                            <span t-field="o.product_id.display_name"/>
+                                            <t t-if="o.product_id.default_code">
+                                                <b><span t-field="o.product_id.default_code"/></b><br/>
+                                            </t>
+                                            <span t-field="o.product_id.name"/>
                                         </t>
                                         <t t-if="o.spec_descripcion">
                                             <span t-field="o.spec_descripcion"/>
@@ -274,11 +337,11 @@
                                         <t t-if="o.es_divisa">
                                             <b><span t-esc="'{:,.4f}'.format(o.precio_cliente_divisa)"/>
                                             <span t-esc="o.currency_id.name or ''"/></b>
-                                            por <span t-esc="o.uom_name or 'unidad'"/>
+                                            por / per <span t-esc="o.uom_name or 'unidad'"/>
                                         </t>
                                         <t t-else="">
                                             <b>$<span t-esc="'{:,.2f}'.format(o.precio_cliente_mxn)"/> MXN</b>
-                                            por <span t-esc="o.uom_name or 'unidad'"/>
+                                            por / per <span t-esc="o.uom_name or 'unidad'"/>
                                         </t>
                                     </td>
                                 </tr>
@@ -287,7 +350,7 @@
 
                         <t t-set="tramos_ok" t-value="o.tramo_ids.filtered(lambda t: t.capacity_ok)"/>
                         <t t-if="len(tramos_ok) &gt; 1">
-                            <h5>Precios por volumen</h5>
+                            <h5>Precios por volumen <span style="font-size:12px; color:#888; font-weight:normal;">/ Volume pricing</span></h5>
                             <p style="font-size:12px;">A mayor volumen mensual
                                 sostenido, mejor precio unitario:</p>
                             <table class="table table-sm" style="font-size:13px; width:60%;">
@@ -314,22 +377,92 @@
                             </table>
                         </t>
 
-                        <h5>Condiciones</h5>
+                        <!-- Condiciones de venta (del formato F-P-A28-12) -->
+                        <h5>Condiciones <span style="font-size:12px; color:#888; font-weight:normal;">/ Conditions</span></h5>
                         <ul style="font-size:12px;">
-                            <li>Precio unitario más IVA.</li>
+                            <li>Precio unitario más IVA. <span style="color:#888;">/ Unit price plus VAT.</span></li>
+                            <li t-if="o.lote_minimo">Cantidad mínima por lote:
+                                <span t-esc="o.lote_minimo"/>.
+                                <span style="color:#888;">/ Minimum lot quantity.</span></li>
+                            <li t-if="o.presentacion_rollos">Presentación en rollos de
+                                <span t-esc="o.presentacion_rollos"/>.
+                                <span style="color:#888;">/ Roll presentation.</span></li>
+                            <li t-if="o.lugar_entrega">Lugar y condición de entrega:
+                                <span t-esc="o.lugar_entrega"/>.
+                                <span style="color:#888;">/ Place and delivery condition.</span></li>
+                            <li t-if="o.tiempo_entrega">Tiempo de entrega:
+                                <span t-esc="o.tiempo_entrega"/>.</li>
                             <li t-if="len(tramos_ok) &gt; 1">Los precios por volumen
                                 aplican sobre volumen mensual sostenido; el tramo se
                                 revisa contra el volumen real facturado.</li>
                             <li t-if="o.validez_hasta">Cotización válida hasta el
                                 <span t-field="o.validez_hasta"/>; después de esa fecha
                                 está sujeta a reconfirmación.</li>
-                            <li t-if="o.es_divisa">Precio expresado en
-                                <span t-esc="o.currency_id.name or 'divisa'"/>.</li>
                             <li>Volumen estimado mensual de referencia; ajustes
                                 importantes de volumen pueden requerir re-cotización.</li>
                         </ul>
 
-                        <p style="font-size:12px;">Quedamos atentos a sus comentarios.</p>
+                        <!-- Términos y condiciones: checklist ✓/✗ -->
+                        <h5>Términos y condiciones incluidos
+                            <span style="font-size:12px; color:#888; font-weight:normal;">/ Included terms</span></h5>
+                        <table class="table table-sm table-bordered" style="font-size:11px; margin-bottom:4px;">
+                            <tbody>
+                                <tr>
+                                    <td style="width:30%;">CoA al 100% <span t-esc="'✓' if o.tc_coa else '✗'"/></td>
+                                    <td style="width:36%;">Pruebas especiales de laboratorio
+                                        <span t-esc="'✓' if o.tc_pruebas_lab else '✗'"/></td>
+                                    <td>LTA <span t-esc="'✓' if o.tc_lta else '✗'"/></td>
+                                </tr>
+                                <tr>
+                                    <td>PPAP <span t-esc="'✓' if o.tc_ppap else '✗'"/></td>
+                                    <td>Inspección total / 100% inspection
+                                        <span t-esc="'✓' if o.tc_inspeccion_total else '✗'"/></td>
+                                    <td>APQP <span t-esc="'✓' if o.tc_apqp else '✗'"/></td>
+                                </tr>
+                                <tr>
+                                    <td>CPK 3 sigma <span t-esc="'✓' if o.tc_cpk else '✗'"/></td>
+                                    <td>Evidencia de carga C-TPAT
+                                        <span t-esc="'✓' if o.tc_ctpat else '✗'"/></td>
+                                    <td>Cotizado / Quoted
+                                        <span t-esc="'✓' if o.precio_evaluado else '✗'"/></td>
+                                </tr>
+                                <tr>
+                                    <td>PSCR <span t-esc="'✓' if o.tc_pscr else '✗'"/></td>
+                                    <td colspan="2"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="o.muestra_leyenda" style="font-size:11px; color:#555;">
+                            <span t-esc="o.muestra_leyenda"/>
+                        </p>
+
+                        <p style="font-size:12px;">Quedamos atentos a sus comentarios.
+                            <span style="color:#888;">/ We remain attentive to your comments.</span></p>
+
+                        <!-- Firmas -->
+                        <table class="table table-borderless" style="font-size:11px; margin-top:28px;">
+                            <tbody>
+                                <tr>
+                                    <td style="width:45%; text-align:center; border-top:1px solid #000; padding-top:4px;">
+                                        <strong>VENTAS QUIMIBOND</strong><br/>
+                                        Nombre y firma / Name and signature
+                                    </td>
+                                    <td style="width:10%;"/>
+                                    <td style="width:45%; text-align:center; border-top:1px solid #000; padding-top:4px;">
+                                        <strong>APROBADA POR CLIENTE / APPROVED BY CUSTOMER</strong><br/>
+                                        Nombre y firma / Name and signature
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="font-size:10px; text-align:center; color:#555;">
+                            La cotización no será válida sin la firma de ambas partes.
+                            / This quotation will not be valid without both signatures.
+                        </p>
+
+                        <p style="font-size:8px; color:#aaa; border-top:1px solid #ddd; margin-top:4px; padding-top:2px;">
+                            CLAVE: F-P-A28-12 · EMISIÓN: JULIO 2024 · REV 02 ABRIL 2025 · ÁREA: ADMINISTRACIÓN
+                        </p>
                     </div>
                 </t>
             </t>

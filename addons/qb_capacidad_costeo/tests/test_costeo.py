@@ -2791,3 +2791,97 @@ class TestQbCosteo(TransactionCase):
                          'el séptimo se queda para el siguiente lote')
         self.assertTrue(cron.active,
                         'con pendientes, el cron sigue prendido')
+
+    def test_historial_de_revisiones_encadena_al_crear(self):
+        """Cotizar el MISMO producto al MISMO cliente otra vez crea la
+        revisión siguiente, liga a la anterior y reemplaza solo ofertas
+        VIVAS (borrador/presentada); una ganada o perdida es historia del
+        trato y conserva su estado."""
+        partner = self.env['res.partner'].create({'name': 'CLIENTE REV TEST'})
+        Cot = self.env['qb.cotizacion']
+        base = {'partner_id': partner.id, 'product_id': self.tela.id,
+                'costo_variable': 6.0, 'costo_absorbido_sin_op': 12.0,
+                'op_pct': 15.0, 'piso_ocioso': 6.0, 'piso_lleno': 14.0}
+        a = Cot.create(dict(base, name='REV A', precio_objetivo=16.0))
+        self.assertEqual(a.revision, 1)
+        self.assertFalse(a.revision_anterior_id)
+
+        b = Cot.create(dict(base, name='REV B', precio_objetivo=15.5))
+        self.assertEqual(b.revision, 2)
+        self.assertEqual(b.revision_anterior_id, a)
+        self.assertEqual(a.state, 'superseded',
+                         'el borrador anterior queda reemplazado')
+        self.assertEqual(a.revision_siguiente_ids, b)
+
+        # Una GANADA no se reemplaza al recotizar: es historia del trato
+        b.action_marcar_ganada()
+        c = Cot.create(dict(base, name='REV C', precio_objetivo=15.0))
+        self.assertEqual(c.revision, 3)
+        self.assertEqual(c.revision_anterior_id, b)
+        self.assertEqual(b.state, 'won',
+                         'una ganada conserva su estado al ser recotizada')
+        self.assertEqual(a.historial_count, 3)
+        self.assertEqual(c.historial_count, 3)
+
+        # Folio estilo formato viejo: año + consecutivo («20260096»)
+        self.assertEqual(c.folio,
+                         '%s%04d' % (c.create_date.year, c.id))
+
+        # El smart button abre la cadena completa cliente+producto
+        accion = c.action_ver_historial()
+        registros = Cot.search(accion['domain'])
+        self.assertEqual(registros, a + b + c)
+
+    def test_historial_sin_cliente_o_producto_no_encadena(self):
+        """Una cotización de especificación nueva (sin producto) o sin
+        cliente no participa en cadenas: siempre es revisión 1 suelta."""
+        Cot = self.env['qb.cotizacion']
+        s1 = Cot.create({'name': 'SPEC SUELTA 1', 'piso_lleno': 10.0,
+                         'spec_descripcion': 'tela nueva 45 g'})
+        s2 = Cot.create({'name': 'SPEC SUELTA 2', 'piso_lleno': 10.0,
+                         'spec_descripcion': 'tela nueva 45 g'})
+        self.assertEqual(s1.revision, 1)
+        self.assertEqual(s2.revision, 1)
+        self.assertFalse(s2.revision_anterior_id)
+        self.assertNotEqual(s1.state, 'superseded')
+
+    def test_reporte_cliente_formato_completo(self):
+        """El PDF para cliente trae TODO el formato F-P-A28-12: folio,
+        atención a, condiciones de venta, checklist ✓/✗ de términos,
+        muestra, firmas y clave de control — sin ningún dato interno de
+        costo o margen."""
+        partner = self.env['res.partner'].create(
+            {'name': 'CLIENTE PDF TEST', 'phone': '55 1234 5678'})
+        cot = self.env['qb.cotizacion'].create({
+            'name': 'COT PDF TEST', 'partner_id': partner.id,
+            'product_id': self.tela.id, 'volumen': 5000.0,
+            'uom_name': 'm', 'costo_variable': 6.0,
+            'costo_absorbido_sin_op': 12.0, 'op_pct': 15.0,
+            'piso_ocioso': 6.0, 'piso_lleno': 14.0,
+            'precio_objetivo': 16.0, 'atencion_a': 'Ing. Prueba Compras',
+        })
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion_cliente', cot.ids)[0]
+        html = html.decode('utf-8') if isinstance(html, bytes) else str(html)
+        for pedazo in (
+                'COTIZACIÓN DE PRODUCTO', cot.folio,
+                'En atención a', 'Ing. Prueba Compras',
+                'WJ045NT160',                       # la referencia interna
+                '5,000 m',                          # lote mínimo default
+                '500 m ± 100 m',                    # presentación default
+                'EXWORKS',                          # lugar de entrega
+                '4 semanas',                        # tiempo de entrega
+                'CoA al 100%', 'PPAP', 'LTA', 'Cotizado / Quoted',
+                '✓', '✗',
+                'Muestra menor a 50 m',
+                'VENTAS QUIMIBOND', 'APROBADA POR CLIENTE',
+                'no será válida sin la firma de ambas partes',
+                'F-P-A28-12'):
+            self.assertIn(pedazo, html,
+                          'falta «%s» en el PDF para cliente' % pedazo)
+        # Y nada interno se cuela
+        for prohibido in ('margen', 'Margen', 'costo variable',
+                          'Costo variable', 'piso'):
+            self.assertNotIn(prohibido, html,
+                             '«%s» es dato interno: no va al cliente'
+                             % prohibido)
