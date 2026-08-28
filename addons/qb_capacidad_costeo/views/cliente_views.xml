@@ -54,6 +54,25 @@
                     <div class="oe_title">
                         <h1><field name="partner_id" readonly="1"/></h1>
                     </div>
+                    <!-- El veredicto primero: un juicio en una línea, con
+                         sus números — la misma gramática de alertas del
+                         resto del módulo. -->
+                    <field name="semaforo" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="semaforo != 'rojo'">
+                        🔴 <b>Pierde dinero:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="semaforo != 'ambar'">
+                        🟡 <b>Al filo:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-success" role="alert"
+                         invisible="semaforo != 'verde'">
+                        🟢 <b>Sano:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
                     <group>
                         <group string="Venta (12 meses)">
                             <field name="revenue_12m"/>
@@ -79,6 +98,20 @@
                             <field name="costo_cobertura_pct"/>
                         </group>
                     </group>
+                    <notebook>
+                        <page string="🛒 Qué compra (precio y margen)">
+                            <field name="productos_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                        <page string="📈 Tendencia 12 meses">
+                            <field name="tendencia_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                        <page string="📋 Cotizaciones">
+                            <field name="cotizaciones_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

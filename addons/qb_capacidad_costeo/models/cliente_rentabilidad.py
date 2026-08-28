@@ -14,7 +14,10 @@ MISMO período — así cada margen usa el costo vigente en el mes en que se
 facturó, no el de hoy. Solo cuentas de tipo 'income' (ventas/rebajas de
 producto): ventas de activo fijo y anticipos NO cuentan como venta.
 """
-from odoo import fields, models
+from odoo import api, fields, models
+from odoo.tools import html_escape
+
+from .producto_reportes import _BASE_SQL
 
 
 class QbClienteRentabilidad(models.Model):
@@ -64,6 +67,176 @@ class QbClienteRentabilidad(models.Model):
     meses_activo = fields.Integer(string='Meses con compra', readonly=True)
     ultima_compra = fields.Date(string='Última compra', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
+
+    # ------------------------------------------------------------------
+    # Situación completa: el veredicto en un semáforo y tres pestañas
+    # calculadas al abrir (qué compra, tendencia, cotizaciones) — la misma
+    # gramática visual del resto del módulo: alerta arriba, tablas HTML
+    # compactas, cada juicio con su número al lado.
+    # ------------------------------------------------------------------
+    semaforo = fields.Selection(
+        [('rojo', 'Pierde'), ('ambar', 'Apenas'), ('verde', 'Sano')],
+        compute='_compute_semaforo', string='Semáforo')
+    veredicto = fields.Char(compute='_compute_semaforo')
+
+    def _compute_semaforo(self):
+        for rec in self:
+            pct = rec.margen_neto_pct
+            if pct < 0:
+                rec.semaforo = 'rojo'
+                rec.veredicto = (
+                    'Pierde %.1f de cada 100 vendidos (%s en 12 meses) '
+                    'después de TODOS los costos. Contribución %.0f por '
+                    'ciento: %s a fijos — el problema es precio, no el '
+                    'cliente.' % (
+                        -pct, '${:,.0f}'.format(rec.margen_neto_12m),
+                        rec.contrib_pct,
+                        '${:,.0f}'.format(rec.contrib_12m)))
+            elif pct < 5:
+                rec.semaforo = 'ambar'
+                rec.veredicto = (
+                    'Deja %.1f por ciento neto — cubre costos con margen '
+                    'mínimo. Un aumento de costo de hilo lo manda a rojo.'
+                    % pct)
+            else:
+                rec.semaforo = 'verde'
+                rec.veredicto = (
+                    'Deja %.1f por ciento neto (%s en 12 meses) después '
+                    'de todos los costos.' % (
+                        pct, '${:,.0f}'.format(rec.margen_neto_12m)))
+
+    productos_html = fields.Html(
+        compute='_compute_productos_html', sanitize=False,
+        string='Qué compra')
+    tendencia_html = fields.Html(
+        compute='_compute_tendencia_html', sanitize=False,
+        string='Tendencia 12 meses')
+    cotizaciones_html = fields.Html(
+        compute='_compute_cotizaciones_html', sanitize=False,
+        string='Cotizaciones')
+
+    _SEM = {'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢'}
+
+    def _compute_productos_html(self):
+        Pareja = self.env['qb.producto.cliente']
+        for rec in self:
+            filas = Pareja.search([('partner_id', '=', rec.partner_id.id)])
+            if not filas:
+                rec.productos_html = ('<p class="text-muted">Sin compras '
+                                      'en los últimos 12 meses.</p>')
+                continue
+            html = ('<table class="table table-sm" style="font-size:12px;">'
+                    '<thead><tr><th>Producto</th>'
+                    '<th class="text-end">Volumen</th>'
+                    '<th class="text-end">Precio $/u</th>'
+                    '<th class="text-end">Δ vs prom. del producto</th>'
+                    '<th class="text-end">Margen neto</th>'
+                    '<th class="text-end">Neto</th>'
+                    '<th>Última</th></tr></thead><tbody>')
+            for f in filas:
+                sem = ('rojo' if f.margen_neto_pct < 0
+                       else 'ambar' if f.margen_neto_pct < 5 else 'verde')
+                delta_style = ('color:#b02a37;font-weight:bold;'
+                               if f.delta_precio_pct < -10 else '')
+                # .format primero y %-args después: así un nombre de
+                # producto con llaves o porcentajes no revienta el render.
+                html += (
+                    '<tr><td>%s %s</td>'
+                    '<td class="text-end">{:,.0f}</td>'
+                    '<td class="text-end">${:,.2f}</td>'
+                    '<td class="text-end" style="%s">{:+.1f}&#37;</td>'
+                    '<td class="text-end">${:,.0f}</td>'
+                    '<td class="text-end">{:.1f}&#37;</td>'
+                    '<td>%s</td></tr>'
+                ).format(f.qty_12m, f.precio_prom, f.delta_precio_pct,
+                         f.margen_neto_12m, f.margen_neto_pct) % (
+                    self._SEM[sem],
+                    html_escape(f.product_id.display_name or ''),
+                    delta_style, f.ultima_compra or '')
+            html += ('</tbody></table><p style="font-size:11px;" '
+                     'class="text-muted">Δ en rojo = este cliente compra '
+                     'ese producto más de 10 abajo del promedio de todos '
+                     'los clientes — el candidato a renegociar.</p>')
+            rec.productos_html = html
+
+    def _compute_tendencia_html(self):
+        company_id = int(self.env.company.id)
+        for rec in self:
+            self.env.cr.execute(
+                _BASE_SQL.format(company_id=company_id) + """
+                SELECT j.mes, SUM(j.rev) AS rev,
+                       SUM(j.rev * (1 - j.op_pct)
+                           - j.qty * (COALESCE(j.costo_variable, 0)
+                                      + COALESCE(j.fab_unit, 0))) AS neto
+                FROM joined j
+                WHERE j.partner_id = %s
+                GROUP BY j.mes ORDER BY j.mes
+                """, (rec.partner_id.id,))
+            meses = self.env.cr.fetchall()
+            if not meses:
+                rec.tendencia_html = ('<p class="text-muted">Sin ventas en '
+                                      'la ventana.</p>')
+                continue
+            tope = max(abs(r[1]) for r in meses) or 1.0
+            html = ('<table class="table table-sm" style="font-size:12px;">'
+                    '<thead><tr><th>Mes</th>'
+                    '<th class="text-end">Ventas</th><th style="width:30%">'
+                    '</th><th class="text-end">Neto</th>'
+                    '<th class="text-end">Neto sobre venta</th></tr>'
+                    '</thead><tbody>')
+            for mes, rev, neto in meses:
+                ancho = 100.0 * abs(rev) / tope
+                pct = 100.0 * neto / rev if rev else 0.0
+                color = ('#b02a37' if pct < 0
+                         else '#997404' if pct < 5 else '#146c43')
+                html += (
+                    '<tr><td>%s</td>'
+                    '<td class="text-end">${:,.0f}</td>'
+                    '<td><div style="background:#0d6efd33;height:10px;'
+                    'width:{:.0f}&#37;;"></div></td>'
+                    '<td class="text-end" style="color:%s">${:,.0f}</td>'
+                    '<td class="text-end" style="color:%s">{:+.1f}&#37;'
+                    '</td></tr>'
+                ).format(rev, ancho, neto, pct) % (
+                    mes.strftime('%b %Y'), color, color)
+            html += ('</tbody></table><p style="font-size:11px;" '
+                     'class="text-muted">El neto usa el costo vigente en el '
+                     'mes de cada factura: si el precio está congelado y el '
+                     'costo sube, aquí se ve el margen erosionarse mes a '
+                     'mes.</p>')
+            rec.tendencia_html = html
+
+    def _compute_cotizaciones_html(self):
+        Cot = self.env['qb.cotizacion']
+        estados = dict(
+            Cot._fields['state']._description_selection(self.env))
+        for rec in self:
+            cots = Cot.search([('partner_id', '=', rec.partner_id.id)],
+                              order='create_date desc', limit=15)
+            if not cots:
+                rec.cotizaciones_html = (
+                    '<p class="text-muted">Sin cotizaciones. Desde '
+                    '«Productos que compra» se ve qué conviene recotizar '
+                    'con el costo de hoy.</p>')
+                continue
+            html = ('<table class="table table-sm" style="font-size:12px;">'
+                    '<thead><tr><th>Cotización</th><th>Rev.</th>'
+                    '<th class="text-end">Precio evaluado</th>'
+                    '<th class="text-end">Margen neto</th>'
+                    '<th>Estado</th><th>Fecha</th></tr></thead><tbody>')
+            for c in cots:
+                html += (
+                    '<tr><td>%s</td><td>%s</td>'
+                    '<td class="text-end">${:,.2f}</td>'
+                    '<td class="text-end">{:.1f}&#37;</td>'
+                    '<td>%s %s</td><td>%s</td></tr>'
+                ).format(c.precio_evaluado, c.margen_neto_pct) % (
+                    html_escape(c.name or ''), c.revision,
+                    self._SEM.get(c.semaforo, ''),
+                    html_escape(estados.get(c.state, c.state or '')),
+                    c.create_date.date() if c.create_date else '')
+            html += '</tbody></table>'
+            rec.cotizaciones_html = html
 
     # ------------------------------------------------------------------
     # Drill-down: desde el renglón del cliente, todo lo suyo a un clic.

@@ -2970,6 +2970,16 @@ class TestQbCosteo(TransactionCase):
             self.assertEqual(acc['res_model'], 'account.move')
             acc = cli.action_abrir_cliente()
             self.assertEqual(acc['res_id'], cli.partner_id.id)
+            # La situación completa: semáforo coherente con el margen y
+            # las tres pestañas renderean con contenido
+            esperado = ('rojo' if cli.margen_neto_pct < 0
+                        else 'ambar' if cli.margen_neto_pct < 5
+                        else 'verde')
+            self.assertEqual(cli.semaforo, esperado)
+            self.assertTrue(cli.veredicto)
+            self.assertIn('<table', cli.productos_html)
+            self.assertIn('<table', cli.tendencia_html)
+            self.assertTrue(cli.cotizaciones_html)
 
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la
