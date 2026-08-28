@@ -618,6 +618,17 @@ class QbProductoPeso(models.Model):
         if uom_name in ('kg', 'kgs', 'kilogramo', 'kilogramos'):
             return 1.0, 'kg_native'
         ref = product.default_code or ''
+        if uom_name in ('m2', 'm²'):
+            # Producto vendido en m²: el gramaje del código ES el peso por
+            # unidad — el ancho NO juega (un m² pesa lo mismo a cualquier
+            # ancho). Sin esta rama, el parser de refs '...M2' no encontraba
+            # ancho al final y aplicaba el default 1.5 m: TODA la familia m²
+            # (54 productos) salía con el peso inflado +50% y su energía y
+            # fabricación por peso con él (caso FXI: bruto −35 por ciento en
+            # una tela que su gemela cobraba +46).
+            m = re.match(r'^[A-Za-z]+(\d{3})(?!\d)', ref)
+            if m:
+                return int(m.group(1)) / 1000.0, 'ref_gramaje'
         if ref.endswith(' I'):
             twin = self.env['product.product'].search(
                 [('default_code', '=', ref[:-2].strip())], limit=1)
