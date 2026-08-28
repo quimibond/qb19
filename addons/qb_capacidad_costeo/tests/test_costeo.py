@@ -2664,3 +2664,72 @@ class TestQbCosteo(TransactionCase):
                 c.gl_ventas - c.gl_gasto_total - c.gl_resultado_integral,
                 places=2, msg='%s: el resultado del mayor es ventas menos '
                               'todo lo que se gastó' % c.period)
+
+    def test_el_margen_de_una_cotizacion_sigue_al_precio(self):
+        """Editar el precio objetivo de una cotización recalcula margen y
+        semáforo. Antes eran floats sueltos que el cotizador escribía una
+        vez: al rebajar después el precio, el margen se quedaba con el del
+        precio anterior.
+
+        El caso real: una cotización a $16.00 presumía 5.0% de margen cuando
+        a ese precio el real era 1.5% — el 5.0% correspondía a $16.72, el
+        precio de antes de la rebaja. Prácticamente en el piso, presentada
+        como si tuviera colchón.
+        """
+        cot = self.env['qb.cotizacion'].create({
+            'name': 'COT MARGEN VIVO TEST',
+            'costo_variable': 6.3254,
+            'costo_absorbido_sin_op': 12.9706,
+            'op_pct': 17.38926082589547,
+            'piso_ocioso': 6.3254,
+            'piso_lleno': 15.7009,
+            'precio_objetivo': 16.7214,
+        })
+        self.assertAlmostEqual(cot.margen_neto_pct, 5.04, places=1)
+        self.assertEqual(cot.semaforo, 'verde')
+
+        # La rebaja que en producción dejó el margen viejo
+        cot.precio_objetivo = 16.0
+        self.assertAlmostEqual(
+            cot.margen_neto_pct, 1.54, places=1,
+            msg='el margen debe seguir al precio, no quedarse con el viejo')
+        self.assertAlmostEqual(cot.margen_contribucion, 16.0 - 6.3254,
+                               places=4)
+        self.assertEqual(cot.semaforo, 'verde')
+
+        # Y el semáforo también es vivo: entre pisos = ámbar, bajo variable
+        # = rojo
+        cot.precio_objetivo = 10.0
+        self.assertEqual(cot.semaforo, 'ambar')
+        self.assertLess(cot.margen_neto_pct, 0.0)
+        cot.precio_objetivo = 5.0
+        self.assertEqual(cot.semaforo, 'rojo')
+
+        # Sin precio objetivo cae al mercado, y sin mercado al piso lleno —
+        # el mismo fallback del precio evaluado
+        cot.precio_objetivo = 0.0
+        cot.precio_mercado = 18.0
+        self.assertAlmostEqual(
+            cot.margen_bruto_pct, 100.0 * (18.0 - 12.9706) / 18.0, places=2)
+
+    def test_capacidad_sin_datos_no_reprueba(self):
+        """Un centro sin workcenters NI turnos no tiene dato de capacidad
+        práctica: el check dice «no se puede validar» y NO reprueba.
+
+        Antes caía a `libres = 0` y cualquier volumen reprobaba por ese
+        centro: las 15 cotizaciones de agosto salieron «no cabe» porque a
+        ACABADO le faltaba 1 hora contra un cero inventado. Un check que
+        siempre dice que no es ruido, no una validación.
+        """
+        Centro = self.env['qb.costeo.centro']
+        sin_datos = Centro.create({
+            'code': 'TEST_CAP_SIN', 'name': 'Sin datos de capacidad',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'std_output_per_hour': 1779.0})
+        wiz = self.env['qb.cotizador.wizard'].new({})
+        ok, detail = wiz._check_capacity(
+            sin_datos, is_kg=False, kg=0.22, m_per_kg=4.5, volumen=2500.0)
+        self.assertTrue(ok, 'sin dato de capacidad no se puede reprobar')
+        self.assertIn('no se puede validar', detail)
+        self.assertNotIn('FALTAN', detail)
+        sin_datos.unlink()
