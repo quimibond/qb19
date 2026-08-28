@@ -39,23 +39,8 @@ _logger = logging.getLogger(__name__)
 
 def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
-
-    ultimo = env['qb.costo.factores'].search([], order='period DESC', limit=1)
-    if ultimo:
-        _logger.info(
-            'qb_capacidad_costeo: %s períodos recalculados sin las bajas de '
-            'activo ni la póliza de cierre. Pool fabril %.2f/mes, ajuste de '
-            'MP %.4f.', len(set(periodos)), ultimo.fab_pool_month,
-            ultimo.mp_ajuste)
-
-    marcados = env['qb.costo.factores'].search(
-        [('confiabilidad', '!=', 'ok')], order='period')
-    _logger.info(
-        'qb_capacidad_costeo: %s períodos marcados como no comparables: %s',
-        len(marcados),
-        ', '.join('%s (%s, %.1f%%)' % (m.period, m.confiabilidad,
-                                       m.utilizacion_pond_pct)
-                  for m in marcados) or 'ninguno')
+    # El recálculo lo hace la migración MÁS NUEVA de la cadena, una sola vez.
+    # Al agregarse la 19.0.1.29.0 se movió allá — y allá se parte en año
+    # corriente (síncrono) e históricos (diferidos al cron).
+    _logger.info('qb_capacidad_costeo: exclusiones de referencia activas; '
+                 'el recálculo lo hace la 19.0.1.29.0.')

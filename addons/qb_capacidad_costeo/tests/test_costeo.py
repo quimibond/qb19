@@ -63,13 +63,80 @@ class TestQbCosteo(TransactionCase):
         mp = self.Costo._mp_cost_unit(self.tela)
         self.assertAlmostEqual(mp, 0.072 * 50.0, places=4)
 
-    def test_mp_receta_ambigua_usa_avco(self):
-        """Semiterminado con VARIAS BOMs activas (receta ambigua, como los
-        genéricos 'MUESTRA PILOTO' con 26 recetas): _bom_find elegiría una al
-        azar y el costo se colapsa. Con AVCO válido el modelo usa el
-        standard_price de Odoo en vez de explotar una receta arbitraria
-        (bug WD080: MP $0.13 en vez de ~$12)."""
+    def test_mp_receta_ambigua_no_usa_avco_de_fabricado(self):
+        """Semiterminado FABRICADO con varias BOMs activas: el AVCO de Odoo
+        trae las capas de conversión de las MOs (horas × tarifa), no solo
+        materiales, y el modelo ya cobra la conversión vía fab_unit —
+        usarlo como MP la cobraba DOS veces. El caso real: la cruda de
+        WC090 (3 BOMs) con AVCO $107/kg cuando el hilo cuesta ~$40/kg →
+        CONTITECH y todo el segmento industrial salían con margen neto
+        negativo por costo fantasma. La regla: explotar TODAS las recetas
+        y tomar la MÁS CARA — nunca el AVCO de un fabricado."""
         uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        hilo_z = self.env['product.product'].create({
+            'name': 'HILO PES Z TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 40.0,
+        })
+        hilo_set = self.env['product.product'].create({
+            'name': 'HILO PES SET TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 30.0,
+        })
+        cruda = self.env['product.product'].create({
+            'name': 'CRUDA CREP TEST', 'is_storable': True,
+            'uom_id': uom_kg.id,
+            'standard_price': 107.0,  # AVCO con conversión adentro
+        })
+        # DOS recetas (mezclas de hilo distintas) → receta ambigua
+        for lineas in ([(hilo_z, 1.0)], [(hilo_z, 0.5), (hilo_set, 0.5)]):
+            self.env['mrp.bom'].create({
+                'product_tmpl_id': cruda.product_tmpl_id.id,
+                'product_id': cruda.id,
+                'product_qty': 1.0, 'product_uom_id': uom_kg.id,
+                'bom_line_ids': [(0, 0, {
+                    'product_id': comp.id, 'product_qty': qty,
+                    'product_uom_id': uom_kg.id}) for comp, qty in lineas],
+            })
+        self.assertTrue(self.Costo._has_multiple_boms(cruda))
+        # 1×40 vs 0.5×40+0.5×30=35 → la más cara (40), NUNCA el AVCO 107
+        self.assertAlmostEqual(self.Costo._mp_cost_unit(cruda), 40.0,
+                               places=4)
+        # Un producto final que consume 0.167 kg de la cruda hereda el
+        # costo de hilo, no el AVCO inflado
+        tela2 = self.env['product.product'].create({
+            'name': 'CREP TERMINADA TEST', 'default_code': 'WD080Q46JNT161',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True,
+        })
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tela2.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': cruda.id, 'product_qty': 0.167,
+                'product_uom_id': uom_kg.id})],
+        })
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela2), 0.167 * 40.0, places=3)
+        # El camino batch (ctx precomputa multi_bom_ids) da lo mismo
+        ctx = self.Costo._engine_ctx([tela2.id])
+        self.assertIn(cruda.id, ctx['multi_bom_ids'])
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela2, ctx=ctx), 0.167 * 40.0, places=3)
+        # Y el desglose explicado sigue a la receta más cara, no al AVCO
+        rows = self.Costo.mp_breakdown(tela2)
+        self.assertAlmostEqual(sum(r['total'] for r in rows), 0.167 * 40.0,
+                               places=3)
+        self.assertTrue(all('AVCO de Odoo' not in r['fuente'] for r in rows))
+        # Receta ÚNICA sigue explotando normal (no se toca ese camino)
+        self.assertFalse(self.Costo._has_multiple_boms(self.tela))
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(self.tela), 0.072 * 50.0, places=4)
+
+    def test_mp_receta_ambigua_degenerada_avisa(self):
+        """Recetas ambiguas DEGENERADAS (genéricos 'MUESTRA PILOTO' con
+        recetas de relleno que explotan a casi nada frente al AVCO): el
+        costo se queda el explotado — el AVCO de un fabricado no es MP —
+        pero el motor AVISA en el log para que alguien arregle las BOMs.
+        Ya no se tapa el hoyo con el AVCO (así entró el doble conteo)."""
         uom_kg = self.env.ref('uom.product_uom_kgm')
         barato = self.env['product.product'].create({
             'name': 'INSUMO BARATO', 'is_storable': True,
@@ -79,7 +146,6 @@ class TestQbCosteo(TransactionCase):
             'name': 'MUESTRA PILOTO TEST', 'is_storable': True,
             'uom_id': uom_kg.id, 'standard_price': 88.0,
         })
-        # DOS recetas para el mismo semiterminado → receta ambigua
         for _i in range(2):
             self.env['mrp.bom'].create({
                 'product_tmpl_id': semi.product_tmpl_id.id,
@@ -89,32 +155,12 @@ class TestQbCosteo(TransactionCase):
                     'product_id': barato.id, 'product_qty': 0.01,
                     'product_uom_id': uom_kg.id})],
             })
-        self.assertTrue(self.Costo._has_multiple_boms(semi))
-        # Explotar daría ~$0.01/kg (colapsado); el AVCO da $88
-        self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 88.0, places=4)
-        # Un producto final que consume 0.1446 kg del semi → 0.1446 × 88
-        tela2 = self.env['product.product'].create({
-            'name': 'DESAGUJADO TEST', 'default_code': 'WD080Q46JNT161',
-            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True,
-        })
-        self.env['mrp.bom'].create({
-            'product_tmpl_id': tela2.product_tmpl_id.id,
-            'product_qty': 1.0, 'product_uom_id': uom_m.id,
-            'bom_line_ids': [(0, 0, {
-                'product_id': semi.id, 'product_qty': 0.1446,
-                'product_uom_id': uom_kg.id})],
-        })
-        self.assertAlmostEqual(
-            self.Costo._mp_cost_unit(tela2), 0.1446 * 88.0, places=3)
-        # El camino batch (ctx precomputa multi_bom_ids) da lo mismo
-        ctx = self.Costo._engine_ctx([tela2.id])
-        self.assertIn(semi.id, ctx['multi_bom_ids'])
-        self.assertAlmostEqual(
-            self.Costo._mp_cost_unit(tela2, ctx=ctx), 0.1446 * 88.0, places=3)
-        # Receta ÚNICA sigue explotando normal (no se toca ese camino)
-        self.assertFalse(self.Costo._has_multiple_boms(self.tela))
-        self.assertAlmostEqual(
-            self.Costo._mp_cost_unit(self.tela), 0.072 * 50.0, places=4)
+        with self.assertLogs(
+                'odoo.addons.qb_capacidad_costeo.models.costeo',
+                level='WARNING') as capturado:
+            self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 0.01,
+                                   places=4)
+        self.assertTrue(any('degeneradas' in m for m in capturado.output))
 
     def test_peso_estimado_se_marca(self):
         """El peso adivinado del código (ref_gramaje) o del weight de Odoo se
@@ -2733,3 +2779,155 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('no se puede validar', detail)
         self.assertNotIn('FALTAN', detail)
         sin_datos.unlink()
+
+    def test_recalculo_diferido_vacia_la_cola_y_apaga_su_cron(self):
+        """El cron de recálculo diferido procesa la cola por lotes y se apaga
+        solo al terminar.
+
+        Existe porque la migración que recalculaba TODOS los períodos pasó de
+        ~80 s (8 períodos) a 5-6 minutos (32, al cargar 2024 y 2025) y todo
+        build de migración los pagaba. Ahora la migración recalcula síncrono
+        solo el año corriente y difiere la historia a esta cola.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        Costo = self.env['qb.costo.producto']
+        cron = self.env.ref('qb_capacidad_costeo.cron_recalculo_pendientes')
+        cron.active = True
+
+        # Dos períodos sintéticos en la cola
+        pendientes = '2028-03-01,2028-02-01'
+        rec = Config.search([('key', '=', 'recalculo_pendiente')], limit=1)
+        if rec:
+            rec.value_text = pendientes
+        else:
+            rec = Config.create({'key': 'recalculo_pendiente', 'value': 0,
+                                 'value_text': pendientes})
+
+        Costo.cron_recompute_pendientes()
+
+        # La cola quedó vacía, los períodos existen y el cron se apagó solo
+        self.assertFalse(rec.value_text)
+        Factores = self.env['qb.costo.factores']
+        self.assertTrue(Factores.search_count(
+            [('period', '=', date(2028, 3, 1))]))
+        self.assertTrue(Factores.search_count(
+            [('period', '=', date(2028, 2, 1))]))
+        self.assertFalse(cron.active, 'sin pendientes, el cron se apaga solo')
+
+        # Con la cola vacía es un no-op inofensivo
+        Costo.cron_recompute_pendientes()
+        self.assertFalse(rec.value_text)
+
+    def test_recalculo_diferido_respeta_el_lote(self):
+        """Un lote procesa a lo más 6 períodos y deja el resto en la cola,
+        con el cron todavía prendido."""
+        Config = self.env['qb.costeo.factor.config']
+        cron = self.env.ref('qb_capacidad_costeo.cron_recalculo_pendientes')
+        cron.active = True
+        # 7 períodos: 6 entran al lote, 1 se queda
+        meses = ['2028-%02d-01' % m for m in range(11, 4, -1)]
+        rec = Config.search([('key', '=', 'recalculo_pendiente')], limit=1)
+        if rec:
+            rec.value_text = ','.join(meses)
+        else:
+            rec = Config.create({'key': 'recalculo_pendiente', 'value': 0,
+                                 'value_text': ','.join(meses)})
+        self.env['qb.costo.producto'].cron_recompute_pendientes()
+        self.assertEqual(rec.value_text, '2028-05-01',
+                         'el séptimo se queda para el siguiente lote')
+        self.assertTrue(cron.active,
+                        'con pendientes, el cron sigue prendido')
+
+    def test_historial_de_revisiones_encadena_al_crear(self):
+        """Cotizar el MISMO producto al MISMO cliente otra vez crea la
+        revisión siguiente, liga a la anterior y reemplaza solo ofertas
+        VIVAS (borrador/presentada); una ganada o perdida es historia del
+        trato y conserva su estado."""
+        partner = self.env['res.partner'].create({'name': 'CLIENTE REV TEST'})
+        Cot = self.env['qb.cotizacion']
+        base = {'partner_id': partner.id, 'product_id': self.tela.id,
+                'costo_variable': 6.0, 'costo_absorbido_sin_op': 12.0,
+                'op_pct': 15.0, 'piso_ocioso': 6.0, 'piso_lleno': 14.0}
+        a = Cot.create(dict(base, name='REV A', precio_objetivo=16.0))
+        self.assertEqual(a.revision, 1)
+        self.assertFalse(a.revision_anterior_id)
+
+        b = Cot.create(dict(base, name='REV B', precio_objetivo=15.5))
+        self.assertEqual(b.revision, 2)
+        self.assertEqual(b.revision_anterior_id, a)
+        self.assertEqual(a.state, 'superseded',
+                         'el borrador anterior queda reemplazado')
+        self.assertEqual(a.revision_siguiente_ids, b)
+
+        # Una GANADA no se reemplaza al recotizar: es historia del trato
+        b.action_marcar_ganada()
+        c = Cot.create(dict(base, name='REV C', precio_objetivo=15.0))
+        self.assertEqual(c.revision, 3)
+        self.assertEqual(c.revision_anterior_id, b)
+        self.assertEqual(b.state, 'won',
+                         'una ganada conserva su estado al ser recotizada')
+        self.assertEqual(a.historial_count, 3)
+        self.assertEqual(c.historial_count, 3)
+
+        # Folio estilo formato viejo: año + consecutivo («20260096»)
+        self.assertEqual(c.folio,
+                         '%s%04d' % (c.create_date.year, c.id))
+
+        # El smart button abre la cadena completa cliente+producto
+        accion = c.action_ver_historial()
+        registros = Cot.search(accion['domain'])
+        self.assertEqual(registros, a + b + c)
+
+    def test_historial_sin_cliente_o_producto_no_encadena(self):
+        """Una cotización de especificación nueva (sin producto) o sin
+        cliente no participa en cadenas: siempre es revisión 1 suelta."""
+        Cot = self.env['qb.cotizacion']
+        s1 = Cot.create({'name': 'SPEC SUELTA 1', 'piso_lleno': 10.0,
+                         'spec_descripcion': 'tela nueva 45 g'})
+        s2 = Cot.create({'name': 'SPEC SUELTA 2', 'piso_lleno': 10.0,
+                         'spec_descripcion': 'tela nueva 45 g'})
+        self.assertEqual(s1.revision, 1)
+        self.assertEqual(s2.revision, 1)
+        self.assertFalse(s2.revision_anterior_id)
+        self.assertNotEqual(s1.state, 'superseded')
+
+    def test_reporte_cliente_formato_completo(self):
+        """El PDF para cliente trae TODO el formato F-P-A28-12: folio,
+        atención a, condiciones de venta, checklist ✓/✗ de términos,
+        muestra, firmas y clave de control — sin ningún dato interno de
+        costo o margen."""
+        partner = self.env['res.partner'].create(
+            {'name': 'CLIENTE PDF TEST', 'phone': '55 1234 5678'})
+        cot = self.env['qb.cotizacion'].create({
+            'name': 'COT PDF TEST', 'partner_id': partner.id,
+            'product_id': self.tela.id, 'volumen': 5000.0,
+            'uom_name': 'm', 'costo_variable': 6.0,
+            'costo_absorbido_sin_op': 12.0, 'op_pct': 15.0,
+            'piso_ocioso': 6.0, 'piso_lleno': 14.0,
+            'precio_objetivo': 16.0, 'atencion_a': 'Ing. Prueba Compras',
+        })
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion_cliente', cot.ids)[0]
+        html = html.decode('utf-8') if isinstance(html, bytes) else str(html)
+        for pedazo in (
+                'COTIZACIÓN DE PRODUCTO', cot.folio,
+                'En atención a', 'Ing. Prueba Compras',
+                'WJ045NT160',                       # la referencia interna
+                '5,000 m',                          # lote mínimo default
+                '500 m ± 100 m',                    # presentación default
+                'EXWORKS',                          # lugar de entrega
+                '4 semanas',                        # tiempo de entrega
+                'CoA al 100%', 'PPAP', 'LTA', 'Cotizado / Quoted',
+                '✓', '✗',
+                'Muestra menor a 50 m',
+                'VENTAS QUIMIBOND', 'APROBADA POR CLIENTE',
+                'no será válida sin la firma de ambas partes',
+                'F-P-A28-12'):
+            self.assertIn(pedazo, html,
+                          'falta «%s» en el PDF para cliente' % pedazo)
+        # Y nada interno se cuela
+        for prohibido in ('margen', 'Margen', 'costo variable',
+                          'Costo variable', 'piso'):
+            self.assertNotIn(prohibido, html,
+                             '«%s» es dato interno: no va al cliente'
+                             % prohibido)
