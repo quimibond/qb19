@@ -40,6 +40,12 @@
               parent="menu_qb_costos_group" action="costo_ranking_action" sequence="15"/>
     <menuitem id="menu_qb_clientes" name="Rentabilidad por cliente"
               parent="menu_qb_costos_group" action="cliente_rentabilidad_action" sequence="17"/>
+    <menuitem id="menu_qb_producto_rentab" name="Rentabilidad por producto"
+              parent="menu_qb_costos_group" action="producto_rentabilidad_action" sequence="18"/>
+    <menuitem id="menu_qb_producto_cliente" name="Producto × Cliente (precios)"
+              parent="menu_qb_costos_group" action="producto_cliente_action" sequence="18"/>
+    <menuitem id="menu_qb_producto_mensual" name="Programa mensual por producto"
+              parent="menu_qb_costos_group" action="producto_mensual_action" sequence="19"/>
     <menuitem id="menu_qb_factores" name="Factores por período"
               parent="menu_qb_costos_group" action="costo_factores_action" sequence="20"/>
     <!-- El control de calidad del costeo: ¿cuadra con la contabilidad? -->
@@ -115,6 +121,8 @@
               parent="menu_qb_config" action="factor_config_action" sequence="30"/>
     <menuitem id="menu_qb_pesos" name="Pesos por producto"
               parent="menu_qb_config" action="producto_peso_action" sequence="40"/>
+    <menuitem id="menu_qb_peso_auditoria" name="Auditoría de pesos"
+              parent="menu_qb_config" action="peso_auditoria_action" sequence="41"/>
     <menuitem id="menu_qb_ruteo" name="Ruteo por familia"
               parent="menu_qb_config" action="producto_ruteo_action" sequence="50"/>
     <menuitem id="menu_qb_turnos" name="Turnos / capacidad manual"

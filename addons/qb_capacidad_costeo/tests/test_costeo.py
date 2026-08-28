@@ -2891,6 +2891,80 @@ class TestQbCosteo(TransactionCase):
         self.assertFalse(s2.revision_anterior_id)
         self.assertNotEqual(s1.state, 'superseded')
 
+    def test_peso_m2_usa_gramaje_sin_ancho(self):
+        """Producto vendido en m²: el peso por unidad ES el gramaje — el
+        ancho no juega (un m² pesa lo mismo a cualquier ancho). Antes el
+        parser no encontraba ancho en refs '...M2' y aplicaba el default
+        1.5 m: toda la familia m² (54 productos) salía +50 por ciento de
+        peso, con su energía y fabricación infladas igual (FXI: una tela a
+        −35 por ciento de bruto y su gemela a +46)."""
+        uom_m2 = self.env['uom.uom'].search(
+            [('name', 'in', ('m2', 'm²'))], limit=1)
+        if not uom_m2:
+            uom_m2 = self.env['uom.uom'].create({'name': 'm2'})
+        tela_m2 = self.env['product.product'].create({
+            'name': 'TELA M2 TEST', 'default_code': 'WJ038Q22JNT160M2',
+            'is_storable': True, 'uom_id': uom_m2.id, 'sale_ok': True,
+        })
+        kg, src = self.Peso._resolve_kg_source(tela_m2)
+        self.assertAlmostEqual(kg, 0.038, places=6,
+                               msg='en m² el peso es gramaje/1000, sin ancho')
+        self.assertEqual(src, 'ref_gramaje')
+        # El teórico de la auditoría dice lo mismo
+        self.assertAlmostEqual(
+            self.env['qb.peso.auditoria']._kg_teorico(tela_m2), 0.038,
+            places=6)
+        # Y en metros lineales el ancho SÍ juega (no se toca ese camino)
+        self.assertAlmostEqual(
+            self.Peso._gramaje_from_ref('WJ045NT160'), 0.045 * 1.60,
+            places=6)
+
+    def test_reportes_por_producto_leen_y_cuadran(self):
+        """Los tres reportes por producto leen sin error, y la identidad
+        que los ata: producto y cliente agrupan EL MISMO universo de
+        líneas, así que sus totales de venta y margen neto son iguales."""
+        Prod = self.env['qb.producto.rentabilidad']
+        Cli = self.env['qb.cliente.rentabilidad']
+        ProdCli = self.env['qb.producto.cliente']
+        Mensual = self.env['qb.producto.mensual']
+        prods = Prod.search([])
+        clientes = Cli.search([])
+        parejas = ProdCli.search([])
+        meses = Mensual.search([])
+        self.assertAlmostEqual(
+            sum(prods.mapped('revenue_12m')),
+            sum(clientes.mapped('revenue_12m')), delta=1.0,
+            msg='mismo universo: la venta por producto = venta por cliente')
+        self.assertAlmostEqual(
+            sum(prods.mapped('margen_neto_12m')),
+            sum(clientes.mapped('margen_neto_12m')), delta=1.0)
+        self.assertAlmostEqual(
+            sum(parejas.mapped('revenue_12m')),
+            sum(prods.mapped('revenue_12m')), delta=1.0)
+        self.assertAlmostEqual(
+            sum(meses.mapped('revenue')),
+            sum(prods.mapped('revenue_12m')), delta=1.0)
+
+    def test_auditoria_de_pesos_clasifica(self):
+        """La auditoría separa ok / revisar / crítico / sin peso por la
+        desviación motor vs teórico, y el generador corre sin error."""
+        Aud = self.env['qb.peso.auditoria']
+        self.assertEqual(Aud._estado_para(0.0, 0.038, 'sin_peso')[0],
+                         'sin_peso')
+        self.assertEqual(Aud._estado_para(0.038, 0.038, 'manual')[0], 'ok')
+        estado, desv = Aud._estado_para(0.050, 0.038, 'ref_gramaje')
+        self.assertEqual(estado, 'revisar')
+        self.assertAlmostEqual(desv, 100.0 * (0.050 / 0.038 - 1), places=2)
+        # El caso real de FXI: 0.1 capturado vs 0.038 teórico → crítico
+        self.assertEqual(Aud._estado_para(0.1, 0.038, 'odoo_weight')[0],
+                         'critico')
+        # Estimado sin teórico contra qué comparar → revisar
+        self.assertEqual(Aud._estado_para(0.08, 0.0, 'odoo_weight')[0],
+                         'revisar')
+        # Medido sin teórico → ok (no hay evidencia en contra)
+        self.assertEqual(Aud._estado_para(0.08, 0.0, 'cvu')[0], 'ok')
+        Aud.action_generar()
+
     def test_reporte_cliente_formato_completo(self):
         """El PDF para cliente trae TODO el formato F-P-A28-12: folio,
         atención a, condiciones de venta, checklist ✓/✗ de términos,
