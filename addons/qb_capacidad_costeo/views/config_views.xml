@@ -96,6 +96,7 @@
                 <field name="bucket"/>
                 <field name="es_variable"/>
                 <field name="es_renta" optional="show"/>
+                <field name="filtro_etiqueta" optional="hide"/>
                 <field name="centro_id"/>
                 <field name="driver"/>
                 <field name="allocation_pct"/>
@@ -118,6 +119,7 @@
                 <field name="bucket"/>
                 <field name="es_variable"/>
                 <field name="es_renta" optional="show"/>
+                <field name="filtro_etiqueta" optional="hide"/>
                 <field name="centro_id"/>
                 <field name="driver"/>
                 <field name="allocation_pct"/>

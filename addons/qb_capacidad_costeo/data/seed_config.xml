@@ -42,6 +42,12 @@
             <field name="value">25</field>
             <field name="descripcion">Techo del rendimiento sano (unidades/hora). Arriba de esto casi siempre son horas sin registrar, no una máquina rapidísima.</field>
         </record>
+        <record id="factor_refs_fuera_de_costeo" model="qb.costeo.factor.config">
+            <field name="key">refs_fuera_de_costeo</field>
+            <field name="value">0</field>
+            <field name="value_text">CIERRE ANUAL,ENAJENACI</field>
+            <field name="descripcion">Referencias de asiento que NO entran al costeo, separadas por coma (se comparan en mayúsculas, como subcadena). CIERRE ANUAL: la póliza que reversa el año entero contra diciembre. ENAJENACI: la baja de un activo vendido — en dic-2025 fueron $5,827,157 de dos máquinas que hoy se arriendan, ya compensados por $5,896,997 de utilidad en venta que el costeo no mira, y cuyo costo actual ya entra al pool por el arrendamiento. Cargarlos además sería cobrar la misma máquina dos veces.</field>
+        </record>
         <record id="factor_utilizacion_min_comparable" model="qb.costeo.factor.config">
             <field name="key">utilizacion_min_comparable</field>
             <field name="value">0.70</field>
@@ -274,6 +280,12 @@
             <field name="code_pattern">501.01%</field>
             <field name="bucket">no_costeo</field>
             <field name="notes">COGS contable AVCO: el módulo calcula MP desde BOM a último costo — no se toma del GL.</field>
+        </record>
+        <record id="cc_mp_ajustes_merma" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">501.01.02%</field>
+            <field name="bucket">mp</field>
+            <field name="filtro_etiqueta">SP/</field>
+            <field name="notes">Ajustes a cantidad. La cuenta mezcla naturalezas: la merma real lleva etiqueta SP/ (el scrap de Odoo) y SÍ es costo del producto; los embarques (TL/EMB/), el encogimiento (TL/ENC/) y las entradas de refacciones (TVAR/ENT-REF/) son ajustes de cantidad y NO lo son. El filtro de etiqueta deja pasar solo la merma. Gana por patrón más largo sobre 501.01%.</field>
         </record>
         <record id="cc_502_no" model="qb.costeo.cuenta.class">
             <field name="code_pattern">502%</field>

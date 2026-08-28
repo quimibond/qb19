@@ -22,24 +22,10 @@ Se recalculan los períodos abiertos para poblar el marcado. Los cerrados se
 respetan — un período cerrado conserva lo que se congeló, incluido el hecho
 de que no traiga esta marca.
 """
-import logging
-
-from odoo import SUPERUSER_ID, api
-
-_logger = logging.getLogger(__name__)
-
-
 def migrate(cr, version):
-    env = api.Environment(cr, SUPERUSER_ID, {})
-    periodos = env['qb.costo.factores'].search([]).mapped('period')
-    for period in sorted(set(periodos)):
-        env['qb.costo.producto'].action_recompute_period(period)
+    """No-op: este cambio es de MOTOR y de campos, no de datos.
 
-    marcados = env['qb.costo.factores'].search(
-        [('confiabilidad', '!=', 'ok')], order='period')
-    _logger.info(
-        'qb_capacidad_costeo: %s períodos recalculados; %s marcados como no '
-        'comparables: %s', len(set(periodos)), len(marcados),
-        ', '.join('%s (%s, %.1f%%)' % (m.period, m.confiabilidad,
-                                       m.utilizacion_pond_pct)
-                  for m in marcados) or 'ninguno')
+    El recálculo que puebla el marcado —y el log de qué períodos quedaron
+    marcados— lo hace la migración más nueva de la cadena, una sola vez y
+    después de que hayan corrido todos los cambios de datos.
+    """

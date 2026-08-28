@@ -2474,3 +2474,158 @@ class TestQbCosteo(TransactionCase):
         esperado = (ws * (f.utilizacion_kg_pct or 0.0)
                     + (1 - ws) * (f.utilizacion_m_pct or 0.0))
         self.assertAlmostEqual(f.utilizacion_pond_pct, esperado, places=4)
+
+    def test_filtro_de_etiqueta_deja_pasar_solo_la_merma(self):
+        """Una cuenta que mezcla naturalezas deja pasar al pool solo las
+        líneas cuyo concepto lo diga.
+
+        `501.01.02 COSTO POR AJUSTES A CANTIDAD` junta la merma real
+        —etiquetada `SP/`, el scrap de Odoo— con embarques (`TL/EMB/`),
+        encogimiento (`TL/ENC/`) y entradas de refacciones (`TVAR/ENT-REF/`).
+        Solo la merma es costo del producto; los ajustes de cantidad no.
+
+        Sin el filtro, un asiento de regularización de $5,822,686 en diciembre
+        de 2025 —1,136 scraps sin asiento, revueltos con ajustes— entraba
+        entero al ajuste de MP y subía el costo de materia prima de TODOS los
+        productos.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mes = date(2027, 7, 1)
+
+        cuenta = Account.create({
+            'name': 'AJUSTES A CANTIDAD TEST', 'code': 'QBSP.0001',
+            'account_type': 'expense_direct_cost'})
+        contra = Account.create({'name': 'CONTRA SP TEST', 'code': 'QBSP.0009',
+                                 'account_type': 'expense'})
+        clase = Clase.create({'account_id': cuenta.id, 'bucket': 'mp'})
+
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': mes,
+            'line_ids': [
+                (0, 0, {'account_id': cuenta.id, 'debit': 30000.0,
+                        'name': 'SP/10758 - TC210X5.2X0.2X 3.99'}),
+                (0, 0, {'account_id': cuenta.id, 'debit': 70000.0,
+                        'name': 'TL/EMB/04840 - Entretela no tejida'}),
+                (0, 0, {'account_id': cuenta.id, 'debit': 50000.0,
+                        'name': 'TL/ENC//00103 - TEJIDO CIRCULAR'}),
+                (0, 0, {'account_id': contra.id, 'credit': 150000.0}),
+            ]}).action_post()
+
+        ventana = (mes, mes + relativedelta(months=1))
+        sin_filtro = self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0)
+        self.assertAlmostEqual(sin_filtro, 150000.0, places=2,
+                               msg='sin filtro entra la cuenta completa')
+
+        clase.filtro_etiqueta = 'SP/'
+        con_filtro = self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0)
+        self.assertAlmostEqual(
+            con_filtro, 30000.0, places=2,
+            msg='con filtro entra solo la merma, no los ajustes')
+
+        # Vaciarlo lo apaga: el filtro es opt-in, no un default escondido
+        clase.filtro_etiqueta = False
+        self.assertAlmostEqual(
+            self.Costo._pool_by_month(('mp',), *ventana).get(mes, 0.0),
+            150000.0, places=2)
+
+    def test_refs_fuera_de_costeo_es_configurable_y_no_inyecta(self):
+        """La lista de referencias fuera del costeo sale de un parámetro, y su
+        valor se INTERPOLA en el SQL porque `_table_query` no admite
+        parámetros. La lista blanca de caracteres es lo que sostiene eso."""
+        from odoo.addons.qb_capacidad_costeo.models.cuenta_map import (
+            excluir_refs_sql)
+        Config = self.env['qb.costeo.factor.config']
+
+        sql = excluir_refs_sql(self.env)
+        self.assertNotIn('%', sql, 'un porcentaje rompe el formateo printf')
+        self.assertIn('CIERRE ANUAL', sql)
+        self.assertIn('ENAJENACI', sql)
+
+        def poner(texto):
+            rec = Config.search([('key', '=', 'refs_fuera_de_costeo')], limit=1)
+            if rec:
+                rec.value_text = texto
+            else:
+                Config.create({'key': 'refs_fuera_de_costeo',
+                               'value_text': texto})
+
+        poner("X'; DROP TABLE x; --")
+        sql = excluir_refs_sql(self.env)
+        # Lo que hace segura la interpolación es que la comilla no pasa: sin
+        # ella el valor no puede salirse de su literal. El punto y coma
+        # tampoco, así que no hay forma de encadenar otra sentencia. Un `--`
+        # sobrevive y da igual: dentro de comillas es texto, no comentario.
+        self.assertNotIn(';', sql,
+                         'la lista blanca no deja pasar el punto y coma')
+        self.assertEqual(
+            sql.count("'") % 2, 0,
+            'las comillas quedan balanceadas: el valor no se sale del literal')
+        self.assertNotIn('%', sql)
+
+        poner('')
+        self.assertEqual(
+            excluir_refs_sql(self.env), 'TRUE',
+            'vacío = no se excluye nada, y el SQL sigue siendo válido')
+
+    def test_la_baja_de_activo_vendido_no_entra_al_pool(self):
+        """La depreciación de un activo que salió no es costo del período
+        cuando su reemplazo ya está en el pool.
+
+        En dic-2025 se cargaron $5,827,157 a `504.08.0001 DEPRECIACIÓN
+        MAQUINARIA` por dos máquinas —FONGS JET y CIRCULAR INTERLOCK— que se
+        vendieron. Tres razones para que no sea costo, y apuntan al mismo lado:
+
+          1. Ya está compensado: `704.23.0003 UTILIDAD EN VENTA DE ACTIVO
+             FIJO` trae $5,896,997 el mismo mes, en una cuenta `income_other`
+             que el costeo no mira ni debe mirar. El módulo veía media
+             operación.
+          2. Es un evento único, y el suavizado a 12 meses lo vuelve
+             recurrente: $485,596/mes, el 7.8% del pool fabril.
+          3. Fue una venta con arrendamiento en reversa. Esas máquinas hoy se
+             pagan como renta y la renta YA está en el pool —`701.11%` saltó
+             de 10 a 16 contratos justo en dic-2025—. Repartir además su
+             depreciación de cuando eran propias le cobra a cada producto la
+             misma máquina dos veces.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        mes = date(2027, 8, 1)
+
+        deprec = Account.create({
+            'name': 'DEPRECIACION MAQUINARIA TEST', 'code': 'QBEN.0001',
+            'account_type': 'expense_direct_cost'})
+        Clase.create({'account_id': deprec.id, 'bucket': 'depreciacion'})
+        acum = Account.create({'name': 'DEPRE ACUM TEST', 'code': 'QBEN.0002',
+                               'account_type': 'asset_fixed'})
+
+        def poliza(monto, ref):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id,
+                'date': mes, 'ref': ref,
+                'line_ids': [
+                    (0, 0, {'account_id': deprec.id, 'debit': monto}),
+                    (0, 0, {'account_id': acum.id, 'credit': monto}),
+                ]}).action_post()
+
+        poliza(90000.0, 'DEPRECIACION DEL MES')
+        ventana = (mes, mes + relativedelta(months=1))
+        normal = self.Costo._pool_by_month(
+            ('depreciacion',), *ventana, es_variable=False).get(mes, 0.0)
+        self.assertAlmostEqual(normal, 90000.0, places=2)
+
+        poliza(5827156.83, 'REGISTRO ENAJENACIÓN DE ACTIVO MAQUINA')
+        con_baja = self.Costo._pool_by_month(
+            ('depreciacion',), *ventana, es_variable=False).get(mes, 0.0)
+        self.assertAlmostEqual(
+            con_baja, 90000.0, places=2,
+            msg='la baja del activo vendido no mueve el pool; la '
+                'depreciación del mes sí sigue contando')

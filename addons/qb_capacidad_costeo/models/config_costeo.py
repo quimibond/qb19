@@ -174,6 +174,18 @@ class QbCosteoCuentaClass(models.Model):
         string='Es variable',
         help='Variable = escala con el volumen (energía). Lo no variable es '
              'fijo y entra al costo de ociosidad.')
+    filtro_etiqueta = fields.Char(
+        string='Solo líneas cuya etiqueta contenga',
+        help='Deja pasar al pool SOLO las líneas cuyo concepto contenga este '
+             'texto. Vacío = toda la cuenta cuenta, que es lo normal.\n\n'
+             'Existe porque hay cuentas que mezclan naturalezas distintas. '
+             '`501.01.02 COSTO POR AJUSTES A CANTIDAD` junta la merma real '
+             '—etiquetada `SP/`, el scrap de Odoo— con embarques (`TL/EMB/`), '
+             'encogimiento (`TL/ENC/`) y entradas de refacciones '
+             '(`TVAR/ENT-REF/`). Solo la merma es costo del producto; los '
+             'ajustes de cantidad no.\n\n'
+             'Es un filtro de LÍNEA, no de cuenta: la clasificación sigue '
+             'siendo por cuenta y esto acota qué parte de ella entra.')
     es_renta = fields.Boolean(
         string='Es renta de inmueble',
         help='La cuenta lleva renta o arrendamiento de inmueble. El motor la '

@@ -55,10 +55,59 @@ def wo_qty_sql(env, alias='wo'):
 # Se filtra por la referencia del asiento. Sin `%` en la expresión: el SQL de
 # las vistas pasa por formateo estilo printf y un porcentaje suelto lo
 # rompería, así que se usa `position(... in ...)` en vez de ILIKE.
-CIERRE_ANUAL_REF = 'CIERRE ANUAL'
+# Por default salen dos naturalezas:
+#
+# CIERRE ANUAL — la póliza que reversa el año entero contra diciembre.
+#
+# ENAJENACI — la baja de un activo vendido. En dic-2025 se cargaron
+#   $5,827,157 a `504.08.0001 DEPRECIACIÓN MAQUINARIA` por dos máquinas
+#   (FONGS JET y CIRCULAR INTERLOCK) que salieron del activo. No es costo del
+#   período por tres razones que apuntan al mismo lado:
+#
+#     1. Ya está compensado: `704.23.0003 UTILIDAD EN VENTA DE ACTIVO FIJO`
+#        tiene $5,896,997 en el mismo mes, y esa cuenta es `income_other`,
+#        que el costeo no mira ni debe mirar. El módulo veía media operación.
+#     2. Es un evento único —el saldo pendiente de depreciar reconocido de
+#        golpe al vender— y el suavizado a 12 meses lo vuelve recurrente.
+#     3. Es doble conteo: fue una venta con arrendamiento en reversa. Esas
+#        máquinas hoy se pagan como renta, y la renta YA está en el pool
+#        (`701.11%`, que saltó de 10 a 16 contratos justo en dic-2025).
+#        Repartir además su depreciación de cuando eran propias le cobra a
+#        cada producto la misma máquina dos veces.
+#
+# Es la misma regla que ya se aplicó al régimen híbrido de TEJIDO: cuando un
+# costo cambia de vehículo, el vehículo viejo tiene que salir.
+REFS_FUERA_DE_COSTEO_DEFAULT = 'CIERRE ANUAL,ENAJENACI'
 
-EXCLUIR_CIERRE_SQL = (
-    "position('" + CIERRE_ANUAL_REF + "' in upper(coalesce(am.ref, ''))) = 0")
+# Solo estos caracteres pasan a la condición SQL. Las referencias vienen de un
+# parámetro que edita un administrador y se INTERPOLAN —`_table_query` no
+# admite parámetros—, así que la lista blanca es la que evita que un valor
+# raro se convierta en SQL.
+_REF_PERMITIDO = set(
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ÁÉÍÓÚÑÜ./-_')
+
+
+def excluir_refs_sql(env, alias='am'):
+    """Condición SQL que deja fuera los asientos «fuera de costeo».
+
+    Sin `%` en el resultado: el SQL de las vistas pasa por formateo estilo
+    printf y un porcentaje suelto lo rompería, así que se usa
+    `position(... in ...)` en vez de ILIKE.
+    """
+    crudo = env['qb.costeo.factor.config'].get_param_text(
+        'refs_fuera_de_costeo', REFS_FUERA_DE_COSTEO_DEFAULT)
+    refs = []
+    for parte in (crudo or '').split(','):
+        limpia = ''.join(c for c in parte.strip().upper()
+                         if c in _REF_PERMITIDO).strip()
+        if limpia:
+            refs.append(limpia)
+    if not refs:
+        return 'TRUE'
+    return ' AND '.join(
+        "position('{ref}' in upper(coalesce({a}.ref, ''))) = 0".format(
+            ref=r, a=alias)
+        for r in refs)
 
 
 # CTE reutilizable: una fila por cuenta con su mejor clasificación activa.
@@ -69,6 +118,7 @@ CUENTA_MAP_SQL = """
         c.bucket,
         c.es_variable,
         COALESCE(c.es_renta, FALSE) AS es_renta,
+        COALESCE(c.filtro_etiqueta, '') AS filtro_etiqueta,
         c.centro_id,
         c.driver,
         COALESCE(c.allocation_pct, 100.0) AS allocation_pct,
@@ -99,6 +149,7 @@ class QbCosteoCuentaMap(models.Model):
     bucket = fields.Char(readonly=True)
     es_variable = fields.Boolean(readonly=True)
     es_renta = fields.Boolean(readonly=True)
+    filtro_etiqueta = fields.Char(readonly=True)
     centro_id = fields.Many2one('qb.costeo.centro', readonly=True)
     driver = fields.Char(readonly=True)
     allocation_pct = fields.Float(readonly=True)
@@ -113,6 +164,7 @@ class QbCosteoCuentaMap(models.Model):
                    m.bucket,
                    m.es_variable,
                    m.es_renta,
+                   m.filtro_etiqueta,
                    m.centro_id,
                    m.driver,
                    m.allocation_pct,
