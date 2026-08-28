@@ -65,6 +65,52 @@ class QbClienteRentabilidad(models.Model):
     ultima_compra = fields.Date(string='Última compra', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
 
+    # ------------------------------------------------------------------
+    # Drill-down: desde el renglón del cliente, todo lo suyo a un clic.
+    # El id de la vista ES el partner_id, así que la navegación es directa.
+    # ------------------------------------------------------------------
+    def _accion(self, nombre, res_model, domain, view_mode='list'):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': nombre,
+            'res_model': res_model,
+            'view_mode': view_mode,
+            'domain': domain,
+            'target': 'current',
+        }
+
+    def action_ver_productos(self):
+        """Qué le vendo, a qué precio y con qué margen — la matriz
+        producto × cliente filtrada a esta cuenta."""
+        return self._accion(
+            'Productos de %s' % self.partner_id.name,
+            'qb.producto.cliente',
+            [('partner_id', '=', self.partner_id.id)])
+
+    def action_ver_cotizaciones(self):
+        return self._accion(
+            'Cotizaciones: %s' % self.partner_id.name,
+            'qb.cotizacion',
+            [('partner_id', '=', self.partner_id.id)])
+
+    def action_ver_facturas(self):
+        return self._accion(
+            'Facturas: %s' % self.partner_id.name,
+            'account.move',
+            [('commercial_partner_id', '=', self.partner_id.id),
+             ('move_type', 'in', ('out_invoice', 'out_refund'))])
+
+    def action_abrir_cliente(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'res.partner',
+            'res_id': self.partner_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     @property
     def _table_query(self):
         # Solo la COMPAÑIA ACTIVA, como el motor de costos: sin este filtro,

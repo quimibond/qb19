@@ -2945,6 +2945,32 @@ class TestQbCosteo(TransactionCase):
             sum(meses.mapped('revenue')),
             sum(prods.mapped('revenue_12m')), delta=1.0)
 
+    def test_drill_down_producto_y_cliente(self):
+        """Desde el renglón de un producto o cliente se navega a todo lo
+        suyo: los botones devuelven acciones filtradas al registro."""
+        prod = self.env['qb.producto.rentabilidad'].search([], limit=1)
+        if prod:
+            acc = prod.action_ver_clientes()
+            self.assertEqual(acc['res_model'], 'qb.producto.cliente')
+            self.assertIn(('product_id', '=', prod.product_id.id),
+                          acc['domain'])
+            acc = prod.action_ver_programa()
+            self.assertEqual(acc['res_model'], 'qb.producto.mensual')
+            acc = prod.action_ver_costos()
+            self.assertEqual(acc['res_model'], 'qb.costo.producto')
+            acc = prod.action_abrir_producto()
+            self.assertEqual(acc['res_id'], prod.product_id.id)
+        cli = self.env['qb.cliente.rentabilidad'].search([], limit=1)
+        if cli:
+            acc = cli.action_ver_productos()
+            self.assertEqual(acc['res_model'], 'qb.producto.cliente')
+            self.assertIn(('partner_id', '=', cli.partner_id.id),
+                          acc['domain'])
+            acc = cli.action_ver_facturas()
+            self.assertEqual(acc['res_model'], 'account.move')
+            acc = cli.action_abrir_cliente()
+            self.assertEqual(acc['res_id'], cli.partner_id.id)
+
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la
         desviación motor vs teórico, y el generador corre sin error."""

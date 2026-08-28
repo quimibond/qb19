@@ -29,6 +29,60 @@
             </list>
         </field>
     </record>
+    <!-- Form de solo lectura: la "ficha 360" del cliente — sus números de
+         12 meses y botones a todo lo relacionado. -->
+    <record id="cliente_rentabilidad_view_form" model="ir.ui.view">
+        <field name="name">qb.cliente.rentabilidad.form</field>
+        <field name="model">qb.cliente.rentabilidad</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_productos" type="object"
+                                class="oe_stat_button" icon="fa-cubes"
+                                string="Productos que compra"/>
+                        <button name="action_ver_cotizaciones" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                string="Cotizaciones"/>
+                        <button name="action_ver_facturas" type="object"
+                                class="oe_stat_button" icon="fa-book"
+                                string="Facturas"/>
+                        <button name="action_abrir_cliente" type="object"
+                                class="oe_stat_button" icon="fa-address-card-o"
+                                string="Contacto"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="partner_id" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Venta (12 meses)">
+                            <field name="revenue_12m"/>
+                            <field name="n_productos"/>
+                            <field name="meses_activo"/>
+                            <field name="ultima_compra"/>
+                        </group>
+                        <group string="Márgenes reales (12 meses)">
+                            <field name="contrib_12m"/>
+                            <field name="contrib_pct"/>
+                            <field name="margen_bruto_12m"/>
+                            <field name="margen_bruto_pct"/>
+                            <field name="margen_neto_12m"/>
+                            <field name="margen_neto_pct"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Capacidad">
+                            <field name="horas_cuello_12m"/>
+                            <field name="contrib_por_hora"/>
+                        </group>
+                        <group string="Calidad del dato">
+                            <field name="costo_cobertura_pct"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
     <record id="cliente_rentabilidad_view_graph" model="ir.ui.view">
         <field name="name">qb.cliente.rentabilidad.graph</field>
         <field name="model">qb.cliente.rentabilidad</field>
@@ -42,7 +96,7 @@
     <record id="cliente_rentabilidad_action" model="ir.actions.act_window">
         <field name="name">Rentabilidad por cliente (12m)</field>
         <field name="res_model">qb.cliente.rentabilidad</field>
-        <field name="view_mode">list,graph</field>
+        <field name="view_mode">list,form,graph</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Rentabilidad por cliente</p>
             <p>Los tres márgenes reales de cada cuenta en 12 meses —
