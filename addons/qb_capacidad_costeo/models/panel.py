@@ -9,6 +9,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 
+from .producto_reportes import money
+
 OK = '✅'
 WARN = '⚠️'
 BAD = '❌'
@@ -18,13 +20,146 @@ class QbCosteoPanel(models.TransientModel):
     _name = 'qb.costeo.panel'
     _description = 'Panel de capacidad y costeo'
 
+    negocio_html = fields.Html(compute='_compute_panel', sanitize=False)
     estado_html = fields.Html(compute='_compute_panel', sanitize=False)
     kpi_html = fields.Html(compute='_compute_panel', sanitize=False)
 
     def _compute_panel(self):
         for rec in self:
+            rec.negocio_html = rec._build_negocio()
             rec.estado_html = rec._build_estado()
             rec.kpi_html = rec._build_kpis()
+
+    # ------------------------------------------------------------------
+    # ¿Cómo va el negocio? — lo primero que se ve al abrir: el mes en
+    # curso en tarjetas, quién gana y quién pierde en 12 meses, y qué
+    # necesita acción. La configuración vive abajo, colapsada: es de la
+    # puesta a punto, no del día a día.
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _card(titulo, valor, sub='', color='#0d6efd'):
+        return (
+            '<div style="display:inline-block;min-width:180px;margin:4px;'
+            'padding:10px 14px;border:1px solid #dee2e6;border-radius:8px;'
+            'border-left:4px solid %s;vertical-align:top;">'
+            '<div class="text-muted" style="font-size:11px;text-transform:'
+            'uppercase;">%s</div>'
+            '<div style="font-size:20px;font-weight:bold;">%s</div>'
+            '<div class="text-muted" style="font-size:11px;">%s</div>'
+            '</div>' % (color, titulo, valor, sub))
+
+    @staticmethod
+    def _mini_tabla(titulo, filas):
+        """filas = [(icono, nombre, monto, pct)]"""
+        cuerpo = ''.join(
+            '<tr><td style="padding:2px 6px;">%s %s</td>'
+            '<td style="padding:2px 6px;text-align:right;">%s</td>'
+            '<td style="padding:2px 6px;text-align:right;">%+.1f&#37;</td>'
+            '</tr>' % (icono, nombre, money(monto), pct)
+            for icono, nombre, monto, pct in filas)
+        return (
+            '<div style="display:inline-block;vertical-align:top;'
+            'min-width:300px;margin:4px 12px 4px 0;">'
+            '<h6 style="margin-bottom:4px;">%s</h6>'
+            '<table class="table table-sm" style="font-size:12px;">'
+            '<tbody>%s</tbody></table></div>' % (titulo, cuerpo))
+
+    def _build_negocio(self):
+        env = self.env
+        html = '<h5>¿Cómo va el negocio?</h5>'
+
+        # El mes en curso, desde la conciliación (ventas del GL, margen
+        # del modelo con todos los costos asignados)
+        conc = env['qb.costo.conciliacion'].search(
+            [], order='period desc', limit=1)
+        if conc:
+            pct = (100.0 * conc.resultado_modelo / conc.gl_ventas
+                   if conc.gl_ventas else 0.0)
+            color = ('#dc3545' if pct < 0
+                     else '#fd7e14' if pct < 5 else '#198754')
+            html += self._card(
+                'Ventas del mes', money(conc.gl_ventas), str(conc.period))
+            html += self._card(
+                'Margen del mes (modelo)', money(conc.resultado_modelo),
+                '%+.1f&#37; sobre venta, con TODOS los costos' % pct, color)
+        idle = sum(env['qb.ociosidad'].search([]).mapped('idle_cost_month'))
+        if idle:
+            html += self._card('Costo ocioso del mes', money(idle),
+                               'capacidad parada que paga el período',
+                               '#fd7e14')
+
+        # 12 meses: dónde se gana y dónde se pierde (clientes y productos)
+        clientes = env['qb.cliente.rentabilidad'].search([])
+        productos = env['qb.producto.rentabilidad'].search([])
+        sem = lambda pct: ('🔴' if pct < 0 else '🟡' if pct < 5 else '🟢')
+        if clientes:
+            orden = clientes.sorted('margen_neto_12m')
+            html += '<div>'
+            html += self._mini_tabla(
+                'Clientes que más DEJAN (12m, neto)',
+                [(sem(c.margen_neto_pct), c.partner_id.name or '',
+                  c.margen_neto_12m, c.margen_neto_pct)
+                 for c in reversed(orden[-5:])])
+            rojos = orden.filtered(lambda c: c.margen_neto_12m < 0)
+            html += self._mini_tabla(
+                'Clientes que más CUESTAN (12m, neto)',
+                [(sem(c.margen_neto_pct), c.partner_id.name or '',
+                  c.margen_neto_12m, c.margen_neto_pct)
+                 for c in orden[:5] if c.margen_neto_12m < 0])
+            html += '</div>'
+        if productos:
+            orden = productos.sorted('margen_neto_12m')
+            html += '<div>'
+            html += self._mini_tabla(
+                'Productos que más DEJAN (12m, neto)',
+                [(sem(p.margen_neto_pct),
+                  p.product_id.default_code or p.product_id.name or '',
+                  p.margen_neto_12m, p.margen_neto_pct)
+                 for p in reversed(orden[-5:])])
+            html += self._mini_tabla(
+                'Productos que más CUESTAN (12m, neto)',
+                [(sem(p.margen_neto_pct),
+                  p.product_id.default_code or p.product_id.name or '',
+                  p.margen_neto_12m, p.margen_neto_pct)
+                 for p in orden[:5] if p.margen_neto_12m < 0])
+            html += '</div>'
+
+        # Cobertura de fijos del mes (la barra del CEO)
+        html += self._build_breakeven()
+
+        # ¿Qué necesita acción HOY?
+        acciones = []
+        if clientes:
+            rojos = clientes.filtered(lambda c: c.margen_neto_12m < 0)
+            if rojos:
+                acciones.append(
+                    '🔴 <b>%s clientes con margen neto negativo</b> que '
+                    'suman %s/año — ábrelos en «Rentabilidad por cliente» '
+                    'para ver su ficha y recotizar.' % (
+                        len(rojos),
+                        money(sum(rojos.mapped('margen_neto_12m')))))
+        Aud = env['qb.peso.auditoria']
+        n_pesos_mal = Aud.search_count(
+            [('estado', 'in', ('critico', 'revisar'))])
+        if n_pesos_mal:
+            acciones.append(
+                '⚖️ <b>%s productos con peso dudoso</b> en la Auditoría de '
+                'pesos (Configuración) — un peso malo infla o esconde su '
+                'costo.' % n_pesos_mal)
+        hoy = fields.Date.today()
+        por_vencer = env['qb.cotizacion'].search_count([
+            ('state', 'in', ('draft', 'done')),
+            ('validez_hasta', '!=', False),
+            ('validez_hasta', '<=', hoy + relativedelta(days=15))])
+        if por_vencer:
+            acciones.append(
+                '⏳ <b>%s cotizaciones vivas vencen en 15 días</b> — '
+                'revisarlas en «Cotizaciones guardadas».' % por_vencer)
+        if acciones:
+            html += ('<h6 style="margin-top:10px;">Necesita acción</h6>'
+                     '<ul style="font-size:13px;">%s</ul>'
+                     % ''.join('<li>%s</li>' % a for a in acciones))
+        return html
 
     # ------------------------------------------------------------------
     # Semáforo de configuración
@@ -318,12 +453,17 @@ class QbCosteoPanel(models.TransientModel):
             '<td style="padding:4px 8px;"><b>%s</b></td>'
             '<td style="padding:4px 8px;">%s</td></tr>' % c for c in checks)
         table = '<table class="table table-sm"><tbody>%s</tbody></table>' % rows
-        if all(c[0] == OK for c in checks):
-            # Todo en verde: colapsar el detalle para dejar el foco en KPIs
-            return ('<details><summary style="cursor:pointer;">%s '
-                    '<b>Configuración completa</b> — clic para el detalle'
-                    '</summary>%s</details>' % (OK, table))
-        return table
+        # Siempre colapsado: la configuración es de la puesta a punto, no
+        # del día a día. El resumen dice si hay algo que atender.
+        pendientes = [c for c in checks if c[0] != OK]
+        if not pendientes:
+            resumen = '%s <b>Configuración completa</b>' % OK
+        else:
+            resumen = ('%s <b>Configuración: %s punto(s) por revisar</b>'
+                       % (WARN if all(c[0] == WARN for c in pendientes)
+                          else BAD, len(pendientes)))
+        return ('<details><summary style="cursor:pointer;">%s — clic para '
+                'el detalle</summary>%s</details>' % (resumen, table))
 
     # ------------------------------------------------------------------
     # KPIs del mes
@@ -355,8 +495,9 @@ class QbCosteoPanel(models.TransientModel):
             '<p><b>Cuello de botella:</b> %s — techo de planta. &nbsp; '
             '<b>Costo ocioso del mes:</b> $%s</p>'
             % (cuello.centro_id.code if cuello else 'n/d', f'{idle:,.0f}'))
-        return (header + ''.join(cards) + self._build_breakeven()
-                + self._build_tendencia())
+        # El breakeven vive arriba, en «¿Cómo va el negocio?» — aquí solo
+        # la capacidad.
+        return header + ''.join(cards) + self._build_tendencia()
 
     def _build_breakeven(self):
         """La pregunta del CEO: ¿la contribución del mes ya cubrió los
@@ -443,3 +584,9 @@ class QbCosteoPanel(models.TransientModel):
 
     def action_ranking(self):
         return self._open('costo_ranking_action')
+
+    def action_rentabilidad_clientes(self):
+        return self._open('cliente_rentabilidad_action')
+
+    def action_rentabilidad_productos(self):
+        return self._open('producto_rentabilidad_action')

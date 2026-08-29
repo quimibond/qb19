@@ -2950,6 +2950,16 @@ class TestQbCosteo(TransactionCase):
         suyo: los botones devuelven acciones filtradas al registro."""
         prod = self.env['qb.producto.rentabilidad'].search([], limit=1)
         if prod:
+            # Ficha 360 del producto: semáforo coherente y pestañas con
+            # contenido
+            esperado = ('rojo' if prod.margen_neto_pct < 0
+                        else 'ambar' if prod.margen_neto_pct < 5
+                        else 'verde')
+            self.assertEqual(prod.semaforo, esperado)
+            self.assertTrue(prod.veredicto)
+            self.assertIn('<table', prod.clientes_html)
+            self.assertIn('<table', prod.tendencia_html)
+            self.assertTrue(prod.cotizaciones_html)
             acc = prod.action_ver_clientes()
             self.assertEqual(acc['res_model'], 'qb.producto.cliente')
             self.assertIn(('product_id', '=', prod.product_id.id),
@@ -2980,6 +2990,54 @@ class TestQbCosteo(TransactionCase):
             self.assertIn('<table', cli.productos_html)
             self.assertIn('<table', cli.tendencia_html)
             self.assertTrue(cli.cotizaciones_html)
+
+    def test_formato_de_fichas_360(self):
+        """El formato compartido de las fichas: signo ANTES del símbolo
+        (−$947,106, no $-947,106) y meses/fechas en español — strftime
+        usaba el locale C y pintaba «Aug 2025»."""
+        from odoo.addons.qb_capacidad_costeo.models.producto_reportes \
+            import fecha_es, mes_es, money
+        self.assertEqual(money(-947106.4), '-$947,106')
+        self.assertEqual(money(947106.4), '$947,106')
+        self.assertEqual(money(-16.984, 2), '-$16.98')
+        self.assertEqual(money(0), '$0')
+        self.assertEqual(mes_es(date(2025, 8, 1)), 'ago 2025')
+        self.assertEqual(mes_es(date(2025, 12, 1)), 'dic 2025')
+        self.assertEqual(fecha_es(date(2026, 8, 26)), '26 ago 2026')
+        self.assertEqual(fecha_es(None), '')
+        # Y ningún «$-» debe quedar en una ficha real
+        cli = self.env['qb.cliente.rentabilidad'].search([], limit=1)
+        if cli:
+            self.assertNotIn('$-', cli.veredicto or '')
+            self.assertNotIn('$-', cli.productos_html)
+            self.assertNotIn('$-', cli.tendencia_html)
+            self.assertNotIn('Aug ', cli.tendencia_html)
+
+    def test_unico_comprador_en_vez_de_delta_cero(self):
+        """Cuando un cliente es el ÚNICO comprador de un producto, el Δ
+        contra el promedio es 0 por construcción: la ficha dice «único
+        comprador» en vez de un «+0.0» que confunde (caso BLANCOS
+        MILENIUM y su WN075)."""
+        Prod = self.env['qb.producto.rentabilidad']
+        solo = Prod.search([('n_clientes', '=', 1)], limit=1)
+        if not solo:
+            self.skipTest('sin productos monocomprador en la base de test')
+        pareja = self.env['qb.producto.cliente'].search(
+            [('product_id', '=', solo.product_id.id)], limit=1)
+        cli = self.env['qb.cliente.rentabilidad'].browse(
+            pareja.partner_id.id)
+        self.assertIn('único comprador', cli.productos_html)
+        self.assertIn('único comprador', solo.clientes_html)
+
+    def test_panel_negocio_primero_config_colapsada(self):
+        """El panel abre con el negocio (mes, quién deja y quién cuesta,
+        acciones) y la configuración queda SIEMPRE colapsada con resumen —
+        es de la puesta a punto, no del día a día."""
+        panel = self.env['qb.costeo.panel'].create({})
+        self.assertIn('¿Cómo va el negocio?', panel.negocio_html)
+        self.assertIn('<details', panel.estado_html,
+                      'la configuración siempre va colapsada')
+        self.assertIn('Configuración', panel.estado_html)
 
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la
