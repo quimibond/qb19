@@ -54,33 +54,70 @@
                     <div class="oe_title">
                         <h1><field name="product_id" readonly="1"/></h1>
                     </div>
+                    <field name="semaforo" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="semaforo != 'rojo'">
+                        🔴 <b>Pierde dinero:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="semaforo != 'ambar'">
+                        🟡 <b>Al filo:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-success" role="alert"
+                         invisible="semaforo != 'verde'">
+                        🟢 <b>Sano:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <field name="company_currency_id" invisible="1"/>
                     <group>
                         <group string="Venta (12 meses)">
-                            <field name="revenue_12m"/>
+                            <field name="revenue_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="qty_12m"/>
-                            <field name="precio_prom"/>
+                            <field name="precio_prom" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="n_clientes"/>
                             <field name="meses_activo"/>
                             <field name="ultima_venta"/>
                         </group>
                         <group string="Márgenes reales (12 meses)">
-                            <field name="contrib_12m"/>
+                            <field name="contrib_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="contrib_pct"/>
-                            <field name="margen_bruto_12m"/>
+                            <field name="margen_bruto_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_bruto_pct"/>
-                            <field name="margen_neto_12m"/>
+                            <field name="margen_neto_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_neto_pct"/>
                         </group>
                     </group>
                     <group>
                         <group string="Capacidad">
                             <field name="horas_cuello_12m"/>
-                            <field name="contrib_por_hora"/>
+                            <field name="contrib_por_hora" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </group>
                         <group string="Calidad del dato">
                             <field name="costo_cobertura_pct"/>
                         </group>
                     </group>
+                    <notebook>
+                        <page string="👥 Quién lo compra (precio y margen)">
+                            <field name="clientes_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                        <page string="📈 Tendencia 12 meses">
+                            <field name="tendencia_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                        <page string="📋 Cotizaciones">
+                            <field name="cotizaciones_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
