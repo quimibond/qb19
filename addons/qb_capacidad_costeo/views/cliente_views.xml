@@ -73,26 +73,32 @@
                         🟢 <b>Sano:</b> <field name="veredicto"
                         readonly="1" class="oe_inline"/>
                     </div>
+                    <field name="company_currency_id" invisible="1"/>
                     <group>
                         <group string="Venta (12 meses)">
-                            <field name="revenue_12m"/>
+                            <field name="revenue_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="n_productos"/>
                             <field name="meses_activo"/>
                             <field name="ultima_compra"/>
                         </group>
                         <group string="Márgenes reales (12 meses)">
-                            <field name="contrib_12m"/>
+                            <field name="contrib_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="contrib_pct"/>
-                            <field name="margen_bruto_12m"/>
+                            <field name="margen_bruto_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_bruto_pct"/>
-                            <field name="margen_neto_12m"/>
+                            <field name="margen_neto_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_neto_pct"/>
                         </group>
                     </group>
                     <group>
                         <group string="Capacidad">
                             <field name="horas_cuello_12m"/>
-                            <field name="contrib_por_hora"/>
+                            <field name="contrib_por_hora" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </group>
                         <group string="Calidad del dato">
                             <field name="costo_cobertura_pct"/>

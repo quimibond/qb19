@@ -25,6 +25,27 @@ import re
 from odoo import api, fields, models
 from odoo.tools import html_escape
 
+# Formato compartido de las fichas 360 y el panel. El signo va ANTES del
+# símbolo (−$947,106, no $-947,106) y los meses en español — strftime usa
+# el locale C del servidor y pintaba «Aug 2025» en un reporte en español.
+MESES_ES = ('ene', 'feb', 'mar', 'abr', 'may', 'jun',
+            'jul', 'ago', 'sep', 'oct', 'nov', 'dic')
+
+
+def money(v, dec=0):
+    return ('-$' if v < 0 else '$') + '{:,.{d}f}'.format(abs(v), d=dec)
+
+
+def mes_es(d):
+    return '%s %s' % (MESES_ES[d.month - 1], d.year)
+
+
+def fecha_es(d):
+    if not d:
+        return ''
+    return '%s %s %s' % (d.day, MESES_ES[d.month - 1], d.year)
+
+
 # CTEs compartidos por los tres reportes: líneas income deduplicadas con
 # revenue en MXN (balance) y qty neta, cruzadas con el costo del período.
 _BASE_SQL = """
@@ -121,6 +142,8 @@ class QbProductoRentabilidad(models.Model):
     meses_activo = fields.Integer(string='Meses con venta', readonly=True)
     ultima_venta = fields.Date(string='Última venta', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
+    company_currency_id = fields.Many2one(
+        'res.currency', related='company_id.currency_id', string='Moneda')
 
     # ------------------------------------------------------------------
     # Situación completa del producto: veredicto en semáforo y pestañas
@@ -134,32 +157,34 @@ class QbProductoRentabilidad(models.Model):
 
     _SEM = {'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢'}
 
+    @api.depends('margen_neto_pct', 'margen_neto_12m', 'precio_prom',
+                 'contrib_pct')
     def _compute_semaforo(self):
         for rec in self:
             pct = rec.margen_neto_pct
             if pct < 0:
                 rec.semaforo = 'rojo'
                 rec.veredicto = (
-                    'A %s por unidad promedio, pierde %.1f de cada 100 '
-                    'vendidos (%s en 12 meses) después de todos los '
-                    'costos. Contribución %.0f por ciento: el precio no '
-                    'cubre lo que absorbe.' % (
-                        '${:,.2f}'.format(rec.precio_prom), -pct,
-                        '${:,.0f}'.format(rec.margen_neto_12m),
-                        rec.contrib_pct))
+                    'A {precio} por unidad promedio, pierde ${p:.2f} de '
+                    'cada $100 vendidos ({neto} en 12 meses) después de '
+                    'todos los costos. Contribución {c:.0f}%: el precio no '
+                    'cubre lo que absorbe.'.format(
+                        precio=money(rec.precio_prom, 2), p=-pct,
+                        neto=money(rec.margen_neto_12m),
+                        c=rec.contrib_pct))
             elif pct < 5:
                 rec.semaforo = 'ambar'
                 rec.veredicto = (
-                    'Deja %.1f por ciento neto a %s promedio — al filo: '
-                    'una subida de hilo lo manda a rojo.' % (
-                        pct, '${:,.2f}'.format(rec.precio_prom)))
+                    'Deja {p:.1f}% neto a {precio} promedio — al filo: una '
+                    'subida de hilo lo manda a rojo.'.format(
+                        p=pct, precio=money(rec.precio_prom, 2)))
             else:
                 rec.semaforo = 'verde'
                 rec.veredicto = (
-                    'Deja %.1f por ciento neto (%s en 12 meses) a %s '
-                    'promedio.' % (
-                        pct, '${:,.0f}'.format(rec.margen_neto_12m),
-                        '${:,.2f}'.format(rec.precio_prom)))
+                    'Deja {p:.1f}% neto ({neto} en 12 meses) a {precio} '
+                    'promedio.'.format(
+                        p=pct, neto=money(rec.margen_neto_12m),
+                        precio=money(rec.precio_prom, 2)))
 
     clientes_html = fields.Html(
         compute='_compute_clientes_html', sanitize=False,
@@ -190,21 +215,32 @@ class QbProductoRentabilidad(models.Model):
             for f in filas:
                 sem = ('rojo' if f.margen_neto_pct < 0
                        else 'ambar' if f.margen_neto_pct < 5 else 'verde')
-                delta_style = ('color:#b02a37;font-weight:bold;'
-                               if f.delta_precio_pct < -10 else '')
-                html += (
-                    '<tr><td>%s %s</td>'
-                    '<td class="text-end">{:,.0f}</td>'
-                    '<td class="text-end">${:,.2f}</td>'
-                    '<td class="text-end" style="%s">{:+.1f}&#37;</td>'
-                    '<td class="text-end">${:,.0f}</td>'
-                    '<td class="text-end">{:.1f}&#37;</td>'
-                    '<td>%s</td></tr>'
-                ).format(f.qty_12m, f.precio_prom, f.delta_precio_pct,
-                         f.margen_neto_12m, f.margen_neto_pct) % (
-                    self._SEM[sem],
-                    html_escape(f.partner_id.name or ''),
-                    delta_style, f.ultima_compra or '')
+                if len(filas) <= 1:
+                    # Δ contra el promedio de UN solo comprador es 0 por
+                    # construcción — decir «+0.0» confunde; el dato útil es
+                    # que no hay mercado interno contra qué comparar.
+                    delta = '<span class="text-muted">único comprador</span>'
+                elif f.delta_precio_pct < -10:
+                    delta = ('<span style="color:#b02a37;font-weight:bold;">'
+                             '{:+.1f}&#37;</span>').format(f.delta_precio_pct)
+                else:
+                    delta = '{:+.1f}&#37;'.format(f.delta_precio_pct)
+                celdas = (
+                    self._SEM[sem] + ' '
+                    + html_escape(f.partner_id.name or ''),
+                    '{:,.0f}'.format(f.qty_12m),
+                    money(f.precio_prom, 2),
+                    delta,
+                    money(f.margen_neto_12m),
+                    '{:.1f}&#37;'.format(f.margen_neto_pct),
+                    fecha_es(f.ultima_compra),
+                )
+                html += ('<tr><td>%s</td><td class="text-end">%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td>%s</td></tr>' % celdas)
             html += ('</tbody></table><p style="font-size:11px;" '
                      'class="text-muted">Δ en rojo = ese cliente paga este '
                      'producto más de 10 abajo del promedio de todos — el '
@@ -243,17 +279,22 @@ class QbProductoRentabilidad(models.Model):
                 pct = 100.0 * neto / rev if rev else 0.0
                 color = ('#b02a37' if pct < 0
                          else '#997404' if pct < 5 else '#146c43')
-                html += (
-                    '<tr><td>%s</td>'
-                    '<td class="text-end">{:,.0f}</td>'
-                    '<td class="text-end">${:,.2f}</td>'
-                    '<td class="text-end">${:,.0f}</td>'
-                    '<td><div style="background:#0d6efd33;height:10px;'
-                    'width:{:.0f}&#37;;"></div></td>'
-                    '<td class="text-end" style="color:%s">{:+.1f}&#37;'
-                    '</td></tr>'
-                ).format(qty, precio, rev, ancho, pct) % (
-                    mes.strftime('%b %Y'), color)
+                celdas = (
+                    mes_es(mes),
+                    '{:,.0f}'.format(qty),
+                    money(precio, 2),
+                    money(rev),
+                    '{:.0f}'.format(ancho),
+                    color,
+                    '{:+.1f}'.format(pct),
+                )
+                html += ('<tr><td>%s</td><td class="text-end">%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td><div style="background:#0d6efd33;height:10px;'
+                         'width:%s&#37;;"></div></td>'
+                         '<td class="text-end" style="color:%s">%s&#37;'
+                         '</td></tr>' % celdas)
             html += ('</tbody></table><p style="font-size:11px;" '
                      'class="text-muted">Precio y margen con el costo '
                      'vigente en cada mes: si el precio no se mueve y el '
@@ -278,16 +319,19 @@ class QbProductoRentabilidad(models.Model):
                     '<th class="text-end">Margen neto</th>'
                     '<th>Estado</th><th>Fecha</th></tr></thead><tbody>')
             for c in cots:
-                html += (
-                    '<tr><td>%s</td><td>%s</td>'
-                    '<td class="text-end">${:,.2f}</td>'
-                    '<td class="text-end">{:.1f}&#37;</td>'
-                    '<td>%s %s</td><td>%s</td></tr>'
-                ).format(c.precio_evaluado, c.margen_neto_pct) % (
+                celdas = (
                     html_escape(c.partner_id.name or '(sin cliente)'),
-                    c.revision, self._SEM.get(c.semaforo, ''),
-                    html_escape(estados.get(c.state, c.state or '')),
-                    c.create_date.date() if c.create_date else '')
+                    c.revision,
+                    money(c.precio_evaluado, 2),
+                    '{:.1f}&#37;'.format(c.margen_neto_pct),
+                    self._SEM.get(c.semaforo, '') + ' '
+                    + html_escape(estados.get(c.state, c.state or '')),
+                    fecha_es(c.create_date.date() if c.create_date else None),
+                )
+                html += ('<tr><td>%s</td><td>%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td class="text-end">%s</td>'
+                         '<td>%s</td><td>%s</td></tr>' % celdas)
             html += '</tbody></table>'
             rec.cotizaciones_html = html
 

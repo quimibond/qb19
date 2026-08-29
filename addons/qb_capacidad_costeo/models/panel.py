@@ -9,6 +9,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 
+from .producto_reportes import money
+
 OK = '✅'
 WARN = '⚠️'
 BAD = '❌'
@@ -51,9 +53,9 @@ class QbCosteoPanel(models.TransientModel):
         """filas = [(icono, nombre, monto, pct)]"""
         cuerpo = ''.join(
             '<tr><td style="padding:2px 6px;">%s %s</td>'
-            '<td style="padding:2px 6px;text-align:right;">$%s</td>'
+            '<td style="padding:2px 6px;text-align:right;">%s</td>'
             '<td style="padding:2px 6px;text-align:right;">%+.1f&#37;</td>'
-            '</tr>' % (icono, nombre, f'{monto:,.0f}', pct)
+            '</tr>' % (icono, nombre, money(monto), pct)
             for icono, nombre, monto, pct in filas)
         return (
             '<div style="display:inline-block;vertical-align:top;'
@@ -76,16 +78,13 @@ class QbCosteoPanel(models.TransientModel):
             color = ('#dc3545' if pct < 0
                      else '#fd7e14' if pct < 5 else '#198754')
             html += self._card(
-                'Ventas del mes', '$%s' % f'{conc.gl_ventas:,.0f}',
-                str(conc.period))
+                'Ventas del mes', money(conc.gl_ventas), str(conc.period))
             html += self._card(
-                'Margen del mes (modelo)',
-                '$%s' % f'{conc.resultado_modelo:,.0f}',
+                'Margen del mes (modelo)', money(conc.resultado_modelo),
                 '%+.1f&#37; sobre venta, con TODOS los costos' % pct, color)
         idle = sum(env['qb.ociosidad'].search([]).mapped('idle_cost_month'))
         if idle:
-            html += self._card('Costo ocioso del mes',
-                               '$%s' % f'{idle:,.0f}',
+            html += self._card('Costo ocioso del mes', money(idle),
                                'capacidad parada que paga el período',
                                '#fd7e14')
 
@@ -135,10 +134,10 @@ class QbCosteoPanel(models.TransientModel):
             if rojos:
                 acciones.append(
                     '🔴 <b>%s clientes con margen neto negativo</b> que '
-                    'suman $%s/año — ábrelos en «Rentabilidad por cliente» '
+                    'suman %s/año — ábrelos en «Rentabilidad por cliente» '
                     'para ver su ficha y recotizar.' % (
                         len(rojos),
-                        f'{sum(rojos.mapped("margen_neto_12m")):,.0f}'))
+                        money(sum(rojos.mapped('margen_neto_12m')))))
         Aud = env['qb.peso.auditoria']
         n_pesos_mal = Aud.search_count(
             [('estado', 'in', ('critico', 'revisar'))])
