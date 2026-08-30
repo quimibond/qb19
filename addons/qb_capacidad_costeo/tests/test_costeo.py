@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import date
+from datetime import date, datetime
 
 from dateutil.relativedelta import relativedelta
 
@@ -212,6 +212,168 @@ class TestQbCosteo(TransactionCase):
         self.assertTrue(self.Costo._has_multiple_boms(semi))
         # 1×10 vs 1×100 → toma la más cara (100), no una al azar
         self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 100.0, places=4)
+
+    def test_receta_ambigua_prefiere_bom_de_ultima_op(self):
+        """Receta ambigua CON historial de fabricación: el costo sigue a la
+        BOM de la última OP terminada (cómo se fabrica hoy), no a la
+        explosión más cara — los genéricos de prueba ('MUESTRA PILOTO')
+        colgados de BOMs activas inflaban la MP (caso TJ085Q22JNT157:
+        11.30/m por el camino piloto cuando su receta real, la de 53 de
+        sus 55 OPs, da ~6.2). Sin OPs sigue el criterio conservador de la
+        más cara (test de arriba)."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        real = self.env['product.product'].create({
+            'name': 'HILO RECETA REAL', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 10.0})
+        piloto = self.env['product.product'].create({
+            'name': 'COMODIN PILOTO CARO', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 100.0})
+        semi = self.env['product.product'].create({
+            'name': 'TELA CON PILOTO TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': 0.0})
+        boms = {}
+        for key, comp in (('real', real), ('piloto', piloto)):
+            boms[key] = self.env['mrp.bom'].create({
+                'product_tmpl_id': semi.product_tmpl_id.id,
+                'product_id': semi.id, 'product_qty': 1.0,
+                'product_uom_id': uom_kg.id,
+                'bom_line_ids': [(0, 0, {
+                    'product_id': comp.id, 'product_qty': 1.0,
+                    'product_uom_id': uom_kg.id})]})
+        mo = self.env['mrp.production'].create({
+            'product_id': semi.id, 'product_qty': 5.0,
+            'product_uom_id': uom_kg.id, 'bom_id': boms['real'].id})
+        # 'done' directo por SQL: el flujo completo de una OP arrastra
+        # movimientos de stock que este test no necesita.
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done' WHERE id = %s",
+            (mo.id,))
+        self.env.invalidate_all()
+        self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 10.0,
+                               places=4)
+        # El camino batch (mapa precomputado en el ctx) da lo mismo
+        ctx = self.Costo._engine_ctx([semi.id])
+        self.assertEqual(ctx['last_mo_bom'].get(semi.id), boms['real'].id)
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(semi, ctx=ctx), 10.0, places=4)
+        # Archivada la BOM de la última OP, vuelve el criterio conservador
+        boms['real'].active = False
+        self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 100.0,
+                               places=4)
+
+    def test_avco_negativo_no_da_mp_negativa(self):
+        """Un AVCO negativo (herida de valuación de inventario, caso
+        PESFCHMO1.5X2.0 en -0.30/kg) no es un costo: la hoja se acota a 0
+        y la MP de la receta que la consume nunca sale negativa."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        fibra = self.env['product.product'].create({
+            'name': 'FIBRA AVCO NEGATIVO', 'is_storable': True,
+            'uom_id': uom_kg.id, 'standard_price': -0.30})
+        velo = self.env['product.product'].create({
+            'name': 'ENTRETELA VELO TEST', 'default_code': 'P19BL155',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': velo.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': fibra.id, 'product_qty': 0.017,
+                'product_uom_id': uom_kg.id})]})
+        self.assertEqual(self.Costo._mp_cost_unit(velo), 0.0)
+
+    def test_importado_sin_costo_usa_compra_del_it_de_su_bom(self):
+        """Un ' I' sin AVCO ni compra propia toma la última compra del
+        gemelo ' IT' de su BOM de conversión — el código del IT puede NO
+        compartir prefijo con el ' I' (KP2032T11GO152 I se produce del
+        KP4032T11GO152 IT), así que buscar por ref no basta."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        it = self.env['product.product'].create({
+            'name': 'ENTRETELA IT TEST', 'default_code': 'KP9032GO152 IT',
+            'is_storable': True, 'uom_id': uom_m.id, 'purchase_ok': True})
+        imp = self.env['product.product'].create({
+            'name': 'ENTRETELA I TEST', 'default_code': 'KP1032GO152 I',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True,
+            'standard_price': 0.0})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': imp.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': it.id, 'product_qty': 1.0,
+                'product_uom_id': uom_m.id})]})
+        proveedor = self.env['res.partner'].create({'name': 'PROV IT TEST'})
+        po = self.env['purchase.order'].create({
+            'partner_id': proveedor.id,
+            'order_line': [(0, 0, {
+                'product_id': it.id, 'product_qty': 1000.0,
+                'price_unit': 6.10})]})
+        po.button_confirm()
+        self.assertEqual(self.Costo._it_twin(imp), it)
+        self.assertAlmostEqual(self.Costo._mp_cost_unit(imp), 6.10, places=4)
+
+    def test_mp_historica_usa_precio_de_la_epoca(self):
+        """«Si tomamos la última compra para todos los períodos no vamos a
+        saber la realidad de a cuánto compré»: cada período costea la MP
+        con la última compra CONOCIDA A SU CORTE — marzo con el precio de
+        marzo, julio con el de julio — y el cotizador (sin período) sigue
+        a reposición de hoy. Un producto comprado por primera vez DESPUÉS
+        del corte usa esa primera compra (el precio más cercano a su
+        época), nunca el de hoy ni el AVCO."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        hilo = self.env['product.product'].create({
+            'name': 'HILO EPOCA TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'purchase_ok': True,
+            'standard_price': 0.0})
+        tela = self.env['product.product'].create({
+            'name': 'TELA EPOCA TEST', 'default_code': 'WJ060NT160',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': hilo.id, 'product_qty': 0.1,
+                'product_uom_id': uom_kg.id})]})
+        prov = self.env['res.partner'].create({'name': 'PROV EPOCA'})
+        for fecha, precio in ((datetime(2031, 1, 15), 50.0),
+                              (datetime(2031, 6, 10), 80.0)):
+            po = self.env['purchase.order'].create({
+                'partner_id': prov.id,
+                'order_line': [(0, 0, {
+                    'product_id': hilo.id, 'product_qty': 100.0,
+                    'price_unit': precio})]})
+            po.button_confirm()
+            # confirmar pisa date_order con «ahora»: regresarla a su época
+            po.date_order = fecha
+        Factores = self.env['qb.costo.factores']
+        # Períodos ficticios lejanos para no chocar con los reales de la
+        # base de test (period es único por compañía)
+        marzo = Factores.create({'period': date(2031, 3, 1),
+                                 'window_months': 12})
+        julio = Factores.create({'period': date(2031, 7, 1),
+                                 'window_months': 12})
+        antes = Factores.create({'period': date(2030, 11, 1),
+                                 'window_months': 12})
+        ctx = self.Costo._engine_ctx([tela.id], marzo)
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela, ctx=ctx), 0.1 * 50.0, places=4)
+        ctx = self.Costo._engine_ctx([tela.id], julio)
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela, ctx=ctx), 0.1 * 80.0, places=4)
+        # Cotizador, sin período: reposición de HOY = la última compra
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela), 0.1 * 80.0, places=4)
+        # Período ANTERIOR a la primera compra del hilo: usa la primera
+        # (50), no el AVCO (0) ni el precio de hoy (80)
+        ctx = self.Costo._engine_ctx([tela.id], antes)
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela, ctx=ctx), 0.1 * 50.0, places=4)
+        # Y el camino suelto (sin ctx) con corte explícito da lo mismo
+        self.assertAlmostEqual(
+            self.Costo._last_purchase_cost(
+                hilo, cutoff=date(2031, 4, 1)), 50.0, places=4)
+        self.assertAlmostEqual(
+            self.Costo._last_purchase_cost(
+                hilo, cutoff=date(2030, 12, 1)), 50.0, places=4)
 
     def test_qty_neta_negativa_no_da_precio_negativo(self):
         """Devoluciones > ventas (qty neta ≤ 0) → precio 0, sin alerta falsa
@@ -3113,6 +3275,49 @@ class TestQbCosteo(TransactionCase):
             cron.active = True
             estado = panel._build_estado()
             self.assertIn('convergiendo', estado)
+
+    def test_panel_avisa_avco_importado_divergente(self):
+        """El AVCO de un ' I' duplica un dato vivo (la compra de su gemelo
+        IT + gastos de conversión) y debe validarse contra la fuente: el
+        KP2032T11GO152 I traía 9.39 calcado a mano del gemelo nacional
+        cuando su IT real se compró a ~6.10 (+54%). El panel compara cada
+        importado vendido del período contra la última compra de su IT y
+        avisa cuando diverge más de ±35%."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        it = self.env['product.product'].create({
+            'name': 'IT PANEL TEST', 'default_code': 'KX9032GO152 IT',
+            'is_storable': True, 'uom_id': uom_m.id, 'purchase_ok': True})
+        imp = self.env['product.product'].create({
+            'name': 'I PANEL TEST', 'default_code': 'KX2032GO152 I',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True,
+            'standard_price': 9.39})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': imp.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': it.id, 'product_qty': 1.0,
+                'product_uom_id': uom_m.id})]})
+        proveedor = self.env['res.partner'].create({'name': 'PROV PANEL'})
+        po = self.env['purchase.order'].create({
+            'partner_id': proveedor.id,
+            'order_line': [(0, 0, {
+                'product_id': it.id, 'product_qty': 500.0,
+                'price_unit': 6.10})]})
+        po.button_confirm()
+        # El período más nuevo manda en el check: uno propio, con la fila
+        # del importado vendida y su MP divergente (9.39 vs 6.10 = +54%)
+        periodo = date(2027, 1, 1)
+        self.env['qb.costo.factores'].create({
+            'period': periodo, 'window_months': 12})
+        self.Costo.create({
+            'period': periodo, 'product_id': imp.id,
+            'product_bucket': 'importado', 'qty_vendida': 100.0,
+            'mp_unit': 9.39})
+        panel = self.env['qb.costeo.panel'].create({})
+        estado = panel._build_estado()
+        self.assertIn('AVCO de importados vs compra IT', estado)
+        self.assertIn('KX2032GO152 I', estado)
+        self.assertIn('+54%', estado)
 
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la

@@ -1430,15 +1430,24 @@ class QbCostoProducto(models.Model):
     # MP: último costo de compra, explosión recursiva
     # ------------------------------------------------------------------
     @api.model
-    def _last_purchase_line_map(self, product_ids):
+    def _last_purchase_line_map(self, product_ids, cutoff=None):
         """{product_id: purchase_order_line_id} de la última compra confirmada,
         resuelto en UN query (DISTINCT ON). Un search por hoja de BOM no
         escala: con 3k SKUs × BOMs recursivas son decenas de miles de queries.
+
+        Con `cutoff` (fin del período costeado) toma la última compra
+        CONOCIDA A ESE CORTE: la foto histórica usa el precio de su época,
+        no el de hoy — si no, recalcular marzo con el hilo de agosto pinta
+        márgenes que nunca existieron. Producto sin compras previas al
+        corte (compró por primera vez después): su PRIMERA compra conocida,
+        que es el precio más cercano a la época — nunca el de hoy.
         """
         if not product_ids:
             return {}
         # state/date_order viven en purchase_order (en Odoo 19 ya no son
         # columnas de la línea) — joinear la orden.
+        date_filter = 'AND po.date_order < %s' if cutoff else ''
+        params = [list(product_ids)] + ([cutoff] if cutoff else [])
         self.env.cr.execute("""
             SELECT DISTINCT ON (pol.product_id) pol.product_id, pol.id
             FROM purchase_order_line pol
@@ -1446,16 +1455,34 @@ class QbCostoProducto(models.Model):
             WHERE po.state IN ('purchase', 'done')
               AND pol.price_unit > 0
               AND pol.product_id = ANY(%s)
+              """ + date_filter + """
             ORDER BY pol.product_id, po.date_order DESC, pol.id DESC
-        """, (list(product_ids),))
-        return dict(self.env.cr.fetchall())
+        """, params)
+        result = dict(self.env.cr.fetchall())
+        if cutoff:
+            faltan = set(product_ids) - set(result)
+            if faltan:
+                self.env.cr.execute("""
+                    SELECT DISTINCT ON (pol.product_id)
+                           pol.product_id, pol.id
+                    FROM purchase_order_line pol
+                    JOIN purchase_order po ON po.id = pol.order_id
+                    WHERE po.state IN ('purchase', 'done')
+                      AND pol.price_unit > 0
+                      AND pol.product_id = ANY(%s)
+                    ORDER BY pol.product_id, po.date_order ASC, pol.id ASC
+                """, (list(faltan),))
+                result.update(self.env.cr.fetchall())
+        return result
 
     @api.model
-    def _last_purchase_cost(self, product, pol_map=None):
+    def _last_purchase_cost(self, product, pol_map=None, cutoff=None):
         """Último precio de compra confirmado, en moneda de la compañía.
 
         Con `pol_map` (de _last_purchase_line_map) no hace ningún search;
         sin él (cotizador, llamadas sueltas) busca la línea individual.
+        `cutoff` acota la búsqueda suelta al precio de la época del período
+        (el mapa ya viene acotado desde _engine_ctx).
         """
         if pol_map is not None:
             pol_id = pol_map.get(product.id)
@@ -1464,13 +1491,24 @@ class QbCostoProducto(models.Model):
         else:
             # order_id.state en el domain y orden por id (proxy de recencia):
             # state/date_order de la línea no son columnas propias en Odoo 19.
-            pol = self.env['purchase.order.line'].search([
+            domain = [
                 ('product_id', '=', product.id),
                 ('order_id.state', 'in', ('purchase', 'done')),
                 ('price_unit', '>', 0),
-            ], order='id desc', limit=1)
+            ]
+            corte = [('order_id.date_order', '<', cutoff)] if cutoff else []
+            pol = self.env['purchase.order.line'].search(
+                domain + corte, order='id desc', limit=1)
+            if not pol and cutoff:
+                # Sin compras previas al corte: la PRIMERA conocida es el
+                # precio más cercano a la época, nunca el de hoy.
+                pol = self.env['purchase.order.line'].search(
+                    domain, order='id asc', limit=1)
         if not pol:
-            return product.standard_price or 0.0
+            # AVCO negativo (herida de valuación de inventario, caso
+            # PESFCHMO1.5X2.0 en -0.30/kg) no es un costo: acotarlo a 0
+            # para que ninguna MP salga negativa.
+            return max(product.standard_price or 0.0, 0.0)
         price = pol.price_unit * (1 - (pol.discount or 0.0) / 100.0)
         company = self.env.company
         # Moneda y fecha desde la orden: en Odoo 19 no son columnas de la línea
@@ -1505,7 +1543,12 @@ class QbCostoProducto(models.Model):
         self.env.cr.execute(
             'SELECT DISTINCT product_id FROM mrp_bom_line WHERE product_id IS NOT NULL')
         leaf_ids.update(r[0] for r in self.env.cr.fetchall())
-        pol_map = self._last_purchase_line_map(leaf_ids)
+        # Con factores (recálculo de un período) la MP se acota al precio
+        # de la ÉPOCA: última compra conocida al fin de ese período. Sin
+        # factores (cotizador) no hay corte — cotizar es a reposición de hoy.
+        cutoff = factores.period + relativedelta(months=1) if factores \
+            else None
+        pol_map = self._last_purchase_line_map(leaf_ids, cutoff)
         # Warm-up del cache ORM: un solo fetch para las líneas y sus órdenes
         if pol_map:
             pols = self.env['purchase.order.line'].browse(list(pol_map.values()))
@@ -1523,10 +1566,14 @@ class QbCostoProducto(models.Model):
                 months=factores.window_months or 12)
             _base, import_ids, _cost = self._import_purchase_base(
                 win_from, win_to)
+        multi_bom_ids = self._multi_bom_ids_set()
         return {
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,
-            'multi_bom_ids': self._multi_bom_ids_set(),
+            'multi_bom_ids': multi_bom_ids,
+            # Receta ambigua → la BOM con la que se fabricó de verdad la
+            # última vez; el mapa se resuelve una vez por corrida.
+            'last_mo_bom': self._last_mo_bom_map(multi_bom_ids),
             # El caché de MP guarda el costo YA con aduana, así que el factor
             # tiene que vivir en el contexto de la corrida: mezclar dos
             # factores en el mismo caché daría costos incoherentes.
@@ -1543,10 +1590,12 @@ class QbCostoProducto(models.Model):
 
         Reglas: subproducto → $0 (su MP ya está en la receta del principal);
         importado → costo de compra MÁS gastos e impuestos de aduana
-        (`import_factor`); sin costo propio → gemelo nacional;
-        receta AMBIGUA (>1 BOM activa) → explota TODAS y toma la MÁS CARA
-        (nunca el AVCO de un fabricado: trae conversión de MOs, no solo
-        materiales); hoja sin BOM → último costo de compra (fallback avg).
+        (`import_factor`); sin costo propio → gemelo ' IT' de la BOM de
+        conversión, luego gemelo nacional; receta AMBIGUA (>1 BOM activa) →
+        la BOM de la ÚLTIMA OP terminada (cómo se fabrica hoy) y, sin OPs,
+        explota TODAS y toma la MÁS CARA (nunca el AVCO de un fabricado:
+        trae conversión de MOs, no solo materiales); hoja sin BOM → último
+        costo de compra (fallback avg, acotado a ≥0).
 
         `ctx` (de _engine_ctx) comparte reglas/pol_map/cachés en loops
         grandes; sin él (cotizador, tests) resuelve todo al vuelo.
@@ -1567,7 +1616,7 @@ class QbCostoProducto(models.Model):
         if product.id in cache:
             return cache[product.id]
         if product.id in seen:  # ciclo en la receta: cortar con avg
-            return product.standard_price or 0.0
+            return max(product.standard_price or 0.0, 0.0)
         seen = seen | {product.id}
         rules = ctx['rules'] if ctx else None
         pol_map = ctx['pol_map'] if ctx else None
@@ -1578,8 +1627,19 @@ class QbCostoProducto(models.Model):
         if bucket == 'subproducto':
             cost = 0.0
         elif bucket == 'importado' or ref.endswith(' I'):
-            cost = product.standard_price \
+            # El AVCO del ' I' es la compra del ' IT' más los gastos de la
+            # OP de conversión (landed real cuando el leg de gastos corre);
+            # negativo no es un costo — se acota a 0 y caen los fallbacks.
+            cost = max(product.standard_price or 0.0, 0.0) \
                 or self._last_purchase_cost(product, pol_map)
+            if not cost and ref.endswith(' I'):
+                # Sin AVCO ni compra propia: el gemelo ' IT' REAL es el
+                # componente de su OP de conversión — el código puede diferir
+                # del prefijo (KP2032T11GO152 I se produce del
+                # KP4032T11GO152 IT), así que primero la BOM y luego el ref.
+                it = self._it_twin(product)
+                if it:
+                    cost = self._last_purchase_cost(it, pol_map)
             if not cost and ref.endswith(' I'):
                 twin = self.env['product.product'].search(
                     [('default_code', '=', ref[:-2].strip())], limit=1)
@@ -1601,13 +1661,22 @@ class QbCostoProducto(models.Model):
                 # DOS veces (caso CONTITECH: la cruda de WC090 con AVCO de
                 # $107/kg cuando el hilo cuesta ~$40/kg → todo el segmento
                 # industrial salía en rojo). Tampoco explotar UNA al azar
-                # (_bom_find, colapsaba el costo — bug WD080): explota TODAS
-                # y toma la MÁS CARA, conservador para cotizar.
+                # (_bom_find, colapsaba el costo — bug WD080). El costo debe
+                # seguir a CÓMO SE FABRICA HOY: la BOM de la última OP
+                # terminada — sin eso, los genéricos de prueba colgados de
+                # BOMs activas inflan la MP (TJ085Q22JNT157 salía a 11.30/m
+                # por un camino "MUESTRA PILOTO" cuando su receta real, la de
+                # 53 de sus 55 OPs, da ~6.2). Sin OPs: explota TODAS y toma
+                # la MÁS CARA, conservador para cotizar.
                 boms = self._applicable_boms(product)
-                costs = [self._explode_bom(b, product, cache, seen, ctx,
-                                           import_factor)
-                         for b in boms]
-                cost = max(costs) if costs else 0.0
+                bom_op = self._bom_de_ultima_op(product, boms, ctx)
+                cost = self._explode_bom(bom_op, product, cache, seen, ctx,
+                                         import_factor) if bom_op else 0.0
+                if cost <= 0.0:
+                    costs = [self._explode_bom(b, product, cache, seen, ctx,
+                                               import_factor)
+                             for b in boms]
+                    cost = max(costs) if costs else 0.0
                 if cost <= 0.0:
                     cost = self._costo_de_compra(
                         product, pol_map, import_factor, import_ids)
@@ -1655,6 +1724,55 @@ class QbCostoProducto(models.Model):
             '&', ('product_id', '=', False),
                  ('product_tmpl_id', '=', product.product_tmpl_id.id),
         ])
+
+    @api.model
+    def _bom_de_ultima_op(self, product, boms, ctx=None):
+        """La BOM de la última OP terminada del producto, si sigue entre las
+        activas aplicables. Vacío cuando el producto nunca se ha fabricado
+        (o su última receta ya no está activa): ahí decide el criterio
+        conservador de explotar todas."""
+        if ctx is not None and 'last_mo_bom' in ctx:
+            bom_id = ctx['last_mo_bom'].get(product.id)
+            if bom_id and bom_id in set(boms.ids):
+                return self.env['mrp.bom'].browse(bom_id)
+            return self.env['mrp.bom']
+        mo = self.env['mrp.production'].search(
+            [('product_id', '=', product.id), ('state', '=', 'done'),
+             ('bom_id', 'in', boms.ids)],
+            order='date_finished desc, id desc', limit=1)
+        return mo.bom_id
+
+    @api.model
+    def _last_mo_bom_map(self, product_ids):
+        """{product_id: bom_id} de la última OP terminada cuya BOM sigue
+        activa — un query para todo el motor (solo hace falta para las
+        recetas ambiguas)."""
+        if not product_ids:
+            return {}
+        self.env.cr.execute("""
+            SELECT DISTINCT ON (mp.product_id) mp.product_id, mp.bom_id
+            FROM mrp_production mp
+            JOIN mrp_bom b ON b.id = mp.bom_id AND b.active
+            WHERE mp.state = 'done'
+              AND mp.product_id = ANY(%s)
+            ORDER BY mp.product_id,
+                     mp.date_finished DESC NULLS LAST, mp.id DESC
+        """, (list(product_ids),))
+        return dict(self.env.cr.fetchall())
+
+    @api.model
+    def _it_twin(self, product):
+        """Gemelo ' IT' de un producto de importación ' I': el componente de
+        su BOM de conversión cuyo código termina en ' IT' — el código puede
+        NO compartir prefijo con el ' I' (KP2032T11GO152 I se produce del
+        KP4032T11GO152 IT). Fallback: mismo código + 'T'."""
+        for bom in self._applicable_boms(product):
+            for line in bom.bom_line_ids:
+                if (line.product_id.default_code or '').endswith(' IT'):
+                    return line.product_id
+        ref = product.default_code or ''
+        return self.env['product.product'].search(
+            [('default_code', '=', ref + 'T')], limit=1)
 
     @api.model
     def _explode_bom(self, bom, product, cache, seen, ctx,
