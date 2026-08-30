@@ -416,7 +416,8 @@ class QbCotizadorWizard(models.TransientModel):
             kg = (self.spec_gramaje / 1000.0) * (self.spec_ancho or 1.5)
             m_per_kg = 1.0 / kg if kg else Config.get_param('m_per_kg_default', 8.0)
             mp = self.spec_mp_unit
-            energia = 0.0 if bucket in ('importado', 'subproducto') \
+            energia = 0.0 \
+                if bucket in ('importado', 'subproducto', 'servicio') \
                 else factores.energia_por_kg * kg
             fab = Costo._fab_unit(bucket, False, kg, m_per_kg, factores)
             variable = mp + energia
