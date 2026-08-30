@@ -428,6 +428,61 @@ class QbCosteoPanel(models.TransientModel):
                 'descontándose.'
                 % ', '.join(str(m) for m in sin_est)))
 
+        # 5.11 Períodos calculados ANTES del último cambio de pesos. El
+        # caso WD3846NT163m2: se corrigió su peso y los meses recalculados
+        # antes de la captura se quedaron con el criterio viejo — la misma
+        # ventana de 12 meses mezclaba dos pesos y el producto "perdía"
+        # $1M que no perdía. Un período abierto más viejo que el maestro
+        # de pesos es un reporte mintiendo en silencio.
+        ultimo_peso = env['qb.producto.peso'].search(
+            [], order='write_date desc', limit=1)
+        if ultimo_peso:
+            desfasados = env['qb.costo.factores'].search([
+                ('state', '=', 'borrador'),
+                ('write_date', '<', ultimo_peso.write_date)])
+            if desfasados:
+                periodos = ', '.join(
+                    str(p) for p in sorted(desfasados.mapped('period'))[:8])
+                if len(desfasados) > 8:
+                    periodos += '…'
+                checks.append((
+                    WARN, 'Períodos vs maestro de pesos',
+                    '%s período(s) abiertos calculados ANTES del último '
+                    'cambio de pesos (%s): su costo usa el peso viejo y la '
+                    'ventana de 12 meses mezcla criterios. Corre '
+                    '«Recalcular costeo (rango de meses)» sobre: %s'
+                    % (len(desfasados),
+                       ultimo_peso.write_date.strftime('%Y-%m-%d %H:%M'),
+                       periodos)))
+            else:
+                checks.append((
+                    OK, 'Períodos vs maestro de pesos',
+                    'todos los períodos abiertos son posteriores al último '
+                    'cambio de pesos'))
+
+        # 5.12 Cola de recálculo atorada: el cron diferido murió una vez
+        # dejando 6 meses de 2024 pendientes por 2 días — nadie lo vio
+        # porque el cron simplemente dejó de correr.
+        Config = env['qb.costeo.factor.config']
+        cola = Config.search([('key', '=', 'recalculo_pendiente')], limit=1)
+        pendientes_cola = [p for p in (cola.value_text or '').split(',') if p]
+        if pendientes_cola:
+            cron = env.ref('qb_capacidad_costeo.cron_recalculo_pendientes',
+                           raise_if_not_found=False)
+            if not cron or not cron.active:
+                checks.append((
+                    BAD, 'Cola de recálculo diferido',
+                    '%s período(s) esperando en la cola y el cron está '
+                    'APAGADO — la cola quedó atorada. Actívalo en Ajustes '
+                    '→ Técnico → Acciones planificadas («Recálculo '
+                    'diferido de históricos») o corre el recálculo por '
+                    'rango.' % len(pendientes_cola)))
+            else:
+                checks.append((
+                    OK, 'Cola de recálculo diferido',
+                    '%s período(s) en cola, cron activo — convergiendo'
+                    % len(pendientes_cola)))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:
