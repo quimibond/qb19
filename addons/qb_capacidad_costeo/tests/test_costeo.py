@@ -2991,6 +2991,40 @@ class TestQbCosteo(TransactionCase):
             self.assertIn('<table', cli.tendencia_html)
             self.assertTrue(cli.cotizaciones_html)
 
+    def test_reventa_no_carga_fabricacion_ni_energia(self):
+        """Un producto COMPRADO que se revende (fibra PES1.4NG1.5, hilo,
+        servicio facturado) no pasa por planta: solo su costo de compra +
+        operación. El fallback del ruteo lo mandaba a 'tela' y le cargaba
+        $66/kg de energía y fabricación que no lleva — por eso la fibra
+        salía con margen negativo gigante en rentabilidad por producto."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        fibra = self.env['product.product'].create({
+            'name': 'PES9.9NG9.9', 'default_code': 'PES9.9NG9.9',
+            'is_storable': True, 'uom_id': uom_kg.id,
+            'sale_ok': True, 'purchase_ok': True, 'standard_price': 31.0})
+        self.env['qb.producto.ruteo'].create({
+            'name_pattern': '^PES[0-9]', 'product_bucket': 'servicio',
+            'sequence': 5})
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2027, 6, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 9.0, 'op_pct': 0.15, 'mp_ajuste': 0.9})
+        Costo = self.env['qb.costo.producto']
+        ctx = Costo._engine_ctx([fibra.id])
+        bucket, _c, _kg, _mpk, _iskg, mp, energia, fab = \
+            Costo._capas_produccion(
+                fibra, factores, ctx,
+                self.env['qb.producto.ruteo'], self.env['qb.producto.peso'])
+        self.assertEqual(bucket, 'servicio')
+        self.assertEqual(energia, 0.0, 'reventa no consume energía de planta')
+        self.assertEqual(fab, 0.0, 'reventa no absorbe fabricación')
+        self.assertAlmostEqual(
+            mp, 31.0, places=4,
+            msg='costo de compra SIN ajuste de merma (no hay producción)')
+        # Y una tela con nombre parecido ("PES CREP ...") NO cae en la regla
+        bucket_tela, _ = self.env['qb.producto.ruteo'].resolve(self.tela)
+        self.assertNotEqual(bucket_tela, 'servicio')
+
     def test_formato_de_fichas_360(self):
         """El formato compartido de las fichas: signo ANTES del símbolo
         (−$947,106, no $-947,106) y meses/fechas en español — strftime

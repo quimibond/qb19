@@ -2148,9 +2148,13 @@ class QbCostoProducto(models.Model):
         m_per_kg = Peso.resolve_m_per_kg(product, ctx['peso_cache'])
         is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
         mp = self._mp_cost_unit(product, ctx=ctx)
-        if not self._es_importado(product, bucket) and bucket != 'subproducto':
+        # Reventa/servicio: ni ajuste de merma ni energía — no pasa por
+        # planta (caso PES1.4NG1.5: fibra revendida que cargaba $66/kg de
+        # proceso que no lleva).
+        if not self._es_importado(product, bucket) \
+                and bucket not in ('subproducto', 'servicio'):
             mp *= factores.mp_ajuste or 1.0
-        energia = 0.0 if bucket in ('importado', 'subproducto') \
+        energia = 0.0 if bucket in ('importado', 'subproducto', 'servicio') \
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
         return bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab
@@ -2275,9 +2279,13 @@ class QbCostoProducto(models.Model):
         is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
         mp = self._mp_cost_unit(
             product, import_factor=factores.factor_importacion)
-        if not self._es_importado(product, bucket) and bucket != 'subproducto':
+        # Reventa/servicio: ni ajuste de merma ni energía — no pasa por
+        # planta (caso PES1.4NG1.5: fibra revendida que cargaba $66/kg de
+        # proceso que no lleva).
+        if not self._es_importado(product, bucket) \
+                and bucket not in ('subproducto', 'servicio'):
             mp *= factores.mp_ajuste or 1.0
-        energia = 0.0 if bucket in ('importado', 'subproducto') \
+        energia = 0.0 if bucket in ('importado', 'subproducto', 'servicio') \
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
         variable = mp + energia
