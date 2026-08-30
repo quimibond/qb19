@@ -3039,6 +3039,47 @@ class TestQbCosteo(TransactionCase):
                       'la configuración siempre va colapsada')
         self.assertIn('Configuración', panel.estado_html)
 
+    def test_panel_detecta_periodos_desfasados_y_cola_atorada(self):
+        """Los dos candados del caso WD3846NT163m2: (1) un período abierto
+        calculado ANTES del último cambio de pesos mezcla criterios en la
+        ventana de 12 meses — el panel lo marca; (2) una cola de recálculo
+        con el cron apagado quedó atorada 2 días sin que nadie lo viera —
+        el panel la marca en rojo."""
+        panel = self.env['qb.costeo.panel'].create({})
+        Config = self.env['qb.costeo.factor.config']
+        factores = self.env['qb.costo.factores'].search(
+            [('state', '=', 'borrador')], limit=1)
+        if factores:
+            # Tocar un peso AHORA deja a todo período existente como
+            # anterior al cambio → el check debe avisar
+            self.env['qb.producto.peso'].create({
+                'product_id': self.tela.id, 'kg_per_unit': 0.072,
+                'source': 'manual'})
+            estado = panel._build_estado()
+            self.assertIn('Períodos vs maestro de pesos', estado)
+            self.assertIn('ANTES del último cambio', estado)
+
+        # Cola con períodos y cron apagado → atorada, en rojo
+        cron = self.env.ref(
+            'qb_capacidad_costeo.cron_recalculo_pendientes',
+            raise_if_not_found=False)
+        if cron:
+            cron.active = False
+        rec = Config.search([('key', '=', 'recalculo_pendiente')], limit=1)
+        if rec:
+            rec.value_text = '2024-01-01,2024-02-01'
+        else:
+            Config.create({'key': 'recalculo_pendiente', 'value': 0,
+                           'value_text': '2024-01-01,2024-02-01'})
+        estado = panel._build_estado()
+        self.assertIn('Cola de recálculo diferido', estado)
+        self.assertIn('atorada', estado)
+        # Con el cron prendido, la misma cola es «convergiendo», no error
+        if cron:
+            cron.active = True
+            estado = panel._build_estado()
+            self.assertIn('convergiendo', estado)
+
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la
         desviación motor vs teórico, y el generador corre sin error."""
