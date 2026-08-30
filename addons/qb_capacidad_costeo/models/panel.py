@@ -483,6 +483,49 @@ class QbCosteoPanel(models.TransientModel):
                     '%s período(s) en cola, cron activo — convergiendo'
                     % len(pendientes_cola)))
 
+        # 5.13 AVCO de importados vs su compra real. El costo del ' I' es su
+        # AVCO (compra del IT + gastos de la OP de conversión) y nadie lo
+        # validaba contra la fuente: el KP2032T11GO152 I traía 9.39 —
+        # calcado del gemelo nacional — cuando su IT real (KP4032T11GO152
+        # IT) se compró a ~6.10. +54% de MP fantasma en $511K de venta.
+        if ultimo:
+            Costo = env['qb.costo.producto']
+            imp_rows = Costo.search([
+                ('period', '=', ultimo.period),
+                ('product_bucket', '=', 'importado'),
+                ('qty_vendida', '>', 0)])
+            divergentes = []
+            for row in imp_rows:
+                it = Costo._it_twin(row.product_id)
+                if not it:
+                    continue
+                compra = Costo._last_purchase_cost(it)
+                if compra <= 0 or row.mp_unit <= 0:
+                    continue
+                delta = (row.mp_unit - compra) / compra
+                if abs(delta) > 0.35:
+                    divergentes.append((abs(delta), delta, row, compra))
+            if divergentes:
+                divergentes.sort(key=lambda d: d[0], reverse=True)
+                det = '; '.join(
+                    '%s: modelo $%.2f vs compra IT $%.2f (%+.0f%%)'
+                    % (row.default_code, row.mp_unit, compra, delta * 100)
+                    for _absd, delta, row, compra in divergentes[:6])
+                if len(divergentes) > 6:
+                    det += '…'
+                checks.append((
+                    WARN, 'AVCO de importados vs compra IT',
+                    '%s importado(s) vendidos con MP a más de ±35%% de la '
+                    'última compra de su gemelo IT: %s. Puede ser AVCO '
+                    'seteado a mano, capas viejas de inventario o un precio '
+                    'nuevo — revisa el costo del producto en Odoo.'
+                    % (len(divergentes), det)))
+            elif imp_rows:
+                checks.append((
+                    OK, 'AVCO de importados vs compra IT',
+                    'los %s importados vendidos del período están a ±35%% '
+                    'de su última compra IT' % len(imp_rows)))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:
