@@ -43,7 +43,7 @@ PRODUCT_BUCKETS = [
     ('entretela_carda', 'Entretela carda / no tejida'),
     ('importado', 'Importado (solo inspección)'),
     ('subproducto', 'Subproducto / desperdicio'),
-    ('servicio', 'Servicio / otro'),
+    ('servicio', 'Servicio / reventa (sin fabricación ni energía)'),
 ]
 
 
