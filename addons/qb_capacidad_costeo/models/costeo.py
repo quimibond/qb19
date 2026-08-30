@@ -1430,15 +1430,24 @@ class QbCostoProducto(models.Model):
     # MP: último costo de compra, explosión recursiva
     # ------------------------------------------------------------------
     @api.model
-    def _last_purchase_line_map(self, product_ids):
+    def _last_purchase_line_map(self, product_ids, cutoff=None):
         """{product_id: purchase_order_line_id} de la última compra confirmada,
         resuelto en UN query (DISTINCT ON). Un search por hoja de BOM no
         escala: con 3k SKUs × BOMs recursivas son decenas de miles de queries.
+
+        Con `cutoff` (fin del período costeado) toma la última compra
+        CONOCIDA A ESE CORTE: la foto histórica usa el precio de su época,
+        no el de hoy — si no, recalcular marzo con el hilo de agosto pinta
+        márgenes que nunca existieron. Producto sin compras previas al
+        corte (compró por primera vez después): su PRIMERA compra conocida,
+        que es el precio más cercano a la época — nunca el de hoy.
         """
         if not product_ids:
             return {}
         # state/date_order viven en purchase_order (en Odoo 19 ya no son
         # columnas de la línea) — joinear la orden.
+        date_filter = 'AND po.date_order < %s' if cutoff else ''
+        params = [list(product_ids)] + ([cutoff] if cutoff else [])
         self.env.cr.execute("""
             SELECT DISTINCT ON (pol.product_id) pol.product_id, pol.id
             FROM purchase_order_line pol
@@ -1446,16 +1455,34 @@ class QbCostoProducto(models.Model):
             WHERE po.state IN ('purchase', 'done')
               AND pol.price_unit > 0
               AND pol.product_id = ANY(%s)
+              """ + date_filter + """
             ORDER BY pol.product_id, po.date_order DESC, pol.id DESC
-        """, (list(product_ids),))
-        return dict(self.env.cr.fetchall())
+        """, params)
+        result = dict(self.env.cr.fetchall())
+        if cutoff:
+            faltan = set(product_ids) - set(result)
+            if faltan:
+                self.env.cr.execute("""
+                    SELECT DISTINCT ON (pol.product_id)
+                           pol.product_id, pol.id
+                    FROM purchase_order_line pol
+                    JOIN purchase_order po ON po.id = pol.order_id
+                    WHERE po.state IN ('purchase', 'done')
+                      AND pol.price_unit > 0
+                      AND pol.product_id = ANY(%s)
+                    ORDER BY pol.product_id, po.date_order ASC, pol.id ASC
+                """, (list(faltan),))
+                result.update(self.env.cr.fetchall())
+        return result
 
     @api.model
-    def _last_purchase_cost(self, product, pol_map=None):
+    def _last_purchase_cost(self, product, pol_map=None, cutoff=None):
         """Último precio de compra confirmado, en moneda de la compañía.
 
         Con `pol_map` (de _last_purchase_line_map) no hace ningún search;
         sin él (cotizador, llamadas sueltas) busca la línea individual.
+        `cutoff` acota la búsqueda suelta al precio de la época del período
+        (el mapa ya viene acotado desde _engine_ctx).
         """
         if pol_map is not None:
             pol_id = pol_map.get(product.id)
@@ -1464,11 +1491,19 @@ class QbCostoProducto(models.Model):
         else:
             # order_id.state en el domain y orden por id (proxy de recencia):
             # state/date_order de la línea no son columnas propias en Odoo 19.
-            pol = self.env['purchase.order.line'].search([
+            domain = [
                 ('product_id', '=', product.id),
                 ('order_id.state', 'in', ('purchase', 'done')),
                 ('price_unit', '>', 0),
-            ], order='id desc', limit=1)
+            ]
+            corte = [('order_id.date_order', '<', cutoff)] if cutoff else []
+            pol = self.env['purchase.order.line'].search(
+                domain + corte, order='id desc', limit=1)
+            if not pol and cutoff:
+                # Sin compras previas al corte: la PRIMERA conocida es el
+                # precio más cercano a la época, nunca el de hoy.
+                pol = self.env['purchase.order.line'].search(
+                    domain, order='id asc', limit=1)
         if not pol:
             # AVCO negativo (herida de valuación de inventario, caso
             # PESFCHMO1.5X2.0 en -0.30/kg) no es un costo: acotarlo a 0
@@ -1508,7 +1543,12 @@ class QbCostoProducto(models.Model):
         self.env.cr.execute(
             'SELECT DISTINCT product_id FROM mrp_bom_line WHERE product_id IS NOT NULL')
         leaf_ids.update(r[0] for r in self.env.cr.fetchall())
-        pol_map = self._last_purchase_line_map(leaf_ids)
+        # Con factores (recálculo de un período) la MP se acota al precio
+        # de la ÉPOCA: última compra conocida al fin de ese período. Sin
+        # factores (cotizador) no hay corte — cotizar es a reposición de hoy.
+        cutoff = factores.period + relativedelta(months=1) if factores \
+            else None
+        pol_map = self._last_purchase_line_map(leaf_ids, cutoff)
         # Warm-up del cache ORM: un solo fetch para las líneas y sus órdenes
         if pol_map:
             pols = self.env['purchase.order.line'].browse(list(pol_map.values()))

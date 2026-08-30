@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Recalcula tras el barrido de limpieza del motor de MP (1.37 + 1.38).
+"""Recalcula tras el barrido de limpieza del motor de MP (1.37-1.39).
 
 Tres cambios del motor tocan costos guardados:
 
@@ -13,6 +13,10 @@ Tres cambios del motor tocan costos guardados:
   cuando su receta real (53 de sus 55 OPs) da ~6.2/m.
 · AVCO negativo acotado a 0 (1.38): una herida de valuación
   (PESFCHMO1.5X2.0 en -0.30/kg) producía MP negativa en los velos P17/P18.
+· MP al precio de la ÉPOCA (1.39): cada período usa la última compra
+  conocida a su corte, no la de hoy — recalcular marzo con el hilo de
+  agosto pintaba márgenes que nunca existieron. El cotizador sigue a
+  reposición.
 
 Reparto de la 1.29.0 (regla de la cadena: SOLO la migración más nueva
 recalcula): el año corriente síncrono en el build y los años anteriores
@@ -58,6 +62,6 @@ def migrate(cr, version):
                         'nextcall': datetime.now() + timedelta(minutes=5)})
 
     _logger.info(
-        'qb_capacidad_costeo 1.38: limpieza del motor de MP — %s períodos '
+        'qb_capacidad_costeo 1.39: limpieza del motor de MP — %s períodos '
         'del año corriente recalculados en el build, %s históricos '
         'diferidos al cron.', len(ahora), len(viejos))

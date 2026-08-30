@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import date
+from datetime import date, datetime
 
 from dateutil.relativedelta import relativedelta
 
@@ -309,6 +309,71 @@ class TestQbCosteo(TransactionCase):
         po.button_confirm()
         self.assertEqual(self.Costo._it_twin(imp), it)
         self.assertAlmostEqual(self.Costo._mp_cost_unit(imp), 6.10, places=4)
+
+    def test_mp_historica_usa_precio_de_la_epoca(self):
+        """«Si tomamos la última compra para todos los períodos no vamos a
+        saber la realidad de a cuánto compré»: cada período costea la MP
+        con la última compra CONOCIDA A SU CORTE — marzo con el precio de
+        marzo, julio con el de julio — y el cotizador (sin período) sigue
+        a reposición de hoy. Un producto comprado por primera vez DESPUÉS
+        del corte usa esa primera compra (el precio más cercano a su
+        época), nunca el de hoy ni el AVCO."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        hilo = self.env['product.product'].create({
+            'name': 'HILO EPOCA TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'purchase_ok': True,
+            'standard_price': 0.0})
+        tela = self.env['product.product'].create({
+            'name': 'TELA EPOCA TEST', 'default_code': 'WJ060NT160',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': hilo.id, 'product_qty': 0.1,
+                'product_uom_id': uom_kg.id})]})
+        prov = self.env['res.partner'].create({'name': 'PROV EPOCA'})
+        for fecha, precio in ((datetime(2031, 1, 15), 50.0),
+                              (datetime(2031, 6, 10), 80.0)):
+            po = self.env['purchase.order'].create({
+                'partner_id': prov.id,
+                'order_line': [(0, 0, {
+                    'product_id': hilo.id, 'product_qty': 100.0,
+                    'price_unit': precio})]})
+            po.button_confirm()
+            # confirmar pisa date_order con «ahora»: regresarla a su época
+            po.date_order = fecha
+        Factores = self.env['qb.costo.factores']
+        # Períodos ficticios lejanos para no chocar con los reales de la
+        # base de test (period es único por compañía)
+        marzo = Factores.create({'period': date(2031, 3, 1),
+                                 'window_months': 12})
+        julio = Factores.create({'period': date(2031, 7, 1),
+                                 'window_months': 12})
+        antes = Factores.create({'period': date(2030, 11, 1),
+                                 'window_months': 12})
+        ctx = self.Costo._engine_ctx([tela.id], marzo)
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela, ctx=ctx), 0.1 * 50.0, places=4)
+        ctx = self.Costo._engine_ctx([tela.id], julio)
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela, ctx=ctx), 0.1 * 80.0, places=4)
+        # Cotizador, sin período: reposición de HOY = la última compra
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela), 0.1 * 80.0, places=4)
+        # Período ANTERIOR a la primera compra del hilo: usa la primera
+        # (50), no el AVCO (0) ni el precio de hoy (80)
+        ctx = self.Costo._engine_ctx([tela.id], antes)
+        self.assertAlmostEqual(
+            self.Costo._mp_cost_unit(tela, ctx=ctx), 0.1 * 50.0, places=4)
+        # Y el camino suelto (sin ctx) con corte explícito da lo mismo
+        self.assertAlmostEqual(
+            self.Costo._last_purchase_cost(
+                hilo, cutoff=date(2031, 4, 1)), 50.0, places=4)
+        self.assertAlmostEqual(
+            self.Costo._last_purchase_cost(
+                hilo, cutoff=date(2030, 12, 1)), 50.0, places=4)
 
     def test_qty_neta_negativa_no_da_precio_negativo(self):
         """Devoluciones > ventas (qty neta ≤ 0) → precio 0, sin alerta falsa

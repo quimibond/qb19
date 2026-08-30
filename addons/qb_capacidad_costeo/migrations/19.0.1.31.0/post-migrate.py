@@ -19,6 +19,6 @@ anteriores diferidos al cron «Recálculo diferido de históricos».
 def migrate(cr, version):
     # Regla de la cadena: SOLO la migración más nueva recalcula. El
     # recálculo (año corriente síncrono + históricos al cron) vive hoy en
-    # la 19.0.1.38.0; recalcular también aquí pagaría el mismo build dos
+    # la 19.0.1.39.0; recalcular también aquí pagaría el mismo build dos
     # veces para tirar la primera.
     pass
