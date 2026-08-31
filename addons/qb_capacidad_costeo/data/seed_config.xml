@@ -176,7 +176,7 @@
             <field name="name">Inspección y empaque</field>
             <field name="nature">fabril_indirecto</field>
             <field name="driver_principal">largo</field>
-            <field name="mo_name_pattern">TL/INSP%</field>
+            <field name="mo_name_pattern">TL/CONV%</field>
             <field name="notes">Gate final: mide toda la tela vendible.</field>
         </record>
         <record id="centro_admin" model="qb.costeo.centro">

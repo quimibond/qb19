@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Recalcula tras el barrido de limpieza del motor de MP (1.37-1.39).
+"""Recalcula tras el barrido de limpieza del motor (1.37-1.41).
 
 Tres cambios del motor tocan costos guardados:
 
@@ -17,6 +17,14 @@ Tres cambios del motor tocan costos guardados:
   conocida a su corte, no la de hoy — recalcular marzo con el hilo de
   agosto pintaba márgenes que nunca existieron. El cotizador sigue a
   reposición.
+· Inspección de importados (1.41): todo lo importado pasa por una OP
+  TL/CONV y la gente que la trabaja cobraba por el pool fabril que solo
+  absorben los fabricados — las telas pagaban la inspección de la
+  reventa. Ahora los ' I' cargan inspección por metro y esa parte se
+  resta del pool.
+· (config en producción, sin código): clasificación luz/servicios
+  administrativos intercambiada y prorrateo de aduana encendido
+  (importacion_driver=compras, factor ~16% sobre valor importado).
 
 Reparto de la 1.29.0 (regla de la cadena: SOLO la migración más nueva
 recalcula): el año corriente síncrono en el build y los años anteriores
@@ -62,6 +70,6 @@ def migrate(cr, version):
                         'nextcall': datetime.now() + timedelta(minutes=5)})
 
     _logger.info(
-        'qb_capacidad_costeo 1.39: limpieza del motor de MP — %s períodos '
+        'qb_capacidad_costeo 1.41: limpieza del motor — %s períodos '
         'del año corriente recalculados en el build, %s históricos '
         'diferidos al cron.', len(ahora), len(viejos))

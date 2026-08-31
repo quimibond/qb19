@@ -468,7 +468,9 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(self.Costo._mp_cost_unit(self.saldo), 0.0)
 
     def test_importado_landed_sin_fab(self):
-        """Importados (' I'): MP = landed (avg) y NO cargan fabricación."""
+        """Importados (' I'): MP = landed (avg) y NO cargan la fabricación
+        de los procesos (tejido/teñido/rama) — solo su inspección (test
+        aparte)."""
         bucket, _ = self.Ruteo.resolve(self.importado)
         self.assertEqual(bucket, 'importado')
         self.assertAlmostEqual(
@@ -477,8 +479,44 @@ class TestQbCosteo(TransactionCase):
             'period': date(2026, 1, 1), 'factor_fab_kg': 30.0,
             'factor_fab_m': 3.0, 'entretela_factor_m': 2.3,
         })
+        # Sin factor de inspección calculado, sigue en 0 — nunca hereda el
+        # factor fabril de los procesos.
         fab = self.Costo._fab_unit('importado', False, 0.1, 10.0, factores)
         self.assertEqual(fab, 0.0)
+
+    def test_importado_carga_inspeccion_por_metro(self):
+        """«Todo lo importado se inspecciona»: las OPs TL/CONV las trabaja
+        el centro Inspección y Empaque, cuya nómina (501.06) entraba
+        completa al pool que solo absorben los FABRICADOS — las telas
+        pagaban la inspección de la reventa. El importado ahora carga
+        fabricación = inspección por metro; subproducto y servicio siguen
+        en $0, y esa parte se resta del pool fabril (no se cobra doble)."""
+        factores = self.env['qb.costo.factores'].create({
+            'period': date(2031, 9, 1), 'window_months': 12,
+            'factor_fab_kg': 40.0, 'factor_fab_m': 2.0,
+            'factor_inspeccion_m': 0.52})
+        # vendido en metros: el factor tal cual
+        self.assertAlmostEqual(
+            self.Costo._fab_unit('importado', False, 0.09, 10.4, factores),
+            0.52, places=4)
+        # vendido en kg: por los metros que trae el kilo
+        self.assertAlmostEqual(
+            self.Costo._fab_unit('importado', True, 1.0, 10.4, factores),
+            10.4 * 0.52, places=4)
+        self.assertEqual(
+            self.Costo._fab_unit('subproducto', False, 0.1, 10.0, factores),
+            0.0)
+        self.assertEqual(
+            self.Costo._fab_unit('servicio', False, 0.1, 10.0, factores),
+            0.0)
+        # Los insumos del factor son datos vivos y quedan acotados aunque
+        # la base esté vacía
+        share = self.Costo._inspeccion_headcount_share()
+        self.assertGreaterEqual(share, 0.0)
+        self.assertLessEqual(share, 1.0)
+        self.assertGreaterEqual(
+            self.Costo._conv_import_m_avg(
+                date(2026, 1, 1), date(2026, 8, 1), 7), 0.0)
 
     def test_fab_hibrida_tela(self):
         """Tela en m: fab = kg/m × factor_peso + factor_largo.
