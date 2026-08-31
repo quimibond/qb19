@@ -3362,6 +3362,15 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('<details', panel.estado_html,
                       'la configuración siempre va colapsada')
         self.assertIn('Configuración', panel.estado_html)
+        # Con capacidad normal honesta, el margen de productos NUNCA se lee
+        # solo: el par margen − ociosidad = resultado va siempre junto
+        # (un +11M de productos con −13M de ociosidad al lado es un año en
+        # tablas, no una utilidad).
+        if 'Margen de productos (mes)' in panel.negocio_html:
+            self.assertIn('Ociosidad del mes', panel.negocio_html)
+            self.assertIn('Resultado del mes (modelo)', panel.negocio_html)
+            self.assertIn('margen de productos − ociosidad',
+                          panel.negocio_html)
 
     def test_panel_detecta_periodos_desfasados_y_cola_atorada(self):
         """Los dos candados del caso WD3846NT163m2: (1) un período abierto
