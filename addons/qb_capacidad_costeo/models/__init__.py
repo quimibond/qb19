@@ -4,6 +4,7 @@ from . import cuenta_map
 from . import capacidad
 from . import rh_turnos
 from . import balance_linea
+from . import familia
 from . import ociosidad
 from . import costeo
 from . import cotizacion

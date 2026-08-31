@@ -796,9 +796,20 @@ class QbCostoProducto(models.Model):
         Se resuelve UNA vez por corrida y se pasa a los denominadores: la
         vista de ociosidad arma calendarios, pools del GL y producción, y
         `action_recompute_year` llamaría a ese query veinticuatro veces.
+
+        El flush NO es decorativo. `qb.ociosidad` es un `_table_query`: lee
+        `qb_costeo_centro` en SQL crudo, y el ORM no sabe que ese SELECT
+        depende de un write pendiente sobre los centros. La migración 1.51
+        escribió la capacidad de Acabado (915,733 → 1,175,313) y recalculó
+        2026 en la misma transacción: los ocho períodos salieron con el
+        denominador VIEJO y nada avisó — los números se veían normales,
+        solo estaban calculados con la capacidad que la migración acababa
+        de reemplazar. Cualquier flujo que escriba un centro y recalcule
+        sin cerrar la transacción cae en lo mismo.
         """
         if not centros:
             return {}
+        self.env.flush_all()
         return {o.centro_id.id: o.capacity_month_units
                 for o in self.env['qb.ociosidad'].search(
                     [('centro_id', 'in', centros.ids)])}

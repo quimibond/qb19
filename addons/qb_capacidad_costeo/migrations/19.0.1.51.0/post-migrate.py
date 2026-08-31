@@ -39,13 +39,14 @@ contra qué validar la capacidad capturada — hasta hoy `capacidad_normal`
 ganaba en silencio sobre el cálculo de turnos y por eso Acabado pudo
 vivir dos años con un número que sus propias máquinas contradecían.
 
-Recálculo: SOLO 2026. Los períodos de 2024 y 2025 se quedan como están
-por decisión de dirección (se cierran con su visto bueno); ninguno está
-marcado `cerrado` todavía, así que la restricción se aplica aquí, no en
-el guard.
+Recálculo: lo hace la 1.52. Esta versión recalculaba aquí mismo y salió
+mal — `qb.ociosidad` lee `qb_costeo_centro` en SQL crudo, así que los
+ocho períodos se recalcularon con la capacidad que este mismo script
+acababa de reemplazar, sin que nada avisara. El flush quedó dentro de
+`_capacidad_normal_map` (1.52) y el recálculo se movió a la migración
+más nueva, como manda la regla del módulo.
 """
 import logging
-from datetime import date
 
 from odoo import SUPERUSER_ID, api
 
@@ -94,15 +95,8 @@ def migrate(cr, version):
         _logger.info('qb_capacidad_costeo 1.51: %s capacidad %s → %s',
                      code, anterior, cap)
 
-    # Solo 2026: la capacidad nueva mueve el factor de fabricación por
-    # metro, y los períodos viejos se congelan con el visto bueno de
-    # dirección, no con una migración.
-    corte = date(2026, 1, 1)
-    periodos = sorted(p for p in set(
-        env['qb.costo.factores'].search([]).mapped('period')) if p >= corte)
-    for period in periodos:
-        env['qb.costo.producto'].action_recompute_period(period)
-
-    _logger.info('qb_capacidad_costeo 1.51: capacidad de planta capturada; '
-                 '%s períodos de 2026 recalculados (2024-2025 intactos).',
-                 len(periodos))
+    # Que la capacidad esté en la BASE antes de que alguien la lea en SQL
+    # crudo: `qb.ociosidad` es un `_table_query` y no ve un write pendiente.
+    env.flush_all()
+    _logger.info('qb_capacidad_costeo 1.51: capacidad de planta capturada. '
+                 'El recálculo lo hace la 1.52.')

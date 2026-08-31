@@ -218,8 +218,38 @@ Los números de hoy salen del formato de planta F-IT-P-P01-10-06 rev 02
 
 | Centro | Capacidad | De dónde sale |
 |---|---:|---|
+| Tejido | 197,529 kg/mes | 27 circulares tejiendo, cada una a su velocidad documentada (11.73 kg/h promedio; 9.1 en las VANGUARD galga 24, 28.2 en la CIRCULAR 26) × 623.5 h/mes (144 h/semana: 12 turnos de 12 h). Las 37 instaladas darían 269,174: las otras diez no se dotan. |
 | Acabado | 1,175,313 m/mes | UNITECH 29.08 m/min (−10%) + BRUCKNER 28.35 m/min (−15%) = 3,015.9 m/h × 389.7 h/mes (90 h/semana × 4.33). La ICOMATEX está en montaje. |
 | Tintorería | 216,089 kg/mes | 554.5 kg/h de las cuatro tinas, con el ciclo real de cada una ponderado por la mezcla de color de las OPs (2:20 h en naturales, 10:20 h en obscuros → 3.1 h efectivas). La HTJ-5 está en pruebas. |
+
+La regla común: se cuentan las máquinas que **producen**, no las instaladas.
+Una máquina parada por falta de gente es ociosidad —y así debe verse en el
+resultado del período—, no capacidad que el producto tenga que pagar.
+
+### Familias de máquinas: la capacidad no es fungible
+
+**Configuración → Familias de máquinas** y **Capacidad → Carga por familia**.
+
+Un centro es un promedio, y el promedio miente cuando un producto solo sale
+en algunas máquinas. Tejido va al 44%, pero la familia galga 18 Ø32 —la
+única que teje el WJ044 de 235 cm y el WJ035 de 200 cm— va al **79%**.
+
+- `qb.costeo.familia`: grupo de máquinas intercambiables dentro de un centro,
+  con su horario, sus máquinas dotadas y su velocidad. Salen de la columna
+  «Alternos» del formato de planta y particionan el centro sin traslape.
+- `qb.familia.producto`: qué puede hacer cada familia y a qué velocidad — el
+  mismo WJ047 da 8.1 kg/h en la galga 18 Ø32 y 18.7 en la Ø30.
+- `qb.familia.carga`: capacidad vs carga real vs utilización. Un producto que
+  cabe en varias familias reparte su carga entre ellas.
+
+El **cotizador** valida el volumen contra las máquinas que pueden hacer el
+producto, no contra el promedio del centro. Sin esto contestaba que sí a
+pedidos que la familia capaz de producirlos no puede correr.
+
+La familia es una subdivisión de **capacidad, no de costo**: el pool de gasto
+sigue siendo del centro y se absorbe sobre su capacidad completa. Repartir el
+gasto fabril por familia es costeo por ruta, que sigue bloqueado por la
+asignación del gasto a centros.
 
 ## Cómo clasificar una cuenta nueva
 

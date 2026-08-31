@@ -730,6 +730,64 @@ class QbCosteoPanel(models.TransientModel):
                 'la capacidad capturada de cada centro cuadra a ±%.0f%% con '
                 'sus turnos por su throughput nominal' % tol_cap))
 
+        # 5.17 La capacidad de un centro NO es fungible. Tejido tiene 27
+        # circulares y 197,529 kg/mes, pero el WJ044 de 235 cm solo sale en
+        # las diez galga 18 Ø32 — y esas van al 79% mientras la planta va al
+        # 44%. Dos cosas que se pueden validar solas: que la suma de las
+        # familias cuadre con su centro, y que la producción del centro esté
+        # catalogada en alguna familia (lo que no está, no se puede rutear).
+        Familia = env['qb.costeo.familia']
+        familias = Familia.search([('company_id', '=', env.company.id)])
+        if familias:
+            descuadre, saturadas = [], []
+            for centro in familias.mapped('centro_id'):
+                suma = sum(familias.filtered(
+                    lambda f: f.centro_id == centro).mapped('capacidad_normal'))
+                if not (centro.capacidad_normal and suma):
+                    continue
+                delta = (suma - centro.capacidad_normal) / centro.capacidad_normal
+                if abs(delta) > 0.10:
+                    descuadre.append((centro.code, suma,
+                                      centro.capacidad_normal, delta))
+            for fila in env['qb.familia.carga'].search([]):
+                if fila.utilization_pct >= 75.0:
+                    saturadas.append((fila.utilization_pct,
+                                      fila.familia_id.code))
+            if descuadre:
+                det = '; '.join(
+                    '%s: familias %s vs centro %s (%+.0f%%)'
+                    % (code, '{:,.0f}'.format(suma),
+                       '{:,.0f}'.format(centro_cap), delta * 100)
+                    for code, suma, centro_cap, delta in descuadre)
+                checks.append((
+                    WARN, 'Familias de máquinas vs capacidad del centro',
+                    'la capacidad de las familias no suma la del centro: %s. '
+                    'Una de las dos está vieja — o falta dar de alta una '
+                    'familia.' % det))
+            elif saturadas:
+                saturadas.sort(reverse=True)
+                checks.append((
+                    WARN, 'Familias de máquinas',
+                    'la capacidad del centro cuadra con sus familias, pero '
+                    '%s de ellas van arriba del 75%%: %s. El agregado del '
+                    'centro NO las ve — para decidir si cabe un pedido, mira '
+                    'la familia que lo puede hacer.'
+                    % (len(saturadas),
+                       ', '.join('%s (%.0f%%)' % (c, u) for u, c in saturadas[:5]))))
+            else:
+                checks.append((
+                    OK, 'Familias de máquinas',
+                    '%s familias dadas de alta, su capacidad cuadra con la de '
+                    'sus centros y ninguna pasa del 75%% de carga'
+                    % len(familias)))
+        else:
+            checks.append((
+                WARN, 'Familias de máquinas',
+                'ninguna familia dada de alta: la capacidad de cada centro se '
+                'lee como si cualquier máquina hiciera cualquier producto, y '
+                'un centro medio vacío puede tener su familia clave '
+                'saturada.'))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:
