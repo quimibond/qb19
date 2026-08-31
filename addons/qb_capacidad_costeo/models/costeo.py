@@ -1546,34 +1546,54 @@ class QbCostoProducto(models.Model):
         return result
 
     @api.model
-    def _last_purchase_cost(self, product, pol_map=None, cutoff=None):
-        """Último precio de compra confirmado, en moneda de la compañía.
-
-        Con `pol_map` (de _last_purchase_line_map) no hace ningún search;
-        sin él (cotizador, llamadas sueltas) busca la línea individual.
+    def _last_purchase_pol(self, product, pol_map=None, cutoff=None):
+        """La LÍNEA de la última compra confirmada (recordset, vacío si no
+        hay). Con `pol_map` (de _last_purchase_line_map) no hace ningún
+        search; sin él (cotizador, llamadas sueltas) busca la línea.
         `cutoff` acota la búsqueda suelta al precio de la época del período
-        (el mapa ya viene acotado desde _engine_ctx).
-        """
+        (el mapa ya viene acotado desde _engine_ctx)."""
         if pol_map is not None:
             pol_id = pol_map.get(product.id)
-            pol = self.env['purchase.order.line'].browse(pol_id) if pol_id \
+            return self.env['purchase.order.line'].browse(pol_id) if pol_id \
                 else self.env['purchase.order.line']
-        else:
-            # order_id.state en el domain y orden por id (proxy de recencia):
-            # state/date_order de la línea no son columnas propias en Odoo 19.
-            domain = [
-                ('product_id', '=', product.id),
-                ('order_id.state', 'in', ('purchase', 'done')),
-                ('price_unit', '>', 0),
-            ]
-            corte = [('order_id.date_order', '<', cutoff)] if cutoff else []
+        # order_id.state en el domain y orden por id (proxy de recencia):
+        # state/date_order de la línea no son columnas propias en Odoo 19.
+        domain = [
+            ('product_id', '=', product.id),
+            ('order_id.state', 'in', ('purchase', 'done')),
+            ('price_unit', '>', 0),
+        ]
+        corte = [('order_id.date_order', '<', cutoff)] if cutoff else []
+        pol = self.env['purchase.order.line'].search(
+            domain + corte, order='id desc', limit=1)
+        if not pol and cutoff:
+            # Sin compras previas al corte: la PRIMERA conocida es el
+            # precio más cercano a la época, nunca el de hoy.
             pol = self.env['purchase.order.line'].search(
-                domain + corte, order='id desc', limit=1)
-            if not pol and cutoff:
-                # Sin compras previas al corte: la PRIMERA conocida es el
-                # precio más cercano a la época, nunca el de hoy.
-                pol = self.env['purchase.order.line'].search(
-                    domain, order='id asc', limit=1)
+                domain, order='id asc', limit=1)
+        return pol
+
+    @api.model
+    def _pol_es_importada(self, pol):
+        """¿La compra usada para el costo es una IMPORTACIÓN? El país del
+        PROVEEDOR de ESA orden decide — mismo criterio que la base del
+        factor. El mismo hilo comprado a un comerciante nacional (GRUPO
+        FILAFIL a $65 MXN) ya trae el arancel dentro del precio: recargarle
+        además el factor lo contaba dos veces. La prueba de mercado: la
+        compra extranjera del mismo hilo ($2.82 USD ≈ $48.8) × 1.32 ≈ $64.5,
+        justo el precio del nacional. Sin país capturado no es importación
+        (consistente con la base: mejor dejar dinero fuera que inventarlo).
+        """
+        if not pol:
+            return False
+        pais_prov = pol.order_id.partner_id.country_id
+        pais_cia = self.env.company.partner_id.country_id
+        return bool(pais_prov) and pais_prov != pais_cia
+
+    @api.model
+    def _last_purchase_cost(self, product, pol_map=None, cutoff=None):
+        """Último precio de compra confirmado, en moneda de la compañía."""
+        pol = self._last_purchase_pol(product, pol_map, cutoff)
         if not pol:
             # AVCO negativo (herida de valuación de inventario, caso
             # PESFCHMO1.5X2.0 en -0.30/kg) no es un costo: acotarlo a 0
@@ -1773,15 +1793,24 @@ class QbCostoProducto(models.Model):
 
     @api.model
     def _costo_de_compra(self, product, pol_map, import_factor, import_ids):
-        """Último costo de compra de una hoja, con el recargo de aduana si esa
-        hoja se compra importada.
+        """Último costo de compra de una hoja, con el recargo de aduana si
+        ESA compra fue importada.
 
-        Aquí es donde el pedimento del hilo llega al costo de la tela: el hilo
-        importado carga su aduana en SU costo, y la receta lo arrastra a cada
-        tela que lo consume. La tela no se trata como importada — no lo es.
+        Aquí es donde el pedimento del hilo llega al costo de la tela: el
+        hilo importado carga su aduana en SU costo, y la receta lo arrastra
+        a cada tela que lo consume. La tela no se trata como importada — no
+        lo es.
+
+        El recargo sigue a la COMPRA usada, no al producto: `import_ids`
+        dice qué productos PUEDEN llevarlo (se han comprado importados en
+        la ventana), pero si la última compra es de un proveedor nacional,
+        su precio ya trae el arancel adentro y no se recarga de nuevo
+        (caso HP65P35A22/1: FILAFIL MX a $65 vs IG TEXTILE US a $48.8+32%).
         """
         cost = self._last_purchase_cost(product, pol_map)
-        if import_factor and product.id in import_ids:
+        if import_factor and product.id in import_ids \
+                and self._pol_es_importada(
+                    self._last_purchase_pol(product, pol_map)):
             cost *= 1.0 + import_factor
         return cost
 
@@ -2221,8 +2250,10 @@ class QbCostoProducto(models.Model):
         # de un componente importado vive dentro de la MP del componente.
         f_imp = ctx.get('import_factor', 0.0)
         es_compra_importada = (
-            product.id in (ctx.get('import_ids') or set())
-            or self._es_importado(product, bucket))
+            self._es_importado(product, bucket)
+            or (product.id in (ctx.get('import_ids') or set())
+                and self._pol_es_importada(self._last_purchase_pol(
+                    product, ctx.get('pol_map')))))
         importacion = (mp * f_imp / (1.0 + f_imp)
                        if f_imp and es_compra_importada else 0.0)
         variable = mp + energia
