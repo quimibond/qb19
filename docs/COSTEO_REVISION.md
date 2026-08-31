@@ -524,3 +524,39 @@ kg/mes capturados, contra 37 máquinas a 11 kg/h, implican **102 h/semana
 por máquina** — mientras el calendario que traen sus workcenters en Odoo
 es «Jornada 24/7 3 Turnos» (168 h). Uno de los dos números describe la
 planta y el otro no.
+
+### Tejido: el tercer centro deja de ser estimación (v1.53)
+
+Con «informacion_de_carga_produccion» (hojas CapacidadesProducto y Turnos)
+se cierra el último centro fabril cuya capacidad no tenía fuente.
+
+**180,000 → 197,529 kg/mes (+10%).** 27 circulares tejiendo, cada una a su
+velocidad documentada, por 623.5 h/mes. El horario real son **144 h/semana**:
+doce turnos de 12 h, con la planta parada de viernes 19:00 a sábado 19:00 —
+no las 168 h del calendario «Jornada 24/7 3 Turnos» que traen sus workcenters
+en Odoo. De paso valida el throughput que el módulo traía a ojo: **11 kg/h
+capturados contra 11.73 medidos**, 6% de diferencia.
+
+Se cuentan 27 y no las 37 instaladas por el mismo criterio de acabado (dos
+ramas corriendo, la ICOMATEX en montaje no cuenta): 28 workcenters
+registraron órdenes en agosto —27 máquinas distintas, porque la CIRCULAR 19
+está dada de alta dos veces en Odoo— y las otras diez no están fuera de
+servicio, pero tampoco se dotan. Con las 37 la capacidad sería 269,174
+kg/mes. Una máquina parada por falta de gente es ociosidad, no capacidad que
+el producto deba pagar.
+
+**Lo que la medición dejó claro, y vale más que el número.** Las circulares
+corren a velocidad nominal: en agosto registraron 8,660 horas-máquina y
+produjeron ~93,000 kg, o sea **10.7 kg/h contra los 11.73 del papel** (91%).
+El problema de tejido no es que las máquinas vayan lentas — es que de las
+17,458 horas-máquina programadas de esas 27 circulares se usó **la mitad**.
+La ociosidad es de horas, no de kilos por hora, y eso es exactamente la
+palanca #1: llenar turnos, no apurar máquinas.
+
+Tejido es el denominador de kg, así que el factor de fabricación por peso
+baja ~9% para todo lo costeado por kilo.
+
+**Duplicado a limpiar:** la CIRCULAR 19 existe dos veces como
+`mrp.workcenter` (ids 386 y 388), las dos con producción. No afecta la
+capacidad (se cuenta la máquina, no el registro) pero sí ensucia cualquier
+reparto por workcenter.

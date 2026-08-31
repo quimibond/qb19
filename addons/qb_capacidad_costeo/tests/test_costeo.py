@@ -3895,7 +3895,8 @@ class TestQbCosteo(TransactionCase):
         weeks = self.env['qb.costeo.factor.config'].get_param(
             'weeks_per_month', 4.33)
         for code, esperado in (('ACABADO', 1175313.0),
-                               ('TINTORERIA', 216089.0)):
+                               ('TINTORERIA', 216089.0),
+                               ('TEJIDO', 197529.0)):
             centro = Centro.search([('code', '=', code)], limit=1)
             self.assertTrue(centro, 'falta el centro %s' % code)
             self.assertAlmostEqual(centro.capacidad_normal, esperado, delta=1.0)
@@ -3907,8 +3908,9 @@ class TestQbCosteo(TransactionCase):
             horas = sum(t.hours_per_month() for t in turnos)
             derivada = horas * centro.std_output_per_hour
             self.assertAlmostEqual(derivada, esperado, delta=esperado * 0.01)
-            self.assertAlmostEqual(horas / max(turnos[0].machine_count, 1),
-                                   90.0 * weeks, places=2)
+            self.assertAlmostEqual(
+                horas / max(turnos[0].machine_count, 1),
+                turnos[0].hours_per_week * weeks, places=2)
 
     def test_capacidad_recien_escrita_llega_al_denominador(self):
         """Escribir la capacidad de un centro y recalcular en la MISMA

@@ -218,8 +218,13 @@ Los números de hoy salen del formato de planta F-IT-P-P01-10-06 rev 02
 
 | Centro | Capacidad | De dónde sale |
 |---|---:|---|
+| Tejido | 197,529 kg/mes | 27 circulares tejiendo, cada una a su velocidad documentada (11.73 kg/h promedio; 9.1 en las VANGUARD galga 24, 28.2 en la CIRCULAR 26) × 623.5 h/mes (144 h/semana: 12 turnos de 12 h). Las 37 instaladas darían 269,174: las otras diez no se dotan. |
 | Acabado | 1,175,313 m/mes | UNITECH 29.08 m/min (−10%) + BRUCKNER 28.35 m/min (−15%) = 3,015.9 m/h × 389.7 h/mes (90 h/semana × 4.33). La ICOMATEX está en montaje. |
 | Tintorería | 216,089 kg/mes | 554.5 kg/h de las cuatro tinas, con el ciclo real de cada una ponderado por la mezcla de color de las OPs (2:20 h en naturales, 10:20 h en obscuros → 3.1 h efectivas). La HTJ-5 está en pruebas. |
+
+La regla común: se cuentan las máquinas que **producen**, no las instaladas.
+Una máquina parada por falta de gente es ociosidad —y así debe verse en el
+resultado del período—, no capacidad que el producto tenga que pagar.
 
 ## Cómo clasificar una cuenta nueva
 
