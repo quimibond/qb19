@@ -518,6 +518,52 @@ class TestQbCosteo(TransactionCase):
             self.Costo._conv_import_m_avg(
                 date(2026, 1, 1), date(2026, 8, 1), 7), 0.0)
 
+    def test_recargo_aduana_sigue_a_la_compra_no_al_producto(self):
+        """El mismo hilo se compra a veces importado y a veces a un
+        comerciante NACIONAL cuyo precio ya trae el arancel adentro (caso
+        HP65P35A22/1: FILAFIL MX a $65 ≈ IG TEXTILE US a $48.8 × 1.32).
+        `import_ids` dice qué productos PUEDEN llevar recargo; la COMPRA
+        usada decide si esta vez lo lleva — recargar la compra nacional lo
+        contaba dos veces."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        mx = self.env.ref('base.mx')
+        us = self.env.ref('base.us')
+        self.env.company.partner_id.country_id = mx
+        hilo = self.env['product.product'].create({
+            'name': 'HILO MIXTO TEST', 'is_storable': True,
+            'uom_id': uom_kg.id, 'purchase_ok': True,
+            'standard_price': 0.0})
+        prov_mx = self.env['res.partner'].create({
+            'name': 'COMERCIANTE MX', 'country_id': mx.id})
+        prov_us = self.env['res.partner'].create({
+            'name': 'PROVEEDOR US', 'country_id': us.id})
+        po_mx = self.env['purchase.order'].create({
+            'partner_id': prov_mx.id,
+            'order_line': [(0, 0, {
+                'product_id': hilo.id, 'product_qty': 1000.0,
+                'price_unit': 65.0})]})
+        po_mx.button_confirm()
+        # Última compra NACIONAL: el arancel ya viene en el precio → sin
+        # recargo aunque el producto esté en import_ids
+        self.assertAlmostEqual(
+            self.Costo._costo_de_compra(hilo, None, 0.32, {hilo.id}),
+            65.0, places=2)
+        # Llega una compra IMPORTADA más nueva: esa SÍ lleva el recargo
+        po_us = self.env['purchase.order'].create({
+            'partner_id': prov_us.id,
+            'order_line': [(0, 0, {
+                'product_id': hilo.id, 'product_qty': 1000.0,
+                'price_unit': 48.8})]})
+        po_us.button_confirm()
+        self.assertAlmostEqual(
+            self.Costo._costo_de_compra(hilo, None, 0.32, {hilo.id}),
+            48.8 * 1.32, places=2)
+        # Proveedor SIN país capturado: no se inventa importación
+        prov_us.country_id = False
+        self.assertAlmostEqual(
+            self.Costo._costo_de_compra(hilo, None, 0.32, {hilo.id}),
+            48.8, places=2)
+
     def test_nomina_diseno_se_mueve_a_operacion(self):
         """La nómina de DISEÑO cobra por cuentas de fábrica (bucket mod →
         pool fabril) pero desarrollar producto es gasto del período. Las
