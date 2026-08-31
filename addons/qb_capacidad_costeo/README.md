@@ -204,6 +204,23 @@ Mientras un proceso NO tenga workcenters (hoy: tintorería, acabado):
 - (opcional) su `mo_name_pattern` (ej. `TL/OP-ACA%`) para atribuir producción.
 Al darlo de alta como workcenter real, la vía nativa lo sustituye sola.
 
+### La capacidad capturada se valida contra sus turnos
+
+`capacidad_normal`, cuando está capturada, **gana** sobre el cálculo de
+turnos × throughput. Eso la vuelve un parámetro que duplica un dato vivo, y
+como tal el panel la contrasta: si el número capturado se aleja más de
+`capacidad_capturada_tol_pct` (10% por default) de lo que dan sus turnos por
+su velocidad nominal, avisa. Sin ese check, Acabado vivió con 915,733 m/mes
+mientras sus dos ramas daban 1.18M — nadie tenía cómo notarlo.
+
+Los números de hoy salen del formato de planta F-IT-P-P01-10-06 rev 02
+(abr-2026), no de estimaciones:
+
+| Centro | Capacidad | De dónde sale |
+|---|---:|---|
+| Acabado | 1,175,313 m/mes | UNITECH 29.08 m/min (−10%) + BRUCKNER 28.35 m/min (−15%) = 3,015.9 m/h × 389.7 h/mes (90 h/semana × 4.33). La ICOMATEX está en montaje. |
+| Tintorería | 216,089 kg/mes | 554.5 kg/h de las cuatro tinas, con el ciclo real de cada una ponderado por la mezcla de color de las OPs (2:20 h en naturales, 10:20 h en obscuros → 3.1 h efectivas). La HTJ-5 está en pruebas. |
+
 ## Cómo clasificar una cuenta nueva
 
 **Configuración → Clasificación de cuentas**: agregar fila con patrón (ej.
