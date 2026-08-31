@@ -3512,6 +3512,78 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('XT140TEST', estado)
         self.assertIn('+25%', estado)
 
+    def test_pesos_derivados_de_ops_reales(self):
+        """El kg/m de una tela en metros se puede MEDIR: la báscula pesa
+        cada rollo de tejido y ese peso entra como consumo de las OPs.
+        «Derivar de OPs» convierte consumo_kg ÷ metros_producidos en el
+        maestro de pesos con fuente op_consumo (medida — apaga la alerta
+        peso_estimado). Toma el componente kg DOMINANTE (la tela, no los
+        químicos de baño), propaga cadenas m→m (el caso X140: su OP
+        consume XJ140 en metros) y nunca pisa un peso manual/CVU."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        Prod = self.env['product.product']
+        tejido = Prod.create({
+            'name': 'TEJIDO PESO OPS', 'is_storable': True,
+            'uom_id': uom_kg.id})
+        quimico = Prod.create({
+            'name': 'QUIMICO BANO PESO OPS', 'is_storable': True,
+            'uom_id': uom_kg.id})
+        tela = Prod.create({
+            'name': 'TELA PESO OPS', 'default_code': 'ZPT140TST165',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        tela2 = Prod.create({
+            'name': 'TELA ACABADA PESO OPS', 'default_code': 'ZPT140TSF165',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        loc = self.env.ref('stock.stock_location_stock',
+                           raise_if_not_found=False) \
+            or self.env['stock.location'].search([], limit=1)
+        mo1 = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 60000.0,
+            'product_uom_id': uom_m.id})
+        moves = self.env['stock.move'].create([
+            {'name': 'tejido real', 'product_id': tejido.id,
+             'product_uom': uom_kg.id, 'quantity': 14400.0,
+             'location_id': loc.id, 'location_dest_id': loc.id,
+             'raw_material_production_id': mo1.id},
+            {'name': 'quimico de bano', 'product_id': quimico.id,
+             'product_uom': uom_kg.id, 'quantity': 3000.0,
+             'location_id': loc.id, 'location_dest_id': loc.id,
+             'raw_material_production_id': mo1.id}])
+        mo2 = self.env['mrp.production'].create({
+            'product_id': tela2.id, 'product_qty': 60000.0,
+            'product_uom_id': uom_m.id})
+        moves |= self.env['stock.move'].create({
+            'name': 'tela en metros', 'product_id': tela.id,
+            'product_uom': uom_m.id, 'quantity': 60000.0,
+            'location_id': loc.id, 'location_dest_id': loc.id,
+            'raw_material_production_id': mo2.id})
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done' WHERE id IN %s",
+            (tuple((mo1 | mo2).ids),))
+        self.env.cr.execute(
+            "UPDATE stock_move SET state = 'done' WHERE id IN %s",
+            (tuple(moves.ids),))
+        self.env.invalidate_all()
+        Peso = self.env['qb.producto.peso']
+        Peso.action_derivar_de_ops()
+        rec = Peso.search([('product_id', '=', tela.id)])
+        self.assertEqual(rec.source, 'op_consumo')
+        # Dominante: 14,400/60,000 = 0.24 — el químico (3,000 kg) NO suma
+        self.assertAlmostEqual(rec.kg_per_unit, 0.24, places=4)
+        # Cadena m→m: tela2 consume tela 1:1 en metros y hereda su kg/m
+        rec2 = Peso.search([('product_id', '=', tela2.id)])
+        self.assertEqual(rec2.source, 'op_consumo')
+        self.assertAlmostEqual(rec2.kg_per_unit, 0.24, places=4)
+        # Fuente MEDIDA: el motor no la marca peso_estimado
+        self.assertNotIn('op_consumo', Peso.PESO_SOURCES_ESTIMADAS)
+        self.assertEqual(Peso.resolve_kg_source(tela2), 'op_consumo')
+        # No-pisado: un peso manual es autoritativo y sobrevive re-corridas
+        rec.write({'source': 'manual', 'kg_per_unit': 0.5})
+        Peso.action_derivar_de_ops()
+        self.assertEqual(rec.kg_per_unit, 0.5)
+        self.assertEqual(rec.source, 'manual')
+
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la
         desviación motor vs teórico, y el generador corre sin error."""
