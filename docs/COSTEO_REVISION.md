@@ -481,3 +481,46 @@ vacía). Lo que el rendimiento vendible destapó, con julio 2026 como corte:
   Los cuatro se vendían "en equilibrio" y en realidad pagan la merma con el
   margen. WN075 solo, a 63 mil metros al mes, es la decisión de precio más
   cara de la lista.
+
+### Incidente del despliegue de v1.51: el recálculo leyó la capacidad vieja
+
+La migración escribió la capacidad de Acabado (915,733 → 1,175,313) y
+recalculó 2026 en la misma transacción. Los ocho períodos salieron con el
+denominador **viejo**, y el modo de falla fue el peor: silencioso. Los
+factores se veían normales —`m_denom_month` 915,733, utilización 98.8%— y
+solo comparándolos contra el centro se notaba que el número ya no
+correspondía a lo que decía la tabla.
+
+**Causa.** `qb.ociosidad` es un `_table_query`: lee `qb_costeo_centro` con
+SQL crudo. El ORM no tiene cómo saber que ese SELECT depende de un write
+pendiente sobre los centros, así que no hace flush y la vista devuelve el
+renglón anterior. Cualquier flujo que escriba un centro y recalcule sin
+cerrar la transacción cae en lo mismo.
+
+**Arreglo.** `_capacidad_normal_map` hace flush antes de leer la vista
+(v1.52), con su test de regresión; el recálculo se movió a la migración
+1.52. Producción quedó corregida a mano el mismo día, período por período.
+
+**Efecto real, ya con la capacidad correcta** (ene–ago 2026):
+
+| | Antes | Después |
+|---|---:|---:|
+| Denominador de metros | 915,733 | **1,175,313** |
+| Utilización de acabado | 98.6–100% | **77.0–80.0%** |
+| Factor de fabricación $/m | 2.00–2.09 | **1.57–1.64** |
+| Ociosidad de fabricación $/mes | 1.80–1.89M | **2.19–2.32M** |
+
+Los meses de enero a mayo dejaron de estar topados al 100%: ya no hay
+`capacidad_superada_m` en ningún período de 2026. El costo fijo por metro
+bajó ~22% y esos ~400 mil pesos al mes se movieron del producto al
+resultado del período, que es donde IAS 2 los quiere. El par no cambia:
+margen de productos − ociosidad = el mismo resultado.
+
+**Lo que el check nuevo dice hoy, y es cierto:** Acabado y Tintorería
+cuadran contra sus turnos (±0.01%), pero **TEJIDO y ENTRETELAS quedan en
+ámbar** porque nadie capturó su horario y su capacidad no tiene contra qué
+validarse. El caso de tejido vale una pregunta a planta: los 180,000
+kg/mes capturados, contra 37 máquinas a 11 kg/h, implican **102 h/semana
+por máquina** — mientras el calendario que traen sus workcenters en Odoo
+es «Jornada 24/7 3 Turnos» (168 h). Uno de los dos números describe la
+planta y el otro no.

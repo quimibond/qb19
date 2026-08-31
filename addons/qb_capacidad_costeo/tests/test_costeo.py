@@ -3909,3 +3909,34 @@ class TestQbCosteo(TransactionCase):
             self.assertAlmostEqual(derivada, esperado, delta=esperado * 0.01)
             self.assertAlmostEqual(horas / max(turnos[0].machine_count, 1),
                                    90.0 * weeks, places=2)
+
+    def test_capacidad_recien_escrita_llega_al_denominador(self):
+        """Escribir la capacidad de un centro y recalcular en la MISMA
+        transacción tiene que usar la capacidad nueva.
+
+        No lo hacía. `qb.ociosidad` es un `_table_query` y lee
+        `qb_costeo_centro` con SQL crudo: el ORM no sabe que ese SELECT
+        depende de un write pendiente. La migración 1.51 subió la capacidad
+        de Acabado a 1,175,313 y recalculó 2026 acto seguido; los ocho
+        períodos salieron con los 915,733 viejos y NADA avisó — los
+        factores se veían normales, solo estaban calculados contra un
+        número que la propia migración ya había reemplazado.
+        """
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB52', 'name': 'CENTRO FLUSH TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'es_denominador_m': True, 'capacidad_normal': 500000.0})
+        self.assertEqual(
+            self.Costo._capacidad_normal_map(centro).get(centro.id), 500000.0)
+        # El write se queda en el buffer del ORM; la vista lo tiene que ver
+        centro.capacidad_normal = 1175313.0
+        self.assertEqual(
+            self.Costo._capacidad_normal_map(centro).get(centro.id),
+            1175313.0,
+            'la vista de ociosidad leyó la capacidad vieja: el denominador '
+            'del costeo saldría con un número ya reemplazado')
+        # Y el denominador que arma el motor la usa
+        hoy = date.today().replace(day=1)
+        self.assertAlmostEqual(
+            self.Costo._denominador_capacidad(centro, hoy, hoy), 1175313.0,
+            places=2)
