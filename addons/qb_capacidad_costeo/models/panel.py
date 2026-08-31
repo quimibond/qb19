@@ -627,6 +627,41 @@ class QbCosteoPanel(models.TransientModel):
                     'las recetas kg→m con volumen (≥50,000 m/12m) están a '
                     '±5% del consumo real de las OPs'))
 
+        # 5.15 Producción arriba de la capacidad normal: el caso Acabado
+        # (952K m reales vs 915,733 capturados, una rama nueva sin
+        # reflejar). El modelo topaba la utilización en 100 y ponía el
+        # ocioso en cero — escondía el error en vez de señalarlo. Ahora el
+        # período usa la producción real como denominador (IAS 2) y este
+        # check exige actualizar la capacidad del centro.
+        ult_fact = env['qb.costo.factores'].search(
+            [], order='period DESC', limit=1)
+        if ult_fact and (ult_fact.capacidad_superada_m
+                         or ult_fact.capacidad_superada_kg):
+            lados = []
+            if ult_fact.capacidad_superada_m:
+                lados.append('METROS (%s m/mes producidos — la capacidad '
+                             'capturada de los centros es_denominador_m '
+                             'quedó abajo)'
+                             % '{:,.0f}'.format(ult_fact.m_produccion_month))
+            if ult_fact.capacidad_superada_kg:
+                lados.append('KG (%s kg/mes producidos)'
+                             % '{:,.0f}'.format(
+                                 ult_fact.kg_produccion_month))
+            checks.append((
+                BAD, 'Capacidad normal vs producción real',
+                'La producción del período %s SUPERA la capacidad normal '
+                'capturada en %s: hay máquinas/ramas sin reflejar. El '
+                'costeo ya usa la producción real como denominador (IAS 2) '
+                'para no sobre-absorber, pero la ociosidad de ese lado '
+                'sale en cero por construcción — actualiza la capacidad '
+                'del centro en Configuración → Centros de costo.'
+                % (ult_fact.period, ' y '.join(lados))))
+        elif ult_fact:
+            checks.append((
+                OK, 'Capacidad normal vs producción real',
+                'la producción del período cabe dentro de la capacidad '
+                'normal capturada en ambos lados (kg y m)'))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:

@@ -6,17 +6,21 @@
         <field name="name">qb.producto.rentabilidad.list</field>
         <field name="model">qb.producto.rentabilidad</field>
         <field name="arch" type="xml">
-            <list decoration-danger="margen_neto_pct &lt; 0"
-                  decoration-warning="margen_neto_pct &gt;= 0 and margen_neto_pct &lt; 5">
+            <list decoration-danger="margen_neto_real_pct &lt; 0"
+                  decoration-warning="margen_neto_real_pct &gt;= 0 and margen_neto_real_pct &lt; 5">
                 <field name="product_id"/>
                 <field name="revenue_12m" sum="Total"/>
                 <field name="qty_12m" sum="Total"/>
                 <field name="precio_prom"/>
+                <field name="costo_unit"/>
                 <field name="contrib_pct" optional="show"/>
                 <field name="margen_bruto_12m" optional="hide" sum="Total"/>
                 <field name="margen_bruto_pct" optional="show"/>
-                <field name="margen_neto_12m" sum="Total"/>
-                <field name="margen_neto_pct"/>
+                <field name="margen_neto_12m" optional="show" sum="Total"/>
+                <field name="margen_neto_pct" optional="show"/>
+                <field name="rendimiento_pct" optional="show"/>
+                <field name="margen_neto_real_12m" sum="Total"/>
+                <field name="margen_neto_real_pct"/>
                 <field name="n_clientes"/>
                 <field name="horas_cuello_12m" optional="hide" sum="Total"/>
                 <field name="contrib_por_hora" optional="show"/>
@@ -78,6 +82,8 @@
                             <field name="qty_12m"/>
                             <field name="precio_prom" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="costo_unit" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="n_clientes"/>
                             <field name="meses_activo"/>
                             <field name="ultima_venta"/>
@@ -92,6 +98,10 @@
                             <field name="margen_neto_12m" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="margen_neto_pct"/>
+                            <field name="rendimiento_pct"/>
+                            <field name="margen_neto_real_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="margen_neto_real_pct"/>
                         </group>
                     </group>
                     <group>
@@ -233,6 +243,7 @@
                 <field name="qty" sum="Total"/>
                 <field name="revenue" sum="Total"/>
                 <field name="precio_prom"/>
+                <field name="costo_unit"/>
                 <field name="margen_neto" sum="Total"/>
                 <field name="n_clientes"/>
             </list>

@@ -26,7 +26,11 @@ class QbOciosidad(models.Model):
              'ventana de suavizado, + renta contractual del centro.')
     capacity_month_units = fields.Float(string='Capacidad normal/mes', readonly=True)
     prod_month_units = fields.Float(string='Producción/mes (prom.)', readonly=True)
-    utilization_pct = fields.Float(string='Utilización %', readonly=True)
+    utilization_pct = fields.Float(
+        string='Utilización %', readonly=True,
+        help='Producción real ÷ capacidad normal. ARRIBA de 100 no es '
+             'eficiencia: es capacidad normal desactualizada (falta '
+             'capturar una máquina/rama) — actualízala en el centro.')
     idle_pct = fields.Float(string='Ociosidad %', readonly=True)
     idle_cost_month = fields.Float(
         string='Costo ocioso/mes', readonly=True,
@@ -153,8 +157,12 @@ class QbOciosidad(models.Model):
                 b.fixed_pool_month,
                 b.capacity_month_units,
                 b.prod_month_units,
+                -- SIN tope en 100: producción arriba de la capacidad normal
+                -- es capacidad DESACTUALIZADA (caso Acabado con una rama
+                -- sin capturar) y debe verse, no taparse. El costo ocioso
+                -- sí se queda en piso 0: la sobre-absorción no es ociosidad.
                 CASE WHEN b.capacity_month_units > 0
-                     THEN LEAST(100.0 * b.prod_month_units / b.capacity_month_units, 100.0)
+                     THEN 100.0 * b.prod_month_units / b.capacity_month_units
                      ELSE 0 END AS utilization_pct,
                 CASE WHEN b.capacity_month_units > 0
                      THEN GREATEST(100.0 - 100.0 * b.prod_month_units / b.capacity_month_units, 0)

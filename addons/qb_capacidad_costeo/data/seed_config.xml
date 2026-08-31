@@ -32,6 +32,37 @@
             <field name="value">1.5</field>
             <field name="descripcion">Techo del ajuste de MP. Ver mp_ajuste_min.</field>
         </record>
+        <!-- Rendimiento de calidad (memo 31-ago, bloque A). Los ids son de
+             la base de Toluca; editables desde Configuración → Parámetros. -->
+        <record id="calidad_locs_vendible" model="qb.costeo.factor.config">
+            <field name="key">calidad_locs_vendible</field>
+            <field name="value">0</field>
+            <field name="value_text">40</field>
+            <field name="descripcion">Ubicaciones de PRIMERA calidad (ids de stock.location, coma-separados). Default: 14 PRODUCTO TERMINADO PQ.</field>
+        </record>
+        <record id="calidad_locs_merma" model="qb.costeo.factor.config">
+            <field name="key">calidad_locs_merma</field>
+            <field name="value">0</field>
+            <field name="value_text">41,42,43</field>
+            <field name="descripcion">Ubicaciones de MERMA: 15 FE (sin canal de venta directo — se recupera resinándolo como entretela de confección), 16 SEGUNDAS, 17 DESPERDICIO.</field>
+        </record>
+        <record id="calidad_locs_origen" model="qb.costeo.factor.config">
+            <field name="key">calidad_locs_origen</field>
+            <field name="value">0</field>
+            <field name="value_text">15,36,246</field>
+            <field name="descripcion">Solo entradas DESDE estas ubicaciones cuentan al rendimiento (Virtual/Producción, 10 INSPECCIÓN, Liberación): los reingresos por cuarentena/reetiquetado ya se clasificaron antes y contarían doble (C6).</field>
+        </record>
+        <record id="calidad_picking_excluir" model="qb.costeo.factor.config">
+            <field name="key">calidad_picking_excluir</field>
+            <field name="value">0</field>
+            <field name="value_text">77,147</field>
+            <field name="descripcion">Tipos de operación excluidos del rendimiento: Conversión de unidades (TL/CVU) y Cambio de artículo (TL/CONV-ART) reetiquetan material ya clasificado (C2/C3).</field>
+        </record>
+        <record id="calidad_rendimiento_min_m" model="qb.costeo.factor.config">
+            <field name="key">rendimiento_min_m</field>
+            <field name="value">10000</field>
+            <field name="descripcion">Unidades clasificadas mínimas en la ventana para usar el rendimiento PROPIO del producto; abajo de esto se usa la tasa de planta (A4: pocos metros dan porcentajes sin sentido).</field>
+        </record>
         <record id="factor_rendimiento_min" model="qb.costeo.factor.config">
             <field name="key">rendimiento_min</field>
             <field name="value">2</field>
