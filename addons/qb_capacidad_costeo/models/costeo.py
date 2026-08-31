@@ -160,6 +160,38 @@ class QbCostoFactores(models.Model):
         string='Factor importación', digits=(16, 6),
         help='Pool ÷ base: cuánto se suma al costo de un importado por cada '
              'peso de valor de compra. 0.15 = 15% sobre el valor importado.')
+    nomina_a_operacion_month = fields.Float(
+        string='Nómina movida a operación/mes',
+        help='Nómina que cobra por cuentas de fábrica (501.06) pero cuyo '
+             'trabajo es gasto del período, detectada por la referencia de '
+             'la póliza (config «nomina_operacion_refs», hoy DISEÑO): '
+             'desarrollar producto no es costo de fabricar lo que ya se '
+             'vende. Se resta del pool fabril y se suma a operación — la '
+             'pagan TODOS los productos. La administración de la planta se '
+             'queda en fabril: administrar el sitio productivo sí es '
+             'overhead (IAS 2).')
+    inspeccion_pool_month = fields.Float(
+        string='Inspección de importados/mes',
+        help='La parte del centro Inspección y Empaque que trabaja para la '
+             'reventa importada (OPs TL/CONV de productos \' I\'). Se saca '
+             'del pool fabril — las telas la estaban pagando — y se cobra a '
+             'los importados por metro.')
+    inspeccion_share = fields.Float(
+        digits=(16, 4), string='Share headcount inspección',
+        help='Fracción de la plantilla fabril que trabaja en Inspección y '
+             'Empaque (headcount vivo de RH vía el mapa centro→'
+             'departamentos). Proxy de nómina: la 501.06 no distingue '
+             'departamentos.')
+    inspeccion_m_month = fields.Float(
+        string='Metros importados inspeccionados/mes',
+        help='Metros de producto \' I\' convertidos en OPs TL/CONV, '
+             'promedio mensual de la ventana fabril.')
+    factor_inspeccion_m = fields.Float(
+        string='Inspección $/m', digits=(16, 4),
+        help='Costo de inspección y reempaque por metro. Lo cargan los '
+             'importados como su capa de fabricación (no fabrican, pero sí '
+             'se inspeccionan y reempacan — «todo lo importado se '
+             'inspecciona»).')
     ventas_pool_month = fields.Float(string='Ventas/mes (promedio)')
     entretela_pool_month = fields.Float(string='Pool entretelas/mes')
     absorcion_bruta_month = fields.Float(
@@ -1004,6 +1036,39 @@ class QbCostoProducto(models.Model):
         m_real = self._production_month_avg(
             m_centros, date_from, date_to, restar_by_month=ajuste_m)
 
+        # Inspección y empaque de importados: TODO lo importado pasa por una
+        # OP TL/CONV, y la gente que la trabaja (centro INSP_EMPAQUE) cobra
+        # por la 501.06 — que entra completa al pool fabril que solo
+        # absorben los FABRICADOS. Las telas estaban pagando la inspección
+        # de la reventa. La tasa por metro sale del costo del centro (share
+        # de headcount sobre la MOD) entre TODOS los metros que atiende
+        # (lo producido + lo importado convertido); del pool fabril se resta
+        # solo la parte importada, que es la que ahora cobran los ' I'.
+        # Nómina que cobra por la 501.06 pero no fabrica: las pólizas de
+        # DISEÑO («QNAL TOLUCA, DISEÑO») son desarrollo de producto —
+        # gasto del período, no costo de fabricar lo que ya se vende. Se
+        # detectan por la referencia de la póliza y se mueven del pool
+        # fabril a operación. La administración de la PLANTA (misma
+        # cuenta) se queda en fabril: administrar el sitio productivo sí
+        # es overhead (IAS 2).
+        refs_op = [r.strip().upper() for r in Config.get_param_text(
+            'nomina_operacion_refs', 'DISEÑO').split(',') if r.strip()]
+        nomina_a_op = sum(
+            self._nomina_por_ref(r, fab_from, date_to, fab_meses)
+            for r in refs_op)
+        fab_pool = max(fab_pool - nomina_a_op, 0.0)
+        op_pool += nomina_a_op
+
+        insp_share = self._inspeccion_headcount_share()
+        mod_pool = self._smooth(self._pool_by_month(
+            ('mod',), fab_from, date_to), meses=fab_meses) - nomina_a_op
+        insp_m = self._conv_import_m_avg(fab_from, date_to, fab_meses)
+        insp_base_m = (m_denom or 0.0) + insp_m
+        factor_inspeccion_m = (mod_pool * insp_share / insp_base_m
+                               if insp_base_m else 0.0)
+        inspeccion_pool = factor_inspeccion_m * insp_m
+        fab_pool = max(fab_pool - inspeccion_pool, 0.0)
+
         # Importación: los gastos e impuestos de aduana se cargan al valor de
         # lo importado (el IGI se calcula sobre el valor en aduana; flete y
         # agente escalan con el valor embarcado). Antes caían en `no_costeo` y
@@ -1134,6 +1199,11 @@ class QbCostoProducto(models.Model):
             'importacion_base_month': importacion_base,
             'importacion_base_costeable': importacion_base_costeable,
             'factor_importacion': factor_importacion,
+            'nomina_a_operacion_month': nomina_a_op,
+            'inspeccion_pool_month': inspeccion_pool,
+            'inspeccion_share': insp_share,
+            'inspeccion_m_month': insp_m,
+            'factor_inspeccion_m': factor_inspeccion_m,
             'ventas_pool_month': ventas_pool,
             'entretela_pool_month': entretela_pool,
             'renta_contractual_pool': renta_contractual,
@@ -2345,8 +2415,72 @@ class QbCostoProducto(models.Model):
             return kg * f_kg + f_ent
         if bucket == 'entretela_carda':
             return m_per_kg * f_ent if is_kg else f_ent
-        # importado / subproducto / servicio: no cargan fabricación
+        if bucket == 'importado':
+            # No fabrican, pero TODO lo importado se inspecciona y reempaca
+            # (OPs TL/CONV): carga el centro de inspección por metro. Esa
+            # parte ya se restó del pool fabril de los fabricados.
+            f_insp = factores.factor_inspeccion_m
+            return m_per_kg * f_insp if is_kg else f_insp
+        # subproducto / servicio: no cargan fabricación
         return 0.0
+
+    @api.model
+    def _inspeccion_headcount_share(self):
+        """Fracción de la plantilla fabril que trabaja en Inspección y
+        Empaque, con el mapa centro→departamentos y el headcount vivo de RH.
+        Proxy de nómina: la 501.06 entra al pool completa y no distingue
+        departamentos."""
+        Centro = self.env['qb.costeo.centro']
+        insp = Centro.search([('code', '=', 'INSP_EMPAQUE')], limit=1)
+        fabriles = Centro.search([
+            ('nature', 'in', ('fabril_directo', 'fabril_indirecto'))])
+        depts_insp = insp.department_ids.ids
+        depts_fab = fabriles.mapped('department_ids').ids
+        if not depts_insp or not depts_fab:
+            return 0.0
+        Emp = self.env['hr.employee']
+        n_insp = Emp.search_count([('department_id', 'in', depts_insp)])
+        n_fab = Emp.search_count([('department_id', 'in', depts_fab)])
+        return n_insp / n_fab if n_fab else 0.0
+
+    @api.model
+    def _nomina_por_ref(self, texto, date_from, date_to, meses):
+        """Nómina del bucket MOD cuyas pólizas traen `texto` en la
+        referencia (p. ej. «QNAL TOLUCA, DISEÑO»): promedio mensual.
+        Las pólizas de nómina se postean por departamento y la referencia
+        es el único lugar donde el departamento queda escrito — el
+        concepto de la línea dice «Sueldos y salarios» en todas."""
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(aml.balance), 0)
+            FROM account_move_line aml
+            JOIN account_move am ON am.id = aml.move_id
+            JOIN (%s) m ON m.account_id = aml.account_id
+            WHERE m.bucket = 'mod'
+              AND am.state = 'posted'
+              AND aml.date >= %%s AND aml.date < %%s
+              AND aml.company_id = %%s
+              AND position(%%s in upper(coalesce(am.ref, ''))) > 0
+        """ % CUENTA_MAP_SQL, (date_from, date_to, self.env.company.id,
+                               (texto or '').upper()))
+        total = self.env.cr.fetchone()[0] or 0.0
+        return total / max(meses or 1, 1)
+
+    @api.model
+    def _conv_import_m_avg(self, date_from, date_to, meses):
+        """Metros de producto importado (' I') convertidos/inspeccionados
+        por mes: OPs TL/CONV terminadas en la ventana, entre sus meses."""
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(mp.product_qty), 0)
+            FROM mrp_production mp
+            JOIN product_product pp ON pp.id = mp.product_id
+            WHERE mp.state = 'done'
+              AND mp.name LIKE %s
+              AND pp.default_code LIKE %s
+              AND mp.date_finished >= %s
+              AND mp.date_finished < %s
+        """, ('TL/CONV%', '% I', date_from, date_to))
+        total = self.env.cr.fetchone()[0] or 0.0
+        return total / max(meses or 1, 1)
 
     @api.model
     def _hours_per_unit(self, centros, is_kg, kg, m_per_kg):
@@ -2936,8 +3070,8 @@ class QbCostoProducto(models.Model):
             'reparte híbrido: %.0f%% por PESO (tejido+tintorería: '
             '$%.2f/kg) y %.0f%% por LARGO (acabado: $%.2f/m). Este '
             'producto: %.4f kg × $%.2f + $%.2f = <b>$%.2f</b>. '
-            'Familia: %s (importados y subproductos no cargan '
-            'fabricación).</p>'
+            'Familia: %s (importados cargan solo inspección/reempaque '
+            'por metro; subproductos nada).</p>'
             % (q['fab'], f'{factores.fab_pool_month:,.0f}',
                factores.window_months, factores.period,
                ws * 100, factores.factor_fab_kg,
