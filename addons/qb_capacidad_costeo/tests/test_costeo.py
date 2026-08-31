@@ -3512,6 +3512,169 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('XT140TEST', estado)
         self.assertIn('+25%', estado)
 
+    def test_rendimiento_vendible_desde_lineas_de_almacen(self):
+        """Memo 31-ago, bloque A: el costo era por metro PRODUCIDO y la
+        merma no existía en el modelo. El rendimiento se mide de las
+        LÍNEAS de almacén (C1), FE cuenta como merma (decisión 31-ago:
+        no hay canal directo, se recupera resinado), los tipos CVU y
+        cambio de artículo se excluyen (C2/C3), los reingresos no cuentan
+        (C6) y abajo del umbral manda la tasa de planta (A4)."""
+        Loc = self.env['stock.location']
+        base = self.env.ref('stock.stock_location_stock',
+                            raise_if_not_found=False) \
+            or Loc.search([('usage', '=', 'internal')], limit=1)
+        origen = Loc.create({'name': 'TESTCAL ORIGEN', 'usage': 'internal',
+                             'location_id': base.id})
+        reingreso = Loc.create({'name': 'TESTCAL REINGRESO',
+                                'usage': 'internal', 'location_id': base.id})
+        vend = Loc.create({'name': 'TESTCAL PQ', 'usage': 'internal',
+                           'location_id': base.id})
+        fe = Loc.create({'name': 'TESTCAL FE', 'usage': 'internal',
+                         'location_id': base.id})
+        Config = self.env['qb.costeo.factor.config']
+        for key, vt in (('calidad_locs_vendible', str(vend.id)),
+                        ('calidad_locs_merma', str(fe.id)),
+                        ('calidad_locs_origen', str(origen.id))):
+            rec = Config.search([('key', '=', key)], limit=1)
+            if rec:
+                rec.write({'value_text': vt, 'active': True})
+            else:
+                Config.create({'key': key, 'value': 0, 'value_text': vt})
+        rec_min = Config.search([('key', '=', 'rendimiento_min_m')], limit=1)
+        if rec_min:
+            rec_min.write({'value': 1000.0})
+        else:
+            Config.create({'key': 'rendimiento_min_m', 'value': 1000.0})
+        uom_m = self.env.ref('uom.product_uom_meter')
+        grande = self.env['product.product'].create({
+            'name': 'TELA RENDIMIENTO GRANDE', 'is_storable': True,
+            'uom_id': uom_m.id})
+        chica = self.env['product.product'].create({
+            'name': 'TELA RENDIMIENTO CHICA', 'is_storable': True,
+            'uom_id': uom_m.id})
+        excl_ids = [int(x) for x in Config.get_param_text(
+            'calidad_picking_excluir', '77,147').split(',') if x.strip()]
+        Move = self.env['stock.move']
+        datos = [
+            (grande, origen, vend, 18000.0, False),
+            (grande, origen, fe, 2000.0, False),      # 10% de merma
+            (chica, origen, vend, 300.0, False),
+            (chica, origen, fe, 200.0, False),        # chica: < umbral
+            # C2/C3: un reetiquetado gigante por CVU no infla el rendimiento
+            (grande, origen, vend, 99999.0, excl_ids[0] if excl_ids else 0),
+            # C6: un reingreso (origen no productivo) no cuenta
+            (grande, reingreso, fe, 5000.0, False),
+        ]
+        moves = Move.browse()
+        for prod, src, dst, qty, ptype in datos:
+            vals = {'name': 'testcal', 'product_id': prod.id,
+                    'product_uom': uom_m.id, 'quantity': qty,
+                    'location_id': src.id, 'location_dest_id': dst.id}
+            if ptype:
+                vals['picking_type_id'] = ptype
+            moves |= Move.create(vals)
+        hace_20d = datetime.now() - relativedelta(days=20)
+        self.env.cr.execute(
+            "UPDATE stock_move SET state = 'done', date = %s "
+            "WHERE id IN %s", (hace_20d, tuple(moves.ids)))
+        self.env.cr.execute(
+            "UPDATE stock_move_line SET state = 'done', date = %s "
+            "WHERE move_id IN %s", (hace_20d, tuple(moves.ids)))
+        self.env.invalidate_all()
+        period = date.today().replace(day=1)
+        mapa, planta = self.Costo._rendimiento_map(period)
+        rend_g, fuente_g = mapa[grande.id]
+        # 18,000 vendibles de 20,000 clasificados = 90% — ni el CVU de
+        # 99,999 m ni el reingreso de 5,000 lo movieron
+        self.assertAlmostEqual(rend_g, 0.90, places=4)
+        self.assertEqual(fuente_g, 'producto')
+        # La chica (500 m < umbral 1,000) hereda la tasa de planta
+        rend_c, fuente_c = mapa[chica.id]
+        self.assertEqual(fuente_c, 'planta')
+        self.assertAlmostEqual(rend_c, planta, places=6)
+        self.assertAlmostEqual(planta, 18300.0 / 20500.0, places=4)
+        # A7: la vista de rentabilidad expone el margen real y el semáforo
+        # se calcula sobre él sin reventar
+        rows = self.env['qb.producto.rentabilidad'].search([], limit=20)
+        rows.read(['margen_neto_real_12m', 'margen_neto_real_pct',
+                   'rendimiento_pct'])
+        for r in rows:
+            self.assertIn(r.semaforo, ('rojo', 'ambar', 'verde'))
+
+    def test_produccion_arriba_de_capacidad_normal_se_senala(self):
+        """Caso Acabado: la producción real (952K m) superaba la capacidad
+        capturada (915,733 — una rama nueva sin reflejar) y el modelo lo
+        TAPABA: utilización al 100, ocioso en cero, sobre-absorción muda.
+        Ahora: (1) el período usa la producción real como denominador
+        (IAS 2, producción anormalmente alta), (2) el flag queda en los
+        factores, (3) el panel lo marca como error de configuración y
+        (4) la vista de ociosidad muestra la utilización real >100."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB5U', 'name': 'CENTRO CAPACIDAD SUPERADA TEST',
+            'driver_principal': 'largo', 'es_denominador_m': True,
+            'capacidad_normal': 50.0, 'mo_name_pattern': 'TB5U%'})
+        tela = self.env['product.product'].create({
+            'name': 'TELA CAPACIDAD TEST', 'is_storable': True,
+            'uom_id': uom_m.id})
+        mo = self.env['mrp.production'].create({
+            'name': 'TB5U/TEST1', 'product_id': tela.id,
+            'product_qty': 900.0, 'product_uom_id': uom_m.id})
+        hace_20d = datetime.now() - relativedelta(days=20)
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done', date_finished = %s "
+            "WHERE id = %s", (hace_20d, mo.id))
+        self.env.invalidate_all()
+        Config = self.env['qb.costeo.factor.config']
+        ov = Config.search([('key', '=', 'denominador_m_override')], limit=1)
+        if ov:
+            ov.write({'value': 10.0, 'active': True})
+        else:
+            Config.create({'key': 'denominador_m_override', 'value': 10.0})
+        period = date.today().replace(day=1)
+        self.Costo.action_recompute_period(period)
+        fact = self.env['qb.costo.factores'].search(
+            [('period', '=', period)], limit=1)
+        self.assertTrue(fact.capacidad_superada_m)
+        # El denominador se ajustó a la producción real: sin sobre-absorción
+        self.assertAlmostEqual(
+            fact.m_denom_month, fact.m_produccion_month, places=2)
+        self.assertLessEqual(fact.utilizacion_m_pct, 100.0001)
+        # El panel lo marca como configuración por corregir, no lo esconde
+        panel = self.env['qb.costeo.panel'].create({})
+        estado = panel._build_estado()
+        self.assertIn('Capacidad normal vs producción real', estado)
+        self.assertIn('SUPERA', estado)
+        # Y la vista de ociosidad enseña la utilización real, sin tope
+        fila = self.env['qb.ociosidad'].search(
+            [('centro_id', '=', centro.id)], limit=1)
+        self.assertGreater(fila.utilization_pct, 100.0)
+        self.assertEqual(fila.idle_cost_month, 0.0)
+
+    def test_analisis_de_productos_trae_costo_unitario(self):
+        """El análisis de productos mostraba precio y márgenes pero no el
+        COSTO unitario — el número que faltaba para leer de un vistazo
+        contra qué compite el precio. En rentabilidad (12m) y en el
+        programa mensual, costo_unit = variable + fabricación + operación
+        por unidad, y cuadra por construcción con el margen: precio −
+        costo = margen neto unitario."""
+        for modelo, qty_f, precio_f, margen_f in (
+                ('qb.producto.rentabilidad', 'qty_12m', 'precio_prom',
+                 'margen_neto_12m'),
+                ('qb.producto.mensual', 'qty', 'precio_prom',
+                 'margen_neto')):
+            rows = self.env[modelo].search([])
+            rows.read([qty_f, precio_f, 'costo_unit', margen_f])
+            for r in rows:
+                qty = r[qty_f]
+                if qty <= 0:
+                    continue
+                self.assertAlmostEqual(
+                    r['costo_unit'],
+                    r[precio_f] - r[margen_f] / qty, places=2,
+                    msg='%s: costo_unit no cuadra con precio - margen/qty'
+                        % modelo)
+
     def test_pesos_derivados_de_ops_reales(self):
         """El kg/m de una tela en metros se puede MEDIR: la báscula pesa
         cada rollo de tejido y ese peso entra como consumo de las OPs.

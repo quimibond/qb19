@@ -271,6 +271,17 @@ class QbCostoFactores(models.Model):
              'no sirve para comparar contra otro mes.')
     confiabilidad_detalle = fields.Text(
         string='Por qué', help='Qué se midió y en cuánto queda inflado.')
+    capacidad_superada_kg = fields.Boolean(
+        string='Producción kg > capacidad normal',
+        help='La producción real del período superó la capacidad normal '
+             'capturada: la capacidad de los centros kg está '
+             'DESACTUALIZADA. El período usa la producción real como '
+             'denominador (IAS 2, producción anormalmente alta) y el '
+             'panel lo alerta.')
+    capacidad_superada_m = fields.Boolean(
+        string='Producción m > capacidad normal',
+        help='Igual que el flag kg, para el lado de metros (caso Acabado '
+             'con una rama sin capturar).')
     fab_ocioso_month = fields.Float(
         string='Fabricación no absorbida/mes',
         help='La parte del pool fijo que la producción real no alcanza a '
@@ -453,6 +464,32 @@ class QbCostoProducto(models.Model):
         help='Variable + fabricación absorbida: lo que cuesta FABRICAR la '
              'unidad. Base del margen bruto.')
     op_unit = fields.Float(string='Operación $/u', digits=(16, 4))
+    rendimiento = fields.Float(
+        digits=(6, 4), string='Rendimiento vendible',
+        help='Fracción de lo clasificado en la ventana que salió PRIMERA '
+             'calidad (líneas de almacén: PT PQ ÷ PQ+FE+segundas+'
+             'desperdicio; sin CVU ni cambio de artículo; solo entradas '
+             'desde producción/inspección). El FE cuenta como merma: no '
+             'tiene canal de venta directo — se recupera resinándolo como '
+             'entretela de confección. 1 = sin merma.')
+    rendimiento_fuente = fields.Char(
+        string='Fuente del rendimiento',
+        help='producto (clasificó al menos el umbral de metros), planta '
+             '(abajo del umbral o sin clasificación propia) o no_aplica '
+             '(importados, servicio, subproducto).')
+    costo_vendible = fields.Float(
+        digits=(16, 4), string='Costo vendible $/u',
+        help='Costo de la unidad VENDIBLE: producción ÷ rendimiento + su '
+             'operación. El costo absorbido clásico (por unidad producida) '
+             'se queda intacto para conciliar contra el mayor — pero para '
+             'decidir precios manda ESTE.')
+    margen_real_pct = fields.Float(
+        string='Margen real %',
+        help='Precio − costo vendible, sobre el precio: lo que queda '
+             'después de que el metro de primera pagó también la merma. '
+             'El semáforo de rentabilidad usa este margen.')
+    margen_real_total = fields.Float(
+        string='Margen real $ (período)', digits=(16, 2))
     costo_absorbido = fields.Float(
         string='Costo absorbido $/u', digits=(16, 4),
         help='Producción + operación (admin y ventas como % del precio): el '
@@ -1036,6 +1073,21 @@ class QbCostoProducto(models.Model):
         m_real = self._production_month_avg(
             m_centros, date_from, date_to, restar_by_month=ajuste_m)
 
+        # Producción ARRIBA de la capacidad normal = capacidad
+        # desactualizada (caso Acabado: ~952K m reales contra 915,733
+        # capturados, con una rama nueva sin reflejar). Antes el modelo lo
+        # topaba en silencio — utilización al 100% y ocioso en cero — y la
+        # sobre-absorción quedaba muda. IAS 2 manda usar la producción
+        # real como denominador en períodos de producción anormalmente
+        # alta (para no valuar el inventario arriba del costo); el flag
+        # queda guardado y el panel lo SEÑALA en vez de esconderlo.
+        capacidad_superada_kg = bool(kg_denom) and kg_real > kg_denom
+        capacidad_superada_m = bool(m_denom) and m_real > m_denom
+        if capacidad_superada_kg:
+            kg_denom = kg_real
+        if capacidad_superada_m:
+            m_denom = m_real
+
         # Inspección y empaque de importados: TODO lo importado pasa por una
         # OP TL/CONV, y la gente que la trabaja (centro INSP_EMPAQUE) cobra
         # por la 501.06 — que entra completa al pool fabril que solo
@@ -1217,6 +1269,8 @@ class QbCostoProducto(models.Model):
             'renta_gl_sustituida': renta_gl,
             'kg_denom_month': kg_denom,
             'm_denom_month': m_denom,
+            'capacidad_superada_kg': capacidad_superada_kg,
+            'capacidad_superada_m': capacidad_superada_m,
             'kg_produccion_month': kg_real,
             'm_produccion_month': m_real,
             'utilizacion_kg_pct': 100.0 * util_kg,
@@ -2050,6 +2104,80 @@ class QbCostoProducto(models.Model):
     # Recompute
     # ------------------------------------------------------------------
     @api.model
+    @api.model
+    def _rendimiento_map(self, period, window_months=12):
+        """Rendimiento vendible por producto: {id: (fracción, fuente)}.
+
+        Memo 31-ago (bloque A): la merma no existía en el modelo — el
+        costo era por metro PRODUCIDO, no por metro VENDIBLE. Reglas:
+
+        - C1: se lee stock_move_line, nunca stock_move (el move apunta al
+          padre Toluca/Stock y 8.29M de metros quedaban sin clasificar).
+        - Vendible = lo que entra a PT PQ. Merma = FE + segundas +
+          desperdicio. FE cuenta como MERMA: no tiene canal de venta
+          directo — se recupera resinándolo como entretela de confección
+          (decisión de dirección, 31-ago-2026).
+        - C2/C3: se excluyen los tipos de operación de Conversión de
+          unidades y Cambio de artículo (reetiquetan material ya
+          clasificado; entrarían como primera por default).
+        - C6: solo entradas DESDE producción/inspección/liberación — los
+          reingresos (cuarentena, reetiquetado) ya se clasificaron antes
+          y contarían doble.
+        - A4/A5: ventana de 12 meses; por producto si clasificó al menos
+          `rendimiento_min_m` unidades; abajo del umbral, tasa de PLANTA
+          (los pocos metros dan porcentajes sin sentido: caso
+          WD038Q46JNG163 con 92.8 por ciento de FE en un movimiento).
+
+        Las ubicaciones y tipos excluidos viven en configuración
+        (calidad_locs_*) para no amarrar ids de la base en el código.
+        """
+        Config = self.env['qb.costeo.factor.config']
+
+        def _ids(key, default):
+            crudo = Config.get_param_text(key, default) or ''
+            return [int(x) for x in crudo.replace(' ', '').split(',') if x]
+
+        vendible = _ids('calidad_locs_vendible', '40')
+        merma = _ids('calidad_locs_merma', '41,42,43')
+        origen = _ids('calidad_locs_origen', '15,36,246')
+        excluir = _ids('calidad_picking_excluir', '77,147') or [0]
+        min_qty = Config.get_param('rendimiento_min_m', 10000.0)
+        if not (vendible and merma and origen):
+            return {}, 1.0
+        date_to = period + relativedelta(months=1)
+        date_from = date_to - relativedelta(months=window_months)
+        self.env.cr.execute("""
+            SELECT sml.product_id,
+                   SUM(CASE WHEN sml.location_dest_id IN %s
+                            THEN sml.quantity ELSE 0 END) AS vend,
+                   SUM(sml.quantity) AS total
+              FROM stock_move_line sml
+              JOIN stock_move sm ON sm.id = sml.move_id
+             WHERE sml.state = 'done'
+               AND sml.date >= %s AND sml.date < %s
+               AND sml.location_dest_id IN %s
+               AND sml.location_id IN %s
+               AND (sm.picking_type_id IS NULL
+                    OR sm.picking_type_id NOT IN %s)
+               AND sm.company_id = %s
+             GROUP BY sml.product_id
+        """, (tuple(vendible), date_from, date_to,
+              tuple(vendible + merma), tuple(origen), tuple(excluir),
+              int(self.env.company.id)))
+        mapa, chicos, tot_v, tot_t = {}, [], 0.0, 0.0
+        for pid, vend, total in self.env.cr.fetchall():
+            vend, total = vend or 0.0, total or 0.0
+            tot_v += vend
+            tot_t += total
+            if total >= min_qty:
+                mapa[pid] = (vend / total if total else 1.0, 'producto')
+            elif total > 0:
+                chicos.append(pid)
+        planta = tot_v / tot_t if tot_t else 1.0
+        for pid in chicos:
+            mapa[pid] = (planta, 'planta')
+        return mapa, planta
+
     def action_recompute_period(self, period=None):
         """Recalcula factores + costo por producto para un período (mes).
 
@@ -2097,6 +2225,8 @@ class QbCostoProducto(models.Model):
         # Las cantidades de la ventana las comparten los dos factores: una
         # sola query en vez de dos idénticas por recálculo.
         qty_ventana = self._sales_qty_by_month(win_from, win_to)
+        ctx['rendimiento'], ctx['rendimiento_planta'] = \
+            self._rendimiento_map(period, window)
         mp_gl, mp_modelada, mp_ajuste = self._mp_ajuste(
             win_from, win_to, ctx, qty_by_month=qty_ventana)
         factores.write({'mp_gl_month': mp_gl,
@@ -2269,6 +2399,28 @@ class QbCostoProducto(models.Model):
         bruto = precio - produccion
         hours_per_unit = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
 
+        # Rendimiento de calidad (memo 31-ago, bloque A): lo de arriba es
+        # el costo del metro PRODUCIDO; el metro VENDIBLE paga además la
+        # fracción que salió FE/segunda/desperdicio. Solo fabricación
+        # propia — importados/servicio/subproducto no tienen merma de
+        # proceso que cargar.
+        rend, rend_fuente = 1.0, 'no_aplica'
+        if bucket in ('tela', 'entretela_tejida', 'entretela_carda'):
+            dato = ((ctx or {}).get('rendimiento') or {}).get(product.id)
+            if dato:
+                rend, rend_fuente = dato
+            else:
+                rend = (ctx or {}).get('rendimiento_planta') or 1.0
+                rend_fuente = 'planta'
+            # Piso de sanidad: un rendimiento diminuto (dato roto) no debe
+            # multiplicar el costo x20 en silencio.
+            rend = min(max(rend or 1.0, 0.05), 1.0)
+        produccion_vend = produccion / rend if rend else produccion
+        op_vend = (factores.op_rate * produccion_vend if factores.op_rate
+                   else op)
+        costo_vendible = produccion_vend + op_vend
+        margen_real_unit = precio - costo_vendible
+
         peso_relevante = not is_kg and bucket in (
             'tela', 'entretela_tejida', 'entretela_carda')
         if qty and precio and precio < variable:
@@ -2311,6 +2463,12 @@ class QbCostoProducto(models.Model):
             'costo_produccion': produccion,
             'op_unit': op,
             'costo_absorbido': absorbido,
+            'rendimiento': rend,
+            'rendimiento_fuente': rend_fuente,
+            'costo_vendible': costo_vendible,
+            'margen_real_pct': (100.0 * margen_real_unit / precio
+                                if precio else 0.0),
+            'margen_real_total': margen_real_unit * qty_efectiva,
             'mp_total': mp * qty_efectiva,
             'importacion_total': importacion * qty_efectiva,
             'energia_total': energia * qty_efectiva,

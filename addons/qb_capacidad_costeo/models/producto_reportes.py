@@ -91,6 +91,7 @@ _BASE_SQL = """
         SELECT q.partner_id, q.product_id, q.mes, q.qty, q.company_id,
                q.ultima, q.line_id, r.rev,
                cp.costo_variable, cp.fab_unit,
+               COALESCE(NULLIF(cp.rendimiento, 0), 1) AS rendimiento,
                COALESCE(f.op_pct, 0) AS op_pct,
                CASE WHEN cp.contrib_hora_maquina > 0
                     THEN cp.margen_contribucion / cp.contrib_hora_maquina
@@ -121,6 +122,12 @@ class QbProductoRentabilidad(models.Model):
         string='Precio prom $/u', readonly=True,
         help='Ventas ÷ volumen: el precio realmente cobrado, todas las '
              'facturas y clientes.')
+    costo_unit = fields.Float(
+        string='Costo $/u', readonly=True,
+        help='Costo completo promedio por unidad en la ventana: variable + '
+             'fabricación + operación (op = porcentaje del período aplicado '
+             'al precio real de cada mes). Comparable directo contra el '
+             'precio promedio: la resta es el margen neto por unidad.')
     contrib_12m = fields.Float(string='Contribución 12m (MXN)', readonly=True)
     contrib_pct = fields.Float(string='Contribución %', readonly=True)
     margen_bruto_12m = fields.Float(string='Margen bruto 12m (MXN)',
@@ -131,6 +138,17 @@ class QbProductoRentabilidad(models.Model):
         help='Bruto − operación (op del período × facturado). Lo que el '
              'producto deja después de TODOS los costos asignables.')
     margen_neto_pct = fields.Float(string='Margen neto %', readonly=True)
+    margen_neto_real_12m = fields.Float(
+        string='Margen real 12m (MXN)', readonly=True,
+        help='Margen neto con el costo GROSS-UP por rendimiento: el metro '
+             'de primera paga también la fracción que salió FE/segunda/'
+             'desperdicio. El que manda para decidir precios (A7).')
+    margen_neto_real_pct = fields.Float(
+        string='Margen real %', readonly=True)
+    rendimiento_pct = fields.Float(
+        string='Rendimiento %', readonly=True,
+        help='Promedio ponderado por volumen del rendimiento vendible de '
+             'los meses de la ventana. 100 = sin merma clasificada.')
     costo_cobertura_pct = fields.Float(
         string='Cobertura de costo %', readonly=True,
         help='Parte de las ventas cuyo mes SÍ tenía costo calculado. '
@@ -157,34 +175,44 @@ class QbProductoRentabilidad(models.Model):
 
     _SEM = {'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢'}
 
-    @api.depends('margen_neto_pct', 'margen_neto_12m', 'precio_prom',
-                 'contrib_pct')
+    @api.depends('margen_neto_real_pct', 'margen_neto_real_12m',
+                 'margen_neto_pct', 'precio_prom', 'contrib_pct',
+                 'rendimiento_pct')
     def _compute_semaforo(self):
+        # A7 (memo 31-ago): el semáforo usa el margen REAL — con la merma
+        # pagada. El caso WC090: verde con "10.3% neto" que con su 10.5%
+        # de no conforme era cero o negativo, y se estaba usando para
+        # decidir precios.
         for rec in self:
-            pct = rec.margen_neto_pct
+            pct = rec.margen_neto_real_pct
+            merma_nota = ''
+            if rec.rendimiento_pct and rec.rendimiento_pct < 99.5:
+                merma_nota = (' (ya pagada la merma: rendimiento '
+                              '{r:.1f}%)'.format(r=rec.rendimiento_pct))
             if pct < 0:
                 rec.semaforo = 'rojo'
                 rec.veredicto = (
                     'A {precio} por unidad promedio, pierde ${p:.2f} de '
                     'cada $100 vendidos ({neto} en 12 meses) después de '
-                    'todos los costos. Contribución {c:.0f}%: el precio no '
-                    'cubre lo que absorbe.'.format(
+                    'todos los costos{m}. Contribución {c:.0f}%: el precio '
+                    'no cubre lo que absorbe.'.format(
                         precio=money(rec.precio_prom, 2), p=-pct,
-                        neto=money(rec.margen_neto_12m),
-                        c=rec.contrib_pct))
+                        neto=money(rec.margen_neto_real_12m),
+                        m=merma_nota, c=rec.contrib_pct))
             elif pct < 5:
                 rec.semaforo = 'ambar'
                 rec.veredicto = (
-                    'Deja {p:.1f}% neto a {precio} promedio — al filo: una '
-                    'subida de hilo lo manda a rojo.'.format(
-                        p=pct, precio=money(rec.precio_prom, 2)))
+                    'Deja {p:.1f}% neto real a {precio} promedio{m} — al '
+                    'filo: una subida de hilo lo manda a rojo.'.format(
+                        p=pct, precio=money(rec.precio_prom, 2),
+                        m=merma_nota))
             else:
                 rec.semaforo = 'verde'
                 rec.veredicto = (
-                    'Deja {p:.1f}% neto ({neto} en 12 meses) a {precio} '
-                    'promedio.'.format(
-                        p=pct, neto=money(rec.margen_neto_12m),
-                        precio=money(rec.precio_prom, 2)))
+                    'Deja {p:.1f}% neto real ({neto} en 12 meses) a '
+                    '{precio} promedio{m}.'.format(
+                        p=pct, neto=money(rec.margen_neto_real_12m),
+                        precio=money(rec.precio_prom, 2), m=merma_nota))
 
     clientes_html = fields.Html(
         compute='_compute_clientes_html', sanitize=False,
@@ -396,6 +424,11 @@ class QbProductoRentabilidad(models.Model):
                 SUM(j.qty) AS qty_12m,
                 CASE WHEN SUM(j.qty) > 0 THEN SUM(j.rev) / SUM(j.qty)
                      ELSE 0 END AS precio_prom,
+                CASE WHEN SUM(j.qty) > 0 THEN
+                    SUM(j.qty * (COALESCE(j.costo_variable, 0)
+                                 + COALESCE(j.fab_unit, 0))
+                        + j.rev * j.op_pct) / SUM(j.qty)
+                     ELSE 0 END AS costo_unit,
                 SUM(j.rev - j.qty * COALESCE(j.costo_variable, 0))
                     AS contrib_12m,
                 CASE WHEN SUM(j.rev) > 0
@@ -417,6 +450,19 @@ class QbProductoRentabilidad(models.Model):
                                       - j.qty * (COALESCE(j.costo_variable, 0)
                                                  + COALESCE(j.fab_unit, 0)))
                           / SUM(j.rev) ELSE 0 END AS margen_neto_pct,
+                SUM(j.rev * (1 - j.op_pct)
+                    - j.qty * (COALESCE(j.costo_variable, 0)
+                               + COALESCE(j.fab_unit, 0)) / j.rendimiento)
+                    AS margen_neto_real_12m,
+                CASE WHEN SUM(j.rev) > 0
+                     THEN 100.0 * SUM(j.rev * (1 - j.op_pct)
+                                      - j.qty * (COALESCE(j.costo_variable, 0)
+                                                 + COALESCE(j.fab_unit, 0))
+                                        / j.rendimiento)
+                          / SUM(j.rev) ELSE 0 END AS margen_neto_real_pct,
+                CASE WHEN SUM(j.qty) > 0
+                     THEN 100.0 * SUM(j.qty * j.rendimiento) / SUM(j.qty)
+                     ELSE 0 END AS rendimiento_pct,
                 CASE WHEN SUM(j.rev) > 0
                      THEN 100.0 * SUM(CASE WHEN j.costo_variable IS NOT NULL
                                            THEN j.rev ELSE 0 END) / SUM(j.rev)
@@ -522,6 +568,12 @@ class QbProductoMensual(models.Model):
     qty = fields.Float(string='Volumen', readonly=True)
     revenue = fields.Float(string='Ventas (MXN)', readonly=True)
     precio_prom = fields.Float(string='Precio prom $/u', readonly=True)
+    costo_unit = fields.Float(
+        string='Costo $/u', readonly=True,
+        help='Costo completo por unidad del mes: variable + fabricación + '
+             'operación. Contra el precio promedio da el margen neto '
+             'unitario — y mes a mes muestra si lo que merma el resultado '
+             'es el costo subiendo o el precio bajando.')
     margen_neto = fields.Float(string='Margen neto (MXN)', readonly=True)
     n_clientes = fields.Integer(string='Clientes', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
@@ -537,6 +589,11 @@ class QbProductoMensual(models.Model):
                 SUM(j.rev) AS revenue,
                 CASE WHEN SUM(j.qty) > 0 THEN SUM(j.rev) / SUM(j.qty)
                      ELSE 0 END AS precio_prom,
+                CASE WHEN SUM(j.qty) > 0 THEN
+                    SUM(j.qty * (COALESCE(j.costo_variable, 0)
+                                 + COALESCE(j.fab_unit, 0))
+                        + j.rev * j.op_pct) / SUM(j.qty)
+                     ELSE 0 END AS costo_unit,
                 SUM(j.rev * (1 - j.op_pct)
                     - j.qty * (COALESCE(j.costo_variable, 0)
                                + COALESCE(j.fab_unit, 0))) AS margen_neto,
