@@ -189,7 +189,7 @@
 
         <!-- ============ Clasificación de cuentas ============
              El patrón más LARGO gana cuando varios matchean, así que
-             504.01.0001 (energía) le gana a 504.01% (overhead). -->
+             504.01.0002 (energía) le gana a 504.01% (overhead). -->
         <record id="cc_ventas" model="qb.costeo.cuenta.class">
             <field name="code_pattern">401%</field>
             <field name="bucket">ventas</field>
@@ -201,12 +201,15 @@
             <field name="notes">MOD. La nómina por centro se separa vía departamentos (RH); el GL entra completo al pool de fabricación.</field>
         </record>
         <record id="cc_energia_luz" model="qb.costeo.cuenta.class">
-            <field name="code_pattern">504.01.0001%</field>
+            <field name="code_pattern">504.01.0002%</field>
             <field name="bucket">energia</field>
             <field name="es_variable" eval="True"/>
             <field name="centro_id" ref="centro_tejido"/>
             <field name="driver">peso</field>
-            <field name="notes">Energéticos (electricidad) → Tejido.</field>
+            <field name="notes">ENERGETICOS (electricidad) → Tejido. OJO: la 504.01.0001
+                es SERVICIOS ADMINISTRATIVOS (fija, esporádica) — estuvo cruzada
+                con esta hasta ago-2026 y el pool variable traía la cuenta
+                equivocada.</field>
         </record>
         <record id="cc_energia_gas" model="qb.costeo.cuenta.class">
             <field name="code_pattern">504.01.0003%</field>
