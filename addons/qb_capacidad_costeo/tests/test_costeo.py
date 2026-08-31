@@ -3512,6 +3512,30 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('XT140TEST', estado)
         self.assertIn('+25%', estado)
 
+    def test_analisis_de_productos_trae_costo_unitario(self):
+        """El análisis de productos mostraba precio y márgenes pero no el
+        COSTO unitario — el número que faltaba para leer de un vistazo
+        contra qué compite el precio. En rentabilidad (12m) y en el
+        programa mensual, costo_unit = variable + fabricación + operación
+        por unidad, y cuadra por construcción con el margen: precio −
+        costo = margen neto unitario."""
+        for modelo, qty_f, precio_f, margen_f in (
+                ('qb.producto.rentabilidad', 'qty_12m', 'precio_prom',
+                 'margen_neto_12m'),
+                ('qb.producto.mensual', 'qty', 'precio_prom',
+                 'margen_neto')):
+            rows = self.env[modelo].search([])
+            rows.read([qty_f, precio_f, 'costo_unit', margen_f])
+            for r in rows:
+                qty = r[qty_f]
+                if qty <= 0:
+                    continue
+                self.assertAlmostEqual(
+                    r['costo_unit'],
+                    r[precio_f] - r[margen_f] / qty, places=2,
+                    msg='%s: costo_unit no cuadra con precio - margen/qty'
+                        % modelo)
+
     def test_pesos_derivados_de_ops_reales(self):
         """El kg/m de una tela en metros se puede MEDIR: la báscula pesa
         cada rollo de tejido y ese peso entra como consumo de las OPs.

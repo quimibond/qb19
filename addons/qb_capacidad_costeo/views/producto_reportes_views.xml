@@ -12,6 +12,7 @@
                 <field name="revenue_12m" sum="Total"/>
                 <field name="qty_12m" sum="Total"/>
                 <field name="precio_prom"/>
+                <field name="costo_unit"/>
                 <field name="contrib_pct" optional="show"/>
                 <field name="margen_bruto_12m" optional="hide" sum="Total"/>
                 <field name="margen_bruto_pct" optional="show"/>
@@ -77,6 +78,8 @@
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="qty_12m"/>
                             <field name="precio_prom" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="costo_unit" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="n_clientes"/>
                             <field name="meses_activo"/>
@@ -233,6 +236,7 @@
                 <field name="qty" sum="Total"/>
                 <field name="revenue" sum="Total"/>
                 <field name="precio_prom"/>
+                <field name="costo_unit"/>
                 <field name="margen_neto" sum="Total"/>
                 <field name="n_clientes"/>
             </list>

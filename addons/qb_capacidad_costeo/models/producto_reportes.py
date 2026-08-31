@@ -121,6 +121,12 @@ class QbProductoRentabilidad(models.Model):
         string='Precio prom $/u', readonly=True,
         help='Ventas ÷ volumen: el precio realmente cobrado, todas las '
              'facturas y clientes.')
+    costo_unit = fields.Float(
+        string='Costo $/u', readonly=True,
+        help='Costo completo promedio por unidad en la ventana: variable + '
+             'fabricación + operación (op = porcentaje del período aplicado '
+             'al precio real de cada mes). Comparable directo contra el '
+             'precio promedio: la resta es el margen neto por unidad.')
     contrib_12m = fields.Float(string='Contribución 12m (MXN)', readonly=True)
     contrib_pct = fields.Float(string='Contribución %', readonly=True)
     margen_bruto_12m = fields.Float(string='Margen bruto 12m (MXN)',
@@ -396,6 +402,11 @@ class QbProductoRentabilidad(models.Model):
                 SUM(j.qty) AS qty_12m,
                 CASE WHEN SUM(j.qty) > 0 THEN SUM(j.rev) / SUM(j.qty)
                      ELSE 0 END AS precio_prom,
+                CASE WHEN SUM(j.qty) > 0 THEN
+                    SUM(j.qty * (COALESCE(j.costo_variable, 0)
+                                 + COALESCE(j.fab_unit, 0))
+                        + j.rev * j.op_pct) / SUM(j.qty)
+                     ELSE 0 END AS costo_unit,
                 SUM(j.rev - j.qty * COALESCE(j.costo_variable, 0))
                     AS contrib_12m,
                 CASE WHEN SUM(j.rev) > 0
@@ -522,6 +533,12 @@ class QbProductoMensual(models.Model):
     qty = fields.Float(string='Volumen', readonly=True)
     revenue = fields.Float(string='Ventas (MXN)', readonly=True)
     precio_prom = fields.Float(string='Precio prom $/u', readonly=True)
+    costo_unit = fields.Float(
+        string='Costo $/u', readonly=True,
+        help='Costo completo por unidad del mes: variable + fabricación + '
+             'operación. Contra el precio promedio da el margen neto '
+             'unitario — y mes a mes muestra si lo que merma el resultado '
+             'es el costo subiendo o el precio bajando.')
     margen_neto = fields.Float(string='Margen neto (MXN)', readonly=True)
     n_clientes = fields.Integer(string='Clientes', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
@@ -537,6 +554,11 @@ class QbProductoMensual(models.Model):
                 SUM(j.rev) AS revenue,
                 CASE WHEN SUM(j.qty) > 0 THEN SUM(j.rev) / SUM(j.qty)
                      ELSE 0 END AS precio_prom,
+                CASE WHEN SUM(j.qty) > 0 THEN
+                    SUM(j.qty * (COALESCE(j.costo_variable, 0)
+                                 + COALESCE(j.fab_unit, 0))
+                        + j.rev * j.op_pct) / SUM(j.qty)
+                     ELSE 0 END AS costo_unit,
                 SUM(j.rev * (1 - j.op_pct)
                     - j.qty * (COALESCE(j.costo_variable, 0)
                                + COALESCE(j.fab_unit, 0))) AS margen_neto,
