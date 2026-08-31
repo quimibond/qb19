@@ -160,6 +160,16 @@ class QbCostoFactores(models.Model):
         string='Factor importación', digits=(16, 6),
         help='Pool ÷ base: cuánto se suma al costo de un importado por cada '
              'peso de valor de compra. 0.15 = 15% sobre el valor importado.')
+    nomina_a_operacion_month = fields.Float(
+        string='Nómina movida a operación/mes',
+        help='Nómina que cobra por cuentas de fábrica (501.06) pero cuyo '
+             'trabajo es gasto del período, detectada por la referencia de '
+             'la póliza (config «nomina_operacion_refs», hoy DISEÑO): '
+             'desarrollar producto no es costo de fabricar lo que ya se '
+             'vende. Se resta del pool fabril y se suma a operación — la '
+             'pagan TODOS los productos. La administración de la planta se '
+             'queda en fabril: administrar el sitio productivo sí es '
+             'overhead (IAS 2).')
     inspeccion_pool_month = fields.Float(
         string='Inspección de importados/mes',
         help='La parte del centro Inspección y Empaque que trabaja para la '
@@ -1034,9 +1044,24 @@ class QbCostoProducto(models.Model):
         # de headcount sobre la MOD) entre TODOS los metros que atiende
         # (lo producido + lo importado convertido); del pool fabril se resta
         # solo la parte importada, que es la que ahora cobran los ' I'.
+        # Nómina que cobra por la 501.06 pero no fabrica: las pólizas de
+        # DISEÑO («QNAL TOLUCA, DISEÑO») son desarrollo de producto —
+        # gasto del período, no costo de fabricar lo que ya se vende. Se
+        # detectan por la referencia de la póliza y se mueven del pool
+        # fabril a operación. La administración de la PLANTA (misma
+        # cuenta) se queda en fabril: administrar el sitio productivo sí
+        # es overhead (IAS 2).
+        refs_op = [r.strip().upper() for r in Config.get_param_text(
+            'nomina_operacion_refs', 'DISEÑO').split(',') if r.strip()]
+        nomina_a_op = sum(
+            self._nomina_por_ref(r, fab_from, date_to, fab_meses)
+            for r in refs_op)
+        fab_pool = max(fab_pool - nomina_a_op, 0.0)
+        op_pool += nomina_a_op
+
         insp_share = self._inspeccion_headcount_share()
         mod_pool = self._smooth(self._pool_by_month(
-            ('mod',), fab_from, date_to), meses=fab_meses)
+            ('mod',), fab_from, date_to), meses=fab_meses) - nomina_a_op
         insp_m = self._conv_import_m_avg(fab_from, date_to, fab_meses)
         insp_base_m = (m_denom or 0.0) + insp_m
         factor_inspeccion_m = (mod_pool * insp_share / insp_base_m
@@ -1174,6 +1199,7 @@ class QbCostoProducto(models.Model):
             'importacion_base_month': importacion_base,
             'importacion_base_costeable': importacion_base_costeable,
             'factor_importacion': factor_importacion,
+            'nomina_a_operacion_month': nomina_a_op,
             'inspeccion_pool_month': inspeccion_pool,
             'inspeccion_share': insp_share,
             'inspeccion_m_month': insp_m,
@@ -2416,6 +2442,28 @@ class QbCostoProducto(models.Model):
         n_insp = Emp.search_count([('department_id', 'in', depts_insp)])
         n_fab = Emp.search_count([('department_id', 'in', depts_fab)])
         return n_insp / n_fab if n_fab else 0.0
+
+    @api.model
+    def _nomina_por_ref(self, texto, date_from, date_to, meses):
+        """Nómina del bucket MOD cuyas pólizas traen `texto` en la
+        referencia (p. ej. «QNAL TOLUCA, DISEÑO»): promedio mensual.
+        Las pólizas de nómina se postean por departamento y la referencia
+        es el único lugar donde el departamento queda escrito — el
+        concepto de la línea dice «Sueldos y salarios» en todas."""
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(aml.balance), 0)
+            FROM account_move_line aml
+            JOIN account_move am ON am.id = aml.move_id
+            JOIN (%s) m ON m.account_id = aml.account_id
+            WHERE m.bucket = 'mod'
+              AND am.state = 'posted'
+              AND aml.date >= %%s AND aml.date < %%s
+              AND aml.company_id = %%s
+              AND position(%%s in upper(coalesce(am.ref, ''))) > 0
+        """ % CUENTA_MAP_SQL, (date_from, date_to, self.env.company.id,
+                               (texto or '').upper()))
+        total = self.env.cr.fetchone()[0] or 0.0
+        return total / max(meses or 1, 1)
 
     @api.model
     def _conv_import_m_avg(self, date_from, date_to, meses):

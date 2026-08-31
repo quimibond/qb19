@@ -518,6 +518,50 @@ class TestQbCosteo(TransactionCase):
             self.Costo._conv_import_m_avg(
                 date(2026, 1, 1), date(2026, 8, 1), 7), 0.0)
 
+    def test_nomina_diseno_se_mueve_a_operacion(self):
+        """La nómina de DISEÑO cobra por cuentas de fábrica (bucket mod →
+        pool fabril) pero desarrollar producto es gasto del período. Las
+        pólizas de nómina se postean por departamento y el departamento
+        solo queda escrito en la REFERENCIA (el concepto dice «Sueldos y
+        salarios» en todas): el motor las detecta por ahí y las mueve al
+        pool de operación — las pagan todos los productos, no solo los
+        fabricados."""
+        Account = self.env['account.account']
+        cuenta = Account.create({
+            'code': '501.06.99T', 'name': 'SUELDOS TEST DISEÑO',
+            'account_type': 'expense_direct_cost'})
+        contra = Account.search(
+            [('account_type', '=', 'liability_payable')], limit=1)
+        self.env['qb.costeo.cuenta.class'].create({
+            'name': 'test nómina diseño', 'account_id': cuenta.id,
+            'bucket': 'mod'})
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general'),
+             ('company_id', '=', self.env.company.id)], limit=1)
+        move = self.env['account.move'].create({
+            'journal_id': journal.id, 'date': date(2031, 10, 15),
+            'ref': 'NOMINA 99, QNAL TOLUCA, DISEÑO, TEST',
+            'line_ids': [
+                (0, 0, {'account_id': cuenta.id, 'debit': 43000.0,
+                        'name': 'Sueldos y salarios'}),
+                (0, 0, {'account_id': contra.id, 'credit': 43000.0,
+                        'name': 'Sueldos por pagar'})]})
+        move.action_post()
+        self.assertAlmostEqual(
+            self.Costo._nomina_por_ref(
+                'DISEÑO', date(2031, 10, 1), date(2031, 11, 1), 1),
+            43000.0, places=2)
+        # Una póliza fabril normal (sin DISEÑO en la referencia) NO se
+        # mueve, y fuera de la ventana tampoco
+        self.assertAlmostEqual(
+            self.Costo._nomina_por_ref(
+                'DISEÑO', date(2031, 11, 1), date(2031, 12, 1), 1),
+            0.0, places=2)
+        self.assertAlmostEqual(
+            self.Costo._nomina_por_ref(
+                'TINTORERIA', date(2031, 10, 1), date(2031, 11, 1), 1),
+            0.0, places=2)
+
     def test_fab_hibrida_tela(self):
         """Tela en m: fab = kg/m × factor_peso + factor_largo.
         Tela en kg: fab = factor_peso + m/kg × factor_largo."""

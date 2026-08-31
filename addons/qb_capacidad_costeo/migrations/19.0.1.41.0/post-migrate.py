@@ -22,6 +22,9 @@ Tres cambios del motor tocan costos guardados:
   absorben los fabricados — las telas pagaban la inspección de la
   reventa. Ahora los ' I' cargan inspección por metro y esa parte se
   resta del pool.
+· Nómina de DISEÑO a operación (1.41): desarrollo de producto es
+  gasto del período, no costo de fabricar — se detecta por la referencia
+  de la póliza y sale del pool fabril.
 · (config en producción, sin código): clasificación luz/servicios
   administrativos intercambiada y prorrateo de aduana encendido
   (importacion_driver=compras, factor ~16% sobre valor importado).
