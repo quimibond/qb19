@@ -695,7 +695,11 @@ class QbProductoPeso(models.Model):
           baño también van en kg pero no son peso de tela).
         - Cadenas m→m se propagan: la OP del X140 consume XJ140 en
           METROS, y el XJ140 sí tiene consumo en kg — el X140 hereda
-          m_ratio × kg/m del componente (hasta 3 niveles).
+          m_ratio × kg/m del componente (hasta 3 niveles). Entre el kg
+          directo y la cadena gana el MAYOR: en las entretelas tramadas
+          (K40T, perfoquim) el único kg directo es el HILO DE TRAMADO
+          (0.0096 kg/m) y la tela entra en metros — tomarlo como
+          dominante dejaba pesos 6× menores al real.
         - Mínimo 10,000 m producidos en la ventana: sin volumen no hay
           medición confiable.
         - NUNCA pisa un peso autoritativo (manual/cvu) — misma regla que
@@ -757,8 +761,13 @@ class QbProductoPeso(models.Model):
         for _nivel in range(3):
             avance = False
             for out, comp, m_ratio in cadena:
-                if out not in ratios and comp in ratios:
-                    ratios[out] = m_ratio * ratios[comp]
+                if comp not in ratios:
+                    continue
+                candidato = m_ratio * ratios[comp]
+                # La masa dominante manda: si la tela entra en metros, su
+                # peso heredado le gana al hilo/resina en kg directo.
+                if candidato > ratios.get(out, 0.0):
+                    ratios[out] = candidato
                     avance = True
             if not avance:
                 break
