@@ -538,6 +538,95 @@ class QbCosteoPanel(models.TransientModel):
                     'los %s importados vendidos del período están a ±35%% '
                     'de su última compra IT' % len(imp_rows)))
 
+        # 5.14 Consumo de BOM vs consumo real de las OPs. El caso X140
+        # (ago-2026): la BOM de acabado decía 0.2674 kg de tejido por
+        # metro y las OPs done consumían 0.2474 — 8% de hilo fantasma
+        # que le cargaba $1/m de MP a un producto que "perdía" $72K/mes
+        # sin perderlos (y +13% en los SCRIM). La receta duplica un dato
+        # vivo (lo que las OPs consumieron) y nadie los comparaba.
+        uom_m = env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        uom_kg = env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+        if uom_m and uom_kg:
+            hace_12m = fields.Date.today() - relativedelta(months=12)
+            env.cr.execute("""
+                WITH cons AS (
+                    SELECT sm.raw_material_production_id AS mo_id,
+                           sm.product_id AS comp_id,
+                           SUM(sm.quantity) AS consumed
+                      FROM stock_move sm
+                     WHERE sm.state = 'done'
+                       AND sm.raw_material_production_id IS NOT NULL
+                       AND sm.date >= %s
+                     GROUP BY 1, 2
+                ),
+                reales AS (
+                    SELECT mp.product_id AS out_id, c.comp_id,
+                           SUM(c.consumed) AS consumed,
+                           SUM(mp.product_qty) AS produced
+                      FROM cons c
+                      JOIN mrp_production mp ON mp.id = c.mo_id
+                     WHERE mp.state = 'done'
+                       AND mp.product_uom_id = %s
+                       AND mp.company_id = %s
+                     GROUP BY 1, 2
+                    HAVING SUM(mp.product_qty) >= %s
+                ),
+                lineas AS (
+                    SELECT pp.id AS out_id, bl.product_id AS comp_id,
+                           MIN(bl.product_qty) AS q_min,
+                           MAX(bl.product_qty) AS q_max
+                      FROM mrp_bom_line bl
+                      JOIN mrp_bom b ON b.id = bl.bom_id
+                      JOIN product_product pp
+                        ON pp.product_tmpl_id = b.product_tmpl_id
+                     WHERE b.active
+                       AND bl.product_uom_id = %s
+                       AND bl.product_qty >= 0.02
+                     GROUP BY 1, 2
+                )
+                SELECT r.out_id, r.comp_id, r.consumed, r.produced,
+                       l.q_min, l.q_max
+                  FROM reales r
+                  JOIN lineas l ON l.out_id = r.out_id
+                              AND l.comp_id = r.comp_id
+            """, (hace_12m, uom_m.id, env.company.id, 50000.0, uom_kg.id))
+            desviadas = []
+            for out_id, comp_id, _cons, produced, q_min, q_max in \
+                    env.cr.fetchall():
+                real = _cons / produced if produced else 0.0
+                if real <= 0:
+                    continue
+                # Con recetas alternativas basta que UNA esté calibrada:
+                # manda la BOM más cercana al consumo real.
+                cerca = min((q_min, q_max), key=lambda q: abs(q - real))
+                delta = (cerca - real) / real
+                if abs(delta) > 0.05:
+                    desviadas.append(
+                        (abs(delta), delta, out_id, comp_id, cerca, real))
+            if desviadas:
+                desviadas.sort(reverse=True)
+                Prod = env['product.product']
+                det = '; '.join(
+                    '%s ← %s: BOM %.4f vs real %.4f (%+.0f%%)'
+                    % (Prod.browse(o).default_code or Prod.browse(o).name,
+                       Prod.browse(c).default_code or Prod.browse(c).name,
+                       q, real, delta * 100)
+                    for _a, delta, o, c, q, real in desviadas[:6])
+                if len(desviadas) > 6:
+                    det += '…'
+                checks.append((
+                    WARN, 'Consumo de BOM vs OPs reales',
+                    '%s receta(s) kg→m con consumo a más de ±5%% de lo '
+                    'que las OPs terminadas consumieron en 12 meses: %s. '
+                    'La MP del costeo sale de la receta — valida el factor '
+                    'con producción, corrige la BOM y recalcula.'
+                    % (len(desviadas), det)))
+            else:
+                checks.append((
+                    OK, 'Consumo de BOM vs OPs reales',
+                    'las recetas kg→m con volumen (≥50,000 m/12m) están a '
+                    '±5% del consumo real de las OPs'))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:
