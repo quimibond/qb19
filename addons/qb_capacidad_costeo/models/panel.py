@@ -73,20 +73,32 @@ class QbCosteoPanel(models.TransientModel):
         conc = env['qb.costo.conciliacion'].search(
             [], order='period desc', limit=1)
         if conc:
-            pct = (100.0 * conc.resultado_modelo / conc.gl_ventas
+            # Con capacidad normal HONESTA el margen de productos ya no trae
+            # la planta parada adentro: leerlo solo infla la foto (+11M de
+            # productos con −13M de ociosidad al lado es un año en tablas).
+            # El par va SIEMPRE junto: margen de productos − ociosidad =
+            # resultado del mes.
+            fac = env['qb.costo.factores'].search(
+                [('period', '=', conc.period)], limit=1)
+            ocioso = fac.fab_ocioso_month if fac else 0.0
+            resultado = conc.resultado_modelo - ocioso
+            pct = (100.0 * resultado / conc.gl_ventas
                    if conc.gl_ventas else 0.0)
             color = ('#dc3545' if pct < 0
                      else '#fd7e14' if pct < 5 else '#198754')
             html += self._card(
                 'Ventas del mes', money(conc.gl_ventas), str(conc.period))
             html += self._card(
-                'Margen del mes (modelo)', money(conc.resultado_modelo),
-                '%+.1f&#37; sobre venta, con TODOS los costos' % pct, color)
-        idle = sum(env['qb.ociosidad'].search([]).mapped('idle_cost_month'))
-        if idle:
-            html += self._card('Costo ocioso del mes', money(idle),
-                               'capacidad parada que paga el período',
-                               '#fd7e14')
+                'Margen de productos (mes)', money(conc.resultado_modelo),
+                'lo que dejan los vendidos sobre la capacidad que SÍ usan')
+            html += self._card(
+                'Ociosidad del mes', money(-ocioso) if ocioso else money(0),
+                'la capacidad parada la paga el período, no el producto',
+                '#fd7e14')
+            html += self._card(
+                'Resultado del mes (modelo)', money(resultado),
+                'margen de productos − ociosidad · %+.1f&#37; s/venta' % pct,
+                color)
 
         # 12 meses: dónde se gana y dónde se pierde (clientes y productos)
         clientes = env['qb.cliente.rentabilidad'].search([])
