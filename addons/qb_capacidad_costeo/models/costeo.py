@@ -271,6 +271,17 @@ class QbCostoFactores(models.Model):
              'no sirve para comparar contra otro mes.')
     confiabilidad_detalle = fields.Text(
         string='Por qué', help='Qué se midió y en cuánto queda inflado.')
+    capacidad_superada_kg = fields.Boolean(
+        string='Producción kg > capacidad normal',
+        help='La producción real del período superó la capacidad normal '
+             'capturada: la capacidad de los centros kg está '
+             'DESACTUALIZADA. El período usa la producción real como '
+             'denominador (IAS 2, producción anormalmente alta) y el '
+             'panel lo alerta.')
+    capacidad_superada_m = fields.Boolean(
+        string='Producción m > capacidad normal',
+        help='Igual que el flag kg, para el lado de metros (caso Acabado '
+             'con una rama sin capturar).')
     fab_ocioso_month = fields.Float(
         string='Fabricación no absorbida/mes',
         help='La parte del pool fijo que la producción real no alcanza a '
@@ -1036,6 +1047,21 @@ class QbCostoProducto(models.Model):
         m_real = self._production_month_avg(
             m_centros, date_from, date_to, restar_by_month=ajuste_m)
 
+        # Producción ARRIBA de la capacidad normal = capacidad
+        # desactualizada (caso Acabado: ~952K m reales contra 915,733
+        # capturados, con una rama nueva sin reflejar). Antes el modelo lo
+        # topaba en silencio — utilización al 100% y ocioso en cero — y la
+        # sobre-absorción quedaba muda. IAS 2 manda usar la producción
+        # real como denominador en períodos de producción anormalmente
+        # alta (para no valuar el inventario arriba del costo); el flag
+        # queda guardado y el panel lo SEÑALA en vez de esconderlo.
+        capacidad_superada_kg = bool(kg_denom) and kg_real > kg_denom
+        capacidad_superada_m = bool(m_denom) and m_real > m_denom
+        if capacidad_superada_kg:
+            kg_denom = kg_real
+        if capacidad_superada_m:
+            m_denom = m_real
+
         # Inspección y empaque de importados: TODO lo importado pasa por una
         # OP TL/CONV, y la gente que la trabaja (centro INSP_EMPAQUE) cobra
         # por la 501.06 — que entra completa al pool fabril que solo
@@ -1217,6 +1243,8 @@ class QbCostoProducto(models.Model):
             'renta_gl_sustituida': renta_gl,
             'kg_denom_month': kg_denom,
             'm_denom_month': m_denom,
+            'capacidad_superada_kg': capacidad_superada_kg,
+            'capacidad_superada_m': capacidad_superada_m,
             'kg_produccion_month': kg_real,
             'm_produccion_month': m_real,
             'utilizacion_kg_pct': 100.0 * util_kg,

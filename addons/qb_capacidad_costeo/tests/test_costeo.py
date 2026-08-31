@@ -3512,6 +3512,56 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('XT140TEST', estado)
         self.assertIn('+25%', estado)
 
+    def test_produccion_arriba_de_capacidad_normal_se_senala(self):
+        """Caso Acabado: la producción real (952K m) superaba la capacidad
+        capturada (915,733 — una rama nueva sin reflejar) y el modelo lo
+        TAPABA: utilización al 100, ocioso en cero, sobre-absorción muda.
+        Ahora: (1) el período usa la producción real como denominador
+        (IAS 2, producción anormalmente alta), (2) el flag queda en los
+        factores, (3) el panel lo marca como error de configuración y
+        (4) la vista de ociosidad muestra la utilización real >100."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB5U', 'name': 'CENTRO CAPACIDAD SUPERADA TEST',
+            'driver_principal': 'largo', 'es_denominador_m': True,
+            'capacidad_normal': 50.0, 'mo_name_pattern': 'TB5U%'})
+        tela = self.env['product.product'].create({
+            'name': 'TELA CAPACIDAD TEST', 'is_storable': True,
+            'uom_id': uom_m.id})
+        mo = self.env['mrp.production'].create({
+            'name': 'TB5U/TEST1', 'product_id': tela.id,
+            'product_qty': 900.0, 'product_uom_id': uom_m.id})
+        hace_20d = datetime.now() - relativedelta(days=20)
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done', date_finished = %s "
+            "WHERE id = %s", (hace_20d, mo.id))
+        self.env.invalidate_all()
+        Config = self.env['qb.costeo.factor.config']
+        ov = Config.search([('key', '=', 'denominador_m_override')], limit=1)
+        if ov:
+            ov.write({'value': 10.0, 'active': True})
+        else:
+            Config.create({'key': 'denominador_m_override', 'value': 10.0})
+        period = date.today().replace(day=1)
+        self.Costo.action_recompute_period(period)
+        fact = self.env['qb.costo.factores'].search(
+            [('period', '=', period)], limit=1)
+        self.assertTrue(fact.capacidad_superada_m)
+        # El denominador se ajustó a la producción real: sin sobre-absorción
+        self.assertAlmostEqual(
+            fact.m_denom_month, fact.m_produccion_month, places=2)
+        self.assertLessEqual(fact.utilizacion_m_pct, 100.0001)
+        # El panel lo marca como configuración por corregir, no lo esconde
+        panel = self.env['qb.costeo.panel'].create({})
+        estado = panel._build_estado()
+        self.assertIn('Capacidad normal vs producción real', estado)
+        self.assertIn('SUPERA', estado)
+        # Y la vista de ociosidad enseña la utilización real, sin tope
+        fila = self.env['qb.ociosidad'].search(
+            [('centro_id', '=', centro.id)], limit=1)
+        self.assertGreater(fila.utilization_pct, 100.0)
+        self.assertEqual(fila.idle_cost_month, 0.0)
+
     def test_analisis_de_productos_trae_costo_unitario(self):
         """El análisis de productos mostraba precio y márgenes pero no el
         COSTO unitario — el número que faltaba para leer de un vistazo
