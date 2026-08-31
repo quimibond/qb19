@@ -3553,11 +3553,18 @@ class TestQbCosteo(TransactionCase):
         mo2 = self.env['mrp.production'].create({
             'product_id': tela2.id, 'product_qty': 60000.0,
             'product_uom_id': uom_m.id})
-        moves |= self.env['stock.move'].create({
-            'name': 'tela en metros', 'product_id': tela.id,
-            'product_uom': uom_m.id, 'quantity': 60000.0,
-            'location_id': loc.id, 'location_dest_id': loc.id,
-            'raw_material_production_id': mo2.id})
+        moves |= self.env['stock.move'].create([
+            {'name': 'tela en metros', 'product_id': tela.id,
+             'product_uom': uom_m.id, 'quantity': 60000.0,
+             'location_id': loc.id, 'location_dest_id': loc.id,
+             'raw_material_production_id': mo2.id},
+            # El caso K40T/perfoquim: el ÚNICO kg directo es el hilo de
+            # tramado (minúsculo) y la tela entra en metros — la cadena
+            # debe ganarle al kg directo, no al revés.
+            {'name': 'hilo de tramado', 'product_id': tejido.id,
+             'product_uom': uom_kg.id, 'quantity': 600.0,
+             'location_id': loc.id, 'location_dest_id': loc.id,
+             'raw_material_production_id': mo2.id}])
         self.env.cr.execute(
             "UPDATE mrp_production SET state = 'done' WHERE id IN %s",
             (tuple((mo1 | mo2).ids),))
@@ -3571,7 +3578,9 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(rec.source, 'op_consumo')
         # Dominante: 14,400/60,000 = 0.24 — el químico (3,000 kg) NO suma
         self.assertAlmostEqual(rec.kg_per_unit, 0.24, places=4)
-        # Cadena m→m: tela2 consume tela 1:1 en metros y hereda su kg/m
+        # Cadena m→m: tela2 consume tela 1:1 en metros y hereda su kg/m.
+        # Su kg DIRECTO es el hilo de tramado (600/60,000 = 0.01) y NO
+        # debe ganar: la masa dominante viene de la tela en metros.
         rec2 = Peso.search([('product_id', '=', tela2.id)])
         self.assertEqual(rec2.source, 'op_consumo')
         self.assertAlmostEqual(rec2.kg_per_unit, 0.24, places=4)
