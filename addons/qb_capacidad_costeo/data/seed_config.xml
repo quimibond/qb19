@@ -111,6 +111,16 @@
             <field name="value">1</field>
             <field name="descripcion">1 = el pool fijo se divide entre capacidad NORMAL (IAS 2: la ociosidad va al resultado del período, no al producto). 0 = entre producción real, como antes.</field>
         </record>
+        <record id="factor_capacidad_superada_meses" model="qb.costeo.factor.config">
+            <field name="key">capacidad_superada_meses</field>
+            <field name="value">12</field>
+            <field name="descripcion">Cuántos períodos mira el check «Capacidad normal vs producción real». Mirar solo el último dejaba pasar el caso real: enero–mayo de 2026 produjeron arriba de la capacidad capturada y el check se pintaba verde con agosto.</field>
+        </record>
+        <record id="factor_capacidad_capturada_tol_pct" model="qb.costeo.factor.config">
+            <field name="key">capacidad_capturada_tol_pct</field>
+            <field name="value">10</field>
+            <field name="descripcion">Tolerancia (%) entre la capacidad capturada del centro y la que dan sus turnos por su throughput nominal. Arriba de esto el panel avisa: uno de los dos está viejo.</field>
+        </record>
         <record id="factor_op_pct_override" model="qb.costeo.factor.config">
             <field name="key">op_pct_override</field>
             <field name="value">0</field>
@@ -181,9 +191,11 @@
             <field name="name">Tintorería</field>
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">peso</field>
+            <field name="std_output_per_hour">138.62</field>
+            <field name="capacidad_normal">216089</field>
             <field name="renta_contractual_mxn">178467</field>
             <field name="mo_name_pattern">TL/OP-TIN%,OP-TIN%</field>
-            <field name="notes">5 jets. Producción medida por orden (TL/OP-TIN, kg) — sin patrón salía en CERO. Sin workcenters: capturar turnos en Turnos/Capacidad manual, o dar de alta los jets como workcenters y ligarlos aquí.</field>
+            <field name="notes">Cuatro tinas trabajando (HTJ-1 SCHOLL, HTJ-2 y HTJ-5 THEN, HTJ-3 y HTJ-4 SCLAVOS; la HTJ-5 de 1,200 kg en pruebas). 554.5 kg/h ponderando el ciclo real de cada tina por la mezcla de color de las OPs: 2:20 h en naturales, 10:20 h en obscuros, 3.1 h efectivas. Con ese ciclo las tinas NO son el cuello. Producción medida por orden (TL/OP-TIN, kg) — sin patrón salía en CERO. Fuente: TIEMPOS TINTORERIA + CAP DE CARGAS, F-IT-P-P01-10-06 rev 02 abr-2026.</field>
         </record>
         <record id="centro_acabado" model="qb.costeo.centro">
             <field name="sequence">30</field>
@@ -191,11 +203,12 @@
             <field name="name">Acabado / Rama</field>
             <field name="nature">fabril_directo</field>
             <field name="driver_principal">largo</field>
-            <field name="std_output_per_hour">1779</field>
+            <field name="std_output_per_hour">1508</field>
+            <field name="capacidad_normal">1175313</field>
             <field name="renta_contractual_mxn">178467</field>
             <field name="mo_name_pattern">TL/OP-ACA%,OP-ACA%</field>
             <field name="es_denominador_m" eval="True"/>
-            <field name="notes">2 ramas (UNITECH 1,727 m/h + BRUCKNER 1,831 m/h; promedio 1,779). Capacidad instalada ~1.19M m/mes sin tiempo extra. Producción por patrón TL/OP-ACA (tela). V10 NO es acabado — es entretelas/resina, va en su centro.</field>
+            <field name="notes">Ramas UNITECH (29.08 m/min, −10%) y BRUCKNER (28.35 m/min, −15%) = 3,015.9 m/h netos entre las dos, o 1,508 m/h por rama. La ICOMATEX (RAMA 3) sigue en montaje: al arrancar, subir máquinas a 3 y recapturar la capacidad. Producción por patrón TL/OP-ACA (tela). V10 NO es acabado — es entretelas/resina, va en su centro. Fuente: T RAMA, F-IT-P-P01-10-06 rev 02 abr-2026.</field>
         </record>
         <record id="centro_entretelas" model="qb.costeo.centro">
             <field name="sequence">40</field>
@@ -222,6 +235,27 @@
             <field name="name">Administración</field>
             <field name="nature">admin</field>
             <field name="driver_principal">largo</field>
+        </record>
+
+        <!-- ============ Turnos ============
+             El horario declarado de planta (HORARIO, F-IT-P-P01-10-06):
+             dos turnos, 90 h/semana. No manda sobre `capacidad_normal`
+             cuando está capturada, pero es contra lo que el panel la
+             valida: horario × throughput nominal contra el número
+             capturado. Sin esto la capacidad no tiene fuente viva. -->
+        <record id="turno_acabado" model="qb.turno.config">
+            <field name="centro_id" ref="centro_acabado"/>
+            <field name="name">Dos turnos (90 h/semana)</field>
+            <field name="hours_per_week">90</field>
+            <field name="machine_count">2</field>
+            <field name="notes">RAMA 1 y RAMA 2. La ICOMATEX (RAMA 3) está en montaje: al arrancar, 3.</field>
+        </record>
+        <record id="turno_tintoreria" model="qb.turno.config">
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="name">Dos turnos (90 h/semana)</field>
+            <field name="hours_per_week">90</field>
+            <field name="machine_count">4</field>
+            <field name="notes">HTJ-1 a HTJ-4. La HTJ-5 (THEN, 1,200 kg) está en pruebas: al liberarla, 5.</field>
         </record>
 
         <!-- ============ Clasificación de cuentas ============

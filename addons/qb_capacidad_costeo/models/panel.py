@@ -633,34 +633,102 @@ class QbCosteoPanel(models.TransientModel):
         # ocioso en cero — escondía el error en vez de señalarlo. Ahora el
         # período usa la producción real como denominador (IAS 2) y este
         # check exige actualizar la capacidad del centro.
-        ult_fact = env['qb.costo.factores'].search(
-            [], order='period DESC', limit=1)
-        if ult_fact and (ult_fact.capacidad_superada_m
-                         or ult_fact.capacidad_superada_kg):
+        #
+        # Mira una VENTANA, no el último período: con capacidad de Acabado
+        # en 915,733, enero–mayo de 2026 la superaron y junio–agosto no, así
+        # que el check se pintaba verde mirando agosto mientras cinco meses
+        # del mismo año seguían rojos. Un mes flojo no arregla la capacidad
+        # mal capturada; solo la esconde.
+        meses_cap = int(Config.get_param('capacidad_superada_meses', 12.0))
+        recientes = env['qb.costo.factores'].search(
+            [('company_id', '=', env.company.id)],
+            order='period DESC', limit=max(meses_cap, 1))
+        superados = recientes.filtered(
+            lambda f: f.capacidad_superada_m or f.capacidad_superada_kg)
+        if superados:
+            en_m = superados.filtered('capacidad_superada_m')
+            en_kg = superados.filtered('capacidad_superada_kg')
             lados = []
-            if ult_fact.capacidad_superada_m:
-                lados.append('METROS (%s m/mes producidos — la capacidad '
-                             'capturada de los centros es_denominador_m '
-                             'quedó abajo)'
-                             % '{:,.0f}'.format(ult_fact.m_produccion_month))
-            if ult_fact.capacidad_superada_kg:
-                lados.append('KG (%s kg/mes producidos)'
+            if en_m:
+                lados.append('METROS (hasta %s m/mes producidos — la '
+                             'capacidad capturada de los centros '
+                             'es_denominador_m quedó abajo)'
                              % '{:,.0f}'.format(
-                                 ult_fact.kg_produccion_month))
+                                 max(en_m.mapped('m_produccion_month'))))
+            if en_kg:
+                lados.append('KG (hasta %s kg/mes producidos)'
+                             % '{:,.0f}'.format(
+                                 max(en_kg.mapped('kg_produccion_month'))))
+            periodos = ', '.join(
+                str(p) for p in sorted(superados.mapped('period'))[:6])
+            if len(superados) > 6:
+                periodos += '…'
             checks.append((
                 BAD, 'Capacidad normal vs producción real',
-                'La producción del período %s SUPERA la capacidad normal '
-                'capturada en %s: hay máquinas/ramas sin reflejar. El '
+                '%s de los últimos %s períodos SUPERAN la capacidad normal '
+                'capturada en %s: hay máquinas/ramas sin reflejar (%s). El '
                 'costeo ya usa la producción real como denominador (IAS 2) '
                 'para no sobre-absorber, pero la ociosidad de ese lado '
                 'sale en cero por construcción — actualiza la capacidad '
                 'del centro en Configuración → Centros de costo.'
-                % (ult_fact.period, ' y '.join(lados))))
-        elif ult_fact:
+                % (len(superados), len(recientes), ' y '.join(lados),
+                   periodos)))
+        elif recientes:
             checks.append((
                 OK, 'Capacidad normal vs producción real',
-                'la producción del período cabe dentro de la capacidad '
-                'normal capturada en ambos lados (kg y m)'))
+                'la producción de los últimos %s períodos cabe dentro de la '
+                'capacidad normal capturada en ambos lados (kg y m)'
+                % len(recientes)))
+
+        # 5.16 La capacidad capturada duplica un dato vivo — horario de
+        # planta × velocidad de máquina — y hasta hoy nadie los comparaba:
+        # `capacidad_normal`, cuando está capturada, GANA sobre el cálculo
+        # de turnos y lo deja mudo. Así fue como Acabado se quedó en
+        # 915,733 m/mes mientras sus dos ramas daban 1.18M: el número vivió
+        # dos años sin que nada lo contradijera. Misma regla que ya cubre
+        # pesos (5.11), AVCO de importados (5.13) y consumo de BOM (5.14).
+        tol_cap = Config.get_param('capacidad_capturada_tol_pct', 10.0)
+        Turno = env['qb.turno.config']
+        divergentes, sin_base = [], []
+        for centro in env['qb.costeo.centro'].search(
+                [('nature', '!=', 'admin'), ('capacidad_normal', '>', 0),
+                 ('company_id', '=', env.company.id)]):
+            turnos = Turno.search([('centro_id', '=', centro.id),
+                                   ('active', '=', True)])
+            horas = sum(t.hours_per_month() for t in turnos)
+            derivada = horas * (centro.std_output_per_hour or 0.0)
+            if not derivada:
+                sin_base.append(centro.code)
+                continue
+            delta = (centro.capacidad_normal - derivada) / derivada
+            if abs(delta) * 100.0 > tol_cap:
+                divergentes.append((abs(delta), centro.code,
+                                    centro.capacidad_normal, derivada, delta))
+        if divergentes:
+            divergentes.sort(reverse=True)
+            det = '; '.join(
+                '%s: capturada %s vs horario×velocidad %s (%+.0f%%)'
+                % (code, '{:,.0f}'.format(cap), '{:,.0f}'.format(der),
+                   delta * 100)
+                for _a, code, cap, der, delta in divergentes)
+            checks.append((
+                WARN, 'Capacidad capturada vs horario × velocidad',
+                '%s centro(s) con la capacidad capturada a más de ±%.0f%% de '
+                'lo que dan sus turnos por su throughput nominal: %s. Uno de '
+                'los dos está viejo — el horario, la velocidad o el número '
+                'capturado.' % (len(divergentes), tol_cap, det)))
+        elif sin_base:
+            checks.append((
+                WARN, 'Capacidad capturada vs horario × velocidad',
+                'sin turnos o sin throughput nominal para contrastar: %s. '
+                'Captúralos en "Turnos / capacidad manual" y en el centro; '
+                'sin ellos la capacidad capturada no tiene contra qué '
+                'validarse.' % ', '.join(sorted(sin_base))))
+        else:
+            checks.append((
+                OK, 'Capacidad capturada vs horario × velocidad',
+                'la capacidad capturada de cada centro cuadra a ±%.0f%% con '
+                'sus turnos por su throughput nominal' % tol_cap))
 
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)

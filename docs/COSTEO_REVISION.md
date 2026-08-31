@@ -381,3 +381,103 @@ alternativas manda la más cercana al real. La lección de método: **la BOM
 es un parámetro que duplica un dato vivo** (el consumo de las OPs) y toda
 la clase de parámetros así se valida contra su fuente — misma regla que ya
 cubría pesos (5.11), AVCO de importados (5.13) y luz/energía.
+
+---
+
+## Bitácora 31-ago-2026 (2): la capacidad sale del papel de planta
+
+Dos números del módulo eran estimaciones que nadie podía contrastar, y los
+dos estaban mal por razones distintas. La planta mandó sus formatos
+(F-IT-P-P01-10-06 rev 02, abr-2026: tiempos de rama, tiempos de tintorería,
+capacidad de cargas y horario) y ahora salen de velocidades medidas.
+
+### Acabado: 915,733 → 1,175,313 m/mes (+28%)
+
+Las dos ramas dan 3,015.9 m/h netos —UNITECH 29.0779 m/min menos su 10% de
+descuento, BRUCKNER 28.3478 m/min menos su 15%— y el horario declarado es de
+90 h/semana en dos turnos, o 389.7 h/mes con la convención del módulo. La
+planta declara 1,158,124 en su hoja porque calcula el mes con 384 h; la
+diferencia es 1.5%.
+
+Esto es exactamente lo que el check «Capacidad normal vs producción real»
+venía pidiendo desde v1.49: con 915,733 capturados, **cinco de los ocho meses
+de 2026** (ene–may, 918K–939K m) produjeron arriba de la capacidad y el
+costeo tuvo que caer a producción real para no sobre-absorber. La rama nueva
+que faltaba reflejar no era nueva: eran las dos que ya estaban corriendo.
+
+La ICOMATEX (RAMA 3) **sigue en montaje** — no produce todavía. Cuando
+arranque: máquinas a 3 en los turnos y recapturar la capacidad.
+
+### Tintorería: 195,000 → 216,089 kg/mes (+11%), y las tinas NO son el cuello
+
+El 195,000 era el producto de tres supuestos (5 tinas × 625 h/mes × 90% OEE ÷
+9 h de ciclo × 620 kg de baño) y los tres estaban mal, casi cancelándose
+entre sí:
+
+| Supuesto | Real |
+|---|---|
+| 5 tinas | **4** — la HTJ-5 (THEN, 1,200 kg) sigue en pruebas |
+| 625 h/mes | **389.7** — 90 h/semana, el mismo horario que acabado |
+| Ciclo único de 9 h | **de 2:20 a 10:20** según tina y color |
+
+El ciclo no es un número: va de 2:20 h en naturales a 10:20 h en obscuros.
+Ponderado por la mezcla real de las OPs de 12 meses —**82% natural, 13%
+blanco, 2.7% obscuro, 2.3% medio**— el ciclo efectivo es de **3.1 h**, un
+tercio de lo asumido. Las cuatro tinas dan 554.5 kg/h.
+
+Respuesta al pendiente que la propia nota del centro dejó abierto («con 12 h
+serían EL cuello de la casa»): **no lo son**. Corren al 43% de su capacidad
+(92,810 kg/mes reales contra 216,089). El cuello sigue siendo acabado, que va
+al 89% (1,044,150 m en agosto).
+
+### El guard que quedó
+
+`capacidad_normal`, cuando está capturada, **gana en silencio** sobre el
+cálculo de turnos × throughput. Por eso Acabado pudo vivir con un número que
+sus propias máquinas contradecían: nada los comparaba. Dos cambios:
+
+1. **Check nuevo «Capacidad capturada vs horario × velocidad»**: contrasta el
+   número capturado contra sus turnos por su velocidad nominal y avisa a más
+   de ±10%. Mismo patrón que ya cubre pesos (5.11), AVCO de importados (5.13)
+   y consumo de BOM (5.14). Para que tenga contra qué comparar, quedaron
+   capturados los turnos de acabado (90 h/sem, 2 ramas) y tintorería (90 h/sem,
+   4 tinas).
+2. **El check de capacidad superada mira una ventana de 12 períodos**, no solo
+   el último. Miraba agosto —que cabía— y se pintaba verde mientras enero a
+   mayo seguían rojos. Un mes flojo no arregla una capacidad mal capturada;
+   solo la esconde.
+
+### Efecto en el costo
+
+Subir el denominador de metros 28% baja el factor de fabricación por metro en
+la misma proporción: el costo fijo por metro deja de llevar dentro la
+ociosidad, y la ociosidad aparece completa donde va —en el resultado del
+período, no en el producto. El par indivisible no se mueve: margen de
+productos − ociosidad = el mismo resultado de siempre.
+
+Recálculo: **solo 2026**. Los períodos de 2024 y 2025 quedan como están hasta
+que dirección los cierre. Advertencia: hoy los 32 períodos están en
+`borrador` —ninguno marcado `cerrado`— así que el guard de períodos cerrados
+no los protege todavía; la restricción vive en la migración, no en el modelo.
+
+### Verificación del recálculo de v1.50 (rendimiento vendible)
+
+La cola de recálculo de 2026 drenó completa (config `recalculo_pendiente`
+vacía). Lo que el rendimiento vendible destapó, con julio 2026 como corte:
+
+- **WC090Q11JNT165** rinde 0.90: su costo vendible ($17.63/m en agosto) queda
+  **arriba** del absorbido ($15.93), y en junio el margen pasa de +10.2%
+  contable a **−0.30% real**. El semáforo deja el verde, que era el punto.
+- **Ocho productos cambian de signo** en julio al mirar el margen real en vez
+  del neto. Los dos que importan por volumen:
+
+  | Producto | m vendidos | Margen neto | Margen real | Rendimiento |
+  |---|---:|---:|---:|---:|
+  | WN075Q66JBL205 | 63,098 | +0.27% | **−7.99%** | 0.92 |
+  | WN055Q66JNT162 | 18,930 | +0.99% | **−16.74%** | 0.85 |
+  | A40BL155 | 1,000 | +1.07% | **−27.06%** | 0.78 |
+  | WNY4032BL151 | 400 | +10.29% | **−14.52%** | 0.78 |
+
+  Los cuatro se vendían "en equilibrio" y en realidad pagan la merma con el
+  margen. WN075 solo, a 63 mil metros al mes, es la decisión de precio más
+  cara de la lista.

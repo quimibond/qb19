@@ -3816,3 +3816,96 @@ class TestQbCosteo(TransactionCase):
             self.assertNotIn(prohibido, html,
                              '«%s» es dato interno: no va al cliente'
                              % prohibido)
+
+    def test_capacidad_superada_mira_la_ventana_no_solo_el_ultimo_mes(self):
+        """El check de capacidad miraba SOLO el último período y por eso se
+        pintaba verde con la casa en rojo.
+
+        Caso real: con Acabado capturado en 915,733 m/mes, enero–mayo de
+        2026 produjeron más que eso y junio–agosto no. El panel leía
+        agosto, decía «cabe» y los cinco meses malos quedaban invisibles.
+        Un mes flojo no arregla una capacidad mal capturada.
+        """
+        Fact = self.env['qb.costo.factores']
+        panel = self.env['qb.costeo.panel'].create({})
+        Fact.search([]).unlink()
+        # Marzo excedió la capacidad; agosto (el último) no.
+        Fact.create({'period': date(2026, 3, 1),
+                     'capacidad_superada_m': True,
+                     'm_produccion_month': 939674.0})
+        Fact.create({'period': date(2026, 8, 1),
+                     'capacidad_superada_m': False,
+                     'm_produccion_month': 904931.0})
+        estado = panel._build_estado()
+        self.assertIn('Capacidad normal vs producción real', estado)
+        self.assertIn('SUPERAN', estado)
+        self.assertIn('2026-03-01', estado)
+        self.assertIn('939,674', estado)
+        # Y cuando ningún período de la ventana la supera, sí es verde
+        Fact.search([('period', '=', date(2026, 3, 1))]).write(
+            {'capacidad_superada_m': False})
+        estado = panel._build_estado()
+        self.assertNotIn('SUPERAN', estado)
+        self.assertIn('cabe dentro de la capacidad normal', estado)
+
+    def test_capacidad_capturada_se_valida_contra_horario_por_velocidad(self):
+        """`capacidad_normal` duplica un dato vivo —el horario de planta por
+        la velocidad de la máquina— y cuando está capturada GANA en
+        silencio sobre el cálculo de turnos.
+
+        Así vivió Acabado dos años en 915,733 m/mes mientras sus dos ramas
+        daban 1.18M: nada comparaba los dos números. El check los compara y
+        avisa cuando divergen; misma regla que ya cubre pesos, AVCO de
+        importados y consumo de BOM.
+        """
+        Centro = self.env['qb.costeo.centro']
+        Turno = self.env['qb.turno.config']
+        panel = self.env['qb.costeo.panel'].create({})
+        Centro.search([('capacidad_normal', '>', 0)]).write(
+            {'capacidad_normal': 0.0})
+        centro = Centro.create({
+            'code': 'TB51', 'name': 'RAMA TEST CAPACIDAD',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'std_output_per_hour': 1508.0,
+            'capacidad_normal': 915733.0})
+        Turno.create({'centro_id': centro.id, 'name': 'Dos turnos',
+                      'hours_per_week': 90.0, 'machine_count': 2})
+        # 90 h/sem × 4.33 semanas × 2 ramas × 1,508 m/h = 1,175,335 m/mes:
+        # lo capturado se queda 22% abajo y el panel lo dice.
+        estado = panel._build_estado()
+        self.assertIn('Capacidad capturada vs horario × velocidad', estado)
+        self.assertIn('TB51', estado)
+        self.assertIn('915,733', estado)
+        # Capturar la capacidad que sus propias máquinas dan lo pone en verde
+        centro.capacidad_normal = 1175313.0
+        estado = panel._build_estado()
+        self.assertNotIn('TB51', estado)
+        self.assertIn('cuadra a ±10% con sus turnos', estado)
+
+    def test_capacidad_de_planta_acabado_y_tintoreria(self):
+        """Los números que la planta mandó (F-IT-P-P01-10-06 rev 02) quedan
+        capturados y son reproducibles desde sus turnos.
+
+        Acabado: UNITECH 29.0779 m/min −10% + BRUCKNER 28.3478 m/min −15%
+        = 3,015.9 m/h por 389.7 h/mes. Tintorería: 554.5 kg/h de las cuatro
+        tinas con el ciclo real ponderado por mezcla (3.1 h, no las 9 h que
+        se asumían) por las mismas horas.
+        """
+        Centro = self.env['qb.costeo.centro']
+        weeks = self.env['qb.costeo.factor.config'].get_param(
+            'weeks_per_month', 4.33)
+        for code, esperado in (('ACABADO', 1175313.0),
+                               ('TINTORERIA', 216089.0)):
+            centro = Centro.search([('code', '=', code)], limit=1)
+            self.assertTrue(centro, 'falta el centro %s' % code)
+            self.assertAlmostEqual(centro.capacidad_normal, esperado, delta=1.0)
+            turnos = self.env['qb.turno.config'].search(
+                [('centro_id', '=', centro.id)])
+            self.assertTrue(turnos, 'el centro %s no tiene turnos: sin ellos '
+                                    'la capacidad no tiene contra qué '
+                                    'validarse' % code)
+            horas = sum(t.hours_per_month() for t in turnos)
+            derivada = horas * centro.std_output_per_hour
+            self.assertAlmostEqual(derivada, esperado, delta=esperado * 0.01)
+            self.assertAlmostEqual(horas / max(turnos[0].machine_count, 1),
+                                   90.0 * weeks, places=2)
