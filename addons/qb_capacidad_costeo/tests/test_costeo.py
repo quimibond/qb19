@@ -3464,6 +3464,54 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('KX2032GO152 I', estado)
         self.assertIn('+54%', estado)
 
+    def test_panel_avisa_bom_desviada_del_consumo_real(self):
+        """La receta duplica un dato vivo: lo que las OPs done consumieron.
+        El caso X140 (ago-2026): la BOM decía 0.2674 kg de tejido por
+        metro y las OPs reales consumían 0.2474 — 8% de hilo fantasma,
+        $1/m de MP inflada, un producto pintado en rojo sin estarlo. El
+        panel compara cada receta kg→m con volumen contra el consumo real
+        de 12 meses y avisa cuando divergen más de ±5%."""
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        tejido = self.env['product.product'].create({
+            'name': 'TEJIDO CONSUMO TEST', 'default_code': 'XT130TEST',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        tela = self.env['product.product'].create({
+            'name': 'TELA CONSUMO TEST', 'default_code': 'XT140TEST',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': tejido.id, 'product_qty': 0.30,
+                'product_uom_id': uom_kg.id})]})
+        mo = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 60000.0,
+            'product_uom_id': uom_m.id})
+        loc = self.env.ref('stock.stock_location_stock',
+                           raise_if_not_found=False) \
+            or self.env['stock.location'].search([], limit=1)
+        move = self.env['stock.move'].create({
+            'name': 'consumo test', 'product_id': tejido.id,
+            'product_uom': uom_kg.id, 'quantity': 14400.0,
+            'location_id': loc.id, 'location_dest_id': loc.id,
+            'raw_material_production_id': mo.id})
+        # 'done' directo por SQL: el flujo completo de la OP arrastra
+        # reservas y validaciones que este check no necesita.
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done' WHERE id = %s",
+            (mo.id,))
+        self.env.cr.execute(
+            "UPDATE stock_move SET state = 'done' WHERE id = %s",
+            (move.id,))
+        self.env.invalidate_all()
+        panel = self.env['qb.costeo.panel'].create({})
+        estado = panel._build_estado()
+        self.assertIn('Consumo de BOM vs OPs reales', estado)
+        # real = 14,400 / 60,000 = 0.24; BOM 0.30 = +25%
+        self.assertIn('XT140TEST', estado)
+        self.assertIn('+25%', estado)
+
     def test_auditoria_de_pesos_clasifica(self):
         """La auditoría separa ok / revisar / crítico / sin peso por la
         desviación motor vs teórico, y el generador corre sin error."""
