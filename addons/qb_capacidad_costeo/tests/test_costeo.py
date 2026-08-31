@@ -3071,12 +3071,90 @@ class TestQbCosteo(TransactionCase):
             'nature': 'fabril_directo', 'driver_principal': 'largo',
             'std_output_per_hour': 1779.0})
         wiz = self.env['qb.cotizador.wizard'].new({})
-        ok, detail = wiz._check_capacity(
+        ok, detail, status = wiz._check_capacity(
             sin_datos, is_kg=False, kg=0.22, m_per_kg=4.5, volumen=2500.0)
         self.assertTrue(ok, 'sin dato de capacidad no se puede reprobar')
         self.assertIn('no se puede validar', detail)
         self.assertNotIn('FALTAN', detail)
+        # Pero tampoco aprueba: no reprobar no es lo mismo que caber, y
+        # mientras la respuesta vivió solo en el booleano la cotización
+        # afirmaba «cabe en capacidad» sin haber medido este centro.
+        self.assertEqual(status, 'sin_datos')
         sin_datos.unlink()
+
+    def test_capacidad_parcial_no_se_presenta_como_que_cabe(self):
+        """Ruta con un centro medido que cabe y otro sin throughput: el
+        estado es «parcial», no «ok».
+
+        Es el caso real de agosto — TEJIDO validado, ACABADO y TINTORERÍA
+        sin configurar — y la cotización salía diciendo «✔ el volumen cabe
+        en la planta» al cliente. `capacity_ok` sigue en True a propósito:
+        de él cuelga la escalera de volumen del PDF, y bajarlo por falta de
+        configuración borraría los tramos de todas las cotizaciones.
+        """
+        Centro = self.env['qb.costeo.centro']
+        medido = Centro.create({
+            'code': 'TEST_CAP_OK', 'name': 'Centro medido',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'std_output_per_hour': 1000.0})
+        sin_std = Centro.create({
+            'code': 'TEST_CAP_NOSTD', 'name': 'Centro sin throughput',
+            'nature': 'fabril_directo', 'driver_principal': 'largo'})
+        wiz = self.env['qb.cotizador.wizard'].new({})
+        ok, detail, status = wiz._check_capacity(
+            medido | sin_std, is_kg=False, kg=0.22, m_per_kg=4.5,
+            volumen=100.0)
+        self.assertTrue(ok, 'lo que se pudo medir sí cabe')
+        self.assertEqual(status, 'parcial')
+        self.assertIn('TEST_CAP_NOSTD', detail)
+        (medido | sin_std).unlink()
+
+    def test_recotizar_ahora_sale_completa_y_no_mueve_el_precio(self):
+        """`recotizar_ahora()` corre el pipeline entero sin la interfaz.
+
+        Existe porque recotizar desde un script escribiendo el qb.cotizacion
+        a mano deja el registro sin validez, sin escalera y sin contribución
+        por hora — pasó en producción. Y el precio al cliente se conserva:
+        un recálculo refresca costos, no le mueve el precio al cliente.
+        """
+        self.env['qb.costo.factores'].create({
+            'period': date(2027, 3, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18,
+        })
+        cliente = self.env['res.partner'].create({'name': 'TEST RECOTIZAR'})
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'partner_id': cliente.id, 'product_id': self.tela.id,
+            'volumen': 1000, 'precio_objetivo': 100.0,
+            'spec_gramaje': 38, 'spec_ancho': 1.6, 'spec_galga': '18',
+        })
+        cot = self.env['qb.cotizacion'].browse(wiz.action_cotizar()['res_id'])
+
+        nueva = cot.recotizar_ahora()
+        self.assertNotEqual(nueva, cot)
+        self.assertEqual(nueva.revision, cot.revision + 1)
+        self.assertEqual(nueva.revision_anterior_id, cot)
+        self.assertEqual(cot.state, 'superseded',
+                         'la anterior deja de ser la oferta viva')
+        # Lo que las cotizaciones armadas por script perdían:
+        self.assertTrue(nueva.validez_hasta)
+        self.assertEqual(len(nueva.tramo_ids), 4)
+        self.assertTrue(nueva.capacity_status)
+        self.assertEqual(nueva.spec_gramaje, 38)
+        self.assertEqual(nueva.spec_galga, '18')
+        # Y el precio al cliente no se movió
+        self.assertAlmostEqual(nueva.precio_cliente_mxn,
+                               cot.precio_cliente_mxn, places=2)
+
+        # Una cotización de especificación nueva NO se puede recalcular sin
+        # la UI: el registro no guarda la MP estimada ni la ruta, y salir con
+        # esas en cero daría un costo bajísimo con pinta de correcto.
+        spec = self.env['qb.cotizacion'].create({
+            'name': 'COT spec suelta', 'partner_id': cliente.id,
+            'spec_descripcion': 'tela nueva', 'volumen': 1000,
+        })
+        with self.assertRaises(UserError):
+            spec.recotizar_ahora()
 
     def test_recalculo_diferido_vacia_la_cola_y_apaga_su_cron(self):
         """El cron de recálculo diferido procesa la cola por lotes y se apaga
@@ -3997,14 +4075,16 @@ class TestQbCosteo(TransactionCase):
         # volumen que cabe en el centro (20,000) pero no en las máquinas que
         # pueden hacerlo (5,000) tiene que reprobar.
         wiz = self.env['qb.cotizador.wizard'].new({'product_id': self.tela.id})
-        ok, detalle = wiz._check_capacity(
+        ok, detalle, status = wiz._check_capacity(
             centro, is_kg=True, kg=1.0, m_per_kg=8.0, volumen=9000.0)
         self.assertFalse(ok, 'cabe en el centro pero no en su familia')
+        self.assertEqual(status, 'no_cabe')
         self.assertIn('TB54_A', detalle)
         self.assertIn('NO CABE', detalle)
-        ok2, _d = wiz._check_capacity(
+        ok2, _d, status2 = wiz._check_capacity(
             centro, is_kg=True, kg=1.0, m_per_kg=8.0, volumen=100.0)
         self.assertTrue(ok2)
+        self.assertEqual(status2, 'ok', 'centro medido y con lugar')
         # El panel avisa cuando las familias no suman su centro
         ancha.capacidad_normal = 1000.0
         panel = self.env['qb.costeo.panel'].create({})
