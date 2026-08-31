@@ -64,6 +64,12 @@
             <field name="value_text">landed</field>
             <field name="descripcion">Cómo llega la aduana al costo. "landed" (default y recomendado): NO se prorratea — el pedimento se captura con el landed cost de Odoo sobre la recepción y cae en los productos que lo causaron; el módulo solo mide cuánta aduana se quedó en resultados. "compras": prorrateo aproximado sobre el valor de las compras importadas (proveedor extranjero); útil si no se van a capturar los pedimentos, pero le cobra al hilo el pedimento de una máquina y viceversa.</field>
         </record>
+        <record id="factor_nomina_operacion_refs" model="qb.costeo.factor.config">
+            <field name="key">nomina_operacion_refs</field>
+            <field name="value">0</field>
+            <field name="value_text">DISEÑO</field>
+            <field name="descripcion">Pólizas de nómina que cobran por cuentas de fábrica (501.06) pero cuyo trabajo es gasto del período: se detectan por estos textos en la referencia (separados por coma) y su importe se mueve del pool fabril a operación. Hoy: DISEÑO (desarrollo de producto). La administración de la PLANTA se queda en fabril — administrar el sitio productivo sí es overhead (IAS 2).</field>
+        </record>
         <record id="factor_importacion_factor_max" model="qb.costeo.factor.config">
             <field name="key">importacion_factor_max</field>
             <field name="value">1.0</field>
@@ -176,7 +182,7 @@
             <field name="name">Inspección y empaque</field>
             <field name="nature">fabril_indirecto</field>
             <field name="driver_principal">largo</field>
-            <field name="mo_name_pattern">TL/INSP%</field>
+            <field name="mo_name_pattern">TL/CONV%</field>
             <field name="notes">Gate final: mide toda la tela vendible.</field>
         </record>
         <record id="centro_admin" model="qb.costeo.centro">
@@ -189,7 +195,7 @@
 
         <!-- ============ Clasificación de cuentas ============
              El patrón más LARGO gana cuando varios matchean, así que
-             504.01.0001 (energía) le gana a 504.01% (overhead). -->
+             504.01.0002 (energía) le gana a 504.01% (overhead). -->
         <record id="cc_ventas" model="qb.costeo.cuenta.class">
             <field name="code_pattern">401%</field>
             <field name="bucket">ventas</field>
@@ -201,12 +207,15 @@
             <field name="notes">MOD. La nómina por centro se separa vía departamentos (RH); el GL entra completo al pool de fabricación.</field>
         </record>
         <record id="cc_energia_luz" model="qb.costeo.cuenta.class">
-            <field name="code_pattern">504.01.0001%</field>
+            <field name="code_pattern">504.01.0002%</field>
             <field name="bucket">energia</field>
             <field name="es_variable" eval="True"/>
             <field name="centro_id" ref="centro_tejido"/>
             <field name="driver">peso</field>
-            <field name="notes">Energéticos (electricidad) → Tejido.</field>
+            <field name="notes">ENERGETICOS (electricidad) → Tejido. OJO: la 504.01.0001
+                es SERVICIOS ADMINISTRATIVOS (fija, esporádica) — estuvo cruzada
+                con esta hasta ago-2026 y el pool variable traía la cuenta
+                equivocada.</field>
         </record>
         <record id="cc_energia_gas" model="qb.costeo.cuenta.class">
             <field name="code_pattern">504.01.0003%</field>
