@@ -48,6 +48,10 @@
               parent="menu_qb_costos_group" action="producto_mensual_action" sequence="19"/>
     <menuitem id="menu_qb_factores" name="Factores por período"
               parent="menu_qb_costos_group" action="costo_factores_action" sequence="20"/>
+    <!-- El par del panel pero en el tiempo: margen − ociosidad, mes a mes -->
+    <menuitem id="menu_qb_margen_ociosidad" name="Margen vs ociosidad por mes"
+              parent="menu_qb_costos_group" action="margen_ociosidad_action"
+              sequence="21"/>
     <!-- El control de calidad del costeo: ¿cuadra con la contabilidad? -->
     <menuitem id="menu_qb_conciliacion" name="Conciliación vs. contabilidad"
               parent="menu_qb_costos_group" action="costo_conciliacion_action"

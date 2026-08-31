@@ -58,6 +58,9 @@
                 <field name="ociosidad_ias2" optional="show" sum="Total"
                        widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
+                <field name="resultado_par" optional="show" sum="Total"
+                       widget="monetary"
+                       options="{'currency_field': 'company_currency_id'}"/>
                 <field name="brecha" optional="hide" sum="Total"
                        widget="monetary"
                        options="{'currency_field': 'company_currency_id'}"/>
@@ -133,6 +136,8 @@
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="ociosidad_ias2" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="resultado_par" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                             <field name="brecha_neta" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="brecha_pct"/>
@@ -156,6 +161,40 @@
                 <filter name="group_year" string="Agrupar por año"
                         context="{'group_by': 'period:year'}"/>
             </search>
+        </field>
+    </record>
+
+<!-- El par indivisible, todos los períodos: margen de productos al lado de
+         la ociosidad, mes por mes. Es la misma pregunta del panel pero en el
+         tiempo: ¿el margen que dejan los productos alcanza para pagar la
+         planta parada? -->
+    <record id="costo_conciliacion_view_graph" model="ir.ui.view">
+        <field name="name">qb.costo.conciliacion.graph</field>
+        <field name="model">qb.costo.conciliacion</field>
+        <field name="arch" type="xml">
+            <graph type="bar" stacked="0" string="Margen vs ociosidad por mes">
+                <field name="period" interval="month"/>
+                <field name="resultado_modelo" type="measure"/>
+                <field name="ociosidad_ias2" type="measure"/>
+                <field name="resultado_par" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="margen_ociosidad_action" model="ir.actions.act_window">
+        <field name="name">Margen vs ociosidad por mes</field>
+        <field name="res_model">qb.costo.conciliacion</field>
+        <field name="view_mode">graph,list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El par indivisible, mes por mes</p>
+            <p>
+                El <b>margen de productos</b> solo carga la capacidad usada;
+                la <b>ociosidad</b> es la capacidad pagada que nadie usó
+                (IAS 2: va al período, no al producto). El
+                <b>resultado del período</b> es la resta de los dos — un
+                margen sano con una ociosidad más grande es un mes en tablas,
+                no una utilidad.
+            </p>
         </field>
     </record>
 

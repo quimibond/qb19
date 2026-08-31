@@ -2024,7 +2024,15 @@ class TestQbCosteo(TransactionCase):
             'modelo_mp', 'modelo_energia', 'modelo_fab', 'modelo_op',
             'modelo_costo_total', 'gl_mp', 'gl_no_costeo',
             'gl_sin_clasificar', 'resultado_gl', 'resultado_modelo',
+            'ociosidad_ias2', 'resultado_par',
             'brecha', 'brecha_pct', 'cobertura_pct'])
+        # El par indivisible existe en TODOS los períodos: el resultado es
+        # margen de productos − ociosidad, fila por fila. Es lo que grafica
+        # "Margen vs ociosidad por mes".
+        for r in rows:
+            self.assertAlmostEqual(
+                r.resultado_par,
+                r.resultado_modelo - r.ociosidad_ias2, places=2)
         row = Conc.search([('period', '=', period)], limit=1)
         if not row:
             self.skipTest('sin movimientos de resultados en el período')
