@@ -550,13 +550,15 @@ class QbProductoPeso(models.Model):
     source = fields.Selection([
         ('manual', 'Manual (maestro de ingeniería)'),
         ('cvu', 'CVU (conversión medida en planta)'),
+        ('op_consumo', 'Consumo real de OPs (báscula)'),
         ('ref_gramaje', 'Gramaje del ref'),
         ('bom', 'Peso por receta (BOM)'),
         ('odoo_weight', 'Peso de Odoo'),
         ('import_twin', 'Gemelo nacional'),
         ('kg_native', 'UoM en kg (= 1)'),
     ], default='manual', required=True,
-        help='Prioridad al resolver: manual > cvu > ref_gramaje > bom > odoo_weight.')
+        help='Prioridad al resolver: manual > cvu > op_consumo > '
+             'ref_gramaje > bom > odoo_weight.')
     active = fields.Boolean(default=True)
     notes = fields.Char()
 
@@ -567,8 +569,8 @@ class QbProductoPeso(models.Model):
 
     # Prioridad de fuentes: menor = gana.
     _SOURCE_PRIORITY = {
-        'manual': 0, 'cvu': 1, 'ref_gramaje': 2,
-        'bom': 3, 'odoo_weight': 4, 'import_twin': 5,
+        'manual': 0, 'cvu': 1, 'op_consumo': 2, 'ref_gramaje': 3,
+        'bom': 4, 'odoo_weight': 5, 'import_twin': 6,
     }
 
     @api.model
@@ -677,6 +679,125 @@ class QbProductoPeso(models.Model):
             # Producto en metros: kg = kg/m → m/kg es su inverso.
             return 1.0 / kg
         return self.env['qb.costeo.factor.config'].get_param('m_per_kg_default', 8.0)
+
+    # ------------------------------------------------------------------
+    # Pesos MEDIDOS desde las OPs (báscula de rollos)
+    # ------------------------------------------------------------------
+    def action_derivar_de_ops(self):
+        """Deriva kg/m del CONSUMO REAL de las OPs terminadas (12 meses).
+
+        La báscula pesa cada rollo de tejido al producirse
+        (pesaje_rollos_tejido) y ese peso es el que las OPs de acabado
+        consumen — así que consumo_kg ÷ metros_producidos es un kg/m
+        MEDIDO, no la adivinanza del gramaje del ref. Reglas:
+
+        - Componente kg DOMINANTE por producto (la tela; los químicos de
+          baño también van en kg pero no son peso de tela).
+        - Cadenas m→m se propagan: la OP del X140 consume XJ140 en
+          METROS, y el XJ140 sí tiene consumo en kg — el X140 hereda
+          m_ratio × kg/m del componente (hasta 3 niveles).
+        - Mínimo 10,000 m producidos en la ventana: sin volumen no hay
+          medición confiable.
+        - NUNCA pisa un peso autoritativo (manual/cvu) — misma regla que
+          load_weight_master; llena faltantes y corrige estimados.
+
+        La fuente queda como 'op_consumo' (medida): apaga la alerta
+        peso_estimado del motor. Después de correrlo hay que recalcular
+        (el check «Períodos vs maestro de pesos» lo recuerda)."""
+        uom_m = self.env.ref('uom.product_uom_meter',
+                             raise_if_not_found=False)
+        uom_kg = self.env.ref('uom.product_uom_kgm',
+                              raise_if_not_found=False)
+        if not uom_m or not uom_kg:
+            return False
+        desde = fields.Date.subtract(fields.Date.today(), months=12)
+        min_m = 10000.0
+        base_sql = """
+            WITH cons AS (
+                SELECT sm.raw_material_production_id AS mo_id,
+                       sm.product_id AS comp_id,
+                       SUM(sm.quantity) AS consumed
+                  FROM stock_move sm
+                  JOIN product_product pc ON pc.id = sm.product_id
+                  JOIN product_template tc ON tc.id = pc.product_tmpl_id
+                 WHERE sm.state = 'done'
+                   AND sm.raw_material_production_id IS NOT NULL
+                   AND sm.date >= %s
+                   AND tc.uom_id = %s
+                 GROUP BY 1, 2
+            ),
+            reales AS (
+                SELECT mp.product_id AS out_id, c.comp_id,
+                       SUM(c.consumed) AS consumed,
+                       SUM(mp.product_qty) AS produced
+                  FROM cons c
+                  JOIN mrp_production mp ON mp.id = c.mo_id
+                 WHERE mp.state = 'done'
+                   AND mp.product_uom_id = %s
+                   AND mp.company_id = %s
+                   AND mp.product_id != c.comp_id
+                 GROUP BY 1, 2
+                HAVING SUM(mp.product_qty) >= %s
+            )
+            SELECT DISTINCT ON (out_id) out_id, comp_id, consumed, produced
+              FROM reales
+             ORDER BY out_id, consumed DESC
+        """
+        company_id = int(self.env.company.id)
+        self.env.cr.execute(
+            base_sql, (desde, uom_kg.id, uom_m.id, company_id, min_m))
+        ratios = {out: cons / prod
+                  for out, _comp, cons, prod in self.env.cr.fetchall()
+                  if prod and cons > 0}
+        self.env.cr.execute(
+            base_sql, (desde, uom_m.id, uom_m.id, company_id, min_m))
+        cadena = [(out, comp, cons / prod)
+                  for out, comp, cons, prod in self.env.cr.fetchall()
+                  if prod and cons > 0]
+        for _nivel in range(3):
+            avance = False
+            for out, comp, m_ratio in cadena:
+                if out not in ratios and comp in ratios:
+                    ratios[out] = m_ratio * ratios[comp]
+                    avance = True
+            if not avance:
+                break
+        creados = actualizados = saltados = 0
+        recs = {r.product_id.id: r for r in self.search(
+            [('product_id', 'in', list(ratios))])}
+        nota = ('kg/m medido: consumo de OPs done 12m (báscula de rollos '
+                'vía consumos) al %s' % fields.Date.today())
+        for pid, kg in ratios.items():
+            if kg <= 0:
+                continue
+            vals = {'kg_per_unit': round(kg, 6),
+                    'm_per_kg': round(1.0 / kg, 6),
+                    'source': 'op_consumo', 'notes': nota}
+            rec = recs.get(pid)
+            if rec:
+                if rec.source not in ('ref_gramaje', 'odoo_weight', 'bom',
+                                      'op_consumo'):
+                    saltados += 1
+                    continue
+                rec.write(vals)
+                actualizados += 1
+            else:
+                self.create(dict(vals, product_id=pid))
+                creados += 1
+        _logger.info(
+            'qb.producto.peso: derivación de OPs — %s creados, %s '
+            'actualizados, %s autoritativos sin tocar.',
+            creados, actualizados, saltados)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'success', 'sticky': True,
+                'title': 'Pesos derivados del consumo real',
+                'message': ('%s creados, %s actualizados, %s manuales/CVU '
+                            'respetados. Recuerda RECALCULAR los períodos '
+                            'abiertos para que el costeo los use.'
+                            % (creados, actualizados, saltados))}}
 
     # ------------------------------------------------------------------
     # Maestro de pesos NATIVO (sin Supabase)

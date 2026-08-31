@@ -334,3 +334,50 @@ para no "arreglarlo" después:
 - El ajuste de metros por encogimiento/estiramiento está bien implementado y
   mueve el costo/metro +1.16%. El primer recálculo debe moverse aproximadamente
   ese porcentaje: si se mueve mucho más o mucho menos, hay que parar y revisar.
+
+---
+
+## Bitácora 31-ago-2026: consumo de BOM inflado ("hilo fantasma")
+
+Este es el error que §2.1 predecía («si la máquina consume 0.080, el modelo
+nunca se entera») — ocurrió al revés: la BOM decía MÁS de lo que la máquina
+consume, y el modelo tampoco se enteraba.
+
+**Cómo se encontró.** El usuario preguntó por el costo del kg de hilo
+policotton del X140 ($65 la última compra) y no le cuadraba el $18.42/m de
+MP. La conversión era correcta ($65 × 0.2674 kg/m de la BOM ≈ $17.4 + $1 de
+auxiliares), pero al comparar el factor 0.2674 contra las OPs de acabado
+reales, éstas consumían **0.2425–0.2474 kg/m**. La BOM cargaba ~8% de hilo
+que la planta no gasta: **$1.02/m de MP fantasma** en un producto que el
+modelo pintaba vendiendo bajo costo (−3.7%) cuando estaba en equilibrio.
+
+**Barrido completo (12 meses de OPs done, pareo consumo↔producción por
+producto).** La inflación NO era generalizada:
+
+| Familia | BOM | Real 12m | Veredicto |
+|---|---|---|---|
+| XJ140Q21JNT165 (X140) | 0.2674 | 0.2474 | **+8.1% — corregida** |
+| XJ140Q21JGO165 | 0.2674 | 0.2481 | **+7.8% — corregida** |
+| WN055Q66JNT162 (SCRIM 55) | 0.1032 | 0.0963 | **+7.2% — corregida** |
+| WN055Q66JNG172 (2 BOMs alt.) | 0.1094 | 0.0965 | **+13.4% — corregidas** |
+| WJ042/045/053, WD038 ×4, WC090 ×2, WJ060 ×3, WN055 BL172, WN075, TJ085 | — | ±2% | correctas, sin tocar |
+
+**Efecto del fix** (recalculado ene–ago 2026): X140 agosto −3.7% → +0.2%
+de margen absorbido; margen de productos ene–jul +$228K (11.06M → 11.28M).
+
+**Hallazgos colaterales sin resolver** (necesitan a producción):
+- A60BL155 y K40BL155: sus BOMs apuntan a fibras que **nadie consumió en
+  12 meses** — las OPs reales usan otros componentes; su MP se costea con
+  la fibra equivocada.
+- WD038-NG166: entreverada con su reproceso ING163, no separable desde
+  fuera.
+- Hilo gemelo HPESCO22/16535 (BOM "MP 35% ARANCEL") sin una sola compra
+  registrada: unificar con HP65P35A22/1.
+
+**El guard que quedó** (v19.0.1.45.0): check del panel «Consumo de BOM vs
+OPs reales» — compara cada receta kg→m con ≥50,000 m producidos en 12
+meses contra el consumo real de las OPs done y avisa a ±5%. Con recetas
+alternativas manda la más cercana al real. La lección de método: **la BOM
+es un parámetro que duplica un dato vivo** (el consumo de las OPs) y toda
+la clase de parámetros así se valida contra su fuente — misma regla que ya
+cubría pesos (5.11), AVCO de importados (5.13) y luz/energía.

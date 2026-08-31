@@ -164,6 +164,11 @@
         <field name="model">qb.producto.peso</field>
         <field name="arch" type="xml">
             <list editable="bottom">
+                <header>
+                    <button name="action_derivar_de_ops" type="object"
+                            string="Derivar de OPs (báscula, 12 meses)"
+                            help="Llena/actualiza kg por metro con el consumo REAL de las OPs terminadas (los rollos pesados en báscula). No pisa pesos manuales ni CVU. Después hay que recalcular."/>
+                </header>
                 <field name="product_id"/>
                 <field name="kg_per_unit"/>
                 <field name="m_per_kg"/>
