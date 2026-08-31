@@ -560,3 +560,54 @@ baja ~9% para todo lo costeado por kilo.
 `mrp.workcenter` (ids 386 y 388), las dos con producción. No afecta la
 capacidad (se cuenta la máquina, no el registro) pero sí ensucia cualquier
 reparto por workcenter.
+
+### La capacidad de un centro no es fungible: familias de máquinas (v1.54)
+
+El número de tejido —197,529 kg/mes contra 93,000 producidos, 47%— invita a
+concluir que sobra planta. Es falso, y la columna «Alternos» del formato de
+planta lo dice: las circulares se agrupan en familias intercambiables, y un
+artículo solo sale en la suya. Los grupos son los componentes conexos de esa
+relación, así que **particionan el centro sin traslape**; de 19 artículos
+catalogados, **18 solo caben en una familia**.
+
+| Familia | Máquinas dotadas | Capacidad | Carga | Utilización |
+|---|---|---:|---:|---:|
+| Galga 18 Ø32 | 17,18,28,31–37 (10 de 10) | 47,794 | 37,569 | **79%** |
+| Galga 24/28 Ø30 | 6,7,8,9,15,20,27,29,30 (9 de 11) | 58,983 | 24,823 | 42% |
+| Galga 18 Ø30 | 19,21,25,26 (4 de 5) | 58,675 | 17,261 | 29% |
+| Galga 16 Ø30 | 23 (de 2) | 11,831 | 4,702 | 40% |
+| Galga 24 Ø30 | 1 (de 4) | 5,695 | 1,754 | 31% |
+| CIRCULAR 38 y 40 | 2 | 14,550 | 0 | **0%** |
+
+La familia galga 18 Ø32 teje el **WJ044 de 235 cm y el WJ035 de 200 cm** —los
+dos productos más grandes de la casa, 42 de las 86 toneladas mensuales— y va
+al 79%. Un 25% más de demanda de esos dos la satura, con la planta marcando
+44%. Al revés, las dos Wellrich (38 y 40) no tejen ninguno de los artículos
+catalogados: 14,550 kg/mes de capacidad que el agregado suma como si
+sirvieran para todo.
+
+**Lo que se modeló.** `qb.costeo.familia` (grupo de máquinas dentro de un
+centro, con su horario, sus máquinas dotadas y su velocidad),
+`qb.familia.producto` (qué puede hacer cada familia y a qué velocidad — el
+mismo WJ047 da 8.1 kg/h en la galga 18 Ø32 y 18.7 en la Ø30) y
+`qb.familia.carga` (capacidad vs carga real vs utilización, con la carga de
+un producto repartida entre las familias que pueden hacerlo).
+
+**Dónde cambia una decisión.** El cotizador validaba el volumen contra el
+promedio del centro: contestaba que sí a un pedido que la familia capaz de
+hacerlo no puede correr. Ahora, cuando el producto está catalogado, valida
+contra las máquinas que de verdad lo hacen y lo dice con nombre y apellido.
+
+**Lo que NO cambia: el costo.** La familia es una subdivisión de capacidad,
+no de costo. El pool de gasto sigue siendo del centro y se absorbe sobre su
+capacidad completa; repartir el gasto fabril por familia es costeo por ruta,
+que sigue bloqueado por la asignación del gasto a centros (§3.5). El
+denominador de kg no se mueve, así que ningún costo unitario cambia con este
+cambio.
+
+**Pendiente de planta:** 2,561 kg/mes (3% de la producción) son artículos que
+no aparecen en el catálogo de familias — WT140Q21HNT190, NN053Q66HNT098,
+WN052B66HNG099 y seis más. Mientras no estén, el cotizador cae al método
+viejo para ellos. Y acabado y tintorería tienen la misma estructura sin
+capturar: en las ramas hay artículos que solo corren en la UNITECH, y la hoja
+de tintorería marca por artículo qué jets lo pueden teñir.

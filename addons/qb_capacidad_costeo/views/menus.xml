@@ -62,6 +62,8 @@
               parent="menu_qb_analisis" sequence="20"/>
     <menuitem id="menu_qb_balance" name="Balance de línea"
               parent="menu_qb_capacidad_group" action="balance_action" sequence="10"/>
+    <menuitem id="menu_qb_familia_carga" name="Carga por familia de máquinas"
+              parent="menu_qb_capacidad_group" action="familia_carga_action" sequence="15"/>
     <menuitem id="menu_qb_capacidad" name="Por máquina"
               parent="menu_qb_capacidad_group" action="capacidad_action" sequence="20"/>
     <menuitem id="menu_qb_ociosidad" name="Ociosidad"
@@ -129,6 +131,8 @@
               parent="menu_qb_config" action="peso_auditoria_action" sequence="41"/>
     <menuitem id="menu_qb_ruteo" name="Ruteo por familia"
               parent="menu_qb_config" action="producto_ruteo_action" sequence="50"/>
+    <menuitem id="menu_qb_familias" name="Familias de máquinas"
+              parent="menu_qb_config" action="costeo_familia_action" sequence="55"/>
     <menuitem id="menu_qb_turnos" name="Turnos / capacidad manual"
               parent="menu_qb_config" action="turno_config_action" sequence="60"/>
     <menuitem id="menu_qb_generar_fichas" name="Generar fichas técnicas"

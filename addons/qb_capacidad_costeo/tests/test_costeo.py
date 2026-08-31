@@ -3942,3 +3942,72 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(
             self.Costo._denominador_capacidad(centro, hoy, hoy), 1175313.0,
             places=2)
+
+    def test_familias_de_maquinas_parten_la_capacidad_del_centro(self):
+        """La capacidad de un centro NO es fungible.
+
+        Tejido tiene 27 circulares y 197,529 kg/mes, pero el WJ044 de 235 cm
+        solo sale en las diez galga 18 Ø32 y esas van al 79% mientras la
+        planta va al 44%. El agregado promedia una familia saturada con
+        otras vacías, y contra ese promedio el cotizador contesta que sí a
+        un pedido que la planta no puede tejer.
+        """
+        Familia = self.env['qb.costeo.familia']
+        FamProd = self.env['qb.familia.producto']
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB54', 'name': 'CENTRO FAMILIAS TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'std_output_per_hour': 11.0, 'capacidad_normal': 20000.0})
+        angosta = Familia.create({
+            'code': 'TB54_A', 'name': 'Familia angosta',
+            'centro_id': centro.id, 'machine_names': 'CIRCULAR 17, CIRCULAR 18',
+            'machine_count': 2, 'hours_per_week': 144.0,
+            'std_output_per_hour': 8.0, 'capacidad_normal': 5000.0})
+        ancha = Familia.create({
+            'code': 'TB54_B', 'name': 'Familia ancha',
+            'centro_id': centro.id, 'machine_names': 'CIRCULAR 6',
+            'machine_count': 5, 'hours_per_week': 144.0,
+            'std_output_per_hour': 12.0, 'capacidad_normal': 15000.0})
+        FamProd.create({'familia_id': angosta.id,
+                        'product_code': self.tela.default_code,
+                        'std_output_per_hour': 8.0})
+        # La derivada cuadra con lo capturado (144 h × 4.33 × 2 × 8 = 9,974
+        # no cuadra: el número capturado es el de las máquinas dotadas)
+        self.assertAlmostEqual(
+            ancha.capacidad_derivada(),
+            144.0 * self.env['qb.costeo.factor.config'].get_param(
+                'weeks_per_month', 4.33) * 5 * 12.0, places=2)
+        # Las familias particionan al centro: su suma es su capacidad
+        self.assertAlmostEqual(
+            sum((angosta | ancha).mapped('capacidad_normal')),
+            centro.capacidad_normal, places=2)
+        # El producto solo cae en la familia angosta
+        self.assertEqual(FamProd.familias_de(self.tela), angosta)
+        # Y la vista de carga expone la utilización de cada una
+        filas = self.env['qb.familia.carga'].search(
+            [('familia_id', 'in', (angosta | ancha).ids)])
+        self.assertEqual(len(filas), 2)
+        por_fam = {f.familia_id.id: f for f in filas}
+        self.assertAlmostEqual(
+            por_fam[angosta.id].capacity_month_units, 5000.0, places=2)
+        self.assertAlmostEqual(
+            por_fam[angosta.id].free_month_units,
+            5000.0 - por_fam[angosta.id].load_month_units, places=2)
+        # El cotizador valida contra la familia, no contra el centro: un
+        # volumen que cabe en el centro (20,000) pero no en las máquinas que
+        # pueden hacerlo (5,000) tiene que reprobar.
+        wiz = self.env['qb.cotizador.wizard'].new({'product_id': self.tela.id})
+        ok, detalle = wiz._check_capacity(
+            centro, is_kg=True, kg=1.0, m_per_kg=8.0, volumen=9000.0)
+        self.assertFalse(ok, 'cabe en el centro pero no en su familia')
+        self.assertIn('TB54_A', detalle)
+        self.assertIn('NO CABE', detalle)
+        ok2, _d = wiz._check_capacity(
+            centro, is_kg=True, kg=1.0, m_per_kg=8.0, volumen=100.0)
+        self.assertTrue(ok2)
+        # El panel avisa cuando las familias no suman su centro
+        ancha.capacidad_normal = 1000.0
+        panel = self.env['qb.costeo.panel'].create({})
+        estado = panel._build_estado()
+        self.assertIn('Familias de máquinas', estado)
+        self.assertIn('TB54', estado)

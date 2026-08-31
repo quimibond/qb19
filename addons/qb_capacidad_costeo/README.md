@@ -226,6 +226,31 @@ La regla común: se cuentan las máquinas que **producen**, no las instaladas.
 Una máquina parada por falta de gente es ociosidad —y así debe verse en el
 resultado del período—, no capacidad que el producto tenga que pagar.
 
+### Familias de máquinas: la capacidad no es fungible
+
+**Configuración → Familias de máquinas** y **Capacidad → Carga por familia**.
+
+Un centro es un promedio, y el promedio miente cuando un producto solo sale
+en algunas máquinas. Tejido va al 44%, pero la familia galga 18 Ø32 —la
+única que teje el WJ044 de 235 cm y el WJ035 de 200 cm— va al **79%**.
+
+- `qb.costeo.familia`: grupo de máquinas intercambiables dentro de un centro,
+  con su horario, sus máquinas dotadas y su velocidad. Salen de la columna
+  «Alternos» del formato de planta y particionan el centro sin traslape.
+- `qb.familia.producto`: qué puede hacer cada familia y a qué velocidad — el
+  mismo WJ047 da 8.1 kg/h en la galga 18 Ø32 y 18.7 en la Ø30.
+- `qb.familia.carga`: capacidad vs carga real vs utilización. Un producto que
+  cabe en varias familias reparte su carga entre ellas.
+
+El **cotizador** valida el volumen contra las máquinas que pueden hacer el
+producto, no contra el promedio del centro. Sin esto contestaba que sí a
+pedidos que la familia capaz de producirlos no puede correr.
+
+La familia es una subdivisión de **capacidad, no de costo**: el pool de gasto
+sigue siendo del centro y se absorbe sobre su capacidad completa. Repartir el
+gasto fabril por familia es costeo por ruta, que sigue bloqueado por la
+asignación del gasto a centros.
+
 ## Cómo clasificar una cuenta nueva
 
 **Configuración → Clasificación de cuentas**: agregar fila con patrón (ej.

@@ -898,6 +898,8 @@ class QbCotizadorWizard(models.TransientModel):
                 free_by_centro.get(cap.centro_id.id, 0.0) + cap.free_hours_month
             hours_wc_by_centro[cap.centro_id.id] = \
                 hours_wc_by_centro.get(cap.centro_id.id, 0.0) + cap.hours_month_available
+        familias_prod = self.env['qb.familia.producto'].familias_de(
+            self.product_id) if self.product_id else None
         for centro in centros:
             std = centro.std_output_per_hour
             if not std:
@@ -908,6 +910,36 @@ class QbCotizadorWizard(models.TransientModel):
                 units = volumen * (1.0 if is_kg else kg)
             else:
                 units = volumen * (m_per_kg if is_kg else 1.0)
+
+            # La capacidad del centro NO es fungible: si el producto está
+            # catalogado en familias de máquinas, el pedido cabe (o no) en
+            # ESAS máquinas, no en el promedio del centro. Tejido puede ir al
+            # 44% mientras la familia que teje el artículo va al 79%: contra
+            # el agregado el cotizador contestaba que sí a un pedido que la
+            # planta no puede correr.
+            del_centro = (familias_prod or self.env['qb.costeo.familia']
+                          ).filtered(lambda f: f.centro_id == centro)
+            if del_centro:
+                cargas = self.env['qb.familia.carga'].search(
+                    [('familia_id', 'in', del_centro.ids)])
+                libre_units = sum(cargas.mapped('free_month_units'))
+                if units <= libre_units:
+                    lines.append(
+                        '%s: requiere %s, libres %s en %s — OK.'
+                        % (centro.code, '{:,.0f}'.format(units),
+                           '{:,.0f}'.format(libre_units),
+                           ', '.join(del_centro.mapped('code'))))
+                else:
+                    ok = False
+                    lines.append(
+                        '%s: requiere %s y solo hay %s libres en las máquinas '
+                        'que pueden hacerlo (%s) — NO CABE. El centro completo '
+                        'sí tendría lugar, pero no en esas máquinas.'
+                        % (centro.code, '{:,.0f}'.format(units),
+                           '{:,.0f}'.format(libre_units),
+                           ', '.join(del_centro.mapped('code'))))
+                continue
+
             hours_needed = units / std
             free = free_by_centro.get(centro.id)
             if free is None:

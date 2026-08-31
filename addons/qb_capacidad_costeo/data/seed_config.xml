@@ -238,6 +238,190 @@
             <field name="driver_principal">largo</field>
         </record>
 
+        <!-- ============ Familias de máquinas ============
+             Grupos intercambiables segun la columna «Alternos» del
+             formato de planta: componentes conexos de esa relacion, asi
+             que particionan el centro sin traslape. Un producto SI puede
+             caber en varias (el WJ047 sale en galga 18 de los dos
+             diametros) y ahi la carga se reparte. -->
+        <record id="familia_tej_g24_d30_a" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G24_D30_A</field>
+            <field name="name">Tejido galga 24/28 Ø30 (grupo grande)</field>
+            <field name="machine_names">CIRCULAR 6, CIRCULAR 7, CIRCULAR 8, CIRCULAR 9, CIRCULAR 14, CIRCULAR 15, CIRCULAR 16, CIRCULAR 20, CIRCULAR 27, CIRCULAR 29, CIRCULAR 30</field>
+            <field name="machine_count">9</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">10.51</field>
+            <field name="capacidad_normal">58983</field>
+            <field name="notes">11 instaladas, 9 dotadas. Galga 24 Diametro 30 / Galga 28 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wb057q66hnt092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WB057Q66HNT092</field>
+            <field name="std_output_per_hour">10.64</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wd040q46hnt098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WD040Q46HNT098</field>
+            <field name="std_output_per_hour">10.60</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wj045r46hnt090" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WJ045R46HNT090</field>
+            <field name="std_output_per_hour">8.39</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wj064q66hnt135" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WJ064Q66HNT135</field>
+            <field name="std_output_per_hour">10.64</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wn048q66hnt098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WN048Q66HNT098</field>
+            <field name="std_output_per_hour">11.20</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wn063q66hnt106" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WN063Q66HNT106</field>
+            <field name="std_output_per_hour">10.95</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wt065q66hnt097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WT065Q66HNT097</field>
+            <field name="std_output_per_hour">9.14</field>
+        </record>
+        <record id="familia_tej_g18_d32" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G18_D32</field>
+            <field name="name">Tejido galga 18 Ø32</field>
+            <field name="machine_names">CIRCULAR 17, CIRCULAR 18, CIRCULAR 28, CIRCULAR 31, CIRCULAR 32, CIRCULAR 33, CIRCULAR 34, CIRCULAR 35, CIRCULAR 36, CIRCULAR 37</field>
+            <field name="machine_count">10</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">7.67</field>
+            <field name="capacidad_normal">47794</field>
+            <field name="notes">10 instaladas, 10 dotadas. Galga 18 Diametro 32. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj030q22hnn200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ030Q22HNN200</field>
+            <field name="std_output_per_hour">14.43</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj035q22hnn200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ035Q22HNN200</field>
+            <field name="std_output_per_hour">6.68</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj035q22hnt200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ035Q22HNT200</field>
+            <field name="std_output_per_hour">6.56</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj044q22hnt235" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ044Q22HNT235</field>
+            <field name="std_output_per_hour">7.61</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj047q21hnt112" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ047Q21HNT112</field>
+            <field name="std_output_per_hour">8.07</field>
+        </record>
+        <record id="familia_tej_g18_d30" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G18_D30</field>
+            <field name="name">Tejido galga 18 Ø30</field>
+            <field name="machine_names">CIRCULAR 19, CIRCULAR 21, CIRCULAR 22, CIRCULAR 25, CIRCULAR 26</field>
+            <field name="machine_count">4</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">23.53</field>
+            <field name="capacidad_normal">58675</field>
+            <field name="notes">5 instaladas, 4 dotadas. Galga 18 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g18_d30_tj094q22hnt100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">TJ094Q22HNT100</field>
+            <field name="std_output_per_hour">23.51</field>
+        </record>
+        <record id="famprod_tej_g18_d30_wj047q21hnt112" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">WJ047Q21HNT112</field>
+            <field name="std_output_per_hour">18.65</field>
+        </record>
+        <record id="famprod_tej_g18_d30_wn140q21hnt096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">WN140Q21HNT096</field>
+            <field name="std_output_per_hour">14.79</field>
+        </record>
+        <record id="famprod_tej_g18_d30_xj130q21hnt096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">XJ130Q21HNT096</field>
+            <field name="std_output_per_hour">25.99</field>
+        </record>
+        <record id="familia_tej_g24_d30_b" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G24_D30_B</field>
+            <field name="name">Tejido galga 24 Ø30 (CIRCULAR 1-4)</field>
+            <field name="machine_names">CIRCULAR 1, CIRCULAR 2, CIRCULAR 3, CIRCULAR 4</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">9.13</field>
+            <field name="capacidad_normal">5695</field>
+            <field name="notes">4 instaladas, 1 dotadas. Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g24_d30_b_wb045q46hnt098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_b"/>
+            <field name="product_code">WB045Q46HNT098</field>
+            <field name="std_output_per_hour">9.76</field>
+        </record>
+        <record id="famprod_tej_g24_d30_b_wb046q47hnt111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_b"/>
+            <field name="product_code">WB046Q47HNT111</field>
+            <field name="std_output_per_hour">9.76</field>
+        </record>
+        <record id="famprod_tej_g24_d30_b_wb048q47hnt100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_b"/>
+            <field name="product_code">WB048Q47HNT100</field>
+            <field name="std_output_per_hour">9.74</field>
+        </record>
+        <record id="familia_tej_g16_d30" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G16_D30</field>
+            <field name="name">Tejido galga 16 Ø30 (CIRCULAR 5 y 23)</field>
+            <field name="machine_names">CIRCULAR 5, CIRCULAR 23</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">18.98</field>
+            <field name="capacidad_normal">11831</field>
+            <field name="notes">2 instaladas, 1 dotadas. Galga 16 Diametro 30 / Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g16_d30_wc090q11hnt092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g16_d30"/>
+            <field name="product_code">WC090Q11HNT092</field>
+            <field name="std_output_per_hour">13.77</field>
+        </record>
+        <record id="familia_tej_c38" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_C38</field>
+            <field name="name">Tejido CIRCULAR 38 (Wellrich)</field>
+            <field name="machine_names">CIRCULAR 38</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">11.67</field>
+            <field name="capacidad_normal">7275</field>
+            <field name="notes">1 instaladas, 1 dotadas. Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="familia_tej_c40" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_C40</field>
+            <field name="name">Tejido CIRCULAR 40 (Wellrich)</field>
+            <field name="machine_names">CIRCULAR 40</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">11.67</field>
+            <field name="capacidad_normal">7275</field>
+            <field name="notes">1 instaladas, 1 dotadas. Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+
         <!-- ============ Turnos ============
              El horario declarado de planta (HORARIO, F-IT-P-P01-10-06):
              dos turnos, 90 h/semana. No manda sobre `capacidad_normal`
