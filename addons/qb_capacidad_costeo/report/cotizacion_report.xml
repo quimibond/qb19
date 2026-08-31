@@ -164,7 +164,7 @@
                                         <td class="text-end"><span t-esc="'{:.1f}'.format(t.margen_neto_pct)"/>%</td>
                                         <td class="text-end">$<span t-esc="'{:,.0f}'.format(t.contrib_total_mes)"/></td>
                                         <td><span t-esc="{'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢'}.get(t.semaforo, '')"/></td>
-                                        <td><span t-esc="'✔' if t.capacity_ok else '✘ NO'"/></td>
+                                        <td><span t-esc="'✔' if t.capacity_status == 'ok' else ('✘ NO' if not t.capacity_ok else '⚠')"/></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -179,10 +179,11 @@
                         <!-- Capacidad: una línea si cabe; detalle solo si NO cabe -->
                         <p style="font-size:12px; margin-bottom:2px;">
                             <b>Capacidad:</b>
-                            <t t-if="o.capacity_ok">✔ el volumen cabe en la planta (detalle por centro en Odoo).</t>
-                            <t t-else="">✘ <b>NO cabe en la capacidad actual:</b></t>
+                            <t t-if="o.capacity_status == 'ok'">✔ el volumen cabe en la planta (detalle por centro en Odoo).</t>
+                            <t t-elif="not o.capacity_ok">✘ <b>NO cabe en la capacidad actual:</b></t>
+                            <t t-else="">⚠ <b>verificada solo en parte</b> — lo que se pudo medir cabe, pero hay centros sin capacidad configurada:</t>
                         </p>
-                        <pre t-if="not o.capacity_ok" style="font-size:10px;"><span t-field="o.capacity_detail"/></pre>
+                        <pre t-if="o.capacity_status != 'ok'" style="font-size:10px;"><span t-field="o.capacity_detail"/></pre>
 
                         <!-- Comparativa: lo más valioso para decidir precio -->
                         <t t-if="o.comparativa_html">

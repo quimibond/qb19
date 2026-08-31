@@ -5,8 +5,23 @@ Cada cotización queda con los factores usados (FX, ventana de gastos,
 denominadores) para trazabilidad y comparación antes/después.
 """
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 from .glosario import GLOSARIO_HTML
+
+# Un centro sin throughput ni turnos configurados no se puede validar. Eso no
+# es «cabe» ni «no cabe»: es «no sé», y un booleano no sabe decirlo. Mientras
+# la respuesta vivió solo en `capacity_ok`, el «no sé» se contaba como sí y la
+# cotización afirmaba que el volumen cabía en la planta habiendo medido un
+# solo centro de los tres de la ruta.
+CAPACITY_STATUS = [
+    ('ok', 'Cabe: todos los centros de la ruta validados'),
+    ('parcial', 'Parcial: lo medido cabe, pero faltan datos de algún centro'),
+    ('sin_datos', 'Sin datos: no se pudo validar ningún centro'),
+    ('no_cabe', 'No cabe: un centro medido no da abasto'),
+    ('sin_ruta', 'Sin ruta de fabricación: no consume capacidad'),
+    ('sin_volumen', 'Falta capturar el volumen para poder validar'),
+]
 
 
 class QbCotizacion(models.Model):
@@ -212,7 +227,17 @@ class QbCotizacion(models.Model):
         help='Orden desde la que se generó la cotización (si aplica).')
 
     # Chequeo de capacidad
-    capacity_ok = fields.Boolean(string='¿Cabe en capacidad?')
+    capacity_ok = fields.Boolean(
+        string='Sin impedimento de capacidad conocido',
+        help='Solo es False cuando un centro que SÍ se pudo medir no da '
+             'abasto. Un centro sin datos no lo baja: de esta bandera cuelgan '
+             'los tramos que se le ofrecen al cliente, y hacerla False por '
+             'falta de configuración borraría la escalera de volumen del PDF. '
+             'La respuesta completa está en «¿Cabe en capacidad?».')
+    capacity_status = fields.Selection(
+        CAPACITY_STATUS, string='¿Cabe en capacidad?',
+        help='Distingue «cabe» de «no pude validarlo». Vacío en las '
+             'cotizaciones anteriores a que existiera el campo.')
     capacity_detail = fields.Text(
         string='Detalle de capacidad',
         help='Horas-máquina requeridas vs libres por centro de la ruta; '
@@ -475,6 +500,80 @@ class QbCotizacion(models.Model):
             'context': ctx,
         }
 
+    def recotizar_ahora(self):
+        """Recotiza sin pasar por la interfaz: corre el cotizador completo con
+        los factores de hoy y devuelve las cotizaciones nuevas.
+
+        `action_recotizar` solo abre la calculadora, así que el pipeline
+        completo vivía únicamente en la UI: quien necesitaba recotizar desde
+        la shell, un cron o un script terminaba escribiendo el `qb.cotizacion`
+        a mano. Eso ya salió caro — las revisiones del 28-ago se armaron así y
+        quedaron sin validez, sin escalera de volumen, sin contribución por
+        hora-máquina y sin especificación, que es justo lo que solo llena
+        `_save_cotizacion`. Con esto, recotizar es una llamada y sale
+        completo por construcción.
+
+        El precio al cliente se conserva EN SU MONEDA: se reconstruye con el
+        TC que quedó guardado al cotizar, no con el de hoy. Recotizar refresca
+        los costos; moverle el precio al cliente por detrás es otra decisión,
+        y no la toma un recálculo.
+
+        Solo aplica a cotizaciones de un producto existente: de una
+        especificación nueva el registro guarda gramaje, ancho y galga, pero
+        NO la MP estimada, la familia ni la ruta que se capturaron en la
+        calculadora. Recalcularla desde aquí las tomaría en cero y saldría un
+        costo bajísimo con toda la pinta de estar bien, así que mejor falla.
+        """
+        Wizard = self.env['qb.cotizador.wizard']
+        Costo = self.env['qb.costo.producto']
+        nuevas = self.env['qb.cotizacion']
+        for rec in self:
+            if not rec.product_id:
+                raise UserError(
+                    'La cotización %s es de una especificación nueva: el '
+                    'registro no guarda la MP estimada ni la ruta que se '
+                    'capturaron, y recalcularla aquí las daría por cero. '
+                    'Ábrela con «↻ Re-cotizar» y captúralas.'
+                    % (rec.folio or rec.name))
+            currency = rec.currency_id or self.env.company.currency_id
+            rate = rec.fx_rate or Costo.to_mxn_rate(currency)
+            vals = {
+                'partner_id': rec.partner_id.id,
+                'product_id': rec.product_id.id,
+                'volumen': rec.volumen,
+                'currency_id': currency.id,
+                'precio_objetivo': (rec.precio_objetivo / rate
+                                    if rec.precio_objetivo and rate else 0.0),
+                # Para un producto existente las specs no entran al cálculo
+                # (el peso sale del maestro), pero sí salen en el PDF: si no
+                # se arrastran, cada revisión las pierde y el cliente recibe
+                # la cotización sin gramaje ni ancho.
+                'spec_gramaje': rec.spec_gramaje,
+                'spec_ancho': rec.spec_ancho,
+                'spec_galga': rec.spec_galga,
+                # La revisión sigue colgando del pedido que la originó.
+                'sale_order_id': rec.sale_order_id.id,
+            }
+            nuevas |= Wizard.create(vals)._save_cotizacion()
+        return nuevas
+
+    def action_recotizar_ahora(self):
+        """Botón: recotiza con los factores de hoy y abre la revisión nueva.
+
+        La original queda intacta como histórico (`create` la encadena y la
+        marca «Reemplazada»).
+        """
+        self.ensure_one()
+        nueva = self.recotizar_ahora()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Cotización recalculada',
+            'res_model': 'qb.cotizacion',
+            'res_id': nueva.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     def action_enviar_correo(self):
         """Composer de correo al cliente con el PDF COMERCIAL adjunto
         (solo producto, precio y condiciones). La hoja interna de costo
@@ -545,4 +644,8 @@ class QbCotizacionTramo(models.Model):
     capacity_ok = fields.Boolean(
         string='¿Cabe?',
         help='Si ese volumen cabe en las horas libres de la planta. Al '
-             'cliente solo se le ofrecen tramos que sí caben.')
+             'cliente solo se le ofrecen tramos que sí caben. False solo '
+             'cuando un centro medido no da abasto; ver «Estado» para '
+             'distinguirlo de un centro sin datos.')
+    capacity_status = fields.Selection(
+        CAPACITY_STATUS, string='Estado de capacidad')
