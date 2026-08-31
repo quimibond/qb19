@@ -61,3 +61,8 @@ access_qb_producto_mensual_user,qb.producto.mensual.user,model_qb_producto_mensu
 access_qb_peso_auditoria_user,qb.peso.auditoria.user,model_qb_peso_auditoria,base.group_user,1,0,0,0
 access_qb_peso_auditoria_mgr,qb.peso.auditoria.mgr,model_qb_peso_auditoria,mrp.group_mrp_manager,1,1,1,1
 access_qb_peso_auditoria_sys,qb.peso.auditoria.sys,model_qb_peso_auditoria,base.group_system,1,1,1,1
+access_qb_costeo_familia_user,qb.costeo.familia.user,model_qb_costeo_familia,base.group_user,1,0,0,0
+access_qb_costeo_familia_mgr,qb.costeo.familia.mgr,model_qb_costeo_familia,mrp.group_mrp_manager,1,1,1,1
+access_qb_familia_producto_user,qb.familia.producto.user,model_qb_familia_producto,base.group_user,1,0,0,0
+access_qb_familia_producto_mgr,qb.familia.producto.mgr,model_qb_familia_producto,mrp.group_mrp_manager,1,1,1,1
+access_qb_familia_carga_user,qb.familia.carga.user,model_qb_familia_carga,base.group_user,1,0,0,0

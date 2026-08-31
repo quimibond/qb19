@@ -481,3 +481,133 @@ vacía). Lo que el rendimiento vendible destapó, con julio 2026 como corte:
   Los cuatro se vendían "en equilibrio" y en realidad pagan la merma con el
   margen. WN075 solo, a 63 mil metros al mes, es la decisión de precio más
   cara de la lista.
+
+### Incidente del despliegue de v1.51: el recálculo leyó la capacidad vieja
+
+La migración escribió la capacidad de Acabado (915,733 → 1,175,313) y
+recalculó 2026 en la misma transacción. Los ocho períodos salieron con el
+denominador **viejo**, y el modo de falla fue el peor: silencioso. Los
+factores se veían normales —`m_denom_month` 915,733, utilización 98.8%— y
+solo comparándolos contra el centro se notaba que el número ya no
+correspondía a lo que decía la tabla.
+
+**Causa.** `qb.ociosidad` es un `_table_query`: lee `qb_costeo_centro` con
+SQL crudo. El ORM no tiene cómo saber que ese SELECT depende de un write
+pendiente sobre los centros, así que no hace flush y la vista devuelve el
+renglón anterior. Cualquier flujo que escriba un centro y recalcule sin
+cerrar la transacción cae en lo mismo.
+
+**Arreglo.** `_capacidad_normal_map` hace flush antes de leer la vista
+(v1.52), con su test de regresión; el recálculo se movió a la migración
+1.52. Producción quedó corregida a mano el mismo día, período por período.
+
+**Efecto real, ya con la capacidad correcta** (ene–ago 2026):
+
+| | Antes | Después |
+|---|---:|---:|
+| Denominador de metros | 915,733 | **1,175,313** |
+| Utilización de acabado | 98.6–100% | **77.0–80.0%** |
+| Factor de fabricación $/m | 2.00–2.09 | **1.57–1.64** |
+| Ociosidad de fabricación $/mes | 1.80–1.89M | **2.19–2.32M** |
+
+Los meses de enero a mayo dejaron de estar topados al 100%: ya no hay
+`capacidad_superada_m` en ningún período de 2026. El costo fijo por metro
+bajó ~22% y esos ~400 mil pesos al mes se movieron del producto al
+resultado del período, que es donde IAS 2 los quiere. El par no cambia:
+margen de productos − ociosidad = el mismo resultado.
+
+**Lo que el check nuevo dice hoy, y es cierto:** Acabado y Tintorería
+cuadran contra sus turnos (±0.01%), pero **TEJIDO y ENTRETELAS quedan en
+ámbar** porque nadie capturó su horario y su capacidad no tiene contra qué
+validarse. El caso de tejido vale una pregunta a planta: los 180,000
+kg/mes capturados, contra 37 máquinas a 11 kg/h, implican **102 h/semana
+por máquina** — mientras el calendario que traen sus workcenters en Odoo
+es «Jornada 24/7 3 Turnos» (168 h). Uno de los dos números describe la
+planta y el otro no.
+
+### Tejido: el tercer centro deja de ser estimación (v1.53)
+
+Con «informacion_de_carga_produccion» (hojas CapacidadesProducto y Turnos)
+se cierra el último centro fabril cuya capacidad no tenía fuente.
+
+**180,000 → 197,529 kg/mes (+10%).** 27 circulares tejiendo, cada una a su
+velocidad documentada, por 623.5 h/mes. El horario real son **144 h/semana**:
+doce turnos de 12 h, con la planta parada de viernes 19:00 a sábado 19:00 —
+no las 168 h del calendario «Jornada 24/7 3 Turnos» que traen sus workcenters
+en Odoo. De paso valida el throughput que el módulo traía a ojo: **11 kg/h
+capturados contra 11.73 medidos**, 6% de diferencia.
+
+Se cuentan 27 y no las 37 instaladas por el mismo criterio de acabado (dos
+ramas corriendo, la ICOMATEX en montaje no cuenta): 28 workcenters
+registraron órdenes en agosto —27 máquinas distintas, porque la CIRCULAR 19
+está dada de alta dos veces en Odoo— y las otras diez no están fuera de
+servicio, pero tampoco se dotan. Con las 37 la capacidad sería 269,174
+kg/mes. Una máquina parada por falta de gente es ociosidad, no capacidad que
+el producto deba pagar.
+
+**Lo que la medición dejó claro, y vale más que el número.** Las circulares
+corren a velocidad nominal: en agosto registraron 8,660 horas-máquina y
+produjeron ~93,000 kg, o sea **10.7 kg/h contra los 11.73 del papel** (91%).
+El problema de tejido no es que las máquinas vayan lentas — es que de las
+17,458 horas-máquina programadas de esas 27 circulares se usó **la mitad**.
+La ociosidad es de horas, no de kilos por hora, y eso es exactamente la
+palanca #1: llenar turnos, no apurar máquinas.
+
+Tejido es el denominador de kg, así que el factor de fabricación por peso
+baja ~9% para todo lo costeado por kilo.
+
+**Duplicado a limpiar:** la CIRCULAR 19 existe dos veces como
+`mrp.workcenter` (ids 386 y 388), las dos con producción. No afecta la
+capacidad (se cuenta la máquina, no el registro) pero sí ensucia cualquier
+reparto por workcenter.
+
+### La capacidad de un centro no es fungible: familias de máquinas (v1.54)
+
+El número de tejido —197,529 kg/mes contra 93,000 producidos, 47%— invita a
+concluir que sobra planta. Es falso, y la columna «Alternos» del formato de
+planta lo dice: las circulares se agrupan en familias intercambiables, y un
+artículo solo sale en la suya. Los grupos son los componentes conexos de esa
+relación, así que **particionan el centro sin traslape**; de 19 artículos
+catalogados, **18 solo caben en una familia**.
+
+| Familia | Máquinas dotadas | Capacidad | Carga | Utilización |
+|---|---|---:|---:|---:|
+| Galga 18 Ø32 | 17,18,28,31–37 (10 de 10) | 47,794 | 37,569 | **79%** |
+| Galga 24/28 Ø30 | 6,7,8,9,15,20,27,29,30 (9 de 11) | 58,983 | 24,823 | 42% |
+| Galga 18 Ø30 | 19,21,25,26 (4 de 5) | 58,675 | 17,261 | 29% |
+| Galga 16 Ø30 | 23 (de 2) | 11,831 | 4,702 | 40% |
+| Galga 24 Ø30 | 1 (de 4) | 5,695 | 1,754 | 31% |
+| CIRCULAR 38 y 40 | 2 | 14,550 | 0 | **0%** |
+
+La familia galga 18 Ø32 teje el **WJ044 de 235 cm y el WJ035 de 200 cm** —los
+dos productos más grandes de la casa, 42 de las 86 toneladas mensuales— y va
+al 79%. Un 25% más de demanda de esos dos la satura, con la planta marcando
+44%. Al revés, las dos Wellrich (38 y 40) no tejen ninguno de los artículos
+catalogados: 14,550 kg/mes de capacidad que el agregado suma como si
+sirvieran para todo.
+
+**Lo que se modeló.** `qb.costeo.familia` (grupo de máquinas dentro de un
+centro, con su horario, sus máquinas dotadas y su velocidad),
+`qb.familia.producto` (qué puede hacer cada familia y a qué velocidad — el
+mismo WJ047 da 8.1 kg/h en la galga 18 Ø32 y 18.7 en la Ø30) y
+`qb.familia.carga` (capacidad vs carga real vs utilización, con la carga de
+un producto repartida entre las familias que pueden hacerlo).
+
+**Dónde cambia una decisión.** El cotizador validaba el volumen contra el
+promedio del centro: contestaba que sí a un pedido que la familia capaz de
+hacerlo no puede correr. Ahora, cuando el producto está catalogado, valida
+contra las máquinas que de verdad lo hacen y lo dice con nombre y apellido.
+
+**Lo que NO cambia: el costo.** La familia es una subdivisión de capacidad,
+no de costo. El pool de gasto sigue siendo del centro y se absorbe sobre su
+capacidad completa; repartir el gasto fabril por familia es costeo por ruta,
+que sigue bloqueado por la asignación del gasto a centros (§3.5). El
+denominador de kg no se mueve, así que ningún costo unitario cambia con este
+cambio.
+
+**Pendiente de planta:** 2,561 kg/mes (3% de la producción) son artículos que
+no aparecen en el catálogo de familias — WT140Q21HNT190, NN053Q66HNT098,
+WN052B66HNG099 y seis más. Mientras no estén, el cotizador cae al método
+viejo para ellos. Y acabado y tintorería tienen la misma estructura sin
+capturar: en las ramas hay artículos que solo corren en la UNITECH, y la hoja
+de tintorería marca por artículo qué jets lo pueden teñir.
