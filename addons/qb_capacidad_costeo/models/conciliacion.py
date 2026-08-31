@@ -139,8 +139,17 @@ class QbCostoConciliacion(models.Model):
         string='Resultado de operación (mayor)', readonly=True,
         help='Ventas − costo de ventas − gastos de operación, del mayor.')
     resultado_modelo = fields.Float(
-        string='Resultado (modelo)', readonly=True,
-        help='Σ del margen neto total de Costo por producto.')
+        string='Margen de productos (modelo)', readonly=True,
+        help='Σ del margen neto total de Costo por producto. NO es el '
+             'resultado del período: los productos solo cargan la capacidad '
+             'que usan, así que este margen se lee siempre en par con la '
+             'ociosidad — margen − ociosidad = resultado.')
+    resultado_par = fields.Float(
+        string='Resultado del período (modelo)', readonly=True,
+        help='Margen de productos − ociosidad no absorbida. El número que '
+             'sí se compara contra el resultado de operación del mayor: '
+             'los productos pueden dejar margen y aun así el mes salir '
+             'tablas si la planta parada se lo come.')
     ociosidad_ias2 = fields.Float(
         string='Ociosidad no absorbida', readonly=True,
         help='Costo fijo de la capacidad ociosa: bajo IAS 2 va al resultado '
@@ -280,6 +289,8 @@ class QbCostoConciliacion(models.Model):
                     AS resultado_gl,
                 COALESCE(mo.resultado, 0) AS resultado_modelo,
                 COALESCE(fa.ociosidad, 0) AS ociosidad_ias2,
+                COALESCE(mo.resultado, 0) - COALESCE(fa.ociosidad, 0)
+                    AS resultado_par,
                 COALESCE(mo.resultado, 0)
                     - (gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion)
                     AS brecha,
