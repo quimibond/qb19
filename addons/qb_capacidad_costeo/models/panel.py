@@ -433,19 +433,87 @@ class QbCosteoPanel(models.TransientModel):
     # ------------------------------------------------------------------
     # El techo de la planta
     # ------------------------------------------------------------------
+    # Rampa de UN tono para descomponer la capacidad instalada en sus
+    # tres tramos: usada, disponible y parada. Es una rampa y no tres
+    # colores porque los tramos son un ORDEN —de lo que ya trabaja a lo
+    # que ni siquiera está dotado—, no tres categorías; y porque una
+    # rampa se lee igual con daltonismo: el verde y el ámbar que pedía
+    # el instinto quedan a ΔE 1.1 en deuteranopía, o sea el mismo color.
+    # El estado de cada máquina no viaja en la barra: lo carga su icono
+    # con su palabra, al lado.
+    CAP_USADA = '#1c4f82'
+    CAP_LIBRE = '#5093ce'
+    CAP_PARADA = '#9cc4e4'
+
+    @classmethod
+    def _barra_capacidad(cls, usada, libre, parada, escala=1.0, ancho=210):
+        """Barra apilada de capacidad instalada, a escala dentro del centro.
+
+        El ancho es proporcional a la capacidad INSTALADA de la máquina
+        contra la mayor de su centro, no un 100 por ciento para todas:
+        así se ve de un golpe que la HTJ-1 es tres veces la HTJ-4 y no
+        solo que las dos van medio llenas. Entre centros no se compara —
+        tejido y tintorería miden en kg y acabado en metros—, y por eso
+        la tabla va agrupada por centro y cada grupo tiene su escala.
+        """
+        total = usada + libre + parada
+        if total <= 0 or escala <= 0:
+            return ''
+        tramos = ((usada, cls.CAP_USADA), (libre, cls.CAP_LIBRE),
+                  (parada, cls.CAP_PARADA))
+        piezas = ''.join(
+            '<span style="display:block;flex:%.4f 0 0;background:%s;'
+            'height:11px;"></span>' % (v, color)
+            for v, color in tramos if v > 0)
+        return (
+            '<span style="display:inline-flex;gap:2px;width:%.1fpx;'
+            'height:11px;border-radius:3px;overflow:hidden;'
+            'vertical-align:middle;background:%s;">%s</span>'
+            % (ancho * min(escala, 1.0), cls.RIEL, piezas))
+
+    @classmethod
+    def _leyenda_capacidad(cls):
+        def sw(color, palabra, glosa):
+            return (
+                '<span style="margin-right:16px;white-space:nowrap;">'
+                '<span style="display:inline-block;width:11px;height:11px;'
+                'border-radius:3px;background:%s;vertical-align:middle;">'
+                '</span> <b style="color:%s;">%s</b> '
+                '<span style="color:%s;">%s</span></span>'
+                % (color, cls.TINTA, palabra, cls.TENUE, glosa))
+        return (
+            '<div style="font-size:11px;margin:2px 0 6px 0;">%s%s%s</div>'
+            % (sw(cls.CAP_USADA, 'usada', 'lo que corrió'),
+               sw(cls.CAP_LIBRE, 'disponible', 'dotada y libre — se vende hoy'),
+               sw(cls.CAP_PARADA, 'parada',
+                  'instalada sin dotar — se libera con gente')))
+
+    # ------------------------------------------------------------------
+    # El techo de la planta, máquina por máquina
+    # ------------------------------------------------------------------
     def _build_kpis(self):
-        """La capacidad se lee por MÁQUINA, no por centro.
+        """Capacidad INSTALADA vs DOTADA vs USADA, por máquina.
 
-        Un centro promedia la máquina saturada con las vacías y contesta que
-        sí a un pedido que la planta no puede correr: acabado lee 88&#37; y su
-        rama UNITECH va al 94&#37;; tintorería lee 48&#37; y su HTJ-1 al 81&#37;.
-        Por eso el orden es por familia y de peor a mejor, y el número del
-        centro aparece al lado solo cuando difiere lo suficiente como para
-        engañar a quien mire el promedio.
+        Son tres niveles y no dos, y confundirlos cuesta dinero de dos
+        maneras opuestas:
 
-        La escala es de dos lados a propósito: saturada es un techo y ociosa
-        es dinero parado, y las dos son malas noticias por razones opuestas.
-        Ningún color va solo — cada banda trae icono y palabra.
+        * **Instalada** es lo que la planta compró. No absorbe costo por
+          existir: meter una máquina parada en el denominador de la
+          absorción inventaría ociosidad que nadie decidió tener.
+        * **Dotada** (la capacidad normal de la NIC 2) es lo que de
+          verdad se corre. Es la que absorbe, y su parte no usada sí es
+          ociosidad con costo.
+        * **Usada** es la carga. Es una asignación, no una medición.
+
+        La diferencia entre instalada y dotada es una decisión pendiente
+        —contratar o mover gente—, no un residuo, y hasta ahora no se
+        veía en ningún lado: la HTJ-5 son 91,000 kg/mes que existen,
+        están pagados y no aparecían.
+
+        Y se lee por MÁQUINA, no por centro. Un centro promedia la
+        saturada con las vacías y contesta que sí a un pedido que la
+        planta no puede correr: acabado lee 88 y su rama UNITECH va al
+        94; tintorería lee 48 y su HTJ-1 al 81.
         """
         env = self.env
         filas = env['qb.familia.carga'].search([])
@@ -455,70 +523,177 @@ class QbCosteoPanel(models.TransientModel):
             o.centro_id.id: o.utilization_pct
             for o in env['qb.ociosidad'].search([])}
         ocioso = sum(env['qb.ociosidad'].search([]).mapped('idle_cost_month'))
+
+        # Agrupado por centro: dentro de un centro las unidades son
+        # comparables (kg en tejido y tintorería, m en acabado) y entre
+        # centros no. Sumar los cuatro sería sumar kilos con metros.
+        centros = filas.mapped('centro_id').sorted(
+            lambda c: (c.sequence, c.code or ''))
         cuerpo = ''
-        for f in filas.sorted(lambda r: -r.utilization_pct):
-            u = f.utilization_pct
-            if u >= 95:
-                color, icono, banda = self.MAL, '🔴', 'saturada'
-            elif u >= 85:
-                color, icono, banda = self.SERIO, '🟠', 'ajustada'
-            elif u >= 55:
-                color, icono, banda = self.BIEN, '🟢', 'sana'
-            else:
-                color, icono, banda = self.OJO, '🟡', 'ociosa'
-            uc = util_centro.get(f.centro_id.id)
-            aviso = ''
-            if uc is not None and abs(uc - u) >= 10:
-                aviso = ('<span style="font-size:11px;color:%s;"> · el '
-                         'centro lee %.0f&#37;</span>' % (self.SERIO, uc))
-            cuerpo += (
-                '<tr>'
-                '<td style="padding:3px 8px;white-space:nowrap;">%s <b>%s</b>'
-                '<div style="font-size:11px;color:%s;">%s</div></td>'
-                '<td style="padding:3px 8px;">%s</td>'
-                '<td style="padding:3px 8px;text-align:right;'
-                'white-space:nowrap;"><b>%.0f&#37;</b> '
-                '<span style="font-size:11px;color:%s;">%s</span>%s</td>'
-                '<td style="padding:3px 8px;text-align:right;'
-                'white-space:nowrap;color:%s;">libre %s</td>'
-                '</tr>'
-                % (icono, f.familia_id.code, self.TENUE,
-                   f.centro_id.code or '',
-                   self._barra(u, color),
-                   u, self.TENUE, banda, aviso,
-                   self.TENUE, '{:,.0f}'.format(f.free_month_units)))
+        for centro in centros:
+            del_centro = filas.filtered(lambda r: r.centro_id == centro)
+            cuerpo += self._grupo_de_centro(centro, del_centro, util_centro)
+
+        return (self._encabezado_techo(filas, ocioso)
+                + self._leyenda_capacidad()
+                + '<table class="table table-sm" style="font-size:13px;'
+                  'max-width:900px;"><tbody>%s</tbody></table>' % cuerpo
+                + '<p style="font-size:11px;color:%s;margin-top:-6px;">'
+                  'Todo en unidades por MES —kg en tejido y tintorería, '
+                  'metros en acabado— y por eso la tabla va agrupada por '
+                  'centro: entre centros no se suma. El costeo trabaja por '
+                  'período; multiplicar por doce solo invitaría a comparar '
+                  'contra las ventas del año, que es otra cosa. La carga es '
+                  'una asignación, no una medición: Odoo no registra en qué '
+                  'máquina corrió cada orden.</p>' % self.TENUE)
+
+    def _encabezado_techo(self, filas, ocioso):
+        """Las dos frases que hay que leer aunque no se mire la tabla."""
         peor = filas.sorted(lambda r: -r.utilization_pct)[:1]
-        if peor and peor.utilization_pct < 1.0:
-            # Todas en cero: no hay «la más apretada» que nombrar, y decirlo
-            # igual sería señalar una máquina al azar. Pasa en una base recién
-            # instalada y cuando la ventana de producción se queda sin OPs.
-            encabezado = (
-                '<p style="margin-bottom:6px;color:%s;">Ninguna máquina '
+        if not peor:
+            return ''
+        if peor.utilization_pct < 1.0:
+            # Todas en cero: no hay «la más apretada» que nombrar, y
+            # decirlo igual sería señalar una máquina al azar. Pasa en una
+            # base recién instalada y cuando la ventana de producción se
+            # queda sin OPs.
+            cabeza = (
+                '<p style="margin-bottom:2px;color:%s;">Ninguna máquina '
                 'registra carga en la ventana de producción — o no hay '
                 'órdenes terminadas todavía, o sus artículos no están '
-                'catalogados en ninguna familia. &nbsp;·&nbsp; Costo de la '
-                'capacidad parada: <b>%s/mes</b>.</p>'
-                % (self.SERIO, money(ocioso)))
-        elif peor:
-            encabezado = (
-                '<p style="margin-bottom:6px;">La máquina más apretada de la '
-                'planta es <b>%s</b> al <b>%.0f&#37;</b>, con %s libres al '
-                'mes. &nbsp;·&nbsp; Costo de la capacidad parada: '
-                '<b>%s/mes</b>.</p>'
-                % (peor.familia_id.code, peor.utilization_pct,
-                   '{:,.0f}'.format(peor.free_month_units), money(ocioso)))
+                'catalogados en ninguna familia.</p>' % self.SERIO)
         else:
-            encabezado = ''
-        return (encabezado
-                + '<table class="table table-sm" style="font-size:13px;'
-                  'max-width:760px;"><tbody>%s</tbody></table>' % cuerpo
-                + '<p style="font-size:11px;color:%s;margin-top:-6px;">'
-                  'Capacidad y carga en unidades por MES: el costeo trabaja '
-                  'por período y multiplicarlas por doce solo invitaría a '
-                  'compararlas contra las ventas del año, que es otra cosa. '
-                  'La carga es una asignación, no una medición — Odoo no '
-                  'registra en qué máquina corrió cada orden.</p>'
-                  % self.TENUE)
+            cabeza = (
+                '<p style="margin-bottom:2px;">La máquina más apretada de '
+                'la planta es <b>%s</b> al <b>%.0f&#37;</b> de su capacidad '
+                'dotada, con %s %s/mes disponibles.</p>'
+                % (peor.familia_id.code, peor.utilization_pct,
+                   '{:,.0f}'.format(peor.free_month_units),
+                   self._unidad(peor.centro_id)))
+
+        # Lo parado, por centro y con nombre: es lo que se puede decidir.
+        paradas = filas.filtered(lambda r: r.capacity_parked_units > 0)
+        if paradas:
+            por_centro = []
+            for centro in paradas.mapped('centro_id').sorted(
+                    lambda c: (c.sequence, c.code or '')):
+                del_centro = paradas.filtered(lambda r: r.centro_id == centro)
+                total = sum(del_centro.mapped('capacity_parked_units'))
+                quienes = ', '.join(
+                    f.familia_id.code
+                    for f in del_centro.sorted(
+                        lambda r: -r.capacity_parked_units)[:3])
+                por_centro.append(
+                    '<b>%s %s/mes</b> en %s (%s)'
+                    % ('{:,.0f}'.format(total), self._unidad(centro),
+                       centro.code or centro.name, quienes))
+            cabeza += (
+                '<p style="margin-bottom:2px;">Instalado y sin dotar: %s. '
+                'No cuesta ociosidad —una máquina parada no absorbe— pero '
+                'es capacidad ya pagada que se libera con gente, no con '
+                'inversión.</p>' % '; '.join(por_centro))
+
+        sin_velocidad = filas.filtered(
+            lambda r: r.capacity_installed_units <= 0)
+        if sin_velocidad:
+            cabeza += (
+                '<p style="margin-bottom:2px;color:%s;">Sin velocidad '
+                'capturada, así que su capacidad instalada no se puede '
+                'leer: %s. Mientras siga así, el techo de su centro está '
+                'subestimado.</p>'
+                % (self.SERIO,
+                   ', '.join(sorted(sin_velocidad.mapped('familia_id.code')))))
+
+        return cabeza + (
+            '<p style="margin-bottom:6px;color:%s;">Costo de la capacidad '
+            '<b>dotada y ociosa</b>: <b>%s/mes</b>. La parada no entra aquí: '
+            'no absorbe.</p>' % (self.TENUE, money(ocioso)))
+
+    @staticmethod
+    def _unidad(centro):
+        return 'kg' if centro.driver_principal == 'peso' else 'm'
+
+    def _grupo_de_centro(self, centro, del_centro, util_centro):
+        """Encabezado del centro con sus totales, y sus máquinas debajo."""
+        unidad = self._unidad(centro)
+        num = '{:,.0f}'.format
+        instalada = sum(del_centro.mapped('capacity_installed_units'))
+        usada = sum(del_centro.mapped('load_month_units'))
+        libre = sum(del_centro.mapped('free_month_units'))
+        parada = sum(del_centro.mapped('capacity_parked_units'))
+        tope = max(del_centro.mapped('capacity_installed_units') or [0.0])
+
+        # El promedio del centro se dice UNA vez y aquí, no colgado de
+        # cada máquina: pegado a siete renglones dejaba de leerse. Y va
+        # con el rango de sus máquinas al lado, que es lo que enseña por
+        # qué el promedio engaña — no que sea 48, sino que adentro hay
+        # una en 84 y otra en 17.
+        activas = del_centro.filtered('activa')
+        uc = util_centro.get(centro.id)
+        aviso = ''
+        if uc is not None and activas:
+            utils = activas.mapped('utilization_pct')
+            aviso = (' · el promedio del centro lee %.0f&#37;, y sus '
+                     'máquinas van de %.0f&#37; a %.0f&#37;'
+                     % (uc, min(utils), max(utils)))
+        col = ('<td style="padding:3px 8px;text-align:right;'
+               'white-space:nowrap;%s">%s</td>')
+        fila = (
+            '<tr style="background:#f6f5f2;">'
+            '<td style="padding:5px 8px;"><b>%s</b> '
+            '<span style="font-size:11px;color:%s;">%s · %s</span></td>'
+            '<td style="padding:5px 8px;font-size:11px;color:%s;">'
+            'instalada / usada / disponible / parada%s</td>'
+            % (centro.code or centro.name, self.TENUE, centro.name, unidad,
+               self.TENUE, aviso))
+        for v in (instalada, usada, libre, parada):
+            fila += col % ('font-weight:600;', num(v))
+        fila += '</tr>'
+
+        for f in del_centro.sorted(lambda r: -r.utilization_pct):
+            fila += self._fila_de_maquina(f, tope)
+        return fila
+
+    def _fila_de_maquina(self, f, tope):
+        num = '{:,.0f}'.format
+        u = f.utilization_pct
+        if not f.activa:
+            icono, banda, color = '⚪', 'parada — no dotada', self.TENUE
+        elif u >= 95:
+            icono, banda, color = '🔴', 'saturada', self.MAL
+        elif u >= 85:
+            icono, banda, color = '🟠', 'ajustada', self.SERIO
+        elif u >= 55:
+            icono, banda, color = '🟢', 'sana', self.BIEN
+        else:
+            icono, banda, color = '🟡', 'ociosa', self.OJO
+
+        sub = banda if not f.activa else '%.0f&#37; · %s' % (u, banda)
+
+        escala = (f.capacity_installed_units / tope) if tope > 0 else 0.0
+        barra = self._barra_capacidad(
+            f.load_month_units, f.free_month_units,
+            f.capacity_parked_units, escala=escala)
+        if not barra:
+            barra = ('<span style="font-size:11px;color:%s;">sin velocidad '
+                     'capturada</span>' % self.SERIO)
+
+        col = ('<td style="padding:3px 8px;text-align:right;'
+               'white-space:nowrap;color:%s;">%s</td>')
+        celdas = ''
+        for v, tinta in ((f.capacity_installed_units, self.TINTA),
+                         (f.load_month_units, self.TENUE),
+                         (f.free_month_units, self.TENUE),
+                         (f.capacity_parked_units,
+                          self.SERIO if f.capacity_parked_units > 0
+                          else self.TENUE)):
+            celdas += col % (tinta, num(v))
+        return (
+            '<tr>'
+            '<td style="padding:3px 8px;white-space:nowrap;">%s <b>%s</b>'
+            '<div style="font-size:11px;color:%s;">%s</div></td>'
+            '<td style="padding:3px 8px;">%s</td>%s</tr>'
+            % (icono, f.familia_id.code, color, sub, barra, celdas))
 
     def _build_kpis_por_centro(self):
         """Sin familias dadas de alta no queda más que el promedio del
@@ -583,6 +758,7 @@ class QbCosteoPanel(models.TransientModel):
         '_estado_produccion_arriba_de_capacidad',
         '_estado_capacidad_capturada_vs_horario',
         '_estado_familias_de_maquinas',
+        '_estado_capacidad_instalada',
         '_estado_peso_de_la_ficha',
         '_estado_factores_calculados',
         '_estado_costos_por_producto',
@@ -607,7 +783,7 @@ class QbCosteoPanel(models.TransientModel):
                     'qb_capacidad_costeo: el check %s del panel falló',
                     nombre)
                 checks.append((
-                    BAD, nombre.replace('_check_', '').replace('_', ' '),
+                    BAD, nombre.replace('_estado_', '').replace('_', ' '),
                     'el check falló y no se pudo evaluar: %s' % exc))
         return self._render_estado(checks)
 
@@ -1349,6 +1525,102 @@ class QbCosteoPanel(models.TransientModel):
                 'lee como si cualquier máquina hiciera cualquier producto, y '
                 'un centro medio vacío puede tener su familia clave '
                 'saturada.'))
+        return checks
+
+    def _estado_capacidad_instalada(self):
+        """5.18 El techo FÍSICO: se puede leer, o no se puede.
+
+        `machines_installed` sale contando `machine_names`, así que no es
+        un segundo número capturado que se pueda quedar viejo — pero
+        `machine_names` sí duplica un dato vivo: las máquinas que Odoo
+        conoce como `mrp.workcenter`. Se contrasta contra esa fuente
+        donde existe (tejido); en acabado y tintorería las ramas y los
+        jets no están dados de alta como workcenter y no hay contra qué
+        contrastar, y eso también se dice en vez de callarlo.
+
+        Los dos huecos que dejan el techo subestimado —sin lista de
+        máquinas y sin velocidad— salen como aviso: una familia que se
+        lee en cero instalada no es una familia sin capacidad, es una
+        que no se puede leer, y las dos cosas se ven igual en la tabla
+        si nadie lo dice.
+        """
+        env = self.env
+        checks = []
+        Familia = env['qb.costeo.familia']
+        familias = Familia.with_context(active_test=False).search(
+            [('company_id', '=', env.company.id)])
+        if not familias:
+            return checks
+
+        sin_lista = familias.filtered(lambda f: not f._maquinas_listadas())
+        if sin_lista:
+            checks.append((
+                WARN, 'Máquinas instaladas por familia',
+                '%s familia(s) sin lista de máquinas (%s): sus instaladas '
+                'se cuentan como las dotadas, así que su capacidad '
+                'instalada queda igual a la normal y el techo del centro '
+                'sale subestimado.'
+                % (len(sin_lista), ', '.join(sorted(sin_lista.mapped('code'))))))
+
+        # Contra la fuente viva: los `mrp.workcenter` que Odoo conoce.
+        desconocidas, sin_workcenter = [], []
+        for fam in familias:
+            listadas = fam._maquinas_listadas()
+            if not listadas:
+                continue
+            encontradas = len(fam.workcenters())
+            if not encontradas:
+                sin_workcenter.append(fam.code)
+            elif encontradas != listadas:
+                desconocidas.append(
+                    '%s: %s listadas, %s en Odoo'
+                    % (fam.code, listadas, encontradas))
+        if desconocidas:
+            checks.append((
+                BAD, 'Máquinas de la familia vs Odoo',
+                'la lista de máquinas no cuadra con los centros de trabajo '
+                'de Odoo: %s. Una de las dos está vieja, y de la lista sale '
+                'la capacidad instalada.' % '; '.join(desconocidas)))
+        elif not sin_lista:
+            checks.append((
+                OK, 'Máquinas de la familia vs Odoo',
+                'las %s familias con lista cuadran contra los centros de '
+                'trabajo que Odoo conoce%s.'
+                % (len(familias) - len(sin_lista),
+                   '; %s no tienen workcenter con qué contrastar (%s)'
+                   % (len(sin_workcenter), ', '.join(sorted(sin_workcenter)))
+                   if sin_workcenter else '')))
+
+        sin_velocidad = familias.filtered(
+            lambda f: not f.std_output_per_hour and f.capacidad_normal <= 0)
+        if sin_velocidad:
+            checks.append((
+                WARN, 'Capacidad instalada sin velocidad',
+                '%s familia(s) sin velocidad capturada (%s): existen, están '
+                'pagadas y su capacidad instalada se lee en cero. Capturar '
+                'la velocidad no las activa —siguen sin dotar y sin '
+                'absorber— pero le pone número a la decisión de arrancarlas.'
+                % (len(sin_velocidad),
+                   ', '.join(sorted(sin_velocidad.mapped('code'))))))
+
+        parada = env['qb.familia.carga'].search(
+            [('capacity_parked_units', '>', 0)])
+        if parada:
+            trozos = []
+            for centro in parada.mapped('centro_id').sorted(
+                    lambda c: (c.sequence, c.code or '')):
+                total = sum(parada.filtered(
+                    lambda r: r.centro_id == centro
+                ).mapped('capacity_parked_units'))
+                trozos.append(
+                    '%s %s/mes en %s'
+                    % ('{:,.0f}'.format(total), self._unidad(centro),
+                       centro.code or centro.name))
+            det = '; '.join(trozos)
+            checks.append((
+                OK, 'Capacidad instalada sin dotar',
+                '%s. No absorbe costo —una máquina parada no absorbe— pero '
+                'se libera con gente, no con inversión.' % det))
         return checks
 
     def _estado_peso_de_la_ficha(self):

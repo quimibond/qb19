@@ -62,7 +62,7 @@
               parent="menu_qb_analisis" sequence="20"/>
     <menuitem id="menu_qb_balance" name="Balance de línea"
               parent="menu_qb_capacidad_group" action="balance_action" sequence="10"/>
-    <menuitem id="menu_qb_familia_carga" name="Carga por familia de máquinas"
+    <menuitem id="menu_qb_familia_carga" name="Instalada vs dotada vs usada"
               parent="menu_qb_capacidad_group" action="familia_carga_action" sequence="15"/>
     <menuitem id="menu_qb_capacidad" name="Por máquina"
               parent="menu_qb_capacidad_group" action="capacidad_action" sequence="20"/>

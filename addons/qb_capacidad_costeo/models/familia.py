@@ -48,6 +48,13 @@ class QbCosteoFamilia(models.Model):
         string='Máquinas dotadas', default=1,
         help='Las que de verdad se corren en el mes. Una máquina instalada '
              'y parada por falta de gente es ociosidad, no capacidad normal.')
+    machines_installed = fields.Integer(
+        string='Máquinas instaladas (n)',
+        compute='_compute_machines_installed', store=True, readonly=True,
+        help='Se cuenta de la lista de máquinas: es un derivado, no un '
+             'segundo número capturado que pueda quedarse viejo cuando la '
+             'lista cambie. Sin lista, cae en las dotadas y el semáforo '
+             'avisa del hueco.')
     hours_per_week = fields.Float(
         string='Horas/semana',
         help='Horario del centro. Normalmente el mismo de sus turnos.')
@@ -68,6 +75,18 @@ class QbCosteoFamilia(models.Model):
         'El código de la familia debe ser único por compañía.',
     )
 
+    @api.depends('machine_names', 'machine_count')
+    def _compute_machines_installed(self):
+        for rec in self:
+            rec.machines_installed = (rec._maquinas_listadas()
+                                      or max(rec.machine_count, 0))
+
+    def _maquinas_listadas(self):
+        """Cuántos nombres trae `machine_names` (0 = lista vacía)."""
+        self.ensure_one()
+        return len([n for n in (self.machine_names or '').split(',')
+                    if n.strip()])
+
     @api.constrains('centro_id', 'company_id')
     def _check_company(self):
         for rec in self:
@@ -75,6 +94,21 @@ class QbCosteoFamilia(models.Model):
                 raise ValidationError(
                     'La familia %s y su centro tienen que ser de la misma '
                     'compañía.' % rec.code)
+
+    @api.constrains('machine_names', 'machine_count')
+    def _check_dotadas_no_exceden_instaladas(self):
+        """No se puede dotar una máquina que no existe.
+
+        La lista de nombres es el inventario físico; dotar más de las que
+        hay significa que una de las dos capturas está mal, y de las dos
+        sale capacidad.
+        """
+        for rec in self:
+            listadas = rec._maquinas_listadas()
+            if listadas and rec.machine_count > listadas:
+                raise ValidationError(
+                    'La familia %s dota %s máquinas pero solo tiene %s '
+                    'instaladas.' % (rec.code, rec.machine_count, listadas))
 
     def capacidad_derivada(self):
         """Horario × máquinas dotadas × velocidad.
@@ -87,6 +121,29 @@ class QbCosteoFamilia(models.Model):
         weeks = self.env['qb.costeo.factor.config'].get_param(
             'weeks_per_month', 4.33)
         return (self.hours_per_week * weeks * max(self.machine_count, 0)
+                * self.std_output_per_hour)
+
+    def capacidad_instalada(self):
+        """El techo físico: lo mismo, pero con TODAS las máquinas.
+
+        No es capacidad normal —una máquina parada por falta de gente no
+        absorbe costo, y meterla en el denominador de la absorción
+        inventaría ociosidad que la planta no decidió tener—. Es la otra
+        pregunta: cuánto podría correr si la dotara. La diferencia entre
+        las dos es una decisión pendiente, no un residuo.
+
+        Con dotación se escala la `capacidad_normal` capturada en vez de
+        derivar un número aparte: así las dos cifras no se pueden
+        contradecir. Sin dotación (una máquina parada, que es justo el
+        caso interesante) no queda más que el horario por la velocidad.
+        """
+        self.ensure_one()
+        instaladas = max(self.machines_installed, 0)
+        if self.machine_count > 0:
+            return self.capacidad_normal * instaladas / self.machine_count
+        weeks = self.env['qb.costeo.factor.config'].get_param(
+            'weeks_per_month', 4.33)
+        return (self.hours_per_week * weeks * instaladas
                 * self.std_output_per_hour)
 
     def workcenters(self):
@@ -171,8 +228,28 @@ class QbFamiliaCarga(models.Model):
     name = fields.Char(related='familia_id.name', readonly=True)
     machine_count = fields.Integer(
         string='Máquinas dotadas', readonly=True)
+    machines_installed = fields.Integer(
+        string='Máquinas instaladas', readonly=True)
+    activa = fields.Boolean(
+        string='En operación', readonly=True,
+        help='Una familia dada de baja sigue apareciendo con su capacidad '
+             'instalada y carga cero: es capacidad que la planta tiene y '
+             'no está usando, que es exactamente lo que hay que ver.')
     capacity_month_units = fields.Float(
-        string='Capacidad/mes', readonly=True)
+        string='Capacidad dotada/mes', readonly=True)
+    capacity_installed_units = fields.Float(
+        string='Capacidad instalada/mes', readonly=True,
+        help='Lo que darían TODAS las máquinas del grupo, dotadas o no. No '
+             'absorbe costo —una máquina parada no lo absorbe— pero es el '
+             'techo que la planta ya compró.')
+    capacity_parked_units = fields.Float(
+        string='Capacidad parada/mes', readonly=True,
+        help='Instalada menos dotada: máquinas que existen y nadie corre. '
+             'Se libera contratando o moviendo gente, no invirtiendo.')
+    utilization_installed_pct = fields.Float(
+        string='Utilización s/instalada %', readonly=True,
+        help='Carga contra el techo físico. Siempre menor o igual que la '
+             'utilización normal; la brecha entre las dos es la dotación.')
     load_month_units = fields.Float(
         string='Carga/mes', readonly=True,
         help='Producción real de los productos que esta familia puede '
@@ -276,22 +353,57 @@ class QbFamiliaCarga(models.Model):
                 FROM qb_costeo_familia f
                 LEFT JOIN cautiva ct ON ct.familia_id = f.id
                 LEFT JOIN compartida co ON co.familia_id = f.id
+            ),
+            instalada AS (
+                -- El techo fisico. Con dotacion se ESCALA la capacidad
+                -- normal capturada (que ya esta validada contra horario x
+                -- maquinas x velocidad) para que las dos cifras no se
+                -- puedan contradecir; sin dotacion —la maquina parada, que
+                -- es el caso que importa— no queda mas que derivarla.
+                SELECT f.id AS familia_id,
+                       COALESCE(CASE WHEN f.machine_count > 0
+                            THEN f.capacidad_normal
+                                 * GREATEST(f.machines_installed, 0)
+                                 / f.machine_count
+                            ELSE f.hours_per_week * cfg.weeks_per_month
+                                 * GREATEST(f.machines_installed, 0)
+                                 * f.std_output_per_hour
+                       END, 0) AS units
+                FROM qb_costeo_familia f
+                JOIN cfg ON TRUE
             )
             SELECT f.id AS id,
                    f.id AS familia_id,
                    f.centro_id,
                    f.company_id,
+                   f.active AS activa,
                    f.machine_count,
-                   f.capacidad_normal AS capacity_month_units,
+                   GREATEST(f.machines_installed, 0) AS machines_installed,
+                   -- Una familia dada de baja no tiene capacidad DOTADA
+                   -- aunque tenga el numero capturado: nadie la corre, asi
+                   -- que no absorbe costo y toda su capacidad esta parada.
+                   CASE WHEN f.active THEN f.capacidad_normal ELSE 0 END
+                        AS capacity_month_units,
+                   COALESCE(inst.units, 0) AS capacity_installed_units,
+                   GREATEST(COALESCE(inst.units, 0)
+                            - CASE WHEN f.active THEN f.capacidad_normal
+                                   ELSE 0 END, 0)
+                        AS capacity_parked_units,
                    COALESCE(carga.qty_month, 0) AS load_month_units,
-                   CASE WHEN f.capacidad_normal > 0
+                   CASE WHEN f.active AND f.capacidad_normal > 0
                         THEN 100.0 * COALESCE(carga.qty_month, 0)
                              / f.capacidad_normal
                         ELSE 0 END AS utilization_pct,
-                   GREATEST(f.capacidad_normal - COALESCE(carga.qty_month, 0),
-                            0) AS free_month_units
+                   CASE WHEN COALESCE(inst.units, 0) > 0
+                        THEN 100.0 * COALESCE(carga.qty_month, 0)
+                             / inst.units
+                        ELSE 0 END AS utilization_installed_pct,
+                   GREATEST(CASE WHEN f.active THEN f.capacidad_normal
+                                 ELSE 0 END
+                            - COALESCE(carga.qty_month, 0), 0)
+                        AS free_month_units
             FROM qb_costeo_familia f
             LEFT JOIN carga ON carga.familia_id = f.id
-            WHERE f.active
+            LEFT JOIN instalada inst ON inst.familia_id = f.id
         """.replace('{qty}', mo_qty_sql(self.env)) \
-            .replace('{cfg}', cfg_sql('window_months'))
+            .replace('{cfg}', cfg_sql('window_months', 'weeks_per_month'))
