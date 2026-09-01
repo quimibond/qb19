@@ -24,6 +24,7 @@ from .cuenta_map import wo_qty_sql
 
 class QbWorkorderExcepcion(models.Model):
     _name = 'qb.workorder.excepcion'
+    _inherit = 'qb.sql.view'
     _description = 'Workorders con rendimiento fuera de rango'
     _auto = False
     _order = 'semana DESC, horas DESC'

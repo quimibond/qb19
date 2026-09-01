@@ -161,6 +161,7 @@ class QbFamiliaProducto(models.Model):
 
 class QbFamiliaCarga(models.Model):
     _name = 'qb.familia.carga'
+    _inherit = 'qb.sql.view'
     _description = 'Carga vs capacidad por familia de máquinas'
     _auto = False
     _order = 'utilization_pct DESC'
@@ -180,15 +181,6 @@ class QbFamiliaCarga(models.Model):
     utilization_pct = fields.Float(string='Utilización %', readonly=True)
     free_month_units = fields.Float(string='Disponible/mes', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
-
-    @api.model
-    def search(self, domain, offset=0, limit=None, order=None):
-        """Flush antes de leer: esta vista es SQL crudo sobre
-        `qb_costeo_familia`, y el ORM no sabe que su SELECT depende de un
-        write pendiente sobre las familias. Es exactamente el tropiezo que
-        dejó a la migración 1.51 recalculando con la capacidad vieja."""
-        self.env.flush_all()
-        return super().search(domain, offset=offset, limit=limit, order=order)
 
     @property
     def _table_query(self):

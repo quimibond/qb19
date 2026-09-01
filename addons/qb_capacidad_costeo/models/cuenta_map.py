@@ -139,6 +139,7 @@ CUENTA_MAP_SQL = """
 
 class QbCosteoCuentaMap(models.Model):
     _name = 'qb.costeo.cuenta.map'
+    _inherit = 'qb.sql.view'
     _description = 'Cuenta → bucket de costeo (resuelto)'
     _auto = False
     _order = 'bucket, account_id'
