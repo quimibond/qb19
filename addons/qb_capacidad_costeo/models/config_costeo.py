@@ -583,6 +583,38 @@ class QbProductoPeso(models.Model):
         'bom': 4, 'odoo_weight': 5, 'import_twin': 6,
     }
 
+    # ------------------------------------------------------------------
+    # La ficha guarda una COPIA de este peso: mantenerla al día
+    # ------------------------------------------------------------------
+    # `qb.producto.ficha.peso_kg_unidad` se llena al generar la ficha y ahí
+    # se queda. Medir un peso nuevo no la movía, así que la hoja técnica que
+    # se le manda al CLIENTE envejecía en silencio — el WJ032Q22JNT160 quedó
+    # 13% abajo del peso de báscula durante 16 días. Refrescar aquí es más
+    # barato y más oportuno que acordarse de correr la generación completa.
+    def _sync_fichas(self):
+        self.env['qb.producto.ficha'].sync_pesos(self.mapped('product_id'))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        recs._sync_fichas()
+        return recs
+
+    def write(self, vals):
+        res = super().write(vals)
+        if {'kg_per_unit', 'm_per_kg', 'source', 'active',
+                'product_id'} & set(vals):
+            self._sync_fichas()
+        return res
+
+    def unlink(self):
+        # Los productos se guardan ANTES: al borrar el registro, el peso cae
+        # a la siguiente fuente de la cadena y la ficha tiene que seguirlo.
+        products = self.mapped('product_id')
+        res = super().unlink()
+        self.env['qb.producto.ficha'].sync_pesos(products)
+        return res
+
     @api.model
     def resolve_kg_per_unit(self, product, cache=None):
         """kg por unidad de venta, con la cadena de prioridad documentada.
