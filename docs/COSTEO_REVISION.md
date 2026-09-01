@@ -860,3 +860,62 @@ al contar el catálogo cargado contra el de origen: 70 donde debían ser 77.
 El generador ahora asevera que no haya xmlid repetido antes de escribir.
 
 **Estado:** 135 tests, 0 fallos, sobre instalación desde cero.
+
+---
+
+## La carga compartida va donde hay lugar (1-sep, v1.62)
+
+Con las familias de acabado ya capturadas, la primera lectura de la carga
+real (jun–ago 2026) dio un número imposible: **UNITECH 120%, BRUCKNER 48%**.
+No es que la planta esté produciendo más de lo que puede — es que
+`qb.familia.carga` repartía la carga compartida **en partes iguales** entre
+las familias que pueden hacerla, y la planta obviamente no reparte así.
+
+### Lo que el reparto parejo escondía
+
+| | Capacidad | Carga cautiva | Holgura |
+|---|---|---|---|
+| UNITECH | 611,954 | **469,314 (77%)** | 142,640 |
+| BRUCKNER | 563,448 | 1,635 (0.3%) | 561,813 |
+| compartida | | 534,994 m/mes | |
+
+«Cautiva» es lo que **solo** esa familia puede correr. La UNITECH arranca el
+mes con el 77% comprometido: los cuatro grandes (WJ042Q22JNT160 con 149,368
+m/mes, WJ053Q22JNT160 con 117,200, XJ140Q21JNT165 con 62,165 y
+WN075Q66JBL205 con 52,669) suman 381,402 m/mes que no tienen a dónde más ir.
+
+Partir los 534,994 compartidos a la mitad le cargaba 267,497 más a una
+máquina a la que solo le quedaban 142,640 — de ahí el 120%. Y al mismo
+tiempo le inventaba holgura a la BRUCKNER, que es peor: el cotizador la
+habría usado para prometer volumen.
+
+### El reparto nuevo
+
+Primero lo cautivo, que no se reparte porque no hay a dónde. Lo compartido
+se distribuye **en proporción a la holgura que le queda a cada candidata**.
+Con eso el mismo mes da **UNITECH 94%, BRUCKNER 76%** — factible, y sigue
+diciendo cuál es el cuello.
+
+Si ninguna candidata tiene holgura se cae al reparto parejo: cuando todas
+están llenas, no hay mejor criterio.
+
+Y lo cautivo por encima de la capacidad **sí** sale arriba del 100%, a
+propósito: eso no es artefacto de reparto, es trabajo que solo esa máquina
+puede hacer y que no le cabe. Hay un test para cada uno de los dos casos.
+
+### El número es una asignación, no una medición
+
+Vale la pena decirlo en el campo y aquí: Odoo **no registra en qué máquina
+corrió cada orden** — las ramas y los jets ni siquiera existen como
+`mrp.workcenter`. Así que el reparto se modela. El día que se den de alta
+esas máquinas y las órdenes las referencien, esto pasa de modelado a medido.
+
+### De paso: la regla del porcentaje, ahora verificable
+
+El SQL de las vistas puede pasar por formateo estilo printf y un `%` suelto
+lo rompe. La regla se venía respetando a mano y ya se había caído una vez
+por un ILIKE (por eso `excluir_refs_sql` usa `position(... in ...)`). Estuvo
+a punto de caerse otra por un comentario dentro del SQL que decía «120%».
+Ahora hay un test que recorre todas las vistas y lo comprueba.
+
+**Estado:** 138 tests, 0 fallos, sobre instalación desde cero.

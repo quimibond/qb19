@@ -4687,3 +4687,139 @@ class TestQbCosteo(TransactionCase):
             huerfanos,
             'artículos cuyo único camino es una familia inactiva (quedan sin '
             'ruta en el cotizador): %s' % ', '.join(sorted(huerfanos)[:10]))
+
+    def test_ninguna_vista_sql_trae_un_porcentaje(self):
+        """El SQL de las vistas puede pasar por formateo estilo printf, y un
+        `%` suelto lo rompe con un error que no dice nada útil.
+
+        La regla existía y se respetaba a mano; esto la hace verificable.
+        Ya se cayó una vez por un ILIKE (por eso `excluir_refs_sql` usa
+        `position(... in ...)`), y estuvo a punto de caerse otra por un
+        comentario dentro del SQL que decía «120%».
+        """
+        con_porcentaje = []
+        for name in self.env.registry:
+            if not name.startswith('qb.'):
+                continue
+            model = self.env[name]
+            if getattr(model, '_auto', True) or model._abstract \
+                    or model._transient:
+                continue
+            try:
+                sql = model._table_query
+            except Exception as exc:
+                self.fail('%s: _table_query no se pudo construir: %s'
+                          % (name, exc))
+            if '%' in sql:
+                pos = sql.index('%')
+                con_porcentaje.append(
+                    '%s (…%s…)' % (name, sql[max(0, pos - 40):pos + 20]))
+        self.assertFalse(
+            con_porcentaje,
+            'vistas con un porcentaje en su SQL: %s'
+            % ' | '.join(con_porcentaje))
+
+    def test_la_carga_compartida_va_donde_hay_lugar(self):
+        """Lo que cabe en varias máquinas se reparte por holgura, no parejo.
+
+        El caso es el de acabado, medido: la UNITECH tiene 469,314 m/mes que
+        SOLO ella puede correr —el 77% de su capacidad— y además comparte
+        534,994 con la BRUCKNER, que va casi vacía. Repartir lo compartido en
+        partes iguales le cargaba a la UNITECH 120% y dejaba a la BRUCKNER en
+        48%: un número imposible en la máquina que importa, y holgura
+        inventada en la que no. La planta obviamente no reparte así.
+
+        Aquí se reproduce a escala: A es chica y casi toda su capacidad está
+        comprometida en algo que solo ella hace; B es grande y está libre. Lo
+        compartido tiene que irse casi todo a B.
+        """
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TEST_REPARTO', 'name': 'Centro de reparto',
+            'nature': 'fabril_directo', 'driver_principal': 'peso'})
+        chica = self.env['qb.costeo.familia'].create({
+            'code': 'REP_A', 'name': 'Familia chica y comprometida',
+            'centro_id': centro.id, 'machine_count': 1,
+            'capacidad_normal': 100.0})
+        grande = self.env['qb.costeo.familia'].create({
+            'code': 'REP_B', 'name': 'Familia grande y libre',
+            'centro_id': centro.id, 'machine_count': 1,
+            'capacidad_normal': 1000.0})
+        cautivo = self.env['product.product'].create({
+            'name': 'CAUTIVO DE A', 'default_code': 'REPCAUT',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        libre = self.env['product.product'].create({
+            'name': 'LO PUEDEN LAS DOS', 'default_code': 'REPLIBRE',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        FP = self.env['qb.familia.producto']
+        FP.create({'familia_id': chica.id, 'product_code': 'REPCAUT'})
+        FP.create({'familia_id': chica.id, 'product_code': 'REPLIBRE'})
+        FP.create({'familia_id': grande.id, 'product_code': 'REPLIBRE'})
+
+        # Producción de la ventana: los 3 meses cerrados anteriores.
+        hace_un_mes = (date.today().replace(day=1)
+                       - relativedelta(days=1)).replace(day=15)
+        mos = self.env['mrp.production']
+        for prod, qty in ((cautivo, 270.0), (libre, 900.0)):
+            mos |= self.env['mrp.production'].create({
+                'product_id': prod.id, 'product_qty': qty,
+                'product_uom_id': uom_kg.id})
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done', qty_producing = "
+            "product_qty, date_finished = %s WHERE id IN %s",
+            (hace_un_mes, tuple(mos.ids)))
+        self.env.invalidate_all()
+
+        filas = {f.familia_id.code: f
+                 for f in self.env['qb.familia.carga'].search(
+                     [('centro_id', '=', centro.id)])}
+        # 270/3 = 90 cautivos en A -> le quedan 10 de holgura contra 1,000 de
+        # B, asi que de los 300/mes compartidos le tocan 300*10/1010 ≈ 2.97
+        self.assertAlmostEqual(filas['REP_A'].load_month_units, 92.97, places=1)
+        self.assertAlmostEqual(filas['REP_B'].load_month_units, 297.03, places=1)
+        self.assertLess(
+            filas['REP_A'].utilization_pct, 100.0,
+            'con un reparto factible ninguna familia se pasa de su capacidad')
+        self.assertGreater(filas['REP_B'].load_month_units,
+                           filas['REP_A'].load_month_units * 3,
+                           'lo compartido se va a donde hay lugar')
+        (chica | grande).unlink()
+        centro.unlink()
+
+    def test_lo_cautivo_arriba_de_la_capacidad_si_se_ve(self):
+        """Pero si lo CAUTIVO ya no cabe, la familia sale arriba del 100% y
+        eso no es un artefacto: es trabajo que solo esa máquina puede hacer y
+        que no le cabe. Taparlo sería el error contrario.
+        """
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TEST_CAUTIVO', 'name': 'Centro cautivo',
+            'nature': 'fabril_directo', 'driver_principal': 'peso'})
+        fam = self.env['qb.costeo.familia'].create({
+            'code': 'CAUT_A', 'name': 'Única que lo hace',
+            'centro_id': centro.id, 'machine_count': 1,
+            'capacidad_normal': 100.0})
+        prod = self.env['product.product'].create({
+            'name': 'SOLO AQUI', 'default_code': 'CAUTSOLO',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        self.env['qb.familia.producto'].create({
+            'familia_id': fam.id, 'product_code': 'CAUTSOLO'})
+        hace_un_mes = (date.today().replace(day=1)
+                       - relativedelta(days=1)).replace(day=15)
+        mo = self.env['mrp.production'].create({
+            'product_id': prod.id, 'product_qty': 450.0,
+            'product_uom_id': uom_kg.id})
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done', qty_producing = "
+            "product_qty, date_finished = %s WHERE id = %s",
+            (hace_un_mes, mo.id))
+        self.env.invalidate_all()
+        fila = self.env['qb.familia.carga'].search(
+            [('familia_id', '=', fam.id)], limit=1)
+        self.assertAlmostEqual(fila.load_month_units, 150.0, places=2)
+        self.assertAlmostEqual(fila.utilization_pct, 150.0, places=2)
+        self.assertEqual(fila.free_month_units, 0.0)
+        fam.unlink()
+        centro.unlink()
