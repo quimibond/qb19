@@ -4616,3 +4616,74 @@ class TestQbCosteo(TransactionCase):
             horas(), base * 2.0 / 4.33, places=4,
             msg='pero un valor válido sí manda')
         centro.unlink()
+
+    def test_el_catalogo_de_familias_esta_en_la_etapa_de_su_centro(self):
+        """Cada familia cataloga códigos de la etapa que SU centro produce.
+
+        Es el bug de la 1.54, vuelto test. El catálogo de tejido se cargó con
+        códigos H (crudo) y el cotizador preguntaba por el J (terminado) que
+        se vende, así que `familias_de()` devolvía vacío en TODAS las
+        cotizaciones reales y el chequeo de familias caía al agregado del
+        centro sin que nada avisara. No falla, contesta mal.
+
+        Cruzar etapas es fácil justo donde importa: la hoja de tintorería de
+        planta lista los códigos TERMINADOS (J) aunque el jet tiñe el
+        intermedio (I), y el I no se puede derivar del J —cambian gramaje y
+        ancho—, hay que sacarlo del BOM.
+        """
+        Ficha = self.env['qb.producto.ficha']
+        cruzados = []
+        for fila in self.env['qb.familia.producto'].with_context(
+                active_test=False).search([]):
+            etapa = fila.familia_id.centro_id.etapa
+            if not etapa:
+                continue
+            estado = Ficha.parse_ref(fila.product_code).get('estado')
+            if estado and estado != etapa:
+                cruzados.append('%s en %s (es %s, el centro produce %s)'
+                                % (fila.product_code, fila.familia_id.code,
+                                   estado, etapa))
+        self.assertFalse(
+            cruzados,
+            'catálogo cruzado de etapa — el cotizador no va a encontrar '
+            'estos artículos: %s' % '; '.join(sorted(cruzados)[:10]))
+
+    def test_las_familias_suman_la_capacidad_de_su_centro(self):
+        """Las familias son una subdivisión, no otra medición.
+
+        Si no suman el centro, una de las dos está vieja y el cotizador y el
+        costeo estarían contestando con números distintos sobre la misma
+        planta. El panel lo avisa arriba del 10%; aquí se aprieta a 1%
+        porque lo que viene en el seed se derivó del mismo formato.
+        """
+        Familia = self.env['qb.costeo.familia']
+        for centro in Familia.search([]).mapped('centro_id'):
+            suma = sum(Familia.search(
+                [('centro_id', '=', centro.id)]).mapped('capacidad_normal'))
+            self.assertAlmostEqual(
+                suma / centro.capacidad_normal, 1.0, delta=0.01,
+                msg='%s: las familias suman %s y el centro dice %s'
+                    % (centro.code, '{:,.0f}'.format(suma),
+                       '{:,.0f}'.format(centro.capacidad_normal)))
+
+    def test_ningun_articulo_queda_solo_en_familias_inactivas(self):
+        """Una familia en montaje se da de alta INACTIVA a propósito: activa
+        y sin capacidad se repartiría carga que no puede correr y dejaría a
+        las demás con holgura falsa. El precio de eso es que un artículo cuyo
+        único camino sea esa máquina se queda sin ruta — y eso hay que
+        saberlo, no descubrirlo en una cotización.
+
+        Hoy no pasa: de los 52 teñidos, ninguno depende solo de la HTJ-5, y
+        de los 80 de rama ninguno depende solo de la ICOMATEX. Si al agregar
+        un artículo pasara, este test lo dice.
+        """
+        Fam = self.env['qb.familia.producto']
+        por_code = {}
+        for fila in Fam.with_context(active_test=False).search([]):
+            por_code.setdefault(fila.product_code, []).append(
+                fila.familia_id.active)
+        huerfanos = [c for c, activas in por_code.items() if not any(activas)]
+        self.assertFalse(
+            huerfanos,
+            'artículos cuyo único camino es una familia inactiva (quedan sin '
+            'ruta en el cotizador): %s' % ', '.join(sorted(huerfanos)[:10]))

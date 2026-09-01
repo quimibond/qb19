@@ -1,0 +1,1219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Familias de maquinas de ACABADO y TINTORERIA.
+
+        A diferencia de tejido, aqui la columna «Alternos» del formato de
+        planta dice que todas las maquinas de cada centro son
+        intercambiables entre si — por esa via cada centro seria UNA
+        familia y no habria subdivision. La restriccion real no esta en
+        las maquinas sino POR ARTICULO: hay telas que solo salen en la
+        UNITECH, y cada articulo teñido declara en que jets se puede
+        correr. Por eso la familia es aqui la maquina individual y lo que
+        subdivide es el catalogo.
+
+        El catalogo de TINTORERIA va en codigos I (teñido), no en los J
+        (terminado) que lista el formato de planta: el centro produce la
+        etapa I y el cotizador pregunta por ella. El I NO se puede derivar
+        del J —cambian gramaje y ancho: WB038Q47JBL172 sale de
+        WB046Q47IBL111— asi que cada uno se resolvio por BOM. Cinco
+        articulos del programa de teñido no tienen BOM activa en Odoo y
+        por eso no aparecen: NN060Q66JNT163, TJ085Q21JNT157,
+        WB038Q47JGR172, WJ045Q22JNT142, WN070Q46JNG155.
+
+        Ni las ramas ni los jets existen como mrp.workcenter en Odoo (solo
+        estan las circulares), asi que `machine_names` lleva el nombre de
+        planta y `workcenters()` no resolvera nada hasta que se den de
+        alta. Por eso estos dos centros ya median su capacidad por turnos.
+
+        Fuentes: «abridoras y ramas inf odoo» (hoja T RAMA) y «INFORMACION
+        TINTORERIA PARA ODOO» (hojas TINTORERIA, CAP DE CARGAS, TIEMPOS
+        TINTORERIA), formato F-IT-P-P01-10-06 rev 02 abr-2026.
+    -->
+    <data noupdate="1">
+
+        <!-- ============ ACABADO: las dos ramas ============ -->
+        <record id="familia_aca_unitech" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_acabado"/>
+            <field name="code">ACA_RAMA_UNITECH</field>
+            <field name="name">Rama UNITECH (RAMA 2)</field>
+            <field name="machine_names">RAMA 2</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">1570.32</field>
+            <field name="capacidad_normal">611954</field>
+            <field name="notes">29.08 m/min a -10% de merma = 1,570.32 m/h netos, la misma base con que se derivo la capacidad del centro; la media de las velocidades por articulo del formato da 1,570 m/h, o sea que cuadra por dos caminos. Es la rama que mas articulos puede correr: 74 de los 77 del formato, y 24 de ellos SOLO salen aqui.</field>
+        </record>
+        <record id="famprod_aca_unitech_wb038q47jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB038Q47JBL172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb038q47jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB038Q47JNG172</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wb038q47jgr172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB038Q47JGR172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb038q47jow172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB038Q47JOW172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb038q47jro172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB038Q47JRO172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb045q47jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB045Q47JBL172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb045q47jgr172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB045Q47JGR172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb045q47jhu172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB045Q47JHU172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb045q47jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB045Q47JNG172</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wb045q47jow172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB045Q47JOW172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb045q47jro172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB045Q47JRO172</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wn075q66jbl205" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN075Q66JBL205</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wn075q66jbl210" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN075Q66JBL210</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wn057q66jbl205" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN057Q66JBL205</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wc090q11jnt168" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WC090Q11JNT168</field>
+            <field name="std_output_per_hour">1134</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jbl166" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JBL166</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jng166" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JNG166</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jng163" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JNG163</field>
+            <field name="std_output_per_hour">1701</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jow166" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JOW166</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jnt168" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JNT168</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jnt159" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JNT159</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jnt163" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JNT163</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jnt175" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JNT175</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wj070q46jbl165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ070Q46JBL165</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wn055q66jnt162" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN055Q66JNT162</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wn055q66jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN055Q66JBL172</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wn055q66jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN055Q66JNG172</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wn070b66jng155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN070B66JNG155</field>
+            <field name="std_output_per_hour">1404</field>
+        </record>
+        <record id="famprod_aca_unitech_wn070q46jng155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN070Q46JNG155</field>
+            <field name="std_output_per_hour">1512</field>
+        </record>
+        <record id="famprod_aca_unitech_wb054q66jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB054Q66JBL172</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wb054q66jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WB054Q66JNG172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wt070q66jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WT070Q66JBL172</field>
+            <field name="std_output_per_hour">1242</field>
+        </record>
+        <record id="famprod_aca_unitech_wt070q66jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WT070Q66JNG172</field>
+            <field name="std_output_per_hour">1242</field>
+        </record>
+        <record id="famprod_aca_unitech_xj140q21jgo165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">XJ140Q21JGO165</field>
+            <field name="std_output_per_hour">972</field>
+        </record>
+        <record id="famprod_aca_unitech_xj140q21jnt165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">XJ140Q21JNT165</field>
+            <field name="std_output_per_hour">972</field>
+        </record>
+        <record id="famprod_aca_unitech_wj038q22jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ038Q22JNT160</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wj042q22jnt147" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ042Q22JNT147</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj042q22jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ042Q22JNT155</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wj042q22jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ042Q22JNT160</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wj042q22jnn160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ042Q22JNN160</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wj042q22jnt175" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ042Q22JNT175</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wj045q22jnt142" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ045Q22JNT142</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wj045q22jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ045Q22JNT155</field>
+            <field name="std_output_per_hour">1701</field>
+        </record>
+        <record id="famprod_aca_unitech_wj045q22jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ045Q22JNT160</field>
+            <field name="std_output_per_hour">1701</field>
+        </record>
+        <record id="famprod_aca_unitech_wj053q22jnt148" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ053Q22JNT148</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wj053q22jnt150" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ053Q22JNT150</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wj053q22jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ053Q22JNT155</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wj053q22jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ053Q22JNT160</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wj053q22jnt170" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ053Q22JNT170</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj055q21jnt165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ055Q21JNT165</field>
+            <field name="std_output_per_hour">1458</field>
+        </record>
+        <record id="famprod_aca_unitech_wj060q21jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ060Q21JNT155</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj060q21jnt157" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ060Q21JNT157</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj060q21jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ060Q21JNT160</field>
+            <field name="std_output_per_hour">1782</field>
+        </record>
+        <record id="famprod_aca_unitech_wj060q21jnt165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ060Q21JNT165</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wj060q21jnt168" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ060Q21JNT168</field>
+            <field name="std_output_per_hour">1512</field>
+        </record>
+        <record id="famprod_aca_unitech_wj060q21int170" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ060Q21INT170</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj060q21jnn165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ060Q21JNN165</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj032q22jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ032Q22JNT155</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj032q22jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ032Q22JNT160</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj050r46jnt152" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ050R46JNT152</field>
+            <field name="std_output_per_hour">1728</field>
+        </record>
+        <record id="famprod_aca_unitech_wn135q21jnt154" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN135Q21JNT154</field>
+            <field name="std_output_per_hour">1026</field>
+        </record>
+        <record id="famprod_aca_unitech_wt140q21jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WT140Q21JNT155</field>
+            <field name="std_output_per_hour">945</field>
+        </record>
+        <record id="famprod_aca_unitech_tj085q21jnt157" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">TJ085Q21JNT157</field>
+            <field name="std_output_per_hour">1026</field>
+        </record>
+        <record id="famprod_aca_unitech_wj070q66jbl205" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ070Q66JBL205</field>
+            <field name="std_output_per_hour">1458</field>
+        </record>
+        <record id="famprod_aca_unitech_wj038q22jnt174" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ038Q22JNT174</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wj038q22jng174" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ038Q22JNG174</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_wn135q21jbl154" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN135Q21JBL154</field>
+            <field name="std_output_per_hour">1134</field>
+        </record>
+        <record id="famprod_aca_unitech_wn135q21jbl158" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN135Q21JBL158</field>
+            <field name="std_output_per_hour">1134</field>
+        </record>
+        <record id="famprod_aca_unitech_wn135q21jng154" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN135Q21JNG154</field>
+            <field name="std_output_per_hour">1134</field>
+        </record>
+        <record id="famprod_aca_unitech_wn135q21jnt154_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN135Q21JNT154.</field>
+            <field name="std_output_per_hour">1134</field>
+        </record>
+        <record id="famprod_aca_unitech_wn135q21jbl154_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WN135Q21JBL154.</field>
+            <field name="std_output_per_hour">1134</field>
+        </record>
+        <record id="famprod_aca_unitech_wd038q46jng166_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WD038Q46JNG166.</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_unitech_wj038q22jng174_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">WJ038Q22JNG174.</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_unitech_nn040q66jnt163" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_unitech"/>
+            <field name="product_code">NN040Q66JNT163</field>
+            <field name="std_output_per_hour">1458</field>
+        </record>
+
+        <record id="familia_aca_bruckner" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_acabado"/>
+            <field name="code">ACA_RAMA_BRUCKNER</field>
+            <field name="name">Rama BRUCKNER (RAMA 1)</field>
+            <field name="machine_names">RAMA 1</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">1445.85</field>
+            <field name="capacidad_normal">563448</field>
+            <field name="notes">28.35 m/min a -15% = 1,445.85 m/h netos. OJO: la columna de merma del formato dice 10% en TODOS los renglones, y con 10% esta rama daria 1,531 m/h. Ese 5% extra viene de la derivacion del centro, no del formato: preguntar a planta si es merma o disponibilidad. Corre 46 de los 77 articulos; 3 salen SOLO aqui (A60GO152TE, P28GO152TE, K40GO155).</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb038q47jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB038Q47JBL172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb038q47jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB038Q47JNG172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb038q47jgr172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB038Q47JGR172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb038q47jow172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB038Q47JOW172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb038q47jro172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB038Q47JRO172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb045q47jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB045Q47JBL172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb045q47jgr172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB045Q47JGR172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb045q47jhu172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB045Q47JHU172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb045q47jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB045Q47JNG172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb045q47jow172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB045Q47JOW172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb045q47jro172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB045Q47JRO172</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jbl166" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JBL166</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jng166" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JNG166</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jng163" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JNG163</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jow166" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JOW166</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jnt168" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JNT168</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jnt159" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JNT159</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jnt163" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JNT163</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wd038q46jnt175" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WD038Q46JNT175</field>
+            <field name="std_output_per_hour">1674</field>
+        </record>
+        <record id="famprod_aca_bruckner_wn055q66jnt162" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WN055Q66JNT162</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wn055q66jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WN055Q66JBL172</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wn055q66jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WN055Q66JNG172</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wn070q46jng155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WN070Q46JNG155</field>
+            <field name="std_output_per_hour">1458</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb054q66jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB054Q66JBL172</field>
+            <field name="std_output_per_hour">1512</field>
+        </record>
+        <record id="famprod_aca_bruckner_wb054q66jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WB054Q66JNG172</field>
+            <field name="std_output_per_hour">1512</field>
+        </record>
+        <record id="famprod_aca_bruckner_wt070q66jbl172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WT070Q66JBL172</field>
+            <field name="std_output_per_hour">1188</field>
+        </record>
+        <record id="famprod_aca_bruckner_wt070q66jng172" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WT070Q66JNG172</field>
+            <field name="std_output_per_hour">1188</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj038q22jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ038Q22JNT160</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj045q22jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ045Q22JNT160</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj053q22jnt148" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ053Q22JNT148</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj060q21jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ060Q21JNT155</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj060q21jnt157" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ060Q21JNT157</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj060q21jnt160" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ060Q21JNT160</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj060q21jnt165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ060Q21JNT165</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj060q21jnt168" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ060Q21JNT168</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj060q21int170" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ060Q21INT170</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj060q21jnn165" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ060Q21JNN165</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wn135q21jnt154" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WN135Q21JNT154</field>
+            <field name="std_output_per_hour">972</field>
+        </record>
+        <record id="famprod_aca_bruckner_wt140q21jnt155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WT140Q21JNT155</field>
+            <field name="std_output_per_hour">918</field>
+        </record>
+        <record id="famprod_aca_bruckner_tj085q21jnt157" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">TJ085Q21JNT157</field>
+            <field name="std_output_per_hour">972</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj038q22jnt174" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ038Q22JNT174</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_wj038q22jng174" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">WJ038Q22JNG174</field>
+            <field name="std_output_per_hour">1620</field>
+        </record>
+        <record id="famprod_aca_bruckner_nn040q66jnt163" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">NN040Q66JNT163</field>
+            <field name="std_output_per_hour">1458</field>
+        </record>
+        <record id="famprod_aca_bruckner_a60go152te" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">A60GO152TE</field>
+            <field name="std_output_per_hour">972</field>
+        </record>
+        <record id="famprod_aca_bruckner_p28go152te" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">P28GO152TE</field>
+            <field name="std_output_per_hour">1188</field>
+        </record>
+        <record id="famprod_aca_bruckner_k40go155" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_aca_bruckner"/>
+            <field name="product_code">K40GO155</field>
+            <field name="std_output_per_hour">972</field>
+        </record>
+
+        <record id="familia_aca_icomatex" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_acabado"/>
+            <field name="code">ACA_RAMA_ICOMATEX</field>
+            <field name="name">Rama ICOMATEX (RAMA 3)</field>
+            <field name="machine_names">RAMA 3</field>
+            <field name="machine_count">0</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">0</field>
+            <field name="capacidad_normal">0</field>
+            <field name="active" eval="False"/>
+            <field name="notes">EN MONTAJE. Se da de alta INACTIVA a proposito: una familia activa sin capacidad se repartiria carga que no puede correr y dejaria a las otras dos con holgura falsa. Al arrancarla: activarla, poner maquinas y velocidad, subir el turno de acabado a 3 y recapturar el centro.</field>
+        </record>
+        <!-- ============ TINTORERIA: los cinco jets ============ -->
+        <record id="familia_tin_htj1" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="code">TIN_HTJ1</field>
+            <field name="name">Jet HTJ-1 (SCHOLL, 1,000 kg)</field>
+            <field name="machine_names">HTJ 1</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">194.56</field>
+            <field name="capacidad_normal">75820</field>
+            <field name="notes">SCHOLL, relacion de bano 1:10. La mas socorrida: 40 de los 52 articulos del catalogo.</field>
+        </record>
+        <record id="famprod_tin_htj1_nn053q66int098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">NN053Q66INT098</field>
+        </record>
+        <record id="famprod_tin_htj1_wb046q47ibl111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WB046Q47IBL111</field>
+        </record>
+        <record id="famprod_tin_htj1_wb046q47iow111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WB046Q47IOW111</field>
+        </record>
+        <record id="famprod_tin_htj1_wb048q47ibl100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WB048Q47IBL100</field>
+        </record>
+        <record id="famprod_tin_htj1_wb048q47iow100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WB048Q47IOW100</field>
+        </record>
+        <record id="famprod_tin_htj1_wb057q66ibl092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WB057Q66IBL092</field>
+        </record>
+        <record id="famprod_tin_htj1_wc090q11int092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WC090Q11INT092</field>
+        </record>
+        <record id="famprod_tin_htj1_wd038q46ing163_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WD038Q46ING163.</field>
+        </record>
+        <record id="famprod_tin_htj1_wd040q46ibl098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WD040Q46IBL098</field>
+        </record>
+        <record id="famprod_tin_htj1_wd040q46ing098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WD040Q46ING098</field>
+        </record>
+        <record id="famprod_tin_htj1_wd040q46int098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WD040Q46INT098</field>
+        </record>
+        <record id="famprod_tin_htj1_wd040q46iow098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WD040Q46IOW098</field>
+        </record>
+        <record id="famprod_tin_htj1_wj035q22inn200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ035Q22INN200</field>
+        </record>
+        <record id="famprod_tin_htj1_wj035q22int200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ035Q22INT200</field>
+        </record>
+        <record id="famprod_tin_htj1_wj044q22int235" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ044Q22INT235</field>
+        </record>
+        <record id="famprod_tin_htj1_wj045r46int090" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ045R46INT090</field>
+        </record>
+        <record id="famprod_tin_htj1_wj047q21int112" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ047Q21INT112</field>
+        </record>
+        <record id="famprod_tin_htj1_wj050q21int100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ050Q21INT100</field>
+        </record>
+        <record id="famprod_tin_htj1_wj053q22int148_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ053Q22INT148.</field>
+        </record>
+        <record id="famprod_tin_htj1_wj053q22int155_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ053Q22INT155.</field>
+        </record>
+        <record id="famprod_tin_htj1_wj053q22int165_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ053Q22INT165.</field>
+        </record>
+        <record id="famprod_tin_htj1_wj060q21int170" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ060Q21INT170</field>
+        </record>
+        <record id="famprod_tin_htj1_wj064q66ibl135" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ064Q66IBL135</field>
+        </record>
+        <record id="famprod_tin_htj1_wj065q46ibl097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ065Q46IBL097</field>
+        </record>
+        <record id="famprod_tin_htj1_wj070q46ibl165_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WJ070Q46IBL165.</field>
+        </record>
+        <record id="famprod_tin_htj1_wn048q66ibl098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN048Q66IBL098</field>
+        </record>
+        <record id="famprod_tin_htj1_wn048q66ing098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN048Q66ING098</field>
+        </record>
+        <record id="famprod_tin_htj1_wn048q66int098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN048Q66INT098</field>
+        </record>
+        <record id="famprod_tin_htj1_wn052b66ing099" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN052B66ING099</field>
+        </record>
+        <record id="famprod_tin_htj1_wn055q66ibl172_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN055Q66IBL172.</field>
+        </record>
+        <record id="famprod_tin_htj1_wn055q66ing172_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN055Q66ING172.</field>
+        </record>
+        <record id="famprod_tin_htj1_wn055q66int172_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN055Q66INT172.</field>
+        </record>
+        <record id="famprod_tin_htj1_wn063q66ibl106" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN063Q66IBL106</field>
+        </record>
+        <record id="famprod_tin_htj1_wn068q66ibl109" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN068Q66IBL109</field>
+        </record>
+        <record id="famprod_tin_htj1_wn135q21ibl154_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN135Q21IBL154.</field>
+        </record>
+        <record id="famprod_tin_htj1_wn140q21ibl096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN140Q21IBL096</field>
+        </record>
+        <record id="famprod_tin_htj1_wn140q21int096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WN140Q21INT096</field>
+        </record>
+        <record id="famprod_tin_htj1_wt065q66ibl097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WT065Q66IBL097</field>
+        </record>
+        <record id="famprod_tin_htj1_wt140q21int190" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">WT140Q21INT190</field>
+        </record>
+        <record id="famprod_tin_htj1_xj130q21int096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj1"/>
+            <field name="product_code">XJ130Q21INT096</field>
+        </record>
+
+        <record id="familia_tin_htj2" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="code">TIN_HTJ2</field>
+            <field name="name">Jet HTJ-2 (THEN, 950 kg)</field>
+            <field name="machine_names">HTJ 2</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">184.83</field>
+            <field name="capacidad_normal">72028</field>
+            <field name="notes">THEN, 1:7. En TIEMPOS TINTORERIA rinde 2,500 kg/dia en blancos contra 4,000 de la HTJ-1 con carga casi igual (950 vs 1,000 kg): o el formato mide otra cosa, o esta tina rinde por debajo de su carga nominal. Verificar en piso — el reparto de aqui la trata como proporcional a su carga, que es lo que dice el papel de capacidades.</field>
+        </record>
+        <record id="famprod_tin_htj2_nn053q66int098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">NN053Q66INT098</field>
+        </record>
+        <record id="famprod_tin_htj2_wb046q47ibl111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WB046Q47IBL111</field>
+        </record>
+        <record id="famprod_tin_htj2_wb046q47iow111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WB046Q47IOW111</field>
+        </record>
+        <record id="famprod_tin_htj2_wb048q47ibl100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WB048Q47IBL100</field>
+        </record>
+        <record id="famprod_tin_htj2_wb048q47iow100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WB048Q47IOW100</field>
+        </record>
+        <record id="famprod_tin_htj2_wb057q66ibl092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WB057Q66IBL092</field>
+        </record>
+        <record id="famprod_tin_htj2_wc090q11int092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WC090Q11INT092</field>
+        </record>
+        <record id="famprod_tin_htj2_wd038q46ing163_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WD038Q46ING163.</field>
+        </record>
+        <record id="famprod_tin_htj2_wd040q46ibl098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WD040Q46IBL098</field>
+        </record>
+        <record id="famprod_tin_htj2_wd040q46ing098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WD040Q46ING098</field>
+        </record>
+        <record id="famprod_tin_htj2_wd040q46int098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WD040Q46INT098</field>
+        </record>
+        <record id="famprod_tin_htj2_wd040q46iow098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WD040Q46IOW098</field>
+        </record>
+        <record id="famprod_tin_htj2_wj045r46int090" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WJ045R46INT090</field>
+        </record>
+        <record id="famprod_tin_htj2_wj047q21int112" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WJ047Q21INT112</field>
+        </record>
+        <record id="famprod_tin_htj2_wj050q21int100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WJ050Q21INT100</field>
+        </record>
+        <record id="famprod_tin_htj2_wj060q21int170" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WJ060Q21INT170</field>
+        </record>
+        <record id="famprod_tin_htj2_wj064q66ibl135" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WJ064Q66IBL135</field>
+        </record>
+        <record id="famprod_tin_htj2_wj065q46ibl097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WJ065Q46IBL097</field>
+        </record>
+        <record id="famprod_tin_htj2_wj070q46ibl165_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WJ070Q46IBL165.</field>
+        </record>
+        <record id="famprod_tin_htj2_wn048q66ibl098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN048Q66IBL098</field>
+        </record>
+        <record id="famprod_tin_htj2_wn048q66ing098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN048Q66ING098</field>
+        </record>
+        <record id="famprod_tin_htj2_wn048q66int098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN048Q66INT098</field>
+        </record>
+        <record id="famprod_tin_htj2_wn052b66ing099" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN052B66ING099</field>
+        </record>
+        <record id="famprod_tin_htj2_wn055q66ibl172_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN055Q66IBL172.</field>
+        </record>
+        <record id="famprod_tin_htj2_wn055q66ing172_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN055Q66ING172.</field>
+        </record>
+        <record id="famprod_tin_htj2_wn055q66int172_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN055Q66INT172.</field>
+        </record>
+        <record id="famprod_tin_htj2_wn063q66ibl106" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN063Q66IBL106</field>
+        </record>
+        <record id="famprod_tin_htj2_wn068q66ibl109" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN068Q66IBL109</field>
+        </record>
+        <record id="famprod_tin_htj2_wn135q21ibl154_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN135Q21IBL154.</field>
+        </record>
+        <record id="famprod_tin_htj2_wn140q21ibl096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN140Q21IBL096</field>
+        </record>
+        <record id="famprod_tin_htj2_wn140q21int096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WN140Q21INT096</field>
+        </record>
+        <record id="famprod_tin_htj2_wt065q66ibl097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WT065Q66IBL097</field>
+        </record>
+        <record id="famprod_tin_htj2_wt140q21int190" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj2"/>
+            <field name="product_code">WT140Q21INT190</field>
+        </record>
+
+        <record id="familia_tin_htj3" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="code">TIN_HTJ3</field>
+            <field name="name">Jet HTJ-3 (SCLAVOS, 600 kg)</field>
+            <field name="machine_names">HTJ 3</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">116.74</field>
+            <field name="capacidad_normal">45494</field>
+            <field name="notes">SCLAVOS, 1:6. Solo 2 articulos del catalogo la declaran, contra 40 de la HTJ-1: o falta catalogar, o esta tina esta practicamente parada. Con 45,494 kg/mes de capacidad y dos articulos que la pueden usar, es el 21% de la tintoreria que casi nadie puede tomar.</field>
+        </record>
+        <record id="famprod_tin_htj3_xj130q21igo096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj3"/>
+            <field name="product_code">XJ130Q21IGO096</field>
+        </record>
+        <record id="famprod_tin_htj3_xj130q21int096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj3"/>
+            <field name="product_code">XJ130Q21INT096</field>
+        </record>
+
+        <record id="familia_tin_htj4" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="code">TIN_HTJ4</field>
+            <field name="name">Jet HTJ-4 (SCLAVOS, 300 kg)</field>
+            <field name="machine_names">HTJ 4</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">58.37</field>
+            <field name="capacidad_normal">22747</field>
+            <field name="notes">SCLAVOS, 1:6. La chica: 17 articulos.</field>
+        </record>
+        <record id="famprod_tin_htj4_wb046q47ing111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WB046Q47ING111</field>
+        </record>
+        <record id="famprod_tin_htj4_wb046q47iro111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WB046Q47IRO111</field>
+        </record>
+        <record id="famprod_tin_htj4_wb048q47igo100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WB048Q47IGO100</field>
+        </record>
+        <record id="famprod_tin_htj4_wb048q47ihu100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WB048Q47IHU100</field>
+        </record>
+        <record id="famprod_tin_htj4_wb048q47ing100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WB048Q47ING100</field>
+        </record>
+        <record id="famprod_tin_htj4_wb048q47iro100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WB048Q47IRO100</field>
+        </record>
+        <record id="famprod_tin_htj4_wb057q66ing092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WB057Q66ING092</field>
+        </record>
+        <record id="famprod_tin_htj4_wd038q46ing163_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WD038Q46ING163.</field>
+        </record>
+        <record id="famprod_tin_htj4_wd040q46ibl098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WD040Q46IBL098</field>
+        </record>
+        <record id="famprod_tin_htj4_wd040q46ing098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WD040Q46ING098</field>
+        </record>
+        <record id="famprod_tin_htj4_wj035q22ing200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WJ035Q22ING200</field>
+        </record>
+        <record id="famprod_tin_htj4_wn048q66ing098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WN048Q66ING098</field>
+        </record>
+        <record id="famprod_tin_htj4_wn055q66ing172_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WN055Q66ING172.</field>
+        </record>
+        <record id="famprod_tin_htj4_wn135q21ing154_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WN135Q21ING154.</field>
+        </record>
+        <record id="famprod_tin_htj4_wn140q21ing096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WN140Q21ING096</field>
+        </record>
+        <record id="famprod_tin_htj4_wt065q66ing097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">WT065Q66ING097</field>
+        </record>
+        <record id="famprod_tin_htj4_xj130q21igo096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj4"/>
+            <field name="product_code">XJ130Q21IGO096</field>
+        </record>
+
+        <record id="familia_tin_htj5" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="code">TIN_HTJ5</field>
+            <field name="name">Jet HTJ-5 (THEN, 1,200 kg)</field>
+            <field name="machine_names">HTJ 5</field>
+            <field name="machine_count">0</field>
+            <field name="hours_per_week">90</field>
+            <field name="std_output_per_hour">0</field>
+            <field name="capacidad_normal">0</field>
+            <field name="active" eval="False"/>
+            <field name="notes">EN PRUEBAS. INACTIVA a proposito, igual que la ICOMATEX. El catalogo de planta la declara para 29 de los 52 articulos —seria la segunda mas capaz— asi que liberarla sumaria ~91,000 kg/mes (+42%) al centro. Ningun articulo depende SOLO de ella, asi que dejarla fuera no deja nada sin ruta.</field>
+        </record>
+        <record id="famprod_tin_htj5_wb046q47ibl111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB046Q47IBL111</field>
+        </record>
+        <record id="famprod_tin_htj5_wb046q47ing111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB046Q47ING111</field>
+        </record>
+        <record id="famprod_tin_htj5_wb046q47iow111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB046Q47IOW111</field>
+        </record>
+        <record id="famprod_tin_htj5_wb046q47iro111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB046Q47IRO111</field>
+        </record>
+        <record id="famprod_tin_htj5_wb048q47ibl100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB048Q47IBL100</field>
+        </record>
+        <record id="famprod_tin_htj5_wb048q47igo100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB048Q47IGO100</field>
+        </record>
+        <record id="famprod_tin_htj5_wb048q47ihu100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB048Q47IHU100</field>
+        </record>
+        <record id="famprod_tin_htj5_wb048q47ing100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB048Q47ING100</field>
+        </record>
+        <record id="famprod_tin_htj5_wb048q47iow100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB048Q47IOW100</field>
+        </record>
+        <record id="famprod_tin_htj5_wb048q47iro100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB048Q47IRO100</field>
+        </record>
+        <record id="famprod_tin_htj5_wb057q66ibl092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WB057Q66IBL092</field>
+        </record>
+        <record id="famprod_tin_htj5_wd038q46ing163_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WD038Q46ING163.</field>
+        </record>
+        <record id="famprod_tin_htj5_wd040q46ibl098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WD040Q46IBL098</field>
+        </record>
+        <record id="famprod_tin_htj5_wd040q46ing098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WD040Q46ING098</field>
+        </record>
+        <record id="famprod_tin_htj5_wd040q46int098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WD040Q46INT098</field>
+        </record>
+        <record id="famprod_tin_htj5_wd040q46iow098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WD040Q46IOW098</field>
+        </record>
+        <record id="famprod_tin_htj5_wj035q22inn200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ035Q22INN200</field>
+        </record>
+        <record id="famprod_tin_htj5_wj035q22int200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ035Q22INT200</field>
+        </record>
+        <record id="famprod_tin_htj5_wj044q22int235" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ044Q22INT235</field>
+        </record>
+        <record id="famprod_tin_htj5_wj045r46int090" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ045R46INT090</field>
+        </record>
+        <record id="famprod_tin_htj5_wj047q21int112" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ047Q21INT112</field>
+        </record>
+        <record id="famprod_tin_htj5_wj050q21int100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ050Q21INT100</field>
+        </record>
+        <record id="famprod_tin_htj5_wj060q21int170" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ060Q21INT170</field>
+        </record>
+        <record id="famprod_tin_htj5_wj064q66ibl135" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ064Q66IBL135</field>
+        </record>
+        <record id="famprod_tin_htj5_wj065q46ibl097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ065Q46IBL097</field>
+        </record>
+        <record id="famprod_tin_htj5_wj070q46ibl165_" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WJ070Q46IBL165.</field>
+        </record>
+        <record id="famprod_tin_htj5_wn052b66ing099" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WN052B66ING099</field>
+        </record>
+        <record id="famprod_tin_htj5_wn140q21int096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WN140Q21INT096</field>
+        </record>
+        <record id="famprod_tin_htj5_wt140q21int190" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tin_htj5"/>
+            <field name="product_code">WT140Q21INT190</field>
+        </record>
+
+    </data>
+</odoo>

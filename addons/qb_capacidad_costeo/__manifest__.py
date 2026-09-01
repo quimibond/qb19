@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond Capacidad & Costeo',
-    'version': '19.0.1.60.0',
+    'version': '19.0.1.61.0',
     'license': 'LGPL-3',
     'category': 'Manufacturing',
     'summary': 'Capacidad, costo real, ociosidad y cotizador — read-only sobre datos nativos de Odoo.',
@@ -38,6 +38,7 @@ tablas de configuración del módulo, editables desde la UI.
     'data': [
         'security/ir.model.access.csv',
         'data/seed_config.xml',
+        'data/seed_familias_aca_tin.xml',
         'data/ir_cron.xml',
         'views/config_views.xml',
         'views/panel_views.xml',
