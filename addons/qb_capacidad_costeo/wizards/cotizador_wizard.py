@@ -14,6 +14,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from ..models.cotizacion import CAPACITY_STATUS
 from ..models.glosario import GLOSARIO_HTML
 
 KG_UOM_NAMES = ('kg', 'kgs', 'kilogramo', 'kilogramos')
@@ -184,7 +185,11 @@ class QbCotizadorWizard(models.TransientModel):
     contrib_hora_maquina = fields.Float(
         compute='_compute_cotizacion', string='Contribución $/hora-máquina')
     capacity_ok = fields.Boolean(
-        compute='_compute_cotizacion', string='¿Cabe en capacidad?')
+        compute='_compute_cotizacion',
+        string='Sin impedimento de capacidad conocido')
+    capacity_status = fields.Selection(
+        CAPACITY_STATUS, compute='_compute_cotizacion',
+        string='¿Cabe en capacidad?')
     capacity_detail = fields.Text(
         compute='_compute_cotizacion', string='Detalle de capacidad')
     explicacion_html = fields.Html(
@@ -471,7 +476,7 @@ class QbCotizadorWizard(models.TransientModel):
         contrib = precio_ref - q['variable']
         contrib_hora = contrib / q['hours_per_unit'] \
             if q['hours_per_unit'] else 0.0
-        capacity_ok, capacity_detail = self._check_capacity(
+        capacity_ok, capacity_detail, capacity_status = self._check_capacity(
             centros, q['is_kg'], q['kg'], q['m_per_kg'], self.volumen)
         semaforo = Costo.semaforo_for(
             precio_ref, q['piso_ocioso'], q['piso_lleno'])
@@ -492,6 +497,7 @@ class QbCotizadorWizard(models.TransientModel):
             'precio_ref': precio_ref, 'evaluado_fuente': fuente,
             'contrib': contrib, 'contrib_hora': contrib_hora,
             'capacity_ok': capacity_ok, 'capacity_detail': capacity_detail,
+            'capacity_status': capacity_status,
         }
 
     # ------------------------------------------------------------------
@@ -545,7 +551,7 @@ class QbCotizadorWizard(models.TransientModel):
             prev_total = contrib_total
             neto = (100.0 * (precio - variable - fab) / precio
                     - 100.0 * op) if precio else 0.0
-            capacity_ok, _detail = self._check_capacity(
+            capacity_ok, _detail, capacity_status = self._check_capacity(
                 res['centros'], res['is_kg'], res['kg'], res['m_per_kg'],
                 volumen)
             tramos.append({
@@ -559,6 +565,7 @@ class QbCotizadorWizard(models.TransientModel):
                 'semaforo': self.env['qb.costo.producto'].semaforo_for(
                     precio, res['piso_ocioso'], res['piso_lleno']),
                 'capacity_ok': capacity_ok,
+                'capacity_status': capacity_status,
             })
         return tramos
 
@@ -654,17 +661,17 @@ class QbCotizadorWizard(models.TransientModel):
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
                 wiz.update(dict(zero, factores_id=False, product_bucket=False,
-                                factores_info=False, capacity_ok=False,
+                                factores_info=False, capacity_ok=False, capacity_status=False,
                                 capacity_detail='Error al calcular: %s' % exc))
                 continue
             if not res:
                 wiz.update(dict(zero, factores_id=False, product_bucket=False,
-                                factores_info=False, capacity_ok=False,
+                                factores_info=False, capacity_ok=False, capacity_status=False,
                                 capacity_detail=False))
                 continue
             if res.get('error'):
                 wiz.update(dict(zero, factores_id=False, product_bucket=False,
-                                factores_info=res['error'], capacity_ok=False,
+                                factores_info=res['error'], capacity_ok=False, capacity_status=False,
                                 capacity_detail=res['error']))
                 continue
             factores = res['factores']
@@ -740,6 +747,7 @@ class QbCotizadorWizard(models.TransientModel):
                     100.0 * res['contrib'] / precio_ref if precio_ref else 0.0,
                 'contrib_hora_maquina': res['contrib_hora'],
                 'capacity_ok': res['capacity_ok'],
+                'capacity_status': res['capacity_status'],
                 'capacity_detail': res['capacity_detail'],
                 'semaforo': res['semaforo'],
                 'precio_mercado_divisa': res['precio_mercado'] / res['fx'],
@@ -812,6 +820,7 @@ class QbCotizadorWizard(models.TransientModel):
             # editar el precio después no deje un margen viejo.
             'contrib_hora_maquina': res['contrib_hora'],
             'capacity_ok': res['capacity_ok'],
+            'capacity_status': res['capacity_status'],
             'capacity_detail': res['capacity_detail'],
             'sale_order_id': self.sale_order_id.id,
             'factores_id': factores.id,
@@ -881,14 +890,30 @@ class QbCotizadorWizard(models.TransientModel):
         return Centro.search([('nature', '=', 'fabril_directo')])
 
     def _check_capacity(self, centros, is_kg, kg, m_per_kg, volumen):
-        """Horas requeridas vs libres por centro; máquinas/turnos faltantes."""
+        """Horas requeridas vs libres por centro; máquinas/turnos faltantes.
+
+        Devuelve `(ok, detalle, status)`.
+
+        `ok` significa «no hay impedimento CONOCIDO»: solo es False cuando un
+        centro que sí se pudo medir no da abasto. De él cuelgan los tramos que
+        se le ofrecen al cliente, así que un centro sin datos no puede
+        tumbarlo — si lo hiciera, la escalera de volumen desaparecería del PDF
+        cada vez que a ACABADO le falte configuración.
+
+        `status` es la respuesta honesta, con las tres posibilidades que un
+        booleano no puede expresar. Sin él, un centro sin throughput ni turnos
+        se contaba como aprobado y la cotización afirmaba «cabe en capacidad»
+        habiendo medido únicamente TEJIDO.
+        """
         if not centros:
             return True, ('Sin ruta de fabricación (importado/servicio): '
-                          'no consume capacidad.')
+                          'no consume capacidad.'), 'sin_ruta'
         if not volumen:
-            return True, 'Captura el volumen mensual para validar capacidad.'
+            return (True, 'Captura el volumen mensual para validar capacidad.',
+                    'sin_volumen')
         lines = []
         ok = True
+        sin_datos = []
         capacidad = self.env['qb.capacidad'].search(
             [('centro_id', 'in', centros.ids)])
         free_by_centro = {}
@@ -903,6 +928,7 @@ class QbCotizadorWizard(models.TransientModel):
         for centro in centros:
             std = centro.std_output_per_hour
             if not std:
+                sin_datos.append(centro.code)
                 lines.append('%s: sin throughput nominal configurado — no se '
                              'puede validar capacidad.' % centro.code)
                 continue
@@ -955,6 +981,7 @@ class QbCotizadorWizard(models.TransientModel):
                     # cotizaciones de agosto salieron «no cabe» porque a
                     # ACABADO le faltaba 1 hora contra un cero inventado,
                     # y el campo se volvió ruido que nadie podía usar.
+                    sin_datos.append(centro.code)
                     lines.append(
                         '%s: sin datos de capacidad práctica (ni workcenters '
                         'ni turnos configurados) — no se puede validar.'
@@ -979,4 +1006,12 @@ class QbCotizadorWizard(models.TransientModel):
                     '%s: requiere %.0f h/mes, libres %.0f h/mes — FALTAN '
                     '%.0f h (≈ %.1f máquinas o turnos equivalentes).'
                     % (centro.code, hours_needed, free, deficit, machines_needed))
-        return ok, '\n'.join(lines)
+        if not ok:
+            status = 'no_cabe'
+        elif not sin_datos:
+            status = 'ok'
+        elif len(sin_datos) >= len(centros):
+            status = 'sin_datos'
+        else:
+            status = 'parcial'
+        return ok, '\n'.join(lines), status
