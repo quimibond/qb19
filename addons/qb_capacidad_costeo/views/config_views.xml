@@ -289,9 +289,17 @@
     </record>
 
     <record id="familia_carga_action" model="ir.actions.act_window">
-        <field name="name">Carga por familia de máquinas</field>
+        <field name="name">Instalada vs dotada vs usada</field>
         <field name="res_model">qb.familia.carga</field>
         <field name="view_mode">list</field>
+        <field name="context">{'group_by': 'centro_id'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin familias de máquinas dadas de alta</p>
+            <p>Instalada es lo que la planta compró; dotada es lo que de verdad se
+               corre y lo único que absorbe costo; usada es la carga. Las máquinas
+               se agrupan por centro porque entre centros las unidades no se suman:
+               kg en tejido y tintorería, metros en acabado.</p>
+        </field>
     </record>
     <record id="familia_carga_view_list" model="ir.ui.view">
         <field name="name">qb.familia.carga.list</field>
@@ -299,14 +307,20 @@
         <field name="arch" type="xml">
             <list decoration-danger="utilization_pct &gt;= 90"
                   decoration-warning="utilization_pct &gt;= 75 and utilization_pct &lt; 90"
-                  decoration-muted="load_month_units == 0">
+                  decoration-muted="not activa">
                 <field name="centro_id"/>
                 <field name="familia_id"/>
-                <field name="machine_count"/>
-                <field name="capacity_month_units" sum="Capacidad"/>
-                <field name="load_month_units" sum="Carga"/>
+                <field name="activa" widget="boolean_toggle" readonly="1"/>
+                <field name="machines_installed" sum="Instaladas"/>
+                <field name="machine_count" sum="Dotadas"/>
+                <field name="capacity_installed_units" sum="Instalada"/>
+                <field name="capacity_month_units" sum="Dotada"/>
+                <field name="load_month_units" sum="Usada"/>
                 <field name="utilization_pct" widget="percentage" digits="[16,1]"/>
                 <field name="free_month_units" sum="Disponible"/>
+                <field name="capacity_parked_units" sum="Parada"/>
+                <field name="utilization_installed_pct" widget="percentage"
+                       digits="[16,1]" optional="hide"/>
             </list>
         </field>
     </record>

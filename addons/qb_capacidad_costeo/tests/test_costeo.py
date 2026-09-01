@@ -3673,10 +3673,21 @@ class TestQbCosteo(TransactionCase):
                           'promedio y que eso engaña')
             return
         orden = filas.sorted(lambda r: -r.utilization_pct)
-        codigos = [f.familia_id.code for f in orden]
-        posiciones = [html.index(c) for c in codigos if c in html]
-        self.assertEqual(posiciones, sorted(posiciones),
-                         'las familias van de más apretada a más libre')
+        # La tabla va agrupada por centro —entre centros no se suman kg con
+        # metros— así que el orden de peor a mejor corre DENTRO del grupo.
+        # Solo la TABLA: el encabezado nombra máquinas fuera de orden a
+        # propósito (la más apretada primero, las paradas después) y
+        # buscarlas en todo el HTML mediría el encabezado, no el orden.
+        tabla = html[html.index('<table'):]
+        for centro in filas.mapped('centro_id'):
+            del_centro = filas.filtered(lambda r: r.centro_id == centro)
+            codigos = [f.familia_id.code
+                       for f in del_centro.sorted(lambda r: -r.utilization_pct)]
+            posiciones = [tabla.index(c) for c in codigos if c in tabla]
+            self.assertEqual(
+                posiciones, sorted(posiciones),
+                'en %s las familias van de más apretada a más libre'
+                % (centro.code or centro.name))
         if orden[:1].utilization_pct >= 1.0:
             self.assertIn('máquina más apretada', html)
         else:
@@ -4286,7 +4297,9 @@ class TestQbCosteo(TransactionCase):
             'std_output_per_hour': 8.0, 'capacidad_normal': 5000.0})
         ancha = Familia.create({
             'code': 'TB54_B', 'name': 'Familia ancha',
-            'centro_id': centro.id, 'machine_names': 'CIRCULAR 6',
+            'centro_id': centro.id,
+            'machine_names': 'CIRCULAR 6, CIRCULAR 7, CIRCULAR 8, '
+                             'CIRCULAR 9, CIRCULAR 14',
             'machine_count': 5, 'hours_per_week': 144.0,
             'std_output_per_hour': 12.0, 'capacidad_normal': 15000.0})
         FamProd.create({'familia_id': angosta.id,
@@ -4334,6 +4347,178 @@ class TestQbCosteo(TransactionCase):
         estado = panel._build_estado()
         self.assertIn('Familias de máquinas', estado)
         self.assertIn('TB54', estado)
+
+    def test_capacidad_instalada_dotada_y_usada_son_tres_cosas(self):
+        """Instalada no es dotada, y confundirlas cuesta de dos maneras.
+
+        Una máquina instalada y parada por falta de gente NO absorbe costo:
+        meterla en el denominador de la absorción inventaría ociosidad que
+        nadie decidió tener. Pero tampoco es cero: existe, está pagada y se
+        libera contratando, no invirtiendo. Hasta la 1.63 el modelo solo
+        exponía dotada y usada, así que los 91,000 kg/mes de la HTJ-5 no
+        aparecían en ningún lado.
+        """
+        Familia = self.env['qb.costeo.familia']
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB64', 'name': 'CENTRO INSTALADA TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'std_output_per_hour': 10.0, 'capacidad_normal': 60000.0})
+        # Once instaladas, nueve dotadas: el caso real de la galga 24 Ø30.
+        fam = Familia.create({
+            'code': 'TB64_A', 'name': 'Once instaladas, nueve dotadas',
+            'centro_id': centro.id,
+            'machine_names': ', '.join('CIRCULAR %s' % n for n in range(1, 12)),
+            'machine_count': 9, 'hours_per_week': 144.0,
+            'std_output_per_hour': 10.0, 'capacidad_normal': 54000.0})
+        self.assertEqual(fam.machines_installed, 11,
+                         'las instaladas se CUENTAN de la lista: un segundo '
+                         'número capturado se quedaría viejo solo')
+        # La instalada escala la normal capturada, no abre una cuenta aparte
+        self.assertAlmostEqual(fam.capacidad_instalada(),
+                               54000.0 * 11 / 9, places=2)
+
+        fila = self.env['qb.familia.carga'].search(
+            [('familia_id', '=', fam.id)])
+        self.assertEqual(len(fila), 1)
+        self.assertAlmostEqual(fila.capacity_month_units, 54000.0, places=2)
+        self.assertAlmostEqual(fila.capacity_installed_units,
+                               54000.0 * 11 / 9, places=2)
+        self.assertAlmostEqual(fila.capacity_parked_units,
+                               54000.0 * 11 / 9 - 54000.0, places=2)
+        self.assertAlmostEqual(
+            fila.capacity_installed_units,
+            fila.load_month_units + fila.free_month_units
+            + fila.capacity_parked_units, places=2,
+            msg='los tres tramos de la barra tienen que sumar la instalada')
+
+    def test_la_maquina_parada_se_ve_con_su_techo_y_sin_carga(self):
+        """Una familia dada de baja sigue en el tablero, y en cero dotada.
+
+        Es la pregunta que el usuario hizo y que el modelo no contestaba:
+        cuánto hay instalado que no se está usando. Dejarla fuera de la
+        vista la esconde; dejarla con su `capacidad_normal` capturada la
+        haría ver como ociosidad con costo, que es lo contrario — sin
+        dotación no absorbe. Así que aparece con dotada cero, carga cero y
+        toda su capacidad del lado parado.
+        """
+        Familia = self.env['qb.costeo.familia']
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB65', 'name': 'CENTRO PARADA TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'std_output_per_hour': 10.0, 'capacidad_normal': 1000.0})
+        parada = Familia.create({
+            'code': 'TB65_OFF', 'name': 'Instalada y sin dotar',
+            'centro_id': centro.id, 'machine_names': 'JET DE PRUEBA',
+            'machine_count': 0, 'hours_per_week': 90.0,
+            'std_output_per_hour': 200.0, 'capacidad_normal': 0.0,
+            'active': False})
+        semanas = self.env['qb.costeo.factor.config'].get_param(
+            'weeks_per_month', 4.33)
+        esperada = 90.0 * semanas * 1 * 200.0
+        self.assertAlmostEqual(parada.capacidad_instalada(), esperada, places=2)
+
+        fila = self.env['qb.familia.carga'].search(
+            [('familia_id', '=', parada.id)])
+        self.assertEqual(len(fila), 1,
+                         'la máquina parada TIENE que aparecer: es la '
+                         'pregunta, no el ruido')
+        self.assertFalse(fila.activa)
+        self.assertAlmostEqual(fila.capacity_installed_units, esperada,
+                               places=2)
+        self.assertAlmostEqual(fila.capacity_month_units, 0.0, places=2)
+        self.assertAlmostEqual(fila.load_month_units, 0.0, places=2,
+                               msg='sin dotación no se le reparte carga')
+        self.assertAlmostEqual(fila.free_month_units, 0.0, places=2,
+                               msg='disponible es de la DOTADA; lo de una '
+                                   'máquina parada es capacidad parada')
+        self.assertAlmostEqual(fila.capacity_parked_units, esperada, places=2)
+
+        panel = self.env['qb.costeo.panel'].create({})
+        html = panel.kpi_html or ''
+        self.assertIn('Instalado y sin dotar', html)
+        self.assertIn('TB65_OFF', html)
+        self.assertIn('parada', html, 'la leyenda nombra los tres tramos')
+
+    def test_no_se_pueden_dotar_maquinas_que_no_existen(self):
+        """Dotar más máquinas de las instaladas es una captura rota.
+
+        Y de las dos sale capacidad: `capacidad_instalada()` divide entre
+        las dotadas, así que con 1 instalada y 5 dotadas el techo físico
+        saldría UNA QUINTA parte de la capacidad normal — menos que la
+        normal, que es absurdo.
+        """
+        Familia = self.env['qb.costeo.familia']
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB66', 'name': 'CENTRO CAPTURA TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'peso'})
+        with self.assertRaises(Exception):
+            Familia.create({
+                'code': 'TB66_X', 'name': 'Cinco dotadas, una instalada',
+                'centro_id': centro.id, 'machine_names': 'CIRCULAR 6',
+                'machine_count': 5, 'hours_per_week': 144.0,
+                'std_output_per_hour': 10.0, 'capacidad_normal': 1000.0})
+
+    def test_la_velocidad_de_la_htj5_sigue_la_regla_de_los_otros_jets(self):
+        """El 233.47 kg/h de la HTJ-5 no es una estimación aparte.
+
+        Es un parámetro capturado que DUPLICA un dato vivo —el formato de
+        capacidades de planta— y por eso se contrasta contra su fuente: los
+        cuatro jets en operación rinden exactamente 0.19456 kg/h por kg de
+        carga (1,000 → 194.56; 950 → 184.83; 600 → 116.74; 300 → 58.37).
+        Si alguien recaptura una velocidad y rompe la proporción, aquí se
+        entera; si no, la capacidad instalada de la tintorería se calcula
+        con una regla que ya no es la de la planta.
+        """
+        Familia = self.env['qb.costeo.familia'].with_context(
+            active_test=False)
+        cargas = {'TIN_HTJ1': 1000.0, 'TIN_HTJ2': 950.0, 'TIN_HTJ3': 600.0,
+                  'TIN_HTJ4': 300.0, 'TIN_HTJ5': 1200.0}
+        jets = Familia.search([('code', 'in', list(cargas))])
+        if len(jets) < len(cargas):
+            self.skipTest('los jets del seed no están en esta base')
+        for jet in jets:
+            # Contra la regla redondeada a dos decimales, que es como está
+            # capturada: 600 x 0.19456 = 116.736 se guarda como 116.74, y
+            # exigirle al cociente cinco decimales estaría midiendo ese
+            # redondeo en vez de la regla.
+            self.assertAlmostEqual(
+                jet.std_output_per_hour, round(0.19456 * cargas[jet.code], 2),
+                places=2,
+                msg='%s se salió de la regla de planta (kg/h por kg de '
+                    'carga); o la velocidad está mal capturada o la regla '
+                    'cambió y hay que rehacer las cinco' % jet.code)
+        htj5 = jets.filtered(lambda f: f.code == 'TIN_HTJ5')
+        self.assertFalse(htj5.active, 'la HTJ-5 sigue parada a propósito')
+        self.assertAlmostEqual(htj5.capacidad_normal, 0.0, places=2,
+                               msg='parada no absorbe: capacidad normal cero')
+        self.assertGreater(
+            htj5.capacidad_instalada(), 90000.0,
+            'con velocidad capturada su techo físico ya se puede leer')
+
+    def test_el_panel_cuenta_la_capacidad_que_no_puede_leer(self):
+        """Una familia sin velocidad se lee en cero instalada, y cero
+        instalada NO es lo mismo que no tener capacidad.
+
+        La ICOMATEX existe y está en montaje; de ella no hay velocidad de
+        ninguna fuente, y inventársela sería peor que no tenerla. Lo que sí
+        se puede hacer es decir que el techo del centro está subestimado en
+        vez de dejar que el cero se lea como un dato.
+        """
+        Familia = self.env['qb.costeo.familia']
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB67', 'name': 'CENTRO SIN VELOCIDAD TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'largo'})
+        Familia.create({
+            'code': 'TB67_MUDA', 'name': 'En montaje, sin velocidad',
+            'centro_id': centro.id, 'machine_names': 'RAMA DE PRUEBA',
+            'machine_count': 0, 'hours_per_week': 90.0,
+            'std_output_per_hour': 0.0, 'capacidad_normal': 0.0,
+            'active': False})
+        panel = self.env['qb.costeo.panel'].create({})
+        self.assertIn('sin velocidad capturada', panel.kpi_html or '')
+        estado = panel._build_estado()
+        self.assertIn('Capacidad instalada sin velocidad', estado)
+        self.assertIn('TB67_MUDA', estado)
 
     def test_ficha_sigue_al_maestro_de_pesos(self):
         """El peso de la ficha es una COPIA del maestro, y esa hoja va al

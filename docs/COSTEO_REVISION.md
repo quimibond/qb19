@@ -994,3 +994,103 @@ Ninguna de estas decisiones es de gusto:
   panel vino a quitar.
 
 **Estado:** 144 tests, 0 fallos, sobre instalación desde cero.
+
+---
+
+## v1.64 — Instalada, dotada, usada: la capacidad son tres niveles, no dos
+
+La pregunta fue «quiero ver un dashboard por máquina con su capacidad
+disponible vs la instalada», y destapó que el modelo solo exponía dos de
+los tres niveles. Confundirlos cuesta dinero de dos maneras opuestas:
+
+| Nivel | Qué es | ¿Absorbe costo? |
+|---|---|---|
+| **Instalada** | Lo que la planta compró y tiene en piso | **No.** Meter una máquina parada en el denominador inventaría ociosidad que nadie decidió tener |
+| **Dotada** (la capacidad normal de la NIC 2) | Lo que de verdad se corre en el mes | **Sí.** Su parte no usada es ociosidad con costo |
+| **Usada** | La carga | — |
+
+Hasta la 1.63 solo se veían dotada y usada, así que los **91,000 kg/mes de
+la HTJ-5** —una tina que existe, está pagada y nadie corre— no aparecían en
+ningún lado. No como ociosidad (correctamente: no absorbe), pero tampoco
+como decisión pendiente. La diferencia entre instalada y dotada no es un
+residuo: es una decisión de contratar o mover gente, y se libera **sin
+inversión**.
+
+### De dónde salen las instaladas
+
+De contar `machine_names`, no de un segundo número capturado. Un campo
+aparte se quedaría viejo el día que alguien edite la lista y nada avisaría;
+`machines_installed` es calculado y almacenado, así que la lista es la
+única fuente. Y como `machine_names` sí duplica un dato vivo —los
+`mrp.workcenter` que Odoo conoce— el panel lo contrasta contra esa fuente
+donde existe (tejido) y dice explícitamente dónde no existe (las ramas y
+los jets no están dados de alta como workcenter, y callarlo sería peor).
+
+Cae una restricción nueva: **no se pueden dotar más máquinas de las
+instaladas**. Además de ser imposible en piso, de las dos capturas sale
+capacidad: `capacidad_instalada()` divide entre las dotadas, así que 1
+instalada con 5 dotadas daría un techo físico de la quinta parte de la
+capacidad normal — menos que la normal, que es absurdo. El test sintético
+que dotaba 5 listando 1 se corrigió.
+
+### La velocidad de la HTJ-5, y por qué la ICOMATEX se queda en cero
+
+Para leer capacidad instalada de una máquina parada hace falta su
+velocidad, y la HTJ-5 estaba en cero. El **233.47 kg/h** no es una
+estimación aparte: los cuatro jets en operación rinden exactamente
+**0.19456 kg/h por kg de carga** (1,000 → 194.56; 950 → 184.83; 600 →
+116.74; 300 → 58.37), así que los 1,200 kg de la HTJ-5 salen de la misma
+regla del formato de planta. Es un parámetro que duplica un dato vivo, así
+que tiene su test contrastándolo contra los otros cuatro: si alguien
+recaptura una velocidad y rompe la proporción, se entera.
+
+La **ICOMATEX se queda en cero** porque de ella no hay velocidad de ninguna
+fuente. Inventársela sería peor que no tenerla — pero un cero mudo se lee
+igual que «no tiene capacidad», así que el panel dice «sin velocidad
+capturada, el techo de su centro está subestimado» en vez de dejar pasar el
+cero como dato.
+
+### La vista incluye a las máquinas dadas de baja
+
+`qb.familia.carga` ya no filtra `active`: una familia de baja aparece con
+capacidad **dotada cero**, carga cero y todo su techo del lado parado. Las
+dos alternativas eran peores — dejarla fuera esconde justo lo que se
+preguntó, y dejarla con su `capacidad_normal` capturada la haría ver como
+ociosidad con costo, que es lo contrario. Los tres consumidores de la vista
+filtran por utilización ≥75/90% o por familias activas, así que ninguno ve
+las filas nuevas.
+
+### La barra: una rampa de un tono, no tres colores
+
+Los tres tramos suman exactamente la instalada, y el instinto pedía verde
+para «disponible» y ámbar para «parada». Se corrió el validador: ese par
+queda a **ΔE 1.1 en deuteranopía** — el mismo color. Y los tramos no son
+tres categorías sino un **orden** (de lo que ya trabaja a lo que ni
+siquiera está dotado), así que la forma correcta es una rampa de un solo
+tono, que además es segura por construcción: `#1c4f82` → `#5093ce` →
+`#9cc4e4`, L 0.42 / 0.64 / 0.80. El estado de cada máquina no viaja en la
+barra: lo carga su icono con su palabra.
+
+El ancho de cada barra es proporcional a la **instalada de esa máquina
+contra la mayor de su centro**, no un 100% para todas: así se ve de un
+golpe que la HTJ-1 es tres veces la HTJ-4, y no solo que las dos van medio
+llenas. Entre centros no se compara —tejido y tintorería miden en kg,
+acabado en metros— y por eso la tabla va **agrupada por centro**, cada
+grupo con su escala y sus totales.
+
+### Se renderizó y se miró
+
+El paso que no se puede saltar, y esta vez sacó dos cosas:
+
+- El aviso «el centro lee 48%» colgaba de **cinco de los siete renglones**
+  de tejido y había dejado de leerse. Ahora se dice una vez, en el renglón
+  del centro, y con el rango de sus máquinas al lado — que es lo que
+  enseña por qué el promedio engaña: no que sea 48, sino que adentro hay
+  una en 84 y otra en 17.
+- El titular decía «con 33,913 libres al mes» **sin unidad**, mezclando kg
+  y metros en la frase que más se lee.
+
+**Estado:** 151 tests, 0 fallos, sobre instalación desde cero; y el camino
+de actualización 1.63 → 1.64 probado en una base instalada con el código
+anterior (la migración pone la velocidad de la HTJ-5 y cuenta las 42
+máquinas instaladas de las 15 familias).

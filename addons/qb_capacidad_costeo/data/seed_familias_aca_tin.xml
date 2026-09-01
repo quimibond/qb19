@@ -1093,10 +1093,12 @@
             <field name="machine_names">HTJ 5</field>
             <field name="machine_count">0</field>
             <field name="hours_per_week">90</field>
-            <field name="std_output_per_hour">0</field>
+            <field name="std_output_per_hour">233.47</field>
             <field name="capacidad_normal">0</field>
             <field name="active" eval="False"/>
-            <field name="notes">EN PRUEBAS. INACTIVA a proposito, igual que la ICOMATEX. El catalogo de planta la declara para 29 de los 52 articulos —seria la segunda mas capaz— asi que liberarla sumaria ~91,000 kg/mes (+42%) al centro. Ningun articulo depende SOLO de ella, asi que dejarla fuera no deja nada sin ruta.</field>
+            <field name="notes">EN PRUEBAS. INACTIVA a proposito, igual que la ICOMATEX. El catalogo de planta la declara para 29 de los 52 articulos —seria la segunda mas capaz— asi que liberarla sumaria ~91,000 kg/mes (+42%) al centro. Ningun articulo depende SOLO de ella, asi que dejarla fuera no deja nada sin ruta.
+
+La velocidad esta capturada aunque la tina este parada, y la capacidad NORMAL sigue en cero: con cero maquinas dotadas no absorbe costo, pero con velocidad si se puede leer su capacidad INSTALADA (90 h/sem x 4.33 x 233.47 = 90,983 kg/mes) y ponerle numero a la decision de arrancarla. El 233.47 no es una estimacion aparte: los cuatro jets en operacion rinden exactamente 0.19456 kg/h por kg de carga (1,000 -&gt; 194.56; 950 -&gt; 184.83; 600 -&gt; 116.74; 300 -&gt; 58.37), asi que 1,200 kg de la HTJ-5 son 233.47 por la misma regla del formato de planta. La ICOMATEX se queda en cero porque de ella NO hay velocidad de ningun tipo — inventarsela seria peor que no tenerla.</field>
         </record>
         <record id="famprod_tin_htj5_wb046q47ibl111" model="qb.familia.producto">
             <field name="familia_id" ref="familia_tin_htj5"/>
