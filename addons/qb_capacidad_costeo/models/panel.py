@@ -788,6 +788,36 @@ class QbCosteoPanel(models.TransientModel):
                 'un centro medio vacío puede tener su familia clave '
                 'saturada.'))
 
+        # 5.18 El peso de la FICHA es una copia del maestro, y esa ficha es
+        # la hoja técnica que se le manda al cliente. Al medir un peso, la
+        # copia envejecía sin que nada avisara: el WJ032Q22JNT160 quedó en
+        # 0.0512 kg/m (gramaje × ancho) contra 0.059114 de báscula, 13%
+        # abajo. Ahora el maestro refresca las fichas al escribirse; este
+        # check cubre lo que ese refresco no toca — las fichas manuales y
+        # cualquier vía que no pase por el maestro.
+        tol_ficha = Config.get_param('ficha_peso_tol_pct', 2.0)
+        desfasadas = env['qb.producto.ficha'].fichas_con_peso_desfasado(
+            tol_pct=tol_ficha)
+        if desfasadas:
+            det = '; '.join(
+                '%s: ficha %.4f vs maestro %.4f (%+.0f%%)'
+                % (f.default_code or f.product_id.display_name,
+                   guardado, maestro, desv * 100)
+                for f, guardado, maestro, desv in desfasadas[:6])
+            if len(desfasadas) > 6:
+                det += '…'
+            checks.append((
+                WARN, 'Peso de la ficha vs maestro de pesos',
+                '%s ficha(s) con el peso a más de ±%.0f%% del maestro: %s. '
+                'Esa hoja va al cliente — si el maestro tiene razón, '
+                'refréscalas; si la ficha tiene razón, corrige el maestro.'
+                % (len(desfasadas), tol_ficha, det)))
+        else:
+            checks.append((
+                OK, 'Peso de la ficha vs maestro de pesos',
+                'el peso de cada ficha cuadra a ±%.0f%% con el maestro'
+                % tol_ficha))
+
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:

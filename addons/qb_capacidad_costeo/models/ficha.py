@@ -154,6 +154,85 @@ class QbProductoFicha(models.Model):
         return vals
 
     # ------------------------------------------------------------------
+    # El peso de la ficha es una COPIA del maestro
+    # ------------------------------------------------------------------
+    @api.model
+    def sync_pesos(self, products=None, tolerancia=0.0):
+        """Refresca `peso_kg_unidad` y `rendimiento_m_kg` desde el maestro.
+
+        Los dos campos son copias de `qb.producto.peso`, no campos
+        relacionados: se llenan al generar la ficha y ahí se quedan. Cada vez
+        que se mide un peso, la copia envejece en silencio — y esta ficha es
+        la hoja técnica que se le manda al cliente. El WJ032Q22JNT160 tenía
+        0.0512 kg/m (gramaje × ancho, la adivinanza del código) contra
+        0.059114 medidos de báscula: 13% abajo durante 16 días.
+
+        Respeta la misma regla que el generador: una ficha `manual` no se
+        pisa. Y toca SOLO estos dos campos — regenerar la ficha completa
+        reescribiría además gramaje, ancho, estado y color desde el parser,
+        que es un martillo más grande que el clavo.
+
+        Devuelve cuántas fichas se actualizaron.
+        """
+        Peso = self.env['qb.producto.peso']
+        dominio = [('source', '!=', 'manual')]
+        if products is not None:
+            if not products:
+                return 0
+            dominio.append(('product_id', 'in', products.ids))
+        cache = {}
+        tocadas = 0
+        for ficha in self.with_context(active_test=False).search(dominio):
+            vals = {}
+            kg = Peso.resolve_kg_per_unit(ficha.product_id, cache)
+            if kg and abs(kg - ficha.peso_kg_unidad) > max(
+                    tolerancia * kg, 1e-9):
+                vals['peso_kg_unidad'] = kg
+            m_kg = Peso.resolve_m_per_kg(ficha.product_id, cache)
+            if m_kg and abs(m_kg - ficha.rendimiento_m_kg) > max(
+                    tolerancia * m_kg, 1e-9):
+                vals['rendimiento_m_kg'] = m_kg
+            if vals:
+                ficha.write(vals)
+                tocadas += 1
+        return tocadas
+
+    @api.model
+    def fichas_con_peso_desfasado(self, tol_pct=2.0):
+        """Fichas cuyo peso guardado se alejó del maestro más de `tol_pct`.
+
+        El guard del sync: cubre las fichas `manual` (que a propósito no se
+        refrescan), las que se escribieron por una vía que no pasó por el
+        maestro, y cualquier hueco futuro. Misma regla que ya cubre pesos
+        (5.11), AVCO de importados (5.13) y consumo de BOM (5.14): un
+        parámetro que duplica un dato vivo se contrasta contra su fuente.
+
+        Devuelve [(ficha, guardado, maestro, desviación)] de mayor a menor.
+
+        Recorre el MAESTRO, no las fichas: son dos consultas en vez de una
+        por ficha, y este check vive en el panel, que es la pantalla de
+        entrada. No se pierde cobertura — un producto sin registro en el
+        maestro resuelve por la misma cadena de respaldo con que se llenó su
+        ficha, así que no puede divergir de sí mismo.
+        """
+        pesos = self.env['qb.producto.peso'].search(
+            [('kg_per_unit', '>', 0)])
+        if not pesos:
+            return []
+        por_producto = {p.product_id.id: p.kg_per_unit for p in pesos}
+        fuera = []
+        for ficha in self.search([('peso_kg_unidad', '>', 0),
+                                  ('product_id', 'in', list(por_producto))]):
+            kg = por_producto.get(ficha.product_id.id)
+            if not kg:
+                continue
+            desv = (ficha.peso_kg_unidad - kg) / kg
+            if abs(desv) * 100.0 > tol_pct:
+                fuera.append((ficha, ficha.peso_kg_unidad, kg, desv))
+        fuera.sort(key=lambda f: -abs(f[3]))
+        return fuera
+
+    # ------------------------------------------------------------------
     # Generación masiva (acción de menú + parte del import semanal)
     # ------------------------------------------------------------------
     @api.model

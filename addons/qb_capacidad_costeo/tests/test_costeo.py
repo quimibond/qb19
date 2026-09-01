@@ -4091,3 +4091,50 @@ class TestQbCosteo(TransactionCase):
         estado = panel._build_estado()
         self.assertIn('Familias de máquinas', estado)
         self.assertIn('TB54', estado)
+
+    def test_ficha_sigue_al_maestro_de_pesos(self):
+        """El peso de la ficha es una COPIA del maestro, y esa hoja va al
+        cliente: medir un peso tiene que moverla.
+
+        Caso real: el WJ032Q22JNT160 guardaba 0.0512 kg/m —32 g/m² × 1.60 m,
+        la adivinanza del código— mientras la báscula decía 0.059114. 13%
+        abajo durante 16 días, porque la copia solo se refrescaba corriendo
+        la generación completa de fichas y nadie la corrió.
+        """
+        uom_m = self.env.ref('uom.product_uom_meter')
+        tela = self.env['product.product'].create({
+            'name': 'TELA FICHA TEST', 'default_code': 'WY032Q22JNT160',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        Ficha = self.env['qb.producto.ficha']
+        ficha = Ficha.create(Ficha._build_vals(tela))
+        # Sin maestro, el peso sale del código: 32 g/m² × 1.60 m
+        self.assertAlmostEqual(ficha.peso_kg_unidad, 0.0512, places=4)
+
+        # Llega el peso de báscula: la ficha lo sigue sola
+        peso = self.env['qb.producto.peso'].create({
+            'product_id': tela.id, 'kg_per_unit': 0.059114,
+            'source': 'op_consumo'})
+        self.assertAlmostEqual(ficha.peso_kg_unidad, 0.059114, places=6)
+
+        # Y sigue las correcciones posteriores
+        peso.kg_per_unit = 0.0615
+        self.assertAlmostEqual(ficha.peso_kg_unidad, 0.0615, places=6)
+
+        # Una ficha MANUAL no se pisa — misma regla que el generador
+        ficha.write({'source': 'manual', 'peso_kg_unidad': 0.05})
+        peso.kg_per_unit = 0.07
+        self.assertAlmostEqual(ficha.peso_kg_unidad, 0.05, places=6)
+
+        # …pero el panel la señala, que es el punto: la divergencia se ve
+        fuera = Ficha.fichas_con_peso_desfasado(tol_pct=2.0)
+        self.assertIn(ficha, [f[0] for f in fuera])
+        panel = self.env['qb.costeo.panel'].create({})
+        estado = panel._build_estado()
+        self.assertIn('Peso de la ficha vs maestro', estado)
+        self.assertIn('WY032Q22JNT160', estado)
+
+        # Al borrar el maestro, el peso cae a la siguiente fuente y la ficha
+        # lo sigue (la ficha vuelve a ser derivada para poder comprobarlo)
+        ficha.source = 'parser'
+        peso.unlink()
+        self.assertAlmostEqual(ficha.peso_kg_unidad, 0.0512, places=4)
