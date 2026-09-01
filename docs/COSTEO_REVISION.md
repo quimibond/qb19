@@ -783,3 +783,80 @@ tests que tampoco se han corrido nunca; meterlos todos de golpe pintaría el
 CI en rojo y bloquearía todo antes de saber qué falla de verdad. Agregar
 cada uno es una línea más en `--test-tags` el día que alguien lo corra a
 mano primero y lo deje en verde.
+
+---
+
+## Familias de acabado y tintorería (1-sep, v1.61)
+
+Tejido tenía sus familias desde la 1.54; acabado y tintorería seguían
+leyéndose como si cualquier máquina hiciera cualquier producto.
+
+**La subdivisión aquí es distinta.** En tejido las familias salieron de la
+columna «Alternos» —qué máquinas son intercambiables— y particionaban el
+centro. En acabado y tintorería esa misma columna dice que TODAS las
+máquinas de cada centro son intercambiables entre sí, o sea que por esa vía
+cada centro sería una sola familia y no habría nada que subdividir. La
+restricción real no está en las máquinas sino **por artículo**: hay telas
+que solo salen en la UNITECH, y cada teñido declara en qué jets se puede
+correr. Así que la familia es la máquina individual y lo que subdivide es el
+catálogo.
+
+| Centro | Familias | Capacidad | Catálogo |
+|---|---|---|---|
+| ACABADO | UNITECH (RAMA 2), BRUCKNER (RAMA 1), ICOMATEX inactiva | 611,954 + 563,448 = 1,175,402 m/mes (centro: 1,175,313, +0.01%) | 74 + 46 artículos |
+| TINTORERÍA | HTJ-1 a HTJ-4, HTJ-5 inactiva | 75,820 + 72,028 + 45,494 + 22,747 = 216,089 kg/mes (centro: 216,089) | 40 + 33 + 2 + 17 |
+
+### El catálogo de tintorería NO va en los códigos que da la planta
+
+La hoja lista los **terminados** (J) aunque el jet tiñe el **intermedio**
+(I), y el centro produce etapa I. Es el bug de la 1.54 esperando repetirse:
+si se captura el código que da el papel, `familias_de()` devuelve vacío en
+toda cotización real y el cotizador cae al agregado del centro sin avisar.
+
+El I no se puede derivar del J —cambian gramaje y ancho: `WB038Q47JBL172`
+sale de `WB046Q47IBL111`—, así que los 72 códigos se resolvieron uno por uno
+por BOM: 64 resueltos a 52 códigos I distintos. Cinco no tienen BOM activa
+en Odoo y quedaron fuera, anotados en el archivo. Ahora hay un test que
+recorre TODO el catálogo y verifica que cada código sea de la etapa que su
+centro produce.
+
+### Lo que el reparto destapó
+
+**HTJ-5 está en pruebas y sería la segunda tina más capaz.** El catálogo de
+planta la declara para 29 de los 52 artículos; liberarla suma ~91,000 kg/mes
+(+42%) a tintorería. Se dio de alta **inactiva** —una familia activa sin
+capacidad se reparte carga que no puede correr y deja a las demás con
+holgura falsa—, y ningún artículo depende solo de ella, así que no deja nada
+sin ruta. Misma decisión y mismo motivo para la ICOMATEX en acabado.
+
+**HTJ-3 tiene 45,494 kg/mes y solo 2 artículos que la pueden usar.** Es el
+21% de la tintorería que casi nadie puede tomar. O falta catalogar artículos
+o esa tina está prácticamente parada; en el papel de tiempos aparece con
+producción, así que lo más probable es que falte catálogo.
+
+**HTJ-2 rinde 2,500 kg/día en blancos contra 4,000 de la HTJ-1** con carga
+casi igual (950 vs 1,000 kg). O el formato mide otra cosa o la tina rinde
+por debajo de su carga nominal. El reparto la trata como proporcional a su
+carga, que es lo que dice el papel de capacidades; verificarlo es de piso.
+
+**Los dos archivos de planta se contradicen en qué rama es cuál marca.** El
+de abridoras dice RAMA 1 = UNITECH; el de tintorería dice RAMA 2 = UNITECH.
+Manda el segundo: el encabezado de la propia hoja T RAMA dice «UNITECH RAMA
+2», así que la fila de CENTROS DE TRABAJO del primer archivo está vieja.
+
+**La merma de BRUCKNER.** La capacidad del centro se derivó con −15% para
+esa rama, pero la columna de merma del formato dice 10% en todos los
+renglones. Con 10% daría 1,531 m/h en vez de 1,445.85. Se conservó la base
+del centro para que las familias sumen; el 5% de diferencia es pregunta para
+planta: ¿es merma o disponibilidad?
+
+### Un modo de falla que casi pasa
+
+La primera generación perdió **7 filas en silencio**. Los códigos
+`WD038Q46JNG166` y `WD038Q46JNG166.` son dos productos distintos en Odoo (el
+segundo es REPROCESO ACABADO), pero al normalizar el xmlid colapsaban al
+mismo y Odoo sobrescribe el registro anterior sin decir nada. Solo se notó
+al contar el catálogo cargado contra el de origen: 70 donde debían ser 77.
+El generador ahora asevera que no haya xmlid repetido antes de escribir.
+
+**Estado:** 135 tests, 0 fallos, sobre instalación desde cero.
