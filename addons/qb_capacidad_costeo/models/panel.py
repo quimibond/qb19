@@ -548,6 +548,7 @@ class QbCosteoPanel(models.TransientModel):
         uom_kg = env.ref('uom.product_uom_kgm', raise_if_not_found=False)
         if uom_m and uom_kg:
             hace_12m = fields.Date.today() - relativedelta(months=12)
+            env.flush_all()   # el SQL crudo no ve el buffer del ORM
             env.cr.execute("""
                 WITH cons AS (
                     SELECT sm.raw_material_production_id AS mo_id,

@@ -278,6 +278,7 @@ class QbProductoRentabilidad(models.Model):
 
     def _compute_tendencia_html(self):
         company_id = int(self.env.company.id)
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         for rec in self:
             self.env.cr.execute(
                 _BASE_SQL.format(company_id=company_id) + """
@@ -688,6 +689,7 @@ class QbPesoAuditoria(models.Model):
         Importados y subproductos quedan fuera: no cargan energía ni
         fabricación por peso, su kg no mueve ningún costo."""
         self.search([]).unlink()
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT aml.product_id, SUM(-aml.balance) AS rev
             FROM account_move_line aml

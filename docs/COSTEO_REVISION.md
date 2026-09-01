@@ -611,3 +611,78 @@ WN052B66HNG099 y seis más. Mientras no estén, el cotizador cae al método
 viejo para ellos. Y acabado y tintorería tienen la misma estructura sin
 capturar: en las ramas hay artículos que solo corren en la UNITECH, y la hoja
 de tintorería marca por artículo qué jets lo pueden teñir.
+
+---
+
+## Los 125 tests corrieron por primera vez (1-sep, v1.59)
+
+Nueve versiones se desplegaron a producción con la suite escrita y nunca
+ejecutada: en Odoo.sh no hay paso de tests y el CI de GitHub solo corre
+flake8 y `compileall`. Se levantó un Odoo 19 completo —fuente de
+`odoo/odoo@19.0`, PostgreSQL 16, base recién creada— y se corrió
+`--test-tags /qb_capacidad_costeo`.
+
+**Primer corrido: 29 de 127 fallaron.** Tres eran bugs del módulo, uno de
+ellos en producción desde la versión anterior.
+
+### 1. El mixin de flush de la 1.58 era código muerto
+
+`qb.sql.view` se enganchaba a `_where_calc`, que era el embudo de búsqueda
+**hasta Odoo 18**. En 19 el ORM se reorganizó (`odoo/orm/`) y ese método ya
+no existe: el override no lo llamaba nadie. Peor, la 1.58 había quitado el
+`search` ad-hoc de `qb.familia.carga` —que sí funcionaba— para dejarlo en
+manos del mixin. O sea que el arreglo estructural del bug más caro del
+módulo llevaba una versión entera en producción sin hacer absolutamente
+nada, y no había forma de notarlo sin correr el test.
+
+Ahora engancha `_search`, que en 19 es por donde pasan `search`,
+`search_fetch`, `search_count` y `_read_group`.
+
+### 2. El flush no bastaba: faltaba tirar la caché
+
+Con el enganche corregido el test seguía fallando. La vista devuelve el
+**mismo id** entre consultas, así que sus campos salían de la caché del ORM
+sin volver a la base: escribir la capacidad del centro y releer la fila de
+ociosidad seguía dando el número viejo. El mixin ahora hace `flush_all()` y
+`invalidate_model()`; sin la segunda mitad, el accidente de la 1.51 podía
+repetirse igual.
+
+### 3. El mismo bug vivía en 25 lugares más
+
+Los `cr.execute` del motor leen tablas que el ORM administra —centros,
+turnos, mapeo de cuentas, familias— y ninguno vaciaba el buffer.
+`_pool_by_month`, que es por donde pasan TODOS los pools contables, leía el
+mapeo de cuentas en SQL crudo: clasificar una cuenta y calcular factores en
+la misma transacción daba pools en cero. Doce tests fallaban por esto solo.
+Los 25 sitios ahora vacían antes de consultar.
+
+### 4. La capacidad se validaba con un número inventado
+
+`resolve_m_per_kg` cae a un default de planta (8.0 m/kg) cuando el artículo
+no tiene peso propio. El chequeo de capacidad del cotizador lo usaba para
+convertir los kilos de la etapa a metros, así que la rama de «no hay peso
+capturado — no se puede validar» era inalcanzable: contestaba **OK** sobre
+una carga calculada con un promedio que no es de esa tela. Ahora pide
+`strict=True` y el default se queda para los reportes aproximados, que es
+donde sirve.
+
+### Lo demás: la suite estaba desalineada, no el módulo
+
+Las otras 21 fallas eran tests viejos contra código que ya había cambiado, o
+supuestos de una base que no es esta:
+
+| Qué | Por qué |
+|---|---|
+| 4 tests de MP | `Product Unit` a 2 decimales en una base virgen redondea 0.072 kg/m a 0.07. Producción la tiene en 4; ahora la suite la fija. |
+| 3 tests de stock | `stock.move.name` ya no existe en Odoo 19. |
+| 2 de aduana | El recargo sigue a la COMPRA, no al producto (refinamiento posterior al test): sin una compra importada de verdad no recarga nada, y eso es lo correcto. |
+| 1 de margen | `margen_bruto_total` se deriva del ingreso para que se cumpla `ventas − costo = margen`; el test pedía el 0 de antes de ese arreglo. |
+| 1 de semáforo | El comentario daba el costo variable del fixture en ~7.9 cuando es 3.888, así que 10 MXN es ámbar y no rojo. |
+| 3 `UPDATE` crudos | Los propios tests escribían por SQL sin vaciar el buffer: el mismo bug del módulo, del otro lado. |
+| resto | Ids de producción (tipos de picking 77/147) en una base donde no existen, parámetros ya sembrados, redondeo de campos Monetary. |
+
+**Estado:** 127 tests, 0 fallos, sobre una base instalada desde cero.
+
+**Lo que esto deja claro:** el CI no corre los tests de Odoo, así que la
+suite solo vale si alguien la corre a mano antes de desplegar. Mientras eso
+siga así, un test escrito y no corrido es documentación, no una red.
