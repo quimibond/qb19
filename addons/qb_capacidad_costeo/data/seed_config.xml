@@ -111,6 +111,11 @@
             <field name="value">1</field>
             <field name="descripcion">1 = el pool fijo se divide entre capacidad NORMAL (IAS 2: la ociosidad va al resultado del período, no al producto). 0 = entre producción real, como antes.</field>
         </record>
+        <record id="factor_ficha_peso_tol_pct" model="qb.costeo.factor.config">
+            <field name="key">ficha_peso_tol_pct</field>
+            <field name="value">2</field>
+            <field name="descripcion">Tolerancia (%) entre el peso guardado en la ficha técnica y el maestro de pesos. La ficha guarda una COPIA, y esa hoja va al cliente: arriba de esto el panel avisa. El WJ032Q22JNT160 vivió 16 días con 0.0512 kg/m del código contra 0.059114 de báscula.</field>
+        </record>
         <record id="factor_capacidad_superada_meses" model="qb.costeo.factor.config">
             <field name="key">capacidad_superada_meses</field>
             <field name="value">12</field>

@@ -40,6 +40,7 @@
                             <field name="name"/>
                             <field name="nature"/>
                             <field name="driver_principal"/>
+                            <field name="etapa"/>
                             <field name="active"/>
                         </group>
                         <group string="Capacidad">

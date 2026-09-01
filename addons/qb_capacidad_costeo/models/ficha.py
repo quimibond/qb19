@@ -134,6 +134,85 @@ class QbProductoFicha(models.Model):
             vals['parse_warning'] = ('Segmento "%s" no interpretado.' % medio)
         return vals
 
+    # ------------------------------------------------------------------
+    # Resolución por etapa: qué corre en CADA centro
+    # ------------------------------------------------------------------
+    @api.model
+    def insumos_de_etapa(self, product, estado, max_depth=8):
+        """Artículos de una etapa que consume UNA unidad vendida de `product`.
+
+        La letra H/I/J no es decorativa: dice qué centro produjo el artículo
+        (H tejido, I tintorería, J acabado). El terminado que se vende sale
+        de ACABADO, así que preguntarle a la tejedora por el código del
+        terminado es preguntarle por algo que esa máquina nunca hizo —
+        `WJ038Q22JNT160` se teje como `WJ035Q22HNT200`, dos BOMs abajo y con
+        otro gramaje y otro ancho. Ese era el motivo real de que el catálogo
+        de familias de máquinas no cruzara con NADA de lo que se vende.
+
+        No se puede deducir de la nomenclatura: entre etapas cambian el
+        gramaje y el ancho (38 g/m² a 1.60 m ← 35 g/m² a 2.00 m), así que
+        cruzar por familia+gramaje+ancho falla. El BOM es el único enlace
+        real, y esta ficha es la que reconoce la etapa al llegar.
+
+        Devuelve {product: cantidad por unidad vendida} — vacío si la cadena
+        nunca llega a esa etapa. La cantidad va SIEMPRE en la unidad propia
+        de cada artículo devuelto: las dos divisiones del camino convierten
+        unidades, igual que `_explode_bom` en el motor de costeo. Sin eso, un
+        BOM declarado en otra unidad que su producto (el `WJ038Q22JNT160M2`
+        está en m², el `WB038Q46IBE096` en kg) mete la razón de conversión
+        entera como factor — en el cruce m↔kg, un error de ~16× en la carga
+        del telar, y silencioso.
+        """
+        out = {}
+        if not product:
+            return out
+        BOM = self.env['mrp.bom']
+        fichas = {}
+
+        def etapa_de(prod):
+            # La ficha manda cuando existe (puede estar editada a mano), pero
+            # no se puede depender de ella: `action_generar_fichas` solo cubre
+            # productos vendibles, y los crudos y teñidos rara vez lo son —
+            # de 1,839 fichas solo 10 son de teñido. Sin este respaldo, la
+            # cadena se cortaría justo en los intermedios que hay que cruzar.
+            if prod.id not in fichas:
+                ficha = self.search([('product_id', '=', prod.id)], limit=1)
+                fichas[prod.id] = ficha.estado if ficha else \
+                    self.parse_ref(prod.default_code).get('estado')
+            return fichas[prod.id]
+
+        def walk(prod, factor, depth, vistos):
+            if depth > max_depth or factor <= 0 or prod.id in vistos:
+                return
+            if etapa_de(prod) == estado:
+                # Llegamos: no se sigue bajando. El crudo se teje, no se
+                # compone de otro crudo.
+                out[prod] = out.get(prod, 0.0) + factor
+                return
+            bom = BOM._bom_find(prod).get(prod)
+            if not bom or not bom.product_qty:
+                return
+            # Las dos conversiones son las mismas que hace `_explode_bom`:
+            # el encabezado del BOM a la unidad del producto que produce, y
+            # cada línea a la unidad del componente que consume.
+            bom_qty = bom.product_uom_id._compute_quantity(
+                bom.product_qty, prod.uom_id, round=False,
+                raise_if_failure=False) or bom.product_qty
+            if not bom_qty:
+                return
+            for line in bom.bom_line_ids:
+                comp = line.product_id
+                if not comp:
+                    continue
+                qty = line.product_uom_id._compute_quantity(
+                    line.product_qty, comp.uom_id, round=False,
+                    raise_if_failure=False) or line.product_qty
+                walk(comp, factor * qty / bom_qty,
+                     depth + 1, vistos | {prod.id})
+
+        walk(product, 1.0, 0, frozenset())
+        return out
+
     @api.model
     def _build_vals(self, product):
         Peso = self.env['qb.producto.peso']
@@ -152,6 +231,85 @@ class QbProductoFicha(models.Model):
         if m_per_kg:
             vals['rendimiento_m_kg'] = m_per_kg
         return vals
+
+    # ------------------------------------------------------------------
+    # El peso de la ficha es una COPIA del maestro
+    # ------------------------------------------------------------------
+    @api.model
+    def sync_pesos(self, products=None, tolerancia=0.0):
+        """Refresca `peso_kg_unidad` y `rendimiento_m_kg` desde el maestro.
+
+        Los dos campos son copias de `qb.producto.peso`, no campos
+        relacionados: se llenan al generar la ficha y ahí se quedan. Cada vez
+        que se mide un peso, la copia envejece en silencio — y esta ficha es
+        la hoja técnica que se le manda al cliente. El WJ032Q22JNT160 tenía
+        0.0512 kg/m (gramaje × ancho, la adivinanza del código) contra
+        0.059114 medidos de báscula: 13% abajo durante 16 días.
+
+        Respeta la misma regla que el generador: una ficha `manual` no se
+        pisa. Y toca SOLO estos dos campos — regenerar la ficha completa
+        reescribiría además gramaje, ancho, estado y color desde el parser,
+        que es un martillo más grande que el clavo.
+
+        Devuelve cuántas fichas se actualizaron.
+        """
+        Peso = self.env['qb.producto.peso']
+        dominio = [('source', '!=', 'manual')]
+        if products is not None:
+            if not products:
+                return 0
+            dominio.append(('product_id', 'in', products.ids))
+        cache = {}
+        tocadas = 0
+        for ficha in self.with_context(active_test=False).search(dominio):
+            vals = {}
+            kg = Peso.resolve_kg_per_unit(ficha.product_id, cache)
+            if kg and abs(kg - ficha.peso_kg_unidad) > max(
+                    tolerancia * kg, 1e-9):
+                vals['peso_kg_unidad'] = kg
+            m_kg = Peso.resolve_m_per_kg(ficha.product_id, cache)
+            if m_kg and abs(m_kg - ficha.rendimiento_m_kg) > max(
+                    tolerancia * m_kg, 1e-9):
+                vals['rendimiento_m_kg'] = m_kg
+            if vals:
+                ficha.write(vals)
+                tocadas += 1
+        return tocadas
+
+    @api.model
+    def fichas_con_peso_desfasado(self, tol_pct=2.0):
+        """Fichas cuyo peso guardado se alejó del maestro más de `tol_pct`.
+
+        El guard del sync: cubre las fichas `manual` (que a propósito no se
+        refrescan), las que se escribieron por una vía que no pasó por el
+        maestro, y cualquier hueco futuro. Misma regla que ya cubre pesos
+        (5.11), AVCO de importados (5.13) y consumo de BOM (5.14): un
+        parámetro que duplica un dato vivo se contrasta contra su fuente.
+
+        Devuelve [(ficha, guardado, maestro, desviación)] de mayor a menor.
+
+        Recorre el MAESTRO, no las fichas: son dos consultas en vez de una
+        por ficha, y este check vive en el panel, que es la pantalla de
+        entrada. No se pierde cobertura — un producto sin registro en el
+        maestro resuelve por la misma cadena de respaldo con que se llenó su
+        ficha, así que no puede divergir de sí mismo.
+        """
+        pesos = self.env['qb.producto.peso'].search(
+            [('kg_per_unit', '>', 0)])
+        if not pesos:
+            return []
+        por_producto = {p.product_id.id: p.kg_per_unit for p in pesos}
+        fuera = []
+        for ficha in self.search([('peso_kg_unidad', '>', 0),
+                                  ('product_id', 'in', list(por_producto))]):
+            kg = por_producto.get(ficha.product_id.id)
+            if not kg:
+                continue
+            desv = (ficha.peso_kg_unidad - kg) / kg
+            if abs(desv) * 100.0 > tol_pct:
+                fuera.append((ficha, ficha.peso_kg_unidad, kg, desv))
+        fuera.sort(key=lambda f: -abs(f[3]))
+        return fuera
 
     # ------------------------------------------------------------------
     # Generación masiva (acción de menú + parte del import semanal)
