@@ -176,8 +176,12 @@ class QbFamiliaCarga(models.Model):
     load_month_units = fields.Float(
         string='Carga/mes', readonly=True,
         help='Producción real de los productos que esta familia puede '
-             'hacer. Un producto que cabe en varias familias reparte su '
-             'carga entre ellas.')
+             'hacer. Es una ASIGNACIÓN, no una medición: Odoo no registra '
+             'en qué máquina corrió cada orden —las ramas y los jets ni '
+             'siquiera existen como workcenter—, así que el reparto se '
+             'modela. Primero lo cautivo (lo que solo esta familia puede '
+             'hacer) y luego lo compartido, en proporción a la holgura que '
+             'le queda a cada candidata.')
     utilization_pct = fields.Float(string='Utilización %', readonly=True)
     free_month_units = fields.Float(string='Disponible/mes', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
@@ -186,11 +190,16 @@ class QbFamiliaCarga(models.Model):
     def _table_query(self):
         return """
             {cfg},
-            alcance AS (
-                SELECT fp.product_code, COUNT(DISTINCT fp.familia_id) AS n_fam
+            cand AS (
+                -- Familia x articulo que esa familia puede hacer.
+                SELECT fp.familia_id, fp.product_code, f.company_id,
+                       f.capacidad_normal
                 FROM qb_familia_producto fp
                 JOIN qb_costeo_familia f ON f.id = fp.familia_id AND f.active
-                GROUP BY fp.product_code
+            ),
+            alcance AS (
+                SELECT product_code, COUNT(DISTINCT familia_id) AS n_fam
+                FROM cand GROUP BY product_code
             ),
             carga_prod AS (
                 SELECT pp.default_code AS code,
@@ -206,15 +215,67 @@ class QbFamiliaCarga(models.Model):
                   AND mp.date_finished < date_trunc('month', CURRENT_DATE)
                 GROUP BY pp.default_code, mp.company_id
             ),
+            cautiva AS (
+                -- Lo que SOLO esta familia puede hacer. No se reparte: no
+                -- hay a donde.
+                SELECT c.familia_id, SUM(cp.qty_month) AS qty_month
+                FROM cand c
+                JOIN alcance a ON a.product_code = c.product_code
+                              AND a.n_fam = 1
+                JOIN carga_prod cp ON cp.code = c.product_code
+                                  AND cp.company_id = c.company_id
+                GROUP BY c.familia_id
+            ),
+            holgura AS (
+                -- Lo que le queda a cada familia despues de lo cautivo. Es
+                -- la capacidad que de verdad puede ofrecer para lo demas.
+                SELECT f.id AS familia_id,
+                       GREATEST(f.capacidad_normal
+                                - COALESCE(ct.qty_month, 0), 0) AS libre
+                FROM qb_costeo_familia f
+                LEFT JOIN cautiva ct ON ct.familia_id = f.id
+                WHERE f.active
+            ),
+            repartible AS (
+                SELECT c.product_code, SUM(h.libre) AS libre_total
+                FROM cand c
+                JOIN alcance a ON a.product_code = c.product_code
+                              AND a.n_fam > 1
+                JOIN holgura h ON h.familia_id = c.familia_id
+                GROUP BY c.product_code
+            ),
+            compartida AS (
+                -- Lo que cabe en varias maquinas va donde hay lugar, en
+                -- proporcion a la holgura. Repartirlo en partes IGUALES
+                -- —como se hacia— le manda carga a una maquina que ya no
+                -- puede tomarla: en acabado dejaba a la UNITECH en 120
+                -- por ciento y a la BRUCKNER en 48, con la planta corriendo
+                -- de verdad. (Sin el signo de porcentaje a proposito: este
+                -- SQL puede pasar por formateo estilo printf.)
+                -- Si ninguna candidata tiene holgura se cae al reparto
+                -- parejo, que es lo unico que queda cuando todas estan
+                -- llenas.
+                SELECT c.familia_id,
+                       SUM(cp.qty_month
+                           * CASE WHEN r.libre_total > 0
+                                  THEN h.libre / r.libre_total
+                                  ELSE 1.0 / a.n_fam END) AS qty_month
+                FROM cand c
+                JOIN alcance a ON a.product_code = c.product_code
+                              AND a.n_fam > 1
+                JOIN carga_prod cp ON cp.code = c.product_code
+                                  AND cp.company_id = c.company_id
+                JOIN holgura h ON h.familia_id = c.familia_id
+                JOIN repartible r ON r.product_code = c.product_code
+                GROUP BY c.familia_id
+            ),
             carga AS (
-                SELECT fp.familia_id,
-                       SUM(cp.qty_month / a.n_fam) AS qty_month
-                FROM qb_familia_producto fp
-                JOIN qb_costeo_familia f ON f.id = fp.familia_id
-                JOIN carga_prod cp ON cp.code = fp.product_code
-                                  AND cp.company_id = f.company_id
-                JOIN alcance a ON a.product_code = fp.product_code
-                GROUP BY fp.familia_id
+                SELECT f.id AS familia_id,
+                       COALESCE(ct.qty_month, 0)
+                       + COALESCE(co.qty_month, 0) AS qty_month
+                FROM qb_costeo_familia f
+                LEFT JOIN cautiva ct ON ct.familia_id = f.id
+                LEFT JOIN compartida co ON co.familia_id = f.id
             )
             SELECT f.id AS id,
                    f.id AS familia_id,
