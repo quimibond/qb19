@@ -3,8 +3,6 @@ Unit tests for IngestionCore. Uses an in-memory fake Supabase client
 so we don't hit the network. Run with:
   cd /Users/jj/addons && pytest quimibond_intelligence/tests/test_ingestion_core.py -v
 """
-import pytest
-from unittest.mock import MagicMock
 from quimibond_intelligence.models.ingestion_core import IngestionCore
 
 

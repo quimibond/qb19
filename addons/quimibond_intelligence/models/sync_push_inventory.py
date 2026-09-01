@@ -1,9 +1,9 @@
 """Sync push: products, stock locations/moves, account entries (stock valuation),
 orderpoints, BOMs, UoMs."""
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from odoo import api, fields, models
+from odoo import models
 
 from .supabase_client import SupabaseClient
 

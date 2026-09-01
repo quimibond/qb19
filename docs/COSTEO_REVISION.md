@@ -686,3 +686,73 @@ supuestos de una base que no es esta:
 **Lo que esto deja claro:** el CI no corre los tests de Odoo, así que la
 suite solo vale si alguien la corre a mano antes de desplegar. Mientras eso
 siga así, un test escrito y no corrido es documentación, no una red.
+
+---
+
+## Refactor con red: el panel partido y el CTE deduplicado (1-sep, v1.60)
+
+Con los tests corriendo, los tres pendientes de calidad que estaban
+bloqueados por no poder verificarlos dejaron de estarlo.
+
+### `_build_estado`: de 677 líneas a 23 métodos
+
+Los 23 checks del semáforo vivían en un solo método. Se partieron en un
+método por check más un registro que fija el orden de presentación; agregar
+el check 24 ya no obliga a tocar un cuerpo de 677 líneas.
+
+Partirlo destapó dos cosas que el método largo escondía:
+
+**Ocho checks dependían de variables definidas en checks anteriores**
+(`Clase`, `Config`, `ultimo`, `absorbidos`). El orden del registro era una
+dependencia que nadie había declarado: mover un check de lugar habría roto
+otros tres sin decir por qué. Cada uno rederiva ahora lo suyo, y un test los
+corre sueltos y en orden inverso para que no vuelva a colarse.
+
+**Un check que truene ya no se lleva el panel.** Cada uno corre aislado; si
+falla sale como renglón rojo con su error y los otros 22 siguen. El panel es
+la pantalla de entrada del módulo: perder el tablero entero por un dato roto
+en un check era el peor canje posible.
+
+También cambió el prefijo de `_check_` a `_estado_`: Odoo usa `_check_*`
+para hooks propios del ORM (`_check_company`, `_check_access`,
+`_check_recursion`) y un check del panel que cayera en uno de esos nombres
+lo habría sobrescrito en silencio.
+
+**Verificación:** la salida HTML del panel es byte a byte idéntica a la de
+antes del cambio (3,874 caracteres, 16 renglones).
+
+### El CTE `cfg`: trece copias a mano, una de ellas distinta
+
+Las seis vistas SQL leían sus parámetros del config escribiendo el mismo
+subselect a mano, trece veces. No todas iguales: **`weeks_per_month` era el
+único sin `NULLIF`**, en cuatro archivos. Nada valida ese campo, así que un
+0 tecleado ahí ponía las semanas del mes en cero y con eso la capacidad de
+toda la planta — cero horas, cero kilos, y el costo unitario dividiendo
+entre cero. En los demás parámetros un 0 caía al default.
+
+Ahora sale de `cfg_sql()`, con la misma guarda para los seis. Cero no es un
+valor válido para ninguno.
+
+**Verificación:** las seis vistas devuelven exactamente las mismas filas.
+Las cuatro cuyo SQL cambió de texto son justo las que ganaron el `NULLIF`.
+
+### El lint dejó de tapar código muerto
+
+El CI apagaba F401 y F841 en todo el repo por una razón que solo aplica a
+los `__init__.py` (en Odoo el import "sin usar" es el punto del archivo).
+Apagarlo en 124 archivos para no molestar en esos tapaba **30 hallazgos
+reales** en el resto: imports muertos en `quimibond_sgi`,
+`quimibond_intelligence` y `quimibond_sgi_plm`, y dos migraciones-stub con
+un `env` que dejó de usarse cuando el recálculo se movió.
+
+La configuración pasó a `.flake8` en la raíz, con ignores por archivo y el
+motivo de cada excepción escrito. Correr `flake8 addons/` en local da ahora
+exactamente lo mismo que el CI.
+
+Uno de los 30 NO se borró: `company_cn` en `sync_push_partners.py` se
+calcula con tres ramas deliberadas y nunca se usa. Puede ser una función a
+medio terminar (el contacto no lleva el nombre de su empresa a Supabase) o
+diez líneas de sobra. Decidirlo es de quien mantiene el sync; queda el
+FIXME y la excepción documentada.
+
+**Estado:** 132 tests, 0 fallos, sobre instalación desde cero.

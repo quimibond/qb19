@@ -1,7 +1,7 @@
 """
 Sync log model — records each push/pull execution for visibility in Odoo UI.
 """
-from odoo import api, fields, models
+from odoo import fields, models
 
 
 class SyncLog(models.Model):
