@@ -3928,9 +3928,11 @@ class TestQbCosteo(TransactionCase):
             (t, (i, d)) for i, t, d in panel._estado_tarifa_de_workcenters()
         )['Tarifa por hora — TJTAR']
         self.assertEqual(icono, '❌')
-        self.assertIn('1 de 2 sin tarifa', detalle)
-        self.assertIn('CIRCULAR TARIFA B TEST', detalle)
-        self.assertNotIn('CIRCULAR TARIFA A TEST', detalle)
+        # La lista de tarifa nombra SOLO a la que falta; A puede seguir en
+        # la lista de cuenta (con mrp_account instalado la cuenta también
+        # se revisa, y aquí todavía no se captura).
+        self.assertIn('1 de 2 sin tarifa por hora (CIRCULAR TARIFA B TEST)',
+                      detalle)
 
         # Completo: verde, con el rango de tarifas
         wc_b.write({'costs_hour': 99.0})
