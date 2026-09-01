@@ -756,3 +756,30 @@ diez líneas de sobra. Decidirlo es de quien mantiene el sync; queda el
 FIXME y la excepción documentada.
 
 **Estado:** 132 tests, 0 fallos, sobre instalación desde cero.
+
+---
+
+## Los tests entran al CI (1-sep)
+
+Correrlos a mano encontró tres bugs el primer día y dos de los tres estaban
+en producción. La conclusión obvia: mientras dependan de que alguien se
+acuerde, no son una red.
+
+`.github/workflows/ci.yml` gana un job `odoo-tests` que levanta la imagen
+oficial `odoo:19.0` con un PostgreSQL 16 de servicio, **instala el módulo en
+una base recién creada** y corre `--test-tags /qb_capacidad_costeo`. Se usa
+`-i` y no `-u` a propósito: así se prueba también que el módulo instala de
+cero, que es como llega a una base nueva y es justo lo que no se probaba.
+
+La etiqueta de la imagen es `19.0` flotante, no una fechada. Producción es
+Odoo.sh siguiendo esa misma rama, así que el día que upstream cambie algo
+que nos rompa queremos enterarnos en un PR y no en un despliegue — que es
+exactamente el aviso que no hubo cuando `_where_calc` dejó de existir. El
+costo es que un cambio de upstream puede pintar el CI en rojo sin que nadie
+haya tocado el repo; eso es información, no ruido.
+
+**Alcance:** solo `qb_capacidad_costeo`. Los otros módulos del repo tienen
+tests que tampoco se han corrido nunca; meterlos todos de golpe pintaría el
+CI en rojo y bloquearía todo antes de saber qué falla de verdad. Agregar
+cada uno es una línea más en `--test-tags` el día que alguien lo corra a
+mano primero y lo deje en verde.

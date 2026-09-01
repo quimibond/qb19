@@ -50,3 +50,81 @@ jobs:
           else
             python3 tools/check_addons.py
           fi
+
+  # ------------------------------------------------------------------
+  # Tests de Odoo
+  #
+  # Hasta hoy la suite de `qb_capacidad_costeo` —132 casos— existía pero
+  # nadie la corría: Odoo.sh no tiene paso de tests y aquí solo había
+  # flake8 y compileall. Nueve versiones llegaron a producción sin que se
+  # ejecutara una sola vez, y cuando por fin se corrió a mano aparecieron
+  # tres bugs, uno de ellos desplegado desde la versión anterior (el mixin
+  # de flush enganchado a `_where_calc`, que Odoo 19 ya no llama).
+  #
+  # Un test escrito y no corrido es documentación, no una red.
+  # ------------------------------------------------------------------
+  odoo-tests:
+    runs-on: ubuntu-latest
+    # La imagen oficial trae Odoo y todos los addons community de los que
+    # depende el módulo (mrp, hr, account, stock, sale, purchase, uom).
+    #
+    # Etiqueta `19.0` FLOTANTE a propósito, no una fechada: producción es
+    # Odoo.sh siguiendo esa misma rama, así que el día que upstream cambia
+    # algo que nos rompe queremos enterarnos aquí y no en el despliegue.
+    # Es exactamente el aviso que no tuvimos cuando `_where_calc` dejó de
+    # existir. El costo es que un cambio de upstream puede pintar el CI en
+    # rojo sin que nadie haya tocado el repo; eso es información, no ruido.
+    container:
+      image: odoo:19.0
+      options: --user root
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar el módulo y correr su suite
+        run: |
+          set -eo pipefail
+          # La ruta de los addons de la imagen se pregunta en vez de
+          # escribirse: cambió entre versiones de la imagen oficial.
+          ODOO_ADDONS=$(python3 -c "import odoo, os; print(os.path.join(os.path.dirname(odoo.__file__), 'addons'))")
+          echo "addons de Odoo: $ODOO_ADDONS"
+          # Base RECIÉN CREADA en cada corrida (`-i`, no `-u`): así se
+          # prueba también que el módulo instala de cero, que es como
+          # llega a una base nueva y como NO se probaba antes.
+          odoo -d qbci \
+            --db_host=db --db_user=odoo --db_password=odoo \
+            --addons-path="$ODOO_ADDONS,$GITHUB_WORKSPACE/addons" \
+            -i qb_capacidad_costeo \
+            --test-enable --test-tags /qb_capacidad_costeo \
+            --stop-after-init --log-level=test \
+            --data-dir=/tmp/odoo-data 2>&1 | tee /tmp/odoo-tests.log
+
+      - name: Qué falló
+        if: failure()
+        run: |
+          echo "===== resumen ====="
+          grep -E "odoo.tests.(result|stats):" /tmp/odoo-tests.log | tail -5 || true
+          echo "===== casos ====="
+          grep -E "(FAIL|ERROR): Test" /tmp/odoo-tests.log | sed 's/^.*: \(FAIL\|ERROR\)/\1/' || true
+          echo "===== detalle ====="
+          grep -E "AssertionError|test_costeo\.py\", line" /tmp/odoo-tests.log | head -60 || true
+
+      - name: Guardar el log completo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: odoo-tests-log
+          path: /tmp/odoo-tests.log
+          retention-days: 7
+          if-no-files-found: warn
