@@ -3082,6 +3082,76 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(status, 'sin_datos')
         sin_datos.unlink()
 
+    def test_capacidad_valida_el_articulo_de_cada_centro(self):
+        """Cada centro se valida contra SU artículo de la cadena, no contra
+        el terminado que se vende.
+
+        La letra H/I/J dice qué centro produjo el artículo. El terminado sale
+        de ACABADO, así que preguntarle a la tejedora por su código es
+        preguntarle por algo que esa máquina nunca hizo: `WJ038Q22JNT160` se
+        teje como `WJ035Q22HNT200`, dos BOMs abajo, con otro gramaje y otro
+        ancho. Por eso el catálogo de familias (19 crudos) no cruzaba con
+        ninguno de los 143 artículos vendidos en 2026 — no faltaban datos, se
+        cruzaba mal.
+
+        Y arrastraba un error de cantidad: el crudo pesa más que el
+        terminado, así que la carga de tejido salía subestimada.
+        """
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        crudo = self.env['product.product'].create({
+            'name': 'CRUDO TEST', 'default_code': 'WT045Q22HNT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        tenido = self.env['product.product'].create({
+            'name': 'TENIDO TEST', 'default_code': 'WT045Q22INT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        terminado = self.env['product.product'].create({
+            'name': 'TERMINADO TEST', 'default_code': 'WT050Q22JNT160',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tenido.product_tmpl_id.id, 'product_qty': 1.0,
+            'product_uom_id': uom_kg.id,
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id,
+                                     'product_qty': 1.0,
+                                     'product_uom_id': uom_kg.id})]})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': terminado.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {'product_id': tenido.id,
+                                     'product_qty': 0.08,
+                                     'product_uom_id': uom_kg.id})]})
+
+        Ficha = self.env['qb.producto.ficha']
+        # Dos niveles de BOM, cantidades multiplicadas por el camino.
+        insumos = Ficha.insumos_de_etapa(terminado, 'crudo')
+        self.assertEqual(list(insumos), [crudo])
+        self.assertAlmostEqual(insumos[crudo], 0.08, places=4)
+        # Sin ficha creada: la etapa sale del parser de nomenclatura.
+        self.assertFalse(Ficha.search([('product_id', '=', crudo.id)]))
+        # El terminado se resuelve a sí mismo, y una etapa inalcanzable da vacío.
+        self.assertEqual(list(Ficha.insumos_de_etapa(terminado, 'terminado')),
+                         [terminado])
+        self.assertFalse(Ficha.insumos_de_etapa(crudo, 'terminado'))
+
+        # El centro trabaja por familias y el crudo no está catalogado: antes
+        # caía al agregado del centro y contestaba «cabe»; ahora lo dice.
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TEST_TEJ', 'name': 'Tejido test',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'etapa': 'crudo', 'std_output_per_hour': 10.0})
+        self.env['qb.costeo.familia'].create({
+            'code': 'TEST_FAM', 'name': 'Familia test',
+            'centro_id': centro.id})
+        wiz = self.env['qb.cotizador.wizard'].new(
+            {'product_id': terminado.id})
+        ok, detail, status = wiz._check_capacity(
+            centro, is_kg=False, kg=0.06, m_per_kg=16.0, volumen=1000.0)
+        self.assertTrue(ok, 'no poder validar no es reprobar')
+        self.assertEqual(status, 'sin_datos')
+        self.assertIn('WT045Q22HNT200', detail,
+                      'nombra el crudo, no el terminado')
+        self.assertIn('no está catalogado', detail)
+
     def test_capacidad_parcial_no_se_presenta_como_que_cabe(self):
         """Ruta con un centro medido que cabe y otro sin throughput: el
         estado es «parcial», no «ok».
@@ -4091,3 +4161,138 @@ class TestQbCosteo(TransactionCase):
         estado = panel._build_estado()
         self.assertIn('Familias de máquinas', estado)
         self.assertIn('TB54', estado)
+
+    def test_insumos_de_etapa_convierte_unidades_del_bom(self):
+        """El recorrido por etapas tiene que convertir unidades, como ya lo
+        hace `_explode_bom` en el motor.
+
+        Un BOM declarado en otra unidad que su producto no es hipotético: en
+        la base, el `WJ038Q22JNT160M2` tiene su BOM en m² y el
+        `WB038Q46IBE096` en kg. Dividir la cantidad de la línea entre
+        `bom.product_qty` sin convertir mete la razón de conversión completa
+        como factor — aquí, mil veces — y el error viaja callado hasta la
+        carga del telar.
+        """
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        uom_g = self.env.ref('uom.product_uom_gram')
+        crudo = self.env['product.product'].create({
+            'name': 'CRUDO UOM TEST', 'default_code': 'WU045Q22HNT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        tenido = self.env['product.product'].create({
+            'name': 'TENIDO UOM TEST', 'default_code': 'WU045Q22INT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        # El BOM produce 1,000 g (= 1 kg) y consume 1 kg de crudo: el factor
+        # correcto es 1.0 por kg de teñido, no 0.001.
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tenido.product_tmpl_id.id,
+            'product_qty': 1000.0, 'product_uom_id': uom_g.id,
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id,
+                                     'product_qty': 1.0,
+                                     'product_uom_id': uom_kg.id})]})
+        insumos = self.env['qb.producto.ficha'].insumos_de_etapa(
+            tenido, 'crudo')
+        self.assertEqual(list(insumos), [crudo])
+        self.assertAlmostEqual(insumos[crudo], 1.0, places=4)
+
+    def test_capacidad_suma_los_articulos_de_la_etapa(self):
+        """Si la cadena llega a DOS artículos de la misma etapa, la máquina
+        hace los dos: se suman.
+
+        Quedarse con el de mayor cantidad subestima la carga, que es la
+        dirección insegura para un check de capacidad. Los auxiliares (agua,
+        engomado, fórmulas) no entran por otra vía: no clasifican a ninguna
+        etapa H/I/J.
+        """
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        crudo_a = self.env['product.product'].create({
+            'name': 'CRUDO A', 'default_code': 'WV040Q22HNT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        crudo_b = self.env['product.product'].create({
+            'name': 'CRUDO B', 'default_code': 'WV055Q22HNT150',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        goma = self.env['product.product'].create({
+            'name': 'ENGOMADO 001', 'default_code': 'GOMA001',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        laminado = self.env['product.product'].create({
+            'name': 'LAMINADO TEST', 'default_code': 'WV090Q22JNT150',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': laminado.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [
+                (0, 0, {'product_id': crudo_a.id, 'product_qty': 0.05,
+                        'product_uom_id': uom_kg.id}),
+                (0, 0, {'product_id': crudo_b.id, 'product_qty': 0.03,
+                        'product_uom_id': uom_kg.id}),
+                (0, 0, {'product_id': goma.id, 'product_qty': 0.01,
+                        'product_uom_id': uom_kg.id})]})
+        Ficha = self.env['qb.producto.ficha']
+        insumos = Ficha.insumos_de_etapa(laminado, 'crudo')
+        # El engomado no clasifica a ninguna etapa: no entra
+        self.assertEqual(set(insumos), {crudo_a, crudo_b})
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TEST_SUMA', 'name': 'Tejido suma',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'etapa': 'crudo', 'std_output_per_hour': 10.0})
+        familia = self.env['qb.costeo.familia'].create({
+            'code': 'TEST_SUMA_FAM', 'name': 'Familia suma',
+            'centro_id': centro.id, 'capacidad_normal': 5000.0})
+        for crudo in (crudo_a, crudo_b):
+            self.env['qb.familia.producto'].create({
+                'familia_id': familia.id,
+                'product_code': crudo.default_code})
+        wiz = self.env['qb.cotizador.wizard'].new({'product_id': laminado.id})
+        _ok, detail, _status = wiz._check_capacity(
+            centro, is_kg=False, kg=0.09, m_per_kg=11.0, volumen=1000.0)
+        # 1,000 m × (0.05 + 0.03) = 80 kg, no los 50 del crudo más grande
+        self.assertIn('requiere 80', detail)
+        self.assertIn('se suman todos', detail)
+
+    def test_capacidad_no_mezcla_kilos_con_metros_entre_etapas(self):
+        """El artículo de la etapa se mide en SU unidad, que no tiene por qué
+        ser la del centro.
+
+        El crudo va en kg y una rama absorbe por metro. Convertir con el peso
+        del TERMINADO sería usar el de otra tela; sin peso del artículo de la
+        etapa, la respuesta honesta es que no se puede validar — caer al
+        número del terminado es el error que este cambio vino a quitar.
+        """
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        crudo = self.env['product.product'].create({
+            'name': 'CRUDO SIN PESO', 'default_code': 'WX040Q22HNT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        terminado = self.env['product.product'].create({
+            'name': 'TERMINADO RAMA', 'default_code': 'WX045Q22JNT160',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': terminado.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id,
+                                     'product_qty': 0.07,
+                                     'product_uom_id': uom_kg.id})]})
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TEST_RAMA', 'name': 'Centro por metro con etapa crudo',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'etapa': 'crudo', 'std_output_per_hour': 1500.0})
+        familia = self.env['qb.costeo.familia'].create({
+            'code': 'TEST_RAMA_FAM', 'name': 'Familia rama',
+            'centro_id': centro.id, 'capacidad_normal': 100000.0})
+        self.env['qb.familia.producto'].create({
+            'familia_id': familia.id, 'product_code': crudo.default_code})
+        wiz = self.env['qb.cotizador.wizard'].new({'product_id': terminado.id})
+        ok, detail, status = wiz._check_capacity(
+            centro, is_kg=False, kg=0.06, m_per_kg=16.0, volumen=1000.0)
+        self.assertTrue(ok, 'no poder validar no es reprobar')
+        self.assertEqual(status, 'sin_datos')
+        self.assertIn('no hay peso capturado', detail)
+        # Con el peso del crudo capturado, sí convierte y valida
+        self.env['qb.producto.peso'].create({
+            'product_id': crudo.id, 'kg_per_unit': 0.07,
+            'm_per_kg': 14.0, 'source': 'manual'})
+        _ok2, detail2, _s2 = wiz._check_capacity(
+            centro, is_kg=False, kg=0.06, m_per_kg=16.0, volumen=1000.0)
+        self.assertNotIn('no hay peso capturado', detail2)
+        # 1,000 m × 0.07 kg = 70 kg de crudo × 14 m/kg = 980 m en la rama
+        self.assertIn('requiere 980', detail2)
