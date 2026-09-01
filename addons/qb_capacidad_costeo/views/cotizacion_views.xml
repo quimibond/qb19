@@ -121,7 +121,7 @@
                     <field name="margen_neto_pct"
                            string="Margen neto % (al precio evaluado)"
                            help="Lo que queda después de TODO al precio que se está evaluando (objetivo, o mercado, o el piso)."/>
-                    <field name="capacity_ok" string="¿Cabe en capacidad?"/>
+                    <field name="capacity_status" string="¿Cabe en capacidad?"/>
                     <field name="capacity_detail" nolabel="1" colspan="2"/>
                     <field name="evaluado_info" readonly="1" colspan="2"
                            invisible="not evaluado_info"/>
@@ -360,7 +360,8 @@
                        decoration-danger="semaforo == 'rojo'"
                        decoration-warning="semaforo == 'ambar'"
                        decoration-success="semaforo == 'verde'"/>
-                <field name="capacity_ok"/>
+                <field name="capacity_status"/>
+                <field name="capacity_ok" optional="hide"/>
                 <field name="validez_hasta" optional="show"/>
                 <field name="real_precio_prom" optional="show"/>
                 <field name="delta_precio_pct" optional="show"/>
@@ -388,6 +389,9 @@
                     <button name="action_recotizar" type="object"
                             string="↻ Re-cotizar"
                             help="Abre la calculadora precargada con estos datos: refresca con factores/TC de hoy o prueba otro precio. Guardar crea una cotización NUEVA."/>
+                    <button name="action_recotizar_ahora" type="object"
+                            string="↻ Recalcular ya"
+                            help="Recotiza directo con los factores de hoy, sin abrir la calculadora: mismo producto, volumen y precio al cliente. Crea la revisión siguiente completa (validez, escalera de volumen, contribución por hora)."/>
                     <button name="action_reabrir" type="object"
                             string="Reabrir" invisible="state in ('draft',)"/>
                     <field name="state" widget="statusbar"
@@ -502,11 +506,13 @@
                                        decoration-warning="semaforo == 'ambar'"
                                        decoration-success="semaforo == 'verde'"/>
                                 <field name="capacity_ok"/>
+                                <field name="capacity_status" optional="hide"/>
                             </list>
                         </field>
                     </group>
                     <group string="Capacidad: ¿cabe este volumen en la planta?">
-                        <field name="capacity_ok"/>
+                        <field name="capacity_status"/>
+                        <field name="capacity_ok" invisible="1"/>
                         <field name="capacity_detail"/>
                     </group>
                     <group>
