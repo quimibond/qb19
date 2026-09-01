@@ -3587,23 +3587,104 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('único comprador', solo.clientes_html)
 
     def test_panel_negocio_primero_config_colapsada(self):
-        """El panel abre con el negocio (mes, quién deja y quién cuesta,
-        acciones) y la configuración queda SIEMPRE colapsada con resumen —
-        es de la puesta a punto, no del día a día."""
+        """El panel abre con el negocio y la configuración queda SIEMPRE
+        colapsada con resumen — es de la puesta a punto, no del día a día.
+
+        Sin ningún mes calculado tiene que decirlo y decir qué hacer, no
+        salir en blanco ni inventar ceros: una base recién instalada es el
+        primer estado que alguien ve.
+        """
         panel = self.env['qb.costeo.panel'].create({})
-        self.assertIn('¿Cómo va el negocio?', panel.negocio_html)
         self.assertIn('<details', panel.estado_html,
                       'la configuración siempre va colapsada')
         self.assertIn('Configuración', panel.estado_html)
+        if 'El año' not in panel.negocio_html:
+            self.assertIn('Recalcular costeo', panel.negocio_html,
+                          'sin meses calculados el panel dice qué hacer')
+            return
         # Con capacidad normal honesta, el margen de productos NUNCA se lee
-        # solo: el par margen − ociosidad = resultado va siempre junto
-        # (un +11M de productos con −13M de ociosidad al lado es un año en
-        # tablas, no una utilidad).
-        if 'Margen de productos (mes)' in panel.negocio_html:
-            self.assertIn('Ociosidad del mes', panel.negocio_html)
-            self.assertIn('Resultado del mes (modelo)', panel.negocio_html)
-            self.assertIn('margen de productos − ociosidad',
-                          panel.negocio_html)
+        # solo: el par margen − ociosidad = resultado va siempre junto (un
+        # +18M de productos con −19.5M de ociosidad al lado es un año en
+        # números rojos, no una utilidad).
+        self.assertIn('Margen de productos', panel.negocio_html)
+        self.assertIn('Ociosidad acumulada', panel.negocio_html)
+        self.assertIn('Resultado del año', panel.negocio_html)
+        self.assertIn('margen − ociosidad', panel.negocio_html)
+
+    def test_el_panel_dice_su_ventana_en_cada_bloque(self):
+        """Ninguna cifra sin su ventana al lado.
+
+        El panel viejo mezclaba en silencio: cuatro tarjetas del último mes
+        cerrado arriba y cuatro tablas de doce meses abajo, sin que nada lo
+        dijera. Quien leía «margen de productos» y luego «clientes que más
+        dejan» no tenía forma de notar que hablaban de períodos distintos.
+        Ahora las tarjetas son del año en curso y las tablas siguen siendo
+        de doce meses móviles, pero las dos lo dicen.
+        """
+        panel = self.env['qb.costeo.panel'].create({})
+        html = panel.negocio_html or ''
+        if 'El año' not in html:
+            self.skipTest('sin meses calculados en la base de test')
+        self.assertIn('meses cerrados', html,
+                      'las tarjetas del año dicen cuántos meses suman')
+        if 'Clientes que más DEJAN' in html:
+            self.assertIn('12 meses móviles', html,
+                          'las tablas dicen que su ventana es otra')
+
+    def test_el_panel_avisa_antes_de_dejar_decidir_precios(self):
+        """La brecha contra contabilidad va ANTES de los márgenes.
+
+        El propio módulo fija el umbral en `brecha_pct`: bajo ±2% el modelo
+        sirve para fijar precios, arriba de ahí primero hay que cerrar la
+        brecha. Enseñar rentabilidad por cliente sin decir de qué lado de
+        esa raya estamos es invitar a recotizar con números que el modelo
+        declara que todavía no cuadran — y en producción la brecha del año
+        va en 28.8%.
+        """
+        panel = self.env['qb.costeo.panel'].create({})
+        html = panel.negocio_html or ''
+        if 'El año' not in html:
+            self.skipTest('sin meses calculados en la base de test')
+        aviso = ('Todavía no decidas precios' in html
+                 or 'El modelo cuadra con la contabilidad' in html)
+        self.assertTrue(
+            aviso, 'el panel tiene que decir si el número es confiable')
+        if 'Todavía no decidas precios' in html and \
+                'Clientes que más DEJAN' in html:
+            self.assertLess(
+                html.index('Todavía no decidas precios'),
+                html.index('Clientes que más DEJAN'),
+                'el aviso va ARRIBA de los márgenes, no debajo')
+
+    def test_el_techo_se_lee_por_maquina_no_por_centro(self):
+        """El bloque de capacidad ordena por familia y de peor a mejor.
+
+        Es la lección de esta semana medida en producción: acabado lee 88%
+        y su rama UNITECH va al 94%; tintorería lee 48% y su HTJ-1 al 81%.
+        Un panel que enseñe el promedio del centro arriba invita a prometer
+        volumen que la máquina que hace ESE artículo no puede correr.
+        """
+        panel = self.env['qb.costeo.panel'].create({})
+        html = panel.kpi_html or ''
+        filas = self.env['qb.familia.carga'].search([])
+        if not filas:
+            self.assertIn('promedio del centro', html,
+                          'sin familias, el panel avisa que está leyendo el '
+                          'promedio y que eso engaña')
+            return
+        orden = filas.sorted(lambda r: -r.utilization_pct)
+        codigos = [f.familia_id.code for f in orden]
+        posiciones = [html.index(c) for c in codigos if c in html]
+        self.assertEqual(posiciones, sorted(posiciones),
+                         'las familias van de más apretada a más libre')
+        if orden[:1].utilization_pct >= 1.0:
+            self.assertIn('máquina más apretada', html)
+        else:
+            # Con todo en cero no hay «la más apretada» que nombrar: decirlo
+            # igual señalaría una máquina al azar. Pasa en una base recién
+            # instalada, que es el primer estado que alguien ve.
+            self.assertIn('Ninguna máquina registra carga', html)
+            self.assertNotIn('máquina más apretada', html)
 
     def test_panel_detecta_periodos_desfasados_y_cola_atorada(self):
         """Los dos candados del caso WD3846NT163m2: (1) un período abierto
@@ -4892,3 +4973,70 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(fila.free_month_units, 0.0)
         fam.unlink()
         centro.unlink()
+
+    def test_la_ventana_del_anio_solo_toma_meses_calculados(self):
+        """Septiembre existe en la conciliación desde su primer día.
+
+        La conciliación es una vista sobre el mayor: el día 1 del mes ya
+        tiene ventas y todavía no tiene costeo. Filtrar «el año» por fecha
+        mete ese mes con ingresos y sin su costo, y el resultado del año
+        sale inflado justo el día que alguien lo abre. La lista la manda
+        `qb.costo.factores`: sin factores no hay modelo, y no entra.
+        """
+        panel = self.env['qb.costeo.panel'].create({})
+        Fac = self.env['qb.costo.factores']
+        anio = date.today().year
+        creados = Fac
+        for mes in (1, 2, 3):
+            creados |= Fac.create({
+                'period': date(anio, mes, 1), 'window_months': 12,
+                'factor_fab_kg': 1.0, 'factor_fab_m': 1.0,
+                'energia_por_kg': 1.0, 'op_pct': 0.1})
+        # y uno del año pasado, que no debe aparecer
+        previo = Fac.create({
+            'period': date(anio - 1, 12, 1), 'window_months': 12,
+            'factor_fab_kg': 1.0, 'factor_fab_m': 1.0,
+            'energia_por_kg': 1.0, 'op_pct': 0.1})
+        ventana = panel._periodos_del_anio()
+        self.assertTrue(set(creados.ids) <= set(ventana.ids))
+        self.assertNotIn(previo.id, ventana.ids,
+                         'el año en curso no arrastra diciembre del anterior')
+        for f in ventana:
+            self.assertEqual(f.period.year, anio)
+        periodos = ventana.mapped('period')
+        self.assertEqual(periodos, sorted(periodos),
+                         'la ventana viene ordenada: el rango del rótulo '
+                         'sale de sus extremos')
+
+    def test_los_titulares_se_leen_de_un_vistazo(self):
+        """Nueve dígitos no son un titular.
+
+        Las ventas del año van en $108.6M, no en $108,647,880 — pero el
+        número exacto tiene que seguir estando para cuadrar contra algo, y
+        por eso viaja en el `title` de la tarjeta.
+        """
+        Panel = self.env['qb.costeo.panel']
+        self.assertEqual(Panel._compacto(108647880.0), '$108.6M')
+        self.assertEqual(Panel._compacto(-1398000.0), '-$1.4M')
+        self.assertEqual(Panel._compacto(847000.0), '$847K')
+        self.assertEqual(Panel._compacto(512.0), '$512')
+        tarjeta = Panel._tile('Ventas del año', Panel._compacto(108647880.0),
+                              'ene–ago 2026', exacto='$108,647,880')
+        self.assertIn('$108.6M', tarjeta)
+        self.assertIn('title="$108,647,880"', tarjeta,
+                      'la cifra exacta va en el title, no perdida')
+
+    def test_la_barra_no_miente_cuando_se_pasa_de_cien(self):
+        """Una barra llena al 100 no puede ser la misma que una al 150.
+
+        El relleno se acota —si no, se sale del riel— pero el exceso se
+        dice aparte en vez de desaparecer: una familia al 150% es trabajo
+        que no cabe, y taparlo sería el error que este panel vino a quitar.
+        """
+        Panel = self.env['qb.costeo.panel']
+        normal = Panel._barra(72.0, Panel.BIEN)
+        self.assertIn('width:72.0%', normal)
+        self.assertNotIn('▸', normal)
+        pasada = Panel._barra(150.0, Panel.MAL)
+        self.assertIn('width:100.0%', pasada)
+        self.assertIn('▸50', pasada, 'el exceso se dice, no se esconde')

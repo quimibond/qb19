@@ -35,7 +35,7 @@
                         </div>
                     </group>
                     <field name="negocio_html" nolabel="1"/>
-                    <group string="Capacidad del mes">
+                    <group string="El techo de la planta — utilización por máquina">
                         <field name="kpi_html" nolabel="1" colspan="2"/>
                     </group>
                     <field name="estado_html" nolabel="1"/>

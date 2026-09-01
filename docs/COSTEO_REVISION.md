@@ -922,7 +922,82 @@ Ahora hay un test que recorre todas las vistas y lo comprueba.
 
 ---
 
-## El día del corte, máquina por máquina (1-sep, v1.63)
+## El panel, rehecho alrededor de decisiones (1-sep, v1.63)
+
+El panel abría con cuatro tarjetas del último mes cerrado y, debajo, cuatro
+tablas de doce meses — sin que nada dijera que hablaban de períodos
+distintos. Quien leía «margen de productos» y luego «clientes que más
+dejan» no tenía forma de notarlo.
+
+Se rehizo con la ventana en **año en curso** y con el orden puesto en las
+preguntas que se contestan con él.
+
+### 1. El año
+
+Ventas, margen de productos, ociosidad acumulada y resultado, de enero al
+último mes **calculado**. La ventana la manda `qb.costo.factores`, no la
+fecha: la conciliación es una vista sobre el mayor y septiembre existe
+desde su día 1, con ventas y sin costeo. Filtrar por fecha metía ingresos
+sin su costo y el año salía inflado justo el día que alguien lo abría.
+
+Los titulares van compactos ($108.6M) con la cifra exacta en el `title`:
+nueve dígitos no se leen de un vistazo, pero hay que poder cuadrarlos.
+
+### 2. La franja de confianza — lo más importante que faltaba
+
+El módulo fija su propio umbral en `brecha_pct`: **bajo ±2% el modelo sirve
+para decidir precios; arriba, primero hay que cerrar la brecha.** La brecha
+real del año va en **28.8%** — $31.3M sin explicar sobre $108.6M de venta.
+
+El panel enseñaba rentabilidad por cliente y por producto sin decir de qué
+lado de esa raya estamos. Eso es invitar a recotizar con números que el
+propio modelo declara que todavía no cuadran. Ahora la franja va **arriba**
+de los márgenes, y un test comprueba ese orden.
+
+Lo que dice cuando la brecha es alta: los márgenes sirven para **comparar
+entre sí** —quién deja más y quién menos— no como cifra absoluta.
+
+### 3. El techo, por máquina y no por centro
+
+Es la lección de la semana, medida: acabado lee 88% y su rama UNITECH va al
+94%; tintorería lee 48% y su **HTJ-1 al 81%**. El promedio del centro
+invita a prometer volumen que la máquina que hace ESE artículo no puede
+correr.
+
+Las familias van ordenadas de más apretada a más libre, con el número del
+centro al lado cuando difiere lo bastante como para engañar. La escala es
+**de dos lados a propósito**: saturada es un techo y ociosa es dinero
+parado, y las dos son malas noticias por razones opuestas.
+
+### El resto
+
+Resultado por mes con la pareja divergente (azul arriba, rojo abajo, cero
+en gris), etiqueta directa solo en el mejor y el peor mes. Cobertura de
+fijos del año. Y «qué necesita acción» ordenado por el dinero en juego, con
+las familias arriba del 90% incluidas.
+
+### Cómo se verificó
+
+Ninguna de estas decisiones es de gusto:
+
+- La **paleta de estado** es la validada (`good/warning/serious/critical`).
+  Dos de los cuatro no llegan a 3:1 sobre fondo claro, así que la regla es
+  que el color nunca va solo: cada uno viaja con icono y palabra, y quien
+  no distinga los tonos lee lo mismo. Los valores van FUERA de las barras,
+  en tinta de texto, para no competir con el relleno.
+- **Se renderizó y se miró**, que es el paso que no se puede saltar. Ahí
+  salió que con todas las máquinas en cero el panel decía «la máquina más
+  apretada es TEJ_G24_D30_A al 0%» — señalando una al azar. Ahora hay una
+  guardia y su test.
+- La barra **acota el relleno al 100% pero dice el exceso aparte**: una
+  familia al 150% es trabajo que no cabe, y taparlo sería el error que este
+  panel vino a quitar.
+
+**Estado:** 144 tests, 0 fallos, sobre instalación desde cero.
+
+---
+
+## El día del corte, máquina por máquina (1-sep, v1.64)
 
 Hoy TEJIDO sale del pool: sus CIRCULAR capitalizan horas × tarifa contra
 `504.01.0099 COSTOS FABRILES APLICADOS A PRODUCCIÓN`. El módulo estaba listo
@@ -968,4 +1043,4 @@ real es la validación que falta (el check «Absorción por workcenter»
 imprime bruto / ya excluido / neto). Acabado sigue a mediados de mes, y ahí
 toca recalibrar `fab_weight_share`.
 
-**Estado:** 139 tests sobre instalación desde cero.
+**Estado:** 145 tests, 0 fallos, sobre instalación desde cero.

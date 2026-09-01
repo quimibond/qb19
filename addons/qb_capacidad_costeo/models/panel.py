@@ -1,9 +1,24 @@
 # -*- coding: utf-8 -*-
 """Panel: puerta de entrada del módulo.
 
-Semáforo de configuración (qué falta y qué número desbloquea) + KPIs del
-mes. Es la respuesta a "¿por qué todo sale en cero?": cada prerequisito
-se muestra con su estado y un botón directo para resolverlo.
+Está armado alrededor de las decisiones que se toman con él, en este orden:
+
+1. ¿Cómo va el AÑO? — ventas, margen de productos, ociosidad y resultado,
+   acumulados de enero al último mes calculado.
+2. ¿Le puedo creer al número? — la brecha contra la contabilidad, contra el
+   ±2% que el propio módulo fija como umbral para decidir precios. Va antes
+   de los márgenes a propósito: enseñarlos sin decir de qué lado de esa raya
+   estamos es invitar a decidir con lo que el modelo declara que no cuadra.
+3. ¿Dónde está el techo? — utilización por MÁQUINA, no por centro. Un centro
+   promedia la saturada con las vacías: acabado lee 88% y su rama UNITECH va
+   al 94%; tintorería lee 48% y su HTJ-1 al 81%.
+4. ¿Dónde se gana y dónde se pierde? — clientes y productos, 12 meses.
+5. ¿Qué hago hoy? — ordenado por el dinero en juego.
+6. Configuración, colapsada: es de la puesta a punto, no del día a día.
+
+Las ventanas se dicen SIEMPRE en la etiqueta. Mezclarlas en silencio —unas
+tarjetas del mes y unas tablas de doce— es lo que tenía antes, y no hay
+forma de que el que lee lo note.
 """
 import logging
 
@@ -11,7 +26,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import fields, models
 
-from .producto_reportes import money
+from .producto_reportes import MESES_ES, mes_es, money
 
 _logger = logging.getLogger(__name__)
 
@@ -49,21 +64,95 @@ class QbCosteoPanel(models.TransientModel):
     # necesita acción. La configuración vive abajo, colapsada: es de la
     # puesta a punto, no del día a día.
     # ------------------------------------------------------------------
-    @staticmethod
-    def _card(titulo, valor, sub='', color='#0d6efd'):
-        return (
-            '<div style="display:inline-block;min-width:180px;margin:4px;'
-            'padding:10px 14px;border:1px solid #dee2e6;border-radius:8px;'
-            'border-left:4px solid %s;vertical-align:top;">'
-            '<div class="text-muted" style="font-size:11px;text-transform:'
-            'uppercase;">%s</div>'
-            '<div style="font-size:20px;font-weight:bold;">%s</div>'
-            '<div class="text-muted" style="font-size:11px;">%s</div>'
-            '</div>' % (color, titulo, valor, sub))
+    # ------------------------------------------------------------------
+    # Piezas de presentación
+    #
+    # Paleta de ESTADO, no de series (ver la guía de visualización): cuatro
+    # roles fijos y validados contra el fondo claro. Dos de ellos no llegan a
+    # 3:1 de contraste a propósito, así que la regla es que el color NUNCA va
+    # solo: cada uno viaja con su icono y su palabra. Quien no distinga los
+    # tonos lee exactamente lo mismo.
+    # ------------------------------------------------------------------
+    BIEN = '#0ca30c'
+    OJO = '#fab219'
+    SERIO = '#ec835a'
+    MAL = '#d03b3b'
+    TINTA = '#1f1f1c'
+    TENUE = '#6b6b66'
+    RIEL = '#e9e7e2'
+    # Divergente para valores con signo: azul y rojo, polos que se leen
+    # opuestos, con el cero en gris. Nunca un arcoíris ni un tono en el medio.
+    POS = '#2f6fb5'
+    NEG = '#d03b3b'
 
     @staticmethod
-    def _mini_tabla(titulo, filas):
+    def _compacto(v):
+        """$108.6M — un titular no se lee con nueve dígitos.
+
+        La cifra exacta viaja en el `title`, que es donde se va a mirar
+        cuando alguien la necesite para cuadrar contra algo.
+        """
+        signo = '-' if v < 0 else ''
+        a = abs(v)
+        if a >= 1e6:
+            return '%s$%.1fM' % (signo, a / 1e6)
+        if a >= 1e3:
+            return '%s$%.0fK' % (signo, a / 1e3)
+        return money(v)
+
+    @classmethod
+    def _tile(cls, titulo, valor, sub='', color=None, icono='', exacto=None):
+        color = color or cls.TINTA
+        return (
+            '<div title="%s" style="display:inline-block;min-width:190px;'
+            'margin:0 8px 8px 0;padding:12px 14px;border:1px solid #dee2e6;'
+            'border-radius:10px;border-left:4px solid %s;vertical-align:top;">'
+            '<div style="font-size:11px;text-transform:uppercase;'
+            'letter-spacing:.03em;color:%s;">%s</div>'
+            '<div style="font-size:26px;font-weight:600;line-height:1.15;'
+            'color:%s;">%s %s</div>'
+            '<div style="font-size:11px;color:%s;margin-top:2px;">%s</div>'
+            '</div>'
+            % (exacto or '', color, cls.TENUE, titulo, cls.TINTA, icono,
+               valor, cls.TENUE, sub))
+
+    @classmethod
+    def _franja(cls, icono, titulo, texto, color):
+        return (
+            '<div style="border:1px solid %s;border-left:5px solid %s;'
+            'border-radius:8px;padding:10px 14px;margin:4px 0 12px 0;'
+            'background:#fbfbfa;">'
+            '<div style="font-weight:600;color:%s;">%s %s</div>'
+            '<div style="font-size:13px;color:%s;margin-top:3px;">%s</div>'
+            '</div>' % (color, color, cls.TINTA, icono, titulo, cls.TENUE,
+                        texto))
+
+    @classmethod
+    def _barra(cls, pct, color, ancho=180):
+        """Barra de magnitud contra una referencia de 100.
+
+        El valor va FUERA, en tinta de texto: dentro tendría que competir
+        con el color de la barra y dos de los cuatro estados no dan
+        contraste suficiente. La marca lleva la identidad, el texto el dato.
+        """
+        lleno = max(0.0, min(pct, 100.0))
+        exceso = max(0.0, min(pct - 100.0, 100.0))
+        return (
+            '<span style="display:inline-block;width:%spx;height:10px;'
+            'background:%s;border-radius:5px;vertical-align:middle;'
+            'overflow:hidden;">'
+            '<span style="display:block;height:10px;width:%.1f%%;'
+            'background:%s;border-radius:5px;"></span></span>'
+            '%s'
+            % (ancho, cls.RIEL, lleno, color,
+               '<span style="color:%s;font-size:11px;"> ▸%.0f</span>'
+               % (cls.MAL, exceso) if exceso else ''))
+
+    @staticmethod
+    def _mini_tabla(titulo, filas, nota=''):
         """filas = [(icono, nombre, monto, pct)]"""
+        if not filas:
+            return ''
         cuerpo = ''.join(
             '<tr><td style="padding:2px 6px;">%s %s</td>'
             '<td style="padding:2px 6px;text-align:right;">%s</td>'
@@ -73,118 +162,403 @@ class QbCosteoPanel(models.TransientModel):
         return (
             '<div style="display:inline-block;vertical-align:top;'
             'min-width:300px;margin:4px 12px 4px 0;">'
-            '<h6 style="margin-bottom:4px;">%s</h6>'
+            '<h6 style="margin-bottom:2px;">%s</h6>'
+            '<div style="font-size:11px;color:#6b6b66;margin-bottom:2px;">'
+            '%s</div>'
             '<table class="table table-sm" style="font-size:12px;">'
-            '<tbody>%s</tbody></table></div>' % (titulo, cuerpo))
+            '<tbody>%s</tbody></table></div>' % (titulo, nota, cuerpo))
 
-    def _build_negocio(self):
+    # ------------------------------------------------------------------
+    # La ventana: el AÑO EN CURSO
+    # ------------------------------------------------------------------
+    def _periodos_del_anio(self):
+        """Períodos del año en curso que YA están calculados.
+
+        No basta con filtrar por año: septiembre existe en la conciliación
+        desde su primer día, con ventas del mayor y el costeo todavía sin
+        correr. Sumarlo mete ingresos sin su costo y el resultado del año
+        sale inflado justo el día que alguien lo abre. La lista la manda
+        `qb.costo.factores`: si un mes no tiene factores, no tiene modelo, y
+        no entra.
+        """
+        ene = fields.Date.today().replace(month=1, day=1)
+        return self.env['qb.costo.factores'].search(
+            [('period', '>=', ene)], order='period')
+
+    def _bloque_anio(self, periodos):
+        conc = self.env['qb.costo.conciliacion'].search(
+            [('period', 'in', periodos.mapped('period'))])
+        if not conc:
+            return ''
+        ventas = sum(conc.mapped('gl_ventas'))
+        margen = sum(conc.mapped('resultado_modelo'))
+        ocioso = sum(conc.mapped('ociosidad_ias2'))
+        resultado = sum(conc.mapped('resultado_par'))
+        pct = 100.0 * resultado / ventas if ventas else 0.0
+        rango = '%s–%s %s' % (
+            MESES_ES[min(periodos.mapped('period')).month - 1][:3].lower(),
+            MESES_ES[max(periodos.mapped('period')).month - 1][:3].lower(),
+            max(periodos.mapped('period')).year)
+        sub = '%s · %s meses cerrados' % (rango, len(conc))
+        color = self.BIEN if pct >= 5 else self.OJO if pct >= 0 else self.MAL
+        icono = '🟢' if pct >= 5 else '🟡' if pct >= 0 else '🔴'
+        return (
+            '<h5>El año</h5>'
+            + self._tile('Ventas del año', self._compacto(ventas), sub,
+                         self.TINTA, exacto=money(ventas))
+            + self._tile(
+                'Margen de productos', self._compacto(margen),
+                'lo que dejan los vendidos sobre la capacidad que SÍ usan',
+                self.TINTA, exacto=money(margen))
+            + self._tile(
+                'Ociosidad acumulada', self._compacto(-ocioso),
+                'la planta parada; la paga el período, no el producto',
+                self.SERIO, '🟠', money(-ocioso))
+            + self._tile(
+                'Resultado del año', self._compacto(resultado),
+                'margen − ociosidad · %+.1f&#37; sobre venta' % pct,
+                color, icono, money(resultado)))
+
+    def _bloque_confianza(self, periodos):
+        """La pregunta previa a todas: ¿le puedo creer a estos números?
+
+        El módulo fija su propio criterio en `brecha_pct`: bajo ±2% sirve
+        para decidir precios, arriba de ahí primero hay que cerrar la
+        brecha. Enseñar márgenes por cliente y producto sin decir en qué
+        lado de esa raya estamos es invitar a decidir con lo que el propio
+        modelo declara que todavía no cuadra.
+        """
+        conc = self.env['qb.costo.conciliacion'].search(
+            [('period', 'in', periodos.mapped('period'))])
+        if not conc:
+            return ''
+        ventas = sum(conc.mapped('gl_ventas'))
+        brecha = sum(conc.mapped('brecha_neta'))
+        if not ventas:
+            return ''
+        pct = abs(100.0 * brecha / ventas)
+        if pct <= 2.0:
+            return self._franja(
+                '✅', 'El modelo cuadra con la contabilidad',
+                'Quedan %s sin explicar, el %.1f&#37; de la venta del año. '
+                'Debajo de 2&#37; los márgenes de abajo se pueden usar como '
+                'cifra, no solo para comparar.' % (money(brecha), pct),
+                self.BIEN)
+        color = self.MAL if pct > 10 else self.SERIO
+        return self._franja(
+            '⛔' if pct > 10 else '🟠',
+            'Todavía no decidas precios con estos márgenes',
+            'Entre el modelo y el mayor quedan <b>%s sin explicar</b> — el '
+            '<b>%.1f&#37;</b> de la venta del año, contra el ±2&#37; que el '
+            'propio módulo pide para fijar precios. Los márgenes de abajo '
+            'sirven para <b>comparar entre sí</b> (quién deja más y quién '
+            'menos), no como cifra absoluta. Cerrar la brecha se trabaja en '
+            'Conciliación.' % (money(brecha), pct),
+            color)
+
+    def _bloque_meses(self, periodos):
+        """Qué meses dejaron y cuáles no.
+
+        Una sola serie con signo, así que va con la pareja divergente (azul
+        arriba, rojo abajo) y el cero en gris: los polos tienen que leerse
+        opuestos. Sin leyenda —el título nombra la serie— y con etiqueta
+        directa solo en el mejor y el peor mes, no en los doce.
+        """
+        conc = self.env['qb.costo.conciliacion'].search(
+            [('period', 'in', periodos.mapped('period'))], order='period')
+        if len(conc) < 2:
+            return ''
+        vals = [(c.period, c.resultado_par) for c in conc]
+        tope = max(abs(v) for _, v in vals) or 1.0
+        mejor = max(vals, key=lambda x: x[1])[0]
+        peor = min(vals, key=lambda x: x[1])[0]
+        cols = ''
+        for period, v in vals:
+            alto = min(abs(v) / tope * 34.0, 34.0)
+            pos = v >= 0
+            etiqueta = ''
+            if period in (mejor, peor):
+                etiqueta = ('<div style="font-size:10px;color:%s;'
+                            'white-space:nowrap;">%s</div>'
+                            % (self.TENUE, self._compacto(v)))
+            barra = (
+                '<div style="height:%.1fpx;background:%s;'
+                'border-radius:%s;" title="%s: %s"></div>'
+                % (alto, self.POS if pos else self.NEG,
+                   '3px 3px 0 0' if pos else '0 0 3px 3px',
+                   mes_es(period), money(v)))
+            cols += (
+                '<div style="display:inline-block;width:38px;'
+                'vertical-align:bottom;text-align:center;margin-right:2px;">'
+                '<div style="height:46px;display:flex;flex-direction:column;'
+                'justify-content:flex-end;">%s%s</div>'
+                '<div style="height:1px;background:#cfcdc7;"></div>'
+                '<div style="height:40px;">%s</div>'
+                '<div style="font-size:10px;color:%s;">%s</div></div>'
+                % (etiqueta if pos else '', barra if pos else '',
+                   barra if not pos else '',
+                   self.TENUE, MESES_ES[period.month - 1][:3].lower()))
+        return (
+            '<h6 style="margin-top:14px;">Resultado por mes '
+            '<span style="font-weight:400;color:%s;font-size:12px;">'
+            '(margen de productos − ociosidad)</span></h6>'
+            '<div style="white-space:nowrap;overflow-x:auto;padding:2px 0;">'
+            '%s</div>' % (self.TENUE, cols))
+
+    def _bloque_gana_pierde(self):
         env = self.env
-        html = '<h5>¿Cómo va el negocio?</h5>'
-
-        # El mes en curso, desde la conciliación (ventas del GL, margen
-        # del modelo con todos los costos asignados)
-        conc = env['qb.costo.conciliacion'].search(
-            [], order='period desc', limit=1)
-        if conc:
-            # Con capacidad normal HONESTA el margen de productos ya no trae
-            # la planta parada adentro: leerlo solo infla la foto (+11M de
-            # productos con −13M de ociosidad al lado es un año en tablas).
-            # El par va SIEMPRE junto: margen de productos − ociosidad =
-            # resultado del mes.
-            fac = env['qb.costo.factores'].search(
-                [('period', '=', conc.period)], limit=1)
-            ocioso = fac.fab_ocioso_month if fac else 0.0
-            resultado = conc.resultado_modelo - ocioso
-            pct = (100.0 * resultado / conc.gl_ventas
-                   if conc.gl_ventas else 0.0)
-            color = ('#dc3545' if pct < 0
-                     else '#fd7e14' if pct < 5 else '#198754')
-            html += self._card(
-                'Ventas del mes', money(conc.gl_ventas), str(conc.period))
-            html += self._card(
-                'Margen de productos (mes)', money(conc.resultado_modelo),
-                'lo que dejan los vendidos sobre la capacidad que SÍ usan')
-            html += self._card(
-                'Ociosidad del mes', money(-ocioso) if ocioso else money(0),
-                'la capacidad parada la paga el período, no el producto',
-                '#fd7e14')
-            html += self._card(
-                'Resultado del mes (modelo)', money(resultado),
-                'margen de productos − ociosidad · %+.1f&#37; s/venta' % pct,
-                color)
-
-        # 12 meses: dónde se gana y dónde se pierde (clientes y productos)
-        clientes = env['qb.cliente.rentabilidad'].search([])
-        productos = env['qb.producto.rentabilidad'].search([])
+        html = ''
         sem = lambda pct: ('🔴' if pct < 0 else '🟡' if pct < 5 else '🟢')
+        nota = '12 meses móviles — ventana distinta a las tarjetas de arriba'
+        clientes = env['qb.cliente.rentabilidad'].search([])
         if clientes:
             orden = clientes.sorted('margen_neto_12m')
             html += '<div>'
             html += self._mini_tabla(
-                'Clientes que más DEJAN (12m, neto)',
+                'Clientes que más DEJAN',
                 [(sem(c.margen_neto_pct), c.partner_id.name or '',
                   c.margen_neto_12m, c.margen_neto_pct)
-                 for c in reversed(orden[-5:])])
-            rojos = orden.filtered(lambda c: c.margen_neto_12m < 0)
+                 for c in reversed(orden[-5:])], nota)
             html += self._mini_tabla(
-                'Clientes que más CUESTAN (12m, neto)',
+                'Clientes que más CUESTAN',
                 [(sem(c.margen_neto_pct), c.partner_id.name or '',
                   c.margen_neto_12m, c.margen_neto_pct)
-                 for c in orden[:5] if c.margen_neto_12m < 0])
+                 for c in orden[:5] if c.margen_neto_12m < 0], nota)
             html += '</div>'
+        productos = env['qb.producto.rentabilidad'].search([])
         if productos:
             orden = productos.sorted('margen_neto_12m')
             html += '<div>'
             html += self._mini_tabla(
-                'Productos que más DEJAN (12m, neto)',
+                'Productos que más DEJAN',
                 [(sem(p.margen_neto_pct),
                   p.product_id.default_code or p.product_id.name or '',
                   p.margen_neto_12m, p.margen_neto_pct)
-                 for p in reversed(orden[-5:])])
+                 for p in reversed(orden[-5:])], nota)
             html += self._mini_tabla(
-                'Productos que más CUESTAN (12m, neto)',
+                'Productos que más CUESTAN',
                 [(sem(p.margen_neto_pct),
                   p.product_id.default_code or p.product_id.name or '',
                   p.margen_neto_12m, p.margen_neto_pct)
-                 for p in orden[:5] if p.margen_neto_12m < 0])
+                 for p in orden[:5] if p.margen_neto_12m < 0], nota)
             html += '</div>'
+        if html:
+            html = ('<h5 style="margin-top:16px;">Dónde se gana y dónde se '
+                    'pierde</h5>' + html)
+        return html
 
-        # Cobertura de fijos del mes (la barra del CEO)
-        html += self._build_breakeven()
+    def _bloque_cobertura(self, periodos):
+        """¿La contribución del año ya cubrió los fijos del año?"""
+        if not periodos:
+            return ''
+        contrib = sum(self.env['qb.costo.producto'].search([
+            ('period', 'in', periodos.mapped('period'))
+        ]).mapped('contrib_total'))
+        fijos = sum(f.fab_pool_month + f.entretela_pool_month
+                    + f.op_pool_month for f in periodos)
+        if not fijos:
+            return ''
+        pct = 100.0 * contrib / fijos
+        color = self.BIEN if pct >= 100 else (
+            self.SERIO if pct >= 80 else self.MAL)
+        icono = '🟢' if pct >= 100 else '🟠' if pct >= 80 else '🔴'
+        cola = ('arriba de aquí todo es utilidad'
+                if pct >= 100 else 'faltan %s' % money(max(fijos - contrib, 0)))
+        return (
+            '<h6 style="margin-top:16px;">Cobertura de fijos del año</h6>'
+            '<div style="font-size:13px;color:%s;margin-bottom:4px;">'
+            'Contribución %s contra fijos %s '
+            '(fabricación + entretelas + operación)</div>'
+            '%s <b style="color:%s;">%s %.0f&#37;</b> '
+            '<span style="font-size:12px;color:%s;">— %s</span>'
+            % (self.TENUE, money(contrib), money(fijos),
+               self._barra(pct, color, 260), self.TINTA, icono, pct,
+               self.TENUE, cola))
 
-        # ¿Qué necesita acción HOY?
+    def _bloque_acciones(self):
+        """Lo que hay que hacer, ordenado por el dinero que está en juego."""
+        env = self.env
         acciones = []
-        if clientes:
-            rojos = clientes.filtered(lambda c: c.margen_neto_12m < 0)
-            if rojos:
-                acciones.append(
-                    '🔴 <b>%s clientes con margen neto negativo</b> que '
-                    'suman %s/año — ábrelos en «Rentabilidad por cliente» '
-                    'para ver su ficha y recotizar.' % (
-                        len(rojos),
-                        money(sum(rojos.mapped('margen_neto_12m')))))
-        Aud = env['qb.peso.auditoria']
-        n_pesos_mal = Aud.search_count(
+        clientes = env['qb.cliente.rentabilidad'].search([])
+        rojos = clientes.filtered(lambda c: c.margen_neto_12m < 0)
+        if rojos:
+            monto = abs(sum(rojos.mapped('margen_neto_12m')))
+            acciones.append((monto, '🔴',
+                             '<b>%s clientes con margen neto negativo</b> '
+                             'que suman %s al año — ábrelos en «Rentabilidad '
+                             'por cliente» y recotiza.'
+                             % (len(rojos), money(-monto))))
+        saturadas = env['qb.familia.carga'].search(
+            [('utilization_pct', '>=', 90.0)])
+        if saturadas:
+            acciones.append((
+                10 ** 9, '🏭',
+                '<b>%s familia(s) de máquinas arriba del 90&#37;</b>: %s. '
+                'Antes de prometer volumen, revisa que la máquina que hace '
+                'ESE artículo tenga lugar — el promedio del centro no lo ve.'
+                % (len(saturadas),
+                   ', '.join('%s (%.0f&#37;)' % (f.familia_id.code,
+                                                 f.utilization_pct)
+                             for f in saturadas[:4]))))
+        n_pesos_mal = env['qb.peso.auditoria'].search_count(
             [('estado', 'in', ('critico', 'revisar'))])
         if n_pesos_mal:
-            acciones.append(
-                '⚖️ <b>%s productos con peso dudoso</b> en la Auditoría de '
-                'pesos (Configuración) — un peso malo infla o esconde su '
-                'costo.' % n_pesos_mal)
+            acciones.append((
+                10 ** 8, '⚖️',
+                '<b>%s productos con peso dudoso</b> en la Auditoría de '
+                'pesos — un peso malo infla o esconde su costo.'
+                % n_pesos_mal))
         hoy = fields.Date.today()
         por_vencer = env['qb.cotizacion'].search_count([
             ('state', 'in', ('draft', 'done')),
             ('validez_hasta', '!=', False),
             ('validez_hasta', '<=', hoy + relativedelta(days=15))])
         if por_vencer:
-            acciones.append(
-                '⏳ <b>%s cotizaciones vivas vencen en 15 días</b> — '
-                'revisarlas en «Cotizaciones guardadas».' % por_vencer)
-        if acciones:
-            html += ('<h6 style="margin-top:10px;">Necesita acción</h6>'
-                     '<ul style="font-size:13px;">%s</ul>'
-                     % ''.join('<li>%s</li>' % a for a in acciones))
-        return html
+            acciones.append((
+                10 ** 7, '⏳',
+                '<b>%s cotizaciones vivas vencen en 15 días</b> — revísalas '
+                'en «Cotizaciones guardadas».' % por_vencer))
+        if not acciones:
+            return ''
+        acciones.sort(reverse=True)
+        return ('<h5 style="margin-top:16px;">Qué necesita acción</h5>'
+                '<ul style="font-size:13px;margin-bottom:0;">%s</ul>'
+                % ''.join('<li>%s %s</li>' % (ic, txt)
+                          for _, ic, txt in acciones))
+
+    def _build_negocio(self):
+        periodos = self._periodos_del_anio()
+        if not periodos:
+            return ('<p style="color:%s;">Todavía no hay ningún mes de este '
+                    'año con el costeo calculado — corre «Recalcular '
+                    'costeo».</p>' % self.TENUE)
+        return (self._bloque_anio(periodos)
+                + self._bloque_confianza(periodos)
+                + self._bloque_meses(periodos)
+                + self._bloque_gana_pierde()
+                + self._bloque_cobertura(periodos)
+                + self._bloque_acciones())
+
+    # ------------------------------------------------------------------
+    # El techo de la planta
+    # ------------------------------------------------------------------
+    def _build_kpis(self):
+        """La capacidad se lee por MÁQUINA, no por centro.
+
+        Un centro promedia la máquina saturada con las vacías y contesta que
+        sí a un pedido que la planta no puede correr: acabado lee 88&#37; y su
+        rama UNITECH va al 94&#37;; tintorería lee 48&#37; y su HTJ-1 al 81&#37;.
+        Por eso el orden es por familia y de peor a mejor, y el número del
+        centro aparece al lado solo cuando difiere lo suficiente como para
+        engañar a quien mire el promedio.
+
+        La escala es de dos lados a propósito: saturada es un techo y ociosa
+        es dinero parado, y las dos son malas noticias por razones opuestas.
+        Ningún color va solo — cada banda trae icono y palabra.
+        """
+        env = self.env
+        filas = env['qb.familia.carga'].search([])
+        if not filas:
+            return self._build_kpis_por_centro()
+        util_centro = {
+            o.centro_id.id: o.utilization_pct
+            for o in env['qb.ociosidad'].search([])}
+        ocioso = sum(env['qb.ociosidad'].search([]).mapped('idle_cost_month'))
+        cuerpo = ''
+        for f in filas.sorted(lambda r: -r.utilization_pct):
+            u = f.utilization_pct
+            if u >= 95:
+                color, icono, banda = self.MAL, '🔴', 'saturada'
+            elif u >= 85:
+                color, icono, banda = self.SERIO, '🟠', 'ajustada'
+            elif u >= 55:
+                color, icono, banda = self.BIEN, '🟢', 'sana'
+            else:
+                color, icono, banda = self.OJO, '🟡', 'ociosa'
+            uc = util_centro.get(f.centro_id.id)
+            aviso = ''
+            if uc is not None and abs(uc - u) >= 10:
+                aviso = ('<span style="font-size:11px;color:%s;"> · el '
+                         'centro lee %.0f&#37;</span>' % (self.SERIO, uc))
+            cuerpo += (
+                '<tr>'
+                '<td style="padding:3px 8px;white-space:nowrap;">%s <b>%s</b>'
+                '<div style="font-size:11px;color:%s;">%s</div></td>'
+                '<td style="padding:3px 8px;">%s</td>'
+                '<td style="padding:3px 8px;text-align:right;'
+                'white-space:nowrap;"><b>%.0f&#37;</b> '
+                '<span style="font-size:11px;color:%s;">%s</span>%s</td>'
+                '<td style="padding:3px 8px;text-align:right;'
+                'white-space:nowrap;color:%s;">libre %s</td>'
+                '</tr>'
+                % (icono, f.familia_id.code, self.TENUE,
+                   f.centro_id.code or '',
+                   self._barra(u, color),
+                   u, self.TENUE, banda, aviso,
+                   self.TENUE, '{:,.0f}'.format(f.free_month_units)))
+        peor = filas.sorted(lambda r: -r.utilization_pct)[:1]
+        if peor and peor.utilization_pct < 1.0:
+            # Todas en cero: no hay «la más apretada» que nombrar, y decirlo
+            # igual sería señalar una máquina al azar. Pasa en una base recién
+            # instalada y cuando la ventana de producción se queda sin OPs.
+            encabezado = (
+                '<p style="margin-bottom:6px;color:%s;">Ninguna máquina '
+                'registra carga en la ventana de producción — o no hay '
+                'órdenes terminadas todavía, o sus artículos no están '
+                'catalogados en ninguna familia. &nbsp;·&nbsp; Costo de la '
+                'capacidad parada: <b>%s/mes</b>.</p>'
+                % (self.SERIO, money(ocioso)))
+        elif peor:
+            encabezado = (
+                '<p style="margin-bottom:6px;">La máquina más apretada de la '
+                'planta es <b>%s</b> al <b>%.0f&#37;</b>, con %s libres al '
+                'mes. &nbsp;·&nbsp; Costo de la capacidad parada: '
+                '<b>%s/mes</b>.</p>'
+                % (peor.familia_id.code, peor.utilization_pct,
+                   '{:,.0f}'.format(peor.free_month_units), money(ocioso)))
+        else:
+            encabezado = ''
+        return (encabezado
+                + '<table class="table table-sm" style="font-size:13px;'
+                  'max-width:760px;"><tbody>%s</tbody></table>' % cuerpo
+                + '<p style="font-size:11px;color:%s;margin-top:-6px;">'
+                  'Capacidad y carga en unidades por MES: el costeo trabaja '
+                  'por período y multiplicarlas por doce solo invitaría a '
+                  'compararlas contra las ventas del año, que es otra cosa. '
+                  'La carga es una asignación, no una medición — Odoo no '
+                  'registra en qué máquina corrió cada orden.</p>'
+                  % self.TENUE)
+
+    def _build_kpis_por_centro(self):
+        """Sin familias dadas de alta no queda más que el promedio del
+        centro, que es justo lo que engaña. Se dice."""
+        env = self.env
+        balance = env['qb.balance'].search([])
+        if not balance or not any(b.capacity_equiv_m for b in balance):
+            return ('<p style="color:%s;">Sin datos de capacidad todavía — '
+                    'completa el semáforo de abajo.</p>' % self.TENUE)
+        cuerpo = ''
+        for b in balance.sorted(lambda r: -r.utilization_pct):
+            color = (self.MAL if b.is_bottleneck else self.BIEN
+                     if b.utilization_pct < 70 else self.SERIO)
+            icono = '🔴' if b.is_bottleneck else (
+                '🟢' if b.utilization_pct < 70 else '🟠')
+            cuerpo += (
+                '<tr><td style="padding:3px 8px;">%s <b>%s</b>%s</td>'
+                '<td style="padding:3px 8px;">%s</td>'
+                '<td style="padding:3px 8px;text-align:right;">'
+                '<b>%.0f&#37;</b></td></tr>'
+                % (icono, b.centro_id.code,
+                   ' — cuello' if b.is_bottleneck else '',
+                   self._barra(b.utilization_pct, color), b.utilization_pct))
+        return (
+            '<p style="margin-bottom:6px;color:%s;">Sin familias de máquinas '
+            'dadas de alta, esto es el promedio del centro — y un centro '
+            'promedia la máquina saturada con las vacías. Dalas de alta en '
+            'Configuración para leer el techo real.</p>'
+            '<table class="table table-sm" style="font-size:13px;'
+            'max-width:600px;"><tbody>%s</tbody></table>'
+            % (self.SERIO, cuerpo))
 
     # ------------------------------------------------------------------
     # Semáforo de configuración
@@ -1143,94 +1517,6 @@ class QbCosteoPanel(models.TransientModel):
         checks.append((OK if n_costos else WARN, 'Costo por producto',
                        '%s productos costeados en el último período' % n_costos))
         return checks
-
-    # ------------------------------------------------------------------
-    # KPIs del mes
-    # ------------------------------------------------------------------
-    def _build_kpis(self):
-        env = self.env
-        balance = env['qb.balance'].search([])
-        if not balance or not any(b.capacity_equiv_m for b in balance):
-            return ('<p class="text-muted">Sin datos de capacidad todavía — '
-                    'completa el semáforo de arriba.</p>')
-        cuello = balance.filtered('is_bottleneck')[:1]
-        idle = sum(env['qb.ociosidad'].search([]).mapped('idle_cost_month'))
-        cards = []
-        for b in balance.sorted('capacity_equiv_m'):
-            color = ('#dc3545' if b.is_bottleneck
-                     else '#198754' if b.utilization_pct < 70 else '#fd7e14')
-            cards.append(
-                '<div style="display:inline-block;min-width:170px;margin:4px;'
-                'padding:10px;border:1px solid #dee2e6;border-radius:8px;'
-                'border-left:4px solid %s;">'
-                '<div style="font-weight:bold;">%s%s</div>'
-                '<div>Utilización: %.0f%%</div>'
-                '<div class="text-muted" style="font-size:12px;">'
-                'cap. %s m-equiv/mes</div></div>'
-                % (color, b.centro_id.code,
-                   ' 🔒 CUELLO' if b.is_bottleneck else '',
-                   b.utilization_pct, f'{b.capacity_equiv_m:,.0f}'))
-        header = (
-            '<p><b>Cuello de botella:</b> %s — techo de planta. &nbsp; '
-            '<b>Costo ocioso del mes:</b> $%s</p>'
-            % (cuello.centro_id.code if cuello else 'n/d', f'{idle:,.0f}'))
-        # El breakeven vive arriba, en «¿Cómo va el negocio?» — aquí solo
-        # la capacidad.
-        return header + ''.join(cards) + self._build_tendencia()
-
-    def _build_breakeven(self):
-        """La pregunta del CEO: ¿la contribución del mes ya cubrió los
-        fijos? (fabricación + entretelas + operación). Arriba del 100%,
-        cada peso de contribución adicional es utilidad."""
-        factores = self.env['qb.costo.factores'].search(
-            [], order='period DESC', limit=1)
-        if not factores:
-            return ''
-        contrib = sum(self.env['qb.costo.producto'].search([
-            ('period', '=', factores.period)]).mapped('contrib_total'))
-        fijos = (factores.fab_pool_month + factores.entretela_pool_month
-                 + factores.op_pool_month)
-        if not fijos:
-            return ''
-        pct = 100.0 * contrib / fijos
-        color = '#198754' if pct >= 100 else (
-            '#fd7e14' if pct >= 80 else '#dc3545')
-        return (
-            '<h5 style="margin-top:12px;">Cobertura de fijos — %s</h5>'
-            '<p>Contribución del mes <b>$%s</b> vs fijos <b>$%s</b> '
-            '(fabricación + entretelas + operación):</p>'
-            '<div style="max-width:420px;background:#e9ecef;'
-            'border-radius:6px;"><div style="width:%s%%;background:%s;'
-            'border-radius:6px;padding:3px 8px;color:white;'
-            'white-space:nowrap;"><b>%.0f%%</b>%s</div></div>'
-            % (factores.period, f'{contrib:,.0f}', f'{fijos:,.0f}',
-               min(pct, 100), color, pct,
-               ' — arriba de aquí todo es utilidad' if pct >= 100 else
-               ' — faltan $%s' % f'{max(fijos - contrib, 0):,.0f}'))
-
-    def _build_tendencia(self):
-        """Mini-tendencia de los últimos snapshots mensuales (utilización
-        promedio y costo ocioso). El detalle vive en Histórico → Tendencia."""
-        snapshots = self.env['qb.costeo.snapshot'].search(
-            [], order='period DESC', limit=6)
-        if not snapshots:
-            return ''
-        rows = ''
-        for snap in reversed(snapshots):
-            lines = snap.line_ids
-            util = (sum(lines.mapped('utilization_pct')) / len(lines)
-                    if lines else 0.0)
-            idle = sum(lines.mapped('idle_cost_month'))
-            rows += (
-                '<tr><td style="padding:2px 8px;">%s</td>'
-                '<td style="padding:2px 8px;text-align:right;">%.0f%%</td>'
-                '<td style="padding:2px 8px;text-align:right;">$%s</td></tr>'
-                % (snap.period.strftime('%Y-%m'), util, f'{idle:,.0f}'))
-        return ('<h5 style="margin-top:12px;">Tendencia (snapshots)</h5>'
-                '<table class="table table-sm" style="max-width:420px;">'
-                '<thead><tr><th>Mes</th><th style="text-align:right;">'
-                'Utilización prom.</th><th style="text-align:right;">'
-                'Costo ocioso</th></tr></thead><tbody>%s</tbody></table>' % rows)
 
     # ------------------------------------------------------------------
     # Botones de acción directa
