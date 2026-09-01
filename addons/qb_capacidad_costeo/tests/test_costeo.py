@@ -3889,6 +3889,73 @@ class TestQbCosteo(TransactionCase):
         self.assertGreater(fila.utilization_pct, 100.0)
         self.assertEqual(fila.idle_cost_month, 0.0)
 
+    def test_panel_lista_workcenters_sin_tarifa_del_centro_absorbido(self):
+        """El día del corte hay que escribir la tarifa en cada workcenter del
+        centro absorbido, y el único aviso que había llegaba tarde: cuando
+        el período ya no registraba nada capitalizado. Ahora el panel lo
+        dice máquina por máquina — aviso antes del corte, error después — y
+        nombra a los workcenters sueltos que no están ligados a ningún
+        centro (una máquina dada de alta ayer no entra a nada)."""
+        WC = self.env['mrp.workcenter']
+        panel = self.env['qb.costeo.panel'].create({})
+        wc_a = WC.create({'name': 'CIRCULAR TARIFA A TEST', 'costs_hour': 0.0})
+        wc_b = WC.create({'name': 'CIRCULAR TARIFA B TEST', 'costs_hour': 0.0})
+        suelto = WC.create({'name': 'CIRCULAR SUELTO TEST'})
+        manana = date.today() + relativedelta(days=1)
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TJTAR', 'name': 'TEJIDO TARIFA TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': manana,
+            'workcenter_ids': [(6, 0, [wc_a.id, wc_b.id])]})
+
+        # El suelto aparece por nombre en el check de ligados
+        estado = panel._build_estado()
+        self.assertIn('CIRCULAR SUELTO TEST', estado)
+
+        # Antes del corte: aviso, con la instrucción de no adelantarse
+        avisos = dict((t, (i, d)) for i, t, d in
+                      panel._estado_tarifa_de_workcenters())
+        icono, detalle = avisos['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '⚠️')
+        self.assertIn('2 de 2 sin tarifa', detalle)
+        self.assertIn('CIRCULAR TARIFA A TEST', detalle)
+        self.assertIn('no antes', detalle)
+
+        # Ya vigente y a medias: error, y nombra a la que falta
+        centro.write({'fecha_absorcion': date.today()})
+        wc_a.write({'costs_hour': 99.0})
+        icono, detalle = dict(
+            (t, (i, d)) for i, t, d in panel._estado_tarifa_de_workcenters()
+        )['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '❌')
+        self.assertIn('1 de 2 sin tarifa', detalle)
+        self.assertIn('CIRCULAR TARIFA B TEST', detalle)
+        self.assertNotIn('CIRCULAR TARIFA A TEST', detalle)
+
+        # Completo: verde, con el rango de tarifas
+        wc_b.write({'costs_hour': 99.0})
+        if 'expense_account_id' in WC._fields:
+            cuenta = self.env['account.account'].create({
+                'name': 'COSTOS FABRILES APLICADOS TARIFA TEST',
+                'code': 'QBTA.0099', 'account_type': 'expense_direct_cost'})
+            (wc_a | wc_b).write({'expense_account_id': cuenta.id})
+        icono, detalle = dict(
+            (t, (i, d)) for i, t, d in panel._estado_tarifa_de_workcenters()
+        )['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '✅', detalle)
+        self.assertIn('$99.00/h', detalle)
+        if 'expense_account_id' in WC._fields:
+            self.assertIn('QBTA.0099', detalle)
+
+        # Sin workcenters ligados no hay quién capitalice: error
+        centro.write({'workcenter_ids': [(5, 0, 0)]})
+        icono, detalle = dict(
+            (t, (i, d)) for i, t, d in panel._estado_tarifa_de_workcenters()
+        )['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '❌')
+        self.assertIn('sin workcenters', detalle)
+        suelto.unlink()
+
     def test_analisis_de_productos_trae_costo_unitario(self):
         """El análisis de productos mostraba precio y márgenes pero no el
         COSTO unitario — el número que faltaba para leer de un vistazo

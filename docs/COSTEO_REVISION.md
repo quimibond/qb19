@@ -919,3 +919,41 @@ a punto de caerse otra por un comentario dentro del SQL que decía «120%».
 Ahora hay un test que recorre todas las vistas y lo comprueba.
 
 **Estado:** 138 tests, 0 fallos, sobre instalación desde cero.
+
+---
+
+## El día del corte, máquina por máquina (1-sep, v1.63)
+
+Hoy TEJIDO sale del pool: sus 37 CIRCULAR capitalizan horas × tarifa contra
+`504.01.0099 COSTOS FABRILES APLICADOS A PRODUCCIÓN`. El módulo estaba listo
+desde la v1.18 y producción ya corre la v1.62, pero el switch en sí —escribir
+`costs_hour = 99` en cada workcenter— es captura en Odoo, y el único aviso
+que tenía el panel llegaba **tarde**: «el período no registra nada
+capitalizado», que se ve cuando septiembre ya se calculó sin tejido.
+
+### Lo que dice ahora el panel
+
+- **Tarifa por hora — TEJIDO**, máquina por máquina. Antes del corte, aviso
+  con la lista de lo que falta y la instrucción de no adelantarse (tarifa
+  activa + centro aún en capa = el mismo peso dos veces). Desde el corte,
+  error: las horas de una máquina sin tarifa o sin cuenta no entran a
+  ningún producto, y ese costo ya no está en el pool.
+- **Workcenters sin ligar, por nombre.** El check de ligados decía «37 de
+  42» y nada más. Al revisar Supabase la víspera del corte aparecieron
+  cinco fuera de todo centro: `CIRCULAR 22` (611, dado de alta el 31-ago,
+  con orden programada el 5-sep, sin cuenta ni tarifa), un `CIRCULAR 34`
+  duplicado (606, con tarifa 49+38 y sin cuenta), `MAQUILA`, y dos
+  llamados solo `22` y `29`. Una máquina así no entra a capacidad, ni al
+  denominador, ni a la lista de tarifas por capturar.
+
+### Lo que sigue siendo captura, no código
+
+Con la v1.62 en producción y la cuenta ya asignada en los 37, el orden del
+día del corte es el del [PR #184](https://github.com/quimibond/qb19/pull/184): (1) `costs_hour = 99` en los 37 CIRCULAR;
+(2) decidir los cinco sueltos — ligar `CIRCULAR 22` a TEJIDO con cuenta y
+tarifa, y archivar o ligar el resto; (3) panel en verde en «Absorción por
+workcenter» y «Tarifa por hora»; (4) validar el primer recálculo de
+septiembre; (5) cerrar agosto. Acabado sigue a mediados de mes, y ahí toca
+recalibrar `fab_weight_share`.
+
+**Estado:** 139 tests sobre instalación desde cero.

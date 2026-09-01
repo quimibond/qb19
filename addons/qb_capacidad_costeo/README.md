@@ -305,7 +305,16 @@ doble conteo: centro absorbido sin cuenta clasificada, y cuenta con saldo sin
 centro marcado. Y avisa un tercer caso: si la resta neta cae a 0 teniendo
 abono, la tarifa está absorbiendo menos que el costo ya etiquetado al centro.
 
-**Corte vigente:** TEJIDO desde 2026-09-01 (37 workcenters CIRCULAR).
+Y antes de todo eso, **máquina por máquina**: el check «Tarifa por hora —
+CENTRO» lista los workcenters del centro absorbido que siguen sin tarifa o
+sin cuenta de costos aplicados. Antes del corte es un aviso (la tarifa se
+escribe ese día, no antes: con la tarifa activa y el centro aún en capa el
+costo se cuenta dos veces); a partir del corte es un error, porque las horas
+de esas máquinas ya no entran a ningún producto. El check de workcenters
+ligados nombra además a los que no están en ningún centro.
+
+**Corte vigente:** TEJIDO desde 2026-09-01 (37 workcenters CIRCULAR, tarifa
+$99/h contra 504.01.0099).
 
 ## Períodos cerrables
 
