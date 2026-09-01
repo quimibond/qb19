@@ -924,14 +924,29 @@ Ahora hay un test que recorre todas las vistas y lo comprueba.
 
 ## El día del corte, máquina por máquina (1-sep, v1.63)
 
-Hoy TEJIDO sale del pool: sus 37 CIRCULAR capitalizan horas × tarifa contra
+Hoy TEJIDO sale del pool: sus CIRCULAR capitalizan horas × tarifa contra
 `504.01.0099 COSTOS FABRILES APLICADOS A PRODUCCIÓN`. El módulo estaba listo
-desde la v1.18 y producción ya corre la v1.62, pero el switch en sí —escribir
-`costs_hour = 99` en cada workcenter— es captura en Odoo, y el único aviso
-que tenía el panel llegaba **tarde**: «el período no registra nada
-capitalizado», que se ve cuando septiembre ya se calculó sin tejido.
+desde la v1.18 y producción corre la v1.62. El switch —`costs_hour = 99` en
+cada workcenter— se escribió hoy a las 14:05 UTC, y a las 14:17 ya había
+salido el primer asiento.
 
-### Lo que dice ahora el panel
+### Verificado en Odoo, no en Supabase
+
+Supabase iba un día atrás (los workcenters traían tarifa 0 y dos máquinas
+que ya no existen), así que la verificación del corte se hizo contra Odoo:
+
+| Orden | Máquina | Minutos | Abono a 504.01.0099 |
+|---|---|---:|---:|
+| TL/OP-TEJ/H13479 | CIRCULAR 32 | 1,229.35 | $2,028.43 |
+| TL/OP-TEJ/H13508 | CIRCULAR 28 | 3,156.62 | $5,208.42 |
+| TL/OP-TEJ/H13331 | CIRCULAR 28 | 3,895.82 | $6,428.10 |
+
+Las tres cuadran a `minutos ÷ 60 × 99`. Los workorders en curso traen
+`costs_hour = 0` en su propio campo y eso es correcto: Odoo lo congela al
+**terminar**, con la tarifa vigente del workcenter, así que las órdenes
+arrancadas en agosto capitalizan a $99 al cerrar en septiembre.
+
+### Lo que el panel no veía
 
 - **Tarifa por hora — TEJIDO**, máquina por máquina. Antes del corte, aviso
   con la lista de lo que falta y la instrucción de no adelantarse (tarifa
@@ -939,21 +954,18 @@ capitalizado», que se ve cuando septiembre ya se calculó sin tejido.
   error: las horas de una máquina sin tarifa o sin cuenta no entran a
   ningún producto, y ese costo ya no está en el pool.
 - **Workcenters sin ligar, por nombre.** El check de ligados decía «37 de
-  42» y nada más. Al revisar Supabase la víspera del corte aparecieron
-  cinco fuera de todo centro: `CIRCULAR 22` (611, dado de alta el 31-ago,
-  con orden programada el 5-sep, sin cuenta ni tarifa), un `CIRCULAR 34`
-  duplicado (606, con tarifa 49+38 y sin cuenta), `MAQUILA`, y dos
-  llamados solo `22` y `29`. Una máquina así no entra a capacidad, ni al
-  denominador, ni a la lista de tarifas por capturar.
+  N» y nada más. Al revisar apareció `CIRCULAR 22` (id 611), dado de alta
+  el 31-ago con una orden en curso, tarifa y cuenta puestas, pero fuera de
+  TEJIDO: sus horas capitalizaban y su producción no entraba al
+  denominador. Quedó ligado hoy. Sigue suelto un `22` (id 610), creado 27
+  segundos antes que el CIRCULAR 22 y sin órdenes: parece el mismo alta a
+  medias, y es decisión de planta archivarlo.
 
-### Lo que sigue siendo captura, no código
+### Lo que sigue
 
-Con la v1.62 en producción y la cuenta ya asignada en los 37, el orden del
-día del corte es el del [PR #184](https://github.com/quimibond/qb19/pull/184): (1) `costs_hour = 99` en los 37 CIRCULAR;
-(2) decidir los cinco sueltos — ligar `CIRCULAR 22` a TEJIDO con cuenta y
-tarifa, y archivar o ligar el resto; (3) panel en verde en «Absorción por
-workcenter» y «Tarifa por hora»; (4) validar el primer recálculo de
-septiembre; (5) cerrar agosto. Acabado sigue a mediados de mes, y ahí toca
-recalibrar `fab_weight_share`.
+Agosto sigue en borrador; el primer recálculo de septiembre con el abono
+real es la validación que falta (el check «Absorción por workcenter»
+imprime bruto / ya excluido / neto). Acabado sigue a mediados de mes, y ahí
+toca recalibrar `fab_weight_share`.
 
 **Estado:** 139 tests sobre instalación desde cero.
