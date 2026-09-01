@@ -954,11 +954,53 @@ class QbCotizadorWizard(models.TransientModel):
                            articulo.default_code or articulo.display_name,
                            centro.etapa))
                     continue
-                # El de mayor cantidad es la tela; lo demás (agua, engomado,
-                # fórmulas) son auxiliares que no ocupan la máquina.
-                articulo, cantidad = max(insumos.items(), key=lambda kv: kv[1])
-                if centro.driver_principal == 'peso':
-                    etapa_units = volumen * cantidad
+                # Si la cadena llega a VARIOS artículos de la etapa, la
+                # máquina tiene que hacerlos todos: se SUMAN. Quedarse con el
+                # de mayor cantidad subestima la carga, que es la dirección
+                # insegura para un check de capacidad. Los auxiliares (agua,
+                # engomado, fórmulas) no entran por otra razón: no clasifican
+                # a ninguna etapa H/I/J, así que con un solo insumo la suma
+                # es idéntica a quedarse con el mayor.
+                cantidad = sum(insumos.values())
+                articulo = max(insumos, key=lambda p: insumos[p])
+                if len(insumos) > 1:
+                    lines.append(
+                        '%s: la cadena de %s llega a %s artículos de etapa '
+                        '«%s» (%s) — se suman todos, la máquina hace los dos.'
+                        % (centro.code,
+                           self.product_id.default_code
+                           or self.product_id.display_name,
+                           len(insumos), centro.etapa,
+                           ', '.join(sorted(
+                               p.default_code or p.display_name
+                               for p in insumos))))
+                # `cantidad` viene en la unidad PROPIA del artículo de la
+                # etapa, que no tiene por qué ser la del centro: el crudo se
+                # mide en kg y una rama absorbe por metro. Se convierte con
+                # el peso del artículo de la etapa —no con el del terminado,
+                # que es otra tela— y si no hay peso para él, se dice; caer
+                # al número del terminado sería el error que este cambio
+                # vino a quitar, nada más que disfrazado.
+                etapa_es_kg = (articulo.uom_id.name
+                               or '').lower() in KG_UOM_NAMES
+                centro_es_kg = centro.driver_principal == 'peso'
+                etapa_units = volumen * cantidad
+                if etapa_es_kg != centro_es_kg:
+                    m_kg = self.env['qb.producto.peso'].resolve_m_per_kg(
+                        articulo)
+                    if not m_kg:
+                        sin_datos.append(centro.code)
+                        lines.append(
+                            '%s: %s se mide en %s y el centro absorbe por %s, '
+                            'y no hay peso capturado para convertirlo — no se '
+                            'puede validar.'
+                            % (centro.code,
+                               articulo.default_code or articulo.display_name,
+                               articulo.uom_id.name or '?',
+                               'peso' if centro_es_kg else 'largo'))
+                        continue
+                    etapa_units = (etapa_units / m_kg if centro_es_kg
+                                   else etapa_units * m_kg)
 
             if etapa_units is not None:
                 units = etapa_units

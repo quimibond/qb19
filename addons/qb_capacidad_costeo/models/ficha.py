@@ -155,7 +155,13 @@ class QbProductoFicha(models.Model):
         real, y esta ficha es la que reconoce la etapa al llegar.
 
         Devuelve {product: cantidad por unidad vendida} — vacío si la cadena
-        nunca llega a esa etapa.
+        nunca llega a esa etapa. La cantidad va SIEMPRE en la unidad propia
+        de cada artículo devuelto: las dos divisiones del camino convierten
+        unidades, igual que `_explode_bom` en el motor de costeo. Sin eso, un
+        BOM declarado en otra unidad que su producto (el `WJ038Q22JNT160M2`
+        está en m², el `WB038Q46IBE096` en kg) mete la razón de conversión
+        entera como factor — en el cruce m↔kg, un error de ~16× en la carga
+        del telar, y silencioso.
         """
         out = {}
         if not product:
@@ -186,11 +192,22 @@ class QbProductoFicha(models.Model):
             bom = BOM._bom_find(prod).get(prod)
             if not bom or not bom.product_qty:
                 return
+            # Las dos conversiones son las mismas que hace `_explode_bom`:
+            # el encabezado del BOM a la unidad del producto que produce, y
+            # cada línea a la unidad del componente que consume.
+            bom_qty = bom.product_uom_id._compute_quantity(
+                bom.product_qty, prod.uom_id, round=False,
+                raise_if_failure=False) or bom.product_qty
+            if not bom_qty:
+                return
             for line in bom.bom_line_ids:
-                if not line.product_id:
+                comp = line.product_id
+                if not comp:
                     continue
-                walk(line.product_id,
-                     factor * line.product_qty / bom.product_qty,
+                qty = line.product_uom_id._compute_quantity(
+                    line.product_qty, comp.uom_id, round=False,
+                    raise_if_failure=False) or line.product_qty
+                walk(comp, factor * qty / bom_qty,
                      depth + 1, vistos | {prod.id})
 
         walk(product, 1.0, 0, frozenset())
