@@ -34,6 +34,7 @@ from .cuenta_map import CUENTA_MAP_SQL, excluir_refs_sql
 
 class QbCostoConciliacion(models.Model):
     _name = 'qb.costo.conciliacion'
+    _inherit = 'qb.sql.view'
     _description = 'Conciliación mensual: modelo de costeo vs. mayor'
     _auto = False
     _order = 'period DESC'

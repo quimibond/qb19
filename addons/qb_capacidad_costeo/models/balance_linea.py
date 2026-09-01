@@ -17,6 +17,7 @@ from .cuenta_map import mo_qty_sql, wo_qty_sql
 
 class QbBalance(models.Model):
     _name = 'qb.balance'
+    _inherit = 'qb.sql.view'
     _description = 'Balance de línea por proceso (unidad común)'
     _auto = False
     _order = 'capacity_equiv_m'

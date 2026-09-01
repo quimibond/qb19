@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from . import sql_view          # primero: los demás heredan de él
 from . import config_costeo
 from . import cuenta_map
 from . import capacidad
