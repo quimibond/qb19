@@ -14,6 +14,16 @@ class TestQbCosteo(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
+        # Los fixtures usan 0.072 kg/m (45 g/m² × 1.60 m de gramaje real) y
+        # el ORM redondea `product_qty` a la precisión «Product Unit». Con
+        # los 2 decimales que trae Odoo de fábrica eso se guarda como 0.07 y
+        # el costo de MP sale 1.4% abajo — cuatro tests fallaban por la
+        # precisión de la base, no por el código. Producción la tiene en 4;
+        # aquí se fija para que el resultado no dependa de dónde corra.
+        dp = cls.env['decimal.precision'].search(
+            [('name', '=', 'Product Unit')], limit=1)
+        if dp and dp.digits < 4:
+            dp.digits = 4
         uom_m = cls.env.ref('uom.product_uom_meter')
         uom_kg = cls.env.ref('uom.product_uom_kgm')
 
@@ -245,6 +255,7 @@ class TestQbCosteo(TransactionCase):
             'product_uom_id': uom_kg.id, 'bom_id': boms['real'].id})
         # 'done' directo por SQL: el flujo completo de una OP arrastra
         # movimientos de stock que este test no necesita.
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE mrp_production SET state = 'done' WHERE id = %s",
             (mo.id,))
@@ -391,11 +402,19 @@ class TestQbCosteo(TransactionCase):
             self.tela, period, factores, sales, ctx, self.Ruteo, self.Peso)
         self.assertEqual(vals['precio_prom'], 0.0)
         self.assertNotEqual(vals['alerta'], 'bajo_variable')
-        # El monto facturado SÍ se conserva (es un hecho contable), pero sin
-        # precio unitario válido no hay costo ni margen que totalizar.
+        # El monto facturado SÍ se conserva (es un hecho contable) y el
+        # margen se deriva de ÉL, no de `precio × qty`: con qty efectiva 0 el
+        # costo totaliza 0 y el margen queda en el ingreso negativo. Que dé
+        # -100 y no 0 es el punto — es lo que sostiene la identidad
+        # ventas − costo = margen en toda fila. Cuando el margen se calculaba
+        # desde `precio`, 11 filas metieron $561,866 de residuo sin causa en
+        # la conciliación de enero–julio 2026.
         self.assertEqual(vals['ventas_total'], -100.0)
         self.assertEqual(vals['costo_absorbido_total'], 0.0)
-        self.assertEqual(vals['margen_bruto_total'], 0.0)
+        self.assertEqual(vals['margen_bruto_total'], -100.0)
+        self.assertAlmostEqual(
+            vals['margen_bruto_total'],
+            vals['ventas_total'] - vals['costo_produccion_total'], places=6)
 
     def test_precio_sugerido_con_margen_meta(self):
         """El precio sugerido = costo_producción ÷ (1 − op − margen_meta),
@@ -833,9 +852,17 @@ class TestQbCosteo(TransactionCase):
             wiz_ind.piso_lleno_divisa, wiz_ind.piso_lleno / 20.0, places=3)
         self.assertAlmostEqual(
             wiz_ind.piso_ocioso_divisa, wiz_ind.piso_ocioso / 20.0, places=3)
-        # Con precio 0.5 EUR (= 10 MXN < variable) sí es rojo
+        # 0.5 EUR = 10 MXN: ARRIBA del costo variable (3.888) y abajo del
+        # piso lleno (11.03) → ámbar. Convertir es justo lo que evita el rojo
+        # falso; el comentario viejo daba el variable en ~7.9 y de ahí salía
+        # la expectativa equivocada.
         wiz_ind.precio_objetivo = 0.5
+        self.assertAlmostEqual(wiz_ind.costo_variable, 3.888, places=3)
+        self.assertEqual(wiz_ind.semaforo, 'ambar')
+        # Rojo de verdad: 0.15 EUR = 3 MXN, abajo del costo variable
+        wiz_ind.precio_objetivo = 0.15
         self.assertEqual(wiz_ind.semaforo, 'rojo')
+        wiz_ind.precio_objetivo = 0.5
         # Al guardar: la moneda queda en la cotización y el precio para el
         # PDF del cliente sale en SU divisa (0.5 EUR), aunque el interno
         # guarde MXN (10.0)
@@ -847,10 +874,13 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(cot_eur.precio_cliente_mxn, 10.0, places=2)
         self.assertAlmostEqual(cot_eur.precio_cliente_divisa, 0.5, places=3)
 
-        # Guardián de moneda: 1.68 "USD" tecleado con moneda MXN → alerta
+        # Guardián de moneda: un precio "USD" tecleado con moneda MXN
+        # (< ¼ del piso ocioso) → alerta. El umbral se toma del piso que
+        # calcula ESTE fixture en vez de una constante: el 1.68 de antes
+        # venía del piso de producción (~$7.9) y aquí el piso es otro.
         wiz_mxn = self.env['qb.cotizador.wizard'].create({
-            'product_id': self.tela.id, 'precio_objetivo': 1.68,
-        })
+            'product_id': self.tela.id, 'precio_objetivo': 1.0})
+        wiz_mxn.precio_objetivo = round(wiz_mxn.piso_ocioso * 0.2, 4)
         self.assertTrue(wiz_mxn.moneda_alerta)
         self.assertIn('dólares', wiz_mxn.moneda_alerta)
         # Mismo precio con la moneda correcta (EUR) → sin alerta
@@ -1037,8 +1067,10 @@ class TestQbCosteo(TransactionCase):
         cot2 = self.env['qb.cotizacion'].browse(
             wiz2.action_cotizar()['res_id'])
         self.assertEqual(cot2.evaluado_fuente, 'piso a planta llena')
+        # places=2: `precio_cliente_mxn` es Monetary y redondea a la
+        # moneda; `piso_lleno` es el float crudo del motor.
         self.assertAlmostEqual(
-            cot2.precio_cliente_mxn, cot2.piso_lleno, places=4)
+            cot2.precio_cliente_mxn, cot2.piso_lleno, places=2)
 
     def test_escalera_volumen(self):
         """La escalera estandariza el descuento por volumen con sus dos
@@ -1196,10 +1228,11 @@ class TestQbCosteo(TransactionCase):
         tint = self.env.ref('qb_capacidad_costeo.centro_tintoreria')
         acab = self.env.ref('qb_capacidad_costeo.centro_acabado')
         ent = self.env.ref('qb_capacidad_costeo.centro_entretelas')
-        self.assertEqual(tejido.mo_name_pattern, 'TL/OP-TE%',
-                         'TEJIDO debe medirse por orden, no por workorder')
+        self.assertIn('TL/OP-TE%', tejido.mo_name_pattern,
+                      'TEJIDO debe medirse por orden, no por workorder')
+        self.assertNotIn('WO', tejido.mo_name_pattern or '')
         # Tintorería tenía producción CERO (sin patrón); ahora TL/OP-TIN.
-        self.assertEqual(tint.mo_name_pattern, 'TL/OP-TIN%')
+        self.assertIn('TL/OP-TIN%', tint.mo_name_pattern)
         # V10 es entretelas/resina, NO acabado: acabado solo TL/OP-ACA.
         self.assertNotIn('V10', acab.mo_name_pattern or '')
         # Entretelas suma la resina V10 (patrón múltiple por coma).
@@ -1488,8 +1521,8 @@ class TestQbCosteo(TransactionCase):
 
         # Apagando el costeo normal vuelve a producción real (que sin órdenes
         # en el centro de prueba es 0)
-        self.env['qb.costeo.factor.config'].create({
-            'key': 'denominador_capacidad_normal', 'value': 0.0})
+        self.env['qb.costeo.factor.config'].set_param(
+            'denominador_capacidad_normal', 0.0)
         self.assertAlmostEqual(
             self.Costo._denominador_capacidad(centro, date_from, date_to),
             self.Costo._production_month_avg(centro, date_from, date_to),
@@ -1666,6 +1699,33 @@ class TestQbCosteo(TransactionCase):
             q_nac['mp'], self.Costo.quote_product(self.tela, factores)['mp'],
             places=4, msg='la aduana no debe tocar al producto nacional')
 
+    def _compra_importada_del_hilo(self, precio=50.0):
+        """Una compra confirmada del hilo a un proveedor extranjero.
+
+        Hace falta porque el recargo de aduana NO sigue al producto sino a
+        la COMPRA usada: el mismo hilo a un comerciante nacional ya trae el
+        arancel dentro del precio y recargárselo lo contaría dos veces
+        (`_pol_es_importada`). Sin una compra importada de verdad, marcar el
+        hilo en `import_ids` no recarga nada — y eso es lo correcto.
+        """
+        # Extranjero se define CONTRA el país de la compañía, no contra una
+        # constante: la base de prueba de Odoo trae la compañía en US y un
+        # proveedor US ahí es nacional.
+        propio = self.env.company.partner_id.country_id
+        pais = self.env['res.country'].search(
+            [('id', '!=', propio.id or 0)], limit=1)
+        prov = self.env['res.partner'].create({
+            'name': 'HILANDERA EXTRANJERA TEST', 'country_id': pais.id})
+        po = self.env['purchase.order'].create({
+            'partner_id': prov.id,
+            'order_line': [(0, 0, {
+                'product_id': self.hilo.id,
+                'product_qty': 1000.0,
+                'price_unit': precio,
+            })]})
+        po.button_confirm()
+        return po
+
     def test_aduana_del_hilo_importado_llega_a_la_tela(self):
         """El pedimento del hilo lo carga el hilo, y la receta lo arrastra a
         cada tela que lo consume.
@@ -1674,6 +1734,7 @@ class TestQbCosteo(TransactionCase):
         reventa, que es ~9% del valor importado; el hilo —que es ~83%— no
         cargaba nada. El resultado era un factor once veces alto sobre el
         producto equivocado."""
+        self._compra_importada_del_hilo()
         ctx = self.Costo._engine_ctx([self.tela.id])
         base = self.Costo._mp_cost_unit(self.tela, ctx=ctx)
 
@@ -1688,6 +1749,7 @@ class TestQbCosteo(TransactionCase):
     def test_aduana_no_se_aplica_dos_veces_en_la_receta(self):
         """Un componente importado ya trae su aduana dentro; el total de la
         receta no se vuelve a multiplicar."""
+        self._compra_importada_del_hilo()
         ctx = self.Costo._engine_ctx([self.tela.id])
         ctx_imp = dict(ctx, import_factor=0.20,
                        import_ids={self.hilo.id, self.tela.id}, mp_cache={})
@@ -2911,10 +2973,18 @@ class TestQbCosteo(TransactionCase):
             'las comillas quedan balanceadas: el valor no se sale del literal')
         self.assertNotIn('%', sql)
 
+        # Vaciarlo NO apaga el filtro: `get_param_text` cae al default a
+        # propósito, para que un campo borrado sin querer no vuelva a meter
+        # la póliza de cierre anual al pool. Apagarlo se hace poniendo un
+        # valor inocuo, y eso sí tiene que dar un SQL válido.
         poner('')
-        self.assertEqual(
-            excluir_refs_sql(self.env), 'TRUE',
-            'vacío = no se excluye nada, y el SQL sigue siendo válido')
+        self.assertIn('CIERRE ANUAL', excluir_refs_sql(self.env),
+                      'vaciar el parámetro cae al default, no lo apaga')
+        poner('ZZZ_NADA_COINCIDE')
+        sql = excluir_refs_sql(self.env)
+        self.assertIn('ZZZ_NADA_COINCIDE', sql)
+        self.assertNotIn('CIERRE ANUAL', sql)
+        self.assertNotIn('%', sql)
 
     def test_la_baja_de_activo_vendido_no_entra_al_pool(self):
         """La depreciación de un activo que salió no es costo del período
@@ -3167,6 +3237,12 @@ class TestQbCosteo(TransactionCase):
             'code': 'TEST_CAP_OK', 'name': 'Centro medido',
             'nature': 'fabril_directo', 'driver_principal': 'largo',
             'std_output_per_hour': 1000.0})
+        # Medido de verdad: throughput Y horario. Con solo el throughput el
+        # centro tampoco se puede validar (no hay horas prácticas contra qué
+        # comparar) y los dos caerían en «sin datos», que es otro caso.
+        self.env['qb.turno.config'].create({
+            'centro_id': medido.id, 'name': 'TURNO TEST_CAP_OK',
+            'hours_per_week': 40.0, 'machine_count': 1})
         sin_std = Centro.create({
             'code': 'TEST_CAP_NOSTD', 'name': 'Centro sin throughput',
             'nature': 'fabril_directo', 'driver_principal': 'largo'})
@@ -3640,15 +3716,17 @@ class TestQbCosteo(TransactionCase):
                            raise_if_not_found=False) \
             or self.env['stock.location'].search([], limit=1)
         move = self.env['stock.move'].create({
-            'name': 'consumo test', 'product_id': tejido.id,
+            'product_id': tejido.id,
             'product_uom': uom_kg.id, 'quantity': 14400.0,
             'location_id': loc.id, 'location_dest_id': loc.id,
             'raw_material_production_id': mo.id})
         # 'done' directo por SQL: el flujo completo de la OP arrastra
         # reservas y validaciones que este check no necesita.
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE mrp_production SET state = 'done' WHERE id = %s",
             (mo.id,))
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE stock_move SET state = 'done' WHERE id = %s",
             (move.id,))
@@ -3700,8 +3778,16 @@ class TestQbCosteo(TransactionCase):
         chica = self.env['product.product'].create({
             'name': 'TELA RENDIMIENTO CHICA', 'is_storable': True,
             'uom_id': uom_m.id})
-        excl_ids = [int(x) for x in Config.get_param_text(
-            'calidad_picking_excluir', '77,147').split(',') if x.strip()]
+        # El tipo de picking excluido se crea aquí en vez de leer los ids de
+        # producción (77,147): son ids de OTRA base y la FK los rechaza.
+        ptype_cvu = self.env['stock.picking.type'].create({
+            'name': 'TESTCAL CVU', 'code': 'internal',
+            'sequence_code': 'TCVU',
+            'default_location_src_id': origen.id,
+            'default_location_dest_id': vend.id})
+        Config.set_param('calidad_picking_excluir',
+                         value_text=str(ptype_cvu.id))
+        excl_ids = [ptype_cvu.id]
         Move = self.env['stock.move']
         datos = [
             (grande, origen, vend, 18000.0, False),
@@ -3715,16 +3801,18 @@ class TestQbCosteo(TransactionCase):
         ]
         moves = Move.browse()
         for prod, src, dst, qty, ptype in datos:
-            vals = {'name': 'testcal', 'product_id': prod.id,
+            vals = {'product_id': prod.id,
                     'product_uom': uom_m.id, 'quantity': qty,
                     'location_id': src.id, 'location_dest_id': dst.id}
             if ptype:
                 vals['picking_type_id'] = ptype
             moves |= Move.create(vals)
         hace_20d = datetime.now() - relativedelta(days=20)
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE stock_move SET state = 'done', date = %s "
             "WHERE id IN %s", (hace_20d, tuple(moves.ids)))
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE stock_move_line SET state = 'done', date = %s "
             "WHERE move_id IN %s", (hace_20d, tuple(moves.ids)))
@@ -3769,6 +3857,7 @@ class TestQbCosteo(TransactionCase):
             'name': 'TB5U/TEST1', 'product_id': tela.id,
             'product_qty': 900.0, 'product_uom_id': uom_m.id})
         hace_20d = datetime.now() - relativedelta(days=20)
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE mrp_production SET state = 'done', date_finished = %s "
             "WHERE id = %s", (hace_20d, mo.id))
@@ -3853,11 +3942,11 @@ class TestQbCosteo(TransactionCase):
             'product_id': tela.id, 'product_qty': 60000.0,
             'product_uom_id': uom_m.id})
         moves = self.env['stock.move'].create([
-            {'name': 'tejido real', 'product_id': tejido.id,
+            {'product_id': tejido.id,
              'product_uom': uom_kg.id, 'quantity': 14400.0,
              'location_id': loc.id, 'location_dest_id': loc.id,
              'raw_material_production_id': mo1.id},
-            {'name': 'quimico de bano', 'product_id': quimico.id,
+            {'product_id': quimico.id,
              'product_uom': uom_kg.id, 'quantity': 3000.0,
              'location_id': loc.id, 'location_dest_id': loc.id,
              'raw_material_production_id': mo1.id}])
@@ -3865,20 +3954,22 @@ class TestQbCosteo(TransactionCase):
             'product_id': tela2.id, 'product_qty': 60000.0,
             'product_uom_id': uom_m.id})
         moves |= self.env['stock.move'].create([
-            {'name': 'tela en metros', 'product_id': tela.id,
+            {'product_id': tela.id,
              'product_uom': uom_m.id, 'quantity': 60000.0,
              'location_id': loc.id, 'location_dest_id': loc.id,
              'raw_material_production_id': mo2.id},
             # El caso K40T/perfoquim: el ÚNICO kg directo es el hilo de
             # tramado (minúsculo) y la tela entra en metros — la cadena
             # debe ganarle al kg directo, no al revés.
-            {'name': 'hilo de tramado', 'product_id': tejido.id,
+            {'product_id': tejido.id,
              'product_uom': uom_kg.id, 'quantity': 600.0,
              'location_id': loc.id, 'location_dest_id': loc.id,
              'raw_material_production_id': mo2.id}])
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE mrp_production SET state = 'done' WHERE id IN %s",
             (tuple((mo1 | mo2).ids),))
+        self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE stock_move SET state = 'done' WHERE id IN %s",
             (tuple(moves.ids),))
@@ -4307,8 +4398,13 @@ class TestQbCosteo(TransactionCase):
         """
         uom_m = self.env.ref('uom.product_uom_meter')
         uom_kg = self.env.ref('uom.product_uom_kgm')
+        # Código con gramaje NO parseable (4 dígitos = clave de resina) para
+        # que de verdad no haya peso: con '040' el parser lo deduce del
+        # código —que es el peso de ESTE artículo y está bien— y entonces sí
+        # se puede validar. Lo que el test vigila es que no se caiga al peso
+        # del TERMINADO, y eso solo se ve cuando no hay ninguno propio.
         crudo = self.env['product.product'].create({
-            'name': 'CRUDO SIN PESO', 'default_code': 'WX040Q22HNT200',
+            'name': 'CRUDO SIN PESO', 'default_code': 'WX4032Q2HNT200',
             'is_storable': True, 'uom_id': uom_kg.id})
         terminado = self.env['product.product'].create({
             'name': 'TERMINADO RAMA', 'default_code': 'WX045Q22JNT160',
@@ -4364,6 +4460,8 @@ class TestQbCosteo(TransactionCase):
             model = self.env[name]
             if getattr(model, '_auto', True):
                 continue          # tabla real, no vista
+            if model._abstract or model._transient:
+                continue          # el mixin mismo y los wizards
             heredados = model._inherit or ()
             if isinstance(heredados, str):
                 heredados = [heredados]

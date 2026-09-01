@@ -539,8 +539,34 @@ class QbCosteoFactorConfig(models.Model):
 
     @api.model
     def get_param_text(self, key, default=''):
+        # Vacío = default A PROPÓSITO: `refs_fuera_de_costeo` deja fuera la
+        # póliza de cierre anual ($190M en diciembre de 2025), y un campo
+        # borrado sin querer la volvería a meter al pool sin que nada avise.
+        # Para apagar un filtro se le pone un valor inocuo, no se vacía.
         rec = self._get_record(key)
         return rec.value_text if rec and rec.value_text else default
+
+    @api.model
+    def set_param(self, key, value=None, value_text=None):
+        """Escribe el parámetro de la compañía activa, creándolo si falta.
+
+        Existe porque `create` directo revienta contra la restricción de
+        unicidad cuando el parámetro ya vino en el seed —que es el caso
+        normal—, y porque las migraciones lo necesitan idempotente: la misma
+        migración corre en producción, en qbtesting y en una base recién
+        instalada, y las tres tienen distinto contenido de arranque.
+        """
+        vals = {}
+        if value is not None:
+            vals['value'] = value
+        if value_text is not None:
+            vals['value_text'] = value_text
+        rec = self.search([('key', '=', key),
+                           ('company_id', '=', self.env.company.id)], limit=1)
+        if rec:
+            rec.write(vals)
+            return rec
+        return self.create(dict(vals, key=key))
 
 
 class QbProductoPeso(models.Model):
@@ -711,7 +737,19 @@ class QbProductoPeso(models.Model):
         return gramaje / 1000.0 * ancho
 
     @api.model
-    def resolve_m_per_kg(self, product, cache=None):
+    def resolve_m_per_kg(self, product, cache=None, strict=False):
+        """Metros por kilo del producto. `strict` devuelve 0 en vez del
+        default de planta cuando no hay dato PROPIO.
+
+        El default (`m_per_kg_default`, 8.0) es un promedio de planta y sirve
+        para un reporte aproximado, pero hay lugares donde inventarlo es peor
+        que no contestar: el chequeo de capacidad del cotizador convertía los
+        kilos de la etapa a metros con ese 8.0 —un número que no es de esta
+        tela— y devolvía «OK» sobre una carga imaginaria, en vez del
+        «no se puede validar» que la rama de sin-datos ya tenía escrita y a
+        la que nunca llegaba. Quien necesite saber si el número es real pide
+        `strict=True`; el resto sigue igual.
+        """
         rec = self.search([('product_id', '=', product.id)], limit=1)
         if rec and rec.m_per_kg:
             return rec.m_per_kg
@@ -720,6 +758,8 @@ class QbProductoPeso(models.Model):
         if kg and uom_name not in ('kg', 'kgs', 'kilogramo', 'kilogramos'):
             # Producto en metros: kg = kg/m → m/kg es su inverso.
             return 1.0 / kg
+        if strict:
+            return 0.0
         return self.env['qb.costeo.factor.config'].get_param('m_per_kg_default', 8.0)
 
     # ------------------------------------------------------------------
@@ -790,11 +830,13 @@ class QbProductoPeso(models.Model):
              ORDER BY out_id, consumed DESC
         """
         company_id = int(self.env.company.id)
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute(
             base_sql, (desde, uom_kg.id, uom_m.id, company_id, min_m))
         ratios = {out: cons / prod
                   for out, _comp, cons, prod in self.env.cr.fetchall()
                   if prod and cons > 0}
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute(
             base_sql, (desde, uom_m.id, uom_m.id, company_id, min_m))
         cadena = [(out, comp, cons / prod)

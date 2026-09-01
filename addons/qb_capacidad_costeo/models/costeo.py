@@ -672,6 +672,7 @@ class QbCostoProducto(models.Model):
             query += ' AND m.centro_id = ANY(%s)'
             params.append(list(incluir_centros))
         query += ' GROUP BY 1'
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute(query, tuple(params))
         return {row[0]: sign * row[1] for row in self.env.cr.fetchall()}
 
@@ -686,6 +687,7 @@ class QbCostoProducto(models.Model):
         entre tres da $97k y dividir entre los siete meses de la ventana da
         $112,678 — el segundo es el que se parece al consumo real.
         """
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT COUNT(DISTINCT date_trunc('month', aml.date))
             FROM account_move_line aml
@@ -749,6 +751,7 @@ class QbCostoProducto(models.Model):
         for centro in pattern_centros:
             # mo_name_pattern admite varios patrones separados por coma
             # (p.ej. acabado = 'TL/OP-ACA%,TL/OP-V10%'): matchea cualquiera.
+            self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
             self.env.cr.execute("""
                 SELECT date_trunc('month', mp.date_finished)::date,
                        COALESCE(SUM(%s), 0)
@@ -770,6 +773,7 @@ class QbCostoProducto(models.Model):
             # El pool de gasto se lee SOLO de la compañía activa; el
             # denominador de producción tiene que leerse igual o el factor
             # $/kg queda dividido entre la producción de todo el grupo.
+            self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
             self.env.cr.execute("""
                 SELECT date_trunc('month', wo.date_finished)::date,
                        COALESCE(SUM(%s), 0)
@@ -875,6 +879,7 @@ class QbCostoProducto(models.Model):
         propósito: 'EST' también matchea 'DEST-' (DESTRUCCIÓN), que es
         material realmente perdido y no un cambio de medida.
         """
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT date_trunc('month', sm.date)::date,
                    COALESCE(SUM(
@@ -905,6 +910,7 @@ class QbCostoProducto(models.Model):
         costo por metro sube por una operación que dejó de hacerse, no porque
         la planta gaste más. Se detectó parado desde el 30-jun-2026.
         """
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT date_trunc('month', sm.date)::date AS mes,
                    COUNT(*) FILTER (WHERE spt.sequence_code LIKE '%%ENC%%')
@@ -1326,6 +1332,7 @@ class QbCostoProducto(models.Model):
         meses, y hacer doce consultas por recálculo no escala — un
         `action_recompute_year` haría ciento cuarenta y cuatro.
         """
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
@@ -1509,6 +1516,7 @@ class QbCostoProducto(models.Model):
         # El país del PROVEEDOR es el discriminante. Se compara contra el país
         # de la compañía: sin país capturado, la compra no se cuenta como
         # importación (mejor dejar dinero fuera del reparto que inventarlo).
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT date_trunc('month', po.date_order)::date AS mes,
                    pol.product_id, po.currency_id,
@@ -1583,6 +1591,7 @@ class QbCostoProducto(models.Model):
         # columnas de la línea) — joinear la orden.
         date_filter = 'AND po.date_order < %s' if cutoff else ''
         params = [list(product_ids)] + ([cutoff] if cutoff else [])
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT DISTINCT ON (pol.product_id) pol.product_id, pol.id
             FROM purchase_order_line pol
@@ -1597,6 +1606,7 @@ class QbCostoProducto(models.Model):
         if cutoff:
             faltan = set(product_ids) - set(result)
             if faltan:
+                self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
                 self.env.cr.execute("""
                     SELECT DISTINCT ON (pol.product_id)
                            pol.product_id, pol.id
@@ -1695,6 +1705,7 @@ class QbCostoProducto(models.Model):
         """
         leaf_ids = set(product_ids or [])
         # Todas las hojas posibles de las recetas, en un query
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute(
             'SELECT DISTINCT product_id FROM mrp_bom_line WHERE product_id IS NOT NULL')
         leaf_ids.update(r[0] for r in self.env.cr.fetchall())
@@ -1913,6 +1924,7 @@ class QbCostoProducto(models.Model):
         recetas ambiguas)."""
         if not product_ids:
             return {}
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT DISTINCT ON (mp.product_id) mp.product_id, mp.bom_id
             FROM mrp_production mp
@@ -1966,6 +1978,7 @@ class QbCostoProducto(models.Model):
     def _multi_bom_ids_set(self):
         """product.product.id con MÁS DE UNA BOM activa aplicable (receta
         ambigua). Una sola query para todo el motor; se cachea en el ctx."""
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT p.id
             FROM product_product p
@@ -2034,6 +2047,7 @@ class QbCostoProducto(models.Model):
         contaminaba precio y contribución del mes."""
         date_to = period + relativedelta(months=1)
         company_currency = self.env.company.currency_id
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.product_id, aml.quantity,
@@ -2157,6 +2171,7 @@ class QbCostoProducto(models.Model):
             return {}, 1.0
         date_to = period + relativedelta(months=1)
         date_from = date_to - relativedelta(months=window_months)
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT sml.product_id,
                    SUM(CASE WHEN sml.location_dest_id IN %s
@@ -2650,6 +2665,7 @@ class QbCostoProducto(models.Model):
         Las pólizas de nómina se postean por departamento y la referencia
         es el único lugar donde el departamento queda escrito — el
         concepto de la línea dice «Sueldos y salarios» en todas."""
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT COALESCE(SUM(aml.balance), 0)
             FROM account_move_line aml
@@ -2669,6 +2685,7 @@ class QbCostoProducto(models.Model):
     def _conv_import_m_avg(self, date_from, date_to, meses):
         """Metros de producto importado (' I') convertidos/inspeccionados
         por mes: OPs TL/CONV terminadas en la ventana, entre sus meses."""
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT COALESCE(SUM(mp.product_qty), 0)
             FROM mrp_production mp
@@ -2811,6 +2828,7 @@ class QbCostoProducto(models.Model):
         if partner:
             partner_clause = 'AND am.commercial_partner_id = %s'
             params.append(partner.commercial_partner_id.id)
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT DISTINCT ON (aml.move_id, aml.product_id, ABS(aml.quantity))
@@ -2851,6 +2869,7 @@ class QbCostoProducto(models.Model):
         en dólares crudo. Dedup del triplete como en todo el módulo.
         """
         date_from = fields.Date.today() - relativedelta(months=months)
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             WITH lines AS (
                 SELECT aml.move_id, aml.quantity, aml.price_subtotal,
