@@ -21,7 +21,7 @@ el del GL, que es la nómina que de verdad se pagó (con carga social).
 """
 from odoo import fields, models
 
-from .cuenta_map import CUENTA_MAP_SQL
+from .cuenta_map import CUENTA_MAP_SQL, cfg_sql
 
 
 class QbRhCentro(models.Model):
@@ -105,10 +105,7 @@ class QbRhCentro(models.Model):
             emp_join = ('JOIN hr_employee ver ON ver.id = e.id '
                         'AND ver.department_id = rel.department_id')
         return """
-            WITH cfg AS (
-                SELECT COALESCE((SELECT value FROM qb_costeo_factor_config
-                                 WHERE key = 'weeks_per_month' AND active LIMIT 1), 4.33) AS weeks_per_month
-            ),
+            {cfg},
             cuenta_map AS (%(cuenta_map)s),
             emp_detail AS (
                 SELECT rel.centro_id, e.id AS emp_id,
@@ -243,6 +240,8 @@ class QbRhCentro(models.Model):
                      ELSE 0 END AS mod_hour_gl,
                 b.company_id
             FROM base b
-        """ % {'cuenta_map': CUENTA_MAP_SQL, 'wage_expr': wage_expr,
+        """.replace(
+            '{cfg}', cfg_sql('weeks_per_month')
+        ) % {'cuenta_map': CUENTA_MAP_SQL, 'wage_expr': wage_expr,
                'emp_join': emp_join,
                'company_id': int(self.env.company.id)}

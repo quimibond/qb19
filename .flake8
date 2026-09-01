@@ -1,0 +1,31 @@
+[flake8]
+max-line-length = 120
+
+# La lista de siempre, MENOS F401 y F841. Esos dos —import sin usar y
+# variable asignada y nunca leída— son los únicos del conjunto que señalan
+# código muerto en vez de estilo, y estaban apagados en todo el repo por una
+# razón que solo aplica a los `__init__.py`: en Odoo esos archivos importan
+# sus submódulos precisamente por el efecto de registrarlos, así que ahí el
+# F401 es intencional. Apagarlo en todas partes para no molestar en 124
+# archivos tapaba 30 hallazgos reales en el resto.
+ignore =
+    E501, W503, E302, E303, E266, W291, W293,
+    E127, E128, E131, E241, E231, E306, E741, E731, E125
+
+# Excepciones por archivo, cada una con su motivo:
+#
+#   __init__.py — en Odoo importan sus submódulos por el efecto de
+#     registrarlos; el import "sin usar" es el punto del archivo.
+#
+#   sync_push_partners.py — `company_cn` se calcula con tres ramas y nunca
+#     se usa (ver el FIXME en el archivo). Puede ser una función a medio
+#     terminar o diez líneas de sobra; decidirlo es de quien mantiene el
+#     sync, así que se deja el código y se calla el lint en ese archivo.
+per-file-ignores =
+    */__init__.py: F401, F841
+    addons/quimibond_intelligence/models/sync_push_partners.py: F841
+
+exclude =
+    .git,
+    __pycache__,
+    .venv

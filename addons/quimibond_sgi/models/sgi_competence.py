@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api, tools
+from odoo import models, fields
 
 
 class HrEmployeeCompetence(models.Model):

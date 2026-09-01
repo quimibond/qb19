@@ -12,7 +12,7 @@ workcenters reales, entran solos por la vía nativa.
 """
 from odoo import fields, models
 
-from .cuenta_map import mo_qty_sql, wo_qty_sql
+from .cuenta_map import cfg_sql, mo_qty_sql, wo_qty_sql
 
 
 class QbBalance(models.Model):
@@ -48,15 +48,7 @@ class QbBalance(models.Model):
     @property
     def _table_query(self):
         return """
-            WITH cfg AS (
-                SELECT
-                    COALESCE((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'weeks_per_month' AND active LIMIT 1), 4.33) AS weeks_per_month,
-                    COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'production_window_months' AND active LIMIT 1), 0), 3) AS window_months,
-                    COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'm_per_kg_default' AND active LIMIT 1), 0), 8.0) AS m_per_kg
-            ),
+            {cfg},
             cal AS (
                 SELECT rc.id AS calendar_id,
                        SUM(att.hour_to - att.hour_from)
@@ -170,4 +162,7 @@ class QbBalance(models.Model):
                 e.capacity_source,
                 e.company_id
             FROM equiv e
-        """ % {'wo_qty': wo_qty_sql(self.env), 'mo_qty': mo_qty_sql(self.env)}
+        """.replace(
+            '{cfg}',
+            cfg_sql('weeks_per_month', 'window_months', 'm_per_kg')
+        ) % {'wo_qty': wo_qty_sql(self.env), 'mo_qty': mo_qty_sql(self.env)}

@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime, timedelta
 
-from odoo import api, fields, models
+from odoo import models
 
 from .supabase_client import SupabaseClient
 

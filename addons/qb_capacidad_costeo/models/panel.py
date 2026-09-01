@@ -5,11 +5,15 @@ Semáforo de configuración (qué falta y qué número desbloquea) + KPIs del
 mes. Es la respuesta a "¿por qué todo sale en cero?": cada prerequisito
 se muestra con su estado y un botón directo para resolverlo.
 """
+import logging
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields, models
 
 from .producto_reportes import money
+
+_logger = logging.getLogger(__name__)
 
 OK = '✅'
 WARN = '⚠️'
@@ -176,10 +180,85 @@ class QbCosteoPanel(models.TransientModel):
     # ------------------------------------------------------------------
     # Semáforo de configuración
     # ------------------------------------------------------------------
+    # Prefijo `_estado_` y no `_check_`: Odoo usa `_check_*` para sus
+    # propios hooks del ORM (`_check_company`, `_check_access`,
+    # `_check_recursion`…) y un check del panel que cayera en uno de
+    # esos nombres lo sobrescribiría en silencio.
+    # Orden de presentación del estado de configuración. Agregar un
+    # check es escribir su método y ponerlo aquí: el cuerpo de
+    # `_build_estado` no se toca, y así no vuelve a crecer a 677
+    # líneas como lo hizo entre la 1.10 y la 1.58.
+    _CHECKS_ESTADO = (
+        '_estado_pesos_medidos',
+        '_estado_workcenters_ligados',
+        '_estado_capacidad_por_centro',
+        '_estado_maestro_de_pesos',
+        '_estado_clasificacion_de_cuentas',
+        '_estado_absorcion_por_workcenter',
+        '_estado_renta_contractual_vs_gl',
+        '_estado_aduana_landed_costs',
+        '_estado_mp_conciliable',
+        '_estado_capacidad_normal',
+        '_estado_cuello_de_botella',
+        '_estado_ventana_fabril_tras_corte',
+        '_estado_ajuste_de_metros',
+        '_estado_periodos_vs_maestro_de_pesos',
+        '_estado_cola_de_recalculo',
+        '_estado_avco_de_importados',
+        '_estado_bom_vs_consumo_real',
+        '_estado_produccion_arriba_de_capacidad',
+        '_estado_capacidad_capturada_vs_horario',
+        '_estado_familias_de_maquinas',
+        '_estado_peso_de_la_ficha',
+        '_estado_factores_calculados',
+        '_estado_costos_por_producto',
+    )
+
     def _build_estado(self):
+        """Corre los checks del registro y arma la tabla colapsable.
+
+        Cada check se aísla: uno que truene sale como renglón rojo con su
+        error en vez de tumbar el panel entero. El panel es la pantalla de
+        entrada del módulo, así que perder los otros veintitantos checks
+        —y el resto del tablero— por un dato roto en uno solo era el peor
+        canje posible. El error sigue visible y sigue en el log; lo que
+        cambia es que no se lleva la pantalla por delante.
+        """
+        checks = []
+        for nombre in self._CHECKS_ESTADO:
+            try:
+                checks.extend(getattr(self, nombre)())
+            except Exception as exc:
+                _logger.exception(
+                    'qb_capacidad_costeo: el check %s del panel falló',
+                    nombre)
+                checks.append((
+                    BAD, nombre.replace('_check_', '').replace('_', ' '),
+                    'el check falló y no se pudo evaluar: %s' % exc))
+        return self._render_estado(checks)
+
+    @staticmethod
+    def _render_estado(checks):
+        rows = ''.join(
+            '<tr><td style="padding:4px 8px;">%s</td>'
+            '<td style="padding:4px 8px;"><b>%s</b></td>'
+            '<td style="padding:4px 8px;">%s</td></tr>' % c for c in checks)
+        table = '<table class="table table-sm"><tbody>%s</tbody></table>' % rows
+        # Siempre colapsado: la configuración es de la puesta a punto, no
+        # del día a día. El resumen dice si hay algo que atender.
+        pendientes = [c for c in checks if c[0] != OK]
+        if not pendientes:
+            resumen = '%s <b>Configuración completa</b>' % OK
+        else:
+            resumen = ('%s <b>Configuración: %s punto(s) por revisar</b>'
+                       % (WARN if all(c[0] == WARN for c in pendientes)
+                          else BAD, len(pendientes)))
+        return ('<details><summary style="cursor:pointer;">%s — clic para '
+                'el detalle</summary>%s</details>' % (resumen, table))
+
+    def _estado_pesos_medidos(self):
         env = self.env
         checks = []
-
         # 1. Maestro de pesos medidos/ingeniería cargado (nativo, sin Supabase)
         n_pesos = env['qb.producto.peso'].search_count(
             [('source', 'in', ('manual', 'cvu'))])
@@ -189,7 +268,11 @@ class QbCosteoPanel(models.TransientModel):
                        if n_pesos else
                        'corre "Cargar maestro de pesos" en Configuración '
                        '(sin esto el peso se estima del código)'))
+        return checks
 
+    def _estado_workcenters_ligados(self):
+        env = self.env
+        checks = []
         # 2. Workcenters ligados a centros
         total_wc = env['mrp.workcenter'].search_count([])
         linked_wc = len(env['qb.costeo.centro'].search([]).mapped('workcenter_ids'))
@@ -198,7 +281,11 @@ class QbCosteoPanel(models.TransientModel):
                        '%s de %s máquinas — sin esto el factor $/kg y la '
                        'capacidad de TEJIDO salen en 0. Se liga solo con '
                        '"Importar desde Supabase".' % (linked_wc, total_wc)))
+        return checks
 
+    def _estado_capacidad_por_centro(self):
+        env = self.env
+        checks = []
         # 3. Centros fabriles sin fuente de capacidad
         sin_capacidad = env['qb.costeo.centro'].search([
             ('nature', '!=', 'admin'),
@@ -212,14 +299,22 @@ class QbCosteoPanel(models.TransientModel):
                        'sin workcenters NI turnos: %s — captúralos en '
                        '"Turnos / capacidad manual"'
                        % ', '.join(sin_capacidad.mapped('code'))))
+        return checks
 
+    def _estado_maestro_de_pesos(self):
+        env = self.env
+        checks = []
         # 4. Pesos por producto
         n_pesos = env['qb.producto.peso'].search_count([])
         checks.append((OK if n_pesos > 100 else WARN,
                        'Maestro de pesos',
                        '%s productos con peso — el import de Supabase trae '
                        '~2,758' % n_pesos))
+        return checks
 
+    def _estado_clasificacion_de_cuentas(self):
+        env = self.env
+        checks = []
         # 5. Cuentas sin clasificar
         mapped_accounts = env['qb.costeo.cuenta.map'].search([]).mapped('account_id')
         pending = env['account.account'].search([]).filtered(
@@ -227,7 +322,11 @@ class QbCosteoPanel(models.TransientModel):
         checks.append((OK if len(pending) < 10 else WARN,
                        'Clasificación de cuentas',
                        '%s cuentas de resultados sin clasificar' % len(pending)))
+        return checks
 
+    def _estado_absorcion_por_workcenter(self):
+        env = self.env
+        checks = []
         # 5.4 Régimen híbrido: un centro que Odoo ya capitaliza NO puede
         # seguir en el pool del módulo, y su cuenta de costos aplicados tiene
         # que estar clasificada para poder restarla. Las dos mitades del
@@ -285,7 +384,15 @@ class QbCosteoPanel(models.TransientModel):
                 'costeo y su fecha de corte, o el pool seguirá arrastrando un '
                 'gasto que ya viaja dentro del inventario.'
                 % f'{ultimo.absorcion_bruta_month:,.0f}'))
+        return checks
 
+    def _estado_renta_contractual_vs_gl(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        Clase = env['qb.costeo.cuenta.class']
         # 5.5 Renta: contractual vs. GL — el doble conteo es silencioso
         renta_contractual = sum(env['qb.costeo.centro'].search([
             ('nature', 'in', ('fabril_directo', 'fabril_indirecto')),
@@ -312,7 +419,15 @@ class QbCosteoPanel(models.TransientModel):
                            % f'{renta_contractual:,.0f}')
             checks.append((BAD if sin_marcar else OK,
                            'Renta sin doble conteo', detalle))
+        return checks
 
+    def _estado_aduana_landed_costs(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        Clase = env['qb.costeo.cuenta.class']
         # 5.6 Aduana: ¿se está capitalizando con landed costs, o se queda en
         # resultados? El pedimento sabe a qué embarque pertenece; prorratearlo
         # con una fórmula le cobra al hilo el pedimento de una máquina.
@@ -357,7 +472,15 @@ class QbCosteoPanel(models.TransientModel):
                     OK, 'Aduana capitalizada (landed cost)',
                     '$%s/mes capitalizado con landed costs contra $%s/mes en '
                     'resultados' % (f'{capitalizado:,.0f}', f'{aduana:,.0f}')))
+        return checks
 
+    def _estado_mp_conciliable(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        Clase = env['qb.costeo.cuenta.class']
         # 5.7 MP: ¿hay contra qué conciliar la receta?
         n_mp = Clase.search_count([('bucket', '=', 'mp')])
         if not n_mp:
@@ -374,7 +497,11 @@ class QbCosteoPanel(models.TransientModel):
                 OK, 'Conciliación de materia prima',
                 '%s cuentas de costo primo; ajuste vigente ×%.3f '
                 '(receta → consumo real)' % (n_mp, ajuste)))
+        return checks
 
+    def _estado_capacidad_normal(self):
+        env = self.env
+        checks = []
         # 5.8 Capacidad normal: sin ella el producto carga la ociosidad
         denominadores = env['qb.costeo.centro'].search(
             ['|', ('es_denominador_kg', '=', True),
@@ -396,7 +523,11 @@ class QbCosteoPanel(models.TransientModel):
                 OK, 'Capacidad normal (IAS 2)',
                 'el pool fijo se divide entre capacidad normal; la ociosidad '
                 'va al resultado del período, no al producto'))
+        return checks
 
+    def _estado_cuello_de_botella(self):
+        env = self.env
+        checks = []
         # 5.9 Cuello de botella: sin throughput el ranking apunta al centro
         # equivocado
         sin_throughput = env['qb.costeo.centro'].search([
@@ -410,7 +541,18 @@ class QbCosteoPanel(models.TransientModel):
                 'hora-máquina los ignora, así que el ranking mide el centro '
                 'equivocado cuando el cuello real está en uno de ellos.'
                 % ', '.join(sin_throughput.mapped('code'))))
+        return checks
 
+    def _estado_ventana_fabril_tras_corte(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        absorbidos = env['qb.costeo.centro'].absorbidos_en(
+            fields.Date.today())
+        ultimo = env['qb.costo.factores'].search(
+            [], order='period DESC', limit=1)
         # 5.9.5 Ventana fabril corta tras un corte de absorción
         if ultimo and ultimo.fab_ventana_meses and \
                 ultimo.fab_ventana_meses < 3 and absorbidos:
@@ -423,7 +565,11 @@ class QbCosteoPanel(models.TransientModel):
                 'con esa reserva.'
                 % (ultimo.fab_ventana_meses,
                    ', '.join(absorbidos.mapped('code')))))
+        return checks
 
+    def _estado_ajuste_de_metros(self):
+        env = self.env
+        checks = []
         # 5.10 El ajuste de metros pierde su contrapeso si el estiramiento
         # se detiene: resta encogimiento y suma estiramiento, y se compensan.
         desde = fields.Date.today().replace(day=1) - relativedelta(months=6)
@@ -439,7 +585,11 @@ class QbCosteoPanel(models.TransientModel):
                 'suspendió de verdad, revisa si el encogimiento debe seguir '
                 'descontándose.'
                 % ', '.join(str(m) for m in sin_est)))
+        return checks
 
+    def _estado_periodos_vs_maestro_de_pesos(self):
+        env = self.env
+        checks = []
         # 5.11 Períodos calculados ANTES del último cambio de pesos. El
         # caso WD3846NT163m2: se corrigió su peso y los meses recalculados
         # antes de la captura se quedaron con el criterio viejo — la misma
@@ -471,7 +621,11 @@ class QbCosteoPanel(models.TransientModel):
                     OK, 'Períodos vs maestro de pesos',
                     'todos los períodos abiertos son posteriores al último '
                     'cambio de pesos'))
+        return checks
 
+    def _estado_cola_de_recalculo(self):
+        env = self.env
+        checks = []
         # 5.12 Cola de recálculo atorada: el cron diferido murió una vez
         # dejando 6 meses de 2024 pendientes por 2 días — nadie lo vio
         # porque el cron simplemente dejó de correr.
@@ -494,7 +648,16 @@ class QbCosteoPanel(models.TransientModel):
                     OK, 'Cola de recálculo diferido',
                     '%s período(s) en cola, cron activo — convergiendo'
                     % len(pendientes_cola)))
+        return checks
 
+    def _estado_avco_de_importados(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        ultimo = env['qb.costo.factores'].search(
+            [], order='period DESC', limit=1)
         # 5.13 AVCO de importados vs su compra real. El costo del ' I' es su
         # AVCO (compra del IT + gastos de la OP de conversión) y nadie lo
         # validaba contra la fuente: el KP2032T11GO152 I traía 9.39 —
@@ -537,7 +700,11 @@ class QbCosteoPanel(models.TransientModel):
                     OK, 'AVCO de importados vs compra IT',
                     'los %s importados vendidos del período están a ±35%% '
                     'de su última compra IT' % len(imp_rows)))
+        return checks
 
+    def _estado_bom_vs_consumo_real(self):
+        env = self.env
+        checks = []
         # 5.14 Consumo de BOM vs consumo real de las OPs. El caso X140
         # (ago-2026): la BOM de acabado decía 0.2674 kg de tejido por
         # metro y las OPs done consumían 0.2474 — 8% de hilo fantasma
@@ -627,7 +794,15 @@ class QbCosteoPanel(models.TransientModel):
                     OK, 'Consumo de BOM vs OPs reales',
                     'las recetas kg→m con volumen (≥50,000 m/12m) están a '
                     '±5% del consumo real de las OPs'))
+        return checks
 
+    def _estado_produccion_arriba_de_capacidad(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        Config = env['qb.costeo.factor.config']
         # 5.15 Producción arriba de la capacidad normal: el caso Acabado
         # (952K m reales vs 915,733 capturados, una rama nueva sin
         # reflejar). El modelo topaba la utilización en 100 y ponía el
@@ -680,7 +855,15 @@ class QbCosteoPanel(models.TransientModel):
                 'la producción de los últimos %s períodos cabe dentro de la '
                 'capacidad normal capturada en ambos lados (kg y m)'
                 % len(recientes)))
+        return checks
 
+    def _estado_capacidad_capturada_vs_horario(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        Config = env['qb.costeo.factor.config']
         # 5.16 La capacidad capturada duplica un dato vivo — horario de
         # planta × velocidad de máquina — y hasta hoy nadie los comparaba:
         # `capacidad_normal`, cuando está capturada, GANA sobre el cálculo
@@ -730,7 +913,11 @@ class QbCosteoPanel(models.TransientModel):
                 OK, 'Capacidad capturada vs horario × velocidad',
                 'la capacidad capturada de cada centro cuadra a ±%.0f%% con '
                 'sus turnos por su throughput nominal' % tol_cap))
+        return checks
 
+    def _estado_familias_de_maquinas(self):
+        env = self.env
+        checks = []
         # 5.17 La capacidad de un centro NO es fungible. Tejido tiene 27
         # circulares y 197,529 kg/mes, pero el WJ044 de 235 cm solo sale en
         # las diez galga 18 Ø32 — y esas van al 79% mientras la planta va al
@@ -788,7 +975,15 @@ class QbCosteoPanel(models.TransientModel):
                 'lee como si cualquier máquina hiciera cualquier producto, y '
                 'un centro medio vacío puede tener su familia clave '
                 'saturada.'))
+        return checks
 
+    def _estado_peso_de_la_ficha(self):
+        env = self.env
+        checks = []
+        # Se rederiva aquí: antes venía de un check anterior por vivir
+        # todo en el mismo método, y ese orden implícito era una
+        # dependencia que nadie declaró.
+        Config = env['qb.costeo.factor.config']
         # 5.18 El peso de la FICHA es una copia del maestro, y esa ficha es
         # la hoja técnica que se le manda al cliente. Al medir un peso, la
         # copia envejecía sin que nada avisara: el WJ032Q22JNT160 quedó en
@@ -818,7 +1013,11 @@ class QbCosteoPanel(models.TransientModel):
                 OK, 'Peso de la ficha vs maestro de pesos',
                 'el peso de cada ficha cuadra a ±%.0f%% con el maestro'
                 % tol_ficha))
+        return checks
 
+    def _estado_factores_calculados(self):
+        env = self.env
+        checks = []
         # 6. Factores calculados
         factores = env['qb.costo.factores'].search([], order='period DESC', limit=1)
         if not factores:
@@ -832,29 +1031,23 @@ class QbCosteoPanel(models.TransientModel):
                          factores.op_pct * 100, factores.cobertura_fab_pct))
             icon = OK if factores.factor_fab_kg and factores.op_pct else WARN
             checks.append((icon, 'Factores de costeo', detail))
+        return checks
 
+    def _estado_costos_por_producto(self):
+        env = self.env
+        checks = []
         # 7. Costos por producto
+        # El período sale del último `factores`, el mismo que mira el check
+        # 6: se vuelve a buscar aquí en vez de heredar la variable para que
+        # cada check corra solo y el orden del registro no sea una
+        # dependencia escondida.
+        factores = env['qb.costo.factores'].search(
+            [], order='period DESC', limit=1)
         n_costos = env['qb.costo.producto'].search_count(
             [('period', '=', factores.period)]) if factores else 0
         checks.append((OK if n_costos else WARN, 'Costo por producto',
                        '%s productos costeados en el último período' % n_costos))
-
-        rows = ''.join(
-            '<tr><td style="padding:4px 8px;">%s</td>'
-            '<td style="padding:4px 8px;"><b>%s</b></td>'
-            '<td style="padding:4px 8px;">%s</td></tr>' % c for c in checks)
-        table = '<table class="table table-sm"><tbody>%s</tbody></table>' % rows
-        # Siempre colapsado: la configuración es de la puesta a punto, no
-        # del día a día. El resumen dice si hay algo que atender.
-        pendientes = [c for c in checks if c[0] != OK]
-        if not pendientes:
-            resumen = '%s <b>Configuración completa</b>' % OK
-        else:
-            resumen = ('%s <b>Configuración: %s punto(s) por revisar</b>'
-                       % (WARN if all(c[0] == WARN for c in pendientes)
-                          else BAD, len(pendientes)))
-        return ('<details><summary style="cursor:pointer;">%s — clic para '
-                'el detalle</summary>%s</details>' % (resumen, table))
+        return checks
 
     # ------------------------------------------------------------------
     # KPIs del mes

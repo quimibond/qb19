@@ -4,7 +4,7 @@ Includes CFDI helpers (_read_cfdi_uuid, _maybe_warn_stale_uuid, _serialize_invoi
 _compute_invoice_fx_ratio) used only by the invoice push.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from odoo import api, fields, models
 

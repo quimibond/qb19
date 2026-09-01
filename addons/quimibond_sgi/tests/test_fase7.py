@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-from datetime import date, timedelta
+from datetime import date
 
-from odoo import fields
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 

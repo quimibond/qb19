@@ -9,7 +9,7 @@ import logging
 import re
 from datetime import datetime, timedelta
 
-from odoo import api, fields, models
+from odoo import api, models
 
 from .ingestion_core import IngestionCore
 from .supabase_client import SupabaseClient

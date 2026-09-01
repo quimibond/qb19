@@ -2224,7 +2224,6 @@ class TestSalesBudgetForecastCoveredDraft(TransactionCase):
         return fc
 
     def test_01_draft_forecast_does_not_cover(self):
-        from datetime import timedelta
         fc = self._forecast()  # queda en borrador
         budget = self.Budget.create({'year': fc.year, 'team_id': self.team.id})
         self.assertNotIn(self.product.id, budget._sgi_forecast_covered_products(),
