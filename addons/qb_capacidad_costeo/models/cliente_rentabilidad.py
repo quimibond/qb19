@@ -179,6 +179,7 @@ class QbClienteRentabilidad(models.Model):
 
     def _compute_tendencia_html(self):
         company_id = int(self.env.company.id)
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         for rec in self:
             self.env.cr.execute(
                 _BASE_SQL.format(company_id=company_id) + """

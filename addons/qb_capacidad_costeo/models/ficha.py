@@ -59,8 +59,12 @@ class QbProductoFicha(models.Model):
     presentacion = fields.Selection(
         [('m', 'Metros'), ('kg', 'Kilogramos')], string='Se vende en')
     peso_kg_unidad = fields.Float(
-        string='Peso (kg por unidad de venta)', digits=(16, 4),
+        string='Peso (kg por unidad de venta)', digits=(16, 6),
         help='Del maestro de pesos (qb.producto.peso).')
+    # Seis decimales, los mismos que `qb.producto.peso.kg_per_unit`: la
+    # ficha es una COPIA del maestro y una copia que redondea no es una
+    # copia. Con cuatro, un peso de báscula de 0.059114 kg/m se guardaba
+    # como 0.0591 y la ficha nunca podía cuadrar exacto con su fuente.
     rendimiento_m_kg = fields.Float(
         string='Rendimiento (m/kg)', digits=(16, 2))
     source = fields.Selection([

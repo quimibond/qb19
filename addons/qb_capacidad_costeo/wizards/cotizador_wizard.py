@@ -986,8 +986,11 @@ class QbCotizadorWizard(models.TransientModel):
                 centro_es_kg = centro.driver_principal == 'peso'
                 etapa_units = volumen * cantidad
                 if etapa_es_kg != centro_es_kg:
+                    # strict: el default de planta (8.0 m/kg) no es el de
+                    # esta tela, y validar capacidad contra un número
+                    # inventado es exactamente lo que este chequeo evita.
                     m_kg = self.env['qb.producto.peso'].resolve_m_per_kg(
-                        articulo)
+                        articulo, strict=True)
                     if not m_kg:
                         sin_datos.append(centro.code)
                         lines.append(
