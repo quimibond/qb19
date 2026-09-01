@@ -923,8 +923,9 @@ class QbCotizadorWizard(models.TransientModel):
                 free_by_centro.get(cap.centro_id.id, 0.0) + cap.free_hours_month
             hours_wc_by_centro[cap.centro_id.id] = \
                 hours_wc_by_centro.get(cap.centro_id.id, 0.0) + cap.hours_month_available
-        familias_prod = self.env['qb.familia.producto'].familias_de(
-            self.product_id) if self.product_id else None
+        Ficha = self.env['qb.producto.ficha']
+        FamProd = self.env['qb.familia.producto']
+        Familia = self.env['qb.costeo.familia']
         for centro in centros:
             std = centro.std_output_per_hour
             if not std:
@@ -932,10 +933,44 @@ class QbCotizadorWizard(models.TransientModel):
                 lines.append('%s: sin throughput nominal configurado — no se '
                              'puede validar capacidad.' % centro.code)
                 continue
-            if centro.driver_principal == 'peso':
+
+            # Cada centro produce SU artículo de la cadena (H tejido, I
+            # tintorería, J acabado). Validar los tres contra el terminado
+            # que se vende medía la tejedora contra un código que esa
+            # máquina nunca hace, y de paso con los kilos equivocados: el
+            # crudo pesa más que el terminado (0.0718 contra 0.0635 kg/m en
+            # el WJ038), así que la carga de tejido salía subestimada.
+            articulo = self.product_id
+            etapa_units = None
+            if centro.etapa and articulo and centro.etapa != 'terminado':
+                insumos = Ficha.insumos_de_etapa(articulo, centro.etapa)
+                if not insumos:
+                    sin_datos.append(centro.code)
+                    lines.append(
+                        '%s: el BOM de %s no llega a un artículo de etapa '
+                        '«%s» — no se puede validar contra lo que de verdad '
+                        'corre aquí.'
+                        % (centro.code,
+                           articulo.default_code or articulo.display_name,
+                           centro.etapa))
+                    continue
+                # El de mayor cantidad es la tela; lo demás (agua, engomado,
+                # fórmulas) son auxiliares que no ocupan la máquina.
+                articulo, cantidad = max(insumos.items(), key=lambda kv: kv[1])
+                if centro.driver_principal == 'peso':
+                    etapa_units = volumen * cantidad
+
+            if etapa_units is not None:
+                units = etapa_units
+            elif centro.driver_principal == 'peso':
                 units = volumen * (1.0 if is_kg else kg)
             else:
                 units = volumen * (m_per_kg if is_kg else 1.0)
+
+            ref = articulo.default_code or articulo.display_name \
+                if articulo else ''
+            etiqueta = ('%s (%s)' % (centro.code, ref)) if (
+                articulo and articulo != self.product_id) else centro.code
 
             # La capacidad del centro NO es fungible: si el producto está
             # catalogado en familias de máquinas, el pedido cabe (o no) en
@@ -943,8 +978,20 @@ class QbCotizadorWizard(models.TransientModel):
             # 44% mientras la familia que teje el artículo va al 79%: contra
             # el agregado el cotizador contestaba que sí a un pedido que la
             # planta no puede correr.
-            del_centro = (familias_prod or self.env['qb.costeo.familia']
-                          ).filtered(lambda f: f.centro_id == centro)
+            del_centro = FamProd.familias_de(articulo).filtered(
+                lambda f: f.centro_id == centro)
+            if articulo and not del_centro and Familia.search_count(
+                    [('centro_id', '=', centro.id)]):
+                # El centro SÍ trabaja por familias, pero este artículo no
+                # está en ninguna. Caer al agregado del centro aquí es cómo
+                # el cotizador venía contestando «cabe» sin haber medido las
+                # máquinas correctas.
+                sin_datos.append(centro.code)
+                lines.append(
+                    '%s: %s no está catalogado en ninguna familia de máquinas '
+                    'del centro — no se puede validar contra las que lo '
+                    'hacen.' % (centro.code, ref))
+                continue
             if del_centro:
                 cargas = self.env['qb.familia.carga'].search(
                     [('familia_id', 'in', del_centro.ids)])
@@ -952,7 +999,7 @@ class QbCotizadorWizard(models.TransientModel):
                 if units <= libre_units:
                     lines.append(
                         '%s: requiere %s, libres %s en %s — OK.'
-                        % (centro.code, '{:,.0f}'.format(units),
+                        % (etiqueta, '{:,.0f}'.format(units),
                            '{:,.0f}'.format(libre_units),
                            ', '.join(del_centro.mapped('code'))))
                 else:
@@ -961,7 +1008,7 @@ class QbCotizadorWizard(models.TransientModel):
                         '%s: requiere %s y solo hay %s libres en las máquinas '
                         'que pueden hacerlo (%s) — NO CABE. El centro completo '
                         'sí tendría lugar, pero no en esas máquinas.'
-                        % (centro.code, '{:,.0f}'.format(units),
+                        % (etiqueta, '{:,.0f}'.format(units),
                            '{:,.0f}'.format(libre_units),
                            ', '.join(del_centro.mapped('code'))))
                 continue
@@ -993,7 +1040,7 @@ class QbCotizadorWizard(models.TransientModel):
                 free = total_hours * (1.0 - used_pct / 100.0)
             if hours_needed <= free:
                 lines.append('%s: requiere %.0f h/mes, libres %.0f h/mes — OK.'
-                             % (centro.code, hours_needed, free))
+                             % (etiqueta, hours_needed, free))
             else:
                 ok = False
                 deficit = hours_needed - free
@@ -1005,7 +1052,7 @@ class QbCotizadorWizard(models.TransientModel):
                 lines.append(
                     '%s: requiere %.0f h/mes, libres %.0f h/mes — FALTAN '
                     '%.0f h (≈ %.1f máquinas o turnos equivalentes).'
-                    % (centro.code, hours_needed, free, deficit, machines_needed))
+                    % (etiqueta, hours_needed, free, deficit, machines_needed))
         if not ok:
             status = 'no_cabe'
         elif not sin_datos:

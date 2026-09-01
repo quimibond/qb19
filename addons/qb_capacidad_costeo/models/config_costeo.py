@@ -68,6 +68,16 @@ class QbCosteoCentro(models.Model):
         string='Driver principal', default='peso',
         help='Cómo absorbe este centro su gasto: por kg (tejido, tintorería) '
              'o por metro (acabado/rama, entretelas).')
+    etapa = fields.Selection(
+        [('crudo', 'Crudo (H) — lo que sale de tejido'),
+         ('tenido', 'Teñido (I) — lo que sale de tintorería'),
+         ('terminado', 'Terminado (J) — lo que se vende')],
+        string='Etapa que produce',
+        help='Qué artículo de la cadena SALE de este centro, en la '
+             'nomenclatura H/I/J. Sirve para validar capacidad contra el '
+             'artículo correcto: el terminado que se vende no es el que '
+             'corre en la tejedora, está dos BOMs arriba. Vacío = el centro '
+             'se valida contra el producto vendido, como antes.')
     workcenter_ids = fields.Many2many(
         'mrp.workcenter', 'qb_centro_workcenter_rel', 'centro_id', 'workcenter_id',
         string='Centros de trabajo (Odoo)',

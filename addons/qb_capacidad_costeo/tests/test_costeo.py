@@ -3082,6 +3082,76 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(status, 'sin_datos')
         sin_datos.unlink()
 
+    def test_capacidad_valida_el_articulo_de_cada_centro(self):
+        """Cada centro se valida contra SU artículo de la cadena, no contra
+        el terminado que se vende.
+
+        La letra H/I/J dice qué centro produjo el artículo. El terminado sale
+        de ACABADO, así que preguntarle a la tejedora por su código es
+        preguntarle por algo que esa máquina nunca hizo: `WJ038Q22JNT160` se
+        teje como `WJ035Q22HNT200`, dos BOMs abajo, con otro gramaje y otro
+        ancho. Por eso el catálogo de familias (19 crudos) no cruzaba con
+        ninguno de los 143 artículos vendidos en 2026 — no faltaban datos, se
+        cruzaba mal.
+
+        Y arrastraba un error de cantidad: el crudo pesa más que el
+        terminado, así que la carga de tejido salía subestimada.
+        """
+        uom_m = self.env.ref('uom.product_uom_meter')
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        crudo = self.env['product.product'].create({
+            'name': 'CRUDO TEST', 'default_code': 'WT045Q22HNT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        tenido = self.env['product.product'].create({
+            'name': 'TENIDO TEST', 'default_code': 'WT045Q22INT200',
+            'is_storable': True, 'uom_id': uom_kg.id})
+        terminado = self.env['product.product'].create({
+            'name': 'TERMINADO TEST', 'default_code': 'WT050Q22JNT160',
+            'is_storable': True, 'uom_id': uom_m.id, 'sale_ok': True})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tenido.product_tmpl_id.id, 'product_qty': 1.0,
+            'product_uom_id': uom_kg.id,
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id,
+                                     'product_qty': 1.0,
+                                     'product_uom_id': uom_kg.id})]})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': terminado.product_tmpl_id.id,
+            'product_qty': 1.0, 'product_uom_id': uom_m.id,
+            'bom_line_ids': [(0, 0, {'product_id': tenido.id,
+                                     'product_qty': 0.08,
+                                     'product_uom_id': uom_kg.id})]})
+
+        Ficha = self.env['qb.producto.ficha']
+        # Dos niveles de BOM, cantidades multiplicadas por el camino.
+        insumos = Ficha.insumos_de_etapa(terminado, 'crudo')
+        self.assertEqual(list(insumos), [crudo])
+        self.assertAlmostEqual(insumos[crudo], 0.08, places=4)
+        # Sin ficha creada: la etapa sale del parser de nomenclatura.
+        self.assertFalse(Ficha.search([('product_id', '=', crudo.id)]))
+        # El terminado se resuelve a sí mismo, y una etapa inalcanzable da vacío.
+        self.assertEqual(list(Ficha.insumos_de_etapa(terminado, 'terminado')),
+                         [terminado])
+        self.assertFalse(Ficha.insumos_de_etapa(crudo, 'terminado'))
+
+        # El centro trabaja por familias y el crudo no está catalogado: antes
+        # caía al agregado del centro y contestaba «cabe»; ahora lo dice.
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TEST_TEJ', 'name': 'Tejido test',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'etapa': 'crudo', 'std_output_per_hour': 10.0})
+        self.env['qb.costeo.familia'].create({
+            'code': 'TEST_FAM', 'name': 'Familia test',
+            'centro_id': centro.id})
+        wiz = self.env['qb.cotizador.wizard'].new(
+            {'product_id': terminado.id})
+        ok, detail, status = wiz._check_capacity(
+            centro, is_kg=False, kg=0.06, m_per_kg=16.0, volumen=1000.0)
+        self.assertTrue(ok, 'no poder validar no es reprobar')
+        self.assertEqual(status, 'sin_datos')
+        self.assertIn('WT045Q22HNT200', detail,
+                      'nombra el crudo, no el terminado')
+        self.assertIn('no está catalogado', detail)
+
     def test_capacidad_parcial_no_se_presenta_como_que_cabe(self):
         """Ruta con un centro medido que cabe y otro sin throughput: el
         estado es «parcial», no «ok».

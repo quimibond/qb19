@@ -134,6 +134,68 @@ class QbProductoFicha(models.Model):
             vals['parse_warning'] = ('Segmento "%s" no interpretado.' % medio)
         return vals
 
+    # ------------------------------------------------------------------
+    # Resolución por etapa: qué corre en CADA centro
+    # ------------------------------------------------------------------
+    @api.model
+    def insumos_de_etapa(self, product, estado, max_depth=8):
+        """Artículos de una etapa que consume UNA unidad vendida de `product`.
+
+        La letra H/I/J no es decorativa: dice qué centro produjo el artículo
+        (H tejido, I tintorería, J acabado). El terminado que se vende sale
+        de ACABADO, así que preguntarle a la tejedora por el código del
+        terminado es preguntarle por algo que esa máquina nunca hizo —
+        `WJ038Q22JNT160` se teje como `WJ035Q22HNT200`, dos BOMs abajo y con
+        otro gramaje y otro ancho. Ese era el motivo real de que el catálogo
+        de familias de máquinas no cruzara con NADA de lo que se vende.
+
+        No se puede deducir de la nomenclatura: entre etapas cambian el
+        gramaje y el ancho (38 g/m² a 1.60 m ← 35 g/m² a 2.00 m), así que
+        cruzar por familia+gramaje+ancho falla. El BOM es el único enlace
+        real, y esta ficha es la que reconoce la etapa al llegar.
+
+        Devuelve {product: cantidad por unidad vendida} — vacío si la cadena
+        nunca llega a esa etapa.
+        """
+        out = {}
+        if not product:
+            return out
+        BOM = self.env['mrp.bom']
+        fichas = {}
+
+        def etapa_de(prod):
+            # La ficha manda cuando existe (puede estar editada a mano), pero
+            # no se puede depender de ella: `action_generar_fichas` solo cubre
+            # productos vendibles, y los crudos y teñidos rara vez lo son —
+            # de 1,839 fichas solo 10 son de teñido. Sin este respaldo, la
+            # cadena se cortaría justo en los intermedios que hay que cruzar.
+            if prod.id not in fichas:
+                ficha = self.search([('product_id', '=', prod.id)], limit=1)
+                fichas[prod.id] = ficha.estado if ficha else \
+                    self.parse_ref(prod.default_code).get('estado')
+            return fichas[prod.id]
+
+        def walk(prod, factor, depth, vistos):
+            if depth > max_depth or factor <= 0 or prod.id in vistos:
+                return
+            if etapa_de(prod) == estado:
+                # Llegamos: no se sigue bajando. El crudo se teje, no se
+                # compone de otro crudo.
+                out[prod] = out.get(prod, 0.0) + factor
+                return
+            bom = BOM._bom_find(prod).get(prod)
+            if not bom or not bom.product_qty:
+                return
+            for line in bom.bom_line_ids:
+                if not line.product_id:
+                    continue
+                walk(line.product_id,
+                     factor * line.product_qty / bom.product_qty,
+                     depth + 1, vistos | {prod.id})
+
+        walk(product, 1.0, 0, frozenset())
+        return out
+
     @api.model
     def _build_vals(self, product):
         Peso = self.env['qb.producto.peso']
