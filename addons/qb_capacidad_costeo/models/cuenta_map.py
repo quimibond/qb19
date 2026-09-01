@@ -110,6 +110,42 @@ def excluir_refs_sql(env, alias='am'):
         for r in refs)
 
 
+# Parámetros que las vistas SQL leen del config, con su valor por omisión.
+# Cada uno se escribía a mano en su vista —trece veces entre seis archivos— y
+# no todas iguales: `weeks_per_month` era el único sin `NULLIF`, así que un 0
+# guardado en ese parámetro (por error de captura, no hay validación que lo
+# impida) dejaba la capacidad de TODA la planta en cero, mientras que en los
+# demás un 0 caía al default. Cero no es un valor válido para ninguno de
+# estos seis, así que la regla es la misma para todos.
+CFG_PARAMS = {
+    'weeks_per_month': ('weeks_per_month', '4.33'),
+    'window_months': ('production_window_months', '3'),
+    'm_per_kg': ('m_per_kg_default', '8.0'),
+    'smoothing_months': ('smoothing_months', '12'),
+    'rmin': ('rendimiento_min', '2.0'),
+    'rmax': ('rendimiento_max', '25.0'),
+}
+
+
+def cfg_sql(*alias):
+    """CTE `cfg` con los parámetros pedidos, uno por columna.
+
+    Se usa como `{cfg}` en el `_table_query` de las vistas. Sin `%` en el
+    resultado: ese SQL pasa por formateo estilo printf y un porcentaje
+    suelto lo rompería.
+    """
+    faltan = [a for a in alias if a not in CFG_PARAMS]
+    if faltan:
+        raise KeyError('parámetro de cfg desconocido: %s' % ', '.join(faltan))
+    columnas = ',\n'.join(
+        "                COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config\n"
+        "                                 WHERE key = '{key}' AND active\n"
+        "                                 LIMIT 1), 0), {default}) AS {alias}"
+        .format(key=CFG_PARAMS[a][0], default=CFG_PARAMS[a][1], alias=a)
+        for a in alias)
+    return 'WITH cfg AS (\n                SELECT\n%s\n            )' % columnas
+
+
 # CTE reutilizable: una fila por cuenta con su mejor clasificación activa.
 CUENTA_MAP_SQL = """
     SELECT DISTINCT ON (rel.account_id)

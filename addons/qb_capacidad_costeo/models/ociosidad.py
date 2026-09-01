@@ -8,7 +8,7 @@ normal y a producción real) y el costo hundido del mes.
 """
 from odoo import fields, models
 
-from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
+from .cuenta_map import CUENTA_MAP_SQL, cfg_sql, mo_qty_sql, wo_qty_sql
 
 
 class QbOciosidad(models.Model):
@@ -48,15 +48,7 @@ class QbOciosidad(models.Model):
     @property
     def _table_query(self):
         return """
-            WITH cfg AS (
-                SELECT
-                    COALESCE((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'weeks_per_month' AND active LIMIT 1), 4.33) AS weeks_per_month,
-                    COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'production_window_months' AND active LIMIT 1), 0), 3) AS window_months,
-                    COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'smoothing_months' AND active LIMIT 1), 0), 12) AS smoothing_months
-            ),
+            {cfg},
             cuenta_map AS (%(cuenta_map)s),
             gl_fixed AS (
                 -- Gasto fijo asignado directamente al centro, suavizado
@@ -180,6 +172,9 @@ class QbOciosidad(models.Model):
                      ELSE 0 END AS fixed_unit_real,
                 b.company_id
             FROM base b
-        """ % {'cuenta_map': CUENTA_MAP_SQL,
+        """.replace(
+            '{cfg}',
+            cfg_sql('weeks_per_month', 'window_months', 'smoothing_months')
+        ) % {'cuenta_map': CUENTA_MAP_SQL,
                'wo_qty': wo_qty_sql(self.env),
                'mo_qty': mo_qty_sql(self.env)}

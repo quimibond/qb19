@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from datetime import date, datetime
+from unittest.mock import patch
 
 from dateutil.relativedelta import relativedelta
 
@@ -4490,3 +4491,128 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(
             fila.capacity_month_units, 250000.0, places=2,
             msg='la vista leyó la capacidad vieja: el write seguía pendiente')
+
+    def test_registro_de_checks_del_panel_esta_completo(self):
+        """El registro y los métodos no se pueden separar.
+
+        Partir `_build_estado` en un método por check compró que agregar el
+        número 19 no obligue a tocar un cuerpo de 677 líneas, pero introdujo
+        un modo de falla nuevo: escribir el check y olvidarse de
+        registrarlo. Ahí no truena nada — el check simplemente no corre, y
+        un semáforo que no avisa es peor que no tenerlo. Este test cierra
+        las dos direcciones.
+        """
+        panel = self.env['qb.costeo.panel'].create({})
+        registro = list(panel._CHECKS_ESTADO)
+        self.assertEqual(len(registro), len(set(registro)),
+                         'hay un check repetido en el registro')
+        for nombre in registro:
+            self.assertTrue(
+                callable(getattr(panel, nombre, None)),
+                'el registro nombra %s y ese método no existe' % nombre)
+        escritos = {n for n in dir(type(panel)) if n.startswith('_estado_')}
+        sin_registrar = escritos - set(registro)
+        self.assertFalse(
+            sin_registrar,
+            'checks escritos y nunca corridos porque no están en '
+            '_CHECKS_ESTADO: %s' % ', '.join(sorted(sin_registrar)))
+
+    def test_un_check_roto_no_tumba_el_panel(self):
+        """El panel es la pantalla de entrada: un dato roto en UN check no
+        puede llevarse los otros veintidós ni el resto del tablero.
+
+        Antes los 23 checks vivían en el mismo método y cualquier excepción
+        —una cuenta sin código, un período a medio calcular— dejaba al
+        usuario con una traza en vez del módulo. Ahora el error sale como
+        renglón rojo en su renglón, que es donde sirve.
+        """
+        panel = self.env['qb.costeo.panel'].create({})
+
+        def revienta(self):
+            raise ValueError('dato roto de prueba')
+
+        with patch.object(type(panel), '_estado_pesos_medidos', revienta):
+            estado = panel._build_estado()
+        self.assertIn('dato roto de prueba', estado,
+                      'el error del check tiene que quedar visible')
+        self.assertIn('pesos medidos', estado,
+                      'y decir CUÁL check fue')
+        self.assertIn('Factores de costeo', estado,
+                      'los demás checks siguen corriendo')
+
+    def test_cada_check_del_panel_corre_por_su_cuenta(self):
+        """Ningún check depende de que otro haya corrido antes.
+
+        Al partir el método aparecieron ocho que usaban variables definidas
+        en checks anteriores (`Clase`, `Config`, `ultimo`, `absorbidos`):
+        el orden del registro era una dependencia que nadie había
+        declarado. Correrlos sueltos y en desorden es la forma de que no
+        vuelva a colarse.
+        """
+        panel = self.env['qb.costeo.panel'].create({})
+        for nombre in reversed(list(panel._CHECKS_ESTADO)):
+            filas = getattr(panel, nombre)()
+            self.assertIsInstance(
+                filas, list, '%s debe devolver una lista de renglones' % nombre)
+            for fila in filas:
+                self.assertEqual(
+                    len(fila), 3,
+                    '%s devolvió un renglón que no es (icono, título, '
+                    'detalle): %r' % (nombre, fila))
+
+    def test_cfg_sql_protege_contra_el_parametro_en_cero(self):
+        """Un 0 guardado en un parámetro de las vistas cae al default.
+
+        Los seis parámetros que las vistas leen del config se escribían a
+        mano en cada una —trece veces entre seis archivos— y no todas
+        iguales: `weeks_per_month` era el único sin `NULLIF`. Nada valida
+        el campo, así que un 0 tecleado ahí ponía las semanas del mes en
+        cero y con eso la capacidad de TODA la planta: cero horas, cero
+        kilos, y el costo unitario dividiendo entre cero. Cero no es un
+        valor válido para ninguno de los seis.
+        """
+        from odoo.addons.qb_capacidad_costeo.models.cuenta_map import (
+            CFG_PARAMS, cfg_sql)
+
+        sql = cfg_sql(*CFG_PARAMS)
+        self.assertNotIn('%', sql, 'un porcentaje rompe el formateo printf')
+        for alias, (clave, default) in CFG_PARAMS.items():
+            self.assertIn("key = '%s'" % clave, sql)
+            self.assertIn('AS %s' % alias, sql)
+        # La guarda es `NULLIF(..., 0)` en TODOS, una por parámetro
+        self.assertEqual(sql.count('NULLIF'), len(CFG_PARAMS),
+                         'cada parámetro necesita su guarda contra el 0')
+        with self.assertRaises(KeyError):
+            cfg_sql('parametro_que_no_existe')
+
+    def test_las_vistas_leen_la_semana_del_config_y_el_cero_no_las_apaga(self):
+        """El comportamiento que compra la guarda, medido en la vista.
+
+        Con `weeks_per_month` en 0 la capacidad salía en 0; ahora cae al
+        default y la vista sigue contestando el mismo número que con el
+        parámetro sin capturar.
+        """
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TEST_CFG0', 'name': 'Centro semana cero',
+            'nature': 'fabril_directo', 'driver_principal': 'peso'})
+        self.env['qb.turno.config'].create({
+            'centro_id': centro.id, 'name': 'TURNO CFG0',
+            'hours_per_week': 40.0, 'machine_count': 1})
+        Config = self.env['qb.costeo.factor.config']
+
+        def horas():
+            fila = self.env['qb.rh.centro'].search(
+                [('centro_id', '=', centro.id)], limit=1)
+            return fila.hours_month if fila else 0.0
+
+        base = horas()
+        self.assertGreater(base, 0.0, 'el centro tiene turnos: debe dar horas')
+        Config.set_param('weeks_per_month', 0.0)
+        self.assertAlmostEqual(
+            horas(), base, places=4,
+            msg='un 0 en weeks_per_month no puede apagar la capacidad')
+        Config.set_param('weeks_per_month', 2.0)
+        self.assertAlmostEqual(
+            horas(), base * 2.0 / 4.33, places=4,
+            msg='pero un valor válido sí manda')
+        centro.unlink()

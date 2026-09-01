@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import ValidationError

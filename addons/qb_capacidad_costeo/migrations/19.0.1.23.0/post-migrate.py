@@ -29,13 +29,10 @@ se movió allá.
 """
 import logging
 
-from odoo import SUPERUSER_ID, api
-
 _logger = logging.getLogger(__name__)
 
 
 def migrate(cr, version):
-    env = api.Environment(cr, SUPERUSER_ID, {})
     # El recálculo lo hace la migración MÁS NUEVA de la cadena, una sola vez.
     # Al agregarse la 19.0.1.24.0, se movió allá.
     _logger.info('qb_capacidad_costeo: póliza de cierre anual fuera de los '

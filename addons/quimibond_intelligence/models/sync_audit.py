@@ -10,9 +10,9 @@ import json
 import logging
 import traceback
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 
-from odoo import api, fields, models
+from odoo import models
 from .supabase_client import SupabaseClient
 
 _logger = logging.getLogger(__name__)

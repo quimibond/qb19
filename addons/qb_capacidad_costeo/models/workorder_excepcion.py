@@ -19,7 +19,7 @@ sanear.
 """
 from odoo import fields, models
 
-from .cuenta_map import wo_qty_sql
+from .cuenta_map import cfg_sql, wo_qty_sql
 
 
 class QbWorkorderExcepcion(models.Model):
@@ -71,15 +71,7 @@ class QbWorkorderExcepcion(models.Model):
         # vistas del módulo (pasa por formateo estilo printf).
         qty_sql = wo_qty_sql(self.env)
         return f"""
-            WITH cfg AS (
-                SELECT
-                    COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                        WHERE key = 'rendimiento_min' AND active LIMIT 1), 0),
-                        2.0) AS rmin,
-                    COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                        WHERE key = 'rendimiento_max' AND active LIMIT 1), 0),
-                        25.0) AS rmax
-            ),
+            {cfg_sql('rmin', 'rmax')},
             wc_centro AS (
                 SELECT rel.workcenter_id, MIN(rel.centro_id) AS centro_id
                 FROM qb_centro_workcenter_rel rel

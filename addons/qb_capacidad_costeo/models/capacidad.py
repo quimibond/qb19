@@ -9,7 +9,7 @@ workorders aparece con producción 0 (100% disponible) — no rompe nada.
 """
 from odoo import fields, models
 
-from .cuenta_map import wo_qty_sql
+from .cuenta_map import cfg_sql, wo_qty_sql
 
 
 class QbCapacidad(models.Model):
@@ -42,13 +42,7 @@ class QbCapacidad(models.Model):
     @property
     def _table_query(self):
         return """
-            WITH cfg AS (
-                SELECT
-                    COALESCE((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'weeks_per_month' AND active LIMIT 1), 4.33) AS weeks_per_month,
-                    COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                              WHERE key = 'production_window_months' AND active LIMIT 1), 0), 3) AS window_months
-            ),
+            {cfg},
             cal AS (
                 SELECT rc.id AS calendar_id,
                        SUM(att.hour_to - att.hour_from)
@@ -120,4 +114,6 @@ class QbCapacidad(models.Model):
             LEFT JOIN wc_centro wcc ON wcc.workcenter_id = wc.id
             LEFT JOIN prod p ON p.workcenter_id = wc.id
             WHERE wc.active
-        """ % {'wo_qty': wo_qty_sql(self.env)}
+        """.replace(
+            '{cfg}', cfg_sql('weeks_per_month', 'window_months')
+        ) % {'wo_qty': wo_qty_sql(self.env)}

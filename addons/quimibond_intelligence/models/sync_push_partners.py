@@ -7,7 +7,7 @@ import logging
 import re
 from datetime import datetime, timedelta
 
-from odoo import api, fields, models
+from odoo import models
 
 from .supabase_client import SupabaseClient
 from .sync_push import _commercial_partner_id, _best_partner_name, _EMAIL_RE
@@ -162,7 +162,13 @@ class QuimibondSyncPartners(models.TransientModel):
             # Resolve company canonical name for linking
             # Use commercial_partner_id for better resolution (handles
             # contacts like "Acosta, Mario" → "CONTINENTAL" parent)
-            company_cn = None
+            # FIXME: `company_cn` se calcula con tres ramas (padre,
+            # is_company, commercial_partner_id) y nunca se usa — el
+            # dict de contacto no lleva el nombre de la empresa. O
+            # falta pasarlo a Supabase, o sobran estas diez líneas.
+            # Se deja como está: decidirlo es de quien mantiene el
+            # sync, no de este cambio de lint.
+            company_cn = None  # noqa: F841
             if p.parent_id:
                 company_cn = (p.parent_id.name or '').strip() or None
             elif p.is_company:

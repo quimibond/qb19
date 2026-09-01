@@ -22,7 +22,7 @@ diámetros); ahí la carga se reparte entre las que pueden hacerlo.
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
-from .cuenta_map import mo_qty_sql
+from .cuenta_map import cfg_sql, mo_qty_sql
 
 
 class QbCosteoFamilia(models.Model):
@@ -185,11 +185,7 @@ class QbFamiliaCarga(models.Model):
     @property
     def _table_query(self):
         return """
-            WITH cfg AS (
-                SELECT COALESCE(NULLIF((SELECT value FROM qb_costeo_factor_config
-                        WHERE key = 'production_window_months' AND active
-                        LIMIT 1), 0), 3) AS window_months
-            ),
+            {cfg},
             alcance AS (
                 SELECT fp.product_code, COUNT(DISTINCT fp.familia_id) AS n_fam
                 FROM qb_familia_producto fp
@@ -236,4 +232,5 @@ class QbFamiliaCarga(models.Model):
             FROM qb_costeo_familia f
             LEFT JOIN carga ON carga.familia_id = f.id
             WHERE f.active
-        """.replace('{qty}', mo_qty_sql(self.env))
+        """.replace('{qty}', mo_qty_sql(self.env)) \
+            .replace('{cfg}', cfg_sql('window_months'))
