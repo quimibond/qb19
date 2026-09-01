@@ -4343,3 +4343,52 @@ class TestQbCosteo(TransactionCase):
         self.assertNotIn('no hay peso capturado', detail2)
         # 1,000 m × 0.07 kg = 70 kg de crudo × 14 m/kg = 980 m en la rama
         self.assertIn('requiere 980', detail2)
+
+    def test_toda_vista_sql_hereda_el_mixin_de_flush(self):
+        """Ninguna vista `_table_query` puede nacer sin flush.
+
+        Las vistas leen tablas que el ORM administra —centros, turnos, mapeo
+        de cuentas, familias— con SQL crudo, y el ORM no sabe que ese SELECT
+        depende de un write pendiente. La migración 1.51 escribió la
+        capacidad de Acabado y recalculó 2026 en la misma transacción: los
+        ocho períodos salieron con el denominador viejo y NADA avisó.
+
+        El test es estructural a propósito. Arreglar las once vistas de hoy
+        no impide que la doceava nazca rota; que el registro no tenga ni una
+        `_auto = False` fuera del mixin, sí.
+        """
+        sin_mixin = []
+        for name in self.env.registry:
+            if not name.startswith('qb.'):
+                continue
+            model = self.env[name]
+            if getattr(model, '_auto', True):
+                continue          # tabla real, no vista
+            heredados = model._inherit or ()
+            if isinstance(heredados, str):
+                heredados = [heredados]
+            if 'qb.sql.view' not in heredados:
+                sin_mixin.append(name)
+        self.assertFalse(
+            sin_mixin,
+            'vistas SQL sin el mixin de flush — heredá qb.sql.view en: %s'
+            % ', '.join(sorted(sin_mixin)))
+
+    def test_vista_sql_ve_el_write_pendiente(self):
+        """El comportamiento que el mixin compra: escribir y consultar en la
+        MISMA transacción devuelve lo escrito, no el renglón anterior."""
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TB58', 'name': 'CENTRO FLUSH VISTA',
+            'nature': 'fabril_directo', 'driver_principal': 'largo',
+            'capacidad_normal': 100000.0})
+        fila = self.env['qb.ociosidad'].search(
+            [('centro_id', '=', centro.id)], limit=1)
+        self.assertTrue(fila, 'la vista no vio el centro recién creado')
+        self.assertAlmostEqual(fila.capacity_month_units, 100000.0, places=2)
+        # El write posterior tampoco se queda en el buffer
+        centro.capacidad_normal = 250000.0
+        fila = self.env['qb.ociosidad'].search(
+            [('centro_id', '=', centro.id)], limit=1)
+        self.assertAlmostEqual(
+            fila.capacity_month_units, 250000.0, places=2,
+            msg='la vista leyó la capacidad vieja: el write seguía pendiente')

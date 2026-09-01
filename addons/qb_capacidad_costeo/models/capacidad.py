@@ -14,6 +14,7 @@ from .cuenta_map import wo_qty_sql
 
 class QbCapacidad(models.Model):
     _name = 'qb.capacidad'
+    _inherit = 'qb.sql.view'
     _description = 'Capacidad por máquina / centro de trabajo'
     _auto = False
     _order = 'centro_id, workcenter_id'

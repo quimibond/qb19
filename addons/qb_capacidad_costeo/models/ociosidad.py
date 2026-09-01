@@ -13,6 +13,7 @@ from .cuenta_map import CUENTA_MAP_SQL, mo_qty_sql, wo_qty_sql
 
 class QbOciosidad(models.Model):
     _name = 'qb.ociosidad'
+    _inherit = 'qb.sql.view'
     _description = 'Capacidad ociosa y costo hundido por centro'
     _auto = False
     _order = 'idle_cost_month DESC'

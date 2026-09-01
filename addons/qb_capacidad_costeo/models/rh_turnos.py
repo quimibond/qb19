@@ -26,6 +26,7 @@ from .cuenta_map import CUENTA_MAP_SQL
 
 class QbRhCentro(models.Model):
     _name = 'qb.rh.centro'
+    _inherit = 'qb.sql.view'
     _description = 'RH por centro: dotación, horas y costo MOD/hora'
     _auto = False
     _order = 'centro_id'

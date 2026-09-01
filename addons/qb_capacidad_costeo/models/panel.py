@@ -7,7 +7,7 @@ se muestra con su estado y un botón directo para resolverlo.
 """
 from dateutil.relativedelta import relativedelta
 
-from odoo import api, fields, models
+from odoo import fields, models
 
 from .producto_reportes import money
 

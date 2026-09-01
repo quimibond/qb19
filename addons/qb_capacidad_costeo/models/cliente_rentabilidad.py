@@ -22,6 +22,7 @@ from .producto_reportes import _BASE_SQL, fecha_es, mes_es, money
 
 class QbClienteRentabilidad(models.Model):
     _name = 'qb.cliente.rentabilidad'
+    _inherit = 'qb.sql.view'
     _description = 'Rentabilidad por cliente (12 meses)'
     _auto = False
     _order = 'contrib_12m DESC'

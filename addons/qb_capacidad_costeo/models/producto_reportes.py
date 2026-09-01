@@ -109,6 +109,7 @@ _BASE_SQL = """
 
 class QbProductoRentabilidad(models.Model):
     _name = 'qb.producto.rentabilidad'
+    _inherit = 'qb.sql.view'
     _description = 'Rentabilidad por producto (12 meses)'
     _auto = False
     _order = 'revenue_12m DESC'
@@ -483,6 +484,7 @@ class QbProductoRentabilidad(models.Model):
 
 class QbProductoCliente(models.Model):
     _name = 'qb.producto.cliente'
+    _inherit = 'qb.sql.view'
     _description = 'Producto × Cliente (12 meses)'
     _auto = False
     _order = 'revenue_12m DESC'
@@ -557,6 +559,7 @@ class QbProductoCliente(models.Model):
 
 class QbProductoMensual(models.Model):
     _name = 'qb.producto.mensual'
+    _inherit = 'qb.sql.view'
     _description = 'Programa mensual por producto (12 meses)'
     _auto = False
     _order = 'mes DESC, revenue DESC'
