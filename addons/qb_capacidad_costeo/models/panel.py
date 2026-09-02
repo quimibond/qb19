@@ -35,6 +35,15 @@ WARN = '⚠️'
 BAD = '❌'
 
 
+def _nombres(records, tope=12):
+    """Nombres para un aviso: los primeros `tope`, y cuántos más hay."""
+    nombres = records.mapped('name')
+    if len(nombres) > tope:
+        return '%s… y %s más' % (', '.join(nombres[:tope]),
+                                 len(nombres) - tope)
+    return ', '.join(nombres)
+
+
 class QbCosteoPanel(models.TransientModel):
     _name = 'qb.costeo.panel'
     _description = 'Panel de capacidad y costeo'
@@ -171,10 +180,20 @@ class QbCosteoPanel(models.TransientModel):
         sale inflado justo el día que alguien lo abre. La lista la manda
         `qb.costo.factores`: si un mes no tiene factores, no tiene modelo, y
         no entra.
+
+        Y tener factores no basta: el 1-sep ya había factores de septiembre
+        (el recálculo del corte los crea) con un día de ventas en el mayor
+        y el modelo a medias, y el mes entró al año con brecha propia. Un
+        mes en curso no compara contra nada; entra cuando ya terminó, o
+        antes solo si alguien lo cerró a propósito.
         """
-        ene = fields.Date.today().replace(month=1, day=1)
+        hoy = fields.Date.today()
+        ene = hoy.replace(month=1, day=1)
+        mes_en_curso = hoy.replace(day=1)
         return self.env['qb.costo.factores'].search(
-            [('period', '>=', ene)], order='period')
+            ['&', ('period', '>=', ene),
+             '|', ('period', '<', mes_en_curso), ('state', '=', 'cerrado')],
+            order='period')
 
     def _bloque_anio(self, periodos):
         conc = self.env['qb.costo.conciliacion'].search(
@@ -569,6 +588,7 @@ class QbCosteoPanel(models.TransientModel):
         '_estado_maestro_de_pesos',
         '_estado_clasificacion_de_cuentas',
         '_estado_absorcion_por_workcenter',
+        '_estado_tarifa_de_workcenters',
         '_estado_renta_contractual_vs_gl',
         '_estado_aduana_landed_costs',
         '_estado_mp_conciliable',
@@ -648,13 +668,23 @@ class QbCosteoPanel(models.TransientModel):
         env = self.env
         checks = []
         # 2. Workcenters ligados a centros
-        total_wc = env['mrp.workcenter'].search_count([])
-        linked_wc = len(env['qb.costeo.centro'].search([]).mapped('workcenter_ids'))
+        WC = env['mrp.workcenter']
+        total_wc = WC.search_count([])
+        ligados = env['qb.costeo.centro'].search([]).mapped('workcenter_ids')
+        linked_wc = len(ligados)
+        # Los que faltan, por nombre: una máquina dada de alta ayer sin
+        # ligar a su centro no entra a capacidad ni al denominador, y si
+        # el centro ya absorbe, tampoco a la lista de tarifas por capturar.
+        sueltos = WC.search([('id', 'not in', ligados.ids)], order='name')
         icon = OK if linked_wc else (WARN if total_wc else BAD)
-        checks.append((icon, 'Workcenters ligados a centros',
-                       '%s de %s máquinas — sin esto el factor $/kg y la '
-                       'capacidad de TEJIDO salen en 0. Se liga solo con '
-                       '"Importar desde Supabase".' % (linked_wc, total_wc)))
+        if linked_wc and sueltos:
+            icon = WARN
+        detalle = ('%s de %s máquinas — sin esto el factor $/kg y la '
+                   'capacidad de TEJIDO salen en 0. Se liga solo con '
+                   '"Importar desde Supabase".' % (linked_wc, total_wc))
+        if sueltos:
+            detalle += ' Sin ligar: %s' % _nombres(sueltos)
+        checks.append((icon, 'Workcenters ligados a centros', detalle))
         return checks
 
     def _estado_capacidad_por_centro(self):
@@ -758,6 +788,81 @@ class QbCosteoPanel(models.TransientModel):
                 'costeo y su fecha de corte, o el pool seguirá arrastrando un '
                 'gasto que ya viaja dentro del inventario.'
                 % f'{ultimo.absorcion_bruta_month:,.0f}'))
+        return checks
+
+    def _estado_tarifa_de_workcenters(self):
+        """Un centro absorbido capitaliza SOLO por los workcenters que traen
+        tarifa por hora Y cuenta de costos fabriles aplicados. El check de
+        arriba se entera cuando el período ya no registra nada; este avisa
+        ANTES y máquina por máquina — es la lista de lo que hay que
+        capturar el día del corte, y de lo que quedó a medias después.
+
+        Antes del corte lo que falta es un aviso, no un error: la tarifa se
+        escribe el mismo día, no antes. Con la tarifa activa y el centro aún
+        en capa, Odoo capitaliza y el pool reparte: el mismo peso dos veces.
+        """
+        env = self.env
+        checks = []
+        WC = env['mrp.workcenter']
+        absorbidos = env['qb.costeo.centro'].search([
+            ('modo_costeo', '=', 'absorcion_odoo'),
+            ('fecha_absorcion', '!=', False),
+        ])
+        if not absorbidos:
+            return checks
+        hoy = fields.Date.today()
+        # La cuenta la agrega mrp_account; sin él no hay nada que revisar
+        # de ese lado y tampoco hay cómo capitalizar.
+        con_cuenta = 'expense_account_id' in WC._fields
+        for centro in absorbidos:
+            wcs = centro.workcenter_ids.filtered('active')
+            titulo = 'Tarifa por hora — %s' % centro.code
+            if not wcs:
+                checks.append((
+                    BAD, titulo,
+                    'marcado como absorbido desde %s pero sin workcenters '
+                    'ligados: no hay máquina que capitalice y su costo ya '
+                    'salió del pool.' % centro.fecha_absorcion))
+                continue
+            sin_tarifa = wcs.filtered(lambda w: not w.costs_hour)
+            sin_cuenta = (wcs.filtered(lambda w: not w.expense_account_id)
+                          if con_cuenta else wcs)
+            vigente = centro.fecha_absorcion <= hoy
+            if not (sin_tarifa or sin_cuenta):
+                tarifas = sorted(set(wcs.mapped('costs_hour')))
+                rango = ('$%s/h' % f'{tarifas[0]:,.2f}' if len(tarifas) == 1
+                         else '$%s–$%s/h' % (f'{tarifas[0]:,.2f}',
+                                             f'{tarifas[-1]:,.2f}'))
+                cuentas = ', '.join(sorted(set(
+                    wcs.mapped('expense_account_id.code')))) if con_cuenta else '—'
+                checks.append((
+                    OK, titulo,
+                    '%s workcenters con tarifa (%s) y cuenta %s; absorbe '
+                    'desde %s' % (len(wcs), rango, cuentas,
+                                  centro.fecha_absorcion)))
+                continue
+            faltas = []
+            if sin_tarifa:
+                faltas.append('%s de %s sin tarifa por hora (%s)'
+                              % (len(sin_tarifa), len(wcs), _nombres(sin_tarifa)))
+            if sin_cuenta:
+                faltas.append('%s de %s sin cuenta de costos aplicados (%s)'
+                              % (len(sin_cuenta), len(wcs), _nombres(sin_cuenta)))
+            if vigente:
+                checks.append((
+                    BAD, titulo,
+                    'absorbe desde %s y %s. Las horas de esas máquinas NO '
+                    'capitalizan: ese costo ya salió del pool y no entra a '
+                    'ningún producto.' % (centro.fecha_absorcion,
+                                          ' y '.join(faltas))))
+            else:
+                dias = (centro.fecha_absorcion - hoy).days
+                checks.append((
+                    WARN, titulo,
+                    'absorbe desde %s (en %s días): %s. Captúralas ESE día, '
+                    'no antes — con la tarifa activa y el centro aún en '
+                    'capa el costo se cuenta dos veces.'
+                    % (centro.fecha_absorcion, dias, ' y '.join(faltas))))
         return checks
 
     def _estado_renta_contractual_vs_gl(self):
