@@ -948,6 +948,8 @@ nueve dígitos no se leen de un vistazo, pero hay que poder cuadrarlos.
 El módulo fija su propio umbral en `brecha_pct`: **bajo ±2% el modelo sirve
 para decidir precios; arriba, primero hay que cerrar la brecha.** La brecha
 real del año va en **28.8%** — $31.3M sin explicar sobre $108.6M de venta.
+*(Corrección del 2-sep, v1.65: ese 28.8% era un error de signo en la vista,
+no una brecha real; la del año es −0.7%. Ver la entrada de la v1.65.)*
 
 El panel enseñaba rentabilidad por cliente y por producto sin decir de qué
 lado de esa raya estamos. Eso es invitar a recotizar con números que el
@@ -1044,3 +1046,73 @@ imprime bruto / ya excluido / neto). Acabado sigue a mediados de mes, y ahí
 toca recalibrar `fab_weight_share`.
 
 **Estado:** 145 tests, 0 fallos, sobre instalación desde cero.
+
+---
+
+## La brecha sumaba la ociosidad en vez de restarla (2-sep, v1.65)
+
+El panel abrió el 2-sep con la franja roja: «Entre el modelo y el mayor
+quedan $31,343,709 sin explicar — el 28.8% de la venta del año». Ese número
+no era una brecha: era un error de signo en `qb.costo.conciliacion`, vivo
+desde que la columna nació en la v1.14.
+
+### Qué estaba mal
+
+1. **`brecha_neta` sumaba la ociosidad.** El modelo deja de cobrarle al
+   producto la capacidad parada a propósito (IAS 2), así que la brecha
+   bruta —modelo menos mayor— trae esa cantidad «sin explicar» por
+   construcción. Para descontarla hay que **restarla**. El SQL hacía
+   `brecha + ociosidad`, y el texto de ayuda decía lo mismo («brecha más la
+   ociosidad»). La ociosidad entraba dos veces: $19.5M de enero a agosto.
+   La misma vista ya tenía el par bien: `resultado_par = modelo −
+   ociosidad`, y contra el mayor daba −$1.37M en agosto mientras la brecha
+   neta reportaba +$3.66M.
+2. **El arrendamiento de maquinaria (701.11) faltaba del lado del mayor.**
+   La v1.27 lo metió en `gl_gasto_total` y en `resultado_gl`, pero no tocó
+   `brecha`, `brecha_neta` ni `brecha_pct`. El modelo sí se lo cobra al
+   producto; el mayor de la brecha no lo contaba como gasto. $6.9M en el
+   año.
+3. **Septiembre entraba al año con un día de datos.** El panel excluye
+   meses sin factores, pero el recálculo del corte ya había creado los de
+   septiembre, y el mes entró con $568K de venta en el mayor y el modelo a
+   medias.
+
+### Lo que da con la fórmula corregida
+
+| Cálculo | Ene–ago 2026 | % venta |
+|---|---:|---:|
+| Como lo reportaba el panel (brecha **+** ociosidad, sin 701.11) | +$31.3M | +28.8% |
+| Solo corrigiendo el signo de la ociosidad | −$7.7M | −7.1% |
+| Signo + arrendamiento en el lado del mayor | **−$0.7M** | **−0.7%** |
+
+El modelo cuadra con la contabilidad dentro del ±2% que él mismo pide. El
+signo dice que carga apenas de más, no de menos. Por mes va de −$1.19M
+(junio, −7.8%) a +$0.84M (marzo, +5.9%): es el efecto de costear lo vendido
+contra un mayor que gasta lo producido, o sea la capa, y eso se cierra con el
+cuadre de inventarios al 31-ago, no con el modelo.
+
+### Lo que cambió
+
+- `brecha`, `brecha_neta` y `brecha_pct` comparan contra el **resultado de
+  operación** del mayor —ventas − costo de ventas − gastos de operación −
+  costeo en otras cuentas— y la ociosidad se **resta**. `cobertura_pct`
+  divide entre el mismo gasto total. Las cuatro columnas salen de la misma
+  expresión, para que no se vuelvan a desalinear.
+- El resultado integral de financiamiento (cambiaria, intereses) sigue
+  fuera de la brecha: el modelo no se lo cobra al producto y no debe.
+- La ventana del año del panel deja fuera el mes en curso, salvo que esté
+  cerrado a propósito.
+- El test de conciliación ahora amarra las cuatro columnas al par
+  `resultado_par`, y un test nuevo sube la ociosidad en $12,345 y exige que
+  la brecha neta **baje** $12,345. Con el SQL viejo falla.
+
+### Por qué no se vio antes
+
+El test comprobaba `brecha = modelo − resultado_gl` sobre una base sin
+`income_other` y sin ociosidad, donde las dos fórmulas coinciden. La fila de
+agosto en producción tenía la contradicción a la vista —par −$1.37M contra
+brecha neta +$3.66M— pero nadie compara dos columnas de la misma fila
+cuando una de ellas es la que tiene el semáforo.
+
+**Estado:** 146 tests sobre instalación desde cero (el job `odoo-tests` del
+CI los corre).

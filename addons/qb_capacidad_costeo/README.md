@@ -351,6 +351,13 @@ gasto con un modelo; esta vista lo confronta contra el mayor mes a mes. Si la
 brecha no está cerca de cero, el costo unitario todavía no sirve como piso de
 precio — por muy detallado que se vea.
 
+El número que debe tender a cero es **Brecha sin ociosidad** = brecha bruta
+**menos** la ociosidad no absorbida (el modelo no se la cobra al producto a
+propósito, así que la bruta la trae por construcción). El lado del mayor es el
+resultado de **operación**: con el arrendamiento de maquinaria (701.11, que el
+modelo sí cobra) y sin el resultado integral de financiamiento (que no). El
+mes en curso no entra al año del panel hasta que termina o se cierra.
+
 Tres caminos por los que el modelo se desvía, y los tres se ven ahí:
 
 1. **Gasto que nunca llega a un producto** — cuentas `no_costeo` o sin

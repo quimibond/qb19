@@ -180,10 +180,20 @@ class QbCosteoPanel(models.TransientModel):
         sale inflado justo el día que alguien lo abre. La lista la manda
         `qb.costo.factores`: si un mes no tiene factores, no tiene modelo, y
         no entra.
+
+        Y tener factores no basta: el 1-sep ya había factores de septiembre
+        (el recálculo del corte los crea) con un día de ventas en el mayor
+        y el modelo a medias, y el mes entró al año con brecha propia. Un
+        mes en curso no compara contra nada; entra cuando ya terminó, o
+        antes solo si alguien lo cerró a propósito.
         """
-        ene = fields.Date.today().replace(month=1, day=1)
+        hoy = fields.Date.today()
+        ene = hoy.replace(month=1, day=1)
+        mes_en_curso = hoy.replace(day=1)
         return self.env['qb.costo.factores'].search(
-            [('period', '>=', ene)], order='period')
+            ['&', ('period', '>=', ene),
+             '|', ('period', '<', mes_en_curso), ('state', '=', 'cerrado')],
+            order='period')
 
     def _bloque_anio(self, periodos):
         conc = self.env['qb.costo.conciliacion'].search(
