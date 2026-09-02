@@ -2168,27 +2168,35 @@ class TestQbCosteo(TransactionCase):
             [('period', '=', period)], limit=1)
         self.assertTrue(fac, 'el recálculo deja factores del período')
 
+        campos = ['ociosidad_ias2', 'brecha', 'brecha_neta',
+                  'resultado_par', 'brecha_pct', 'gl_ventas']
+
         def fila():
+            # Foto de la fila AHORA: la vista se lee perezosamente y un
+            # registro guardado antes del write se leería después de él.
             self.env.flush_all()
             self.env.invalidate_all()
-            return Conc.search([('period', '=', period)], limit=1)
+            row = Conc.search([('period', '=', period)], limit=1)
+            return row.read(campos)[0] if row else None
 
         antes = fila()
         self.assertTrue(antes, 'con una factura posteada hay fila')
         fac.write({'fab_ocioso_month': fac.fab_ocioso_month + 12345.0})
         despues = fila()
         self.assertAlmostEqual(
-            despues.ociosidad_ias2, antes.ociosidad_ias2 + 12345.0, places=2)
-        self.assertAlmostEqual(despues.brecha, antes.brecha, places=2,
+            despues['ociosidad_ias2'], antes['ociosidad_ias2'] + 12345.0,
+            places=2)
+        self.assertAlmostEqual(despues['brecha'], antes['brecha'], places=2,
                                msg='la brecha bruta no ve la ociosidad')
         self.assertAlmostEqual(
-            despues.brecha_neta, antes.brecha_neta - 12345.0, places=2,
+            despues['brecha_neta'], antes['brecha_neta'] - 12345.0, places=2,
             msg='más ociosidad = menos por explicar, no más')
         self.assertAlmostEqual(
-            despues.resultado_par, antes.resultado_par - 12345.0, places=2)
+            despues['resultado_par'], antes['resultado_par'] - 12345.0,
+            places=2)
         self.assertAlmostEqual(
-            despues.brecha_pct,
-            100.0 * despues.brecha_neta / despues.gl_ventas, places=4)
+            despues['brecha_pct'],
+            100.0 * despues['brecha_neta'] / despues['gl_ventas'], places=4)
 
     def test_cuenta_especifica_gana_sobre_patron(self):
         """Una clase de CUENTA ESPECIFICA gana sobre una de patrón para la
