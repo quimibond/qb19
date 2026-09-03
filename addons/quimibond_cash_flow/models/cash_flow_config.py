@@ -18,6 +18,7 @@ import logging
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools.safe_eval import safe_eval
 
 from . import cash_flow_lines as L
 
@@ -335,6 +336,43 @@ class CashFlowConfig(models.Model):
         self.ensure_one()
         result = self.env['cash.flow.engine'].compute(self, fields.Date.to_date(date_from), fields.Date.to_date(date_to))
         return self.env['cash.flow.engine'].to_summary(result)
+
+    @api.model
+    def _relocate_report_menu(self):
+        """Coloca el menu del reporte justo debajo del "Estado de flujo de
+        efectivo" nativo (mismo padre, secuencia siguiente). Se llama desde
+        ``views/menus.xml`` en cada instalacion/actualizacion; si el reporte
+        nativo no existe (p. ej. sin ``account_reports``) el menu se queda en
+        Contabilidad > Reportes."""
+        menu = self.env.ref('quimibond_cash_flow.menu_cash_flow_nif_report', raise_if_not_found=False)
+        if not menu:
+            return False
+        native_report = self.env['account.report'].search(
+            [('custom_handler_model_name', '=', 'account.cash.flow.report.handler')], limit=1)
+        if not native_report:
+            return False
+        native_menu = self.env['ir.ui.menu']
+        for action in self.env['ir.actions.client'].search([('tag', '=', 'account_report')]):
+            try:
+                context = safe_eval(action.context or '{}')
+            except Exception:  # noqa: BLE001 - contextos ajenos: se ignoran
+                continue
+            if context.get('report_id') != native_report.id:
+                continue
+            native_menu = self.env['ir.ui.menu'].with_context(active_test=False).search(
+                [('action', '=', 'ir.actions.client,%d' % action.id)], limit=1)
+            if native_menu:
+                break
+        if not native_menu or not native_menu.parent_id:
+            return False
+        menu.write({'parent_id': native_menu.parent_id.id, 'sequence': native_menu.sequence + 1})
+        # Los hermanos con la misma secuencia se corren uno para que el orden sea determinista.
+        siblings = self.env['ir.ui.menu'].search([
+            ('parent_id', '=', native_menu.parent_id.id), ('id', 'not in', (menu + native_menu).ids),
+            ('sequence', '>', native_menu.sequence)])
+        for sibling in siblings:
+            sibling.sequence += 1
+        return True
 
     def action_open_report(self):
         self.ensure_one()

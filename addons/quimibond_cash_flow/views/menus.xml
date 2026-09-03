@@ -6,6 +6,8 @@
               action="action_cash_flow_nif_report"
               sequence="35"
               groups="account.group_account_readonly"/>
+    <!-- Lo mueve debajo del "Estado de flujo de efectivo" nativo (mismo padre). -->
+    <function model="cash.flow.config" name="_relocate_report_menu"/>
     <menuitem id="menu_cash_flow_config"
               name="Flujo de efectivo NIF B-2"
               parent="account.menu_finance_configuration"

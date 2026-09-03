@@ -1,7 +1,8 @@
 # quimibond_cash_flow — Estado de flujo de efectivo NIF B-2
 
-Addon de Odoo 19 Enterprise que agrega el reporte **Contabilidad › Reportes ›
-Flujo de efectivo NIF B-2** sobre el motor de reportes de `account_reports`
+Addon de Odoo 19 Enterprise que agrega el reporte **Flujo de efectivo NIF B-2**
+en el menú de Contabilidad, justo debajo del "Estado de flujo de efectivo" nativo
+(mismo padre; se reubica en cada instalación/actualización), sobre el motor de reportes de `account_reports`
 (filtros de fecha, comparación de periodos, PDF/XLSX, plegado y drill-down).
 
 ## Qué resuelve
