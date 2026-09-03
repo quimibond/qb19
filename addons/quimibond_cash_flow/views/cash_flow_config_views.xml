@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cash_flow_rule_list" model="ir.ui.view">
+        <field name="name">cash.flow.rule.list</field>
+        <field name="model">cash.flow.rule</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" default_order="method, sequence, id">
+                <field name="sequence" widget="handle"/>
+                <field name="method" column_invisible="True"/>
+                <field name="company_id" column_invisible="True"/>
+                <field name="line_key" invisible="method == 'cash'" required="method != 'cash'"/>
+                <field name="exclude" invisible="method != 'cash'"/>
+                <field name="criterion"/>
+                <field name="value" invisible="criterion not in ('account_prefix', 'account_type', 'move_type')"/>
+                <field name="account_id" invisible="criterion != 'account'"/>
+                <field name="journal_id" invisible="criterion != 'journal'"/>
+                <field name="partner_id" invisible="criterion != 'partner'"/>
+                <field name="side" invisible="method == 'cash'"/>
+                <field name="cash_move_only" invisible="method != 'indirect'" optional="show"/>
+                <field name="mode" invisible="method != 'indirect'" optional="show"/>
+                <field name="mirror_line_key" invisible="method != 'indirect' or mode != 'addback'" required="mode == 'addback'" optional="show"/>
+                <field name="note" optional="show"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cash_flow_config_form" model="ir.ui.view">
+        <field name="name">cash.flow.config.form</field>
+        <field name="model">cash.flow.config</field>
+        <field name="arch" type="xml">
+            <form string="Flujo de efectivo NIF B-2">
+                <header>
+                    <button name="action_load_quimibond_defaults" type="object" string="Cargar defaults Quimibond"
+                            class="btn-primary"
+                            confirm="Se reemplazarán TODAS las reglas actuales por el mapeo de Quimibond. ¿Continuar?"/>
+                    <button name="action_open_report" type="object" string="Abrir reporte" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-list" disabled="1">
+                            <field name="rule_count" widget="statinfo" string="Reglas"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-university" disabled="1">
+                            <field name="cash_account_count" widget="statinfo" string="Cuentas de efectivo"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" options="{'no_create': True}"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group>
+                            <field name="other_threshold"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Efectivo y equivalentes" name="cash">
+                            <p class="text-muted">
+                                Cuentas que se consideran efectivo (bancos, cajas, tarjetas de crédito, recibos/pagos
+                                pendientes, transitorias, suspense). Los movimientos entre dos cuentas de efectivo no son flujo.
+                                Marca "Excluir" para sacar una cuenta aunque otra regla la incluya.
+                            </p>
+                            <field name="cash_rule_ids" context="{'default_method': 'cash', 'default_config_id': id}">
+                                <list editable="bottom" default_order="sequence, id">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="method" column_invisible="True"/>
+                                    <field name="company_id" column_invisible="True"/>
+                                    <field name="exclude"/>
+                                    <field name="criterion"/>
+                                    <field name="value" invisible="criterion not in ('account_prefix', 'account_type')"/>
+                                    <field name="account_id" invisible="criterion != 'account'"/>
+                                    <field name="note" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Método indirecto" name="indirect">
+                            <p class="text-muted">
+                                Cada apunte de una cuenta que no es efectivo va a la primera regla que coincide (por secuencia).
+                                "Flujo" = -saldo del apunte. "Partida virtual" = cuenta de resultados que queda en el resultado, se
+                                revierte en esta línea y manda su efecto real a la línea espejo. Lo que no coincide va a "Sin clasificar".
+                            </p>
+                            <field name="indirect_rule_ids" context="{'default_method': 'indirect', 'default_config_id': id}">
+                                <list editable="bottom" default_order="sequence, id">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="method" column_invisible="True"/>
+                                    <field name="company_id" column_invisible="True"/>
+                                    <field name="line_key" required="1"/>
+                                    <field name="criterion"/>
+                                    <field name="value" invisible="criterion not in ('account_prefix', 'account_type', 'move_type')"/>
+                                    <field name="account_id" invisible="criterion != 'account'"/>
+                                    <field name="journal_id" invisible="criterion != 'journal'"/>
+                                    <field name="partner_id" invisible="criterion != 'partner'"/>
+                                    <field name="side"/>
+                                    <field name="cash_move_only" optional="show"/>
+                                    <field name="mode"/>
+                                    <field name="mirror_line_key" invisible="mode != 'addback'" required="mode == 'addback'"/>
+                                    <field name="note" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Método directo" name="direct">
+                            <p class="text-muted">
+                                Para cada póliza que toca efectivo, la contraparte (cuenta que no es efectivo) se clasifica por diario,
+                                tipo de asiento, contacto o cuenta, en ese orden de secuencia. Lo que no coincide va a "Otros (revisar)".
+                            </p>
+                            <field name="direct_rule_ids" context="{'default_method': 'direct', 'default_config_id': id}">
+                                <list editable="bottom" default_order="sequence, id">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="method" column_invisible="True"/>
+                                    <field name="company_id" column_invisible="True"/>
+                                    <field name="line_key" required="1"/>
+                                    <field name="criterion"/>
+                                    <field name="value" invisible="criterion not in ('account_prefix', 'account_type', 'move_type')"/>
+                                    <field name="account_id" invisible="criterion != 'account'"/>
+                                    <field name="journal_id" invisible="criterion != 'journal'"/>
+                                    <field name="partner_id" invisible="criterion != 'partner'"/>
+                                    <field name="side"/>
+                                    <field name="note" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_cash_flow_config_list" model="ir.ui.view">
+        <field name="name">cash.flow.config.list</field>
+        <field name="model">cash.flow.config</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="company_id"/>
+                <field name="rule_count"/>
+                <field name="cash_account_count"/>
+                <field name="other_threshold"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_cash_flow_config" model="ir.actions.act_window">
+        <field name="name">Flujo de efectivo NIF B-2</field>
+        <field name="res_model">cash.flow.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Configura el flujo de efectivo de la compañía</p>
+            <p>Crea la configuración y usa "Cargar defaults Quimibond" para sembrar el mapeo de cuentas.</p>
+        </field>
+    </record>
+</odoo>
