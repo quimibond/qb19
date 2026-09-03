@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_cash_flow_nif_report"
+              name="Flujo de efectivo NIF B-2"
+              parent="account.menu_finance_reports"
+              action="action_cash_flow_nif_report"
+              sequence="35"
+              groups="account.group_account_readonly"/>
+    <menuitem id="menu_cash_flow_config"
+              name="Flujo de efectivo NIF B-2"
+              parent="account.menu_finance_configuration"
+              action="action_cash_flow_config"
+              sequence="90"
+              groups="account.group_account_user"/>
+    <menuitem id="menu_cash_flow_snapshot"
+              name="Snapshots de flujo de efectivo"
+              parent="account.menu_finance_configuration"
+              action="action_cash_flow_snapshot"
+              sequence="91"
+              groups="account.group_account_user"/>
+</odoo>
