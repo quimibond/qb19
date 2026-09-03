@@ -35,6 +35,10 @@
                             class="btn-primary"
                             confirm="Se reemplazarán TODAS las reglas actuales por el mapeo de Quimibond. ¿Continuar?"/>
                     <button name="action_open_report" type="object" string="Abrir reporte" class="btn-secondary"/>
+                    <button name="action_open_forecast_report" type="object" string="Abrir proyección" class="btn-secondary"/>
+                    <button name="action_load_forecast_items_from_history" type="object" string="Sembrar compromisos del historial"
+                            class="btn-secondary"
+                            confirm="Se reemplazan los compromisos sembrados antes (los capturados a mano se conservan). ¿Continuar?"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -52,6 +56,15 @@
                         </group>
                         <group>
                             <field name="other_threshold"/>
+                        </group>
+                        <group string="Proyección">
+                            <field name="forecast_weeks"/>
+                            <field name="forecast_min_cash"/>
+                            <field name="forecast_overdue_weeks"/>
+                            <field name="forecast_include_orders"/>
+                            <field name="forecast_order_days"/>
+                            <field name="forecast_max_delay"/>
+                            <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
                     <notebook>
@@ -117,6 +130,28 @@
                                     <field name="partner_id" invisible="criterion != 'partner'"/>
                                     <field name="side"/>
                                     <field name="note" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Compromisos (proyección)" name="forecast">
+                            <p class="text-muted">
+                                Pagos y cobros que Odoo no conoce por sí mismo: nómina, impuestos, préstamos, arrendamientos, rentas.
+                                Importe negativo = salida. "Sembrar compromisos del historial" los estima con el promedio de los últimos
+                                3 meses del método directo; ajusta o captura el dato real.
+                            </p>
+                            <field name="forecast_item_ids" context="{'default_config_id': id}">
+                                <list editable="bottom" default_order="date_start, id">
+                                    <field name="company_id" column_invisible="True"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                    <field name="name"/>
+                                    <field name="category"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount"/>
+                                    <field name="date_start"/>
+                                    <field name="recurrence"/>
+                                    <field name="date_end" optional="show"/>
+                                    <field name="auto" optional="show"/>
+                                    <field name="note" optional="hide"/>
                                 </list>
                             </field>
                         </page>

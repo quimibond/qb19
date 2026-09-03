@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Estado de flujo de efectivo NIF B-2',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Accounting',
     'summary': 'Estado de flujo de efectivo conforme a la NIF B-2 (metodo indirecto y directo) sobre el motor de reportes Enterprise.',
@@ -19,6 +19,11 @@ variacion real de efectivo:
   impuestos, intereses, arrendamientos, prestamos, activo fijo, partes
   relacionadas, otros. Clasificado por la contraparte del movimiento de
   efectivo, sin descomponer la factura en sus lineas.
+
+Incluye ademas una proyeccion de flujo de efectivo a 13 semanas: cuentas
+por cobrar/pagar por vencimiento (con atraso historico por cliente),
+pedidos confirmados sin facturar y compromisos recurrentes (nomina,
+impuestos, prestamos, arrendamientos).
 
 La definicion de efectivo y el mapeo de cuentas viven en una configuracion
 por compania (Contabilidad > Configuracion > Flujo de efectivo NIF B-2) con

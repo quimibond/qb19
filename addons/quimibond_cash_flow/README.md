@@ -136,6 +136,31 @@ que coincide (por secuencia) gana.
 7. Merge a `quimibond` (producción) siguiendo `docs/RUNBOOK_DESPLIEGUE.md`.
 8. Opcional: activar el cron "Flujo de efectivo NIF B-2: snapshot mensual".
 
+## Proyección de flujo de efectivo (13 semanas)
+
+Reporte **Proyección de flujo de efectivo** (menú de Contabilidad, debajo del
+NIF B-2): una columna por semana a partir de la fecha del filtro, más el total.
+
+| Renglón | Fuente |
+|---|---|
+| Saldo inicial | Saldo contable de las cuentas de efectivo (misma definición) |
+| Cobros vencidos | Cuentas por cobrar ya vencidas, repartidas en las primeras N semanas (`forecast_overdue_weeks`) |
+| Cobros por vencimiento | Cuentas por cobrar abiertas por vencimiento + atraso promedio real del cliente (cobros conciliados de 12 meses, ponderado por importe, tope `forecast_max_delay`) |
+| Pedidos de venta sin facturar | `sale.order` confirmados, importe pendiente de facturar, a fecha de entrega + `forecast_order_days` + atraso del cliente |
+| Pagos vencidos / por vencimiento | Cuentas por pagar abiertas |
+| Órdenes de compra sin factura | `purchase.order` confirmadas, importe pendiente, a `date_planned` + `forecast_order_days` |
+| Compromisos | `cash.flow.forecast.item`: nómina, impuestos, préstamos, arrendamientos, intereses, activo fijo, partes relacionadas, otros; recurrencia única / semanal / 14 días / mensual |
+| Saldo final | Se resalta cualquier semana por debajo de `forecast_min_cash` |
+
+Cada renglón se despliega por contacto y "Ver origen" abre los apuntes,
+pedidos o compromisos que lo alimentan. El botón **Sembrar compromisos del
+historial** crea compromisos mensuales con el promedio de los últimos 3 meses
+del método directo (nómina en dos quincenas, impuestos el 17, el resto a fin de
+mes); los capturados a mano se conservan.
+
+API: `POST /json/2/cash.flow.config/compute_forecast` con
+`{"ids": [<config_id>], "date_from": "2026-09-07"}`.
+
 ## API JSON-2
 
 ```
