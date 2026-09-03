@@ -20,9 +20,78 @@ from .cash_flow_engine import iter_months, month_end, month_start
 _logger = logging.getLogger(__name__)
 
 
+class CashFlowReportMixin(models.AbstractModel):
+    """Utilerias compartidas por los handlers de flujo y de proyeccion:
+    encabezados de columna por periodo, celdas, lineas de texto y companias."""
+    _name = 'cash.flow.report.mixin'
+    _description = 'Utilerías de los reportes de flujo de efectivo'
+
+    @staticmethod
+    def _make_header(options, date_from, date_to, name):
+        date_opts = dict(options['date'])
+        date_opts.update({
+            'date_from': fields.Date.to_string(date_from),
+            'date_to': fields.Date.to_string(date_to),
+            'mode': 'range',
+            'filter': 'custom',
+            'string': name,
+        })
+        return {'name': name, 'forced_options': {'date': date_opts}}
+
+    @staticmethod
+    def _apply_column_headers(report, options, previous_options, headers):
+        """Sustituye el primer nivel de encabezados y reconstruye columnas y
+        grupos de columnas del reporte."""
+        column_headers = options.get('column_headers') or [[]]
+        options['column_headers'] = [headers] + list(column_headers[1:])
+        init_columns = getattr(report, '_init_options_columns', None)
+        if init_columns:
+            try:
+                init_columns(options, previous_options=previous_options)
+            except TypeError:
+                init_columns(options)
+
+    def _get_company_ids(self, report, options):
+        getter = getattr(report, 'get_report_company_ids', None)
+        if getter:
+            return list(getter(options))
+        return [c['id'] for c in options.get('companies', []) if c.get('selected')] or self.env.company.ids
+
+    def _is_zero(self, amount):
+        return self.env.company.currency_id.is_zero(amount or 0.0)
+
+    @staticmethod
+    def _is_unfolded(options, line_id):
+        return bool(options.get('unfold_all') or line_id in (options.get('unfolded_lines') or []))
+
+    def _column(self, report, options, column, value):
+        """Celda del reporte; ``value=None`` deja la celda vacia."""
+        if value is None:
+            return {'name': '', 'no_format': None, 'class': 'number', 'figure_type': column.get('figure_type', 'monetary')}
+        try:
+            return report._build_column_dict(value, column, options=options)
+        except (TypeError, AttributeError):
+            try:
+                name = report.format_value(options, value, figure_type='monetary')
+            except TypeError:
+                name = report.format_value(value, figure_type='monetary')
+            return {'name': name, 'no_format': value, 'class': 'number', 'figure_type': 'monetary'}
+
+    def _text_line(self, report, options, markup, text):
+        return {
+            'id': report._get_generic_line_id(None, None, markup=markup),
+            'name': text,
+            'level': 3,
+            'unfoldable': False,
+            'unfolded': False,
+            'class': 'text-warning fst-italic',
+            'columns': [self._column(report, options, column, None) for column in options['columns']],
+        }
+
+
 class CashFlowNifReportHandler(models.AbstractModel):
     _name = 'account.cash.flow.nif.report.handler'
-    _inherit = 'account.report.custom.handler'
+    _inherit = ['account.report.custom.handler', 'cash.flow.report.mixin']
     _description = 'Handler del flujo de efectivo NIF B-2'
 
     # ------------------------------------------------------------------
@@ -50,28 +119,8 @@ class CashFlowNifReportHandler(models.AbstractModel):
             headers.append(self._make_header(options, p_from, p_to, period.get('string') or fields.Date.to_string(p_to)))
             spans.append({'date_from': period['date_from'], 'date_to': period['date_to']})
 
-        column_headers = options.get('column_headers') or [[]]
-        options['column_headers'] = [headers] + list(column_headers[1:])
         options['cash_flow_spans'] = spans
-        # Reconstruye columnas y grupos de columnas a partir de los encabezados.
-        init_columns = getattr(report, '_init_options_columns', None)
-        if init_columns:
-            try:
-                init_columns(options, previous_options=previous_options)
-            except TypeError:
-                init_columns(options)
-
-    @staticmethod
-    def _make_header(options, date_from, date_to, name):
-        date_opts = dict(options['date'])
-        date_opts.update({
-            'date_from': fields.Date.to_string(date_from),
-            'date_to': fields.Date.to_string(date_to),
-            'mode': 'range',
-            'filter': 'custom',
-            'string': name,
-        })
-        return {'name': name, 'forced_options': {'date': date_opts}}
+        self._apply_column_headers(report, options, previous_options, headers)
 
     def _caret_options_initializer(self):
         caret = super()._caret_options_initializer()
@@ -84,12 +133,6 @@ class CashFlowNifReportHandler(models.AbstractModel):
     # ------------------------------------------------------------------
     # Calculo
     # ------------------------------------------------------------------
-    def _get_company_ids(self, report, options):
-        getter = getattr(report, 'get_report_company_ids', None)
-        if getter:
-            return list(getter(options))
-        return [c['id'] for c in options.get('companies', []) if c.get('selected')] or self.env.company.ids
-
     def _compute_spans(self, report, options):
         """``{(date_from, date_to): [(company, result)]}`` por cada span
         (principal y comparaciones). Cada compania se calcula con su propia
@@ -271,17 +314,6 @@ class CashFlowNifReportHandler(models.AbstractModel):
             'columns': [self._column(report, options, column, None) for column in options['columns']],
         }
 
-    def _text_line(self, report, options, markup, text):
-        return {
-            'id': report._get_generic_line_id(None, None, markup=markup),
-            'name': text,
-            'level': 3,
-            'unfoldable': False,
-            'unfolded': False,
-            'class': 'text-warning fst-italic',
-            'columns': [self._column(report, options, column, None) for column in options['columns']],
-        }
-
     def _other_alert(self, values):
         """Texto de alerta si "Otros (revisar)" supera el umbral en algun grupo de columnas."""
         worst = None
@@ -294,29 +326,6 @@ class CashFlowNifReportHandler(models.AbstractModel):
         if worst is None:
             return None
         return _('"Otros (revisar)" representa %.1f%% del total de salidas: revisa las reglas de clasificación.', worst * 100.0)
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-    def _is_zero(self, amount):
-        return self.env.company.currency_id.is_zero(amount or 0.0)
-
-    @staticmethod
-    def _is_unfolded(options, line_id):
-        return bool(options.get('unfold_all') or line_id in (options.get('unfolded_lines') or []))
-
-    def _column(self, report, options, column, value):
-        """Celda del reporte; ``value=None`` deja la celda vacia."""
-        if value is None:
-            return {'name': '', 'no_format': None, 'class': 'number', 'figure_type': column.get('figure_type', 'monetary')}
-        try:
-            return report._build_column_dict(value, column, options=options)
-        except (TypeError, AttributeError):
-            try:
-                name = report.format_value(options, value, figure_type='monetary')
-            except TypeError:
-                name = report.format_value(value, figure_type='monetary')
-            return {'name': name, 'no_format': value, 'class': 'number', 'figure_type': 'monetary'}
 
     # ------------------------------------------------------------------
     # Drill-down

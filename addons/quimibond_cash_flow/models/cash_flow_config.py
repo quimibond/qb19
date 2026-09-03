@@ -365,13 +365,17 @@ class CashFlowConfig(models.Model):
                 break
         if not native_menu or not native_menu.parent_id:
             return False
-        menu.write({'parent_id': native_menu.parent_id.id, 'sequence': native_menu.sequence + 1})
-        # Los hermanos con la misma secuencia se corren uno para que el orden sea determinista.
+        forecast_menu = self.env.ref('quimibond_cash_flow.menu_cash_flow_forecast_report', raise_if_not_found=False)
+        own = menu + forecast_menu
+        # Los hermanos posteriores se corren para dejar hueco determinista.
         siblings = self.env['ir.ui.menu'].search([
-            ('parent_id', '=', native_menu.parent_id.id), ('id', 'not in', (menu + native_menu).ids),
+            ('parent_id', '=', native_menu.parent_id.id), ('id', 'not in', (own + native_menu).ids),
             ('sequence', '>', native_menu.sequence)])
         for sibling in siblings:
-            sibling.sequence += 1
+            sibling.sequence += len(own)
+        menu.write({'parent_id': native_menu.parent_id.id, 'sequence': native_menu.sequence + 1})
+        if forecast_menu:
+            forecast_menu.write({'parent_id': native_menu.parent_id.id, 'sequence': native_menu.sequence + 2})
         return True
 
     def action_open_report(self):
