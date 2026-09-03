@@ -173,10 +173,10 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
         ])
         return sum(lines.mapped('balance'))
 
-    def assertReconciles(self, sliced, totals, expected_delta=None):
+    def assertReconciles(self, sliced, totals, expected_delta=None, date_from=FROM, date_to=TO):
         """Ambos metodos cuadran entre si y contra la variacion real de efectivo."""
         lines = sliced['lines']
-        delta = self._cash_delta()
+        delta = self._cash_delta(date_from, date_to)
         ind_total = totals['ind_net'] + totals['ind_fx']
         dir_total = totals['dir_net'] + totals['dir_fx']
         self.assertAlmostEqual(ind_total, delta, 2, 'El método indirecto no cuadra con la variación de efectivo')
@@ -359,16 +359,19 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
         self.assertLine(sliced, 'wc_taxes_payable', 0.0)
 
     def test_60_closing_move_is_ignored_and_opening_balance(self):
-        """Saldo inicial de 2025 y poliza de cierre (mes 13) que traspasa el
-        resultado a capital: no afecta el resultado ni el capital."""
+        """Saldo inicial de 2025 y poliza de cierre (mes 13, fechada el 31 de
+        diciembre como exige la localizacion) que traspasa el resultado a
+        capital: el periodo diciembre-marzo no la ve ni en resultado ni en
+        capital."""
         has_closing_flag = 'l10n_mx_closing_move' in self.env['account.move']._fields
+        date_from = date(2025, 12, 1)
         self._entry([('102.01.002', 5000, 0), ('301.01.01', 0, 5000)], day=date(2025, 3, 1), journal=self.j_bank)
         self._entry([('102.01.002', 200, 0), ('401.01.01', 0, 200)], day=date(2025, 7, 1), journal=self.j_bank)
         if has_closing_flag:
-            self._entry([('401.01.01', 200, 0), ('301.01.01', 0, 200)], day=date(2026, 1, 1), closing=True)
+            self._entry([('401.01.01', 200, 0), ('301.01.01', 0, 200)], day=date(2025, 12, 31), closing=True)
         self._entry([('102.01.002', 300, 0), ('401.01.01', 0, 300)], day=date(2026, 2, 1), journal=self.j_bank)
-        result, sliced, totals = self._compute()
-        self.assertReconciles(sliced, totals, expected_delta=300.0)
+        result, sliced, totals = self._compute(date_from, TO)
+        self.assertReconciles(sliced, totals, expected_delta=300.0, date_from=date_from, date_to=TO)
         self.assertAlmostEqual(sliced['opening_cash'], 5200.0, 2)
         self.assertAlmostEqual(totals['closing_cash_book'], 5500.0, 2)
         self.assertLine(sliced, 'result', 300.0)
