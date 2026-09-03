@@ -64,6 +64,11 @@ TO = date(2026, 3, 31)
 
 @tagged('post_install', '-at_install', 'quimibond_cash_flow')
 class TestCashFlowNifB2(AccountTestInvoicingCommon):
+    # Plan generico a proposito: la compania de prueba se crea en una base
+    # que puede ser copia de produccion (Odoo.sh) y con la localizacion
+    # mexicana los codigos de cuenta y de diario (CAMBI, TAX, 105.01.01...)
+    # ya existirian y chocarian con los del plan minimo de abajo.
+    chart_template = 'generic_coa'
 
     @classmethod
     def setUpClass(cls):
@@ -72,21 +77,52 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
         cls.currency = cls.company.currency_id
         cls.acc = {}
         for code, name, account_type in ACCOUNTS:
-            cls.acc[code] = cls.env['account.account'].with_company(cls.company).create({
-                'code': code, 'name': name, 'account_type': account_type,
-                'reconcile': account_type in ('asset_receivable', 'liability_payable'),
-            })
-        Journal = cls.env['account.journal']
+            cls.acc[code] = cls._account(code, name, account_type)
         cls.j_misc = cls.company_data['default_journal_misc']
         cls.j_bank = cls.company_data['default_journal_bank']
-        cls.j_fx = Journal.create({'name': 'Diferencia de cambio', 'code': 'CAMBI', 'type': 'general', 'company_id': cls.company.id})
-        cls.j_payroll = Journal.create({'name': 'Nominas', 'code': 'NOM', 'type': 'general', 'company_id': cls.company.id})
-        cls.j_imss = Journal.create({'name': 'IMSS', 'code': 'IMSS', 'type': 'general', 'company_id': cls.company.id})
-        cls.j_tax = Journal.create({'name': 'Impuestos', 'code': 'TAX', 'type': 'general', 'company_id': cls.company.id})
-        cls.partner_sat = cls.env['res.partner'].create({'name': 'Servicio de Administración Tributaria'})
+        cls.j_fx = cls._journal('Diferencia de cambio', 'CAMBI')
+        cls.j_payroll = cls._journal('Nominas', 'NOM')
+        cls.j_imss = cls._journal('IMSS', 'IMSS')
+        cls.j_tax = cls._journal('Impuestos', 'TAX')
+        # Mismo criterio de busqueda que _load_default_rules, para que la
+        # regla por contacto apunte al mismo partner que usa el test.
+        Partner = cls.env['res.partner']
+        cls.partner_sat = Partner.search([('name', 'ilike', 'Servicio de Administración Tributaria'),
+                                          ('company_id', 'in', [False, cls.company.id])], limit=1)
+        if not cls.partner_sat:
+            cls.partner_sat = Partner.create({'name': 'Servicio de Administración Tributaria'})
         cls.config = cls.env['cash.flow.config']._get_for_company(cls.company)
+        cls.config.rule_ids.unlink()
         cls.config._load_default_rules()
         cls.engine = cls.env['cash.flow.engine']
+
+    @classmethod
+    def _account(cls, code, name, account_type):
+        """Cuenta del plan minimo: reutiliza la existente con ese codigo en la
+        compania (ajustando tipo/nombre) o la crea."""
+        Account = cls.env['account.account'].with_company(cls.company).with_context(active_test=False)
+        account = Account.search([('company_ids', 'in', cls.company.ids), ('code', '=', code)], limit=1)
+        vals = {'name': name, 'account_type': account_type,
+                'reconcile': account_type in ('asset_receivable', 'liability_payable')}
+        if account:
+            account.write(dict(vals, active=True))
+            return account
+        return Account.create(dict(vals, code=code))
+
+    @classmethod
+    def _journal(cls, name, code):
+        """Diario por nombre (como lo buscan los defaults); se crea si falta,
+        con un codigo libre en la compania."""
+        Journal = cls.env['account.journal'].with_context(active_test=False)
+        journal = Journal.search([('company_id', '=', cls.company.id), ('name', '=ilike', name)], limit=1)
+        if journal:
+            journal.active = True
+            return journal
+        used = set(Journal.search([('company_id', '=', cls.company.id)]).mapped('code'))
+        candidate, n = code, 1
+        while candidate in used:
+            candidate, n = '%s%d' % (code[:4], n), n + 1
+        return Journal.create({'name': name, 'code': candidate, 'type': 'general', 'company_id': cls.company.id})
 
     # ------------------------------------------------------------------
     # Helpers
@@ -395,12 +431,14 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
 class TestCashFlowReportHandler(AccountTestInvoicingCommon):
     """El handler solo existe con account_reports (Enterprise); si no esta
     instalado el test se omite en vez de fallar."""
+    chart_template = 'generic_coa'
 
     def test_report_renders(self):
         if 'account.report.custom.handler' not in self.env or not self.env['ir.module.module'].search(
                 [('name', '=', 'account_reports'), ('state', '=', 'installed')]):
             self.skipTest('account_reports no está instalado')
         config = self.env['cash.flow.config']._get_for_company(self.env.company)
+        config.rule_ids.unlink()
         config._load_default_rules()
         report = self.env.ref('quimibond_cash_flow.cash_flow_nif_report')
         options = report.get_options({'date': {'date_from': '2026-01-01', 'date_to': '2026-03-31', 'mode': 'range', 'filter': 'custom'}})
