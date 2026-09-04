@@ -64,6 +64,7 @@
                             <field name="forecast_include_orders"/>
                             <field name="forecast_order_days"/>
                             <field name="forecast_max_delay"/>
+                            <field name="forecast_history_months"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
@@ -136,8 +137,9 @@
                         <page string="Compromisos (proyección)" name="forecast">
                             <p class="text-muted">
                                 Pagos y cobros que Odoo no conoce por sí mismo: nómina, impuestos, préstamos, arrendamientos, rentas.
-                                Importe negativo = salida. "Sembrar compromisos del historial" los estima con el promedio de los últimos
-                                3 meses del método directo; ajusta o captura el dato real.
+                                Importe negativo = salida. "Sembrar compromisos del historial" detecta la periodicidad real de los pagos
+                                (semanal, quincenal, mensual por día) en los últimos meses del método directo, con importe mediano y
+                                siguiente fecha; la nota de cada renglón muestra las fechas e importes observados. Ajusta o captura el dato real.
                             </p>
                             <field name="forecast_item_ids" context="{'default_config_id': id}">
                                 <list editable="bottom" default_order="date_start, id">

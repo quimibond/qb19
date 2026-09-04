@@ -162,6 +162,42 @@ class CashFlowEngine(models.AbstractModel):
         }
 
     @api.model
+    def direct_daily(self, config, date_from, date_to):
+        """Movimientos de efectivo del metodo directo dia por dia, con el
+        contacto real: ``[(fecha, line_key, account_id, partner_id, importe)]``
+        (importe = efecto en efectivo). Misma clasificacion que ``compute``
+        (reglas + reclasificacion por factura conciliada), a granularidad de
+        dia, para aprender la periodicidad de los pagos."""
+        config.ensure_one()
+        company = config.company_id
+        accounts = config._get_accounts()
+        cash_ids = set(config.get_cash_account_ids())
+        rules = self._compile_rules(config, accounts)
+        rule_partners = {r['partner_id'] for r in rules['direct'] if r['partner_id']}
+        out = []
+
+        def key_for(account_id, journal_id, move_type, partner_id, is_debit):
+            return (account_id, journal_id, move_type, partner_id if partner_id in rule_partners else None, True, is_debit)
+
+        for row in self._query_groups(company, date_from, date_to, cash_ids, [],
+                                      granularity='day', keep_partner=True, cash_moves_only=True):
+            day, account_id, journal_id, move_type, partner_id, _cash_move, is_debit, balance, is_cash = row
+            if is_cash:
+                continue
+            rule = self._find_rule(rules['direct'], key_for(account_id, journal_id, move_type, partner_id, is_debit))
+            out.append((day, rule['line_key'] if rule else 'd_other', account_id, partner_id, -balance))
+        for row in self._query_invoice_allocations(company, date_from, date_to, cash_ids, [],
+                                                   granularity='day', keep_partner=True):
+            (day, cp_account_id, journal_id, cp_move_type, partner_id, cp_is_debit,
+             inv_account_id, _inv_move_type, inv_is_debit, amount) = row
+            cash_effect = -amount if cp_is_debit else amount
+            cp_rule = self._find_rule(rules['direct'], key_for(cp_account_id, journal_id, cp_move_type, partner_id, cp_is_debit))
+            inv_rule = self._find_rule(rules['direct'], key_for(inv_account_id, journal_id, cp_move_type, partner_id, inv_is_debit))
+            out.append((day, cp_rule['line_key'] if cp_rule else 'd_other', cp_account_id, partner_id, -cash_effect))
+            out.append((day, inv_rule['line_key'] if inv_rule else 'd_other', inv_account_id, partner_id, cash_effect))
+        return out
+
+    @api.model
     def slice(self, result, date_from, date_to):
         """Importes de ``result`` restringidos a los meses entre ``date_from``
         y ``date_to`` (ambos deben caer en meses cubiertos por ``result``).
@@ -325,18 +361,29 @@ class CashFlowEngine(models.AbstractModel):
             return "AND COALESCE(am.l10n_mx_closing_move, FALSE) = FALSE"
         return ""
 
-    def _query_groups(self, company, date_from, date_to, cash_ids, rule_partner_ids):
+    @staticmethod
+    def _period_expr(granularity):
+        return "aml.date" if granularity == 'day' else "date_trunc('month', aml.date)::date"
+
+    def _query_groups(self, company, date_from, date_to, cash_ids, rule_partner_ids,
+                      granularity='month', keep_partner=False, cash_moves_only=False):
         """Apuntes registrados del periodo (sin polizas de cierre) agrupados
-        por (mes, cuenta, diario, tipo de asiento, contacto-de-regla,
-        toca-efectivo, lado). Los apuntes de cuentas de efectivo vienen con
-        ``is_cash = TRUE`` para calcular la variacion del periodo."""
+        por (periodo, cuenta, diario, tipo de asiento, contacto, toca-efectivo,
+        lado). Los apuntes de cuentas de efectivo vienen con ``is_cash = TRUE``
+        para calcular la variacion del periodo.
+
+        ``granularity``: 'month' (reporte) o 'day' (aprendizaje de patrones).
+        ``keep_partner``: conservar el contacto real en vez de solo los
+        contactos con regla. ``cash_moves_only``: solo polizas que tocan
+        efectivo (metodo directo)."""
         self.env['account.move.line'].flush_model(['account_id', 'journal_id', 'partner_id', 'balance', 'date', 'parent_state', 'company_id', 'move_id'])
         self.env['account.move'].flush_model(['move_type', 'state'] + (['l10n_mx_closing_move'] if 'l10n_mx_closing_move' in self.env['account.move']._fields else []))
         cash_tuple = tuple(cash_ids) or (-1,)
+        partner_expr = "l.partner_id" if keep_partner else "CASE WHEN l.partner_id = ANY(%(partner_ids)s) THEN l.partner_id END"
         query = """
             WITH lines AS (
                 SELECT aml.move_id, aml.account_id, aml.journal_id, aml.partner_id, aml.balance,
-                       date_trunc('month', aml.date)::date AS month,
+                       {period_expr} AS period,
                        am.move_type,
                        aml.account_id IN %(cash_ids)s AS is_cash
                   FROM account_move_line aml
@@ -351,19 +398,20 @@ class CashFlowEngine(models.AbstractModel):
             cash_moves AS (
                 SELECT DISTINCT move_id FROM lines WHERE is_cash
             )
-            SELECT l.month,
+            SELECT l.period,
                    l.account_id,
                    l.journal_id,
                    l.move_type,
-                   CASE WHEN l.partner_id = ANY(%(partner_ids)s) THEN l.partner_id END AS partner_id,
+                   {partner_expr} AS partner_id,
                    cm.move_id IS NOT NULL AS cash_move,
                    l.balance > 0 AS is_debit,
                    SUM(l.balance) AS balance,
                    l.is_cash
               FROM lines l
-              LEFT JOIN cash_moves cm ON cm.move_id = l.move_id
+              {cash_join} cash_moves cm ON cm.move_id = l.move_id
              GROUP BY 1, 2, 3, 4, 5, 6, 7, 9
-        """.format(closing_clause=self._closing_move_clause())
+        """.format(closing_clause=self._closing_move_clause(), period_expr=self._period_expr(granularity),
+                   partner_expr=partner_expr, cash_join="JOIN" if cash_moves_only else "LEFT JOIN")
         self.env.cr.execute(query, {
             'cash_ids': cash_tuple,
             'company_id': company.id,
@@ -373,7 +421,8 @@ class CashFlowEngine(models.AbstractModel):
         })
         return self.env.cr.fetchall()
 
-    def _query_invoice_allocations(self, company, date_from, date_to, cash_ids, rule_partner_ids):
+    def _query_invoice_allocations(self, company, date_from, date_to, cash_ids, rule_partner_ids,
+                                   granularity='month', keep_partner=False):
         """Parte de cada contraparte por cobrar/pagar (de polizas que tocan
         efectivo) que esta conciliada con una factura, agrupada por la cuenta
         dominante de esa factura. Devuelve filas
@@ -386,7 +435,7 @@ class CashFlowEngine(models.AbstractModel):
         query = """
             WITH lines AS (
                 SELECT aml.id, aml.move_id, aml.account_id, aml.journal_id, aml.partner_id, aml.balance,
-                       date_trunc('month', aml.date)::date AS month,
+                       {period_expr} AS month,
                        am.move_type,
                        aml.account_id IN %(cash_ids)s AS is_cash
                   FROM account_move_line aml
@@ -447,7 +496,7 @@ class CashFlowEngine(models.AbstractModel):
                    i.cp_account_id,
                    i.journal_id,
                    i.cp_move_type,
-                   CASE WHEN i.partner_id = ANY(%(partner_ids)s) THEN i.partner_id END AS partner_id,
+                   {partner_expr} AS partner_id,
                    i.cp_is_debit,
                    d.account_id AS inv_account_id,
                    i.inv_move_type,
@@ -456,7 +505,8 @@ class CashFlowEngine(models.AbstractModel):
               FROM inv i
               JOIN dominant d ON d.move_id = i.inv_move_id
              GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
-        """.format(closing_clause=self._closing_move_clause())
+        """.format(closing_clause=self._closing_move_clause(), period_expr=self._period_expr(granularity),
+                   partner_expr="i.partner_id" if keep_partner else "CASE WHEN i.partner_id = ANY(%(partner_ids)s) THEN i.partner_id END")
         self.env.cr.execute(query, {
             'cash_ids': tuple(cash_ids),
             'company_id': company.id,

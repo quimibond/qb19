@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Estado de flujo de efectivo NIF B-2',
-    'version': '19.0.1.3.1',
+    'version': '19.0.1.4.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Accounting',
     'summary': 'Estado de flujo de efectivo conforme a la NIF B-2 (metodo indirecto y directo) sobre el motor de reportes Enterprise.',
