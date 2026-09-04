@@ -149,9 +149,9 @@ NIF B-2): una columna por semana a partir de la fecha del filtro, más el total.
 | Renglón | Fuente |
 |---|---|
 | Saldo inicial | Saldo contable de las cuentas de efectivo (misma definición) |
-| Cobros vencidos | Cuentas por cobrar ya vencidas, repartidas en las primeras N semanas (`forecast_overdue_weeks`) |
+| Cobros / pagos vencidos | Cuentas por cobrar y por pagar ya vencidas, repartidas en las primeras N semanas (`forecast_overdue_weeks`); las vencidas hace más de `forecast_stale_days` (180) se excluyen y se muestran en un renglón informativo |
 | Cobros por vencimiento | Cuentas por cobrar abiertas por vencimiento + atraso promedio real del cliente (cobros conciliados de 12 meses, ponderado por importe, tope `forecast_max_delay`) |
-| Pedidos de venta sin facturar | `sale.order` confirmados, importe pendiente de facturar, a fecha de entrega + `forecast_order_days` + atraso del cliente |
+| Pedidos de venta sin facturar | Opcional (`forecast_include_orders`, apagado por default): `sale.order` confirmados no más viejos que `forecast_stale_days`, importe pendiente de facturar, a fecha de entrega + `forecast_order_days` + atraso del cliente |
 | Pagos vencidos / por vencimiento | Cuentas por pagar abiertas |
 | Órdenes de compra sin factura | `purchase.order` confirmadas, importe pendiente, a `date_planned` + `forecast_order_days` |
 | Compromisos | `cash.flow.forecast.item`: nómina, impuestos, préstamos, arrendamientos, intereses, activo fijo, partes relacionadas, otros; recurrencia única / semanal / 14 días / mensual |
@@ -162,9 +162,14 @@ pedidos o compromisos que lo alimentan. El botón **Sembrar compromisos del
 historial** detecta la periodicidad real de los pagos en los últimos meses
 (`forecast_history_months`, 3 por default) del método directo, día por día y
 por categoría y contacto: series **semanales** (día de la semana e importe
-mediano), series **mensuales por ranura de día** (1, 5, 10, 15, 20, 25, fin de
-mes) que se repiten en la mayoría de los meses, y un resto **irregular** como
-promedio mensual marcado para revisar. Cada compromiso lleva su siguiente fecha
+mediano), series **mensuales por grupo de días cercanos** (a 4 días o menos;
+28–31 = fin de mes) presentes en la mayoría de los meses, con el total mensual
+mediano del grupo (dos rentas fijas pagadas en días distintos quedan en un
+renglón), y un resto **irregular** (al menos dos ocurrencias) como promedio
+mensual marcado para revisar. Un pago aislado no se siembra, y las series por
+debajo de `forecast_min_item_amount` tampoco. Las reglas por diario o contacto
+del método directo mandan sobre la reclasificación por factura (la nómina
+facturada por una prestadora sigue siendo nómina). Cada compromiso lleva su siguiente fecha
 y una nota con las fechas e importes observados; los capturados a mano se
 conservan.
 

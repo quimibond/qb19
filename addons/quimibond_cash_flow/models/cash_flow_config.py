@@ -531,6 +531,7 @@ class CashFlowRule(models.Model):
             'line_key': self.line_key,
             'mode': self.mode,
             'mirror_line_key': self.mirror_line_key,
+            'criterion': self.criterion,
         }
 
     def action_open_config(self):

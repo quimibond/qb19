@@ -11,7 +11,7 @@ from datetime import timedelta
 from odoo import _, fields, models
 from odoo.tools.misc import format_date
 
-from .cash_flow_forecast import FLOW_ROWS, FORECAST_ROW_LABELS
+from .cash_flow_forecast import FLOW_ROWS, FORECAST_ROW_LABELS, INFO_ROWS
 
 
 class CashFlowForecastReportHandler(models.AbstractModel):
@@ -83,8 +83,9 @@ class CashFlowForecastReportHandler(models.AbstractModel):
                 out[total_key] = sum(values_by_week.get(i, 0.0) for i in range(n_weeks))
             return out
 
-        merged_rows = {key: defaultdict(float) for key in FLOW_ROWS}
-        merged_details = {key: defaultdict(lambda: defaultdict(float)) for key in FLOW_ROWS}   # row -> partner -> idx -> amt
+        shown_rows = FLOW_ROWS + INFO_ROWS
+        merged_rows = {key: defaultdict(float) for key in shown_rows}
+        merged_details = {key: defaultdict(lambda: defaultdict(float)) for key in shown_rows}   # row -> partner -> idx -> amt
         partner_names = {}
         opening = [0.0] * n_weeks
         net = [0.0] * n_weeks
@@ -92,7 +93,7 @@ class CashFlowForecastReportHandler(models.AbstractModel):
         below = set()
         min_cash = 0.0
         for _config, result in results:
-            for key in FLOW_ROWS:
+            for key in shown_rows:
                 for idx, amount in result['rows'].get(key, {}).items():
                     merged_rows[key][idx] += amount
                 for idx, dets in result['details'].get(key, {}).items():
@@ -149,6 +150,34 @@ class CashFlowForecastReportHandler(models.AbstractModel):
         lines.append(self._forecast_line(report, options, 'net', FORECAST_ROW_LABELS['net'], per_group(dict(enumerate(net))), level=1))
         lines.append(self._forecast_line(report, options, 'closing', FORECAST_ROW_LABELS['closing'],
                                          per_group(dict(enumerate(closing))), level=1, total_value=closing[-1] if closing else 0.0))
+        # Renglones informativos (no suman): partidas excluidas por antiguedad.
+        for key in INFO_ROWS:
+            amounts = per_group(merged_rows[key])
+            if all(self._is_zero(v) for v in amounts.values()):
+                continue
+            line_id = report._get_generic_line_id(None, None, markup=key)
+            lines.append({
+                'id': line_id,
+                'name': FORECAST_ROW_LABELS[key],
+                'level': 2,
+                'unfoldable': True,
+                'unfolded': self._is_unfolded(options, line_id),
+                'class': 'text-muted fst-italic',
+                'columns': [self._column(report, options, column, amounts.get(column['column_group_key'], 0.0)) for column in week_columns],
+            })
+            for partner_id, by_week in sorted(merged_details[key].items(), key=lambda kv: -abs(sum(kv[1].values()))):
+                p_amounts = per_group(by_week)
+                if all(self._is_zero(v) for v in p_amounts.values()):
+                    continue
+                name = self.env['res.partner'].browse(partner_id).display_name if partner_id else _('Sin contacto')
+                lines.append({
+                    'id': report._get_generic_line_id('res.partner', partner_id or None, markup=key, parent_line_id=line_id),
+                    'parent_id': line_id,
+                    'name': name,
+                    'level': 3,
+                    'caret_options': 'cash_flow_forecast',
+                    'columns': [self._column(report, options, column, p_amounts.get(column['column_group_key'], 0.0)) for column in week_columns],
+                })
         return [(0, line) for line in lines]
 
     def _forecast_line(self, report, options, key, name, amounts, level=1, total_value=None):

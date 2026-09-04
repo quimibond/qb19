@@ -22,7 +22,7 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         cls.config.rule_ids.unlink()
         cls.config._load_default_rules()
         cls.config.write({'forecast_weeks': 13, 'forecast_overdue_weeks': 2, 'forecast_include_orders': False,
-                          'forecast_min_cash': 0.0})
+                          'forecast_min_cash': 0.0, 'forecast_min_item_amount': 0.0, 'forecast_stale_days': 180})
         cls.engine = cls.env['cash.flow.forecast.engine']
         cls.bank = cls.company_data['default_journal_bank']
         cls.bank_account = cls.bank.default_account_id
@@ -95,7 +95,9 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         Item.create({'config_id': self.config.id, 'name': 'Renta', 'category': 'lease', 'amount': -700,
                      'date_start': date(2026, 8, 31), 'recurrence': 'monthly'})
         result = self.engine.compute(self.config, TODAY)
-        self.assertAlmostEqual(result['rows']['p_overdue'][0], -100.0, 2)
+        # Vencido repartido en 2 semanas (forecast_overdue_weeks).
+        self.assertAlmostEqual(result['rows']['p_overdue'][0], -50.0, 2)
+        self.assertAlmostEqual(result['rows']['p_overdue'][1], -50.0, 2)
         self.assertAlmostEqual(result['rows']['p_due'][self._week(result, TODAY + timedelta(days=14))], -400.0, 2)
         # Nomina cada 14 dias dentro de 13 semanas (91 dias) desde el dia 8: dias 8, 22, ..., 92 → 6 pagos.
         self.assertAlmostEqual(sum(result['rows']['i_payroll'].values()), -6000.0, 2)
@@ -105,6 +107,16 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         total = sum(result['net'])
         self.assertAlmostEqual(total, -100 - 400 - 6000 - 5000 - 2100, 2)
         self.assertAlmostEqual(result['closing'][-1], result['opening_cash'] + total, 2)
+
+    def test_35_stale_items_are_excluded_but_reported(self):
+        self._invoice(self.partner_ok, 700, date(2025, 6, 1), date(2025, 7, 1))                      # 14 meses vencida
+        self._invoice(self.vendor, 250, date(2025, 8, 1), date(2025, 9, 1), move_type='in_invoice')  # 12 meses vencida
+        result = self.engine.compute(self.config, TODAY)
+        self.assertAlmostEqual(result['rows']['r_stale'][0], 700.0, 2)
+        self.assertAlmostEqual(result['rows']['p_stale'][0], -250.0, 2)
+        self.assertAlmostEqual(sum(result['net']), 0.0, 2)
+        summary = self.config.compute_forecast(TODAY)
+        self.assertEqual(summary['rows']['r_stale'][0], 700.0)
 
     def test_40_min_cash_alert_and_summary(self):
         self.config.forecast_min_cash = 1_000_000.0
@@ -159,8 +171,23 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
             self._cash_payment(payroll_account, 5000, last)
             self._cash_payment(tax_account, 3000, cursor.replace(day=17), partner=sat)
             cursor = (last + timedelta(days=1))
+        # Arrendador con dos rentas fijas al mes en dias variables + un pago aislado.
+        lease_account = Account.create({'code': '701.11.0001', 'name': 'Arrendamiento financiero', 'account_type': 'expense_other'})
+        lessor = self.env['res.partner'].create({'name': 'Arrendadora test'})
+        cursor = window_start
+        for offsets in ((26, 30), (24, 28), (20, 25)):
+            for day_no, amount in zip(offsets, (355675.26, 397242.00)):
+                self._cash_payment(lease_account, amount, cursor.replace(day=day_no), partner=lessor)
+            cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+        loan_account = Account.create({'code': '252.01.04', 'name': 'Préstamo', 'account_type': 'liability_non_current'})
+        self._cash_payment(loan_account, 1965200.0, window_start.replace(day=17), partner=lessor)   # aislado
         self.config.action_load_forecast_items_from_history()
         items = self.config.forecast_item_ids.filtered('auto')
+        lease = items.filtered(lambda i: i.category == 'lease')
+        self.assertEqual(len(lease), 1, lease.mapped('name'))
+        self.assertAlmostEqual(lease.amount, -(355675.26 + 397242.00), 2)
+        self.assertEqual(lease.partner_id, lessor)
+        self.assertFalse(items.filtered(lambda i: i.category == 'loans'), 'un pago aislado no es compromiso')
         payroll = items.filtered(lambda i: i.category == 'payroll')
         weekly = payroll.filtered(lambda i: i.recurrence == 'weekly')
         self.assertEqual(len(weekly), 1)

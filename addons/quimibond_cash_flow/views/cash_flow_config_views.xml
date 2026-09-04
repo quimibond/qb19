@@ -65,6 +65,8 @@
                             <field name="forecast_order_days"/>
                             <field name="forecast_max_delay"/>
                             <field name="forecast_history_months"/>
+                            <field name="forecast_stale_days"/>
+                            <field name="forecast_min_item_amount"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>

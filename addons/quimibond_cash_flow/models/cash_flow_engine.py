@@ -136,6 +136,8 @@ class CashFlowEngine(models.AbstractModel):
              inv_account_id, inv_move_type, inv_is_debit, amount) = row
             cash_effect = -amount if cp_is_debit else amount
             cp_rule = self._find_rule(rules['direct'], (cp_account_id, journal_id, cp_move_type, partner_id, True, cp_is_debit))
+            if not self._reclassifiable(cp_rule):
+                continue
             # La cuenta dominante se clasifica con el tipo de la poliza del pago
             # (no el de la factura): las reglas por tipo de asiento son para
             # cobros/pagos registrados dentro de la propia factura.
@@ -192,6 +194,8 @@ class CashFlowEngine(models.AbstractModel):
              inv_account_id, _inv_move_type, inv_is_debit, amount) = row
             cash_effect = -amount if cp_is_debit else amount
             cp_rule = self._find_rule(rules['direct'], key_for(cp_account_id, journal_id, cp_move_type, partner_id, cp_is_debit))
+            if not self._reclassifiable(cp_rule):
+                continue
             inv_rule = self._find_rule(rules['direct'], key_for(inv_account_id, journal_id, cp_move_type, partner_id, inv_is_debit))
             out.append((day, cp_rule['line_key'] if cp_rule else 'd_other', cp_account_id, partner_id, -cash_effect))
             out.append((day, inv_rule['line_key'] if inv_rule else 'd_other', inv_account_id, partner_id, cash_effect))
@@ -327,6 +331,14 @@ class CashFlowEngine(models.AbstractModel):
         for rule in config.rule_ids.filtered(lambda r: r.method in ('indirect', 'direct')).sorted(lambda r: (r.sequence, r.id)):
             compiled[rule.method].append(rule._compile(accounts))
         return compiled
+
+    @staticmethod
+    def _reclassifiable(rule):
+        """Una contraparte clasificada por una regla explicita (diario o
+        contacto) no se reclasifica por la factura conciliada: esas reglas
+        son la decision del usuario (p. ej. todo lo del diario Nominas es
+        nomina aunque venga facturado por una prestadora)."""
+        return rule is None or rule.get('criterion') not in ('journal', 'partner')
 
     @staticmethod
     def _find_rule(rules, key):
