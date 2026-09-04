@@ -334,11 +334,16 @@ class CashFlowEngine(models.AbstractModel):
 
     @staticmethod
     def _reclassifiable(rule):
-        """Una contraparte clasificada por una regla explicita (diario o
-        contacto) no se reclasifica por la factura conciliada: esas reglas
-        son la decision del usuario (p. ej. todo lo del diario Nominas es
-        nomina aunque venga facturado por una prestadora)."""
-        return rule is None or rule.get('criterion') not in ('journal', 'partner')
+        """La reclasificacion por la factura conciliada solo refina las
+        contrapartes *genericas*: clientes y proveedores (o sin regla). Una
+        cuenta por cobrar/pagar con clasificacion propia (nomina, impuestos,
+        prestamos, arrendamiento, partes relacionadas...) o clasificada por
+        una regla explicita de diario o contacto se queda como esta: la
+        provision de nomina facturada por una prestadora sigue siendo
+        nomina aunque la factura lleve sueldos o servicios."""
+        if rule is None:
+            return True
+        return rule.get('line_key') in ('d_customers', 'd_suppliers') and rule.get('criterion') not in ('journal', 'partner')
 
     @staticmethod
     def _find_rule(rules, key):

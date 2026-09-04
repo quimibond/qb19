@@ -313,6 +313,21 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
         self.assertLine(sliced, 'd_assets_bought', -400.0)
         self.assertLine(sliced, 'd_suppliers', 0.0)
 
+    def test_16_specific_payable_keeps_its_classification(self):
+        """Provision de nomina registrada como factura de proveedor con cuenta
+        por pagar 210.01.01: el pago es nomina, no proveedores, aunque la
+        linea dominante de la factura sea un gasto."""
+        self._pay_straight_to_bank()
+        payroll_partner = self.env['res.partner'].create({'name': 'Prestadora de nómina'})
+        payroll_partner.with_company(self.company).property_account_payable_id = self.acc['210.01.01']
+        bill = self._entry([('601.01.01', 2500, 0)], day=date(2026, 2, 10), move_type='in_invoice', partner=payroll_partner)
+        self.assertEqual(bill.line_ids.filtered(lambda l: l.display_type == 'payment_term').account_id, self.acc['210.01.01'])
+        self._register_payment(bill, date(2026, 2, 15))
+        _result, sliced, totals = self._compute()
+        self.assertReconciles(sliced, totals, expected_delta=-2500.0)
+        self.assertLine(sliced, 'd_payroll', -2500.0)
+        self.assertLine(sliced, 'd_suppliers', 0.0)
+
     def test_15_invoice_touching_cash_is_not_reclassified(self):
         """Factura de proveedor cuya linea de producto es una cuenta de efectivo
         (venta de USD a casa de cambio contra recibos pendientes) y su pago

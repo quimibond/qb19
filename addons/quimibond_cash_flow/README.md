@@ -167,9 +167,11 @@ mediano), series **mensuales por grupo de días cercanos** (a 4 días o menos;
 mediano del grupo (dos rentas fijas pagadas en días distintos quedan en un
 renglón), y un resto **irregular** (al menos dos ocurrencias) como promedio
 mensual marcado para revisar. Un pago aislado no se siembra, y las series por
-debajo de `forecast_min_item_amount` tampoco. Las reglas por diario o contacto
-del método directo mandan sobre la reclasificación por factura (la nómina
-facturada por una prestadora sigue siendo nómina). Cada compromiso lleva su siguiente fecha
+debajo de `forecast_min_item_amount` tampoco. La reclasificación por factura solo
+refina clientes y proveedores genéricos: una cuenta por pagar con clasificación
+propia (nómina 210, impuestos, préstamos, arrendamiento, partes relacionadas) o
+una regla por diario o contacto se respeta (la provisión de nómina facturada por
+una prestadora sigue siendo nómina). Cada compromiso lleva su siguiente fecha
 y una nota con las fechas e importes observados; los capturados a mano se
 conservan.
 
