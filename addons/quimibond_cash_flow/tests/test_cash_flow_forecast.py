@@ -239,7 +239,9 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
                 self._cash_payment(lease_account, amount, cursor.replace(day=day_no), partner=lessor)
             cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
         loan_account = Account.create({'code': '252.01.04', 'name': 'Préstamo', 'account_type': 'liability_non_current'})
-        self._cash_payment(loan_account, 1965200.0, window_start.replace(day=17), partner=lessor)   # aislado
+        # Liquidacion en dos exhibiciones del mismo mes: no es un compromiso recurrente.
+        self._cash_payment(loan_account, 8000000.0, window_start.replace(day=26), partner=lessor)
+        self._cash_payment(loan_account, 4000000.0, window_start.replace(day=27), partner=lessor)
         self.config.action_load_forecast_items_from_history()
         items = self.config.forecast_item_ids.filtered('auto')
         lease = items.filtered(lambda i: i.category == 'lease')
