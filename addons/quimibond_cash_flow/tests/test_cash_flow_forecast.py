@@ -23,7 +23,7 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         cls.config._load_default_rules()
         cls.config.write({'forecast_weeks': 13, 'forecast_overdue_weeks': 2, 'forecast_include_orders': False,
                           'forecast_min_cash': 0.0, 'forecast_min_item_amount': 0.0, 'forecast_stale_days': 180,
-                          'forecast_include_runrate': False})
+                          'forecast_include_runrate': False, 'forecast_payables_by_rate': False})
         cls.engine = cls.env['cash.flow.forecast.engine']
         cls.bank = cls.company_data['default_journal_bank']
         cls.bank_account = cls.bank.default_account_id
@@ -149,6 +149,34 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         self.assertAlmostEqual(rr[12], expected_weekly, 0)
         self.assertEqual(result['rows']['p_runrate'], {})
 
+    def test_38_payables_scheduled_at_historical_rate(self):
+        """Con ritmo historico de 1,000/semana a proveedores, las cuentas por
+        pagar (vencidas primero) se pagan a ese ritmo y no todas en su fecha."""
+        self.config.write({'forecast_include_runrate': True, 'forecast_payables_by_rate': True,
+                           'forecast_history_months': 3})
+        window_end = TODAY.replace(day=1) - timedelta(days=1)
+        window_start = window_end.replace(day=1)
+        for _i in range(2):
+            window_start = (window_start - timedelta(days=1)).replace(day=1)
+        day = window_start
+        while day + timedelta(days=7) <= window_end:
+            bill = self._invoice(self.vendor, 1000, day, day + timedelta(days=7), move_type='in_invoice')
+            self._pay(bill, day + timedelta(days=7))
+            day += timedelta(days=7)
+        # Abiertas: 2,500 vencidas + 800 que vence en la semana 3.
+        self._invoice(self.vendor, 2500, date(2026, 7, 1), TODAY - timedelta(days=20), move_type='in_invoice')
+        self._invoice(self.vendor, 800, date(2026, 8, 20), TODAY + timedelta(days=16), move_type='in_invoice')
+        result = self.engine.compute(self.config, TODAY)
+        weeks_in_window = (window_end - window_start).days / 7.0
+        capacity = sum(1 for _ in range(int((window_end - window_start).days // 7))) * 1000.0 / weeks_in_window
+        po, pd = result['rows']['p_overdue'], result['rows']['p_due']
+        self.assertAlmostEqual(po[0], -capacity, 0)
+        self.assertAlmostEqual(po[1], -capacity, 0)
+        self.assertAlmostEqual(sum(po.values()), -2500.0, 2)
+        self.assertAlmostEqual(sum(pd.values()), -800.0, 2)
+        self.assertAlmostEqual(min(pd), 2)           # no antes de su vencimiento
+        self.assertAlmostEqual(sum(po.values()) + sum(pd.values()), -3300.0, 2)
+
     def test_40_min_cash_alert_and_summary(self):
         self.config.forecast_min_cash = 1_000_000.0
         Item = self.env['cash.flow.forecast.item']
@@ -239,3 +267,34 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         # Volver a sembrar reemplaza, no duplica.
         self.config.action_load_forecast_items_from_history()
         self.assertEqual(len(self.config.forecast_item_ids.filtered('auto')), len(items))
+
+    def test_55_bimonthly_pattern(self):
+        """IMSS: ~250 el 17 cada mes y ~1,000 en meses impares → mensual 250 +
+        bimestral 750 en meses impares."""
+        self.config.forecast_history_months = 6
+        Account = self.env['account.account'].with_company(self.company)
+        # 213.x → impuestos (por contacto); 211.x seria nomina y se agrupa sin contacto.
+        imss_account = Account.create({'code': '213.03.02', 'name': 'Impuestos por pagar', 'account_type': 'liability_current'})
+        imss = self.env['res.partner'].create({'name': 'Instituto Mexicano del Seguro Social test'})
+        today = date.today()
+        window_end = today.replace(day=1) - timedelta(days=1)
+        cursor = window_end.replace(day=1)
+        for _i in range(5):
+            cursor = (cursor - timedelta(days=1)).replace(day=1)
+        while cursor <= window_end:
+            amount = 1000.0 if cursor.month % 2 == 1 else 250.0
+            self._cash_payment(imss_account, amount, cursor.replace(day=17), partner=imss)
+            cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+        self.config.action_load_forecast_items_from_history()
+        items = self.config.forecast_item_ids.filtered(lambda i: i.auto and i.partner_id == imss)
+        monthly = items.filtered(lambda i: i.recurrence == 'monthly')
+        bimonthly = items.filtered(lambda i: i.recurrence == 'bimonthly')
+        self.assertEqual(len(monthly), 1)
+        self.assertEqual(len(bimonthly), 1)
+        self.assertAlmostEqual(monthly.amount, -250.0, 2)
+        self.assertAlmostEqual(bimonthly.amount, -750.0, 2)
+        self.assertEqual(bimonthly.date_start.month % 2, 1)
+        self.assertEqual(bimonthly.date_start.day, 17)
+        occurrences = bimonthly._occurrences(bimonthly.date_start, bimonthly.date_start + timedelta(days=120))
+        self.assertEqual(len(occurrences), 2)
+        self.assertEqual((occurrences[1][0].month - occurrences[0][0].month) % 12, 2)
