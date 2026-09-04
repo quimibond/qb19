@@ -25,12 +25,12 @@ from odoo import _, api, fields, models
 from .cash_flow_engine import add_months, month_start
 
 FORECAST_ROWS = [
-    # (key, label, kind)  kind: 'flow' | 'balance'
+    # (key, label, kind)  kind: 'flow' | 'balance' | 'info' (se muestra, no suma)
     ('opening', 'Saldo inicial de efectivo', 'balance'),
-    ('r_overdue', 'Cobros vencidos (por cobrar, repartidos)', 'flow'),
+    ('r_overdue', 'Cobros vencidos (repartidos en las primeras semanas)', 'flow'),
     ('r_due', 'Cobros a clientes por vencimiento (con atraso histórico)', 'flow'),
     ('r_orders', 'Pedidos de venta confirmados sin facturar', 'flow'),
-    ('p_overdue', 'Pagos vencidos a proveedores', 'flow'),
+    ('p_overdue', 'Pagos vencidos a proveedores (repartidos en las primeras semanas)', 'flow'),
     ('p_due', 'Pagos a proveedores por vencimiento', 'flow'),
     ('p_orders', 'Órdenes de compra confirmadas sin factura', 'flow'),
     ('i_payroll', 'Nómina y cuotas (compromisos)', 'flow'),
@@ -43,9 +43,12 @@ FORECAST_ROWS = [
     ('i_other', 'Otros compromisos', 'flow'),
     ('net', 'Flujo neto de la semana', 'balance'),
     ('closing', 'Saldo final de efectivo', 'balance'),
+    ('r_stale', 'Por cobrar con antigüedad excesiva (excluido de la proyección)', 'info'),
+    ('p_stale', 'Por pagar con antigüedad excesiva (excluido de la proyección)', 'info'),
 ]
 FORECAST_ROW_LABELS = {key: label for key, label, _kind in FORECAST_ROWS}
 FLOW_ROWS = [key for key, _label, kind in FORECAST_ROWS if kind == 'flow']
+INFO_ROWS = [key for key, _label, kind in FORECAST_ROWS if kind == 'info']
 
 ITEM_CATEGORIES = [
     ('payroll', 'Nómina y cuotas'),
@@ -135,7 +138,14 @@ class CashFlowConfigForecast(models.Model):
     forecast_overdue_weeks = fields.Integer(
         string='Semanas para cobrar lo vencido', default=4,
         help='Los cobros ya vencidos se reparten por igual en las primeras N semanas.')
-    forecast_include_orders = fields.Boolean(string='Incluir pedidos confirmados sin facturar', default=True)
+    forecast_include_orders = fields.Boolean(string='Incluir pedidos confirmados sin facturar', default=False)
+    forecast_stale_days = fields.Integer(
+        string='Antigüedad máxima (días)', default=180,
+        help='Cuentas por cobrar/pagar vencidas hace más de estos días, y pedidos más viejos, se excluyen de la '
+             'proyección y se muestran en un renglón informativo.')
+    forecast_min_item_amount = fields.Monetary(
+        string='Importe mínimo de compromiso', currency_field='currency_id', default=5000.0,
+        help='Las series del historial cuyo importe mensual queda por debajo no se siembran.')
     forecast_order_days = fields.Integer(
         string='Días de pedido a cobro/pago', default=30,
         help='Plazo que se suma a la fecha de entrega de un pedido sin facturar para estimar su cobro o pago.')
@@ -176,10 +186,6 @@ class CashFlowConfigForecast(models.Model):
     # ------------------------------------------------------------------
     # Deteccion de periodicidad
     # ------------------------------------------------------------------
-    # Ranuras de dia del mes: (dia tipico, dias que caen en la ranura)
-    MONTH_SLOTS = [(1, range(1, 4)), (5, range(4, 8)), (10, range(8, 13)), (15, range(13, 18)),
-                   (20, range(18, 23)), (25, range(23, 28)), (31, range(28, 32))]
-
     def _learn_forecast_items(self):
         """Devuelve ``(valores de cash.flow.forecast.item, (inicio, fin) de la ventana)``."""
         self.ensure_one()
@@ -230,43 +236,58 @@ class CashFlowConfigForecast(models.Model):
             if count >= 0.75 * n_weeks and count >= 3:
                 on_weekday = [a for d, a in points if d.weekday() == weekday]
                 weekly_amount = median(on_weekday)
-                values.append(self._pattern_item_vals(
-                    category, partner_id, '%s · semanal (%s)' % (prefix, self._weekday_name(weekday)),
-                    -weekly_amount, self._next_weekday(today, weekday), 'weekly',
-                    [(d, a) for d, a in points if d.weekday() == weekday]))
-                for d in list(remaining):
-                    if d.weekday() == weekday:
-                        rest = remaining[d] - weekly_amount
-                        if rest > 0.25 * weekly_amount:
-                            remaining[d] = rest
-                        else:
-                            del remaining[d]
+                if weekly_amount * 4 >= (self.forecast_min_item_amount or 0.0):
+                    values.append(self._pattern_item_vals(
+                        category, partner_id, '%s · semanal (%s)' % (prefix, self._weekday_name(weekday)),
+                        -weekly_amount, self._next_weekday(today, weekday), 'weekly',
+                        [(d, a) for d, a in points if d.weekday() == weekday]))
+                    for d in list(remaining):
+                        if d.weekday() == weekday:
+                            rest = remaining[d] - weekly_amount
+                            if rest > 0.25 * weekly_amount:
+                                remaining[d] = rest
+                            else:
+                                del remaining[d]
 
-        # ---- series mensuales por ranura de dia -----------------------
-        slots = defaultdict(list)          # dia tipico -> [(fecha, importe)]
-        for d, a in sorted(remaining.items()):
-            for typical, days in self.MONTH_SLOTS:
-                if d.day in days:
-                    slots[typical].append((d, a))
-                    break
+        # ---- series mensuales por grupo de dias cercanos ---------------
+        # Los pagos se agrupan por dia del mes: dias a 4 o menos de distancia
+        # forman un grupo (28-31 cuentan como fin de mes). Un grupo presente
+        # en la mayoria de los meses es una serie mensual con el total
+        # mensual mediano del grupo (asi dos rentas fijas pagadas en dias
+        # distintos del mismo mes quedan en un solo renglon con su total).
         needed_months = max(2, (2 * n_months + 2) // 3) if n_months > 1 else 1
+        clusters = []                       # [[(fecha, importe), ...]]
+        last_day = None
+        for d, a in sorted(remaining.items(), key=lambda kv: (min(kv[0].day, 28), kv[0])):
+            day = min(d.day, 28)
+            if clusters and day - last_day <= 4 and day - min(clusters[-1][0][0].day, 28) <= 8:
+                clusters[-1].append((d, a))
+            else:
+                clusters.append([(d, a)])
+            last_day = day
         leftover = []
-        for typical, entries in sorted(slots.items()):
+        min_amount = self.forecast_min_item_amount or 0.0
+        for entries in clusters:
             per_month = defaultdict(float)
             for d, a in entries:
                 per_month[(d.year, d.month)] += a
             if len(per_month) >= needed_months:
-                typical_day = int(median(d.day for d, _a in entries)) if typical != 31 else 31
                 amount = median(per_month.values())
+                if amount < min_amount:
+                    continue
+                days = [d.day for d, _a in entries]
+                typical_day = 31 if max(days) >= 28 and median(days) >= 26 else int(median(days))
                 values.append(self._pattern_item_vals(
-                    category, partner_id, '%s · mensual (día %s)' % (prefix, 'último' if typical == 31 else typical_day),
+                    category, partner_id, '%s · mensual (día %s)' % (prefix, 'último' if typical_day == 31 else typical_day),
                     -amount, self._next_month_day(today, typical_day), 'monthly', entries))
             else:
                 leftover += entries
 
         # ---- resto irregular: promedio mensual, marcado ----------------
+        # Un pago aislado no se convierte en compromiso: no hay evidencia de
+        # que se repita. Solo lo irregular con al menos dos ocurrencias.
         leftover_total = sum(a for _d, a in leftover)
-        if leftover and not currency.is_zero(leftover_total / n_months):
+        if len(leftover) >= 2 and leftover_total / n_months >= max(min_amount, currency.rounding):
             values.append(self._pattern_item_vals(
                 category, partner_id, '%s · irregular (promedio mensual, revisar)' % prefix,
                 -leftover_total / n_months, self._next_month_day(today, 31), 'monthly', leftover))
@@ -338,16 +359,26 @@ class CashFlowForecastEngine(models.AbstractModel):
 
         cash_ids = set(config.get_cash_account_ids())
         opening = self.env['cash.flow.engine']._query_cash_balance(company, date_from, cash_ids)
+        for key in INFO_ROWS:
+            rows[key] = defaultdict(float)
+            details[key] = defaultdict(list)
+        stale_before = date_from - timedelta(days=max(config.forecast_stale_days or 0, 0)) if config.forecast_stale_days else None
+
+        def spread_overdue(row, residual, partner_id, partner_name, model, ids):
+            share = residual / overdue_weeks
+            for idx in range(overdue_weeks):
+                add(row, idx, share, partner_id, partner_name, model, ids)
 
         # ---- cuentas por cobrar --------------------------------------
         delays = self._partner_delays(company, date_from, config.forecast_max_delay or 90)
         overdue_weeks = max(min(config.forecast_overdue_weeks or 1, n_weeks), 1)
         for line_id, partner_id, partner_name, due, residual in self._open_items(company, 'asset_receivable'):
+            if stale_before and due < stale_before:
+                add('r_stale', 0, residual, partner_id, partner_name, 'account.move.line', [line_id])
+                continue
             expected = due + timedelta(days=delays.get(partner_id, 0))
             if expected < date_from:
-                share = residual / overdue_weeks
-                for idx in range(overdue_weeks):
-                    add('r_overdue', idx, share, partner_id, partner_name, 'account.move.line', [line_id])
+                spread_overdue('r_overdue', residual, partner_id, partner_name, 'account.move.line', [line_id])
                 continue
             idx = week_of(expected)
             if idx is not None:
@@ -355,8 +386,11 @@ class CashFlowForecastEngine(models.AbstractModel):
 
         # ---- cuentas por pagar ---------------------------------------
         for line_id, partner_id, partner_name, due, residual in self._open_items(company, 'liability_payable'):
+            if stale_before and due < stale_before:
+                add('p_stale', 0, residual, partner_id, partner_name, 'account.move.line', [line_id])
+                continue
             if due < date_from:
-                add('p_overdue', 0, residual, partner_id, partner_name, 'account.move.line', [line_id])
+                spread_overdue('p_overdue', residual, partner_id, partner_name, 'account.move.line', [line_id])
                 continue
             idx = week_of(due)
             if idx is not None:
@@ -366,11 +400,15 @@ class CashFlowForecastEngine(models.AbstractModel):
         if config.forecast_include_orders:
             term = timedelta(days=config.forecast_order_days or 0)
             for order_id, partner_id, partner_name, when, amount in self._open_sale_orders(company):
+                if stale_before and when < stale_before:
+                    continue
                 expected = max(when, date_from) + term + timedelta(days=delays.get(partner_id, 0))
                 idx = week_of(expected)
                 if idx is not None:
                     add('r_orders', idx, amount, partner_id, partner_name, 'sale.order', [order_id])
             for order_id, partner_id, partner_name, when, amount in self._open_purchase_orders(company):
+                if stale_before and when < stale_before:
+                    continue
                 expected = max(when, date_from) + term
                 idx = week_of(expected)
                 if idx is not None:
@@ -421,7 +459,7 @@ class CashFlowForecastEngine(models.AbstractModel):
             'date_from': fields.Date.to_string(result['date_from']),
             'weeks': [{'start': fields.Date.to_string(s), 'end': fields.Date.to_string(e)} for s, e in result['weeks']],
             'opening_cash': r(result['opening_cash']),
-            'rows': {key: [r(result['rows'][key].get(i, 0.0)) for i in range(len(result['weeks']))] for key in FLOW_ROWS},
+            'rows': {key: [r(result['rows'][key].get(i, 0.0)) for i in range(len(result['weeks']))] for key in FLOW_ROWS + INFO_ROWS},
             'row_labels': dict(FORECAST_ROW_LABELS),
             'net': [r(v) for v in result['net']],
             'closing': [r(v) for v in result['closing']],
