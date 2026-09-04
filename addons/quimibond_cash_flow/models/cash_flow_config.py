@@ -157,19 +157,22 @@ DEFAULT_RULES = [
     ('direct', 'd_taxes', 'partner', False, {'partner_name': 'Instituto Mexicano del Seguro Social'}),
     ('direct', 'd_taxes', 'partner', False, {'partner_name': 'Gobierno de la Ciudad de México'}),
     ('direct', 'd_taxes', 'partner', False, {'partner_name': 'Gobierno del Estado de México'}),
-    ('direct', 'd_lease', 'partner', False, {'partner_name': 'ICOMATEX'}),
-    ('direct', 'd_lease', 'partner', False, {'partner_name': "Fong's"}),
-    ('direct', 'd_lease', 'partner', False, {'partner_name': 'Interlock'}),
-    ('direct', 'd_lease', 'partner', False, {'partner_name': 'Bianco'}),
+    ('direct', 'd_insurance', 'partner', False, {'partner_name': 'EL AGUILA COMPAÑIA DE SEGUROS',
+                                                 'note': 'Indemnización de seguros (repone activo fijo).'}),
     # ===== Metodo directo: por cuenta de contraparte =======================
-    ('direct', 'd_customers', 'account_prefix', '105.,206.,4', {'note': 'Clientes, anticipos y ventas directas.'}),
-    ('direct', 'd_payroll', 'account_prefix', '210.,211.,215.,205.06.001,205.06.002,205.06.003,205.06.004'),
+    # Cuando la contraparte es una cuenta por cobrar/pagar conciliada con una
+    # factura, el motor clasifica por la cuenta dominante de la factura (su
+    # linea de producto mas grande), asi que estas reglas por cuenta aplican
+    # tambien a facturas de activo fijo, arrendamiento, intereses, etc.
+    ('direct', 'd_customers', 'account_prefix', '105.,206.,4', {'note': 'Clientes, anticipos y ventas.'}),
+    ('direct', 'd_payroll', 'account_prefix', '210.,211.,215.,205.06.001,205.06.002,205.06.003,205.06.004,107.01.',
+     {'note': 'Nómina, prestaciones y préstamos a empleados.'}),
     ('direct', 'd_taxes', 'account_prefix',
      '205.02.05,205.02.06,205.02.07,205.02.08,208.,209.,213.,216.,113.,114.,118.,119.'),
     ('direct', 'd_interest', 'account_prefix', '701.04.'),
     ('direct', 'd_bank_fees', 'account_prefix', '701.10.'),
     ('direct', 'd_interest_received', 'account_prefix', '702.04.'),
-    ('direct', 'd_lease', 'account_prefix', '701.11.0001,205.02.02,205.02.03'),
+    ('direct', 'd_lease', 'account_prefix', '701.11.,205.02.02,205.02.03'),
     ('direct', 'd_loans_received', 'account_prefix', '252.01.,205.06.03', {'side': 'credit'}),
     ('direct', 'd_loans_paid', 'account_prefix', '252.01.,205.06.03', {'side': 'debit'}),
     ('direct', 'd_assets_sold', 'account_prefix', '704.23.0003,701.01.0004,17',
@@ -178,9 +181,11 @@ DEFAULT_RULES = [
     ('direct', 'd_assets_sold', 'account_prefix', '15,16,18', {'side': 'credit'}),
     ('direct', 'd_related', 'account_prefix', '107.03.001,205.04.01'),
     ('direct', 'd_equity', 'account_prefix', '3'),
+    ('direct', 'd_other_income', 'account_prefix', '702.,704.', {'note': 'Otros ingresos cobrados (no cambiarios).'}),
     ('direct', 'd_suppliers', 'account_prefix',
-     '201.,205.02.01,205.03.01,205.06.01,205.06.02,205.02.09,120.,115.,5,6',
-     {'note': 'Proveedores, acreedores, anticipos a proveedores, inventario y gastos pagados directamente.'}),
+     '201.,205.02.01,205.03.01,205.06.01,205.06.02,205.02.09,109.23.,107.05.,120.,115.,5,6',
+     {'note': 'Proveedores, acreedores, agente aduanal e importaciones (109.23), deudores por comprobar, '
+              'anticipos a proveedores, inventario y gastos pagados directamente.'}),
     ('direct', 'd_suppliers', 'account_type', 'liability_payable', {'note': 'Red de seguridad por tipo.'}),
     ('direct', 'd_customers', 'account_type', 'asset_receivable', {'note': 'Red de seguridad por tipo.'}),
 ]

@@ -53,10 +53,12 @@ LINES = [
     ('d_taxes', 'dir_operating', 'Impuestos y cuotas pagados (SAT, IMSS, ISN)', 'direct'),
     ('d_bank_fees', 'dir_operating', 'Comisiones bancarias', 'direct'),
     ('d_interest_received', 'dir_operating', 'Intereses cobrados', 'direct'),
+    ('d_other_income', 'dir_operating', 'Otros ingresos cobrados', 'direct'),
     ('d_other', 'dir_operating', 'Otros (revisar)', 'direct'),
     # ---- Metodo directo: inversion ---------------------------------------
     ('d_assets_bought', 'dir_investing', 'Activo fijo comprado', 'direct'),
     ('d_assets_sold', 'dir_investing', 'Activo fijo vendido', 'direct'),
+    ('d_insurance', 'dir_investing', 'Indemnizaciones de seguros cobradas', 'direct'),
     # ---- Metodo directo: financiamiento ----------------------------------
     ('d_loans_received', 'dir_financing', 'Préstamos recibidos', 'direct'),
     ('d_loans_paid', 'dir_financing', 'Préstamos pagados', 'direct'),

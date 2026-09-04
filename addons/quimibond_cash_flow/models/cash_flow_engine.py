@@ -20,7 +20,14 @@ Toda poliza registrada suma cero, asi que para cualquier periodo:
   linea espejo, de modo que la suma no cambia.
 * **Metodo directo**: se reparte cada apunte que no es efectivo *de las
   polizas que tocan efectivo*. Como las polizas que no tocan efectivo no
-  mueven efectivo, el total es identico al del metodo indirecto.
+  mueven efectivo, el total es identico al del metodo indirecto. Cuando la
+  contraparte es una cuenta por cobrar/pagar conciliada con una factura, la
+  parte conciliada se reclasifica por la *cuenta dominante* de esa factura
+  (su linea de producto mas grande, sin impuestos): asi un pago de una
+  factura de maquinaria es "activo fijo comprado" y el cobro de la venta de
+  una maquina es "activo fijo vendido", sin descomponer la factura en todas
+  sus lineas. El total no cambia: lo que se quita de la cuenta por pagar se
+  pone en la cuenta dominante.
 
 Ninguna de las dos particiones descarta apuntes: lo que no cae en una regla
 va a "Sin clasificar" / "Otros (revisar)".
@@ -122,6 +129,19 @@ class CashFlowEngine(models.AbstractModel):
             if cash_move:
                 rule = self._find_rule(rules['direct'], key)
                 add(rule['line_key'] if rule else 'd_other', account_id, month, -balance)
+
+        # ---- directo: reclasificacion por la factura conciliada -------------
+        for row in self._query_invoice_allocations(company, date_from, date_to, cash_ids, rule_partner_ids):
+            (month, cp_account_id, journal_id, cp_move_type, partner_id, cp_is_debit,
+             inv_account_id, inv_move_type, inv_is_debit, amount) = row
+            cash_effect = -amount if cp_is_debit else amount
+            cp_rule = self._find_rule(rules['direct'], (cp_account_id, journal_id, cp_move_type, partner_id, True, cp_is_debit))
+            # La cuenta dominante se clasifica con el tipo de la poliza del pago
+            # (no el de la factura): las reglas por tipo de asiento son para
+            # cobros/pagos registrados dentro de la propia factura.
+            inv_rule = self._find_rule(rules['direct'], (inv_account_id, journal_id, cp_move_type, partner_id, True, inv_is_debit))
+            add(cp_rule['line_key'] if cp_rule else 'd_other', cp_account_id, month, -cash_effect)
+            add(inv_rule['line_key'] if inv_rule else 'd_other', inv_account_id, month, cash_effect)
 
         cash_delta_book = self._query_cash_book_delta(company, date_from, date_to, cash_ids)
         opening_cash = self._query_cash_balance(company, date_from - timedelta(days=1), cash_ids)
@@ -346,6 +366,89 @@ class CashFlowEngine(models.AbstractModel):
         """.format(closing_clause=self._closing_move_clause())
         self.env.cr.execute(query, {
             'cash_ids': cash_tuple,
+            'company_id': company.id,
+            'date_from': date_from,
+            'date_to': date_to,
+            'partner_ids': list(rule_partner_ids) or [-1],
+        })
+        return self.env.cr.fetchall()
+
+    def _query_invoice_allocations(self, company, date_from, date_to, cash_ids, rule_partner_ids):
+        """Parte de cada contraparte por cobrar/pagar (de polizas que tocan
+        efectivo) que esta conciliada con una factura, agrupada por la cuenta
+        dominante de esa factura. Devuelve filas
+        ``(mes, cuenta_contraparte, diario, tipo_poliza, contacto_de_regla,
+        contraparte_es_cargo, cuenta_dominante, tipo_factura,
+        dominante_es_cargo, importe_conciliado)``."""
+        if not cash_ids:
+            return []
+        self.env['account.partial.reconcile'].flush_model(['debit_move_id', 'credit_move_id', 'amount'])
+        query = """
+            WITH lines AS (
+                SELECT aml.id, aml.move_id, aml.account_id, aml.journal_id, aml.partner_id, aml.balance,
+                       date_trunc('month', aml.date)::date AS month,
+                       am.move_type,
+                       aml.account_id IN %(cash_ids)s AS is_cash
+                  FROM account_move_line aml
+                  JOIN account_move am ON am.id = aml.move_id
+                 WHERE aml.company_id = %(company_id)s
+                   AND aml.parent_state = 'posted'
+                   AND aml.date >= %(date_from)s
+                   AND aml.date <= %(date_to)s
+                   AND aml.balance != 0
+                   {closing_clause}
+            ),
+            cash_moves AS (
+                SELECT DISTINCT move_id FROM lines WHERE is_cash
+            ),
+            cp AS (
+                SELECT l.*
+                  FROM lines l
+                  JOIN cash_moves cm ON cm.move_id = l.move_id
+                  JOIN account_account acc ON acc.id = l.account_id
+                 WHERE NOT l.is_cash
+                   AND acc.account_type IN ('asset_receivable', 'liability_payable')
+            ),
+            parts AS (
+                SELECT cp.id AS cp_id, cp.month, cp.journal_id, cp.partner_id, cp.move_id AS cp_move_id,
+                       cp.account_id AS cp_account_id, cp.move_type AS cp_move_type, cp.balance > 0 AS cp_is_debit,
+                       apr.amount,
+                       CASE WHEN apr.debit_move_id = cp.id THEN apr.credit_move_id ELSE apr.debit_move_id END AS inv_line_id
+                  FROM cp
+                  JOIN account_partial_reconcile apr ON apr.debit_move_id = cp.id OR apr.credit_move_id = cp.id
+            ),
+            inv AS (
+                SELECT p.*, il.move_id AS inv_move_id, im.move_type AS inv_move_type
+                  FROM parts p
+                  JOIN account_move_line il ON il.id = p.inv_line_id
+                  JOIN account_move im ON im.id = il.move_id
+                 WHERE im.move_type IN ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt')
+                   AND il.move_id != p.cp_move_id
+            ),
+            dominant AS (
+                SELECT DISTINCT ON (il.move_id) il.move_id, il.account_id, il.balance > 0 AS is_debit
+                  FROM account_move_line il
+                 WHERE il.move_id IN (SELECT inv_move_id FROM inv)
+                   AND il.display_type = 'product'
+                   AND il.balance != 0
+                 ORDER BY il.move_id, abs(il.balance) DESC, il.id
+            )
+            SELECT i.month,
+                   i.cp_account_id,
+                   i.journal_id,
+                   i.cp_move_type,
+                   CASE WHEN i.partner_id = ANY(%(partner_ids)s) THEN i.partner_id END AS partner_id,
+                   i.cp_is_debit,
+                   d.account_id AS inv_account_id,
+                   i.inv_move_type,
+                   d.is_debit AS inv_is_debit,
+                   SUM(i.amount) AS amount
+              FROM inv i
+              JOIN dominant d ON d.move_id = i.inv_move_id
+             GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+        """.format(closing_clause=self._closing_move_clause())
+        self.env.cr.execute(query, {
+            'cash_ids': tuple(cash_ids),
             'company_id': company.id,
             'date_from': date_from,
             'date_to': date_to,
