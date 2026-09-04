@@ -154,6 +154,7 @@ NIF B-2): una columna por semana a partir de la fecha del filtro, más el total.
 | Pedidos de venta sin facturar | Opcional (`forecast_include_orders`, apagado por default): `sale.order` confirmados no más viejos que `forecast_stale_days`, importe pendiente de facturar, a fecha de entrega + `forecast_order_days` + atraso del cliente |
 | Pagos vencidos / por vencimiento | Cuentas por pagar abiertas |
 | Órdenes de compra sin factura | `purchase.order` confirmadas, importe pendiente, a `date_planned` + `forecast_order_days` |
+| Ritmo histórico | Opcional (`forecast_include_runrate`, encendido): a partir de la semana en que se agota el DSO (días factura→cobro, ponderado, 12 meses) se estima cada semana el promedio semanal de cobros a clientes de los últimos `forecast_history_months` menos lo ya conocido; igual para pagos a proveedores con el DPO. Renglones separados para distinguir conocido de estimado |
 | Compromisos | `cash.flow.forecast.item`: nómina, impuestos, préstamos, arrendamientos, intereses, activo fijo, partes relacionadas, otros; recurrencia única / semanal / 14 días / mensual |
 | Saldo final | Se resalta cualquier semana por debajo de `forecast_min_cash` |
 
