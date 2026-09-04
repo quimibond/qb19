@@ -506,6 +506,12 @@ class TestCashFlowReportHandler(AccountTestInvoicingCommon):
         self.assertEqual(len(options['column_groups']), 4)   # 3 meses + acumulado
         lines = report._get_lines(options)
         names = [line['name'] for line in lines]
-        self.assertIn('MÉTODO INDIRECTO (NIF B-2)', names)
-        self.assertIn('MÉTODO DIRECTO (resumido)', names)
-        self.assertTrue(any(n.startswith('Diferencia: efectivo final calculado') for n in names))
+        self.assertIn('Método indirecto', names)
+        self.assertIn('Método directo', names)
+        self.assertIn('Diferencia no explicada', names)
+        # Variante solo indirecto: sin encabezados de metodo ni lineas del directo.
+        variant = self.env.ref('quimibond_cash_flow.cash_flow_nif_report_indirect')
+        v_options = variant.get_options({'date': {'date_from': '2026-01-01', 'date_to': '2026-03-31', 'mode': 'range', 'filter': 'custom'}})
+        v_names = [line['name'] for line in variant._get_lines(v_options)]
+        self.assertNotIn('Método directo', v_names)
+        self.assertIn('Incremento neto según método indirecto', v_names)

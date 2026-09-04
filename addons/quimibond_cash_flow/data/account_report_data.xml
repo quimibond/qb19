@@ -23,6 +23,56 @@
         </field>
     </record>
 
+    <!-- Variantes: mismo motor, una sola presentacion. El selector de variante
+         del reporte permite ver solo el metodo indirecto o solo el directo. -->
+    <record id="cash_flow_nif_report_indirect" model="account.report">
+        <field name="name">Flujo de efectivo NIF B-2 · método indirecto</field>
+        <field name="root_report_id" ref="cash_flow_nif_report"/>
+        <field name="sequence">1</field>
+        <field name="availability_condition">always</field>
+        <field name="default_opening_date_filter">this_year</field>
+        <field name="filter_date_range" eval="True"/>
+        <field name="filter_period_comparison" eval="True"/>
+        <field name="filter_unfold_all" eval="True"/>
+        <field name="filter_show_draft" eval="False"/>
+        <field name="filter_journals" eval="False"/>
+        <field name="filter_hide_0_lines">never</field>
+        <field name="filter_multi_company">selector</field>
+        <field name="custom_handler_model_id" ref="model_account_cash_flow_nif_report_handler"/>
+        <field name="column_ids">
+            <record id="cash_flow_nif_report_indirect_column_balance" model="account.report.column">
+                <field name="name">Importe</field>
+                <field name="expression_label">balance</field>
+                <field name="figure_type">monetary</field>
+                <field name="sequence">1</field>
+            </record>
+        </field>
+    </record>
+
+    <record id="cash_flow_nif_report_direct" model="account.report">
+        <field name="name">Flujo de efectivo NIF B-2 · método directo</field>
+        <field name="root_report_id" ref="cash_flow_nif_report"/>
+        <field name="sequence">2</field>
+        <field name="availability_condition">always</field>
+        <field name="default_opening_date_filter">this_year</field>
+        <field name="filter_date_range" eval="True"/>
+        <field name="filter_period_comparison" eval="True"/>
+        <field name="filter_unfold_all" eval="True"/>
+        <field name="filter_show_draft" eval="False"/>
+        <field name="filter_journals" eval="False"/>
+        <field name="filter_hide_0_lines">never</field>
+        <field name="filter_multi_company">selector</field>
+        <field name="custom_handler_model_id" ref="model_account_cash_flow_nif_report_handler"/>
+        <field name="column_ids">
+            <record id="cash_flow_nif_report_direct_column_balance" model="account.report.column">
+                <field name="name">Importe</field>
+                <field name="expression_label">balance</field>
+                <field name="figure_type">monetary</field>
+                <field name="sequence">1</field>
+            </record>
+        </field>
+    </record>
+
     <record id="action_cash_flow_nif_report" model="ir.actions.client">
         <field name="name">Flujo de efectivo NIF B-2</field>
         <field name="tag">account_report</field>
