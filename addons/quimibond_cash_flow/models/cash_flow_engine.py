@@ -424,13 +424,23 @@ class CashFlowEngine(models.AbstractModel):
                   JOIN account_move im ON im.id = il.move_id
                  WHERE im.move_type IN ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt')
                    AND il.move_id != p.cp_move_id
+                   -- Una factura que toca efectivo (p. ej. venta de USD a casa
+                   -- de cambio registrada como factura contra recibos
+                   -- pendientes) ya se clasifico como poliza de efectivo: su
+                   -- pago se queda en la cuenta por pagar y se neutraliza ahi.
+                   AND NOT EXISTS (
+                       SELECT 1 FROM account_move_line x
+                        WHERE x.move_id = il.move_id AND x.account_id IN %(cash_ids)s
+                   )
             ),
             dominant AS (
                 SELECT DISTINCT ON (il.move_id) il.move_id, il.account_id, il.balance > 0 AS is_debit
                   FROM account_move_line il
+                  JOIN account_account acc ON acc.id = il.account_id
                  WHERE il.move_id IN (SELECT inv_move_id FROM inv)
                    AND il.display_type = 'product'
                    AND il.balance != 0
+                   AND acc.account_type NOT IN ('asset_receivable', 'liability_payable')
                  ORDER BY il.move_id, abs(il.balance) DESC, il.id
             )
             SELECT i.month,
