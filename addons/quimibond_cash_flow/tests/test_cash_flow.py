@@ -313,6 +313,18 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
         self.assertLine(sliced, 'd_assets_bought', -400.0)
         self.assertLine(sliced, 'd_suppliers', 0.0)
 
+    def test_15_invoice_touching_cash_is_not_reclassified(self):
+        """Factura de proveedor cuya linea de producto es una cuenta de efectivo
+        (venta de USD a casa de cambio contra recibos pendientes) y su pago
+        desde el banco USD: es un traspaso, no un pago a proveedor ni "otros"."""
+        self._pay_straight_to_bank()
+        bill = self._entry([('102.01.34', 17000, 0)], day=date(2026, 2, 10), move_type='in_invoice', partner=self.partner_a)
+        self._register_payment(bill, date(2026, 2, 10))
+        _result, sliced, totals = self._compute()
+        self.assertReconciles(sliced, totals, expected_delta=0.0)
+        self.assertLine(sliced, 'd_suppliers', 0.0)
+        self.assertLine(sliced, 'd_other', 0.0)
+
     def test_20_transfer_between_banks_is_not_a_flow(self):
         self._entry([('102.09.00', 1000, 0), ('102.01.002', 0, 1000)], day=date(2026, 2, 10), journal=self.j_bank)
         self._entry([('102.01.006', 1000, 0), ('102.09.00', 0, 1000)], day=date(2026, 2, 11), journal=self.j_bank)
