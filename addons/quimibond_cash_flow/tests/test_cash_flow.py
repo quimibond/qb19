@@ -54,6 +54,7 @@ ACCOUNTS = [
     ('702.01.0001', 'Utilidad cambiaria', 'income_other'),
     ('701.04.0001', 'Intereses bancarios', 'expense_other'),
     ('701.10.0001', 'Comisiones bancarias', 'expense_other'),
+    ('701.11.0001', 'Arrendamiento financiero', 'expense_other'),
     ('704.23.0003', 'Utilidad en venta de activo fijo', 'income_other'),
     ('701.01.0004', 'Pérdida en venta de activo fijo', 'expense_other'),
 ]
@@ -141,10 +142,17 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
                 vals.update({'debit': debit, 'credit': credit})
             return vals
 
+        if journal is None:
+            if move_type.startswith('in_'):
+                journal = self.company_data['default_journal_purchase']
+            elif move_type.startswith('out_'):
+                journal = self.company_data['default_journal_sale']
+            else:
+                journal = self.j_misc
         vals = {
             'move_type': move_type,
             'date': day,
-            'journal_id': (journal or self.j_misc).id,
+            'journal_id': journal.id,
             'partner_id': partner.id if partner else False,
             'line_ids': [Command.create(line_vals(code, debit, credit)) for code, debit, credit in lines],
         }
@@ -254,6 +262,56 @@ class TestCashFlowNifB2(AccountTestInvoicingCommon):
         self.assertReconciles(sliced, totals, expected_delta=116.0)
         self.assertLine(sliced, 'd_customers', 116.0)
         self.assertLine(sliced, 'd_taxes', 0.0)
+
+    def _pay_straight_to_bank(self):
+        """Los pagos van directo a la cuenta del banco (sin cuenta de
+        recibos/pagos pendientes) para que la poliza del pago toque efectivo."""
+        methods = self.j_bank.inbound_payment_method_line_ids | self.j_bank.outbound_payment_method_line_ids
+        methods.write({'payment_account_id': self.j_bank.default_account_id.id})
+
+    def _register_payment(self, invoice, day):
+        """Registra el pago/cobro de ``invoice`` en el banco (conciliado)."""
+        return self.env['account.payment.register'].with_context(
+            active_model='account.move', active_ids=invoice.ids).create({
+                'payment_date': day, 'journal_id': self.j_bank.id})._create_payments()
+
+    def test_13_invoice_dominant_account_reclassifies_payments(self):
+        """Pagos y cobros de facturas se clasifican por la cuenta dominante de
+        la factura conciliada: maquinaria comprada, maquina vendida,
+        intereses y arrendamiento, aunque la contraparte del efectivo sea la
+        cuenta por pagar/cobrar."""
+        self._pay_straight_to_bank()
+        self.assertIn(self.j_bank.default_account_id.id, self.config.get_cash_account_ids())
+        machine_bill = self._entry([('153.01.01', 1000, 0)], day=date(2026, 1, 10), move_type='in_invoice', partner=self.partner_a)
+        interest_bill = self._entry([('701.04.0001', 80, 0)], day=date(2026, 1, 12), move_type='in_invoice', partner=self.partner_a)
+        lease_bill = self._entry([('701.11.0001', 300, 0)], day=date(2026, 1, 15), move_type='in_invoice', partner=self.partner_a)
+        sale = self._entry([('704.23.0003', 0, 500)], day=date(2026, 2, 1), move_type='out_invoice', partner=self.partner_a)
+        for move in (machine_bill, interest_bill, lease_bill, sale):
+            self._register_payment(move, date(2026, 2, 20))
+        _result, sliced, totals = self._compute()
+        self.assertReconciles(sliced, totals, expected_delta=-1000.0 - 80.0 - 300.0 + 500.0)
+        self.assertLine(sliced, 'd_assets_bought', -1000.0)
+        self.assertLine(sliced, 'd_interest', -80.0)
+        self.assertLine(sliced, 'd_lease', -300.0)
+        self.assertLine(sliced, 'd_assets_sold', 500.0)
+        self.assertLine(sliced, 'd_suppliers', 0.0)
+        self.assertLine(sliced, 'd_customers', 0.0)
+        # Indirecto: la compra va a inversion aunque se haya pagado via proveedores.
+        self.assertLine(sliced, 'inv_acquisitions', -1000.0)
+        self.assertLine(sliced, 'wc_payables', 0.0)
+
+    def test_14_partial_payment_is_prorated_by_invoice(self):
+        """Un pago parcial reclasifica solo la parte conciliada; el resto de
+        la factura sigue en cuentas por pagar (sin flujo)."""
+        self._pay_straight_to_bank()
+        bill = self._entry([('153.01.01', 1000, 0)], day=date(2026, 1, 10), move_type='in_invoice', partner=self.partner_a)
+        self.env['account.payment.register'].with_context(
+            active_model='account.move', active_ids=bill.ids).create({
+                'payment_date': date(2026, 2, 5), 'journal_id': self.j_bank.id, 'amount': 400.0})._create_payments()
+        _result, sliced, totals = self._compute()
+        self.assertReconciles(sliced, totals, expected_delta=-400.0)
+        self.assertLine(sliced, 'd_assets_bought', -400.0)
+        self.assertLine(sliced, 'd_suppliers', 0.0)
 
     def test_20_transfer_between_banks_is_not_a_flow(self):
         self._entry([('102.09.00', 1000, 0), ('102.01.002', 0, 1000)], day=date(2026, 2, 10), journal=self.j_bank)

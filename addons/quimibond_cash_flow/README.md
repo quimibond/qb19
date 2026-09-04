@@ -18,11 +18,16 @@ como "flujos") y no presenta el método indirecto. Este addon:
 * Presenta **método indirecto** (NIF B-2) y **método directo resumido** en el mismo
   reporte, con **columnas mensuales + acumulado** y comparación nativa contra
   periodos anteriores (mismo periodo del año anterior).
-* Clasifica el método directo por la **contraparte** del movimiento de efectivo
-  a un solo nivel (pago → cuenta por cobrar/pagar → contacto/cuenta), con reglas
-  por diario, tipo de asiento, contacto y cuenta. Los cobros/pagos registrados
-  dentro de una factura se clasifican por tipo de asiento (toda la póliza es un
-  cobro o un pago).
+* Clasifica el método directo por la **contraparte** del movimiento de efectivo,
+  con reglas por diario, tipo de asiento, contacto y cuenta. Si la contraparte es
+  una cuenta por cobrar/pagar conciliada con una factura, la parte conciliada se
+  clasifica por la **cuenta dominante de la factura** (su línea de producto más
+  grande, sin impuestos): así una factura de maquinaria pagada vía proveedores es
+  "Activo fijo comprado", la venta de una máquina cobrada vía clientes es "Activo
+  fijo vendido" y las facturas de arrendamiento o intereses caen en su línea, sin
+  descomponer la factura en todas sus líneas. Los cobros/pagos registrados dentro
+  de una factura se clasifican por tipo de asiento (toda la póliza es un cobro o un
+  pago).
 * Sección **Conciliación**: efectivo inicial, incremento neto por cada método,
   efecto cambiario, efectivo final calculado, saldo contable de las cuentas de
   efectivo y diferencia (debe ser 0.00).
@@ -182,7 +187,8 @@ POST /json/2/cash.flow.snapshot/search_read             {"domain": [["company_id
 * Multi-compañía: cada compañía se calcula con su propia configuración y se suman
   los importes; las definiciones nunca se mezclan. Sin configuración, el reporte
   lo avisa en la primera línea.
-* Método directo y compras de activo fijo pagadas vía factura de proveedor: la
-  contraparte del pago es la cuenta de proveedores, así que se muestran como "Pagos
-  a proveedores" salvo que exista una regla por contacto. El método indirecto sí las
-  muestra en inversión (por movimientos de las cuentas de activo).
+* Método directo: los pagos anticipados sin factura conciliada se quedan en la
+  línea de la cuenta por pagar/cobrar (proveedores o clientes) hasta que se
+  concilian; la reclasificación por factura usa `account.partial.reconcile`, así
+  que un pago conciliado después de generar un snapshot cambia de línea al
+  recalcular.
