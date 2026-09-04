@@ -152,7 +152,7 @@ NIF B-2): una columna por semana a partir de la fecha del filtro, más el total.
 | Cobros / pagos vencidos | Cuentas por cobrar y por pagar ya vencidas, repartidas en las primeras N semanas (`forecast_overdue_weeks`); las vencidas hace más de `forecast_stale_days` (180) se excluyen y se muestran en un renglón informativo |
 | Cobros por vencimiento | Cuentas por cobrar abiertas por vencimiento + atraso promedio real del cliente (cobros conciliados de 12 meses, ponderado por importe, tope `forecast_max_delay`) |
 | Pedidos de venta sin facturar | Opcional (`forecast_include_orders`, apagado por default): `sale.order` confirmados no más viejos que `forecast_stale_days`, importe pendiente de facturar, a fecha de entrega + `forecast_order_days` + atraso del cliente |
-| Pagos vencidos / por vencimiento | Cuentas por pagar abiertas |
+| Pagos vencidos / por vencimiento | Cuentas por pagar abiertas. Con `forecast_payables_by_rate` (encendido) se programan al ritmo histórico: cola por vencimiento (vencidas primero) pagada con la capacidad semanal de pagos a proveedores; sin ese modo, en su fecha (vencidas repartidas en N semanas) |
 | Órdenes de compra sin factura | `purchase.order` confirmadas, importe pendiente, a `date_planned` + `forecast_order_days` |
 | Ritmo histórico | Opcional (`forecast_include_runrate`, encendido): a partir de la semana en que se agota el DSO (días factura→cobro, ponderado, 12 meses) se estima cada semana el promedio semanal de cobros a clientes de los últimos `forecast_history_months` menos lo ya conocido; igual para pagos a proveedores con el DPO. Renglones separados para distinguir conocido de estimado |
 | Compromisos | `cash.flow.forecast.item`: nómina, impuestos, préstamos, arrendamientos, intereses, activo fijo, partes relacionadas, otros; recurrencia única / semanal / 14 días / mensual |
@@ -166,7 +166,9 @@ por categoría y contacto: series **semanales** (día de la semana e importe
 mediano), series **mensuales por grupo de días cercanos** (a 4 días o menos;
 28–31 = fin de mes) presentes en la mayoría de los meses, con el total mensual
 mediano del grupo (dos rentas fijas pagadas en días distintos quedan en un
-renglón), y un resto **irregular** (al menos dos ocurrencias) como promedio
+renglón), series **bimestrales** cuando los totales mensuales alternan (meses pares contra
+impares, al menos dos de cada uno: IMSS con SAR/Infonavit), y un resto
+**irregular** (al menos dos ocurrencias) como promedio
 mensual marcado para revisar. Un pago aislado no se siembra, y las series por
 debajo de `forecast_min_item_amount` tampoco. La reclasificación por factura solo
 refina clientes y proveedores genéricos: una cuenta por pagar con clasificación

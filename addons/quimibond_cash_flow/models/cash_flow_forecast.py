@@ -100,6 +100,7 @@ class CashFlowForecastItem(models.Model):
         ('weekly', 'Semanal'),
         ('biweekly', 'Cada 14 días'),
         ('monthly', 'Mensual (mismo día)'),
+        ('bimonthly', 'Cada 2 meses (mismo día)'),
     ], required=True, default='monthly')
     partner_id = fields.Many2one('res.partner', string='Contacto')
     auto = fields.Boolean(string='Sembrado del historial', readonly=True)
@@ -124,7 +125,7 @@ class CashFlowForecastItem(models.Model):
             elif self.recurrence == 'biweekly':
                 cur = cur + timedelta(days=14)
             else:
-                nxt = add_months(month_start(cur), 1)
+                nxt = add_months(month_start(cur), 2 if self.recurrence == 'bimonthly' else 1)
                 cur = clamp_day(nxt.year, nxt.month, self.date_start.day)
         return result
 
@@ -157,6 +158,10 @@ class CashFlowConfigForecast(models.Model):
         help='A partir de la semana en que se agota el periodo real de cobro (DSO) o de pago (DPO), se estima cada '
              'semana con el promedio semanal de cobros a clientes y pagos a proveedores de los últimos meses, menos lo '
              'ya conocido por facturas abiertas.')
+    forecast_payables_by_rate = fields.Boolean(
+        string='Pagar a proveedores al ritmo histórico', default=True,
+        help='Las cuentas por pagar (vencidas primero, luego por vencimiento) se programan con la capacidad semanal '
+             'histórica de pagos a proveedores, en vez de todas en su fecha de vencimiento. Requiere el ritmo histórico.')
     forecast_history_months = fields.Integer(
         string='Meses de historial para compromisos', default=3,
         help='Meses completos que se analizan para detectar la periodicidad de nómina, impuestos, préstamos, '
@@ -279,14 +284,25 @@ class CashFlowConfigForecast(models.Model):
             for d, a in entries:
                 per_month[(d.year, d.month)] += a
             if len(per_month) >= needed_months:
-                amount = median(per_month.values())
-                if amount < min_amount:
-                    continue
                 days = [d.day for d, _a in entries]
                 typical_day = 31 if max(days) >= 28 and median(days) >= 26 else int(median(days))
-                values.append(self._pattern_item_vals(
-                    category, partner_id, '%s · mensual (día %s)' % (prefix, 'último' if typical_day == 31 else typical_day),
-                    -amount, self._next_month_day(today, typical_day), 'monthly', entries))
+                day_label = 'último' if typical_day == 31 else typical_day
+                monthly_amount, bimonthly = self._split_bimonthly(per_month)
+                if monthly_amount >= min_amount:
+                    values.append(self._pattern_item_vals(
+                        category, partner_id, '%s · mensual (día %s)' % (prefix, day_label),
+                        -monthly_amount, self._next_month_day(today, typical_day), 'monthly', entries))
+                if bimonthly and bimonthly[0] >= min_amount:
+                    extra, parity = bimonthly
+                    first = self._next_month_day(today, typical_day)
+                    if first.month % 2 != parity:
+                        nxt = add_months(month_start(first), 1)
+                        first = clamp_day(nxt.year, nxt.month, typical_day)
+                    high_entries = [(d, a) for d, a in entries if d.month % 2 == parity]
+                    values.append(self._pattern_item_vals(
+                        category, partner_id, '%s · bimestral (día %s, meses %s)' % (
+                            prefix, day_label, 'impares' if parity == 1 else 'pares'),
+                        -extra, first, 'bimonthly', high_entries))
             else:
                 leftover += entries
 
@@ -299,6 +315,22 @@ class CashFlowConfigForecast(models.Model):
                 category, partner_id, '%s · irregular (promedio mensual, revisar)' % prefix,
                 -leftover_total / n_months, self._next_month_day(today, 31), 'monthly', leftover))
         return values
+
+    @staticmethod
+    def _split_bimonthly(per_month):
+        """Si los totales mensuales alternan (meses de una paridad claramente
+        mas altos que los de la otra, al menos dos de cada una), devuelve
+        ``(importe mensual base, (importe extra bimestral, paridad))``; si
+        no, ``(mediana mensual, None)``. Paridad 1 = meses impares."""
+        by_parity = {0: [], 1: []}
+        for (_year, month), total in per_month.items():
+            by_parity[month % 2].append(total)
+        if len(by_parity[0]) >= 2 and len(by_parity[1]) >= 2:
+            low_parity = 0 if median(by_parity[0]) <= median(by_parity[1]) else 1
+            low, high = median(by_parity[low_parity]), median(by_parity[1 - low_parity])
+            if low > 0 and high / low >= 1.5:
+                return low, (high - low, 1 - low_parity)
+        return median(per_month.values()), None
 
     def _pattern_item_vals(self, category, partner_id, name, amount, first_date, recurrence, observed):
         seen = '; '.join('%s %s' % (d.strftime('%d/%m'), '{:,.2f}'.format(a)) for d, a in sorted(observed)[-8:])
@@ -392,9 +424,15 @@ class CashFlowForecastEngine(models.AbstractModel):
                 add('r_due', idx, residual, partner_id, partner_name, 'account.move.line', [line_id])
 
         # ---- cuentas por pagar ---------------------------------------
+        runrate = self._runrate(config, date_from, n_weeks) if config.forecast_include_runrate else None
+        by_rate = bool(runrate and config.forecast_payables_by_rate and runrate['weekly_out'] < 0)
+        payable_queue = []
         for line_id, partner_id, partner_name, due, residual in self._open_items(company, 'liability_payable'):
             if stale_before and due < stale_before:
                 add('p_stale', 0, residual, partner_id, partner_name, 'account.move.line', [line_id])
+                continue
+            if by_rate:
+                payable_queue.append([due, residual, partner_id, partner_name, line_id])
                 continue
             if due < date_from:
                 spread_overdue('p_overdue', residual, partner_id, partner_name, 'account.move.line', [line_id])
@@ -402,6 +440,29 @@ class CashFlowForecastEngine(models.AbstractModel):
             idx = week_of(due)
             if idx is not None:
                 add('p_due', idx, residual, partner_id, partner_name, 'account.move.line', [line_id])
+        paid_by_rate = defaultdict(float)      # idx -> pagado a la cola
+        if by_rate:
+            # Cola por vencimiento (vencidos primero) pagada con la capacidad
+            # semanal historica; cada semana solo se pagan partidas ya vencidas
+            # a esa fecha.
+            capacity = -runrate['weekly_out']
+            payable_queue.sort(key=lambda item: item[0])
+            for idx, (_start, end) in enumerate(weeks):
+                available = capacity
+                for item in payable_queue:
+                    due, remaining, partner_id, partner_name, line_id = item
+                    if remaining >= 0 or due > end:
+                        continue
+                    pay = max(remaining, -available)
+                    if company.currency_id.is_zero(pay):
+                        continue
+                    row = 'p_overdue' if due < date_from else 'p_due'
+                    add(row, idx, pay, partner_id, partner_name, 'account.move.line', [line_id])
+                    item[1] = remaining - pay
+                    available += pay
+                    paid_by_rate[idx] += -pay
+                    if available <= 0:
+                        break
 
         # ---- pedidos confirmados sin facturar ------------------------
         if config.forecast_include_orders:
@@ -422,8 +483,7 @@ class CashFlowForecastEngine(models.AbstractModel):
                     add('p_orders', idx, -amount, partner_id, partner_name, 'purchase.order', [order_id])
 
         # ---- ritmo historico: ventas y compras por facturar ------------
-        if config.forecast_include_runrate:
-            runrate = self._runrate(config, date_from, n_weeks)
+        if runrate:
             for idx in range(n_weeks):
                 if idx >= runrate['dso_weeks']:
                     known = sum(rows[k].get(idx, 0.0) for k in ('r_due', 'r_overdue', 'r_orders'))
