@@ -33,6 +33,8 @@ FORECAST_ROWS = [
     ('p_overdue', 'Pagos vencidos a proveedores (repartidos en las primeras semanas)', 'flow'),
     ('p_due', 'Pagos a proveedores por vencimiento', 'flow'),
     ('p_orders', 'Órdenes de compra confirmadas sin factura', 'flow'),
+    ('r_runrate', 'Cobros estimados de ventas por facturar (ritmo histórico)', 'flow'),
+    ('p_runrate', 'Pagos estimados de compras por facturar (ritmo histórico)', 'flow'),
     ('i_payroll', 'Nómina y cuotas (compromisos)', 'flow'),
     ('i_taxes', 'Impuestos SAT (compromisos)', 'flow'),
     ('i_loans', 'Préstamos (compromisos)', 'flow'),
@@ -150,6 +152,11 @@ class CashFlowConfigForecast(models.Model):
         string='Días de pedido a cobro/pago', default=30,
         help='Plazo que se suma a la fecha de entrega de un pedido sin facturar para estimar su cobro o pago.')
     forecast_max_delay = fields.Integer(string='Atraso máximo por cliente (días)', default=90)
+    forecast_include_runrate = fields.Boolean(
+        string='Complementar con ritmo histórico', default=True,
+        help='A partir de la semana en que se agota el periodo real de cobro (DSO) o de pago (DPO), se estima cada '
+             'semana con el promedio semanal de cobros a clientes y pagos a proveedores de los últimos meses, menos lo '
+             'ya conocido por facturas abiertas.')
     forecast_history_months = fields.Integer(
         string='Meses de historial para compromisos', default=3,
         help='Meses completos que se analizan para detectar la periodicidad de nómina, impuestos, préstamos, '
@@ -414,6 +421,21 @@ class CashFlowForecastEngine(models.AbstractModel):
                 if idx is not None:
                     add('p_orders', idx, -amount, partner_id, partner_name, 'purchase.order', [order_id])
 
+        # ---- ritmo historico: ventas y compras por facturar ------------
+        if config.forecast_include_runrate:
+            runrate = self._runrate(config, date_from, n_weeks)
+            for idx in range(n_weeks):
+                if idx >= runrate['dso_weeks']:
+                    known = sum(rows[k].get(idx, 0.0) for k in ('r_due', 'r_overdue', 'r_orders'))
+                    extra = runrate['weekly_in'] - known
+                    if extra > 0 and not company.currency_id.is_zero(extra):
+                        add('r_runrate', idx, extra, None, runrate['label_in'], 'cash.flow.forecast.item', [])
+                if idx >= runrate['dpo_weeks']:
+                    known = sum(rows[k].get(idx, 0.0) for k in ('p_due', 'p_overdue', 'p_orders'))
+                    extra = runrate['weekly_out'] - known
+                    if extra < 0 and not company.currency_id.is_zero(extra):
+                        add('p_runrate', idx, extra, None, runrate['label_out'], 'cash.flow.forecast.item', [])
+
         # ---- compromisos ---------------------------------------------
         for item in config.forecast_item_ids:
             row = 'i_' + item.category
@@ -466,6 +488,58 @@ class CashFlowForecastEngine(models.AbstractModel):
             'min_cash': r(result['min_cash']),
             'below_min': result['below_min'],
         }
+
+    # ------------------------------------------------------------------
+    # Ritmo historico
+    # ------------------------------------------------------------------
+    def _runrate(self, config, date_from, n_weeks):
+        """Promedio semanal de cobros a clientes y pagos a proveedores del
+        metodo directo en los ultimos ``forecast_history_months`` meses
+        completos, y semanas de DSO/DPO (dias entre factura y cobro/pago,
+        ponderados por importe, ultimos 12 meses)."""
+        company = config.company_id
+        n_months = max(config.forecast_history_months or 3, 1)
+        window_end = month_start(date_from) - timedelta(days=1)
+        window_start = add_months(month_start(window_end), -(n_months - 1))
+        weeks_in_window = max((window_end - window_start).days / 7.0, 1.0)
+        total_in = total_out = 0.0
+        for _day, line_key, _account_id, _partner_id, amount in self.env['cash.flow.engine'].direct_daily(config, window_start, window_end):
+            if line_key == 'd_customers':
+                total_in += amount
+            elif line_key == 'd_suppliers':
+                total_out += amount
+        dso_days, dpo_days = self._dso_dpo(company, date_from)
+        label = _('Promedio semanal %s – %s', fields.Date.to_string(window_start), fields.Date.to_string(window_end))
+        return {
+            'weekly_in': max(total_in / weeks_in_window, 0.0),
+            'weekly_out': min(total_out / weeks_in_window, 0.0),
+            'dso_weeks': min(max(int(round(dso_days / 7.0)), 0), n_weeks),
+            'dpo_weeks': min(max(int(round(dpo_days / 7.0)), 0), n_weeks),
+            'label_in': label + _(' · DSO %s días', int(dso_days)),
+            'label_out': label + _(' · DPO %s días', int(dpo_days)),
+        }
+
+    def _dso_dpo(self, company, date_from):
+        """Dias promedio (ponderados por importe) entre la fecha de la factura
+        y la del cobro/pago conciliado, ultimos 12 meses: (DSO, DPO)."""
+        self.env['account.partial.reconcile'].flush_model()
+        result = {}
+        for account_type, invoice_side in (('asset_receivable', 'debit'), ('liability_payable', 'credit')):
+            inv, pay = ('d', 'c') if invoice_side == 'debit' else ('c', 'd')
+            self.env.cr.execute("""
+                SELECT SUM(apr.amount * ({pay}.date - {inv}.date)) / NULLIF(SUM(apr.amount), 0)
+                  FROM account_partial_reconcile apr
+                  JOIN account_move_line d ON d.id = apr.debit_move_id
+                  JOIN account_move_line c ON c.id = apr.credit_move_id
+                  JOIN account_account acc ON acc.id = {inv}.account_id
+                  JOIN account_move im ON im.id = {inv}.move_id
+                 WHERE {inv}.company_id = %s AND acc.account_type = %s
+                   AND im.move_type != 'entry'
+                   AND {pay}.date >= %s AND {pay}.date <= %s AND {pay}.date >= {inv}.date
+            """.format(inv=inv, pay=pay), (company.id, account_type, date_from - timedelta(days=365), date_from))
+            value = self.env.cr.fetchone()[0]
+            result[account_type] = float(value) if value is not None else 0.0
+        return result['asset_receivable'], result['liability_payable']
 
     # ------------------------------------------------------------------
     # Fuentes

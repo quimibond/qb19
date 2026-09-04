@@ -22,10 +22,15 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         cls.config.rule_ids.unlink()
         cls.config._load_default_rules()
         cls.config.write({'forecast_weeks': 13, 'forecast_overdue_weeks': 2, 'forecast_include_orders': False,
-                          'forecast_min_cash': 0.0, 'forecast_min_item_amount': 0.0, 'forecast_stale_days': 180})
+                          'forecast_min_cash': 0.0, 'forecast_min_item_amount': 0.0, 'forecast_stale_days': 180,
+                          'forecast_include_runrate': False})
         cls.engine = cls.env['cash.flow.forecast.engine']
         cls.bank = cls.company_data['default_journal_bank']
         cls.bank_account = cls.bank.default_account_id
+        # Los pagos van directo al banco (sin cuentas pendientes) para que
+        # las polizas de cobro/pago toquen efectivo.
+        (cls.bank.inbound_payment_method_line_ids | cls.bank.outbound_payment_method_line_ids).write(
+            {'payment_account_id': cls.bank_account.id})
         cls.partner_late = cls.env['res.partner'].create({'name': 'Cliente tardado'})
         cls.partner_ok = cls.env['res.partner'].create({'name': 'Cliente puntual'})
         cls.vendor = cls.env['res.partner'].create({'name': 'Proveedor'})
@@ -117,6 +122,32 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         self.assertAlmostEqual(sum(result['net']), 0.0, 2)
         summary = self.config.compute_forecast(TODAY)
         self.assertEqual(summary['rows']['r_stale'][0], 700.0)
+
+    def test_37_runrate_complements_known_items_after_dso(self):
+        """Historial: una factura de 1,000 cobrada cada semana a los 14 dias
+        (DSO 2 semanas). Sin facturas abiertas, a partir de la semana 3 se
+        estima el promedio semanal de cobros; en las 2 primeras, nada."""
+        self.config.forecast_include_runrate = True
+        self.config.forecast_history_months = 3
+        window_end = TODAY.replace(day=1) - timedelta(days=1)
+        window_start = window_end.replace(day=1)
+        for _i in range(2):
+            window_start = (window_start - timedelta(days=1)).replace(day=1)
+        day = window_start
+        while day + timedelta(days=14) <= window_end:
+            inv = self._invoice(self.partner_ok, 1000, day, day + timedelta(days=14))
+            self._pay(inv, day + timedelta(days=14))
+            day += timedelta(days=7)
+        result = self.engine.compute(self.config, TODAY)
+        rr = result['rows']['r_runrate']
+        self.assertEqual(rr.get(0, 0.0), 0.0)
+        self.assertEqual(rr.get(1, 0.0), 0.0)
+        weeks_in_window = (window_end - window_start).days / 7.0
+        paid = sum(1 for _ in range(int((window_end - window_start).days // 7) - 1))
+        expected_weekly = paid * 1000.0 / weeks_in_window
+        self.assertAlmostEqual(rr[2], expected_weekly, 0)
+        self.assertAlmostEqual(rr[12], expected_weekly, 0)
+        self.assertEqual(result['rows']['p_runrate'], {})
 
     def test_40_min_cash_alert_and_summary(self):
         self.config.forecast_min_cash = 1_000_000.0
