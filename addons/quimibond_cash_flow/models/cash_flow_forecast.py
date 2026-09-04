@@ -16,12 +16,13 @@ B-2) y proyecta, semana por semana:
 Todo en moneda de la compania (``amount_residual`` / ``balance``).
 """
 import calendar
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, timedelta
+from statistics import median
 
 from odoo import _, api, fields, models
 
-from .cash_flow_engine import add_months, month_end, month_start
+from .cash_flow_engine import add_months, month_start
 
 FORECAST_ROWS = [
     # (key, label, kind)  kind: 'flow' | 'balance'
@@ -139,6 +140,10 @@ class CashFlowConfigForecast(models.Model):
         string='Días de pedido a cobro/pago', default=30,
         help='Plazo que se suma a la fecha de entrega de un pedido sin facturar para estimar su cobro o pago.')
     forecast_max_delay = fields.Integer(string='Atraso máximo por cliente (días)', default=90)
+    forecast_history_months = fields.Integer(
+        string='Meses de historial para compromisos', default=3,
+        help='Meses completos que se analizan para detectar la periodicidad de nómina, impuestos, préstamos, '
+             'arrendamientos e intereses.')
     currency_id = fields.Many2one(related='company_id.currency_id')
 
     def compute_forecast(self, date_from=None):
@@ -150,50 +155,146 @@ class CashFlowConfigForecast(models.Model):
             self.env['cash.flow.forecast.engine'].compute(self, date_from))
 
     def action_load_forecast_items_from_history(self):
-        """Siembra compromisos mensuales con el promedio de los ultimos 3 meses
-        completos del metodo directo (nomina, impuestos, prestamos,
-        arrendamiento, intereses, partes relacionadas). Reemplaza los
-        sembrados antes; los capturados a mano se conservan."""
+        """Siembra los compromisos detectando la periodicidad real de los pagos
+        del historial (metodo directo, dia por dia): series semanales,
+        quincenales y mensuales por categoria y contacto, con su importe
+        mediano y su siguiente fecha. Reemplaza los sembrados antes; los
+        capturados a mano se conservan."""
         self.ensure_one()
-        today = fields.Date.context_today(self)
-        last_month_end = month_start(today) - timedelta(days=1)
-        first = add_months(month_start(last_month_end), -2)
-        result = self.env['cash.flow.engine'].compute(self, first, last_month_end)
-        sliced = self.env['cash.flow.engine'].slice(result, first, last_month_end)
+        items, window = self._learn_forecast_items()
         self.forecast_item_ids.filtered('auto').unlink()
-        values = []
-        next_month = add_months(month_start(today), 1) if today.day > 17 else month_start(today)
-        for line_key, category in HISTORY_TO_CATEGORY.items():
-            monthly = sliced['lines'].get(line_key, 0.0) / 3.0
-            if self.currency_id.is_zero(monthly):
-                continue
-            label = _('%s (promedio %s–%s)', dict(ITEM_CATEGORIES)[category],
-                      fields.Date.to_string(first), fields.Date.to_string(last_month_end))
-            if category == 'payroll':
-                # Dos quincenas: 15 y fin de mes.
-                for day in (15, 31):
-                    values.append(self._forecast_item_vals(label, category, monthly / 2.0,
-                                                           clamp_day(next_month.year, next_month.month, day)))
-            elif category == 'taxes':
-                values.append(self._forecast_item_vals(label, category, monthly,
-                                                       clamp_day(next_month.year, next_month.month, 17)))
-            else:
-                values.append(self._forecast_item_vals(label, category, monthly, month_end(next_month)))
-        items = self.env['cash.flow.forecast.item'].create(values)
+        created = self.env['cash.flow.forecast.item'].create(items)
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {'title': _('Compromisos desde el historial'),
-                       'message': _('Se sembraron %s compromisos mensuales.', len(items)),
+                       'message': _('Se detectaron %(n)s compromisos analizando %(from)s – %(to)s.',
+                                    n=len(created), **{'from': fields.Date.to_string(window[0]), 'to': fields.Date.to_string(window[1])}),
                        'type': 'success', 'next': {'type': 'ir.actions.act_window_close'}},
         }
 
-    def _forecast_item_vals(self, name, category, amount, first_date):
+    # ------------------------------------------------------------------
+    # Deteccion de periodicidad
+    # ------------------------------------------------------------------
+    # Ranuras de dia del mes: (dia tipico, dias que caen en la ranura)
+    MONTH_SLOTS = [(1, range(1, 4)), (5, range(4, 8)), (10, range(8, 13)), (15, range(13, 18)),
+                   (20, range(18, 23)), (25, range(23, 28)), (31, range(28, 32))]
+
+    def _learn_forecast_items(self):
+        """Devuelve ``(valores de cash.flow.forecast.item, (inicio, fin) de la ventana)``."""
+        self.ensure_one()
+        today = fields.Date.context_today(self)
+        n_months = max(self.forecast_history_months or 3, 1)
+        window_end = month_start(today) - timedelta(days=1)
+        window_start = add_months(month_start(window_end), -(n_months - 1))
+        daily = self.env['cash.flow.engine'].direct_daily(self, window_start, window_end)
+
+        # Series por (categoria, contacto). La nomina se agrupa sin contacto:
+        # sus polizas traen contactos distintos o ninguno.
+        series = defaultdict(lambda: defaultdict(float))
+        for day, line_key, _account_id, partner_id, amount in daily:
+            category = HISTORY_TO_CATEGORY.get(line_key)
+            if not category:
+                continue
+            partner_key = False if category == 'payroll' else (partner_id or False)
+            series[(category, partner_key)][day] += amount
+
+        values = []
+        for (category, partner_id), by_day in sorted(series.items(), key=lambda kv: (kv[0][0], kv[0][1] or 0)):
+            points = sorted((day, -amount) for day, amount in by_day.items()
+                            if amount < 0 and not self.currency_id.is_zero(amount))
+            if not points:
+                continue
+            values += self._detect_patterns(category, partner_id, points, n_months, today, (window_start, window_end))
+        return values, (window_start, window_end)
+
+    def _detect_patterns(self, category, partner_id, points, n_months, today, window):
+        """Descompone los pagos ``points`` = [(fecha, importe positivo)] de una
+        serie en: una serie semanal (si la hay), series mensuales por ranura
+        de dia del mes que se repite en la mayoria de los meses, y un resto
+        irregular (promedio mensual). Devuelve valores de compromisos."""
+        currency = self.currency_id
+        label = dict(ITEM_CATEGORIES)[category]
+        partner = self.env['res.partner'].browse(partner_id) if partner_id else self.env['res.partner']
+        prefix = '%s · %s' % (label, partner.display_name) if partner else label
+        values = []
+        remaining = dict(points)
+
+        # ---- serie semanal --------------------------------------------
+        # Un dia de la semana con pago en la gran mayoria de las semanas de
+        # la ventana es una serie semanal, aunque haya otros pagos en medio.
+        n_weeks = max((window[1] - window[0]).days // 7, 1)
+        weekday_counts = Counter(d.weekday() for d, _a in points)
+        if weekday_counts:
+            weekday, count = weekday_counts.most_common(1)[0]
+            if count >= 0.75 * n_weeks and count >= 3:
+                on_weekday = [a for d, a in points if d.weekday() == weekday]
+                weekly_amount = median(on_weekday)
+                values.append(self._pattern_item_vals(
+                    category, partner_id, '%s · semanal (%s)' % (prefix, self._weekday_name(weekday)),
+                    -weekly_amount, self._next_weekday(today, weekday), 'weekly',
+                    [(d, a) for d, a in points if d.weekday() == weekday]))
+                for d in list(remaining):
+                    if d.weekday() == weekday:
+                        rest = remaining[d] - weekly_amount
+                        if rest > 0.25 * weekly_amount:
+                            remaining[d] = rest
+                        else:
+                            del remaining[d]
+
+        # ---- series mensuales por ranura de dia -----------------------
+        slots = defaultdict(list)          # dia tipico -> [(fecha, importe)]
+        for d, a in sorted(remaining.items()):
+            for typical, days in self.MONTH_SLOTS:
+                if d.day in days:
+                    slots[typical].append((d, a))
+                    break
+        needed_months = max(2, (2 * n_months + 2) // 3) if n_months > 1 else 1
+        leftover = []
+        for typical, entries in sorted(slots.items()):
+            per_month = defaultdict(float)
+            for d, a in entries:
+                per_month[(d.year, d.month)] += a
+            if len(per_month) >= needed_months:
+                typical_day = int(median(d.day for d, _a in entries)) if typical != 31 else 31
+                amount = median(per_month.values())
+                values.append(self._pattern_item_vals(
+                    category, partner_id, '%s · mensual (día %s)' % (prefix, 'último' if typical == 31 else typical_day),
+                    -amount, self._next_month_day(today, typical_day), 'monthly', entries))
+            else:
+                leftover += entries
+
+        # ---- resto irregular: promedio mensual, marcado ----------------
+        leftover_total = sum(a for _d, a in leftover)
+        if leftover and not currency.is_zero(leftover_total / n_months):
+            values.append(self._pattern_item_vals(
+                category, partner_id, '%s · irregular (promedio mensual, revisar)' % prefix,
+                -leftover_total / n_months, self._next_month_day(today, 31), 'monthly', leftover))
+        return values
+
+    def _pattern_item_vals(self, category, partner_id, name, amount, first_date, recurrence, observed):
+        seen = '; '.join('%s %s' % (d.strftime('%d/%m'), '{:,.2f}'.format(a)) for d, a in sorted(observed)[-8:])
         return {
-            'config_id': self.id, 'name': name, 'category': category, 'amount': amount,
-            'date_start': first_date, 'recurrence': 'monthly', 'auto': True,
-            'note': _('Promedio mensual del método directo; ajusta o captura el dato real.'),
+            'config_id': self.id, 'name': name, 'category': category, 'partner_id': partner_id or False,
+            'amount': self.currency_id.round(amount), 'date_start': first_date, 'recurrence': recurrence,
+            'auto': True, 'note': _('Detectado en el historial: %s', seen),
         }
+
+    @staticmethod
+    def _weekday_name(weekday):
+        return ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][weekday]
+
+    @staticmethod
+    def _next_weekday(today, weekday):
+        return today + timedelta(days=(weekday - today.weekday()) % 7)
+
+    @staticmethod
+    def _next_month_day(today, day):
+        candidate = clamp_day(today.year, today.month, day)
+        if candidate < today:
+            nxt = add_months(month_start(today), 1)
+            candidate = clamp_day(nxt.year, nxt.month, day)
+        return candidate
 
     def action_open_forecast_report(self):
         self.ensure_one()

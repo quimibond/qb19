@@ -159,9 +159,14 @@ NIF B-2): una columna por semana a partir de la fecha del filtro, más el total.
 
 Cada renglón se despliega por contacto y "Ver origen" abre los apuntes,
 pedidos o compromisos que lo alimentan. El botón **Sembrar compromisos del
-historial** crea compromisos mensuales con el promedio de los últimos 3 meses
-del método directo (nómina en dos quincenas, impuestos el 17, el resto a fin de
-mes); los capturados a mano se conservan.
+historial** detecta la periodicidad real de los pagos en los últimos meses
+(`forecast_history_months`, 3 por default) del método directo, día por día y
+por categoría y contacto: series **semanales** (día de la semana e importe
+mediano), series **mensuales por ranura de día** (1, 5, 10, 15, 20, 25, fin de
+mes) que se repiten en la mayoría de los meses, y un resto **irregular** como
+promedio mensual marcado para revisar. Cada compromiso lleva su siguiente fecha
+y una nota con las fechas e importes observados; los capturados a mano se
+conservan.
 
 API: `POST /json/2/cash.flow.config/compute_forecast` con
 `{"ids": [<config_id>], "date_from": "2026-09-07"}`.

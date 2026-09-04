@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests de la proyeccion de flujo de efectivo (13 semanas)."""
+import calendar
 from datetime import date, timedelta
 
 from odoo import Command
@@ -117,30 +118,66 @@ class TestCashFlowForecast(AccountTestInvoicingCommon):
         self.assertEqual(summary['rows']['i_other'][0], -10.0)
         self.assertEqual(summary['closing'][-1], summary['opening_cash'] - 10.0)
 
-    def test_50_items_from_history(self):
-        """Los promedios del metodo directo se convierten en compromisos mensuales."""
-        misc = self.company_data['default_journal_misc']
-        payroll_account = self.env['account.account'].with_company(self.company).create({
-            'code': '210.01.01', 'name': 'Sueldos por pagar', 'account_type': 'liability_payable'})
+    def _cash_payment(self, account, amount, day, journal=None, partner=None):
+        journal = journal or self.company_data['default_journal_misc']
+        move = self.env['account.move'].create({
+            'move_type': 'entry', 'date': day, 'journal_id': journal.id,
+            'partner_id': partner.id if partner else False,
+            'line_ids': [
+                Command.create({'account_id': account.id, 'debit': amount, 'credit': 0, 'partner_id': partner.id if partner else False}),
+                Command.create({'account_id': self.bank_account.id, 'debit': 0, 'credit': amount, 'partner_id': partner.id if partner else False}),
+            ]})
+        move.action_post()
+        return move
+
+    def test_50_items_from_history_detect_periodicity(self):
+        """Nomina semanal (viernes) + quincenal (15 y fin de mes) + SAT el 17:
+        se detectan como series con su dia, importe mediano y contacto."""
+        Account = self.env['account.account'].with_company(self.company)
+        payroll_account = Account.create({'code': '210.01.01', 'name': 'Sueldos por pagar', 'account_type': 'liability_payable'})
+        tax_account = Account.create({'code': '213.01.01', 'name': 'IVA por pagar', 'account_type': 'liability_current'})
+        sat = self.env['res.partner'].create({'name': 'SAT test'})
         today = date.today()
-        first_day = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
-        for _month in range(3):
-            first_day = (first_day - timedelta(days=1)).replace(day=1)
-        # Tres pagos de nomina (uno por mes) en los tres meses anteriores al actual.
-        month_cursor = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
-        for _month in range(3):
-            move = self.env['account.move'].create({
-                'move_type': 'entry', 'date': month_cursor + timedelta(days=10), 'journal_id': misc.id,
-                'line_ids': [
-                    Command.create({'account_id': payroll_account.id, 'debit': 900, 'credit': 0}),
-                    Command.create({'account_id': self.bank_account.id, 'debit': 0, 'credit': 900}),
-                ]})
-            move.action_post()
-            month_cursor = (month_cursor - timedelta(days=1)).replace(day=1)
+        window_end = today.replace(day=1) - timedelta(days=1)
+        window_start = window_end.replace(day=1)
+        for _i in range(2):
+            window_start = (window_start - timedelta(days=1)).replace(day=1)
+        # Semanal: cada viernes 900 (con un poco de ruido).
+        day = window_start
+        while day.weekday() != 4:
+            day += timedelta(days=1)
+        fridays = 0
+        while day <= window_end:
+            self._cash_payment(payroll_account, 900 + (fridays % 3) * 10, day)
+            day += timedelta(days=7)
+            fridays += 1
+        # Quincenal: 15 y ultimo dia, 5000 cada uno; SAT el 17: 3000.
+        cursor = window_start
+        while cursor <= window_end:
+            last = cursor.replace(day=calendar.monthrange(cursor.year, cursor.month)[1])
+            self._cash_payment(payroll_account, 5000, cursor.replace(day=15))
+            self._cash_payment(payroll_account, 5000, last)
+            self._cash_payment(tax_account, 3000, cursor.replace(day=17), partner=sat)
+            cursor = (last + timedelta(days=1))
         self.config.action_load_forecast_items_from_history()
-        items = self.config.forecast_item_ids.filtered(lambda i: i.auto and i.category == 'payroll')
-        self.assertEqual(len(items), 2)
-        self.assertAlmostEqual(sum(items.mapped('amount')), -900.0, 2)
+        items = self.config.forecast_item_ids.filtered('auto')
+        payroll = items.filtered(lambda i: i.category == 'payroll')
+        weekly = payroll.filtered(lambda i: i.recurrence == 'weekly')
+        self.assertEqual(len(weekly), 1)
+        self.assertEqual(weekly.date_start.weekday(), 4)
+        self.assertAlmostEqual(weekly.amount, -910.0, 2)
+        monthly = payroll.filtered(lambda i: i.recurrence == 'monthly' and 'irregular' not in i.name)
+        days = sorted(monthly.mapped(lambda i: i.date_start.day))
+        self.assertEqual(len(days), 2, monthly.mapped('name'))
+        self.assertEqual(days[0], 15)
+        self.assertGreaterEqual(days[1], 28)
+        self.assertTrue(all(abs(i.amount + 5000.0) < 0.01 for i in monthly), monthly.mapped('amount'))
+        taxes = items.filtered(lambda i: i.category == 'taxes')
+        self.assertEqual(len(taxes), 1)
+        self.assertEqual(taxes.partner_id, sat)
+        self.assertEqual(taxes.date_start.day, 17)
+        self.assertAlmostEqual(taxes.amount, -3000.0, 2)
+        self.assertGreaterEqual(taxes.date_start, today)
         # Volver a sembrar reemplaza, no duplica.
         self.config.action_load_forecast_items_from_history()
-        self.assertEqual(len(self.config.forecast_item_ids.filtered('auto')), 2)
+        self.assertEqual(len(self.config.forecast_item_ids.filtered('auto')), len(items))
