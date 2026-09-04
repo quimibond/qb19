@@ -189,9 +189,19 @@ class CashFlowNifReportHandler(models.AbstractModel):
     # ------------------------------------------------------------------
     # Lineas
     # ------------------------------------------------------------------
+    def _report_mode(self, report):
+        """'both' | 'indirect' | 'direct' segun la variante del reporte abierta."""
+        for xmlid, mode in (('quimibond_cash_flow.cash_flow_nif_report_indirect', 'indirect'),
+                            ('quimibond_cash_flow.cash_flow_nif_report_direct', 'direct')):
+            variant = self.env.ref(xmlid, raise_if_not_found=False)
+            if variant and variant.id == report.id:
+                return mode
+        return 'both'
+
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         computed, missing = self._compute_spans(report, options)
         values = self._column_values(report, options, computed)
+        mode = self._report_mode(report)
         lines = []
 
         if missing:
@@ -200,43 +210,53 @@ class CashFlowNifReportHandler(models.AbstractModel):
                 '> "Cargar defaults Quimibond".', ', '.join(missing.mapped('name')))))
 
         # ---- Metodo indirecto -------------------------------------------
-        lines.append(self._header_line(report, options, 'h_indirect', _('MÉTODO INDIRECTO (NIF B-2)')))
-        for section in L.INDIRECT_OPERATING_SECTIONS:
-            lines.extend(self._section_lines(report, options, values, section, level=2))
-        lines.append(self._total_line(report, options, values, 'ind_operating', _('Flujo neto de efectivo de actividades de operación')))
-        lines.extend(self._section_lines(report, options, values, 'ind_investing', level=2))
-        lines.append(self._total_line(report, options, values, 'ind_investing', _('Flujo neto de efectivo de actividades de inversión')))
-        lines.extend(self._section_lines(report, options, values, 'ind_financing', level=2))
-        lines.append(self._total_line(report, options, values, 'ind_financing', _('Flujo neto de efectivo de actividades de financiamiento')))
-        lines.append(self._total_line(report, options, values, 'ind_net', _('Incremento (disminución) neto de efectivo')))
-        lines.extend(self._section_lines(report, options, values, 'ind_fx', level=2, with_header=False))
-        lines.append(self._total_line(report, options, values, 'opening_cash', _('Efectivo al inicio del periodo')))
-        lines.append(self._total_line(report, options, values, 'closing_cash_calc', _('Efectivo al final del periodo')))
+        if mode in ('both', 'indirect'):
+            if mode == 'both':
+                lines.append(self._header_line(report, options, 'h_indirect', _('Método indirecto')))
+            for section in L.INDIRECT_OPERATING_SECTIONS:
+                lines.extend(self._section_lines(report, options, values, section, level=2))
+            lines.append(self._total_line(report, options, values, 'ind_operating', _('Flujos netos de efectivo de actividades de operación')))
+            lines.extend(self._section_lines(report, options, values, 'ind_investing', level=2))
+            lines.append(self._total_line(report, options, values, 'ind_investing', _('Flujos netos de efectivo de actividades de inversión')))
+            lines.extend(self._section_lines(report, options, values, 'ind_financing', level=2))
+            lines.append(self._total_line(report, options, values, 'ind_financing', _('Flujos netos de efectivo de actividades de financiamiento')))
+            lines.append(self._total_line(report, options, values, 'ind_net', _('Incremento (disminución) neto de efectivo y equivalentes')))
+            lines.extend(self._section_lines(report, options, values, 'ind_fx', level=2, with_header=False))
+            lines.append(self._total_line(report, options, values, 'opening_cash', _('Efectivo y equivalentes al inicio del periodo')))
+            lines.append(self._total_line(report, options, values, 'closing_cash_calc', _('Efectivo y equivalentes al final del periodo')))
 
         # ---- Metodo directo ---------------------------------------------
-        lines.append(self._header_line(report, options, 'h_direct', _('MÉTODO DIRECTO (resumido)')))
-        alert = self._other_alert(values)
-        if alert:
-            lines.append(self._text_line(report, options, 'warning_other', alert))
-        lines.extend(self._section_lines(report, options, values, 'dir_operating', level=2))
-        lines.append(self._total_line(report, options, values, 'dir_operating', _('Flujo neto de efectivo de actividades de operación')))
-        lines.extend(self._section_lines(report, options, values, 'dir_investing', level=2))
-        lines.append(self._total_line(report, options, values, 'dir_investing', _('Flujo neto de efectivo de actividades de inversión')))
-        lines.extend(self._section_lines(report, options, values, 'dir_financing', level=2))
-        lines.append(self._total_line(report, options, values, 'dir_financing', _('Flujo neto de efectivo de actividades de financiamiento')))
-        lines.append(self._total_line(report, options, values, 'dir_net', _('Incremento (disminución) neto de efectivo')))
-        lines.extend(self._section_lines(report, options, values, 'dir_fx', level=2, with_header=False))
+        if mode in ('both', 'direct'):
+            if mode == 'both':
+                lines.append(self._header_line(report, options, 'h_direct', _('Método directo')))
+            alert = self._other_alert(values)
+            if alert:
+                lines.append(self._text_line(report, options, 'warning_other', alert))
+            lines.extend(self._section_lines(report, options, values, 'dir_operating', level=2))
+            lines.append(self._total_line(report, options, values, 'dir_operating', _('Flujos netos de efectivo de actividades de operación')))
+            lines.extend(self._section_lines(report, options, values, 'dir_investing', level=2))
+            lines.append(self._total_line(report, options, values, 'dir_investing', _('Flujos netos de efectivo de actividades de inversión')))
+            lines.extend(self._section_lines(report, options, values, 'dir_financing', level=2))
+            lines.append(self._total_line(report, options, values, 'dir_financing', _('Flujos netos de efectivo de actividades de financiamiento')))
+            lines.append(self._total_line(report, options, values, 'dir_net', _('Incremento (disminución) neto de efectivo y equivalentes')))
+            lines.extend(self._section_lines(report, options, values, 'dir_fx', level=2, with_header=False))
+            if mode == 'direct':
+                lines.append(self._total_line(report, options, values, 'opening_cash', _('Efectivo y equivalentes al inicio del periodo')))
+                lines.append(self._total_line(report, options, values, 'closing_cash_calc', _('Efectivo y equivalentes al final del periodo')))
 
         # ---- Conciliacion -----------------------------------------------
-        lines.append(self._header_line(report, options, 'h_reconciliation', _('CONCILIACIÓN')))
-        lines.append(self._total_line(report, options, values, 'opening_cash', _('Efectivo inicial (saldo contable)'), level=2))
-        lines.append(self._total_line(report, options, values, 'ind_net', _('Incremento neto — método indirecto'), level=2))
-        lines.append(self._total_line(report, options, values, 'dir_net', _('Incremento neto — método directo'), level=2))
-        lines.append(self._total_line(report, options, values, 'methods_difference', _('Diferencia entre métodos (debe ser 0.00)'), level=2))
+        lines.append(self._header_line(report, options, 'h_reconciliation', _('Conciliación con el saldo contable')))
+        lines.append(self._total_line(report, options, values, 'opening_cash', _('Efectivo y equivalentes al inicio (saldo contable)'), level=2))
+        if mode in ('both', 'indirect'):
+            lines.append(self._total_line(report, options, values, 'ind_net', _('Incremento neto según método indirecto'), level=2))
+        if mode in ('both', 'direct'):
+            lines.append(self._total_line(report, options, values, 'dir_net', _('Incremento neto según método directo'), level=2))
+        if mode == 'both':
+            lines.append(self._total_line(report, options, values, 'methods_difference', _('Diferencia entre métodos'), level=2))
         lines.append(self._total_line(report, options, values, 'ind_fx', _('Efecto por cambios en el valor del efectivo'), level=2))
-        lines.append(self._total_line(report, options, values, 'closing_cash_calc', _('Efectivo final calculado'), level=2))
-        lines.append(self._total_line(report, options, values, 'closing_cash_book', _('Saldo contable de las cuentas de efectivo'), level=2))
-        lines.append(self._total_line(report, options, values, 'difference', _('Diferencia: efectivo final calculado − saldo contable (debe ser 0.00)'), level=1))
+        lines.append(self._total_line(report, options, values, 'closing_cash_calc', _('Efectivo y equivalentes al final (calculado)'), level=2))
+        lines.append(self._total_line(report, options, values, 'closing_cash_book', _('Efectivo y equivalentes al final (saldo contable)'), level=2))
+        lines.append(self._total_line(report, options, values, 'difference', _('Diferencia no explicada'), level=1))
 
         return [(0, line) for line in lines]
 
