@@ -263,7 +263,8 @@ class CashFlowConfigForecast(models.Model):
 
         # ---- series mensuales por grupo de dias cercanos ---------------
         # Los pagos se agrupan por dia del mes: dias a 4 o menos de distancia
-        # forman un grupo (28-31 cuentan como fin de mes). Un grupo presente
+        # forman un grupo de hasta 12 dias de ancho (28-31 cuentan como fin de
+        # mes; IMSS entre el 7 y el 17 es un solo grupo). Un grupo presente
         # en la mayoria de los meses es una serie mensual con el total
         # mensual mediano del grupo (asi dos rentas fijas pagadas en dias
         # distintos del mismo mes quedan en un solo renglon con su total).
@@ -272,7 +273,7 @@ class CashFlowConfigForecast(models.Model):
         last_day = None
         for d, a in sorted(remaining.items(), key=lambda kv: (min(kv[0].day, 28), kv[0])):
             day = min(d.day, 28)
-            if clusters and day - last_day <= 4 and day - min(clusters[-1][0][0].day, 28) <= 8:
+            if clusters and day - last_day <= 4 and day - min(clusters[-1][0][0].day, 28) <= 12:
                 clusters[-1].append((d, a))
             else:
                 clusters.append([(d, a)])
@@ -307,10 +308,13 @@ class CashFlowConfigForecast(models.Model):
                 leftover += entries
 
         # ---- resto irregular: promedio mensual, marcado ----------------
-        # Un pago aislado no se convierte en compromiso: no hay evidencia de
-        # que se repita. Solo lo irregular con al menos dos ocurrencias.
+        # Un pago aislado (o varios pagos de un mismo mes, como un prestamo
+        # liquidado en dos exhibiciones) no se convierte en compromiso: no hay
+        # evidencia de que se repita. Solo lo irregular presente en al menos
+        # dos meses distintos.
         leftover_total = sum(a for _d, a in leftover)
-        if len(leftover) >= 2 and leftover_total / n_months >= max(min_amount, currency.rounding):
+        leftover_months = {(d.year, d.month) for d, _a in leftover}
+        if len(leftover_months) >= 2 and leftover_total / n_months >= max(min_amount, currency.rounding):
             values.append(self._pattern_item_vals(
                 category, partner_id, '%s · irregular (promedio mensual, revisar)' % prefix,
                 -leftover_total / n_months, self._next_month_day(today, 31), 'monthly', leftover))
