@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ir_cron_cash_flow_snapshot" model="ir.cron">
+        <field name="name">Flujo de efectivo NIF B-2: snapshot mensual</field>
+        <field name="model_id" ref="model_cash_flow_snapshot"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_generate_monthly_snapshots()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="False"/>
+    </record>
+</odoo>

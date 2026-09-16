@@ -128,11 +128,27 @@ class SupabaseClient:
                     last_err = None
                     break
                 except httpx.HTTPStatusError as e:
-                    # 4xx (or 5xx after retries): fail this batch, continue.
+                    status = e.response.status_code
+                    if 400 <= status < 500 and len(chunk) > 1:
+                        # El upsert es atómico: una sola fila inválida (p.ej.
+                        # 23505 en un UNIQUE secundario como
+                        # uq_odoo_invoices_cfdi_uuid) tiraba las 200 filas del
+                        # sub-batch. 2026-09-16: dos XML de proveedor cargados
+                        # dos veces en Odoo dejaron 500 facturas de septiembre
+                        # sin sincronizar. Reintentamos fila por fila para
+                        # perder solo la culpable.
+                        ok_rows, failed_rows = self._upsert_rows_individually(
+                            table, url, headers, chunk, i,
+                        )
+                        ok_count += ok_rows
+                        failed.extend(failed_rows)
+                        last_err = None
+                        break
+                    # 4xx en fila única (o 5xx tras reintentos): falla el batch.
                     last_err = (
-                        f"http_{e.response.status_code // 100}xx",
+                        f"http_{status // 100}xx",
                         (e.response.text or '')[:4000],
-                        e.response.status_code,
+                        status,
                     )
                     break
                 except (httpx.NetworkError, httpx.TimeoutException) as e:
@@ -152,6 +168,76 @@ class SupabaseClient:
                         'status': status,
                     }))
         return ok_count, failed
+
+    def _upsert_one(self, url: str, headers: dict, row: dict):
+        """Upsert a single row. Returns None on success, else (code, detail, status)."""
+        import time
+        for attempt in range(3):
+            try:
+                if attempt > 0:
+                    time.sleep(min(2 ** attempt, 8))
+                response = self._http.post(
+                    url, headers=headers, content=json.dumps([row], default=str),
+                )
+                if response.status_code in (429, 502, 503, 504) and attempt < 2:
+                    continue
+                response.raise_for_status()
+                return None
+            except httpx.HTTPStatusError as e:
+                return (
+                    f"http_{e.response.status_code // 100}xx",
+                    (e.response.text or '')[:4000],
+                    e.response.status_code,
+                )
+            except (httpx.NetworkError, httpx.TimeoutException) as e:
+                if attempt >= 2:
+                    return ('network_error', str(e)[:4000], 0)
+            except httpx.RequestError as e:
+                return ('network_error', str(e)[:4000], 0)
+        return ('http_5xx', 'exhausted retries', 0)
+
+    def _upsert_rows_individually(self, table: str, url: str, headers: dict,
+                                  rows: list, chunk_offset: int) -> tuple:
+        """
+        Fallback cuando un sub-batch entero recibe 4xx: sube las filas una por
+        una y devuelve (ok_count, [(row, error_dict), ...]) solo con las que
+        de verdad fallan.
+
+        Caso especial — CFDI UUID duplicado (23505 en uq_odoo_invoices_cfdi_uuid):
+        pasa cuando el mismo XML de proveedor se captura dos veces en Odoo. La
+        fila se sube SIN uuid para no perder la factura, y se reporta con
+        code='cfdi_uuid_duplicate' y el payload ya sin uuid: así queda visible
+        en ingestion.sync_failure y el retry la marca resuelta en vez de
+        chocar otra vez. La corrección real es cancelar el duplicado en Odoo.
+        """
+        ok = 0
+        failed = []
+        for row in rows:
+            err = self._upsert_one(url, headers, row)
+            if err is None:
+                ok += 1
+                continue
+            code, detail, status = err
+            if '23505' in detail and 'cfdi_uuid' in detail and row.get('cfdi_uuid'):
+                degraded = dict(row, cfdi_uuid=None)
+                if self._upsert_one(url, headers, degraded) is None:
+                    _logger.warning(
+                        'upsert %s: CFDI uuid %s duplicado en Odoo (fila %s); '
+                        'sincronizada sin uuid. Cancelar el duplicado en Odoo.',
+                        table, row.get('cfdi_uuid'), row.get('name') or row.get('id'),
+                    )
+                    failed.append((degraded, {
+                        'code': 'cfdi_uuid_duplicate',
+                        'detail': detail,
+                        'status': status,
+                    }))
+                    continue
+            failed.append((row, {'code': code, 'detail': detail, 'status': status}))
+        _logger.warning(
+            'upsert %s chunk %d: 4xx en batch, reintento fila por fila: %d ok, %d fallidas',
+            table, chunk_offset, ok, len(failed),
+        )
+        return ok, failed
 
     def insert(self, table: str, rows: list, batch_size: int = 200) -> int:
         """Plain INSERT (no upsert) with retry. For full-refresh tables."""

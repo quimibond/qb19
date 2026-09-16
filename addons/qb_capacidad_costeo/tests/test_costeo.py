@@ -2087,8 +2087,9 @@ class TestQbCosteo(TransactionCase):
             'modelo_mp', 'modelo_energia', 'modelo_fab', 'modelo_op',
             'modelo_costo_total', 'gl_mp', 'gl_no_costeo',
             'gl_sin_clasificar', 'resultado_gl', 'resultado_modelo',
-            'ociosidad_ias2', 'resultado_par',
-            'brecha', 'brecha_pct', 'cobertura_pct'])
+            'ociosidad_ias2', 'resultado_par', 'gl_otros_costeo',
+            'gl_resultado_integral',
+            'brecha', 'brecha_neta', 'brecha_pct', 'cobertura_pct'])
         # El par indivisible existe en TODOS los períodos: el resultado es
         # margen de productos − ociosidad, fila por fila. Es lo que grafica
         # "Margen vs ociosidad por mes".
@@ -2096,6 +2097,23 @@ class TestQbCosteo(TransactionCase):
             self.assertAlmostEqual(
                 r.resultado_par,
                 r.resultado_modelo - r.ociosidad_ias2, places=2)
+            # Y la brecha habla del MISMO par. El lado del mayor es el
+            # resultado de operación: con el arrendamiento de maquinaria
+            # (el modelo sí lo cobra) y sin el resultado integral de
+            # financiamiento (no lo cobra). La brecha neta es el par contra
+            # ese resultado — o sea la bruta MENOS la ociosidad, nunca más.
+            res_op = (r.gl_ventas - r.gl_costo_ventas
+                      - r.gl_gastos_operacion - r.gl_otros_costeo)
+            self.assertAlmostEqual(
+                r.brecha, r.resultado_modelo - res_op, places=2)
+            self.assertAlmostEqual(
+                r.brecha_neta, r.resultado_par - res_op, places=2)
+            self.assertAlmostEqual(
+                r.brecha_neta, r.brecha - r.ociosidad_ias2, places=2)
+            if r.gl_ventas > 0:
+                self.assertAlmostEqual(
+                    r.brecha_pct, 100.0 * r.brecha_neta / r.gl_ventas,
+                    places=4)
         row = Conc.search([('period', '=', period)], limit=1)
         if not row:
             self.skipTest('sin movimientos de resultados en el período')
@@ -2110,12 +2128,75 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(
             row.resultado_modelo,
             sum(recs.mapped('margen_neto_total')), places=2)
-        # Y la brecha es, por definición, modelo − mayor
+        # Y la brecha es, por definición, modelo − mayor (de operación: el
+        # resultado integral de financiamiento se queda fuera)
         self.assertAlmostEqual(
-            row.brecha, row.resultado_modelo - row.resultado_gl, places=2)
+            row.brecha,
+            row.resultado_modelo
+            - (row.resultado_gl + row.gl_resultado_integral), places=2)
         self.assertAlmostEqual(
             row.gl_gasto_total,
-            row.gl_costo_ventas + row.gl_gastos_operacion, places=2)
+            row.gl_costo_ventas + row.gl_gastos_operacion
+            + row.gl_otros_costeo, places=2)
+
+    def test_la_brecha_neta_descuenta_la_ociosidad_no_la_suma(self):
+        """Sube la ociosidad en $12,345 y la brecha neta BAJA $12,345.
+
+        Es el bug que pintó el año en 28.8%: `brecha_neta` sumaba la
+        ociosidad en vez de restarla. El modelo deja de cobrarle al producto
+        la capacidad parada a propósito, así que la brecha bruta la trae
+        «sin explicar» por construcción, y descontarla es restarla. Con la
+        suma entraba dos veces —$19.5M de enero a agosto de 2026— y el panel
+        prohibía decidir precios con un modelo que cuadraba al −0.7%.
+        """
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'sale')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        period = date.today().replace(day=1)
+        partner = self.env['res.partner'].create({'name': 'Brecha Test'})
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_date': period,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.tela.id, 'quantity': 100,
+                'price_unit': 10.0})]})
+        move.action_post()
+        self.Costo.action_recompute_period(period)
+        Conc = self.env['qb.costo.conciliacion']
+        fac = self.env['qb.costo.factores'].search(
+            [('period', '=', period)], limit=1)
+        self.assertTrue(fac, 'el recálculo deja factores del período')
+
+        campos = ['ociosidad_ias2', 'brecha', 'brecha_neta',
+                  'resultado_par', 'brecha_pct', 'gl_ventas']
+
+        def fila():
+            # Foto de la fila AHORA: la vista se lee perezosamente y un
+            # registro guardado antes del write se leería después de él.
+            self.env.flush_all()
+            self.env.invalidate_all()
+            row = Conc.search([('period', '=', period)], limit=1)
+            return row.read(campos)[0] if row else None
+
+        antes = fila()
+        self.assertTrue(antes, 'con una factura posteada hay fila')
+        fac.write({'fab_ocioso_month': fac.fab_ocioso_month + 12345.0})
+        despues = fila()
+        self.assertAlmostEqual(
+            despues['ociosidad_ias2'], antes['ociosidad_ias2'] + 12345.0,
+            places=2)
+        self.assertAlmostEqual(despues['brecha'], antes['brecha'], places=2,
+                               msg='la brecha bruta no ve la ociosidad')
+        self.assertAlmostEqual(
+            despues['brecha_neta'], antes['brecha_neta'] - 12345.0, places=2,
+            msg='más ociosidad = menos por explicar, no más')
+        self.assertAlmostEqual(
+            despues['resultado_par'], antes['resultado_par'] - 12345.0,
+            places=2)
+        self.assertAlmostEqual(
+            despues['brecha_pct'],
+            100.0 * despues['brecha_neta'] / despues['gl_ventas'], places=4)
 
     def test_cuenta_especifica_gana_sobre_patron(self):
         """Una clase de CUENTA ESPECIFICA gana sobre una de patrón para la
@@ -3638,8 +3719,8 @@ class TestQbCosteo(TransactionCase):
         sirve para fijar precios, arriba de ahí primero hay que cerrar la
         brecha. Enseñar rentabilidad por cliente sin decir de qué lado de
         esa raya estamos es invitar a recotizar con números que el modelo
-        declara que todavía no cuadran — y en producción la brecha del año
-        va en 28.8%.
+        declara que todavía no cuadran — el 1-sep el panel decía 28.8%, y
+        cuando se corrigió el signo de la ociosidad resultó ser −0.7%.
         """
         panel = self.env['qb.costeo.panel'].create({})
         html = panel.negocio_html or ''
@@ -3969,6 +4050,75 @@ class TestQbCosteo(TransactionCase):
             [('centro_id', '=', centro.id)], limit=1)
         self.assertGreater(fila.utilization_pct, 100.0)
         self.assertEqual(fila.idle_cost_month, 0.0)
+
+    def test_panel_lista_workcenters_sin_tarifa_del_centro_absorbido(self):
+        """El día del corte hay que escribir la tarifa en cada workcenter del
+        centro absorbido, y el único aviso que había llegaba tarde: cuando
+        el período ya no registraba nada capitalizado. Ahora el panel lo
+        dice máquina por máquina — aviso antes del corte, error después — y
+        nombra a los workcenters sueltos que no están ligados a ningún
+        centro (una máquina dada de alta ayer no entra a nada)."""
+        WC = self.env['mrp.workcenter']
+        panel = self.env['qb.costeo.panel'].create({})
+        wc_a = WC.create({'name': 'CIRCULAR TARIFA A TEST', 'costs_hour': 0.0})
+        wc_b = WC.create({'name': 'CIRCULAR TARIFA B TEST', 'costs_hour': 0.0})
+        suelto = WC.create({'name': 'CIRCULAR SUELTO TEST'})
+        manana = date.today() + relativedelta(days=1)
+        centro = self.env['qb.costeo.centro'].create({
+            'code': 'TJTAR', 'name': 'TEJIDO TARIFA TEST',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': manana,
+            'workcenter_ids': [(6, 0, [wc_a.id, wc_b.id])]})
+
+        # El suelto aparece por nombre en el check de ligados
+        estado = panel._build_estado()
+        self.assertIn('CIRCULAR SUELTO TEST', estado)
+
+        # Antes del corte: aviso, con la instrucción de no adelantarse
+        avisos = dict((t, (i, d)) for i, t, d in
+                      panel._estado_tarifa_de_workcenters())
+        icono, detalle = avisos['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '⚠️')
+        self.assertIn('2 de 2 sin tarifa', detalle)
+        self.assertIn('CIRCULAR TARIFA A TEST', detalle)
+        self.assertIn('no antes', detalle)
+
+        # Ya vigente y a medias: error, y nombra a la que falta
+        centro.write({'fecha_absorcion': date.today()})
+        wc_a.write({'costs_hour': 99.0})
+        icono, detalle = dict(
+            (t, (i, d)) for i, t, d in panel._estado_tarifa_de_workcenters()
+        )['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '❌')
+        # La lista de tarifa nombra SOLO a la que falta; A puede seguir en
+        # la lista de cuenta (con mrp_account instalado la cuenta también
+        # se revisa, y aquí todavía no se captura).
+        self.assertIn('1 de 2 sin tarifa por hora (CIRCULAR TARIFA B TEST)',
+                      detalle)
+
+        # Completo: verde, con el rango de tarifas
+        wc_b.write({'costs_hour': 99.0})
+        if 'expense_account_id' in WC._fields:
+            cuenta = self.env['account.account'].create({
+                'name': 'COSTOS FABRILES APLICADOS TARIFA TEST',
+                'code': 'QBTA.0099', 'account_type': 'expense_direct_cost'})
+            (wc_a | wc_b).write({'expense_account_id': cuenta.id})
+        icono, detalle = dict(
+            (t, (i, d)) for i, t, d in panel._estado_tarifa_de_workcenters()
+        )['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '✅', detalle)
+        self.assertIn('$99.00/h', detalle)
+        if 'expense_account_id' in WC._fields:
+            self.assertIn('QBTA.0099', detalle)
+
+        # Sin workcenters ligados no hay quién capitalice: error
+        centro.write({'workcenter_ids': [(5, 0, 0)]})
+        icono, detalle = dict(
+            (t, (i, d)) for i, t, d in panel._estado_tarifa_de_workcenters()
+        )['Tarifa por hora — TJTAR']
+        self.assertEqual(icono, '❌')
+        self.assertIn('sin workcenters', detalle)
+        suelto.unlink()
 
     def test_analisis_de_productos_trae_costo_unitario(self):
         """El análisis de productos mostraba precio y márgenes pero no el
@@ -4916,28 +5066,40 @@ class TestQbCosteo(TransactionCase):
         """
         panel = self.env['qb.costeo.panel'].create({})
         Fac = self.env['qb.costo.factores']
-        anio = date.today().year
+        hoy = date.today()
+        anio = hoy.year
+        base = {'window_months': 12, 'factor_fab_kg': 1.0,
+                'factor_fab_m': 1.0, 'energia_por_kg': 1.0, 'op_pct': 0.1}
         creados = Fac
-        for mes in (1, 2, 3):
-            creados |= Fac.create({
-                'period': date(anio, mes, 1), 'window_months': 12,
-                'factor_fab_kg': 1.0, 'factor_fab_m': 1.0,
-                'energia_por_kg': 1.0, 'op_pct': 0.1})
+        # Hasta tres meses YA TERMINADOS de este año (en enero no hay)
+        for mes in range(max(hoy.month - 3, 1), hoy.month):
+            creados |= Fac.create(dict(base, period=date(anio, mes, 1)))
         # y uno del año pasado, que no debe aparecer
-        previo = Fac.create({
-            'period': date(anio - 1, 12, 1), 'window_months': 12,
-            'factor_fab_kg': 1.0, 'factor_fab_m': 1.0,
-            'energia_por_kg': 1.0, 'op_pct': 0.1})
+        previo = Fac.create(dict(base, period=date(anio - 1, 12, 1)))
+        # El mes en curso existe en factores desde el primer recálculo,
+        # con un día de ventas en el mayor: no compara contra nada y no
+        # entra… hasta que alguien lo cierra a propósito.
+        en_curso = Fac.search([('period', '=', hoy.replace(day=1))],
+                              limit=1) or Fac.create(
+            dict(base, period=hoy.replace(day=1)))
+        en_curso.state = 'borrador'
         ventana = panel._periodos_del_anio()
         self.assertTrue(set(creados.ids) <= set(ventana.ids))
         self.assertNotIn(previo.id, ventana.ids,
                          'el año en curso no arrastra diciembre del anterior')
+        self.assertNotIn(en_curso.id, ventana.ids,
+                         'el mes en curso no entra al año: su mayor va a '
+                         'medias y su brecha no significa nada')
         for f in ventana:
             self.assertEqual(f.period.year, anio)
+            self.assertLess(f.period, hoy.replace(day=1))
         periodos = ventana.mapped('period')
         self.assertEqual(periodos, sorted(periodos),
                          'la ventana viene ordenada: el rango del rótulo '
                          'sale de sus extremos')
+        en_curso.state = 'cerrado'
+        self.assertIn(en_curso.id, panel._periodos_del_anio().ids,
+                      'cerrado a propósito sí entra')
 
     def test_los_titulares_se_leen_de_un_vistazo(self):
         """Nueve dígitos no son un titular.

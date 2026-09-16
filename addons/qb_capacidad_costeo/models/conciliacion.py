@@ -160,15 +160,23 @@ class QbCostoConciliacion(models.Model):
              'explicar.')
     brecha = fields.Float(
         string='Brecha', readonly=True,
-        help='Resultado del modelo − resultado del mayor. NEGATIVA = el '
-             'modelo le cobra a los productos MÁS de lo que la empresa '
-             'gasta (los pinta menos rentables de lo que son). POSITIVA = '
-             'les cobra de menos.')
+        help='Resultado del modelo − resultado de operación del mayor. '
+             'NEGATIVA = el modelo le cobra a los productos MÁS de lo que '
+             'la empresa gasta (los pinta menos rentables de lo que son). '
+             'POSITIVA = les cobra de menos. El lado del mayor es ventas − '
+             'costo de ventas − gastos de operación − el costeo que vive en '
+             'otras cuentas (arrendamiento de maquinaria, que el modelo SÍ '
+             'cobra). El resultado integral de financiamiento queda fuera: '
+             'el modelo no se lo cobra al producto.')
     brecha_neta = fields.Float(
         string='Brecha sin ociosidad', readonly=True,
-        help='Brecha más la ociosidad no absorbida: lo que queda por explicar '
-             'una vez descontada la capacidad ociosa, que a propósito no se '
-             'le cobra al producto. ESTE es el número que debe tender a cero.')
+        help='Brecha MENOS la ociosidad no absorbida. El modelo deja de '
+             'cobrarle al producto la capacidad parada a propósito, así que '
+             'la brecha bruta trae esa cantidad «sin explicar» por '
+             'construcción; se descuenta y lo que queda es lo que de verdad '
+             'falta explicar. ESTE es el número que debe tender a cero. '
+             '(Hasta la v1.64 se SUMABA: la ociosidad entraba dos veces y la '
+             'brecha del año salía en +28.8% cuando era −0.7%.)')
     brecha_pct = fields.Float(
         string='Brecha % s/ventas', readonly=True,
         help='Brecha sin ociosidad ÷ ventas del mayor. Bajo ±2% el modelo es '
@@ -182,6 +190,12 @@ class QbCostoConciliacion(models.Model):
     @property
     def _table_query(self):
         company_id = int(self.env.company.id)
+        # Resultado de operación del mayor y gasto total: la misma
+        # expresión en brecha, brecha neta, % y cobertura, para que las
+        # cuatro columnas hablen del mismo número.
+        gasto_gl = ('(gl.gl_costo_ventas + gl.gl_operacion '
+                    '+ gl.gl_otros_costeo)')
+        res_op = f'(gl.gl_ventas - {gasto_gl})'
         # Sin ningún carácter de porcentaje en el SQL: _table_query pasa por
         # formateo estilo printf igual que las demás vistas del módulo.
         return f"""
@@ -292,21 +306,22 @@ class QbCostoConciliacion(models.Model):
                 COALESCE(fa.ociosidad, 0) AS ociosidad_ias2,
                 COALESCE(mo.resultado, 0) - COALESCE(fa.ociosidad, 0)
                     AS resultado_par,
-                COALESCE(mo.resultado, 0)
-                    - (gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion)
-                    AS brecha,
-                COALESCE(mo.resultado, 0)
-                    - (gl.gl_ventas - gl.gl_costo_ventas - gl.gl_operacion)
-                    + COALESCE(fa.ociosidad, 0) AS brecha_neta,
+                -- La brecha compara al modelo contra lo que el modelo
+                -- intenta repartir: el resultado de OPERACIÓN, con el
+                -- arrendamiento de maquinaria (que sí se cobra al producto)
+                -- y sin el resultado integral de financiamiento (que no).
+                -- Y la ociosidad se RESTA: el modelo no se la cobra al
+                -- producto a propósito, así que la brecha bruta la trae por
+                -- construcción. Sumarla la metía dos veces (v1.14–v1.64).
+                COALESCE(mo.resultado, 0) - {res_op} AS brecha,
+                COALESCE(mo.resultado, 0) - {res_op}
+                    - COALESCE(fa.ociosidad, 0) AS brecha_neta,
                 CASE WHEN gl.gl_ventas > 0 THEN
-                    100.0 * (COALESCE(mo.resultado, 0)
-                             - (gl.gl_ventas - gl.gl_costo_ventas
-                                - gl.gl_operacion)
-                             + COALESCE(fa.ociosidad, 0)) / gl.gl_ventas
+                    100.0 * (COALESCE(mo.resultado, 0) - {res_op}
+                             - COALESCE(fa.ociosidad, 0)) / gl.gl_ventas
                      ELSE 0 END AS brecha_pct,
-                CASE WHEN (gl.gl_costo_ventas + gl.gl_operacion) > 0 THEN
-                    100.0 * COALESCE(mo.costo, 0)
-                    / (gl.gl_costo_ventas + gl.gl_operacion)
+                CASE WHEN {gasto_gl} > 0 THEN
+                    100.0 * COALESCE(mo.costo, 0) / {gasto_gl}
                      ELSE 0 END AS cobertura_pct
             FROM gl
             LEFT JOIN modelo mo
