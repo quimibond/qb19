@@ -173,6 +173,37 @@ class TestSatReconcile(SatCommon):
             with self.assertRaises(UserError):
                 cfdi._fetch_xml()
 
+    def test_import_files_from_supabase(self):
+        cfdi = self._upsert(syntage_invoice(U1))
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('quimibond_intelligence.supabase_url', 'https://x.supabase.co')
+        icp.set_param('quimibond_intelligence.supabase_service_key', 'k')
+        File = type(self.env['sat.syntage.file'])
+        pages = [[
+            {'syntage_id': 'f1', 'file_type': 'invoice.cfdi.xml', 'filename': 'a.xml', 'mime_type': 'text/xml',
+             'size_bytes': 10, 'taxpayer_rfc': self.company.vat, 'resource': '/invoices/%s' % cfdi.syntage_id},
+            {'syntage_id': 'f2', 'file_type': 'invoice.cfdi.xml', 'filename': 'b.xml', 'mime_type': 'text/xml',
+             'size_bytes': 11, 'taxpayer_rfc': 'XAXX010101000', 'resource': '/invoices/otro'},
+        ]]
+        calls = []
+
+        def fake_get(_self, url, key, params):
+            calls.append(params['offset'])
+            return pages.pop(0) if pages else []
+
+        with patch.object(File, '_supabase_get', fake_get):
+            res = self.env['sat.syntage.file'].action_import_from_supabase()
+        self.assertEqual((res['fetched'], res['created']), (2, 2))
+        sfile = self.env['sat.syntage.file']._xml_for_invoice(cfdi.syntage_id)
+        self.assertEqual(sfile.syntage_id, 'f1')
+        self.assertEqual(sfile.company_id, self.company)
+        # Segunda corrida: nada nuevo
+        pages.append([{'syntage_id': 'f1', 'file_type': 'invoice.cfdi.xml', 'taxpayer_rfc': self.company.vat,
+                       'resource': '/invoices/%s' % cfdi.syntage_id}])
+        with patch.object(File, '_supabase_get', fake_get):
+            res = self.env['sat.syntage.file'].action_import_from_supabase()
+        self.assertEqual(res['created'], 0)
+
     def test_uuid_match_skips_taken_move(self):
         # Mismo UUID en dos facturas (doble registro); la más reciente ya está
         # ligada a mano a otro CFDI: el cruce debe quedarse con la otra.
