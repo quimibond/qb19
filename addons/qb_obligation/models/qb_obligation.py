@@ -274,7 +274,7 @@ class QbObligation(models.Model):
             existing = self.search([('source_ref', '=', source_ref), ('state', 'in', OPEN_STATES)], limit=1)
             if existing:
                 existing.write({k: v for k, v in vals.items()
-                                if k in ('description', 'date_deadline', 'detection_payload', 'weak_key')})
+                                if k in ('description', 'date_deadline', 'detection_payload', 'weak_key') and (v or k != 'date_deadline')})
                 return existing
         company = self.env['res.company'].browse(vals.get('company_id')) if vals.get('company_id') else self.env.company
         partner = self.env['res.partner'].browse(vals['partner_id']) if vals.get('partner_id') else None
