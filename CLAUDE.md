@@ -60,7 +60,7 @@ Ver mapeo completo de campos en `quimibond-intelligence/CLAUDE.md`.
 
 ## Crons
 
-- **Cada 1 hora:** `push_to_supabase()` — sync completo
+- **Cada 1 hora:** `push_to_supabase()` — por default **solo `contacts`** (contactos + empresas), que es lo único que la memoria de correo en Supabase consume (decisión CEO 2026-09-17: Supabase solo guarda lo que Odoo no tiene). Para volver a empujar todo: parámetro `quimibond_intelligence.push_models = all` (o lista con comas). El push pesado (`push_to_supabase_heavy`) respeta la misma lista.
 - **Cada 5 min:** `pull_from_supabase()` — comandos + contactos
 
 ## Deploy a produccion

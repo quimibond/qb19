@@ -71,5 +71,8 @@ class SatWebhookEvent(models.Model):
         if etype.startswith('invoice.'):
             cfdi = self.env['sat.cfdi']._upsert_from_syntage(obj, company, event_type=etype)
             self.write({'state': 'processed', 'cfdi_id': cfdi.id, 'error': False})
+        elif etype.startswith('invoice_payment.'):
+            pago = self.env['sat.cfdi.pago']._upsert_from_syntage(obj, company, event_type=etype)
+            self.write({'state': 'processed', 'cfdi_id': pago.invoice_cfdi_id.id or False, 'error': False})
         else:
             self.write({'state': 'skipped', 'error': 'Tipo de evento no manejado: %s' % etype})

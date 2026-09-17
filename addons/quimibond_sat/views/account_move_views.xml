@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_move_form_sat" model="ir.ui.view">
+        <field name="name">account.move.form.sat</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-danger mb-0" role="alert" invisible="not sat_alerta">
+                    <field name="sat_alerta" readonly="1" nolabel="1"/>
+                </div>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_sat_cfdi" type="object" class="oe_stat_button" icon="fa-file-text-o"
+                        invisible="not sat_cfdi_count">
+                    <field name="sat_cfdi_count" widget="statinfo" string="CFDI SAT"/>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='ref']" position="after">
+                <field name="sat_estado" invisible="move_type == 'entry'"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
