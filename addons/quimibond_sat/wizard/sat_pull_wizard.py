@@ -24,16 +24,13 @@ class SatPullWizard(models.TransientModel):
 
     def action_run(self):
         self.ensure_one()
-        client = self.env['sat.syntage.client']
-        if self.mode == 'pull':
-            log = client.pull_invoices(self.company_id, self.date_from, self.date_to, commit=False)
-        else:
-            log = client.request_extraction(self.company_id, self.date_from, self.date_to,
-                                            self.include_retentions)
+        result = self.env['sat.cfdi'].action_pull_period(
+            self.date_from, self.date_to, company_id=self.company_id.id, mode=self.mode,
+            include_retentions=self.include_retentions)
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'sat.sync.log',
-            'res_id': log.id,
+            'res_id': result['log_id'],
             'view_mode': 'form',
             'target': 'current',
         }
