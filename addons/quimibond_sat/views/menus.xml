@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_sat_root"
-              name="SAT (Syntage)"
-              parent="account.menu_finance"
-              sequence="60"
-              groups="account.group_account_readonly"/>
+    <!-- La raíz es noupdate: el hook / la migración la cuelgan de Contabilidad
+         (Enterprise) y una actualización del módulo NO debe regresarla a
+         Facturación. Cambios de nombre/secuencia/grupos de esta raíz van por
+         migración, no por este XML. -->
+    <data noupdate="1">
+        <menuitem id="menu_sat_root"
+                  name="SAT (Syntage)"
+                  parent="account.menu_finance"
+                  sequence="60"
+                  groups="account.group_account_readonly"/>
+    </data>
     <menuitem id="menu_sat_compare"
               name="Comparación SAT vs Odoo"
               parent="menu_sat_root"
