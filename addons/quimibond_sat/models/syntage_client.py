@@ -170,10 +170,16 @@ class SyntageClient(models.AbstractModel):
         try:
             entity_id = self._entity_id_for(company)
             params = {'itemsPerPage': page_size}
+            # Syntage filtra issuedAt en UTC y el límite es a las 00:00 del día:
+            # una factura del 31 a las 18:00 (México) es el 1 a las 00:00 UTC y
+            # se perdía. Un día de holgura por cada lado; los CFDI de más se
+            # upsertan sin efecto.
             if date_from:
-                params['issuedAt[after]'] = fields.Date.to_string(date_from)
+                params['issuedAt[after]'] = fields.Date.to_string(
+                    fields.Date.to_date(date_from) - timedelta(days=1))
             if date_to:
-                params['issuedAt[before]'] = fields.Date.to_string(date_to)
+                params['issuedAt[before]'] = fields.Date.to_string(
+                    fields.Date.to_date(date_to) + timedelta(days=2))
             url = '%s/entities/%s/invoices?%s' % (self._api_base(), entity_id, urlencode(params))
             headers = {'X-Pagination-Style': 'cursor', 'X-Pagination-Enable-Partial': '0'}
 

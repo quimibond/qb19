@@ -114,6 +114,7 @@ class SatCfdi(models.Model):
         ('ok', 'Cuadra'),
         ('solo_sat', 'Solo en el SAT'),
         ('monto', 'Monto distinto'),
+        ('moneda', 'Moneda distinta'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
         ('cancelado_odoo', 'Cancelado en Odoo, vigente en el SAT'),
         ('ignorado', 'Ignorado'),
@@ -153,7 +154,13 @@ class SatCfdi(models.Model):
         top = partners.filtered(lambda p: not p.parent_id) or partners
         return top[0].commercial_partner_id
 
-    @api.depends('move_id', 'move_id.state', 'move_id.amount_total', 'estado_sat', 'total', 'match_status')
+    # Al centavo: se tolera un centavo (redondeo de impuestos por línea); a partir
+    # de dos centavos es 'monto'. Si la factura de Odoo está en otra moneda que
+    # el CFDI, los totales no son comparables: 'moneda'.
+    AMOUNT_TOLERANCE = 0.01
+
+    @api.depends('move_id', 'move_id.state', 'move_id.amount_total', 'move_id.currency_id',
+                 'estado_sat', 'total', 'moneda', 'match_status')
     def _compute_issue(self):
         for rec in self:
             move = rec.move_id
@@ -166,7 +173,9 @@ class SatCfdi(models.Model):
                 rec.issue = 'cancelado_sat'
             elif rec.estado_sat != 'cancelado' and move.state == 'cancel':
                 rec.issue = 'cancelado_odoo'
-            elif abs(rec.amount_diff) > max(1.0, 0.005 * abs(rec.total)):
+            elif move.currency_id.name != (rec.moneda or 'MXN'):
+                rec.issue = 'moneda'
+            elif abs(rec.amount_diff) > self.AMOUNT_TOLERANCE + 1e-6:
                 rec.issue = 'monto'
             else:
                 rec.issue = 'ok'
@@ -357,7 +366,7 @@ class SatCfdi(models.Model):
             return best, ('rfc_monto_fecha' if has_uuid else 'sin_uuid')
         # Todas las candidatas ya tienen CFDI: si el suyo no cuadra en monto,
         # la factura trae el XML equivocado y este CFDI es el bueno.
-        crossed = cands.filtered(lambda m: linked[m.id].issue == 'monto')
+        crossed = cands.filtered(lambda m: linked[m.id].issue in ('monto', 'moneda'))
         if crossed:
             return min(crossed, key=closeness), 'uuid_cruzado'
         return Move, False

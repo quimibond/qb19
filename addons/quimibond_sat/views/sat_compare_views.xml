@@ -18,7 +18,7 @@
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0"
                   decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
-                  decoration-warning="issue in ('monto', 'solo_odoo')"
+                  decoration-warning="issue in ('monto', 'moneda', 'solo_odoo')"
                   decoration-info="issue == 'solo_sat'"
                   decoration-muted="issue == 'ignorado'">
                 <field name="cfdi_id" column_invisible="1"/>
@@ -31,12 +31,16 @@
                 <field name="counterparty_name"/>
                 <field name="counterparty_rfc" optional="hide"/>
                 <field name="move_name"/>
-                <field name="total_sat" sum="Total SAT"/>
-                <field name="total_odoo" sum="Total Odoo"/>
-                <field name="amount_diff" sum="Diferencia"/>
-                <field name="sat_vigente" sum="SAT vigente" optional="hide"/>
-                <field name="odoo_posted" sum="Odoo publicado" optional="hide"/>
-                <field name="delta" sum="Δ"/>
+                <field name="moneda"/>
+                <field name="moneda_odoo" optional="hide"/>
+                <field name="total_sat"/>
+                <field name="total_odoo"/>
+                <field name="amount_diff"/>
+                <field name="total_sat_mxn" sum="Total SAT (MXN)" optional="hide"/>
+                <field name="total_odoo_mxn" sum="Total Odoo (MXN)" optional="hide"/>
+                <field name="sat_vigente" sum="SAT vigente (MXN)" optional="hide"/>
+                <field name="odoo_posted" sum="Odoo publicado (MXN)" optional="hide"/>
+                <field name="delta" sum="Δ (MXN)"/>
                 <field name="suggested_move_id"/>
                 <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
                         invisible="not suggested_move_id"/>
@@ -70,7 +74,8 @@
                 <filter name="solo_sat" string="Solo en el SAT" domain="[('bucket', '=', 'solo_sat')]"/>
                 <filter name="solo_odoo" string="Solo en Odoo" domain="[('bucket', 'in', ('solo_odoo', 'solo_odoo_sin_uuid'))]"/>
                 <filter name="hallazgos" string="Con hallazgo"
-                        domain="[('issue', 'in', ('monto', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                        domain="[('issue', 'in', ('monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                <filter name="usd" string="En dólares" domain="[('moneda', '=', 'USD')]"/>
                 <filter name="con_sugerencia" string="Con sugerencia" domain="[('suggested_move_id', '!=', False)]"/>
                 <separator/>
                 <filter name="fecha" string="Fecha" date="fecha"/>
@@ -80,6 +85,7 @@
                     <filter name="group_direction" string="Agrupar por sentido" context="{'group_by': 'direction'}"/>
                     <filter name="group_counterparty" string="Agrupar por contraparte" context="{'group_by': 'counterparty_name'}"/>
                     <filter name="group_month" string="Agrupar por mes" context="{'group_by': 'mes'}"/>
+                    <filter name="group_moneda" string="Agrupar por moneda" context="{'group_by': 'moneda'}"/>
             </search>
         </field>
     </record>
@@ -88,7 +94,7 @@
         <field name="name">sat.compare.line.pivot</field>
         <field name="model">sat.compare.line</field>
         <field name="arch" type="xml">
-            <pivot string="Conciliación al centavo: Δ = SAT vigente − Odoo publicado (egresos restan)">
+            <pivot string="Conciliación al centavo en MXN: Δ = SAT vigente − Odoo publicado (egresos restan)">
                 <field name="mes" type="row"/>
                 <field name="direction" type="row"/>
                 <field name="issue" type="col"/>
@@ -106,7 +112,7 @@
             <graph type="bar" stacked="1">
                 <field name="fecha" interval="month"/>
                 <field name="bucket"/>
-                <field name="total_sat" type="measure"/>
+                <field name="sat_vigente" type="measure"/>
             </graph>
         </field>
     </record>
