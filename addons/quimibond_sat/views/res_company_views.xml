@@ -9,6 +9,8 @@
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="sat_sync_enabled"/>
                 <field name="sat_syntage_entity_id" invisible="not sat_sync_enabled"/>
+                <field name="sat_data_until_issued" invisible="not sat_sync_enabled"/>
+                <field name="sat_data_until_received" invisible="not sat_sync_enabled"/>
             </xpath>
         </field>
     </record>

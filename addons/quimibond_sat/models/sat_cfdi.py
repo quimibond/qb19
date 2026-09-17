@@ -673,6 +673,9 @@ class SatCfdi(models.Model):
     # ── alerta diaria ──────────────────────────────────────────────────
 
     ALERT_ISSUES = ('cancelado_odoo', 'cancelado_sat', 'monto', 'moneda')
+    # Días sin timbrados nuevos del SAT a partir de los cuales la alerta avisa
+    # que la extracción se estancó.
+    STALE_DAYS = 3
 
     @api.model
     def _alert_recipients(self):
@@ -692,7 +695,17 @@ class SatCfdi(models.Model):
         companies = self.env['res.company'].sudo().search([('sat_sync_enabled', '=', True)])
         lines = Line.search([('company_id', 'in', companies.ids), ('issue', 'in', self.ALERT_ISSUES)],
                             order='fecha desc')
-        if not lines:
+        # Hasta cuándo hay datos del SAT: si se estanca, la comparación deja de
+        # valer y hay que decirlo aunque no haya hallazgos.
+        today = fields.Date.today()
+        coverage, stale = [], []
+        for company in companies:
+            for label, until in (('emitidos', company.sat_data_until_issued),
+                                 ('recibidos', company.sat_data_until_received)):
+                coverage.append('%s %s: %s' % (company.name, label, until or '—'))
+                if not until or (today - until).days > self.STALE_DAYS:
+                    stale.append('%s %s (%s)' % (company.name, label, until or 'sin datos'))
+        if not lines and not stale:
             return False
         since = fields.Date.today() - timedelta(days=new_days)
         new = lines.filtered(lambda l: l.fecha and l.fecha >= since)
@@ -715,6 +728,7 @@ class SatCfdi(models.Model):
                 '{:,.2f}'.format(line.total_sat or 0.0), '{:,.2f}'.format(line.delta or 0.0))
             for line in new[:200])
         body = (
+            '<p>Datos del SAT hasta: %s.</p>%s'
             '<p>Hallazgos abiertos en la comparación SAT vs Odoo (Δ en MXN):</p>'
             '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Hallazgo</th><th>Docs</th><th>Δ</th></tr>'
             '%s</table>'
@@ -722,10 +736,16 @@ class SatCfdi(models.Model):
             '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Fecha</th><th>Hallazgo</th><th>Sentido</th>'
             '<th>Contraparte</th><th>Odoo</th><th>Total SAT</th><th>Δ</th></tr>%s</table>'
             '<p>Detalle en Odoo: Contabilidad → SAT (Syntage) → Conciliar, filtro "Con hallazgo".</p>'
-        ) % (rows, new_days, len(new), detail or '<tr><td colspan="7">Ninguno</td></tr>')
+        ) % ('; '.join(coverage),
+             ('<p><b>Sin datos nuevos del SAT desde hace más de %s días: %s.</b> Revisa la extracción '
+              'diaria (Datos → Bitácora Syntage).</p>' % (self.STALE_DAYS, ', '.join(stale))) if stale else '',
+             rows, new_days, len(new), detail or '<tr><td colspan="7">Ninguno</td></tr>')
+        subject = _('SAT vs Odoo: %(open)s hallazgos abiertos, %(new)s nuevos') % {
+            'open': len(lines), 'new': len(new)}
+        if stale:
+            subject = _('SAT sin datos nuevos: %s') % ', '.join(stale) + ' · ' + subject
         mail = self.env['mail.mail'].sudo().create({
-            'subject': _('SAT vs Odoo: %(open)s hallazgos abiertos, %(new)s nuevos') % {
-                'open': len(lines), 'new': len(new)},
+            'subject': subject,
             'email_to': ', '.join(recipients),
             'body_html': body,
             'auto_delete': False,

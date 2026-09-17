@@ -83,3 +83,34 @@ class TestSatCompare(SatCommon):
         self.assertAlmostEqual(row.total_odoo, 50.00, places=2)
         self.assertAlmostEqual(row.total_odoo_mxn, 1000.00, places=2)
         self.assertAlmostEqual(row.delta, -1000.00, places=2)
+
+    def test_unsynced_company_has_no_odoo_side_rows(self):
+        bill = self._invoice(self.proveedor, 500.0, day='2026-04-10')
+        Line = self.env['sat.compare.line']
+        self.company.sat_sync_enabled = False
+        self.env.flush_all()
+        self.assertFalse(Line.search([('move_id', '=', bill.id)]))
+        self.company.sat_sync_enabled = True
+        self.env.flush_all()
+        row = Line.search([('move_id', '=', bill.id)])
+        self.assertEqual(row.bucket, 'solo_odoo_sin_uuid')
+
+    def test_company_sat_data_until(self):
+        self.assertFalse(self.company.sat_data_until_received)
+        self._upsert(syntage_invoice(UUID_A, issuedAt='2026-04-29 22:42:37', certifiedAt='2026-04-29 22:42:49'))
+        self.company.invalidate_recordset()
+        self.assertEqual(str(self.company.sat_data_until_received), '2026-04-29')
+        self.assertFalse(self.company.sat_data_until_issued)
+
+    def test_invoice_after_sat_horizon_is_pending_not_solo_odoo(self):
+        # Timbrado más reciente en el SAT: 29-abr. Una factura con UUID del
+        # 30-abr no es "solo Odoo": aún no se extrae. Una del 15-abr sí.
+        self._require_mx_edi()
+        self._upsert(syntage_invoice(UUID_A, certifiedAt='2026-04-29 22:42:49'))
+        after = self._invoice(self.proveedor, 100.0, day='2026-04-30', uuid=UUID_B)
+        before = self._invoice(self.proveedor, 100.0, day='2026-04-15', uuid=UUID_C)
+        self.env.flush_all()
+        Line = self.env['sat.compare.line']
+        self.assertEqual(Line.search([('move_id', '=', after.id)]).issue, 'pendiente_sat')
+        self.assertEqual(Line.search([('move_id', '=', after.id)]).delta, 0.0)
+        self.assertEqual(Line.search([('move_id', '=', before.id)]).issue, 'solo_odoo')
