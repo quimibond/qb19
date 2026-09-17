@@ -143,9 +143,11 @@ class QbObligation(models.Model):
 
     @api.model
     def _collection_owner(self, partner, company):
-        partner = partner.commercial_partner_id if partner else partner
+        # sudo: el campo es company-dependent y el cron o el usuario pueden no tener
+        # acceso a todas las compañías; leer el dueño no expone nada más.
+        partner = partner.commercial_partner_id.sudo() if partner else partner
         owner = partner.with_company(company).collection_user_id if partner else self.env['res.users']
-        return owner or company.obligation_collection_user_id
+        return owner or company.sudo().obligation_collection_user_id
 
     # ── flujo del dueño ──────────────────────────────────────────────
 
@@ -283,7 +285,8 @@ class QbObligation(models.Model):
 
     @api.model
     def _any_partner_owner(self, company):
-        return bool(self.env['res.partner'].with_company(company).search_count([('collection_user_id', '!=', False)]))
+        Partner = self.env['res.partner'].sudo().with_company(company)
+        return bool(Partner.search_count([('collection_user_id', '!=', False)]))
 
     # ── cobranza: cierre por evidencia ───────────────────────────────
 
