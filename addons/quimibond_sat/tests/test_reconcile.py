@@ -70,6 +70,47 @@ class TestSatReconcile(SatCommon):
             cfdi._reconcile_with(bill)
         self.assertEqual(len(self._xml_attachments(bill)), 1)
 
+    def test_attach_xml_never_uses_odoo_importer(self):
+        """El XML se sube con `disable_attachment_import`: el importador de
+        Odoo hace commit a medias en facturas publicadas y aborta la
+        transacción (error 500 en producción)."""
+        bill = self._invoice(self.proveedor, 3287.86, day='2026-04-10')
+        cfdi = self._upsert(syntage_invoice(U1))
+        Move = type(bill)
+        seen = []
+        orig = Move._message_post_after_hook
+
+        def hook(self, message, msg_values):
+            if message.attachment_ids:
+                seen.append(bool(self.env.context.get('disable_attachment_import')))
+            return orig(self, message, msg_values)
+
+        with patch.object(Move, '_message_post_after_hook', hook), \
+                patch.object(type(cfdi), '_fetch_xml', return_value=XML):
+            body = cfdi._reconcile_with(bill)
+        self.assertEqual(seen, [True])
+        self.assertIn('XML adjunto a la factura', body)
+        self.assertEqual(len(self._xml_attachments(bill)), 1)
+
+    def test_reconcile_survives_chatter_failure(self):
+        bill = self._invoice(self.proveedor, 3287.86, day='2026-04-10')
+        cfdi = self._upsert(syntage_invoice(U1))
+        Move = type(bill)
+        orig = Move.message_post
+
+        def boom(self, **kw):
+            if 'conciliado' in (kw.get('body') or ''):
+                raise RuntimeError('chatter caído')
+            return orig(self, **kw)
+
+        with patch.object(Move, 'message_post', boom), \
+                patch.object(type(cfdi), '_fetch_xml', return_value=XML):
+            body = cfdi._reconcile_with(bill)
+        self.assertEqual(cfdi.move_id, bill)
+        self.assertEqual(cfdi.match_method, 'conciliado')
+        self.assertIn('conciliado', body)
+        self.assertEqual(len(self._xml_attachments(bill)), 1)
+
     def test_reconcile_without_xml_is_soft(self):
         bill = self._invoice(self.proveedor, 3287.86, day='2026-04-10')
         cfdi = self._upsert(syntage_invoice(U1))
