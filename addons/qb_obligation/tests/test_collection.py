@@ -63,8 +63,9 @@ class TestCollection(ObligationCommon):
         self.assertEqual(ob.state, 'discarded')
         self.assertEqual(ob.discard_reason, 'cartera histórica')
         self._run()
-        self.assertFalse(self._open_for(inv), 'una factura descartada no vuelve a generar obligación')
-        self.assertEqual(self.Obligation.search_count([('res_id', '=', inv.id)]), 1)
+        obs = self.Obligation.search([('res_model', '=', 'account.move'), ('res_id', '=', inv.id)])
+        self.assertEqual(len(obs), 1, 'una factura descartada no vuelve a generar obligación')
+        self.assertEqual(obs.state, 'discarded')
 
     def test_grace_days(self):
         self._configure(obligation_grace_days=400)
