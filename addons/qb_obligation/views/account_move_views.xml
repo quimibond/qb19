@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_move_form_obligation" model="ir.ui.view">
+        <field name="name">account.move.form.obligation</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_obligations" type="object" class="oe_stat_button" icon="fa-flag"
+                        invisible="not obligation_count">
+                    <field name="obligation_count" widget="statinfo" string="Obligaciones"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
