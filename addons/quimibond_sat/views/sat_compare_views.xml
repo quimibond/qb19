@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_sat_compare" model="ir.actions.act_window">
+        <field name="name">Comparación SAT vs Odoo</field>
+        <field name="res_model">sat.compare.line</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="context">{'search_default_group_bucket': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nada que comparar todavía</p>
+            <p>Descarga CFDI del SAT con "Traer CFDI del SAT"; aquí aparecen cruzados contra las facturas de Odoo.</p>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_list" model="ir.ui.view">
+        <field name="name">sat.compare.line.list</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0"
+                  decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
+                  decoration-warning="issue in ('monto', 'solo_odoo')"
+                  decoration-info="issue == 'solo_sat'"
+                  decoration-muted="issue == 'ignorado'">
+                <field name="cfdi_id" column_invisible="1"/>
+                <field name="move_id" column_invisible="1"/>
+                <field name="fecha"/>
+                <field name="bucket"/>
+                <field name="issue"/>
+                <field name="direction"/>
+                <field name="tipo" optional="hide"/>
+                <field name="counterparty_name"/>
+                <field name="counterparty_rfc" optional="hide"/>
+                <field name="move_name"/>
+                <field name="total_sat" sum="Total SAT"/>
+                <field name="total_odoo" sum="Total Odoo"/>
+                <field name="amount_diff" sum="Diferencia"/>
+                <field name="estado_sat"/>
+                <field name="state_odoo"/>
+                <field name="payment_state" optional="hide"/>
+                <field name="uuid" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <button name="action_open_cfdi" type="object" string="CFDI" icon="fa-file-text-o" invisible="not cfdi_id"/>
+                <button name="action_open_move" type="object" string="Factura" icon="fa-external-link" invisible="not move_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_search" model="ir.ui.view">
+        <field name="name">sat.compare.line.search</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="uuid"/>
+                <field name="counterparty_name"/>
+                <field name="counterparty_rfc"/>
+                <field name="move_name"/>
+                <field name="partner_id"/>
+                <filter name="issued" string="Emitidos" domain="[('direction', '=', 'issued')]"/>
+                <filter name="received" string="Recibidos" domain="[('direction', '=', 'received')]"/>
+                <separator/>
+                <filter name="ambos" string="En ambos" domain="[('bucket', '=', 'ambos')]"/>
+                <filter name="solo_sat" string="Solo en el SAT" domain="[('bucket', '=', 'solo_sat')]"/>
+                <filter name="solo_odoo" string="Solo en Odoo" domain="[('bucket', 'in', ('solo_odoo', 'solo_odoo_sin_uuid'))]"/>
+                <filter name="hallazgos" string="Con hallazgo"
+                        domain="[('issue', 'in', ('monto', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                <separator/>
+                <filter name="fecha" string="Fecha" date="fecha"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_bucket" string="Cubeta" context="{'group_by': 'bucket'}"/>
+                    <filter name="group_issue" string="Hallazgo" context="{'group_by': 'issue'}"/>
+                    <filter name="group_direction" string="Sentido" context="{'group_by': 'direction'}"/>
+                    <filter name="group_counterparty" string="Contraparte" context="{'group_by': 'counterparty_name'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'fecha:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_pivot" model="ir.ui.view">
+        <field name="name">sat.compare.line.pivot</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="bucket" type="row"/>
+                <field name="direction" type="col"/>
+                <field name="total_sat" type="measure"/>
+                <field name="total_odoo" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_graph" model="ir.ui.view">
+        <field name="name">sat.compare.line.graph</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <graph type="bar" stacked="1">
+                <field name="fecha" interval="month"/>
+                <field name="bucket"/>
+                <field name="total_sat" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>
