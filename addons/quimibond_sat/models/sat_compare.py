@@ -22,6 +22,7 @@ class SatCompareLine(models.Model):
         ('solo_odoo_sin_uuid', 'Solo en Odoo (sin UUID)'),
         ('poliza', 'Se registra por póliza'),
         ('sin_cfdi', 'Sin CFDI esperado'),
+        ('pendiente_sat', 'Aún no extraído del SAT'),
         ('ignorado', 'Ignorado'),
     ], string='Cubeta', readonly=True)
     issue = fields.Selection([
@@ -35,6 +36,7 @@ class SatCompareLine(models.Model):
         ('solo_odoo_sin_uuid', 'Sin UUID en Odoo'),
         ('poliza', 'Se registra por póliza'),
         ('sin_cfdi', 'Sin CFDI esperado'),
+        ('pendiente_sat', 'Aún no extraído del SAT'),
         ('ignorado', 'Ignorado'),
     ], string='Hallazgo', readonly=True)
     cfdi_id = fields.Many2one('sat.cfdi', string='CFDI', readonly=True)
@@ -112,6 +114,16 @@ class SatCompareLine(models.Model):
                  WHERE m.move_type IN ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
                    AND m.state IN ('posted', 'cancel')
             ),
+            -- Hasta qué fecha tenemos datos del SAT por compañía y sentido: el
+            -- timbrado más reciente que Syntage ya entregó. Una factura de Odoo
+            -- con UUID de ese día o posterior no es "solo Odoo": todavía no
+            -- se ha extraído del SAT.
+            horizon AS (
+                SELECT company_id, direction, max(coalesce(fecha_timbrado, fecha_emision))::date AS hasta
+                  FROM sat_cfdi
+                 WHERE tipo IN ('I', 'E')
+                 GROUP BY company_id, direction
+            ),
             rows AS (
                 -- Lado SAT: en ambos, solo SAT o ignorado
                 SELECT c.id AS cfdi_id, c.move_id, c.uuid, c.direction, c.tipo, c.company_id,
@@ -142,13 +154,21 @@ class SatCompareLine(models.Model):
                        o.moneda_odoo, o.moneda_odoo,
                        NULL, o.total_odoo, NULL, o.total_odoo_mxn,
                        NULL, o.state, o.payment_state, o.move_name,
-                       CASE WHEN o.odoo_uuid IS NOT NULL THEN 'solo_odoo'
+                       CASE WHEN o.odoo_uuid IS NOT NULL AND h.hasta IS NOT NULL AND o.fecha >= h.hasta
+                                 THEN 'pendiente_sat'
+                            WHEN o.odoo_uuid IS NOT NULL THEN 'solo_odoo'
                             WHEN o.sin_cfdi THEN 'sin_cfdi'
                             WHEN o.por_poliza THEN 'poliza'
                             ELSE 'solo_odoo_sin_uuid' END,
                        NULL::integer
                   FROM odoo o
+                  -- Solo compañías que se sincronizan: sin datos del SAT no hay
+                  -- contra qué comparar y todo saldría "solo Odoo".
+                  JOIN res_company co ON co.id = o.company_id AND co.sat_sync_enabled
                   LEFT JOIN res_partner p ON p.id = o.partner_id
+                  LEFT JOIN horizon h ON h.company_id = o.company_id
+                                     AND h.direction = CASE WHEN o.move_type IN ('out_invoice', 'out_refund')
+                                                            THEN 'issued' ELSE 'received' END
                  WHERE o.state = 'posted'
                    AND NOT EXISTS (
                        SELECT 1 FROM sat_cfdi c
@@ -176,7 +196,7 @@ class SatCompareLine(models.Model):
                         WHEN abs(coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0)) > 0.015 THEN 'monto'
                         ELSE 'ok' END AS issue
               FROM (SELECT rows.*,
-                           CASE WHEN rows.bucket IN ('ignorado', 'poliza', 'sin_cfdi') THEN 0
+                           CASE WHEN rows.bucket IN ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat') THEN 0
                                 WHEN rows.tipo = 'E' THEN -1 ELSE 1 END AS signo
                       FROM rows) r
         """ % (self._table, self._odoo_uuid_sql(), mx_id))
