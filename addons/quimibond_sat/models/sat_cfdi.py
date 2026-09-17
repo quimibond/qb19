@@ -313,7 +313,12 @@ class SatCfdi(models.Model):
                     continue
                 rec.write({'move_id': move.id, 'match_method': method, 'match_status': 'matched'})
             elif not rec.move_id:
-                rec.write({'match_status': 'solo_sat', 'match_method': False})
+                if rec.partner_id.commercial_partner_id.sat_cfdi_policy == 'poliza':
+                    # Banco / impuestos: Odoo lo registra por póliza, no como factura.
+                    rec.write({'match_status': 'ignorado', 'match_method': False,
+                               'ignore_reason': _('Política del contacto: se registra por póliza')})
+                else:
+                    rec.write({'match_status': 'solo_sat', 'match_method': False})
 
     # ── segunda pasada: sugerencias por RFC + monto + fecha ────────────
 
@@ -404,6 +409,37 @@ class SatCfdi(models.Model):
     def action_reject_suggestion(self):
         self.write({'suggestion_rejected': True, 'suggested_move_id': False, 'suggestion_reason': False})
 
+    # Aceptación automática: factura sin XML, mismo RFC, total exacto (al
+    # centavo), misma moneda, fecha a ±AUTO_ACCEPT_DAYS y sin otra candidata.
+    AUTO_ACCEPT_DAYS = 10
+
+    def _auto_accept_suggestions(self):
+        """Liga solo las sugerencias que no dejan lugar a duda. Devuelve cuántas."""
+        accepted = 0
+        for rec in self:
+            move = rec.suggested_move_id
+            if not move or rec.suggestion_reason != 'sin_uuid' or rec.match_status != 'solo_sat':
+                continue
+            if rec.partner_id.commercial_partner_id.sat_cfdi_policy != 'factura':
+                continue
+            if abs(rec.total - move.amount_total) > self.AMOUNT_TOLERANCE + 1e-6:
+                continue
+            if move.currency_id.name != (rec.moneda or 'MXN'):
+                continue
+            date = fields.Date.to_date(rec.fecha_emision) if rec.fecha_emision else None
+            if not date or not move.invoice_date or abs((move.invoice_date - date).days) > self.AUTO_ACCEPT_DAYS:
+                continue
+            # Otra sugerencia o CFDI apuntando a la misma factura: que decida una persona.
+            rivals = self.sudo().search_count([
+                ('id', '!=', rec.id), '|', ('suggested_move_id', '=', move.id), ('move_id', '=', move.id)])
+            if rivals:
+                continue
+            rec.action_accept_suggestion()
+            rec.write({'note': _('Ligado automáticamente: factura sin XML, mismo RFC, total exacto '
+                                 'y fecha a ±%s días') % self.AUTO_ACCEPT_DAYS})
+            accepted += 1
+        return accepted
+
     @api.model
     def _cron_suggest_matches(self, limit=3000):
         pending = self.sudo().search([
@@ -411,8 +447,73 @@ class SatCfdi(models.Model):
             ('tipo', 'in', ('I', 'E')), ('estado_sat', '=', 'vigente'),
         ], limit=limit)
         found = pending.action_suggest()
-        _logger.info('sat.cfdi: %s sugerencias para %s CFDI solo en el SAT', found, len(pending))
+        accepted = pending._auto_accept_suggestions()
+        _logger.info('sat.cfdi: %s sugerencias para %s CFDI solo en el SAT, %s ligadas automáticamente',
+                     found, len(pending), accepted)
         return found
+
+    # ── alerta diaria ──────────────────────────────────────────────────
+
+    ALERT_ISSUES = ('cancelado_odoo', 'cancelado_sat', 'monto', 'moneda')
+
+    @api.model
+    def _alert_recipients(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param('quimibond_sat.alert_email') or ''
+        return [e.strip() for e in raw.replace(';', ',').split(',') if e.strip()]
+
+    @api.model
+    def _cron_daily_alert(self, new_days=7):
+        """Correo con los hallazgos abiertos de la comparación (cancelados, monto,
+        moneda) y los que aparecieron en los últimos ``new_days`` días. Sin
+        destinatarios o sin hallazgos no manda nada."""
+        recipients = self._alert_recipients()
+        if not recipients:
+            _logger.info('sat.cfdi: sin quimibond_sat.alert_email, no se manda alerta')
+            return False
+        Line = self.env['sat.compare.line'].sudo()
+        companies = self.env['res.company'].sudo().search([('sat_sync_enabled', '=', True)])
+        lines = Line.search([('company_id', 'in', companies.ids), ('issue', 'in', self.ALERT_ISSUES)],
+                            order='fecha desc')
+        if not lines:
+            return False
+        since = fields.Date.today() - timedelta(days=new_days)
+        new = lines.filtered(lambda l: l.fecha and l.fecha >= since)
+        labels = dict(Line._fields['issue']._description_selection(self.env))
+        summary = {}
+        for line in lines:
+            item = summary.setdefault(line.issue, [0, 0.0])
+            item[0] += 1
+            item[1] += line.delta
+        rows = ''.join(
+            '<tr><td>%s</td><td style="text-align:right">%s</td><td style="text-align:right">%s</td></tr>'
+            % (labels.get(issue, issue), n, '{:,.2f}'.format(d))
+            for issue, (n, d) in sorted(summary.items()))
+        detail = ''.join(
+            '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>'
+            '<td style="text-align:right">%s</td><td style="text-align:right">%s</td></tr>' % (
+                line.fecha or '', labels.get(line.issue, line.issue),
+                'Emitido' if line.direction == 'issued' else 'Recibido',
+                line.counterparty_name or '', line.move_name or '',
+                '{:,.2f}'.format(line.total_sat or 0.0), '{:,.2f}'.format(line.delta or 0.0))
+            for line in new[:200])
+        body = (
+            '<p>Hallazgos abiertos en la comparación SAT vs Odoo (Δ en MXN):</p>'
+            '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Hallazgo</th><th>Docs</th><th>Δ</th></tr>'
+            '%s</table>'
+            '<p>Nuevos en los últimos %s días: <b>%s</b></p>'
+            '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Fecha</th><th>Hallazgo</th><th>Sentido</th>'
+            '<th>Contraparte</th><th>Odoo</th><th>Total SAT</th><th>Δ</th></tr>%s</table>'
+            '<p>Detalle en Odoo: Contabilidad → SAT (Syntage) → Comparación SAT vs Odoo, filtro "Con hallazgo".</p>'
+        ) % (rows, new_days, len(new), detail or '<tr><td colspan="7">Ninguno</td></tr>')
+        mail = self.env['mail.mail'].sudo().create({
+            'subject': _('SAT vs Odoo: %(open)s hallazgos abiertos, %(new)s nuevos') % {
+                'open': len(lines), 'new': len(new)},
+            'email_to': ', '.join(recipients),
+            'body_html': body,
+            'auto_delete': False,
+        })
+        mail.send()
+        return mail
 
     def write(self, vals):
         # Ligar o desligar a mano desde el formulario.

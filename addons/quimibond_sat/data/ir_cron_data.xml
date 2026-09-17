@@ -54,5 +54,18 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
+        <!-- Correo diario con los hallazgos abiertos (cancelados, monto, moneda).
+             Destinatarios en el parámetro quimibond_sat.alert_email. -->
+        <record id="cron_sat_daily_alert" model="ir.cron">
+            <field name="name">SAT (Syntage) - Alerta diaria de hallazgos</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_daily_alert()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=13, minute=0, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
     </data>
 </odoo>
