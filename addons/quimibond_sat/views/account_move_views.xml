@@ -19,6 +19,11 @@
             </xpath>
             <xpath expr="//field[@name='ref']" position="after">
                 <field name="sat_estado" invisible="move_type == 'entry'"/>
+                <field name="sat_uuid" invisible="not sat_uuid"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_sat_reconcile" type="object" string="Conciliar con el SAT"
+                        invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund') or state == 'cancel' or sat_estado != 'sin_cfdi'"/>
             </xpath>
         </field>
     </record>

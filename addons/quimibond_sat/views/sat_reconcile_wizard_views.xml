@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sat_reconcile_wizard_form" model="ir.ui.view">
+        <field name="name">sat.reconcile.wizard.form</field>
+        <field name="model">sat.reconcile.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Conciliar SAT ↔ Odoo">
+                <group>
+                    <group>
+                        <field name="cfdi_id" invisible="not cfdi_id"/>
+                        <field name="move_id" invisible="not move_id"/>
+                        <field name="summary" string="Documento"/>
+                    </group>
+                    <group>
+                        <field name="days"/>
+                        <field name="tolerance_pct"/>
+                        <field name="attach_xml"/>
+                        <button name="action_refresh" type="object" string="Buscar otra vez" icon="fa-refresh"
+                                class="btn-link" colspan="2"/>
+                    </group>
+                </group>
+                <field name="line_ids" nolabel="1" colspan="2">
+                    <list create="0" delete="0" edit="0" decoration-success="exact" decoration-muted="linked_to">
+                        <field name="sequence" column_invisible="1"/>
+                        <field name="move_id" column_invisible="1"/>
+                        <field name="cfdi_id" column_invisible="1"/>
+                        <field name="exact" widget="boolean_toggle" readonly="1"/>
+                        <field name="name"/>
+                        <field name="date"/>
+                        <field name="partner_name"/>
+                        <field name="amount"/>
+                        <field name="currency_id"/>
+                        <field name="delta_amount"/>
+                        <field name="delta_days"/>
+                        <field name="state"/>
+                        <field name="linked_to"/>
+                        <button name="action_pick" type="object" string="Conciliar" icon="fa-link" class="btn-primary"/>
+                    </list>
+                </field>
+                <p class="text-muted" invisible="line_ids">
+                    Ninguna factura cuadra con este documento. Amplía la ventana de fecha o la tolerancia,
+                    o crea la factura en Odoo y vuelve a conciliar.
+                </p>
+                <footer>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

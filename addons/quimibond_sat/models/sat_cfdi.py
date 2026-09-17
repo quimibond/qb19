@@ -6,15 +6,20 @@ El cruce es por folio fiscal (UUID): primero contra l10n_mx_edi.document
 el campo l10n_mx_edi_cfdi_uuid del asiento. Si hay varios asientos con el
 mismo UUID (XML capturado dos veces) gana el publicado más reciente.
 """
+import base64
+import json
 import logging
 from datetime import timedelta
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
 INVOICE_TYPES = ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
 GENERIC_RFCS = ('XAXX010101000', 'XEXX010101000')
+# Ligados por una persona: el cruce automático por UUID no los toca.
+MANUAL_METHODS = ('manual', 'sugerido', 'conciliado')
 
 
 def _parse_dt(value):
@@ -91,6 +96,7 @@ class SatCfdi(models.Model):
         ('uuid_move', 'UUID (factura)'),
         ('manual', 'Manual'),
         ('sugerido', 'Sugerencia aceptada'),
+        ('conciliado', 'Conciliado (asistente)'),
     ], string='Ligado por', copy=False)
     match_status = fields.Selection([
         ('matched', 'En Odoo'), ('solo_sat', 'Solo en el SAT'), ('ignorado', 'Ignorado'),
@@ -299,7 +305,7 @@ class SatCfdi(models.Model):
 
     def _match_move(self):
         for rec in self:
-            if rec.match_status == 'ignorado' or rec.match_method in ('manual', 'sugerido'):
+            if rec.match_status == 'ignorado' or rec.match_method in MANUAL_METHODS:
                 continue
             move, method = rec._find_move()
             if move:
@@ -308,7 +314,7 @@ class SatCfdi(models.Model):
                 # Odoo apunta al CFDI equivocado.
                 taken = self.sudo().search([
                     ('move_id', '=', move.id), ('id', '!=', rec.id),
-                    ('match_method', 'in', ('manual', 'sugerido')),
+                    ('match_method', 'in', MANUAL_METHODS),
                 ], limit=1)
                 if taken:
                     rec.write({'match_status': 'solo_sat', 'match_method': False, 'move_id': False,
@@ -412,6 +418,148 @@ class SatCfdi(models.Model):
 
     def action_reject_suggestion(self):
         self.write({'suggestion_rejected': True, 'suggested_move_id': False, 'suggestion_reason': False})
+
+    # ── conciliación asistida ──────────────────────────────────────────
+    #
+    # El asistente muestra TODAS las facturas del mismo RFC que cuadran en
+    # monto (publicadas o en borrador, ventana de fecha amplia) y la persona
+    # elige. Al conciliar se liga el CFDI, se deja constancia en el chatter de
+    # la factura y, si Syntage entrega el XML, se adjunta a la factura para
+    # que la localización mexicana (l10n_mx_edi) registre el folio fiscal
+    # como si el XML se hubiera subido a mano.
+
+    def action_reconcile(self):
+        self.ensure_one()
+        return self.env['sat.reconcile.wizard'].open_for(self)
+
+    def _reconcile_candidates(self, days=180, tol_pct=0.005, states=('posted', 'draft')):
+        """Facturas de Odoo de la misma compañía y contraparte, del tipo del
+        CFDI, con el mismo total (±tol_pct, mín. $1) y fecha a ±days (0 = sin
+        límite). Ordenadas: primero la que menos difiere en monto, luego en
+        fecha. Con RFC genérico se busca por el contacto ligado."""
+        self.ensure_one()
+        Move = self.env['account.move']
+        if self.tipo not in ('I', 'E') or not self.total:
+            return Move
+        rfc = self.counterparty_rfc
+        if self.direction == 'issued':
+            types = ['out_refund'] if self.tipo == 'E' else ['out_invoice']
+        else:
+            types = ['in_refund'] if self.tipo == 'E' else ['in_invoice']
+        domain = [('company_id', '=', self.company_id.id), ('move_type', 'in', types),
+                  ('state', 'in', list(states))]
+        if rfc and rfc not in GENERIC_RFCS:
+            domain.append(('commercial_partner_id.vat', '=ilike', rfc))
+        elif self.partner_id:
+            domain.append(('commercial_partner_id', '=', self.partner_id.commercial_partner_id.id))
+        else:
+            return Move
+        tol = max(1.0, tol_pct * abs(self.total)) if tol_pct else self.AMOUNT_TOLERANCE
+        domain += [('amount_total', '>=', abs(self.total) - tol), ('amount_total', '<=', abs(self.total) + tol)]
+        date = fields.Date.to_date(self.fecha_emision) if self.fecha_emision else None
+        if date and days:
+            domain += [('invoice_date', '>=', date - timedelta(days=days)),
+                       ('invoice_date', '<=', date + timedelta(days=days))]
+
+        def key(move):
+            dd = abs((move.invoice_date - date).days) if (date and move.invoice_date) else 999
+            return (round(abs(move.amount_total - abs(self.total)), 2), dd, -move.id)
+        return Move.search(domain).sorted(key=key)
+
+    def _reconcile_with(self, move, attach_xml=True):
+        """Liga este CFDI a `move` (una persona lo decidió). Si la factura
+        estaba ligada a otro CFDI, ese queda 'solo en el SAT' con nota (XML
+        cruzado). Devuelve el texto que quedó en el chatter."""
+        self.ensure_one()
+        if not move or move.company_id != self.company_id:
+            raise UserError(_('La factura debe ser de la misma compañía que el CFDI.'))
+        if move.move_type not in INVOICE_TYPES:
+            raise UserError(_('Solo se concilia contra facturas o notas de crédito.'))
+        others = self.sudo().search([('move_id', '=', move.id), ('id', '!=', self.id)])
+        if others:
+            others.write({
+                'move_id': False, 'match_method': False, 'match_status': 'solo_sat',
+                'note': _('XML cruzado: la factura %(move)s se concilió con el CFDI %(uuid)s') % {
+                    'move': move.name, 'uuid': self.uuid},
+            })
+        self.write({
+            'move_id': move.id, 'match_method': 'conciliado', 'match_status': 'matched',
+            'suggested_move_id': False, 'suggestion_reason': False, 'suggestion_rejected': False,
+            'ignore_reason': False,
+            'note': _('Conciliado por %s') % self.env.user.name,
+        })
+        xml_note = self._attach_xml_to_move(move) if attach_xml else _('sin adjuntar el XML')
+        body = _('CFDI del SAT conciliado: %(uuid)s (%(name)s), total %(total)s %(cur)s, emitido el %(date)s; %(xml)s.') % {
+            'uuid': (self.uuid or '').upper(), 'name': self.name, 'total': '{:,.2f}'.format(self.total or 0.0),
+            'cur': self.moneda or 'MXN', 'date': fields.Date.to_date(self.fecha_emision) if self.fecha_emision else '—',
+            'xml': xml_note}
+        move.with_context(disable_attachment_import=True).message_post(
+            body=body, message_type='comment', subtype_xmlid='mail.mt_note')
+        if others:
+            others.action_suggest()
+        return body
+
+    def _fetch_xml(self):
+        """XML del CFDI desde Syntage (bytes). La ruta es configurable por si
+        cambia la API: parámetro `quimibond_sat.syntage_xml_path` con `{id}`."""
+        self.ensure_one()
+        if not self.syntage_id:
+            raise UserError(_('El CFDI %s no tiene id de Syntage.') % self.uuid)
+        icp = self.env['ir.config_parameter'].sudo()
+        path = (icp.get_param('quimibond_sat.syntage_xml_path') or '/invoices/{id}/files/xml').format(
+            id=self.syntage_id, uuid=self.uuid)
+        client = self.env['sat.syntage.client']
+        content = client._request_raw(path, accept='application/xml')
+        if content.lstrip()[:1] == b'{':
+            # Algunas rutas devuelven metadatos (JSON-LD) con la URL o el
+            # contenido en base64 en vez del archivo.
+            try:
+                data = json.loads(content)
+            except ValueError:
+                data = {}
+            url = data.get('url') or data.get('contentUrl') or data.get('downloadUrl')
+            if url:
+                content = client._request_raw(url, accept='application/xml')
+            elif data.get('content'):
+                content = base64.b64decode(data['content'])
+        if b'<' not in content[:200]:
+            raise UserError(_('Syntage no devolvió el XML del CFDI %(uuid)s (%(path)s).') % {
+                'uuid': self.uuid, 'path': path})
+        return content
+
+    def _attach_xml_to_move(self, move):
+        """Adjunta el XML del SAT a la factura. En una factura publicada se
+        sube por el chatter como lo haría una persona, para que l10n_mx_edi
+        lo lea y registre el folio fiscal; si eso falla, queda adjunto sin
+        más. Nunca revienta la conciliación: devuelve un texto con lo que pasó."""
+        self.ensure_one()
+        try:
+            content = self._fetch_xml()
+        except Exception as exc:  # noqa: BLE001 — la liga vale aunque no haya XML
+            _logger.warning('sat.cfdi %s: XML no adjuntado: %s', self.uuid, exc)
+            return _('XML no adjuntado (%s)') % exc
+        name = '%s.xml' % (self.uuid or '').upper()
+        Attachment = self.env['ir.attachment'].sudo()
+        if Attachment.search_count([('res_model', '=', 'account.move'), ('res_id', '=', move.id), ('name', '=', name)]):
+            return _('el XML ya estaba adjunto')
+        att = Attachment.create({'name': name, 'raw': content, 'mimetype': 'application/xml',
+                                 'res_model': 'account.move', 'res_id': move.id})
+        has_doc, has_field = self._uuid_sources_available()
+        if move.state == 'posted' and has_doc:
+            try:
+                with self.env.cr.savepoint():
+                    move.message_post(body=_('XML del CFDI %s (Syntage)') % self.uuid.upper(),
+                                      attachment_ids=[att.id], message_type='comment', subtype_xmlid='mail.mt_note')
+                move.invalidate_recordset()
+                if has_field and (move.l10n_mx_edi_cfdi_uuid or '').lower() == (self.uuid or '').lower():
+                    return _('XML adjunto y folio fiscal registrado por Odoo')
+                return _('XML adjunto (Odoo no registró el folio fiscal)')
+            except Exception:  # noqa: BLE001 — el importador de Odoo no debe tumbar la liga
+                _logger.exception('sat.cfdi %s: Odoo no pudo importar el XML en %s', self.uuid, move.name)
+        move.with_context(disable_attachment_import=True).message_post(
+            body=_('XML del CFDI %s (Syntage)') % self.uuid.upper(),
+            attachment_ids=[att.id], message_type='comment', subtype_xmlid='mail.mt_note')
+        return _('XML adjunto a la factura')
 
     # Aceptación automática: factura sin XML, mismo RFC, total exacto (al
     # centavo), misma moneda, fecha a ±AUTO_ACCEPT_DAYS y sin otra candidata.

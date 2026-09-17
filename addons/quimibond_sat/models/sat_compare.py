@@ -185,6 +185,14 @@ class SatCompareLine(models.Model):
         self.ensure_one()
         self.cfdi_id.action_accept_suggestion()
 
+    def action_reconcile(self):
+        self.ensure_one()
+        if self.cfdi_id:
+            return self.cfdi_id.action_reconcile()
+        if self.move_id:
+            return self.move_id.action_sat_reconcile()
+        return False
+
     def action_open_cfdi(self):
         self.ensure_one()
         return {'type': 'ir.actions.act_window', 'res_model': 'sat.cfdi',

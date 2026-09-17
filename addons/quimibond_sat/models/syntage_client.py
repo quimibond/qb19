@@ -79,6 +79,18 @@ class SyntageClient(models.AbstractModel):
             return {}
 
     @api.model
+    def _request_raw(self, path, accept='application/xml', timeout=60):
+        """GET que devuelve el cuerpo tal cual (bytes): archivos XML/PDF."""
+        url = path if path.startswith('http') else self._api_base() + path
+        try:
+            resp = requests.get(url, headers=self._headers({'Accept': accept}), timeout=timeout)
+        except requests.RequestException as exc:
+            raise UserError(_('No se pudo conectar con Syntage (%s): %s') % (path, exc)) from exc
+        if resp.status_code >= 400:
+            raise UserError(_('Syntage respondió %s en %s: %s') % (resp.status_code, path, resp.text[:500]))
+        return resp.content
+
+    @api.model
     def _commit(self):
         """Commit intermedio (descargas largas): se omite en modo test, donde
         el cursor de prueba no admite commit."""
