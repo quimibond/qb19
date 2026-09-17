@@ -7,7 +7,7 @@ es una consulta, nunca el juicio de un modelo.
 
 | Qué | Dónde | Cómo |
 |---|---|---|
-| Obligaciones | App **Obligaciones** (menú principal) → Mis obligaciones / Todas | Lista agrupada por cliente; botones *Sí, es mía*, *Ya se cumplió*, *Descartar*, *Cancelar*; chatter con el historial. |
+| Obligaciones | App **Obligaciones** (menú principal) → Mis obligaciones / Todas | Lista agrupada por cliente; botones *Sí, es mía*, *Ya se cumplió*, *Descartar*, *Cancelar*; chatter con el historial. *Descartar* es pegajoso: la factura no vuelve a generar obligación aunque siga vencida (cartera histórica, disputa). |
 | Cobrar factura vencida | Cron cada hora `Obligaciones - Cobranza` | Nace **confirmada** de cada factura de cliente publicada, vencida (menos días de gracia) y con saldo. Dueño: `collection_user_id` del contacto o el default de la compañía. **Sin dueño configurado no crea nada.** |
 | Cierre por evidencia | Mismo cron | `abs(saldo) ≤ tolerancia` (default $1) o estado de pago pagado / en proceso / revertido → cumplida con la factura como evidencia. Factura cancelada o bloqueada → obligación cancelada. |
 | Aplicar pago que el SAT ya ve | Mismo cron (requiere `quimibond_sat`) | Complementos de pago vigentes por más de lo que Odoo registra cobrado → la obligación cambia a `collection.apply_payment` y pasa al dueño de aplicar pagos de la compañía. No cierra: el cliente pagó, falta aplicarlo. |
