@@ -22,6 +22,11 @@ addons/quimibond_intelligence/
   security/ir.model.access.csv
 ```
 
+## Otros módulos del repo
+
+- `quimibond_sat`: CFDI y complementos de pago del SAT (Syntage) dentro de Odoo, comparación al centavo, alerta diaria. README propio.
+- `qb_obligation`: obligaciones vivas (qué, quién, sobre qué documento, cómo se prueba, cuándo vence). Piloto de cobranza: nacen solas de las facturas vencidas, se cierran por evidencia (saldo en cero), se reasignan a contabilidad si el SAT ya ve el pago, escalan a Dirección y mandan un recordatorio diario agrupado por cliente. API `create_candidate` para el correo. README propio.
+
 ## Modelos sincronizados (21)
 
 | Metodo | Odoo Model | Supabase Table |

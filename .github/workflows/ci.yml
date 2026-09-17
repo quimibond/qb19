@@ -113,8 +113,8 @@ jobs:
           odoo -d qbci \
             --db_host=db --db_user=odoo --db_password=odoo \
             --addons-path="$ODOO_ADDONS,$GITHUB_WORKSPACE/addons" \
-            -i qb_capacidad_costeo,quimibond_sat \
-            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat \
+            -i qb_capacidad_costeo,quimibond_sat,qb_obligation \
+            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat,/qb_obligation \
             --stop-after-init --log-level=test \
             --data-dir=/tmp/odoo-data > /tmp/odoo-tests.log 2>&1 || rc=$?
           cat /tmp/odoo-tests.log
