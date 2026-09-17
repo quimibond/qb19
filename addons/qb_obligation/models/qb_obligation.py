@@ -251,11 +251,15 @@ class QbObligation(models.Model):
             moves = Move.search(Move._obligation_overdue_domain(comp, today))
             if not moves:
                 continue
-            open_ids = {r.res_id for r in self.search([
+            # Se salta la factura si ya tiene obligación abierta o si alguien la
+            # descartó: el descarte es pegajoso (cartera histórica, disputa),
+            # si no el cron la resucitaría cada hora.
+            skip_ids = {r.res_id for r in self.search([
                 ('obligation_type', 'in', ('collection.overdue_invoice', 'collection.apply_payment')),
-                ('res_model', '=', 'account.move'), ('res_id', 'in', moves.ids), ('state', 'in', OPEN_STATES)])}
+                ('res_model', '=', 'account.move'), ('res_id', 'in', moves.ids),
+                ('state', 'in', OPEN_STATES + ('discarded',))])}
             for move in moves:
-                if move.id in open_ids:
+                if move.id in skip_ids:
                     continue
                 owner = self._collection_owner(move.partner_id, comp)
                 if not owner:
