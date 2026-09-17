@@ -15,10 +15,14 @@ class SatSyncLog(models.Model):
     ], required=True)
     company_id = fields.Many2one('res.company', string='Compañía', index=True)
     status = fields.Selection([
+        ('queued', 'En cola'),
+        ('running', 'Corriendo'),
         ('success', 'OK'),
         ('partial', 'Parcial'),
         ('error', 'Error'),
-    ], default='success', required=True)
+    ], default='success', required=True, index=True)
+    mode = fields.Selection([('pull', 'Descarga por API'), ('extraction', 'Extracción')], default='pull')
+    include_retentions = fields.Boolean(default=False)
     summary = fields.Text()
     date_from = fields.Date(string='Desde')
     date_to = fields.Date(string='Hasta')

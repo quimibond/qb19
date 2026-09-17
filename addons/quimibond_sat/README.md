@@ -32,7 +32,9 @@ aparezcan como "solo en el SAT".
 4. Carga inicial: menú SAT (Syntage) → **Traer CFDI del SAT**, modo *Descargar*,
    o por MCP / acción de servidor: `sat.cfdi.action_pull_period('2026-09-01',
    '2026-09-30')` (los asistentes no se pueden exponer por MCP; habilitar
-   `sat.cfdi` con *allow method calls*). Mismo asistente,
+   `sat.cfdi` con *allow method calls*). Para meses completos usar
+   `background=True`: encola y un cron lo corre con commit por página; el
+   avance se ve en la bitácora (En cola → Corriendo → OK). Mismo asistente,
    por meses (Syntage ya tiene el histórico extraído). Si un periodo no está en
    Syntage, usar modo *Extraer* y descargar después.
 

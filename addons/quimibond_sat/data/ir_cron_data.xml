@@ -40,5 +40,19 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
+        <!-- Cola de descargas/extracciones por periodo (action_pull_period con
+             background=True). Se dispara al encolar vía _trigger(); el horario
+             diario es solo red de seguridad. -->
+        <record id="cron_sat_run_queued" model="ir.cron">
+            <field name="name">SAT (Syntage) - Procesar cola de descargas</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_run_queued()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
     </data>
 </odoo>
