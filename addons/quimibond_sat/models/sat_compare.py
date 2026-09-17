@@ -49,6 +49,14 @@ class SatCompareLine(models.Model):
     estado_sat = fields.Char(string='Estado SAT', readonly=True)
     state_odoo = fields.Char(string='Estado Odoo', readonly=True)
     payment_state = fields.Char(string='Pago en Odoo', readonly=True)
+    suggested_move_id = fields.Many2one('account.move', string='Factura sugerida', readonly=True)
+    # Conciliación al centavo: E resta, solo vigentes / publicadas cuentan.
+    mes = fields.Date(string='Mes', readonly=True)
+    sat_vigente = fields.Float(string='SAT vigente', readonly=True, digits=(16, 2),
+                               help='Total del CFDI si está vigente (egresos en negativo).')
+    odoo_posted = fields.Float(string='Odoo publicado', readonly=True, digits=(16, 2),
+                               help='Total de la factura si está publicada (notas de crédito en negativo).')
+    delta = fields.Float(string='Δ SAT − Odoo', readonly=True, digits=(16, 2))
 
     def _odoo_uuid_sql(self):
         """UUID de la factura según lo que tenga instalada la base: el campo
@@ -86,7 +94,8 @@ class SatCompareLine(models.Model):
                        c.estado_sat, o.state AS state_odoo, o.payment_state, o.move_name,
                        CASE WHEN c.match_status = 'ignorado' THEN 'ignorado'
                             WHEN c.move_id IS NOT NULL THEN 'ambos'
-                            ELSE 'solo_sat' END AS bucket
+                            ELSE 'solo_sat' END AS bucket,
+                       c.suggested_move_id
                   FROM sat_cfdi c
                   LEFT JOIN odoo o ON o.move_id = c.move_id
                  WHERE c.tipo IN ('I', 'E')
@@ -97,7 +106,8 @@ class SatCompareLine(models.Model):
                        CASE WHEN o.move_type IN ('out_refund', 'in_refund') THEN 'E' ELSE 'I' END,
                        o.company_id, o.partner_id, upper(p.vat), p.name, o.fecha,
                        NULL, o.total_odoo, NULL, o.state, o.payment_state, o.move_name,
-                       CASE WHEN o.odoo_uuid IS NULL THEN 'solo_odoo_sin_uuid' ELSE 'solo_odoo' END
+                       CASE WHEN o.odoo_uuid IS NULL THEN 'solo_odoo_sin_uuid' ELSE 'solo_odoo' END,
+                       NULL::integer
                   FROM odoo o
                   LEFT JOIN res_partner p ON p.id = o.partner_id
                  WHERE o.state = 'posted'
@@ -109,6 +119,14 @@ class SatCompareLine(models.Model):
             SELECT row_number() OVER (ORDER BY fecha DESC NULLS LAST, cfdi_id, move_id) AS id,
                    r.*,
                    coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0) AS amount_diff,
+                   date_trunc('month', r.fecha)::date AS mes,
+                   CASE WHEN r.tipo = 'E' THEN -1 ELSE 1 END
+                       * CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat, 0) ELSE 0 END AS sat_vigente,
+                   CASE WHEN r.tipo = 'E' THEN -1 ELSE 1 END
+                       * CASE WHEN r.state_odoo = 'posted' THEN coalesce(r.total_odoo, 0) ELSE 0 END AS odoo_posted,
+                   CASE WHEN r.tipo = 'E' THEN -1 ELSE 1 END
+                       * (CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat, 0) ELSE 0 END
+                          - CASE WHEN r.state_odoo = 'posted' THEN coalesce(r.total_odoo, 0) ELSE 0 END) AS delta,
                    CASE WHEN r.bucket <> 'ambos' THEN r.bucket
                         WHEN r.estado_sat = 'cancelado' AND r.state_odoo = 'posted' THEN 'cancelado_sat'
                         WHEN r.estado_sat <> 'cancelado' AND r.state_odoo = 'cancel' THEN 'cancelado_odoo'
@@ -117,6 +135,10 @@ class SatCompareLine(models.Model):
                         ELSE 'ok' END AS issue
               FROM rows r
         """ % (self._table, self._odoo_uuid_sql()))
+
+    def action_accept_suggestion(self):
+        self.ensure_one()
+        self.cfdi_id.action_accept_suggestion()
 
     def action_open_cfdi(self):
         self.ensure_one()

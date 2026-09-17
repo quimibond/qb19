@@ -15,9 +15,12 @@ usando Syntage como proveedor de descarga masiva, y los cruza por folio fiscal
 | Cruce | `sat.cfdi._match_move` | UUID contra `l10n_mx_edi.document` (documento CFDI) y luego contra `account.move.l10n_mx_edi_cfdi_uuid`. Entre varias facturas con el mismo UUID gana la publicada más reciente. Cron horario para las pendientes. |
 | Comparación | menú SAT (Syntage) → Comparación SAT vs Odoo | Vista SQL con cubetas *en ambos / solo SAT / solo Odoo / sin UUID / ignorado* y hallazgos *monto distinto*, *cancelado en el SAT pero publicado en Odoo*, *cancelado en Odoo pero vigente en el SAT*. |
 
+| Segunda pasada | `sat.cfdi.action_suggest` (cron horario) | Para los CFDI "solo en el SAT": busca la factura de la misma contraparte (RFC), mismo total (±0.5%) y fecha ±45 días. Motivos: *sin XML en Odoo*, *mismo RFC/monto/fecha* y *XML cruzado* (la factura trae ligado otro CFDI del mismo proveedor que no cuadra en monto). Se acepta o rechaza a mano; nunca liga solo. Al aceptar un XML cruzado, el CFDI equivocado vuelve a "solo en el SAT" con nota. |
+| Al centavo | pivot de la comparación | `SAT vigente` − `Odoo publicado` = `Δ` por mes, sentido y hallazgo (egresos restan; cancelados no cuentan). La suma de Δ por hallazgo explica la diferencia del mes peso por peso. |
+
 Los CFDI de bancos, casa de bolsa, IMSS, SAT e Infonavit se registran en Odoo
 por póliza, no como factura: márcalos **Ignorar** desde el CFDI para que no
-aparezcan como "solo en el SAT".
+aparezcan como "solo en el SAT" (siguen contando en Δ, en su propia columna).
 
 ## Configuración
 
