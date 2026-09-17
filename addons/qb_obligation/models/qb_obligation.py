@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Obligaciones vivas. Ver README. Piloto: cobranza.
+"""Obligaciones vivas. Ver README.
 
+Una obligación es un compromiso con cinco datos (qué, quién, sobre qué
+documento, cómo se prueba, cuándo vence) que puede nacer de Odoo, del correo
+(memoria en Supabase), de un resumen, del gabinete o a mano, en cualquier área.
 Reglas que no se negocian: el dueño es un res.users; el cierre por evidencia es
 una consulta, nunca un juicio de un modelo; lo que nace de Odoo nace confirmado
 y lo que nace del correo espera la confirmación del dueño.
@@ -16,6 +19,22 @@ _logger = logging.getLogger(__name__)
 OPEN_STATES = ('candidate', 'confirmed')
 PAID_STATES = ('paid', 'in_payment', 'reversed')
 
+AREAS = [
+    ('comercial', 'Comercial'), ('operaciones', 'Operaciones'), ('compras', 'Compras'),
+    ('finanzas', 'Finanzas'), ('sgi', 'SGI'), ('rh', 'RH'), ('otro', 'Otro'),
+]
+# Prefijo del tipo → área. Los tipos de cobranza conservan su clave histórica.
+AREA_BY_PREFIX = {'collection': 'finanzas'}
+# Tipo detectado en el correo (email_pending_actions.tipo) → tipo de obligación.
+EMAIL_TYPE_MAP = {
+    'promesa_pago': 'collection.payment_promise',
+    'compromiso_entrega': 'comercial.delivery_commitment',
+    'cotizacion': 'comercial.quote',
+    'solicitud_documento': 'comercial.document_request',
+    'rfq': 'compras.rfq',
+}
+EMAIL_SOURCE_PREFIX = 'supabase:email_pending_actions:'
+
 
 class QbObligation(models.Model):
     _name = 'qb.obligation'
@@ -26,10 +45,27 @@ class QbObligation(models.Model):
     # ── identidad ────────────────────────────────────────────────────
     name = fields.Char(required=True)
     obligation_type = fields.Selection([
+        # Comercial
+        ('comercial.delivery_commitment', 'Cumplir compromiso de entrega'),
+        ('comercial.quote', 'Enviar cotización pendiente'),
+        ('comercial.document_request', 'Enviar documento solicitado'),
+        ('comercial.reply', 'Responder al cliente'),
+        # Operaciones
+        ('operaciones.delivery', 'Entregar pedido'),
+        ('operaciones.complaint', 'Atender reclamación'),
+        # Compras
+        ('compras.rfq', 'Cotizar con proveedor'),
+        ('compras.receipt', 'Recibir compra pendiente'),
+        # Finanzas (claves históricas del piloto de cobranza)
         ('collection.overdue_invoice', 'Cobrar factura vencida'),
         ('collection.apply_payment', 'Aplicar pago que el SAT ya ve'),
         ('collection.payment_promise', 'Promesa de pago (correo)'),
+        # SGI / RH / otros
+        ('sgi.record', 'Registro o acuse SGI'),
+        ('rh.file', 'Expediente o acuse RH'),
+        ('otro.generic', 'Otro compromiso'),
     ], required=True, index=True)
+    area = fields.Selection(AREAS, compute='_compute_area', store=True, index=True)
     state = fields.Selection([
         ('candidate', 'Por confirmar'),
         ('confirmed', 'Confirmada'),
@@ -47,6 +83,9 @@ class QbObligation(models.Model):
     res_id = fields.Many2oneReference(string='Documento', model_field='res_model', index=True)
     evidence_rule_key = fields.Selection([
         ('invoice_paid_or_credited', 'Saldo de la factura en cero (pago o nota de crédito)'),
+        ('so_delivered', 'Pedido de venta entregado por completo'),
+        ('po_received', 'Orden de compra recibida por completo'),
+        ('email_resolved', 'El pendiente quedó resuelto en el correo (memoria)'),
         ('owner_ack', 'Acuse del dueño'),
     ], string='Cómo se prueba', required=True, default='owner_ack')
     date_deadline = fields.Date(string='Vence', required=True, index=True)
@@ -108,6 +147,14 @@ class QbObligation(models.Model):
                 WHERE state IN ('candidate', 'confirmed') AND source_ref IS NOT NULL;
         """)
 
+    @api.depends('obligation_type')
+    def _compute_area(self):
+        areas = dict(AREAS)
+        for rec in self:
+            prefix = (rec.obligation_type or '').split('.')[0]
+            prefix = AREA_BY_PREFIX.get(prefix, prefix)
+            rec.area = prefix if prefix in areas else 'otro'
+
     @api.depends('date_deadline', 'state', 'completed_at', 'create_date')
     def _compute_days(self):
         today = fields.Date.context_today(self)
@@ -148,6 +195,23 @@ class QbObligation(models.Model):
         partner = partner.commercial_partner_id.sudo() if partner else partner
         owner = partner.with_company(company).collection_user_id if partner else self.env['res.users']
         return owner or company.sudo().obligation_collection_user_id
+
+    @api.model
+    def _area_of_type(self, obligation_type):
+        prefix = (obligation_type or '').split('.')[0]
+        prefix = AREA_BY_PREFIX.get(prefix, prefix)
+        return prefix if prefix in dict(AREAS) else 'otro'
+
+    @api.model
+    def _default_owner(self, partner, company, obligation_type=None):
+        """Dueño por defecto: cobranza usa el mapa de cobranza; las demás áreas,
+        el dueño del área configurado en la compañía."""
+        area = self._area_of_type(obligation_type)
+        if area == 'finanzas':
+            return self._collection_owner(partner, company)
+        field = 'obligation_owner_%s_id' % area
+        company = company.sudo()
+        return company[field] if field in company._fields else self.env['res.users']
 
     # ── flujo del dueño ──────────────────────────────────────────────
 
@@ -210,12 +274,12 @@ class QbObligation(models.Model):
             existing = self.search([('source_ref', '=', source_ref), ('state', 'in', OPEN_STATES)], limit=1)
             if existing:
                 existing.write({k: v for k, v in vals.items()
-                                if k in ('description', 'date_deadline', 'detection_payload', 'weak_key')})
+                                if k in ('description', 'date_deadline', 'detection_payload', 'weak_key') and (v or k != 'date_deadline')})
                 return existing
         company = self.env['res.company'].browse(vals.get('company_id')) if vals.get('company_id') else self.env.company
         partner = self.env['res.partner'].browse(vals['partner_id']) if vals.get('partner_id') else None
         if not vals.get('user_id'):
-            owner = self._collection_owner(partner, company)
+            owner = self._default_owner(partner, company, vals.get('obligation_type'))
             if not owner:
                 _logger.info('qb.obligation: sin dueño para %s en %s, no se crea candidata', partner and partner.name, company.name)
                 return self.browse()
@@ -226,7 +290,9 @@ class QbObligation(models.Model):
         vals.setdefault('company_id', company.id)
         vals.setdefault('source', 'email')
         vals.setdefault('state', 'candidate')
-        vals.setdefault('evidence_rule_key', 'invoice_paid_or_credited' if vals.get('res_model') == 'account.move' else 'owner_ack')
+        vals.setdefault('evidence_rule_key', 'invoice_paid_or_credited' if vals.get('res_model') == 'account.move'
+                        else 'email_resolved' if (vals.get('source_ref') or '').startswith(EMAIL_SOURCE_PREFIX)
+                        else 'owner_ack')
         vals.setdefault('name', (vals.get('description') or '')[:80] or 'Obligación')
         if partner:
             vals['partner_id'] = partner.commercial_partner_id.id
@@ -337,9 +403,141 @@ class QbObligation(models.Model):
                                'inv': move.name, 'res': '{:,.2f}'.format(move.amount_residual),
                                'cur': move.currency_id.name, 'st': labels.get(move.payment_state, move.payment_state)})
                 closed |= rec
+        closed |= self._close_documents_done()
         if closed or cancelled:
             _logger.info('qb.obligation: %s cerradas por evidencia, %s canceladas', len(closed), len(cancelled))
         return closed
+
+    @api.model
+    def _close_documents_done(self):
+        """Pedido entregado por completo / compra recibida por completo: la
+        evidencia es el estado del documento en Odoo (sale y purchase son
+        opcionales: si no están instalados la regla no corre)."""
+        closed = self.browse()
+        rules = (
+            ('so_delivered', 'sale.order', 'delivery_status', 'full', _('Pedido %s entregado por completo')),
+            ('po_received', 'purchase.order', 'receipt_status', 'full', _('Compra %s recibida por completo')),
+        )
+        for key, model, field, value, text in rules:
+            if model not in self.env or field not in self.env[model]._fields:
+                continue
+            for rec in self.search([('evidence_rule_key', '=', key), ('state', 'in', OPEN_STATES),
+                                    ('res_model', '=', model)]):
+                doc = rec._anchor()
+                if doc is None or not doc:
+                    rec.write({'state': 'cancelled'})
+                    continue
+                if doc.state == 'cancel':
+                    rec.message_post(body=_('Documento %s cancelado en Odoo.') % doc.display_name)
+                    rec.write({'state': 'cancelled'})
+                elif doc[field] == value:
+                    rec._close('evidence', by_cron=True, evidence=doc, summary=text % doc.display_name)
+                    closed |= rec
+        return closed
+
+    # ── correo: candidatas desde la memoria (Supabase) ───────────────
+
+    @api.model
+    def _email_partner(self, client, company_ids):
+        """Empresa de la memoria → partner de Odoo (por odoo_partner_id, RFC o nombre)."""
+        result = {}
+        ids = sorted({int(c) for c in company_ids if c})
+        if not ids:
+            return result
+        Partner = self.env['res.partner'].sudo()
+        for i in range(0, len(ids), 200):
+            chunk = ids[i:i + 200]
+            rows = client.get('companies', {'select': 'id,odoo_partner_id,rfc,name',
+                                            'id': 'in.(%s)' % ','.join(str(x) for x in chunk)})
+            for row in rows:
+                partner = Partner
+                if row.get('odoo_partner_id'):
+                    partner = Partner.browse(int(row['odoo_partner_id'])).exists()
+                if not partner and row.get('rfc'):
+                    partner = Partner.search([('vat', '=ilike', row['rfc'])], limit=1)
+                if not partner and row.get('name'):
+                    partner = Partner.search([('is_company', '=', True), ('name', '=ilike', row['name'])], limit=1)
+                if partner:
+                    result[int(row['id'])] = partner.commercial_partner_id
+        return result
+
+    @api.model
+    def _email_owner(self, account, partner, company, obligation_type):
+        """El buzón que recibió el correo es el dueño natural; si no es un
+        usuario de Odoo, el dueño del área."""
+        Users = self.env['res.users'].sudo()
+        account = (account or '').strip().lower()
+        owner = Users
+        if account:
+            owner = Users.search(['|', ('login', '=ilike', account), ('email', '=ilike', account),
+                                  ('share', '=', False), ('active', '=', True)], limit=1)
+        return owner or self._default_owner(partner, company, obligation_type)
+
+    @api.model
+    def _sync_email_pending(self, limit=500):
+        """Trae los pendientes abiertos detectados en el correo como candidatas
+        (idempotente por id) y cierra o cancela los que la memoria ya marcó
+        resueltos o expirados. Devuelve (creadas, cerradas, canceladas)."""
+        if 'qb.memoria.client' not in self.env:
+            return self.browse(), self.browse(), self.browse()
+        client = self.env['qb.memoria.client']
+        company = self.env.company
+        rows = client.get('email_pending_actions', {
+            'select': 'id,thread_id,tipo,descripcion,deadline,company_id,company_name,account,detected_at,status',
+            'status': 'eq.open', 'order': 'id.asc', 'limit': limit})
+        partners = self._email_partner(client, [r.get('company_id') for r in rows])
+        refs = ['%s%s' % (EMAIL_SOURCE_PREFIX, r['id']) for r in rows]
+        known = set(self.search([('source_ref', 'in', refs)]).mapped('source_ref'))
+        created = self.browse()
+        for row in rows:
+            otype = EMAIL_TYPE_MAP.get(row.get('tipo') or '', 'otro.generic')
+            partner = partners.get(int(row['company_id'])) if row.get('company_id') else None
+            owner = self._email_owner(row.get('account'), partner, company, otype)
+            if not owner:
+                _logger.info('qb.obligation: pendiente de correo %s sin dueño (buzón %s), se omite',
+                             row.get('id'), row.get('account'))
+                continue
+            desc = (row.get('descripcion') or '').strip()
+            vals = {
+                'obligation_type': otype, 'description': desc or _('Pendiente detectado en el correo'),
+                'name': (desc[:80] or _('Pendiente de correo')),
+                'partner_id': partner.id if partner else False, 'user_id': owner.id,
+                'company_id': company.id, 'source': 'email',
+                'source_ref': '%s%s' % (EMAIL_SOURCE_PREFIX, row['id']),
+                'source_thread_key': str(row.get('thread_id') or ''),
+                'detection_payload': row, 'date_deadline': row.get('deadline') or False,
+                'evidence_rule_key': 'email_resolved',
+            }
+            rec = self.create_candidate(vals)
+            if rec and vals['source_ref'] not in known:
+                created |= rec
+        # Cierre: lo que la memoria ya dio por resuelto o expirado
+        closed = self.browse()
+        cancelled = self.browse()
+        opened = self.search([('source_ref', '=like', EMAIL_SOURCE_PREFIX + '%'), ('state', 'in', OPEN_STATES),
+                              ('evidence_rule_key', '=', 'email_resolved')])
+        by_ref = {int(r.source_ref[len(EMAIL_SOURCE_PREFIX):]): r for r in opened
+                  if r.source_ref[len(EMAIL_SOURCE_PREFIX):].isdigit()}
+        ids = sorted(by_ref)
+        for i in range(0, len(ids), 200):
+            chunk = ids[i:i + 200]
+            for row in client.get('email_pending_actions', {
+                    'select': 'id,status,resolved_at', 'id': 'in.(%s)' % ','.join(str(x) for x in chunk),
+                    'status': 'in.(resolved,expired)'}):
+                rec = by_ref.get(int(row['id']))
+                if not rec:
+                    continue
+                if row.get('status') == 'resolved':
+                    rec._close('evidence', by_cron=True,
+                               summary=_('Resuelto en el correo el %s') % (row.get('resolved_at') or '')[:10])
+                    closed |= rec
+                else:
+                    rec.message_post(body=_('El pendiente expiró en la memoria sin resolverse.'))
+                    rec.write({'state': 'cancelled'})
+                    cancelled |= rec
+        _logger.info('qb.obligation: correo: %s candidatas nuevas, %s cerradas, %s canceladas',
+                     len(created), len(closed), len(cancelled))
+        return created, closed, cancelled
 
     # ── cobranza: complemento SAT sin pago aplicado ──────────────────
 
@@ -411,11 +609,21 @@ class QbObligation(models.Model):
 
     @api.model
     def _cron_collection(self):
+        """Corrida horaria de todas las áreas (el cron conserva el nombre del
+        piloto): Odoo genera, el correo propone, la evidencia cierra, el
+        tiempo escala. La red no tumba la corrida."""
         self._generate_overdue_invoices()
+        try:
+            with self.env.cr.savepoint():
+                self._sync_email_pending()
+        except Exception:  # noqa: BLE001 — la memoria puede no responder
+            _logger.exception('qb.obligation: no se pudieron traer los pendientes del correo')
         self._close_by_evidence()
         self._reassign_sat_paid()
         self._escalate()
         return True
+
+    _cron_obligations = _cron_collection
 
     # ── recordatorio diario ──────────────────────────────────────────
 
@@ -478,7 +686,7 @@ class QbObligation(models.Model):
                 _logger.warning('qb.obligation: %s sin correo, no se manda recordatorio', owner.name)
                 continue
             mail = self.env['mail.mail'].sudo().create({
-                'subject': _('Cobranza: %(n)s obligaciones abiertas, %(c)s por confirmar') % {
+                'subject': _('Obligaciones: %(n)s vencidas o por vencer, %(c)s por confirmar') % {
                     'n': len(due), 'c': len(candidates)},
                 'email_to': owner.email, 'body_html': body, 'auto_delete': False,
             })
