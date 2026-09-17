@@ -30,6 +30,14 @@ reasignación por complementos del SAT (migración: borra el piloto).
 | **Correo** (memoria en Supabase, `email_pending_actions`) | Cron horario: cada pendiente abierto detectado en el correo entra como **candidata** por área: compromiso de entrega, cotización, documento solicitado → Comercial; RFQ → Compras; promesa de pago → Finanzas. Idempotente por id. | Ver abajo | `email_resolved`: la memoria marca el pendiente resuelto → cumplida con evidencia; expirado → cancelada. |
 | **Manual / MCP / gabinete** | `qb.obligation.create_candidate(vals)` | El que se indique o el default | Según `evidence_rule_key`: `invoice_paid_or_credited` (saldo de la factura en cero), `so_delivered`, `po_received`, `email_resolved` u `owner_ack`. |
 
+**Un pendiente, una obligación.** El mismo hilo suele llegar a varios buzones
+(CC) y la memoria detecta un pendiente por buzón. Se agrupan por clave
+(`dedupe_key`: contraparte + tipo + montos y referencias del texto); nace una
+sola obligación, con los ids duplicados en `detection_payload.duplicates`, y
+cualquiera de ellos la cierra. Dueño del grupo: el encargado aprendido si lo
+hay, si no el primer buzón que sea usuario. Las candidatas viejas sin clave se
+deduplican en cada corrida.
+
 Si Supabase no responde, la corrida sigue con lo de Odoo.
 
 ## Quién es el dueño
@@ -45,8 +53,9 @@ En orden:
 ## Flujo y registro
 
 El trabajo diario pasa por las actividades. El registro completo (evidencia,
-escalación, métricas) vive en **Contactos → Obligaciones**: *Mis obligaciones*,
-*Por confirmar*, *Todas*, *Métricas*. Botones: *Sí, es mía*, *Ya se cumplió*,
+escalación, métricas) vive en la app **Obligaciones**: *Mis obligaciones*,
+*Por confirmar*, *Todas*, *Métricas* y *Configuración* (buzones de la memoria,
+dueños por área). Botones: *Sí, es mía*, *Ya se cumplió*,
 *Descartar*, *Cancelar*. Escalación a Dirección tras `N` días desde la
 confirmación (default 3) cuando rebasa el umbral (saldo o días vencida). Correo
 diario por dueño con lo vencido o por vencer en 48 h y las candidatas; otro a
