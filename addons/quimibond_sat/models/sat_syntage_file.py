@@ -3,7 +3,14 @@
 ruta "dame el XML de la factura X": el contenido se baja con
 ``GET /files/{fileId}/download`` y el id del archivo solo llega por el webhook
 ``file.created`` (``resource`` = ``/invoices/{id}``). Aquí se guarda ese mapa."""
-from odoo import api, fields, models
+import logging
+
+import requests
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class SatSyntageFile(models.Model):
@@ -52,3 +59,71 @@ class SatSyntageFile(models.Model):
     def download_path(self):
         self.ensure_one()
         return '/files/%s/download' % self.syntage_id
+
+    # ── carga histórica desde Supabase ───────────────────────────────
+    #
+    # Antes del webhook a Odoo, los eventos file.created llegaban a Supabase
+    # (tabla syntage_files). Ese mapa se trae una vez por la API REST de
+    # Supabase con la llave que ya tiene quimibond_intelligence.
+
+    SUPABASE_PAGE = 1000
+
+    @api.model
+    def _supabase_conf(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        url = (icp.get_param('quimibond_intelligence.supabase_url') or '').rstrip('/')
+        key = icp.get_param('quimibond_intelligence.supabase_service_key') or ''
+        if not url or not key:
+            raise UserError(_('Faltan quimibond_intelligence.supabase_url / supabase_service_key.'))
+        return url, key
+
+    @api.model
+    def _supabase_get(self, url, key, params):
+        resp = requests.get(url + '/rest/v1/syntage_files', params=params, timeout=60,
+                            headers={'apikey': key, 'Authorization': 'Bearer %s' % key})
+        if resp.status_code >= 400:
+            raise UserError(_('Supabase respondió %s: %s') % (resp.status_code, resp.text[:300]))
+        return resp.json()
+
+    @api.model
+    def action_import_from_supabase(self, file_type='invoice.cfdi.xml', max_pages=100):
+        """Trae a sat.syntage.file los archivos registrados en Supabase (por
+        default solo los XML). Idempotente: los que ya existen se saltan.
+        Devuelve {'fetched', 'created', 'pages'}."""
+        url, key = self._supabase_conf()
+        companies = {c.vat.upper(): c for c in self.env['res.company'].sudo().search([('vat', '!=', False)])}
+        known = set(self.sudo().search([]).mapped('syntage_id'))
+        fetched = created = pages = 0
+        offset = 0
+        while pages < max_pages:
+            rows = self._supabase_get(url, key, {
+                'select': 'syntage_id,file_type,filename,mime_type,size_bytes,taxpayer_rfc,resource:raw_payload->>resource',
+                'file_type': 'eq.%s' % file_type, 'order': 'id.asc',
+                'limit': self.SUPABASE_PAGE, 'offset': offset,
+            })
+            pages += 1
+            if not rows:
+                break
+            vals_list = []
+            for row in rows:
+                fetched += 1
+                sid = row.get('syntage_id')
+                if not sid or sid in known:
+                    continue
+                known.add(sid)
+                company = companies.get((row.get('taxpayer_rfc') or '').upper())
+                vals_list.append({
+                    'syntage_id': sid, 'resource': row.get('resource') or False,
+                    'file_type': row.get('file_type') or False, 'filename': row.get('filename') or False,
+                    'mime_type': row.get('mime_type') or False, 'size': int(row.get('size_bytes') or 0),
+                    'company_id': company.id if company else False,
+                })
+            if vals_list:
+                self.sudo().create(vals_list)
+                created += len(vals_list)
+            self.env['sat.syntage.client']._commit()
+            if len(rows) < self.SUPABASE_PAGE:
+                break
+            offset += self.SUPABASE_PAGE
+        _logger.info('sat.syntage.file: %s archivos leídos de Supabase, %s creados', fetched, created)
+        return {'fetched': fetched, 'created': created, 'pages': pages}
