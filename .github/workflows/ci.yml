@@ -113,8 +113,8 @@ jobs:
           odoo -d qbci \
             --db_host=db --db_user=odoo --db_password=odoo \
             --addons-path="$ODOO_ADDONS,$GITHUB_WORKSPACE/addons" \
-            -i qb_capacidad_costeo \
-            --test-enable --test-tags /qb_capacidad_costeo \
+            -i qb_capacidad_costeo,quimibond_sat \
+            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat \
             --stop-after-init --log-level=test \
             --data-dir=/tmp/odoo-data > /tmp/odoo-tests.log 2>&1 || rc=$?
           cat /tmp/odoo-tests.log
@@ -128,7 +128,7 @@ jobs:
           echo "===== casos ====="
           grep -E "(FAIL|ERROR): Test" /tmp/odoo-tests.log | sed 's/^.*: \(FAIL\|ERROR\)/\1/' || true
           echo "===== detalle ====="
-          grep -E "AssertionError|test_costeo\.py\", line" /tmp/odoo-tests.log | head -60 || true
+          grep -E "AssertionError|test_[a-z_]+\.py\", line" /tmp/odoo-tests.log | head -60 || true
 
       - name: Guardar el log completo
         if: always()

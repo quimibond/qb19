@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_sat_root"
+              name="SAT (Syntage)"
+              parent="account.menu_finance"
+              sequence="60"
+              groups="account.group_account_readonly"/>
+    <menuitem id="menu_sat_compare"
+              name="Comparación SAT vs Odoo"
+              parent="menu_sat_root"
+              action="action_sat_compare"
+              sequence="10"/>
+    <menuitem id="menu_sat_cfdi"
+              name="CFDI en el SAT"
+              parent="menu_sat_root"
+              action="action_sat_cfdi"
+              sequence="20"/>
+    <menuitem id="menu_sat_pull_wizard"
+              name="Traer CFDI del SAT"
+              parent="menu_sat_root"
+              action="action_sat_pull_wizard"
+              sequence="30"
+              groups="account.group_account_user"/>
+    <menuitem id="menu_sat_sync_log"
+              name="Bitácora Syntage"
+              parent="menu_sat_root"
+              action="action_sat_sync_log"
+              sequence="40"/>
+    <menuitem id="menu_sat_webhook_event"
+              name="Eventos de webhook"
+              parent="menu_sat_root"
+              action="action_sat_webhook_event"
+              sequence="50"/>
+</odoo>
