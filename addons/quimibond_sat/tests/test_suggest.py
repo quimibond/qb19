@@ -17,10 +17,13 @@ class TestSatSuggest(SatCommon):
         return self.env['sat.cfdi']._upsert_from_syntage(obj, self.company, event_type='pull')
 
     def test_suggestion_for_bill_without_xml(self):
-        bill = self._invoice(self.proveedor, 3287.86, day='2026-04-27')
+        # 19 días entre factura y CFDI: se sugiere (ventana ±45) pero el cron
+        # no la liga solo (aceptación automática solo a ±10 días).
+        bill = self._invoice(self.proveedor, 3287.86, day='2026-04-10')
         cfdi = self._upsert(syntage_invoice(UUID_OK))
         self.assertEqual(cfdi.match_status, 'solo_sat')
         self.assertEqual(self.env['sat.cfdi']._cron_suggest_matches(), 1)
+        self.assertFalse(cfdi.move_id)
         self.assertEqual(cfdi.suggested_move_id, bill)
         self.assertEqual(cfdi.suggestion_reason, 'sin_uuid')
         # Otro RFC o monto distinto no se sugiere
