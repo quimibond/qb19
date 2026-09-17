@@ -38,6 +38,8 @@
                 <field name="suggestion_reason" optional="hide"/>
                 <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
                         invisible="not suggested_move_id"/>
+                <button name="action_reconcile" type="object" string="Conciliar" icon="fa-link"
+                        invisible="move_id and issue == 'ok'"/>
                 <field name="uuid" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
@@ -52,8 +54,10 @@
                 <header>
                     <button name="action_open_move" type="object" string="Abrir factura en Odoo"
                             class="btn-primary" invisible="not move_id"/>
+                    <button name="action_reconcile" type="object" string="Conciliar con una factura"
+                            class="btn-primary" invisible="move_id and issue == 'ok'"/>
                     <button name="action_rematch" type="object" string="Buscar factura otra vez"
-                            invisible="match_method == 'manual'"/>
+                            invisible="match_method in ('manual', 'conciliado')"/>
                     <button name="action_unlink_move" type="object" string="Desligar"
                             invisible="not move_id"/>
                     <button name="action_ignore" type="object" string="Ignorar (se registra por póliza)"

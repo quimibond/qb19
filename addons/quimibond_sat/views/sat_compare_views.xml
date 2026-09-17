@@ -44,6 +44,8 @@
                 <field name="suggested_move_id"/>
                 <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
                         invisible="not suggested_move_id"/>
+                <button name="action_reconcile" type="object" string="Conciliar" icon="fa-link"
+                        invisible="issue not in ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda')"/>
                 <field name="estado_sat"/>
                 <field name="state_odoo"/>
                 <field name="payment_state" optional="hide"/>

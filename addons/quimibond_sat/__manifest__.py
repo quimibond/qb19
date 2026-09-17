@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - SAT (Syntage) en Odoo',
-    'version': '19.0.1.9.0',
+    'version': '19.0.1.10.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Localizations',
     'summary': 'CFDI del SAT (vía Syntage) dentro de Odoo y comparación contra las facturas registradas.',
@@ -46,6 +46,7 @@ Endpoint del webhook: POST /quimibond_sat/webhook
         'views/sat_compare_views.xml',
         'views/sat_event_views.xml',
         'views/sat_pull_wizard_views.xml',
+        'views/sat_reconcile_wizard_views.xml',
         'views/res_company_views.xml',
         'views/res_partner_views.xml',
         'views/sat_pago_views.xml',
