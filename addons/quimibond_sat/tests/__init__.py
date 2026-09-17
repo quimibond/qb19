@@ -5,3 +5,4 @@ from . import test_webhook
 from . import test_pull
 from . import test_suggest
 from . import test_compare
+from . import test_policy
