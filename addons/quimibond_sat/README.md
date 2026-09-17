@@ -40,7 +40,7 @@ aparezcan como "solo en el SAT" (siguen contando en Δ, en su propia columna).
    CFDI con Syntage**. La entidad de Syntage se resuelve sola por RFC.
 3. En Syntage, apuntar el webhook a `https://<odoo>/quimibond_sat/webhook`.
    Un `GET` a esa URL responde `{"ok": true}` para probar alcance.
-4. Carga inicial: menú SAT (Syntage) → **Traer CFDI del SAT**, modo *Descargar*,
+4. Carga inicial: Contabilidad → SAT (Syntage) → **Traer CFDI del SAT**, modo *Descargar*,
    o por MCP / acción de servidor: `sat.cfdi.action_pull_period('2026-09-01',
    '2026-09-30')` (los asistentes no se pueden exponer por MCP; habilitar
    `sat.cfdi` con *allow method calls*). Para meses completos usar
