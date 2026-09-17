@@ -314,6 +314,19 @@ class QuimibondSync(models.TransientModel):
         'workcenters',
     ])
 
+    PUSH_MODELS_DEFAULT = 'contacts'
+
+    def _push_models_allowed(self):
+        """Conjunto de métodos _push_* que corren (None = todos). Parámetro
+        quimibond_intelligence.push_models: 'all' o lista con comas; default
+        solo 'contacts' (contactos + empresas), que es lo único que la memoria
+        de correo en Supabase consume."""
+        raw = (self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_intelligence.push_models') or self.PUSH_MODELS_DEFAULT).strip()
+        if raw.lower() == 'all':
+            return None
+        return {x.strip() for x in raw.split(',') if x.strip()}
+
     def _run_push(self, client, label, method_fn, last_sync=None):
         """Ejecuta un metodo _push_* aislado: cualquier excepcion queda
         capturada (no tumba el resto del sync) y loggea a Supabase
@@ -449,6 +462,12 @@ class QuimibondSync(models.TransientModel):
                 ('stock_locations', self._push_stock_locations),
                 ('stock_config', self._push_stock_config),
             ]
+            # 2026-09-17: Supabase solo guarda lo que Odoo no tiene (la memoria
+            # de correo). Esa memoria solo necesita contactos/empresas, así que
+            # por default se empuja únicamente 'contacts'. Para volver a todo:
+            # quimibond_intelligence.push_models = all (o una lista con comas).
+            allowed = self._push_models_allowed()
+            methods = [(label, fn) for label, fn in methods if allowed is None or label in allowed]
             totals = {}
             skipped = []
             for label, fn in methods:
@@ -619,6 +638,8 @@ class QuimibondSync(models.TransientModel):
             ]
             totals = {}
             skipped = []
+            allowed = self._push_models_allowed()
+            methods = [(label, fn) for label, fn in methods if allowed is None or label in allowed]
             for label, fn in methods:
                 elapsed_so_far = (datetime.now() - _start).total_seconds()
                 if elapsed_so_far > time_budget_s:
