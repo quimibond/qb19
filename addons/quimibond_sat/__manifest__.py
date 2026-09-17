@@ -31,9 +31,11 @@ Endpoint del webhook: POST /quimibond_sat/webhook
     """,
     'author': 'Quimibond',
     'website': 'https://quimibond.com',
+    # l10n_mx_edi NO es dependencia dura: en producción está (Odoo.sh
+    # Enterprise) y el cruce por UUID lo usa si existe; en la imagen community
+    # del CI no está y el módulo debe instalar igual (cruce manual solamente).
     'depends': [
         'account',
-        'l10n_mx_edi',
     ],
     'data': [
         'security/ir.model.access.csv',

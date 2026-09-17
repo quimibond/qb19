@@ -230,28 +230,48 @@ class SatCfdi(models.Model):
 
     # ── cruce ──────────────────────────────────────────────────────────
 
-    def _find_move(self):
-        """Factura de Odoo con este UUID: documento CFDI primero, asiento después.
-        Entre varias gana la publicada más reciente."""
+    @api.model
+    def _uuid_sources_available(self):
+        """(hay l10n_mx_edi.document, account.move tiene l10n_mx_edi_cfdi_uuid)."""
+        return ('l10n_mx_edi.document' in self.env,
+                'l10n_mx_edi_cfdi_uuid' in self.env['account.move']._fields)
+
+    def _candidate_moves(self):
+        """Facturas de Odoo con este UUID y por qué fuente se encontraron."""
         self.ensure_one()
         Move = self.env['account.move'].sudo()
-        docs = self.env['l10n_mx_edi.document'].sudo().search([
-            ('attachment_uuid', '=ilike', self.uuid), ('move_id', '!=', False),
-        ])
-        moves = docs.mapped('move_id').filtered(
-            lambda m: m.move_type in INVOICE_TYPES and m.company_id == self.company_id)
-        method = 'uuid_document'
-        if not moves:
+        has_doc, has_field = self._uuid_sources_available()
+        if has_doc:
+            docs = self.env['l10n_mx_edi.document'].sudo().search([
+                ('attachment_uuid', '=ilike', self.uuid), ('move_id', '!=', False),
+            ])
+            moves = docs.mapped('move_id').filtered(
+                lambda m: m.move_type in INVOICE_TYPES and m.company_id == self.company_id)
+            if moves:
+                return moves, 'uuid_document'
+        if has_field:
             moves = Move.search([
                 ('l10n_mx_edi_cfdi_uuid', '=ilike', self.uuid),
                 ('move_type', 'in', INVOICE_TYPES),
                 ('company_id', '=', self.company_id.id),
             ])
-            method = 'uuid_move'
+            if moves:
+                return moves, 'uuid_move'
+        return Move, False
+
+    @api.model
+    def _pick_move(self, moves):
+        """Entre varias facturas con el mismo UUID (XML capturado dos veces)
+        gana la publicada, y entre publicadas la más reciente."""
         if not moves:
-            return Move, False
+            return moves
         rank = {'posted': 0, 'draft': 1, 'cancel': 2}
-        return moves.sorted(key=lambda m: (rank.get(m.state, 3), -m.id))[0], method
+        return moves.sorted(key=lambda m: (rank.get(m.state, 3), -m.id))[0]
+
+    def _find_move(self):
+        self.ensure_one()
+        moves, method = self._candidate_moves()
+        return self._pick_move(moves), method
 
     def _match_move(self):
         for rec in self:

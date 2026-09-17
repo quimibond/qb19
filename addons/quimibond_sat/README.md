@@ -35,6 +35,9 @@ aparezcan como "solo en el SAT".
 
 ## Notas
 
+- `l10n_mx_edi` no es dependencia dura: en producción está y el cruce por
+  UUID lo usa; sin él el módulo instala igual y solo queda el ligado manual
+  (así corre en la imagen community del CI).
 - Solo metadatos del CFDI; los XML/PDF se quedan en Syntage.
 - Un XML de proveedor capturado dos veces en Odoo aparece como dos facturas con
   el mismo UUID: el cruce liga la publicada más reciente y la otra queda en

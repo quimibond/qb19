@@ -6,6 +6,7 @@ Cubetas: ambos / solo_sat / solo_odoo / solo_odoo_sin_uuid / ignorado.
 Hallazgos: ok, monto, cancelado_sat, cancelado_odoo (solo en 'ambos').
 """
 from odoo import fields, models, tools
+from odoo.tools.sql import column_exists, table_exists
 
 
 class SatCompareLine(models.Model):
@@ -49,6 +50,21 @@ class SatCompareLine(models.Model):
     state_odoo = fields.Char(string='Estado Odoo', readonly=True)
     payment_state = fields.Char(string='Pago en Odoo', readonly=True)
 
+    def _odoo_uuid_sql(self):
+        """UUID de la factura según lo que tenga instalada la base: el campo
+        l10n_mx_edi_cfdi_uuid del asiento, el documento CFDI, o nada."""
+        cr = self.env.cr
+        parts = []
+        if column_exists(cr, 'account_move', 'l10n_mx_edi_cfdi_uuid'):
+            parts.append("NULLIF(m.l10n_mx_edi_cfdi_uuid, '')")
+        if table_exists(cr, 'l10n_mx_edi_document'):
+            parts.append("""(SELECT d.attachment_uuid FROM l10n_mx_edi_document d
+                             WHERE d.move_id = m.id AND d.attachment_uuid IS NOT NULL
+                             ORDER BY d.id DESC LIMIT 1)""")
+        if not parts:
+            return 'NULL::varchar'
+        return 'lower(coalesce(%s))' % ', '.join(parts)
+
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
         self.env.cr.execute("""
@@ -57,12 +73,7 @@ class SatCompareLine(models.Model):
                 SELECT m.id AS move_id, m.company_id, m.commercial_partner_id AS partner_id,
                        m.move_type, m.state, m.payment_state, m.invoice_date AS fecha,
                        abs(m.amount_total) AS total_odoo, m.name AS move_name,
-                       lower(coalesce(
-                           NULLIF(m.l10n_mx_edi_cfdi_uuid, ''),
-                           (SELECT d.attachment_uuid FROM l10n_mx_edi_document d
-                             WHERE d.move_id = m.id AND d.attachment_uuid IS NOT NULL
-                             ORDER BY d.id DESC LIMIT 1)
-                       )) AS odoo_uuid
+                       %s AS odoo_uuid
                   FROM account_move m
                  WHERE m.move_type IN ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
                    AND m.state IN ('posted', 'cancel')
@@ -105,7 +116,7 @@ class SatCompareLine(models.Model):
                              > greatest(1.0, 0.005 * abs(coalesce(r.total_sat, 0))) THEN 'monto'
                         ELSE 'ok' END AS issue
               FROM rows r
-        """ % self._table)
+        """ % (self._table, self._odoo_uuid_sql()))
 
     def action_open_cfdi(self):
         self.ensure_one()

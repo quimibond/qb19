@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """Base de los tests: compañía con RFC, un proveedor y un cliente con RFC real
 (el validador de RFC exige dígito verificador correcto) y helpers para crear
-facturas publicadas con su folio fiscal."""
+facturas publicadas.
+
+El folio fiscal de una factura vive en l10n_mx_edi (documento CFDI), que en
+producción está pero en la imagen community del CI no. Los tests que lo
+necesitan se saltan cuando falta; el resto (ingesta, hallazgos, ligado manual,
+comparación, webhook) corre siempre.
+"""
 from odoo import Command, fields
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
@@ -53,6 +59,11 @@ class SatCommon(AccountTestInvoicingCommon):
             'name': 'PAPELERA SANDOVAL', 'is_company': True, 'vat': RFC_PROVEEDOR})
         cls.cliente = cls.env['res.partner'].create({
             'name': 'EUROTECNICA TEXTIL', 'is_company': True, 'vat': RFC_CLIENTE})
+        cls.has_mx_edi = 'l10n_mx_edi.document' in cls.env
+
+    def _require_mx_edi(self):
+        if not self.has_mx_edi:
+            self.skipTest('l10n_mx_edi no está instalado: no hay folio fiscal en las facturas')
 
     def _invoice(self, partner, amount, move_type='in_invoice', uuid=None, post=True, day='2026-04-29'):
         if move_type.startswith('in_'):
@@ -79,6 +90,7 @@ class SatCommon(AccountTestInvoicingCommon):
         """Folio fiscal como lo dejaría Odoo al recibir el XML: un documento
         CFDI ligado al asiento. attachment_uuid se calcula del adjunto, así
         que en el test se fija por SQL."""
+        self._require_mx_edi()
         doc = self.env['l10n_mx_edi.document'].create({
             'move_id': move.id,
             'state': 'invoice_received' if move.move_type.startswith('in_') else 'invoice_sent',
