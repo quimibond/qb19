@@ -510,8 +510,12 @@ class SatCfdi(models.Model):
             'uuid': (self.uuid or '').upper(), 'name': self.name, 'total': '{:,.2f}'.format(self.total or 0.0),
             'cur': self.moneda or 'MXN', 'date': fields.Date.to_date(self.fecha_emision) if self.fecha_emision else '—',
             'xml': xml_note}
-        move.with_context(disable_attachment_import=True).message_post(
-            body=body, message_type='comment', subtype_xmlid='mail.mt_note')
+        try:
+            with self.env.cr.savepoint():
+                move.with_context(disable_attachment_import=True).message_post(
+                    body=body, message_type='comment', subtype_xmlid='mail.mt_note')
+        except Exception:  # noqa: BLE001 — el chatter no debe tumbar la liga ya grabada
+            _logger.exception('sat.cfdi %s: no se pudo dejar constancia en %s', self.uuid, move.name)
         if others:
             others.action_suggest()
         return body
@@ -628,10 +632,16 @@ class SatCfdi(models.Model):
             'uuid': self.uuid, 'errors': '; '.join(errors)})
 
     def _attach_xml_to_move(self, move):
-        """Adjunta el XML del SAT a la factura. En una factura publicada se
-        sube por el chatter como lo haría una persona, para que l10n_mx_edi
-        lo lea y registre el folio fiscal; si eso falla, queda adjunto sin
-        más. Nunca revienta la conciliación: devuelve un texto con lo que pasó."""
+        """Adjunta el XML del SAT a la factura, como nota en el chatter.
+
+        Nunca pasa por el importador de adjuntos de Odoo
+        (`disable_attachment_import`): en una factura publicada ese camino
+        dispara la digitalización / el cruce con órdenes de compra, que
+        hace `commit` a medias y deja la transacción abortada (la liga
+        quedaba grabada, el resumen no, y el usuario veía un error 500). El
+        folio fiscal de una factura publicada no lo cambia Odoo por un
+        adjunto; el UUID queda en `sat_uuid` por la liga con el CFDI.
+        Nunca revienta la conciliación: devuelve un texto con lo que pasó."""
         self.ensure_one()
         try:
             content = self._fetch_xml()
@@ -644,18 +654,6 @@ class SatCfdi(models.Model):
             return _('el XML ya estaba adjunto')
         att = Attachment.create({'name': name, 'raw': content, 'mimetype': 'application/xml',
                                  'res_model': 'account.move', 'res_id': move.id})
-        has_doc, has_field = self._uuid_sources_available()
-        if move.state == 'posted' and has_doc:
-            try:
-                with self.env.cr.savepoint():
-                    move.message_post(body=_('XML del CFDI %s (Syntage)') % self.uuid.upper(),
-                                      attachment_ids=[att.id], message_type='comment', subtype_xmlid='mail.mt_note')
-                move.invalidate_recordset()
-                if has_field and (move.l10n_mx_edi_cfdi_uuid or '').lower() == (self.uuid or '').lower():
-                    return _('XML adjunto y folio fiscal registrado por Odoo')
-                return _('XML adjunto (Odoo no registró el folio fiscal)')
-            except Exception:  # noqa: BLE001 — el importador de Odoo no debe tumbar la liga
-                _logger.exception('sat.cfdi %s: Odoo no pudo importar el XML en %s', self.uuid, move.name)
         move.with_context(disable_attachment_import=True).message_post(
             body=_('XML del CFDI %s (Syntage)') % self.uuid.upper(),
             attachment_ids=[att.id], message_type='comment', subtype_xmlid='mail.mt_note')
