@@ -23,6 +23,7 @@ import requests
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -78,6 +79,15 @@ class SyntageClient(models.AbstractModel):
             return {}
 
     @api.model
+    def _commit(self):
+        """Commit intermedio (descargas largas): se omite en modo test, donde
+        el cursor de prueba no admite commit."""
+        in_test = getattr(self.env.registry, 'in_test_mode', None)
+        if (in_test and in_test()) or config['test_enable']:
+            return
+        self.env.cr.commit()
+
+    @api.model
     def _companies_to_sync(self):
         return self.env['res.company'].sudo().search([
             ('sat_sync_enabled', '=', True), ('vat', '!=', False),
@@ -117,8 +127,11 @@ class SyntageClient(models.AbstractModel):
     def _entity_rfc(member):
         taxpayer = member.get('taxpayer') or {}
         credential = member.get('credential') or {}
-        rfc = (taxpayer.get('id') if isinstance(taxpayer, dict) else taxpayer) or \
-              (credential.get('rfc') if isinstance(credential, dict) else None)
+        if isinstance(taxpayer, dict):
+            rfc = taxpayer.get('id') or taxpayer.get('@id')
+        else:
+            rfc = taxpayer
+        rfc = rfc or (credential.get('rfc') if isinstance(credential, dict) else None)
         if isinstance(rfc, str) and rfc.startswith('/taxpayers/'):
             rfc = rfc.split('/')[-1]
         return (rfc or '').strip().upper() or None
@@ -153,7 +166,7 @@ class SyntageClient(models.AbstractModel):
             })
         log.write({'status': 'running', 'summary': False})
         if commit:
-            self.env.cr.commit()
+            self._commit()
         try:
             entity_id = self._entity_id_for(company)
             params = {'itemsPerPage': page_size}
@@ -183,14 +196,14 @@ class SyntageClient(models.AbstractModel):
                 log.write({'items_fetched': fetched, 'items_upserted': upserted, 'items_errored': errored,
                            'duration_seconds': round(time.time() - start, 1)})
                 if commit:
-                    self.env.cr.commit()
+                    self._commit()
                 nxt = (body.get('hydra:view') or {}).get('hydra:next')
                 url = (self._api_base() + nxt) if nxt else None
         except Exception as exc:
             log.write({'status': 'error', 'summary': str(exc)[:2000],
                        'duration_seconds': round(time.time() - start, 1)})
             if commit:
-                self.env.cr.commit()
+                self._commit()
             raise
 
         status = 'success' if not errored else ('partial' if upserted else 'error')
@@ -207,7 +220,7 @@ class SyntageClient(models.AbstractModel):
             'duration_seconds': round(time.time() - start, 1),
         })
         if commit:
-            self.env.cr.commit()
+            self._commit()
         return log
 
     @api.model
@@ -229,7 +242,7 @@ class SyntageClient(models.AbstractModel):
             except Exception as exc:
                 _logger.exception('Cola SAT: falló %s', log.name)
                 log.write({'status': 'error', 'summary': str(exc)[:2000]})
-            self.env.cr.commit()
+            self._commit()
 
     # ── extracción ─────────────────────────────────────────────────────
 

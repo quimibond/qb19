@@ -133,9 +133,14 @@ class TestSatPull(SatCommon):
         def _boom(client, method, path, **kw):
             from odoo.exceptions import UserError
             raise UserError('Syntage respondió 403')
+        # Sin assertRaises: Odoo lo envuelve en un savepoint y desharía la bitácora.
+        raised = False
         with patch.object(Client, '_request', _boom):
-            with self.assertRaises(Exception):
+            try:
                 self.env['sat.cfdi'].action_pull_period('2026-09-01', '2026-09-17')
+            except Exception:
+                raised = True
+        self.assertTrue(raised)
         log = self.env['sat.sync.log'].search([('kind', '=', 'pull')], order='id desc', limit=1)
         self.assertEqual(log.status, 'error')
         self.assertIn('403', log.summary)
