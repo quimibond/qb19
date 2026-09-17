@@ -20,7 +20,7 @@
                   decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
                   decoration-warning="issue in ('monto', 'moneda', 'solo_odoo')"
                   decoration-info="issue == 'solo_sat'"
-                  decoration-muted="issue == 'ignorado'">
+                  decoration-muted="issue in ('ignorado', 'poliza', 'sin_cfdi')">
                 <field name="cfdi_id" column_invisible="1"/>
                 <field name="move_id" column_invisible="1"/>
                 <field name="fecha"/>
@@ -73,6 +73,7 @@
                 <filter name="ambos" string="En ambos" domain="[('bucket', '=', 'ambos')]"/>
                 <filter name="solo_sat" string="Solo en el SAT" domain="[('bucket', '=', 'solo_sat')]"/>
                 <filter name="solo_odoo" string="Solo en Odoo" domain="[('bucket', 'in', ('solo_odoo', 'solo_odoo_sin_uuid'))]"/>
+                <filter name="fuera" string="Fuera de conciliación" domain="[('bucket', 'in', ('ignorado', 'poliza', 'sin_cfdi'))]"/>
                 <filter name="hallazgos" string="Con hallazgo"
                         domain="[('issue', 'in', ('monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
                 <filter name="usd" string="En dólares" domain="[('moneda', '=', 'USD')]"/>
