@@ -54,7 +54,15 @@ class SatCommon(AccountTestInvoicingCommon):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
-        cls.company.write({'vat': RFC_QUIMIBOND, 'sat_sync_enabled': True})
+        # generic_coa deja la compañía en USD; los CFDI son MXN por default.
+        cls.mxn = cls.env.ref('base.MXN')
+        cls.usd = cls.env.ref('base.USD')
+        (cls.mxn + cls.usd).write({'active': True})
+        cls.company.write({'vat': RFC_QUIMIBOND, 'sat_sync_enabled': True, 'currency_id': cls.mxn.id})
+        cls.env['res.currency.rate'].create({
+            'currency_id': cls.usd.id, 'company_id': cls.company.id,
+            'name': '2026-01-01', 'rate': 1 / 20.0,   # 1 MXN = 0.05 USD → 1 USD = 20 MXN
+        })
         cls.proveedor = cls.env['res.partner'].create({
             'name': 'PAPELERA SANDOVAL', 'is_company': True, 'vat': RFC_PROVEEDOR})
         cls.cliente = cls.env['res.partner'].create({
@@ -65,7 +73,8 @@ class SatCommon(AccountTestInvoicingCommon):
         if not self.has_mx_edi:
             self.skipTest('l10n_mx_edi no está instalado: no hay folio fiscal en las facturas')
 
-    def _invoice(self, partner, amount, move_type='in_invoice', uuid=None, post=True, day='2026-04-29'):
+    def _invoice(self, partner, amount, move_type='in_invoice', uuid=None, post=True, day='2026-04-29',
+                 currency=None):
         if move_type.startswith('in_'):
             account = self.company_data['default_account_expense']
         else:
@@ -73,6 +82,7 @@ class SatCommon(AccountTestInvoicingCommon):
         move = self.env['account.move'].create({
             'move_type': move_type,
             'partner_id': partner.id,
+            'currency_id': (currency or self.company.currency_id).id,
             'invoice_date': fields.Date.from_string(day),
             'date': fields.Date.from_string(day),
             'invoice_line_ids': [Command.create({
