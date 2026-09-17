@@ -144,7 +144,7 @@ class TestSatReconcile(SatCommon):
 
     def test_fetch_xml_uses_file_from_webhook_first(self):
         cfdi = self._upsert(syntage_invoice(U1))
-        event = self.env['sat.webhook.event'].create({
+        event = self.env['sat.webhook.event'].sudo().create({
             'event_id': 'evt_file_1', 'event_type': 'file.created', 'taxpayer': self.company.vat,
             'payload': {'data': {'object': {
                 'id': 'f1f1f1f1-0000-4000-8000-000000000001', 'type': 'invoice.cfdi.xml',
