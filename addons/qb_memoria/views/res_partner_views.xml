@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_partner_form_memoria" model="ir.ui.view">
+        <field name="name">res.partner.form.memoria</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Memoria" name="memoria">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small">
+                            Lo que la memoria de correo sabe de esta empresa. Actualizado:
+                            <field name="memoria_cached_at" readonly="1" class="ms-1"/>
+                        </span>
+                        <button name="action_memoria_refresh" type="object" string="Actualizar"
+                                class="btn btn-secondary btn-sm" icon="fa-refresh"/>
+                    </div>
+                    <field name="memoria_html" nolabel="1" readonly="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
