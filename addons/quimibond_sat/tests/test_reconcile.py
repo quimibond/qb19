@@ -104,6 +104,59 @@ class TestSatReconcile(SatCommon):
         self.assertEqual(wrong.match_status, 'solo_sat')
         self.assertIn('cruzado', wrong.note)
 
+    def test_fetch_xml_tries_paths_and_remembers(self):
+        cfdi = self._upsert(syntage_invoice(U1))
+        Client = type(self.env['sat.syntage.client'])
+        calls = []
+
+        def fake(_self, path, accept='application/xml', timeout=60):
+            calls.append(path)
+            if path.endswith('/xml') and '/files/' not in path:
+                return XML
+            raise UserError('Syntage respondió 404 en %s' % path)
+
+        with patch.object(Client, '_request_raw', fake):
+            self.assertEqual(cfdi._fetch_xml(), XML)
+        self.assertEqual(self.env['ir.config_parameter'].sudo().get_param('quimibond_sat.syntage_xml_path'),
+                         '/invoices/{id}/xml')
+        # La ruta guardada se usa primero la siguiente vez
+        calls.clear()
+        with patch.object(Client, '_request_raw', fake):
+            cfdi._fetch_xml()
+        self.assertEqual(len(calls), 1)
+        # Colección hydra con la URL del archivo también sirve
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sat.syntage_xml_path', '/invoices/{id}/files')
+
+        def fake_hydra(_self, path, accept='application/xml', timeout=60):
+            if path.endswith('/files'):
+                return (b'{"hydra:member": [{"@id": "/files/1", "type": "pdf", "url": "https://x/1.pdf"},'
+                        b' {"@id": "/files/2", "type": "xml", "url": "https://x/2.xml"}]}')
+            if path == 'https://x/2.xml':
+                return XML
+            raise UserError('404 %s' % path)
+
+        with patch.object(Client, '_request_raw', fake_hydra):
+            self.assertEqual(cfdi._fetch_xml(), XML)
+        # Ninguna ruta sirve: error claro con lo probado
+        with patch.object(Client, '_request_raw', side_effect=UserError('404')):
+            with self.assertRaises(UserError):
+                cfdi._fetch_xml()
+
+    def test_uuid_match_skips_taken_move(self):
+        # Mismo UUID en dos facturas (doble registro); la más reciente ya está
+        # ligada a mano a otro CFDI: el cruce debe quedarse con la otra.
+        older = self._invoice(self.proveedor, 3287.86, day='2026-04-10')
+        newer = self._invoice(self.proveedor, 3287.86, day='2026-04-11')
+        other = self._upsert(syntage_invoice(U2, id='o', total=99.0, subtotal=99.0))
+        other.write({'move_id': newer.id})
+        cfdi = self._upsert(syntage_invoice(U1))
+        move, taken = cfdi._pick_free_move(older | newer)
+        self.assertEqual(move, older)
+        self.assertEqual(taken, other)
+        move, taken = cfdi._pick_free_move(newer)
+        self.assertFalse(move)
+        self.assertEqual(taken, other)
+
     def test_reconcile_wrong_company_or_type(self):
         bill = self._invoice(self.proveedor, 3287.86)
         cfdi = self._upsert(syntage_invoice(U1))
