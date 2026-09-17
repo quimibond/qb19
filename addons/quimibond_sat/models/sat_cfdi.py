@@ -533,7 +533,9 @@ class SatCfdi(models.Model):
         contenido en base64. Vacío si no hay XML ahí."""
         head = content.lstrip()[:1]
         if head == b'<':
-            return content
+            # Tiene que ser el CFDI, no cualquier XML (p.ej. el recurso
+            # serializado por la API).
+            return content if b'Comprobante' in content[:4000] else b''
         if head not in (b'{', b'['):
             return b''
         try:
@@ -571,11 +573,24 @@ class SatCfdi(models.Model):
         if not self.syntage_id:
             raise UserError(_('El CFDI %s no tiene id de Syntage.') % self.uuid)
         icp = self.env['ir.config_parameter'].sudo()
+        client = self.env['sat.syntage.client']
+        errors = []
+        # Ruta documentada: el archivo del webhook file.created.
+        sfile = self.env['sat.syntage.file']._xml_for_invoice(self.syntage_id)
+        if sfile:
+            path = sfile.download_path()
+            try:
+                xml = self._xml_from_payload(client, client._request_raw(path, accept='application/xml'))
+                if xml:
+                    return xml
+                errors.append('%s: sin XML en la respuesta' % path)
+            except UserError as exc:
+                errors.append('%s: %s' % (path, str(exc)[:80]))
+        else:
+            errors.append(_('sin archivo registrado por webhook (file.created) para %s') % self.syntage_id)
         configured = icp.get_param('quimibond_sat.syntage_xml_path') or ''
         candidates = [configured] if configured else []
         candidates += [c for c in self.XML_PATH_CANDIDATES if c != configured]
-        client = self.env['sat.syntage.client']
-        errors = []
         for template in candidates:
             path = template.format(id=self.syntage_id, uuid=self.uuid)
             try:

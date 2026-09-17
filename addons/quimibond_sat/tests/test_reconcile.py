@@ -142,6 +142,37 @@ class TestSatReconcile(SatCommon):
             with self.assertRaises(UserError):
                 cfdi._fetch_xml()
 
+    def test_fetch_xml_uses_file_from_webhook_first(self):
+        cfdi = self._upsert(syntage_invoice(U1))
+        event = self.env['sat.webhook.event'].create({
+            'event_id': 'evt_file_1', 'event_type': 'file.created', 'taxpayer': self.company.vat,
+            'payload': {'data': {'object': {
+                'id': 'f1f1f1f1-0000-4000-8000-000000000001', 'type': 'invoice.cfdi.xml',
+                'resource': '/invoices/%s' % cfdi.syntage_id, 'mimeType': 'text/xml',
+                'filename': '%s.xml' % U1.upper(), 'size': 5358}}},
+        })
+        event.process()
+        self.assertEqual(event.state, 'processed')
+        self.assertEqual(event.cfdi_id, cfdi)
+        sfile = self.env['sat.syntage.file']._xml_for_invoice(cfdi.syntage_id)
+        self.assertEqual(sfile.download_path(), '/files/f1f1f1f1-0000-4000-8000-000000000001/download')
+        Client = type(self.env['sat.syntage.client'])
+        calls = []
+
+        def fake(_self, path, accept='application/xml', timeout=60):
+            calls.append(path)
+            if path == '/files/f1f1f1f1-0000-4000-8000-000000000001/download':
+                return XML
+            raise UserError('404 %s' % path)
+
+        with patch.object(Client, '_request_raw', fake):
+            self.assertEqual(cfdi._fetch_xml(), XML)
+        self.assertEqual(calls, ['/files/f1f1f1f1-0000-4000-8000-000000000001/download'])
+        # Un XML que no es CFDI (recurso serializado) no cuenta
+        with patch.object(Client, '_request_raw', return_value=b'<?xml version="1.0"?><Invoice id="1"/>'):
+            with self.assertRaises(UserError):
+                cfdi._fetch_xml()
+
     def test_uuid_match_skips_taken_move(self):
         # Mismo UUID en dos facturas (doble registro); la más reciente ya está
         # ligada a mano a otro CFDI: el cruce debe quedarse con la otra.
