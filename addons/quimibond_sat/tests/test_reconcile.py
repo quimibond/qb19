@@ -104,6 +104,23 @@ class TestSatReconcile(SatCommon):
         self.assertEqual(wrong.match_status, 'solo_sat')
         self.assertIn('cruzado', wrong.note)
 
+    def test_fetch_xml_documented_route_first(self):
+        cfdi = self._upsert(syntage_invoice(U1))
+        Client = type(self.env['sat.syntage.client'])
+        calls = []
+
+        def fake(_self, path, accept='application/xml', timeout=60):
+            calls.append((path, accept))
+            if path == '/invoices/%s/cfdi' % cfdi.syntage_id and accept.startswith('text/xml'):
+                return XML
+            raise UserError('Syntage respondió 406 en %s' % path)
+
+        with patch.object(Client, '_request_raw', fake):
+            self.assertEqual(cfdi._fetch_xml(), XML)
+        self.assertEqual(len(calls), 1, 'una sola llamada: la ruta documentada con Accept text/xml')
+        self.assertEqual(self.env['ir.config_parameter'].sudo().get_param('quimibond_sat.syntage_xml_path'),
+                         '/invoices/{id}/cfdi')
+
     def test_fetch_xml_tries_paths_and_remembers(self):
         cfdi = self._upsert(syntage_invoice(U1))
         Client = type(self.env['sat.syntage.client'])
@@ -142,7 +159,7 @@ class TestSatReconcile(SatCommon):
             with self.assertRaises(UserError):
                 cfdi._fetch_xml()
 
-    def test_fetch_xml_uses_file_from_webhook_first(self):
+    def test_fetch_xml_falls_back_to_webhook_file(self):
         cfdi = self._upsert(syntage_invoice(U1))
         event = self.env['sat.webhook.event'].sudo().create({
             'event_id': 'evt_file_1', 'event_type': 'file.created', 'taxpayer': self.company.vat,
@@ -167,7 +184,9 @@ class TestSatReconcile(SatCommon):
 
         with patch.object(Client, '_request_raw', fake):
             self.assertEqual(cfdi._fetch_xml(), XML)
-        self.assertEqual(calls, ['/files/f1f1f1f1-0000-4000-8000-000000000001/download'])
+        # Primero la ruta documentada; si no sirve, el archivo del webhook
+        self.assertEqual(calls, ['/invoices/%s/cfdi' % cfdi.syntage_id,
+                                 '/files/f1f1f1f1-0000-4000-8000-000000000001/download'])
         # Un XML que no es CFDI (recurso serializado) no cuenta
         with patch.object(Client, '_request_raw', return_value=b'<?xml version="1.0"?><Invoice id="1"/>'):
             with self.assertRaises(UserError):
