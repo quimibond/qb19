@@ -6,6 +6,8 @@ lo pagado según los complementos de pago vigentes y lo pagado según Odoo
 Hallazgos: ok, pue (sin complemento pero método PUE: no lo requiere),
 sin_complemento (Odoo tiene pagos que el SAT no ve: falta emitir/recibir el
 REP), complemento_sin_pago (el SAT tiene pago que Odoo no registró),
+complemento_duplicado (los complementos vigentes suman más que la factura:
+se timbró el mismo pago más de una vez y sobran REP por cancelar),
 sin_factura (CFDI sin factura publicada en Odoo), cancelado.
 """
 from odoo import fields, models, tools
@@ -49,6 +51,7 @@ class SatPagoCompare(models.Model):
         ('pue', 'PUE sin complemento (no lo requiere)'),
         ('sin_complemento', 'Pagado en Odoo sin complemento en el SAT'),
         ('complemento_sin_pago', 'Complemento en el SAT sin pago en Odoo'),
+        ('complemento_duplicado', 'Complementos exceden el total (REP duplicado)'),
         ('sin_factura', 'Sin factura publicada en Odoo'),
         ('cancelado', 'CFDI cancelado'),
     ], string='Hallazgo', readonly=True)
@@ -95,6 +98,7 @@ class SatPagoCompare(models.Model):
                    (b.pagado_sat - b.pagado_odoo) * b.tc AS delta_mxn,
                    CASE WHEN b.estado_sat <> 'vigente' THEN 'cancelado'
                         WHEN b.m_id IS NULL OR b.state_odoo <> 'posted' THEN 'sin_factura'
+                        WHEN b.pagado_sat > abs(b.total) + 0.015 THEN 'complemento_duplicado'
                         WHEN abs(b.pagado_sat - b.pagado_odoo) <= 0.015 THEN 'ok'
                         WHEN b.metodo_pago = 'PUE' AND b.n_pagos = 0 THEN 'pue'
                         WHEN b.pagado_sat > b.pagado_odoo THEN 'complemento_sin_pago'
