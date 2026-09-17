@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_sat_cfdi" model="ir.actions.act_window">
+        <field name="name">CFDI en el SAT</field>
+        <field name="res_model">sat.cfdi</field>
+        <field name="view_mode">list,form,pivot</field>
+        <field name="context">{'search_default_group_issue': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay CFDI del SAT</p>
+            <p>Configura la API key de Syntage y usa "Traer CFDI del SAT" para descargar un periodo.</p>
+        </field>
+    </record>
+
+    <record id="view_sat_cfdi_list" model="ir.ui.view">
+        <field name="name">sat.cfdi.list</field>
+        <field name="model">sat.cfdi</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
+                  decoration-warning="issue == 'monto'"
+                  decoration-info="issue == 'solo_sat'"
+                  decoration-muted="issue == 'ignorado'">
+                <field name="fecha_emision"/>
+                <field name="name"/>
+                <field name="tipo"/>
+                <field name="direction"/>
+                <field name="counterparty_name"/>
+                <field name="counterparty_rfc" optional="hide"/>
+                <field name="partner_id" optional="hide"/>
+                <field name="total" sum="Total"/>
+                <field name="moneda" optional="hide"/>
+                <field name="estado_sat"/>
+                <field name="move_id"/>
+                <field name="move_state" optional="hide"/>
+                <field name="amount_diff" optional="hide"/>
+                <field name="issue"/>
+                <field name="uuid" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_cfdi_form" model="ir.ui.view">
+        <field name="name">sat.cfdi.form</field>
+        <field name="model">sat.cfdi</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_move" type="object" string="Abrir factura en Odoo"
+                            class="btn-primary" invisible="not move_id"/>
+                    <button name="action_rematch" type="object" string="Buscar factura otra vez"
+                            invisible="match_method == 'manual'"/>
+                    <button name="action_unlink_move" type="object" string="Desligar"
+                            invisible="not move_id"/>
+                    <button name="action_ignore" type="object" string="Ignorar (se registra por póliza)"
+                            invisible="move_id or match_status == 'ignorado'"/>
+                    <field name="match_status" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <field name="uuid" readonly="1"/>
+                    </div>
+                    <group>
+                        <group string="CFDI">
+                            <field name="tipo" readonly="1"/>
+                            <field name="direction" readonly="1"/>
+                            <field name="estado_sat" readonly="1"/>
+                            <field name="fecha_emision" readonly="1"/>
+                            <field name="fecha_timbrado" readonly="1"/>
+                            <field name="fecha_cancelacion" readonly="1" invisible="not fecha_cancelacion"/>
+                            <field name="total" readonly="1"/>
+                            <field name="subtotal" readonly="1"/>
+                            <field name="descuento" readonly="1"/>
+                            <field name="impuestos_trasladados" readonly="1"/>
+                            <field name="impuestos_retenidos" readonly="1"/>
+                            <field name="moneda" readonly="1"/>
+                            <field name="tipo_cambio" readonly="1"/>
+                            <field name="metodo_pago" readonly="1"/>
+                            <field name="forma_pago" readonly="1"/>
+                            <field name="uso_cfdi" readonly="1"/>
+                        </group>
+                        <group string="Partes">
+                            <field name="emisor_nombre" readonly="1"/>
+                            <field name="emisor_rfc" readonly="1"/>
+                            <field name="emisor_blacklist" readonly="1" invisible="not emisor_blacklist"/>
+                            <field name="receptor_nombre" readonly="1"/>
+                            <field name="receptor_rfc" readonly="1"/>
+                            <field name="receptor_blacklist" readonly="1" invisible="not receptor_blacklist"/>
+                            <field name="partner_id"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                        <group string="Cruce con Odoo">
+                            <field name="move_id"/>
+                            <field name="match_method" readonly="1"/>
+                            <field name="move_state"/>
+                            <field name="move_currency_id" invisible="1"/>
+                            <field name="move_amount_total"/>
+                            <field name="amount_diff"/>
+                            <field name="issue"/>
+                            <field name="ignore_reason" invisible="match_status != 'ignorado' and move_id"/>
+                        </group>
+                        <group string="Syntage">
+                            <field name="syntage_id" readonly="1"/>
+                            <field name="last_event_type" readonly="1"/>
+                            <field name="last_event_at" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_sat_cfdi_search" model="ir.ui.view">
+        <field name="name">sat.cfdi.search</field>
+        <field name="model">sat.cfdi</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="uuid"/>
+                <field name="name"/>
+                <field name="counterparty_name"/>
+                <field name="counterparty_rfc"/>
+                <field name="partner_id"/>
+                <field name="move_id"/>
+                <filter name="issued" string="Emitidos" domain="[('direction', '=', 'issued')]"/>
+                <filter name="received" string="Recibidos" domain="[('direction', '=', 'received')]"/>
+                <separator/>
+                <filter name="ingreso" string="Ingreso (I)" domain="[('tipo', '=', 'I')]"/>
+                <filter name="egreso" string="Egreso (E)" domain="[('tipo', '=', 'E')]"/>
+                <filter name="pago" string="Pago (P)" domain="[('tipo', '=', 'P')]"/>
+                <separator/>
+                <filter name="solo_sat" string="Solo en el SAT" domain="[('match_status', '=', 'solo_sat')]"/>
+                <filter name="con_hallazgo" string="Con hallazgo"
+                        domain="[('issue', 'in', ('monto', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                <filter name="vigente" string="Vigentes" domain="[('estado_sat', '=', 'vigente')]"/>
+                <filter name="cancelado" string="Cancelados en el SAT" domain="[('estado_sat', '=', 'cancelado')]"/>
+                <separator/>
+                <filter name="fecha_emision" string="Emisión" date="fecha_emision"/>
+                <separator/>
+                    <filter name="group_issue" string="Agrupar por hallazgo" context="{'group_by': 'issue'}"/>
+                    <filter name="group_direction" string="Agrupar por sentido" context="{'group_by': 'direction'}"/>
+                    <filter name="group_counterparty" string="Agrupar por contraparte" context="{'group_by': 'counterparty_name'}"/>
+                    <filter name="group_month" string="Agrupar por mes" context="{'group_by': 'fecha_emision:month'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_sat_cfdi_pivot" model="ir.ui.view">
+        <field name="name">sat.cfdi.pivot</field>
+        <field name="model">sat.cfdi</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="issue" type="row"/>
+                <field name="fecha_emision" interval="month" type="col"/>
+                <field name="total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+</odoo>
