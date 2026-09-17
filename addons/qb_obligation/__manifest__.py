@@ -33,7 +33,7 @@ Escalación a Dirección tras N días abierta y recordatorio diario por dueño.
     """,
     'author': 'Quimibond',
     'website': 'https://quimibond.com',
-    'depends': ['account', 'contacts', 'qb_memoria'],
+    'depends': ['account', 'qb_memoria'],
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
@@ -44,5 +44,5 @@ Escalación a Dirección tras N días abierta y recordatorio diario por dueño.
         'views/account_move_views.xml',
     ],
     'installable': True,
-    'application': False,
+    'application': True,
 }

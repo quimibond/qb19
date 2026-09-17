@@ -53,8 +53,9 @@ En orden:
 ## Flujo y registro
 
 El trabajo diario pasa por las actividades. El registro completo (evidencia,
-escalación, métricas) vive en **Contactos → Obligaciones**: *Mis obligaciones*,
-*Por confirmar*, *Todas*, *Métricas*. Botones: *Sí, es mía*, *Ya se cumplió*,
+escalación, métricas) vive en la app **Obligaciones**: *Mis obligaciones*,
+*Por confirmar*, *Todas*, *Métricas* y *Configuración* (buzones de la memoria,
+dueños por área). Botones: *Sí, es mía*, *Ya se cumplió*,
 *Descartar*, *Cancelar*. Escalación a Dirección tras `N` días desde la
 confirmación (default 3) cuando rebasa el umbral (saldo o días vencida). Correo
 diario por dueño con lo vencido o por vencer en 48 h y las candidatas; otro a
