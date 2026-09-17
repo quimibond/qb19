@@ -18,6 +18,7 @@ class TestSatCompare(SatCommon):
 
     def _row(self, uuid):
         self.env.flush_all()
+        self.env.invalidate_all()
         return self.env['sat.compare.line'].search([('uuid', '=', uuid)], limit=1)
 
     def test_one_cent_tolerated_two_cents_not(self):
@@ -74,7 +75,9 @@ class TestSatCompare(SatCommon):
         # Solo en Odoo, en USD: MXN según Odoo (1 USD = 20 MXN)
         alone = self._invoice(self.cliente, 50.00, move_type='out_invoice', day='2026-09-11', currency=self.usd)
         self.env.flush_all()
+        self.env.invalidate_all()
         row = self.env['sat.compare.line'].search([('move_id', '=', alone.id)], limit=1)
+        self.assertEqual(row.id, alone.id * 2 + 1)   # id estable: no depende del orden
         self.assertEqual(row.moneda, 'USD')
         self.assertIn(row.issue, ('solo_odoo', 'solo_odoo_sin_uuid'))
         self.assertAlmostEqual(row.total_odoo, 50.00, places=2)

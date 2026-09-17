@@ -139,7 +139,9 @@ class SatCompareLine(models.Model):
                         WHERE c.move_id = o.move_id
                            OR (o.odoo_uuid IS NOT NULL AND c.uuid = o.odoo_uuid))
             )
-            SELECT row_number() OVER (ORDER BY fecha DESC NULLS LAST, cfdi_id, move_id) AS id,
+            -- id estable (no row_number): la numeración no se corre al cambiar
+            -- los datos, así la caché del ORM y los clics en la lista abren la fila correcta
+            SELECT CASE WHEN r.cfdi_id IS NOT NULL THEN r.cfdi_id * 2 ELSE r.move_id * 2 + 1 END AS id,
                    r.*,
                    coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0) AS amount_diff,
                    date_trunc('month', r.fecha)::date AS mes,
