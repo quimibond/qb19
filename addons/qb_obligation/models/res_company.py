@@ -13,6 +13,14 @@ class ResCompany(models.Model):
         'res.users', string='Dueño de aplicar pagos',
         help='Recibe las obligaciones de aplicar un pago que el SAT ya ve y Odoo no. '
              'Vacío: se queda con el dueño de cobranza.')
+    obligation_owner_comercial_id = fields.Many2one(
+        'res.users', string='Dueño Comercial (default)',
+        help='Dueño de las obligaciones comerciales que llegan sin buzón reconocible.')
+    obligation_owner_operaciones_id = fields.Many2one('res.users', string='Dueño Operaciones (default)')
+    obligation_owner_compras_id = fields.Many2one('res.users', string='Dueño Compras (default)')
+    obligation_owner_sgi_id = fields.Many2one('res.users', string='Dueño SGI (default)')
+    obligation_owner_rh_id = fields.Many2one('res.users', string='Dueño RH (default)')
+    obligation_owner_otro_id = fields.Many2one('res.users', string='Dueño otros (default)')
     obligation_escalation_user_id = fields.Many2one(
         'res.users', string='Escalar a (Dirección)',
         help='Recibe el correo de obligaciones escaladas. Vacío: no se escala.')

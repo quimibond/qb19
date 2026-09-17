@@ -9,9 +9,15 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Obligaciones" name="obligations">
                     <group>
-                        <group string="Dueños">
-                            <field name="obligation_collection_user_id"/>
+                        <group string="Dueños por área">
+                            <field name="obligation_owner_comercial_id"/>
+                            <field name="obligation_owner_operaciones_id"/>
+                            <field name="obligation_owner_compras_id"/>
+                            <field name="obligation_collection_user_id" string="Dueño Finanzas / cobranza (default)"/>
                             <field name="obligation_accounting_user_id"/>
+                            <field name="obligation_owner_sgi_id"/>
+                            <field name="obligation_owner_rh_id"/>
+                            <field name="obligation_owner_otro_id"/>
                             <field name="obligation_escalation_user_id"/>
                         </group>
                         <group string="Reglas">

@@ -23,7 +23,7 @@ class TestDigest(ObligationCommon):
         self.assertEqual(len(mails), 1)
         mail = mails[0]
         self.assertEqual(mail.email_to, self.cxc.email)
-        self.assertIn('3 obligaciones abiertas', mail.subject)
+        self.assertIn('3 vencidas o por vencer', mail.subject)
         self.assertIn('1 por confirmar', mail.subject)
         body = mail.body_html
         self.assertIn('BELSUEÑO', body)
