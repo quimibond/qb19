@@ -201,12 +201,16 @@
         <field name="context">{'search_default_group_area': 1}</field>
     </record>
 
-    <!-- No es una app aparte: el trabajo diario pasa por las actividades nativas
-         (reloj arriba a la derecha). El registro completo vive dentro de Contactos. -->
-    <menuitem id="menu_qb_obligation_root" name="Obligaciones" parent="contacts.menu_contacts" sequence="20"/>
+    <!-- El trabajo diario pasa por las actividades nativas (reloj arriba a la
+         derecha). La app es el registro: candidatas, historial, métricas y
+         configuración (buzones de la memoria, dueños por área). -->
+    <menuitem id="menu_qb_obligation_root" name="Obligaciones" sequence="35" web_icon="qb_obligation,static/description/icon.png"/>
     <menuitem id="menu_qb_obligation_mine" name="Mis obligaciones" parent="menu_qb_obligation_root" action="action_qb_obligation_mine" sequence="10"/>
     <menuitem id="menu_qb_obligation_candidates" name="Por confirmar" parent="menu_qb_obligation_root" action="action_qb_obligation_candidates" sequence="15"/>
     <menuitem id="menu_qb_obligation_all" name="Todas" parent="menu_qb_obligation_root" action="action_qb_obligation" sequence="20"/>
     <menuitem id="menu_qb_obligation_metrics" name="Métricas" parent="menu_qb_obligation_root" action="action_qb_obligation_metrics" sequence="30" groups="account.group_account_manager"/>
+    <menuitem id="menu_qb_obligation_config" name="Configuración" parent="menu_qb_obligation_root" sequence="90" groups="base.group_partner_manager"/>
+    <menuitem id="menu_qb_obligation_mailboxes" name="Buzones (memoria)" parent="menu_qb_obligation_config" action="qb_memoria.action_qb_memoria_mailbox" sequence="10"/>
+    <menuitem id="menu_qb_obligation_companies" name="Dueños por área (compañía)" parent="menu_qb_obligation_config" action="base.action_res_company_form" sequence="20"/>
 
 </odoo>

@@ -94,6 +94,64 @@ class TestEmailChannel(ObligationCommon):
         self.assertEqual(promesa.state, 'cancelled')
         self.assertEqual(cot.state, 'candidate')
 
+    DUPS = [
+        {'id': 201, 'thread_id': 7001, 'tipo': 'compromiso_entrega', 'descripcion': 'Quimibond debe entregar el pedido PO39264 en la fecha confirmada',
+         'deadline': '2026-10-01', 'company_id': 6031, 'company_name': 'BELSUEÑO', 'account': 'otro@test.local',
+         'detected_at': '2026-09-03T22:40:31+00:00', 'status': 'open'},
+        {'id': 202, 'thread_id': 7002, 'tipo': 'compromiso_entrega', 'descripcion': 'Entregar PO39264 a BELSUEÑO en la fecha acordada',
+         'deadline': '2026-10-01', 'company_id': 6031, 'company_name': 'BELSUEÑO', 'account': 'ventas@test.local',
+         'detected_at': '2026-09-03T22:41:31+00:00', 'status': 'open'},
+        {'id': 203, 'thread_id': 7003, 'tipo': 'compromiso_entrega', 'descripcion': 'Quimibond debe entregar el pedido PO39264 (fecha confirmada)',
+         'deadline': '2026-10-01', 'company_id': 6031, 'company_name': 'BELSUEÑO', 'account': 'com@test.local',
+         'detected_at': '2026-09-03T22:42:31+00:00', 'status': 'open'},
+    ]
+
+    def test_same_pending_in_several_mailboxes_is_one_obligation(self):
+        """El mismo hilo llega a tres buzones: una sola obligación, del primer
+        buzón que es usuario; el pendiente de cualquier buzón la cierra."""
+        self._configure()
+        with patch.object(self.Client, 'get', fake_client(self.DUPS, self.companies)):
+            created, _c, _x = self.Obligation._sync_email_pending()
+        self.assertEqual(len(created), 1)
+        ob = created
+        self.assertEqual(ob.user_id, self.ventas, 'otro@ no es usuario; ventas@ sí')
+        self.assertEqual(ob.source_ref, 'supabase:email_pending_actions:201')
+        self.assertEqual(ob.detection_payload['duplicates'], [202, 203])
+        self.assertTrue(ob.dedupe_key)
+        self.assertEqual(self.Obligation.search_count([('source', '=', 'email')]), 1)
+        # Idempotente y cierre por el duplicado
+        with patch.object(self.Client, 'get', fake_client(self.DUPS, self.companies, {203: 'resolved'})):
+            created2, closed, _x = self.Obligation._sync_email_pending()
+        self.assertFalse(created2)
+        self.assertEqual(closed, ob)
+        self.assertEqual(ob.state, 'done')
+
+    def test_duplicates_prefer_learned_owner(self):
+        self._configure()
+        self.cliente.write({'memoria_owner_areas': {'comercial': {'user_id': self.comercial.id, 'mailbox': 'x'}}})
+        with patch.object(self.Client, 'get', fake_client(self.DUPS, self.companies)):
+            created, _c, _x = self.Obligation._sync_email_pending()
+        self.assertEqual(created.user_id, self.comercial, 'con varios buzones manda el encargado aprendido')
+
+    def test_dedupe_existing_candidates(self):
+        """Candidatas creadas antes de 3.1.0 (sin clave) con el mismo pendiente:
+        queda una y las demás se descartan."""
+        self._configure()
+        recs = self.Obligation
+        for row in self.DUPS:
+            recs |= self.Obligation.create_candidate({
+                'obligation_type': 'comercial.delivery_commitment', 'description': row['descripcion'],
+                'partner_id': self.cliente.id, 'user_id': self.ventas.id, 'source': 'email',
+                'source_ref': 'supabase:email_pending_actions:%s' % row['id'], 'detection_payload': row,
+                'date_deadline': row['deadline']})
+        self.assertEqual(len(recs), 3)
+        discarded = self.Obligation._email_dedupe_existing()
+        self.assertEqual(len(discarded), 2)
+        kept = recs - discarded
+        self.assertEqual(kept.source_ref, 'supabase:email_pending_actions:201', 'queda la más antigua')
+        self.assertTrue(all(r.state == 'discarded' and 'Duplicado' in r.discard_reason for r in discarded))
+        self.assertEqual(len({r.dedupe_key for r in recs}), 1)
+
     def test_cron_survives_memory_outage(self):
         self._configure()
         with patch.object(self.Client, 'get', side_effect=UserError('Supabase 500')):

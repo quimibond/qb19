@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Obligaciones',
-    'version': '19.0.3.0.0',
+    'version': '19.0.3.1.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Accounting',
     'summary': 'Obligaciones vivas: qué hay que hacer, de quién es, sobre qué documento, cómo se prueba y cuándo vence.',
@@ -33,7 +33,7 @@ Escalación a Dirección tras N días abierta y recordatorio diario por dueño.
     """,
     'author': 'Quimibond',
     'website': 'https://quimibond.com',
-    'depends': ['account', 'contacts', 'qb_memoria'],
+    'depends': ['account', 'qb_memoria'],
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
@@ -44,5 +44,5 @@ Escalación a Dirección tras N días abierta y recordatorio diario por dueño.
         'views/account_move_views.xml',
     ],
     'installable': True,
-    'application': False,
+    'application': True,
 }
