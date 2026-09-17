@@ -54,6 +54,18 @@ class TestCollection(ObligationCommon):
         self.assertEqual(self._open_for(inv).user_id, self.cxc)
         self.assertFalse(self._open_for(inv2), 'cliente sin dueño y compañía sin default: no se crea')
 
+    def test_discard_is_sticky(self):
+        self._configure()
+        inv = self._invoice(self.cliente, 100.0)
+        self._run()
+        ob = self._open_for(inv)
+        ob.action_discard('cartera histórica')
+        self.assertEqual(ob.state, 'discarded')
+        self.assertEqual(ob.discard_reason, 'cartera histórica')
+        self._run()
+        self.assertFalse(self._open_for(inv), 'una factura descartada no vuelve a generar obligación')
+        self.assertEqual(self.Obligation.search_count([('res_id', '=', inv.id)]), 1)
+
     def test_grace_days(self):
         self._configure(obligation_grace_days=400)
         self._invoice(self.cliente, 100.0)
