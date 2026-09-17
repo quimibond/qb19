@@ -82,7 +82,7 @@ class TestCandidates(ObligationCommon):
     def test_invoice_smart_button_count(self):
         self._configure()
         inv = self._invoice(self.cliente, 1000.0)
-        self._run()
+        self._promise_on(inv)
         inv.invalidate_recordset()
         self.assertEqual(inv.obligation_count, 1)
         action = inv.action_open_obligations()

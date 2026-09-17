@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import fields, models
 
 
 class AccountMove(models.Model):
@@ -28,12 +28,3 @@ class AccountMove(models.Model):
             'context': {'default_res_model': 'account.move', 'default_res_id': self.id,
                         'default_partner_id': self.partner_id.commercial_partner_id.id},
         }
-
-    @api.model
-    def _obligation_overdue_domain(self, company, today):
-        grace = company.obligation_grace_days or 0
-        limit = fields.Date.subtract(today, days=grace)
-        return [
-            ('company_id', '=', company.id), ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
-            ('payment_state', 'in', ('not_paid', 'partial')), ('invoice_date_due', '<', limit),
-        ]

@@ -25,7 +25,8 @@ addons/quimibond_intelligence/
 ## Otros módulos del repo
 
 - `quimibond_sat`: CFDI y complementos de pago del SAT (Syntage) dentro de Odoo, comparación al centavo, alerta diaria. README propio.
-- `qb_obligation`: obligaciones vivas (qué, quién, sobre qué documento, cómo se prueba, cuándo vence). Piloto de cobranza: nacen solas de las facturas vencidas, se cierran por evidencia (saldo en cero), se reasignan a contabilidad si el SAT ya ve el pago, escalan a Dirección y mandan un recordatorio diario agrupado por cliente. API `create_candidate` para el correo. README propio.
+- `qb_obligation`: obligaciones vivas (qué, quién, sobre qué documento, cómo se prueba, cuándo vence). Nacen del correo (memoria) o a mano, viven como **actividades nativas** de Odoo sobre su documento o contacto (hecha = acuse, cancelada = descarte, evidencia las cierra sola), escalan a Dirección y mandan un recordatorio diario. La cobranza NO vive aquí (v3.0.0). Menú en Contactos → Obligaciones. API `create_candidate`. README propio.
+- `qb_memoria`: pestaña Memoria del contacto (Supabase) y **dueños aprendidos**: cron nocturno que lee la vista `memoria_encargados` (buzón que atiende a cada empresa / área) y lo escribe en el contacto; personas detrás de buzones compartidos en Contactos → Configuración → Buzones (memoria). README propio.
 
 ## Modelos sincronizados (21)
 

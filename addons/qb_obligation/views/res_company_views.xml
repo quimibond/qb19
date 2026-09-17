@@ -8,13 +8,17 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="Obligaciones" name="obligations">
+                    <p class="text-muted">
+                        El dueño por defecto es, en orden: el encargado que la memoria aprendió del correo para ese contacto
+                        y área (Contactos → pestaña Memoria), el dueño de cobranza del contacto si es de finanzas, y estos
+                        dueños por área.
+                    </p>
                     <group>
                         <group string="Dueños por área">
                             <field name="obligation_owner_comercial_id"/>
                             <field name="obligation_owner_operaciones_id"/>
                             <field name="obligation_owner_compras_id"/>
-                            <field name="obligation_collection_user_id" string="Dueño Finanzas / cobranza (default)"/>
-                            <field name="obligation_accounting_user_id"/>
+                            <field name="obligation_collection_user_id"/>
                             <field name="obligation_owner_sgi_id"/>
                             <field name="obligation_owner_rh_id"/>
                             <field name="obligation_owner_otro_id"/>
@@ -22,7 +26,6 @@
                         </group>
                         <group string="Reglas">
                             <field name="obligation_residual_tolerance"/>
-                            <field name="obligation_grace_days"/>
                             <field name="obligation_escalate_days"/>
                             <field name="obligation_escalate_amount"/>
                             <field name="obligation_escalate_overdue_days"/>

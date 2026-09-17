@@ -5,11 +5,19 @@ Una obligación es un compromiso con cinco datos (qué, quién, sobre qué
 documento, cómo se prueba, cuándo vence) que puede nacer de Odoo, del correo
 (memoria en Supabase), de un resumen, del gabinete o a mano, en cualquier área.
 Reglas que no se negocian: el dueño es un res.users; el cierre por evidencia es
-una consulta, nunca un juicio de un modelo; lo que nace de Odoo nace confirmado
-y lo que nace del correo espera la confirmación del dueño.
+una consulta, nunca un juicio de un modelo; lo que nace del correo espera la
+confirmación del dueño. La cobranza NO vive aquí: las facturas vencidas ya
+están en Contabilidad.
+
+La obligación no es una app aparte: cada obligación abierta es una actividad
+nativa de Odoo (mail.activity) sobre su documento ancla o su contacto, con el
+dueño y la fecha. Marcarla hecha cierra la obligación por acuse; cancelarla la
+descarta; y cuando la evidencia la cierra, la actividad se marca hecha sola.
 """
 import logging
 from datetime import timedelta
+
+from markupsafe import escape
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -39,7 +47,7 @@ EMAIL_SOURCE_PREFIX = 'supabase:email_pending_actions:'
 class QbObligation(models.Model):
     _name = 'qb.obligation'
     _description = 'Obligación'
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_deadline asc, id asc'
 
     # ── identidad ────────────────────────────────────────────────────
@@ -56,9 +64,7 @@ class QbObligation(models.Model):
         # Compras
         ('compras.rfq', 'Cotizar con proveedor'),
         ('compras.receipt', 'Recibir compra pendiente'),
-        # Finanzas (claves históricas del piloto de cobranza)
-        ('collection.overdue_invoice', 'Cobrar factura vencida'),
-        ('collection.apply_payment', 'Aplicar pago que el SAT ya ve'),
+        # Finanzas (clave histórica 'collection')
         ('collection.payment_promise', 'Promesa de pago (correo)'),
         # SGI / RH / otros
         ('sgi.record', 'Registro o acuse SGI'),
@@ -89,6 +95,10 @@ class QbObligation(models.Model):
         ('owner_ack', 'Acuse del dueño'),
     ], string='Cómo se prueba', required=True, default='owner_ack')
     date_deadline = fields.Date(string='Vence', required=True, index=True)
+
+    # ── espejo en actividades de Odoo ────────────────────────────────
+    activity_id = fields.Many2one('mail.activity', string='Actividad', ondelete='set null', copy=False,
+                                  help='Actividad nativa que representa esta obligación mientras está abierta.')
 
     # ── origen ───────────────────────────────────────────────────────
     source = fields.Selection([
@@ -204,9 +214,14 @@ class QbObligation(models.Model):
 
     @api.model
     def _default_owner(self, partner, company, obligation_type=None):
-        """Dueño por defecto: cobranza usa el mapa de cobranza; las demás áreas,
-        el dueño del área configurado en la compañía."""
+        """Dueño por defecto, en orden: lo que la memoria aprendió del correo
+        para ese contacto y área (qb_memoria), el mapa de cobranza si es
+        finanzas, y el dueño del área configurado en la compañía."""
         area = self._area_of_type(obligation_type)
+        if partner and hasattr(partner, 'memoria_owner_for'):
+            learned = partner.sudo().memoria_owner_for(area)
+            if learned:
+                return learned
         if area == 'finanzas':
             return self._collection_owner(partner, company)
         field = 'obligation_owner_%s_id' % area
@@ -260,6 +275,110 @@ class QbObligation(models.Model):
                 vals.update(evidence_model=evidence._name, evidence_res_id=evidence.id)
             rec.write(vals)
 
+    # ── espejo en actividades nativas ────────────────────────────────
+
+    ACTIVITY_XMLID = 'qb_obligation.mail_activity_type_obligation'
+    ACTIVITY_FIELDS = ('state', 'user_id', 'date_deadline', 'name', 'description', 'evidence_rule_key')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._activity_sync()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if any(k in vals for k in self.ACTIVITY_FIELDS):
+            self._activity_sync()
+        return res
+
+    def _activity_targets(self):
+        """Dónde puede vivir la actividad, en orden: el documento ancla (si
+        tiene actividades), el contacto, la propia obligación."""
+        self.ensure_one()
+        targets = []
+        anchor = self._anchor()
+        if anchor and 'activity_ids' in anchor._fields and self._owner_can_read(anchor):
+            targets.append(anchor)
+        if self.partner_id:
+            targets.append(self.partner_id)
+        targets.append(self)
+        return targets
+
+    def _owner_can_read(self, record):
+        """El dueño tiene que poder abrir el documento donde vive su actividad;
+        si no (p.ej. ventas sin acceso a facturas), la actividad va al contacto."""
+        try:
+            return record.with_user(self.user_id).has_access('read')
+        except Exception:  # noqa: BLE001 — ante la duda, al contacto
+            return False
+
+    def _activity_summary(self):
+        self.ensure_one()
+        return ('%s%s' % (_('Por confirmar: ') if self.state == 'candidate' else '', self.name))[:200]
+
+    def _activity_note(self):
+        self.ensure_one()
+        types = dict(self._fields['obligation_type']._description_selection(self.env))
+        rules = dict(self._fields['evidence_rule_key']._description_selection(self.env))
+        lines = [escape(self.description or ''),
+                 _('Tipo: %s') % escape(types.get(self.obligation_type, self.obligation_type or '')),
+                 _('Se cierra sola cuando: %s') % escape(rules.get(self.evidence_rule_key, ''))]
+        if self.state == 'candidate':
+            lines.append(_('Detectada en el correo, falta que la confirmes: si no aplica, cancela esta actividad; '
+                           'si ya se hizo, márcala hecha.'))
+        else:
+            lines.append(_('Si ya se hizo y Odoo no lo puede comprobar solo, marca esta actividad hecha.'))
+        lines.append('<a href="/web#id=%s&amp;model=qb.obligation&amp;view_type=form">%s</a>' % (
+            self.id, _('Ver la obligación')))
+        return '<p>%s</p>' % '</p><p>'.join(str(x) for x in lines)
+
+    def _activity_sync(self):
+        """Una actividad por obligación abierta, en su documento o contacto,
+        con el dueño y la fecha. Cerrada por evidencia o acuse → la actividad
+        se marca hecha; descartada o cancelada → se quita. Nunca tumba la
+        operación que la disparó."""
+        if self.env.context.get('qb_obligation_skip_activity'):
+            return
+        act_type = self.env.ref(self.ACTIVITY_XMLID, raise_if_not_found=False)
+        for rec in self.with_context(qb_obligation_skip_activity=True):
+            try:
+                with self.env.cr.savepoint():
+                    rec._activity_sync_one(act_type)
+            except Exception:  # noqa: BLE001 — el espejo no puede romper la obligación
+                _logger.exception('qb.obligation %s: no se pudo sincronizar la actividad', rec.id)
+
+    def _activity_sync_one(self, act_type):
+        self.ensure_one()
+        activity = self.activity_id.exists() if self.activity_id else self.env['mail.activity']
+        if self.state not in OPEN_STATES:
+            if activity:
+                if self.state == 'done':
+                    activity.sudo()._action_done(feedback=self.evidence_summary or _('Cumplida'))
+                else:
+                    activity.sudo().unlink()
+            return
+        vals = {'user_id': self.user_id.id, 'date_deadline': self.date_deadline,
+                'summary': self._activity_summary(), 'note': self._activity_note()}
+        if activity:
+            if (activity.user_id.id != vals['user_id'] or activity.date_deadline != vals['date_deadline']
+                    or (activity.summary or '') != vals['summary']):
+                activity.sudo().write(vals)
+            return
+        if not act_type:
+            return
+        for target in self._activity_targets():
+            try:
+                with self.env.cr.savepoint():
+                    activity = target.sudo().activity_schedule(act_type_xmlid=self.ACTIVITY_XMLID, **vals)
+                break
+            except Exception:  # noqa: BLE001 — p.ej. el dueño no tiene acceso al documento
+                _logger.info('qb.obligation %s: sin actividad en %s, se prueba el siguiente destino',
+                             self.id, target._name)
+                activity = self.env['mail.activity']
+        if activity:
+            super(QbObligation, self).write({'activity_id': activity.id})
+
     # ── API para orígenes externos (correo, gabinete, MCP) ────────────
 
     @api.model
@@ -288,6 +407,7 @@ class QbObligation(models.Model):
             vals['date_deadline'] = fields.Date.add(fields.Date.context_today(self), days=3)
             vals['weak_key'] = True
         vals.setdefault('company_id', company.id)
+        vals.setdefault('escalate_after_days', company.sudo().obligation_escalate_days)
         vals.setdefault('source', 'email')
         vals.setdefault('state', 'candidate')
         vals.setdefault('evidence_rule_key', 'invoice_paid_or_credited' if vals.get('res_model') == 'account.move'
@@ -300,65 +420,7 @@ class QbObligation(models.Model):
         rec._refresh_amounts()
         return rec
 
-    # ── cobranza: generación desde Odoo ──────────────────────────────
-
-    @api.model
-    def _generate_overdue_invoices(self, company=None):
-        """Una obligación confirmada por cada factura de cliente vencida con
-        saldo. Sin dueño configurado no crea nada."""
-        companies = company or self.env['res.company'].search([])
-        today = fields.Date.context_today(self)
-        created = self.browse()
-        Move = self.env['account.move']
-        for comp in companies:
-            if not comp.obligation_collection_user_id and not self._any_partner_owner(comp):
-                _logger.info('qb.obligation: %s sin dueño de cobranza, no se generan obligaciones', comp.name)
-                continue
-            moves = Move.search(Move._obligation_overdue_domain(comp, today))
-            if not moves:
-                continue
-            # Se salta la factura si ya tiene obligación abierta o si alguien la
-            # descartó: el descarte es pegajoso (cartera histórica, disputa),
-            # si no el cron la resucitaría cada hora.
-            skip_ids = {r.res_id for r in self.search([
-                ('obligation_type', 'in', ('collection.overdue_invoice', 'collection.apply_payment')),
-                ('res_model', '=', 'account.move'), ('res_id', 'in', moves.ids),
-                ('state', 'in', OPEN_STATES + ('discarded',))])}
-            for move in moves:
-                if move.id in skip_ids:
-                    continue
-                owner = self._collection_owner(move.partner_id, comp)
-                if not owner:
-                    continue
-                rec = self.create({
-                    'name': _('Cobrar %(inv)s a %(partner)s') % {
-                        'inv': move.name, 'partner': move.partner_id.commercial_partner_id.name},
-                    'obligation_type': 'collection.overdue_invoice',
-                    'state': 'confirmed', 'confirmed_at': fields.Datetime.now(),
-                    'company_id': comp.id, 'partner_id': move.partner_id.commercial_partner_id.id,
-                    'description': _('Cobrar la factura %(inv)s, vencida el %(due)s, saldo %(res)s %(cur)s.') % {
-                        'inv': move.name, 'due': move.invoice_date_due, 'res': '{:,.2f}'.format(move.amount_residual),
-                        'cur': move.currency_id.name},
-                    'user_id': owner.id, 'res_model': 'account.move', 'res_id': move.id,
-                    'evidence_rule_key': 'invoice_paid_or_credited',
-                    'date_deadline': move.invoice_date_due or today,
-                    'source': 'odoo', 'source_ref': 'account.move:%s' % move.id,
-                    'escalate_after_days': comp.obligation_escalate_days,
-                    'currency_id': move.currency_id.id,
-                    'amount_at_creation': move.amount_residual,
-                })
-                rec._refresh_amounts()
-                created |= rec
-        if created:
-            _logger.info('qb.obligation: %s obligaciones de cobranza creadas', len(created))
-        return created
-
-    @api.model
-    def _any_partner_owner(self, company):
-        Partner = self.env['res.partner'].sudo().with_company(company)
-        return bool(Partner.search_count([('collection_user_id', '!=', False)]))
-
-    # ── cobranza: cierre por evidencia ───────────────────────────────
+    # ── cierre por evidencia ─────────────────────────────────────────
 
     def _refresh_amounts(self):
         for rec in self:
@@ -375,9 +437,9 @@ class QbObligation(models.Model):
 
     @api.model
     def _close_by_evidence(self):
-        """Regla única de cobranza: saldo dentro de tolerancia o estado de pago
-        pagado / en proceso / revertido → cumplida. Factura cancelada o bloqueada
-        → cancelada."""
+        """Factura ancla con saldo dentro de tolerancia o estado de pago pagado /
+        en proceso / revertido → cumplida. Factura cancelada o bloqueada →
+        cancelada. Luego los documentos (pedido entregado, compra recibida)."""
         closed = self.browse()
         cancelled = self.browse()
         for rec in self.search([('evidence_rule_key', '=', 'invoice_paid_or_credited'), ('state', 'in', OPEN_STATES),
@@ -539,46 +601,6 @@ class QbObligation(models.Model):
                      len(created), len(closed), len(cancelled))
         return created, closed, cancelled
 
-    # ── cobranza: complemento SAT sin pago aplicado ──────────────────
-
-    @api.model
-    def _reassign_sat_paid(self):
-        """Si el SAT tiene complementos de pago vigentes por más de lo que Odoo
-        registra cobrado, el cliente ya pagó y falta aplicarlo: la obligación
-        deja de ser de cobranza y pasa a ser de contabilidad. Requiere
-        quimibond_sat."""
-        if 'sat.cfdi.pago' not in self.env:
-            return self.browse()
-        Pago = self.env['sat.cfdi.pago'].sudo()
-        changed = self.browse()
-        for rec in self.search([('obligation_type', '=', 'collection.overdue_invoice'), ('state', 'in', OPEN_STATES),
-                                ('res_model', '=', 'account.move')]):
-            move = rec._anchor()
-            if move is None or not move or move.state != 'posted':
-                continue
-            pagos = Pago.search([('move_id', '=', move.id), ('estado_sat', '=', 'vigente')])
-            if not pagos:
-                continue
-            same_currency = pagos.filtered(lambda p: (p.moneda or 'MXN') == move.currency_id.name)
-            pagado_sat = sum(same_currency.mapped('monto'))
-            pagado_odoo = abs(move.amount_total) - abs(move.amount_residual)
-            tol = rec.company_id.obligation_residual_tolerance or 0.0
-            if pagado_sat <= pagado_odoo + tol:
-                continue
-            owner = rec.company_id.obligation_accounting_user_id or rec.user_id
-            rec.write({
-                'obligation_type': 'collection.apply_payment', 'user_id': owner.id,
-                'name': _('Aplicar pago de %(partner)s a %(inv)s') % {'partner': rec.partner_id.name, 'inv': move.name},
-                'description': _('El SAT tiene complementos de pago vigentes por %(sat)s %(cur)s sobre %(inv)s y Odoo '
-                                 'registra cobrado %(odoo)s. Aplicar el pago en Odoo o cancelar el REP de más.') % {
-                    'sat': '{:,.2f}'.format(pagado_sat), 'cur': move.currency_id.name, 'inv': move.name,
-                    'odoo': '{:,.2f}'.format(pagado_odoo)},
-                'evidence_model': 'sat.cfdi.pago', 'evidence_res_id': same_currency[:1].id,
-            })
-            rec.message_post(body=_('Reasignada: el SAT ya ve el pago (%s complementos).') % len(same_currency))
-            changed |= rec
-        return changed
-
     # ── escalación ───────────────────────────────────────────────────
 
     @api.model
@@ -608,22 +630,21 @@ class QbObligation(models.Model):
     # ── crons ────────────────────────────────────────────────────────
 
     @api.model
-    def _cron_collection(self):
-        """Corrida horaria de todas las áreas (el cron conserva el nombre del
-        piloto): Odoo genera, el correo propone, la evidencia cierra, el
-        tiempo escala. La red no tumba la corrida."""
-        self._generate_overdue_invoices()
+    def _cron_obligations(self):
+        """Corrida horaria de todas las áreas: el correo propone, la evidencia
+        cierra, el tiempo escala. La red no tumba la corrida."""
         try:
             with self.env.cr.savepoint():
                 self._sync_email_pending()
         except Exception:  # noqa: BLE001 — la memoria puede no responder
             _logger.exception('qb.obligation: no se pudieron traer los pendientes del correo')
         self._close_by_evidence()
-        self._reassign_sat_paid()
         self._escalate()
+        self.search([('state', 'in', OPEN_STATES), ('activity_id', '=', False)])._activity_sync()
         return True
 
-    _cron_obligations = _cron_collection
+    # El cron de producción (noupdate) sigue llamando al nombre del piloto.
+    _cron_collection = _cron_obligations
 
     # ── recordatorio diario ──────────────────────────────────────────
 
@@ -679,7 +700,7 @@ class QbObligation(models.Model):
                 '<p>Por confirmar (vienen del correo; confirma o descarta en Odoo): <b>%s</b></p>'
                 '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Cliente</th><th>Obligación</th>'
                 '<th>Vence</th><th>Tipo</th></tr>%s</table>'
-                '<p>Detalle en Odoo: app Obligaciones → Mis obligaciones.</p>'
+                '<p>Cada obligación es una actividad en Odoo (reloj arriba a la derecha); el detalle está en Contactos → Obligaciones.</p>'
             ) % (len(due), '{:,.0f}'.format(total), self.env.company.currency_id.name,
                  self._digest_table(self._digest_rows(due), today), len(candidates), cand_rows)
             if not owner.email:
@@ -717,3 +738,33 @@ class QbObligation(models.Model):
             mail.send()
             mails |= mail
         return mails
+
+
+class MailActivity(models.Model):
+    _inherit = 'mail.activity'
+
+    def _obligations_open(self):
+        if self.env.context.get('qb_obligation_skip_activity'):
+            return self.env['qb.obligation']
+        # sudo: cualquier usuario cierra sus actividades; la obligación es
+        # contabilidad interna del sistema, no un acceso que pida el usuario.
+        return self.env['qb.obligation'].sudo().search([('activity_id', 'in', self.ids), ('state', 'in', OPEN_STATES)])
+
+    def _action_done(self, feedback=False, attachment_ids=None):
+        """Marcar hecha la actividad = acuse del dueño sobre la obligación."""
+        obligations = self._obligations_open()
+        if obligations:
+            summary = _('Acuse de %s desde la actividad') % self.env.user.name
+            if feedback:
+                summary = '%s: %s' % (summary, feedback)
+            obligations.with_context(qb_obligation_skip_activity=True)._close('owner_ack', summary=summary[:500])
+        return super()._action_done(feedback=feedback, attachment_ids=attachment_ids)
+
+    def unlink(self):
+        """Cancelar la actividad = descartar la obligación (pegajoso)."""
+        obligations = self._obligations_open()
+        if obligations:
+            obligations.with_context(qb_obligation_skip_activity=True).write({
+                'state': 'discarded', 'discarded_by': self.env.user.id, 'discarded_at': fields.Datetime.now(),
+                'discard_reason': _('Actividad cancelada por %s') % self.env.user.name})
+        return super().unlink()

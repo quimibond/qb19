@@ -15,7 +15,7 @@
                 <field name="area"/>
                 <field name="obligation_type" optional="show"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
-                <field name="amount_residual" sum="Saldo"/>
+                <field name="amount_residual" sum="Saldo" optional="hide"/>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="amount_residual_company" sum="Saldo (MXN)" optional="hide"/>
                 <field name="company_currency_id" column_invisible="1"/>
@@ -51,6 +51,10 @@
                             <span>Documento</span>
                         </button>
                     </div>
+                    <div class="alert alert-info" role="status" invisible="not activity_id">
+                        Esta obligación vive como actividad de Odoo (<field name="activity_id" readonly="1" class="d-inline"/>):
+                        márcala hecha para dar el acuse o cancélala para descartarla.
+                    </div>
                     <div class="oe_title"><h1><field name="name" placeholder="Qué hay que hacer, en corto"/></h1></div>
                     <group>
                         <group string="Los cinco datos">
@@ -69,9 +73,9 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="company_currency_id" invisible="1"/>
-                            <field name="amount_at_creation"/>
-                            <field name="amount_residual"/>
-                            <field name="amount_residual_company"/>
+                            <field name="amount_at_creation" invisible="not currency_id"/>
+                            <field name="amount_residual" invisible="not currency_id"/>
+                            <field name="amount_residual_company" invisible="not currency_id"/>
                             <field name="days_overdue"/>
                             <field name="source"/>
                             <field name="source_ref"/>
@@ -92,7 +96,7 @@
                             <field name="evidence_model"/>
                             <field name="evidence_res_id"/>
                             <field name="evidence_summary"/>
-                            <field name="amount_collected"/>
+                            <field name="amount_collected" invisible="not currency_id"/>
                             <field name="days_to_close"/>
                             <field name="closed_by_cron"/>
                         </group>
@@ -129,10 +133,10 @@
                 <filter name="area_comercial" string="Comercial" domain="[('area', '=', 'comercial')]"/>
                 <filter name="area_operaciones" string="Operaciones" domain="[('area', '=', 'operaciones')]"/>
                 <filter name="area_compras" string="Compras" domain="[('area', '=', 'compras')]"/>
-                <filter name="collection" string="Finanzas" domain="[('area', '=', 'finanzas')]"/>
+                <filter name="area_finanzas" string="Finanzas" domain="[('area', '=', 'finanzas')]"/>
                 <separator/>
                 <filter name="src_email" string="Del correo" domain="[('source', '=', 'email')]"/>
-                <filter name="src_odoo" string="De Odoo" domain="[('source', '=', 'odoo')]"/>
+                <filter name="src_manual" string="Manuales" domain="[('source', 'in', ('manual', 'gabinete', 'digest'))]"/>
                 <separator/>
                 <filter name="created" string="Fecha de creación" date="create_date"/>
                 <separator/>
@@ -166,7 +170,8 @@
         <field name="context">{'search_default_open': 1, 'search_default_group_partner': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin obligaciones abiertas</p>
-            <p>Las de cobranza nacen solas de las facturas vencidas cuando la compañía tiene dueño de cobranza configurado.</p>
+            <p>Nacen del correo (la memoria detecta compromisos) o a mano. Cada una vive como actividad de Odoo en su
+               documento o contacto; aquí está el registro completo con su evidencia de cierre.</p>
         </field>
     </record>
 
@@ -184,7 +189,8 @@
         <field name="context">{'search_default_candidate': 1, 'search_default_group_area': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Nada por confirmar</p>
-            <p>Aquí llegan los compromisos que la memoria detecta en el correo. El dueño confirma ("Sí, es mía") o descarta.</p>
+            <p>Aquí llegan los compromisos que la memoria detecta en el correo. El dueño los ve también como actividades:
+               marcarla hecha es el acuse, cancelarla es descartar. Aquí puede además confirmar ("Sí, es mía").</p>
         </field>
     </record>
 
@@ -195,9 +201,9 @@
         <field name="context">{'search_default_group_area': 1}</field>
     </record>
 
-    <!-- App propia en el menú principal: la obligación es de toda la empresa
-         (cobranza hoy; compras, operaciones, SGI y RH después), no solo de Contabilidad. -->
-    <menuitem id="menu_qb_obligation_root" name="Obligaciones" sequence="35" web_icon="qb_obligation,static/description/icon.png"/>
+    <!-- No es una app aparte: el trabajo diario pasa por las actividades nativas
+         (reloj arriba a la derecha). El registro completo vive dentro de Contactos. -->
+    <menuitem id="menu_qb_obligation_root" name="Obligaciones" parent="contacts.menu_contacts" sequence="20"/>
     <menuitem id="menu_qb_obligation_mine" name="Mis obligaciones" parent="menu_qb_obligation_root" action="action_qb_obligation_mine" sequence="10"/>
     <menuitem id="menu_qb_obligation_candidates" name="Por confirmar" parent="menu_qb_obligation_root" action="action_qb_obligation_candidates" sequence="15"/>
     <menuitem id="menu_qb_obligation_all" name="Todas" parent="menu_qb_obligation_root" action="action_qb_obligation" sequence="20"/>
