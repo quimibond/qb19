@@ -17,7 +17,7 @@
         <field name="model">sat.cfdi</field>
         <field name="arch" type="xml">
             <list decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
-                  decoration-warning="issue == 'monto'"
+                  decoration-warning="issue in ('monto', 'moneda')"
                   decoration-info="issue == 'solo_sat'"
                   decoration-muted="issue == 'ignorado'">
                 <field name="fecha_emision"/>
@@ -148,7 +148,7 @@
                 <filter name="solo_sat" string="Solo en el SAT" domain="[('match_status', '=', 'solo_sat')]"/>
                 <filter name="con_sugerencia" string="Con sugerencia" domain="[('suggested_move_id', '!=', False)]"/>
                 <filter name="con_hallazgo" string="Con hallazgo"
-                        domain="[('issue', 'in', ('monto', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                        domain="[('issue', 'in', ('monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
                 <filter name="vigente" string="Vigentes" domain="[('estado_sat', '=', 'vigente')]"/>
                 <filter name="cancelado" string="Cancelados en el SAT" domain="[('estado_sat', '=', 'cancelado')]"/>
                 <separator/>

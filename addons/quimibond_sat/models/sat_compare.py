@@ -25,6 +25,7 @@ class SatCompareLine(models.Model):
     issue = fields.Selection([
         ('ok', 'Cuadra'),
         ('monto', 'Monto distinto'),
+        ('moneda', 'Moneda distinta'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
         ('cancelado_odoo', 'Cancelado en Odoo, vigente en el SAT'),
         ('solo_sat', 'Falta en Odoo'),
@@ -43,20 +44,31 @@ class SatCompareLine(models.Model):
     counterparty_rfc = fields.Char(string='RFC contraparte', readonly=True)
     counterparty_name = fields.Char(string='Contraparte', readonly=True)
     fecha = fields.Date(readonly=True)
-    total_sat = fields.Float(string='Total SAT', readonly=True, digits=(16, 2))
-    total_odoo = fields.Float(string='Total Odoo', readonly=True, digits=(16, 2))
-    amount_diff = fields.Float(string='Diferencia', readonly=True, digits=(16, 2))
+    moneda = fields.Char(string='Moneda', readonly=True, help='Moneda del CFDI; si no hay CFDI, la de la factura.')
+    moneda_odoo = fields.Char(string='Moneda Odoo', readonly=True)
+    total_sat = fields.Float(string='Total SAT', readonly=True, digits=(16, 2),
+                             help='En la moneda del CFDI.')
+    total_odoo = fields.Float(string='Total Odoo', readonly=True, digits=(16, 2),
+                              help='En la moneda de la factura.')
+    amount_diff = fields.Float(string='Diferencia', readonly=True, digits=(16, 2),
+                               help='Total SAT − Total Odoo, en la moneda del documento.')
+    total_sat_mxn = fields.Float(string='Total SAT (MXN)', readonly=True, digits=(16, 2),
+                                 help='Total × tipo de cambio del CFDI.')
+    total_odoo_mxn = fields.Float(string='Total Odoo (MXN)', readonly=True, digits=(16, 2),
+                                  help='Si la factura está en la moneda del CFDI, total × tipo de cambio '
+                                       'del CFDI (para que el Δ no cargue diferencias de tipo de cambio); '
+                                       'si no, el total en moneda de la compañía según Odoo.')
     estado_sat = fields.Char(string='Estado SAT', readonly=True)
     state_odoo = fields.Char(string='Estado Odoo', readonly=True)
     payment_state = fields.Char(string='Pago en Odoo', readonly=True)
     suggested_move_id = fields.Many2one('account.move', string='Factura sugerida', readonly=True)
-    # Conciliación al centavo: E resta, solo vigentes / publicadas cuentan.
+    # Conciliación al centavo, en MXN: E resta, solo vigentes / publicadas cuentan.
     mes = fields.Date(string='Mes', readonly=True)
-    sat_vigente = fields.Float(string='SAT vigente', readonly=True, digits=(16, 2),
-                               help='Total del CFDI si está vigente (egresos en negativo).')
-    odoo_posted = fields.Float(string='Odoo publicado', readonly=True, digits=(16, 2),
-                               help='Total de la factura si está publicada (notas de crédito en negativo).')
-    delta = fields.Float(string='Δ SAT − Odoo', readonly=True, digits=(16, 2))
+    sat_vigente = fields.Float(string='SAT vigente (MXN)', readonly=True, digits=(16, 2),
+                               help='Total MXN del CFDI si está vigente (egresos en negativo).')
+    odoo_posted = fields.Float(string='Odoo publicado (MXN)', readonly=True, digits=(16, 2),
+                               help='Total MXN de la factura si está publicada (notas de crédito en negativo).')
+    delta = fields.Float(string='Δ SAT − Odoo (MXN)', readonly=True, digits=(16, 2))
 
     def _odoo_uuid_sql(self):
         """UUID de la factura según lo que tenga instalada la base: el campo
@@ -80,9 +92,12 @@ class SatCompareLine(models.Model):
             WITH odoo AS (
                 SELECT m.id AS move_id, m.company_id, m.commercial_partner_id AS partner_id,
                        m.move_type, m.state, m.payment_state, m.invoice_date AS fecha,
-                       abs(m.amount_total) AS total_odoo, m.name AS move_name,
+                       abs(m.amount_total) AS total_odoo,
+                       abs(m.amount_total_signed) AS total_odoo_mxn,
+                       cur.name AS moneda_odoo, m.name AS move_name,
                        %s AS odoo_uuid
                   FROM account_move m
+                  LEFT JOIN res_currency cur ON cur.id = m.currency_id
                  WHERE m.move_type IN ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
                    AND m.state IN ('posted', 'cancel')
             ),
@@ -90,7 +105,13 @@ class SatCompareLine(models.Model):
                 -- Lado SAT: en ambos, solo SAT o ignorado
                 SELECT c.id AS cfdi_id, c.move_id, c.uuid, c.direction, c.tipo, c.company_id,
                        c.partner_id, c.counterparty_rfc, c.counterparty_name,
-                       c.fecha_emision::date AS fecha, c.total AS total_sat, o.total_odoo,
+                       c.fecha_emision::date AS fecha,
+                       coalesce(c.moneda, 'MXN') AS moneda, o.moneda_odoo,
+                       c.total AS total_sat, o.total_odoo,
+                       c.total * coalesce(nullif(c.tipo_cambio, 0), 1) AS total_sat_mxn,
+                       CASE WHEN o.moneda_odoo = coalesce(c.moneda, 'MXN')
+                            THEN o.total_odoo * coalesce(nullif(c.tipo_cambio, 0), 1)
+                            ELSE o.total_odoo_mxn END AS total_odoo_mxn,
                        c.estado_sat, o.state AS state_odoo, o.payment_state, o.move_name,
                        CASE WHEN c.match_status = 'ignorado' THEN 'ignorado'
                             WHEN c.move_id IS NOT NULL THEN 'ambos'
@@ -105,7 +126,9 @@ class SatCompareLine(models.Model):
                        CASE WHEN o.move_type IN ('out_invoice', 'out_refund') THEN 'issued' ELSE 'received' END,
                        CASE WHEN o.move_type IN ('out_refund', 'in_refund') THEN 'E' ELSE 'I' END,
                        o.company_id, o.partner_id, upper(p.vat), p.name, o.fecha,
-                       NULL, o.total_odoo, NULL, o.state, o.payment_state, o.move_name,
+                       o.moneda_odoo, o.moneda_odoo,
+                       NULL, o.total_odoo, NULL, o.total_odoo_mxn,
+                       NULL, o.state, o.payment_state, o.move_name,
                        CASE WHEN o.odoo_uuid IS NULL THEN 'solo_odoo_sin_uuid' ELSE 'solo_odoo' END,
                        NULL::integer
                   FROM odoo o
@@ -116,22 +139,25 @@ class SatCompareLine(models.Model):
                         WHERE c.move_id = o.move_id
                            OR (o.odoo_uuid IS NOT NULL AND c.uuid = o.odoo_uuid))
             )
-            SELECT row_number() OVER (ORDER BY fecha DESC NULLS LAST, cfdi_id, move_id) AS id,
+            -- id estable (no row_number): la numeración no se corre al cambiar
+            -- los datos, así la caché del ORM y los clics en la lista abren la fila correcta
+            SELECT CASE WHEN r.cfdi_id IS NOT NULL THEN r.cfdi_id * 2 ELSE r.move_id * 2 + 1 END AS id,
                    r.*,
                    coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0) AS amount_diff,
                    date_trunc('month', r.fecha)::date AS mes,
                    CASE WHEN r.tipo = 'E' THEN -1 ELSE 1 END
-                       * CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat, 0) ELSE 0 END AS sat_vigente,
+                       * CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat_mxn, 0) ELSE 0 END AS sat_vigente,
                    CASE WHEN r.tipo = 'E' THEN -1 ELSE 1 END
-                       * CASE WHEN r.state_odoo = 'posted' THEN coalesce(r.total_odoo, 0) ELSE 0 END AS odoo_posted,
+                       * CASE WHEN r.state_odoo = 'posted' THEN coalesce(r.total_odoo_mxn, 0) ELSE 0 END AS odoo_posted,
                    CASE WHEN r.tipo = 'E' THEN -1 ELSE 1 END
-                       * (CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat, 0) ELSE 0 END
-                          - CASE WHEN r.state_odoo = 'posted' THEN coalesce(r.total_odoo, 0) ELSE 0 END) AS delta,
+                       * (CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat_mxn, 0) ELSE 0 END
+                          - CASE WHEN r.state_odoo = 'posted' THEN coalesce(r.total_odoo_mxn, 0) ELSE 0 END) AS delta,
                    CASE WHEN r.bucket <> 'ambos' THEN r.bucket
                         WHEN r.estado_sat = 'cancelado' AND r.state_odoo = 'posted' THEN 'cancelado_sat'
                         WHEN r.estado_sat <> 'cancelado' AND r.state_odoo = 'cancel' THEN 'cancelado_odoo'
-                        WHEN abs(coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0))
-                             > greatest(1.0, 0.005 * abs(coalesce(r.total_sat, 0))) THEN 'monto'
+                        WHEN r.moneda_odoo IS NOT NULL AND r.moneda <> r.moneda_odoo THEN 'moneda'
+                        -- al centavo: un centavo de redondeo se tolera, dos ya no
+                        WHEN abs(coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0)) > 0.015 THEN 'monto'
                         ELSE 'ok' END AS issue
               FROM rows r
         """ % (self._table, self._odoo_uuid_sql()))
