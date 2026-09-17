@@ -36,7 +36,7 @@ class TestSatCfdi(SatCommon):
 
     def test_upsert_is_idempotent_and_updates(self):
         self._upsert(syntage_invoice(UUID_A))
-        again = self._upsert(syntage_invoice(UUID_A, total=9999.0, uuid=UUID_A.upper()),
+        again = self._upsert(syntage_invoice(UUID_A.upper(), total=9999.0),
                              event_type='invoice.updated')
         self.assertEqual(self.env['sat.cfdi'].search_count([('uuid', '=', UUID_A)]), 1)
         self.assertAlmostEqual(again.total, 9999.0)
