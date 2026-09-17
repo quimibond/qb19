@@ -7,6 +7,7 @@ el campo l10n_mx_edi_cfdi_uuid del asiento. Si hay varios asientos con el
 mismo UUID (XML capturado dos veces) gana el publicado más reciente.
 """
 import logging
+from datetime import timedelta
 
 from odoo import _, api, fields, models
 
@@ -89,11 +90,21 @@ class SatCfdi(models.Model):
         ('uuid_document', 'UUID (documento CFDI)'),
         ('uuid_move', 'UUID (factura)'),
         ('manual', 'Manual'),
+        ('sugerido', 'Sugerencia aceptada'),
     ], string='Ligado por', copy=False)
     match_status = fields.Selection([
         ('matched', 'En Odoo'), ('solo_sat', 'Solo en el SAT'), ('ignorado', 'Ignorado'),
     ], string='Cruce', default='solo_sat', required=True, index=True, copy=False)
     ignore_reason = fields.Char(string='Motivo para ignorar')
+    note = fields.Char(string='Nota del cruce', copy=False)
+    # Segunda pasada: candidata por RFC + monto + fecha cuando no hay UUID que cruce
+    suggested_move_id = fields.Many2one('account.move', string='Factura sugerida', copy=False, index=True)
+    suggestion_reason = fields.Selection([
+        ('sin_uuid', 'Factura sin XML en Odoo, mismo RFC, monto y fecha'),
+        ('rfc_monto_fecha', 'Mismo RFC, monto y fecha (UUID distinto en Odoo)'),
+        ('uuid_cruzado', 'La factura trae el XML de otro CFDI del mismo proveedor'),
+    ], string='Por qué', copy=False)
+    suggestion_rejected = fields.Boolean(string='Sugerencia rechazada', default=False, copy=False)
     move_state = fields.Selection(related='move_id.state', string='Estado en Odoo')
     move_amount_total = fields.Monetary(related='move_id.amount_total', string='Total en Odoo',
                                         currency_field='move_currency_id')
@@ -275,13 +286,124 @@ class SatCfdi(models.Model):
 
     def _match_move(self):
         for rec in self:
-            if rec.match_status == 'ignorado' or rec.match_method == 'manual':
+            if rec.match_status == 'ignorado' or rec.match_method in ('manual', 'sugerido'):
                 continue
             move, method = rec._find_move()
             if move:
+                # Una factura ligada a mano o por sugerencia a OTRO CFDI no se
+                # roba por UUID: es el caso del XML cruzado, donde el UUID de
+                # Odoo apunta al CFDI equivocado.
+                taken = self.sudo().search([
+                    ('move_id', '=', move.id), ('id', '!=', rec.id),
+                    ('match_method', 'in', ('manual', 'sugerido')),
+                ], limit=1)
+                if taken:
+                    rec.write({'match_status': 'solo_sat', 'match_method': False, 'move_id': False,
+                               'note': _('La factura %s con este UUID quedó ligada al CFDI %s')
+                               % (move.name, taken.uuid)})
+                    continue
                 rec.write({'move_id': move.id, 'match_method': method, 'match_status': 'matched'})
             elif not rec.move_id:
                 rec.write({'match_status': 'solo_sat', 'match_method': False})
+
+    # ── segunda pasada: sugerencias por RFC + monto + fecha ────────────
+
+    def _amount_candidates(self, days=45):
+        """Facturas publicadas de la misma compañía y contraparte (RFC), del
+        tipo que corresponde al CFDI, con el mismo total (±0.5%, mín. $1) y
+        fecha a ±days."""
+        self.ensure_one()
+        Move = self.env['account.move'].sudo()
+        rfc = self.counterparty_rfc
+        if not rfc or rfc in GENERIC_RFCS or not self.total or self.tipo not in ('I', 'E'):
+            return Move
+        if self.direction == 'issued':
+            types = ['out_refund'] if self.tipo == 'E' else ['out_invoice']
+        else:
+            types = ['in_refund'] if self.tipo == 'E' else ['in_invoice']
+        tol = max(1.0, 0.005 * abs(self.total))
+        domain = [
+            ('company_id', '=', self.company_id.id),
+            ('move_type', 'in', types),
+            ('state', '=', 'posted'),
+            ('commercial_partner_id.vat', '=ilike', rfc),
+            ('amount_total', '>=', self.total - tol),
+            ('amount_total', '<=', self.total + tol),
+        ]
+        date = fields.Date.to_date(self.fecha_emision) if self.fecha_emision else None
+        if date:
+            domain += [('invoice_date', '>=', date - timedelta(days=days)),
+                       ('invoice_date', '<=', date + timedelta(days=days))]
+        return Move.search(domain)
+
+    def _suggest_move(self):
+        """(factura sugerida, motivo) o (vacío, False)."""
+        self.ensure_one()
+        Move = self.env['account.move'].sudo()
+        cands = self._amount_candidates()
+        if not cands:
+            return Move, False
+        date = fields.Date.to_date(self.fecha_emision) if self.fecha_emision else None
+
+        def closeness(m):
+            return abs((m.invoice_date - date).days) if (date and m.invoice_date) else 999
+
+        linked = {c.move_id.id: c for c in self.sudo().search([('move_id', 'in', cands.ids)])}
+        free = cands.filtered(lambda m: m.id not in linked)
+        has_uuid_field = 'l10n_mx_edi_cfdi_uuid' in Move._fields
+        if free:
+            best = min(free, key=closeness)
+            has_uuid = bool(has_uuid_field and best.l10n_mx_edi_cfdi_uuid)
+            return best, ('rfc_monto_fecha' if has_uuid else 'sin_uuid')
+        # Todas las candidatas ya tienen CFDI: si el suyo no cuadra en monto,
+        # la factura trae el XML equivocado y este CFDI es el bueno.
+        crossed = cands.filtered(lambda m: linked[m.id].issue == 'monto')
+        if crossed:
+            return min(crossed, key=closeness), 'uuid_cruzado'
+        return Move, False
+
+    def action_suggest(self):
+        """Calcula la sugerencia de los CFDI 'solo en el SAT' seleccionados."""
+        found = 0
+        for rec in self:
+            if rec.match_status != 'solo_sat' or rec.suggestion_rejected or rec.move_id:
+                continue
+            move, reason = rec._suggest_move()
+            vals = {'suggested_move_id': move.id or False, 'suggestion_reason': reason or False}
+            if move:
+                found += 1
+            rec.write(vals)
+        return found
+
+    def action_accept_suggestion(self):
+        for rec in self:
+            move = rec.suggested_move_id
+            if not move:
+                continue
+            others = self.sudo().search([('move_id', '=', move.id), ('id', '!=', rec.id)])
+            others.write({
+                'move_id': False, 'match_method': False, 'match_status': 'solo_sat',
+                'note': _('XML cruzado: la factura %(move)s se ligó al CFDI %(uuid)s') % {
+                    'move': move.name, 'uuid': rec.uuid},
+            })
+            rec.write({
+                'move_id': move.id, 'match_method': 'sugerido', 'match_status': 'matched',
+                'suggested_move_id': False, 'suggestion_reason': False, 'ignore_reason': False,
+            })
+            others.action_suggest()
+
+    def action_reject_suggestion(self):
+        self.write({'suggestion_rejected': True, 'suggested_move_id': False, 'suggestion_reason': False})
+
+    @api.model
+    def _cron_suggest_matches(self, limit=3000):
+        pending = self.sudo().search([
+            ('match_status', '=', 'solo_sat'), ('suggestion_rejected', '=', False),
+            ('tipo', 'in', ('I', 'E')), ('estado_sat', '=', 'vigente'),
+        ], limit=limit)
+        found = pending.action_suggest()
+        _logger.info('sat.cfdi: %s sugerencias para %s CFDI solo en el SAT', found, len(pending))
+        return found
 
     def write(self, vals):
         # Ligar o desligar a mano desde el formulario.
@@ -296,6 +418,7 @@ class SatCfdi(models.Model):
         cfdis._match_move()
         matched = len(cfdis.filtered(lambda c: c.match_status == 'matched'))
         _logger.info('sat.cfdi: cruce de %s pendientes, %s ligados', len(cfdis), matched)
+        self._cron_suggest_matches()
         return matched
 
     @api.model
@@ -373,7 +496,7 @@ class SatCfdi(models.Model):
         self._match_move()
 
     def action_unlink_move(self):
-        self.write({'move_id': False, 'match_method': False, 'match_status': 'solo_sat'})
+        self.write({'move_id': False, 'match_method': False, 'match_status': 'solo_sat', 'note': False})
 
     def action_ignore(self):
         for rec in self:
