@@ -21,7 +21,8 @@ class SatSyncLog(models.Model):
         ('partial', 'Parcial'),
         ('error', 'Error'),
     ], default='success', required=True, index=True)
-    mode = fields.Selection([('pull', 'Descarga por API'), ('extraction', 'Extracción')], default='pull')
+    mode = fields.Selection([('pull', 'Descarga por API'), ('extraction', 'Extracción'),
+                             ('payments', 'Pagos (complementos)')], default='pull')
     include_retentions = fields.Boolean(default=False)
     summary = fields.Text()
     date_from = fields.Date(string='Desde')

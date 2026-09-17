@@ -8,3 +8,7 @@ access_sat_sync_log_readonly,sat.sync.log readonly,model_sat_sync_log,account.gr
 access_sat_compare_line_user,sat.compare.line user,model_sat_compare_line,account.group_account_user,1,0,0,0
 access_sat_compare_line_readonly,sat.compare.line readonly,model_sat_compare_line,account.group_account_readonly,1,0,0,0
 access_sat_pull_wizard_user,sat.pull.wizard user,model_sat_pull_wizard,account.group_account_user,1,1,1,1
+access_sat_cfdi_pago_user,sat.cfdi.pago user,model_sat_cfdi_pago,account.group_account_user,1,1,1,1
+access_sat_cfdi_pago_readonly,sat.cfdi.pago readonly,model_sat_cfdi_pago,account.group_account_readonly,1,0,0,0
+access_sat_pago_compare_user,sat.pago.compare user,model_sat_pago_compare,account.group_account_user,1,0,0,0
+access_sat_pago_compare_readonly,sat.pago.compare readonly,model_sat_pago_compare,account.group_account_readonly,1,0,0,0
