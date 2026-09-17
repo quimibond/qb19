@@ -467,7 +467,7 @@ class QbObligation(models.Model):
                 '<p>Por confirmar (vienen del correo; confirma o descarta en Odoo): <b>%s</b></p>'
                 '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Cliente</th><th>Obligación</th>'
                 '<th>Vence</th><th>Tipo</th></tr>%s</table>'
-                '<p>Detalle en Odoo: Contabilidad → Obligaciones → Mis obligaciones.</p>'
+                '<p>Detalle en Odoo: app Obligaciones → Mis obligaciones.</p>'
             ) % (len(due), '{:,.0f}'.format(total), self.env.company.currency_id.name,
                  self._digest_table(self._digest_rows(due), today), len(candidates), cand_rows)
             if not owner.email:
