@@ -20,3 +20,24 @@ la pestaña dice qué pasó y la ficha sigue abriendo.
 
 Configuración: usa `quimibond_intelligence.supabase_url` y
 `quimibond_intelligence.supabase_service_key` (ya existen en producción).
+
+## Dueños aprendidos (quién atiende a quién)
+
+En Quimibond el correo sale de buzones funcionales (logistica@, cxcobrar@,
+innovacion@, comprasplanta@…), así que "quién es el encargado" se aprende en
+dos pasos:
+
+1. **La memoria cuenta.** La vista `memoria_encargados` en Supabase da, por
+   empresa, el buzón interno que más le escribe (180 días) y, por empresa y
+   área, el buzón que atendió sus pendientes (365 días; promesa de pago →
+   finanzas, entrega/cotización/documento → comercial, RFQ → compras).
+   Se cree una señal con ≥ 3 correos y ≥ 40 % del total.
+2. **Odoo pone la persona.** Contactos → Configuración → *Buzones (memoria)*
+   dice quién está detrás de cada buzón compartido; si el buzón es el login de
+   un usuario se resuelve solo. El cron nocturno escribe en el contacto
+   comercial *Encargado (memoria)* con la evidencia y los encargados por área.
+   *Fijado a mano* protege una asignación manual.
+
+API: `partner.memoria_owner_for(area)` → `res.users` (área con señal, si no
+el general, si no vacío). Las obligaciones (`qb_obligation`) lo usan como
+primer criterio para el dueño.
