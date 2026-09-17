@@ -76,7 +76,7 @@ class ResPartner(models.Model):
         self.env.cr.execute(
             "UPDATE res_partner SET memoria_cache = %s, memoria_cached_at = %s WHERE id = %s",
             (Json(data), now, self.id))
-        self.invalidate_recordset(['memoria_cache', 'memoria_cached_at'])
+        self.invalidate_recordset(['memoria_cache', 'memoria_cached_at', 'memoria_html'])
 
     def _memoria_refresh_one(self):
         self.ensure_one()
