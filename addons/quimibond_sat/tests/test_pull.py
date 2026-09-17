@@ -19,7 +19,14 @@ class TestSatPull(SatCommon):
         def _request(client, method, path, params=None, json=None, headers=None, timeout=60):
             calls.append((method, path, params, json))
             if path == '/entities':
-                return {'hydra:member': [{'id': ENTITY}]}
+                # Syntage devuelve TODAS las entidades de la organización: la
+                # primera es de otro contribuyente y no debe elegirse.
+                return {'hydra:member': [
+                    {'id': 'otra-entidad', 'taxpayer': {'id': 'MIPJ691003QJ1'},
+                     'credential': {'rfc': 'MIPJ691003QJ1', 'status': 'valid'}},
+                    {'id': ENTITY, 'taxpayer': {'id': RFC_QUIMIBOND, '@id': '/taxpayers/%s' % RFC_QUIMIBOND},
+                     'credential': {'rfc': RFC_QUIMIBOND, 'status': 'valid'}},
+                ]}
             if '/invoices' in path:
                 return {'hydra:member': [
                     syntage_invoice(UUID_1),
@@ -74,6 +81,69 @@ class TestSatPull(SatCommon):
         self.assertEqual(body['taxpayer'], '/taxpayers/%s' % RFC_QUIMIBOND)
         self.assertEqual(body['options']['period'], {'from': '2026-09-01', 'to': '2026-09-17'})
         self.assertIn('extr-1', self.env['sat.sync.log'].browse(result['log_id']).summary)
+
+    def test_entity_must_match_rfc(self):
+        Client = self.env['sat.syntage.client']
+        members = [{'id': 'x', 'taxpayer': {'id': 'MIPJ691003QJ1'}},
+                   {'id': 'y', '@id': '/entities/y', 'taxpayer': {'@id': '/taxpayers/%s' % RFC_QUIMIBOND},
+                    'credential': {'status': 'invalid'}},
+                   {'id': 'z', 'credential': {'rfc': RFC_QUIMIBOND.lower(), 'status': 'valid'}}]
+        self.assertEqual(Client._pick_entity(members, RFC_QUIMIBOND), 'z')   # con credencial válida gana
+        self.assertEqual(Client._pick_entity(members[:2], RFC_QUIMIBOND), 'y')
+        self.assertIsNone(Client._pick_entity(members[:1], RFC_QUIMIBOND))
+
+    def test_background_pull_is_queued_and_run_by_cron(self):
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sat.api_key', 'k')
+        result = self.env['sat.cfdi'].action_pull_period('2026-09-01', '2026-09-17', background=True)
+        log = self.env['sat.sync.log'].browse(result['log_id'])
+        self.assertEqual(log.status, 'queued')
+        self.assertEqual(log.mode, 'pull')
+        self.assertFalse(self.env['sat.cfdi'].search([('uuid', '=', UUID_1)]))
+        calls = []
+        Client = type(self.env['sat.syntage.client'])
+        with patch.object(Client, '_request', self._fake_request(calls)):
+            self.env['sat.cfdi']._cron_run_queued()
+        self.assertEqual(log.status, 'partial')
+        self.assertEqual(log.items_upserted, 2)
+        self.assertTrue(self.env['sat.cfdi'].search([('uuid', '=', UUID_1)]))
+        # Ya no está en cola: una segunda corrida del cron no hace nada
+        calls.clear()
+        with patch.object(Client, '_request', self._fake_request(calls)):
+            self.env['sat.cfdi']._cron_run_queued()
+        self.assertFalse(calls)
+
+    def test_background_extraction(self):
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sat.api_key', 'k')
+        result = self.env['sat.cfdi'].action_pull_period('2026-09-01', '2026-09-17', mode='extraction',
+                                                        background=True)
+        log = self.env['sat.sync.log'].browse(result['log_id'])
+        self.assertEqual(log.mode, 'extraction')
+        calls = []
+        Client = type(self.env['sat.syntage.client'])
+        with patch.object(Client, '_request', self._fake_request(calls)):
+            self.env['sat.cfdi']._cron_run_queued()
+        self.assertEqual(log.status, 'success')
+        self.assertIn('extr-1', log.summary)
+        self.assertEqual(calls[0][1], '/extractions')
+
+    def test_pull_error_is_recorded_in_log(self):
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sat.api_key', 'k')
+        Client = type(self.env['sat.syntage.client'])
+
+        def _boom(client, method, path, **kw):
+            from odoo.exceptions import UserError
+            raise UserError('Syntage respondió 403')
+        # Sin assertRaises: Odoo lo envuelve en un savepoint y desharía la bitácora.
+        raised = False
+        with patch.object(Client, '_request', _boom):
+            try:
+                self.env['sat.cfdi'].action_pull_period('2026-09-01', '2026-09-17')
+            except Exception:
+                raised = True
+        self.assertTrue(raised)
+        log = self.env['sat.sync.log'].search([('kind', '=', 'pull')], order='id desc', limit=1)
+        self.assertEqual(log.status, 'error')
+        self.assertIn('403', log.summary)
 
     def test_missing_api_key_is_a_user_error(self):
         from odoo.exceptions import UserError
