@@ -107,7 +107,7 @@
         <field name="model">sat.pago.compare</field>
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0"
-                  decoration-danger="issue == 'complemento_sin_pago'"
+                  decoration-danger="issue in ('complemento_sin_pago', 'complemento_duplicado')"
                   decoration-warning="issue == 'sin_complemento'"
                   decoration-muted="issue in ('pue', 'cancelado', 'sin_factura')">
                 <field name="cfdi_id" column_invisible="1"/>
@@ -150,7 +150,7 @@
                 <filter name="received" string="Recibidas (pagos)" domain="[('direction', '=', 'received')]"/>
                 <separator/>
                 <filter name="hallazgos" string="Con hallazgo"
-                        domain="[('issue', 'in', ('sin_complemento', 'complemento_sin_pago'))]"/>
+                        domain="[('issue', 'in', ('sin_complemento', 'complemento_sin_pago', 'complemento_duplicado'))]"/>
                 <filter name="ppd" string="PPD" domain="[('metodo_pago', '=', 'PPD')]"/>
                 <separator/>
                 <filter name="fecha" string="Fecha factura" date="fecha"/>

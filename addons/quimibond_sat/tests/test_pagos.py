@@ -119,6 +119,18 @@ class TestSatPagos(SatCommon):
         cfdi4 = self._upsert(syntage_invoice(UUID_X, id='x', total=50.0, paymentType='PPD'))
         self.assertEqual(self._row(cfdi4).issue, 'sin_factura')
         self.assertEqual(Compare.search_count([('issue', 'in', ('sin_complemento', 'complemento_sin_pago'))]), 1)
+        # El mismo pago timbrado dos veces: los complementos exceden el total
+        bill2.invalidate_recordset()
+        self._pay(bill2)
+        self.assertEqual(self._row(cfdi2).issue, 'ok')
+        self._pago(syntage_payment('p2b', UUID_B, 500.0))
+        row = self._row(cfdi2)
+        self.assertEqual(row.issue, 'complemento_duplicado')
+        self.assertEqual(row.n_pagos, 2)
+        self.assertAlmostEqual(row.saldo_sat, -500.0, places=2)
+        # Un complemento cancelado deja de contar
+        self._pago(syntage_payment('p2b', UUID_B, 500.0), event_type='invoice_payment.deleted')
+        self.assertEqual(self._row(cfdi2).issue, 'ok')
 
     def test_import_batch_accepts_strings(self):
         self._upsert(syntage_invoice(UUID_A, total=1000.0, paymentType='PPD'))
