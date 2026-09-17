@@ -310,16 +310,33 @@ class SatCfdi(models.Model):
 
     @api.model
     def action_pull_period(self, date_from, date_to, company_id=None, mode='pull',
-                           include_retentions=False):
+                           include_retentions=False, background=False):
         """Mismo trabajo que el asistente "Traer CFDI del SAT", pero como método
         público de un modelo regular: los asistentes (transitorios) no se pueden
         exponer por MCP y así se puede lanzar una descarga o extracción desde
-        fuera. Devuelve un resumen del registro de bitácora."""
+        fuera. Devuelve un resumen del registro de bitácora.
+
+        ``background=True`` encola el trabajo y lo corre un cron enseguida, con
+        commit por página: es la forma correcta para meses completos (una
+        llamada síncrona por MCP se corta a los 60 s y un mes trae ~1,000 CFDI).
+        El avance se sigue en sat.sync.log (status queued → running → OK)."""
         company = self.env['res.company'].browse(company_id) if company_id else self.env.company
         date_from = fields.Date.to_date(date_from)
         date_to = fields.Date.to_date(date_to)
         client = self.env['sat.syntage.client']
-        if mode == 'extraction':
+        if background:
+            log = self.env['sat.sync.log'].sudo().create({
+                'name': _('%(kind)s %(rfc)s %(from)s..%(to)s') % {
+                    'kind': _('Extracción') if mode == 'extraction' else _('Descarga'),
+                    'rfc': company.vat or company.display_name, 'from': date_from, 'to': date_to},
+                'kind': 'extraction' if mode == 'extraction' else 'pull',
+                'mode': 'extraction' if mode == 'extraction' else 'pull',
+                'include_retentions': include_retentions,
+                'company_id': company.id, 'status': 'queued',
+                'date_from': date_from, 'date_to': date_to,
+            })
+            self.env.ref('quimibond_sat.cron_sat_run_queued').sudo()._trigger()
+        elif mode == 'extraction':
             log = client.request_extraction(company, date_from, date_to, include_retentions)
         else:
             log = client.pull_invoices(company, date_from, date_to, commit=False)
@@ -331,6 +348,10 @@ class SatCfdi(models.Model):
             'items_upserted': log.items_upserted,
             'items_errored': log.items_errored,
         }
+
+    @api.model
+    def _cron_run_queued(self):
+        self.env['sat.syntage.client']._run_queued()
 
     # ── acciones ───────────────────────────────────────────────────────
 
