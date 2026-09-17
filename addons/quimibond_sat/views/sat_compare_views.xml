@@ -65,13 +65,12 @@
                         domain="[('issue', 'in', ('monto', 'cancelado_sat', 'cancelado_odoo'))]"/>
                 <separator/>
                 <filter name="fecha" string="Fecha" date="fecha"/>
-                <group expand="0" string="Agrupar por">
-                    <filter name="group_bucket" string="Cubeta" context="{'group_by': 'bucket'}"/>
-                    <filter name="group_issue" string="Hallazgo" context="{'group_by': 'issue'}"/>
-                    <filter name="group_direction" string="Sentido" context="{'group_by': 'direction'}"/>
-                    <filter name="group_counterparty" string="Contraparte" context="{'group_by': 'counterparty_name'}"/>
-                    <filter name="group_month" string="Mes" context="{'group_by': 'fecha:month'}"/>
-                </group>
+                <separator/>
+                    <filter name="group_bucket" string="Agrupar por cubeta" context="{'group_by': 'bucket'}"/>
+                    <filter name="group_issue" string="Agrupar por hallazgo" context="{'group_by': 'issue'}"/>
+                    <filter name="group_direction" string="Agrupar por sentido" context="{'group_by': 'direction'}"/>
+                    <filter name="group_counterparty" string="Agrupar por contraparte" context="{'group_by': 'counterparty_name'}"/>
+                    <filter name="group_month" string="Agrupar por mes" context="{'group_by': 'fecha:month'}"/>
             </search>
         </field>
     </record>
