@@ -11,40 +11,47 @@
                   sequence="60"
                   groups="account.group_account_readonly"/>
     </data>
+
+    <!-- Dos entradas de trabajo y un cajón técnico. -->
     <menuitem id="menu_sat_compare"
-              name="Comparación SAT vs Odoo"
+              name="Conciliar"
               parent="menu_sat_root"
               action="action_sat_compare"
               sequence="10"/>
     <menuitem id="menu_sat_pago_compare"
-              name="Pagos SAT vs Odoo"
+              name="Pagos (REP)"
               parent="menu_sat_root"
               action="action_sat_pago_compare"
-              sequence="15"/>
+              sequence="20"/>
+    <menuitem id="menu_sat_datos"
+              name="Datos"
+              parent="menu_sat_root"
+              sequence="90"
+              groups="account.group_account_user"/>
     <menuitem id="menu_sat_cfdi"
               name="CFDI en el SAT"
-              parent="menu_sat_root"
+              parent="menu_sat_datos"
               action="action_sat_cfdi"
-              sequence="20"/>
+              sequence="10"/>
     <menuitem id="menu_sat_cfdi_pago"
               name="Complementos de pago"
-              parent="menu_sat_root"
+              parent="menu_sat_datos"
               action="action_sat_cfdi_pago"
-              sequence="25"/>
+              sequence="20"/>
     <menuitem id="menu_sat_pull_wizard"
               name="Traer CFDI del SAT"
-              parent="menu_sat_root"
+              parent="menu_sat_datos"
               action="action_sat_pull_wizard"
               sequence="30"
               groups="account.group_account_user"/>
     <menuitem id="menu_sat_sync_log"
               name="Bitácora Syntage"
-              parent="menu_sat_root"
+              parent="menu_sat_datos"
               action="action_sat_sync_log"
               sequence="40"/>
     <menuitem id="menu_sat_webhook_event"
               name="Eventos de webhook"
-              parent="menu_sat_root"
+              parent="menu_sat_datos"
               action="action_sat_webhook_event"
               sequence="50"/>
 </odoo>

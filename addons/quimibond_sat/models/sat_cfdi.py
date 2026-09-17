@@ -303,25 +303,41 @@ class SatCfdi(models.Model):
         moves, method = self._candidate_moves()
         return self._pick_move(moves), method
 
+    def _taken_by(self, move):
+        """CFDI ligado a mano (o por sugerencia/conciliación) a esa factura, si
+        hay: no se le roba por UUID (XML cruzado)."""
+        return self.sudo().search([
+            ('move_id', '=', move.id), ('id', '!=', self.id), ('match_method', 'in', MANUAL_METHODS),
+        ], limit=1)
+
+    def _pick_free_move(self, moves):
+        """Como _pick_move, pero salta las facturas que otra persona ya ligó a
+        otro CFDI. Con el mismo UUID en dos facturas (doble registro), antes se
+        elegía la más reciente, se veía tomada y se rendía; ahora prueba las
+        demás. Devuelve (factura o vacío, factura tomada o vacío)."""
+        self.ensure_one()
+        rank = {'posted': 0, 'draft': 1, 'cancel': 2}
+        taken = self.browse()
+        for move in moves.sorted(key=lambda m: (rank.get(m.state, 3), -m.id)):
+            other = self._taken_by(move)
+            if other:
+                taken = taken or other
+                continue
+            return move, taken
+        return moves.browse(), taken
+
     def _match_move(self):
         for rec in self:
             if rec.match_status == 'ignorado' or rec.match_method in MANUAL_METHODS:
                 continue
-            move, method = rec._find_move()
+            moves, method = rec._candidate_moves()
+            move, taken = rec._pick_free_move(moves)
             if move:
-                # Una factura ligada a mano o por sugerencia a OTRO CFDI no se
-                # roba por UUID: es el caso del XML cruzado, donde el UUID de
-                # Odoo apunta al CFDI equivocado.
-                taken = self.sudo().search([
-                    ('move_id', '=', move.id), ('id', '!=', rec.id),
-                    ('match_method', 'in', MANUAL_METHODS),
-                ], limit=1)
-                if taken:
-                    rec.write({'match_status': 'solo_sat', 'match_method': False, 'move_id': False,
-                               'note': _('La factura %s con este UUID quedó ligada al CFDI %s')
-                               % (move.name, taken.uuid)})
-                    continue
                 rec.write({'move_id': move.id, 'match_method': method, 'match_status': 'matched'})
+            elif taken:
+                rec.write({'match_status': 'solo_sat', 'match_method': False, 'move_id': False,
+                           'note': _('La factura %s con este UUID quedó ligada al CFDI %s')
+                           % (taken.move_id.name, taken.uuid)})
             elif not rec.move_id:
                 if rec.partner_id.commercial_partner_id.sat_cfdi_policy == 'poliza':
                     # Banco / impuestos: Odoo lo registra por póliza, no como factura.
@@ -499,33 +515,83 @@ class SatCfdi(models.Model):
             others.action_suggest()
         return body
 
+    # Rutas donde Syntage puede servir el XML de una factura. La API no está
+    # documentada de forma accesible desde aquí; se prueban en orden y la que
+    # funcione queda guardada en `quimibond_sat.syntage_xml_path`.
+    XML_PATH_CANDIDATES = (
+        '/invoices/{id}/xml',
+        '/invoices/{id}/files',
+        '/invoices/{id}/files/xml',
+        '/invoices/{id}/download/xml',
+        '/invoices/{id}/file/xml',
+    )
+
+    @api.model
+    def _xml_from_payload(self, client, content):
+        """Bytes de XML a partir de lo que respondió una ruta: el archivo tal
+        cual, o metadatos JSON-LD (objeto o colección hydra) con URL o
+        contenido en base64. Vacío si no hay XML ahí."""
+        head = content.lstrip()[:1]
+        if head == b'<':
+            return content
+        if head not in (b'{', b'['):
+            return b''
+        try:
+            data = json.loads(content)
+        except ValueError:
+            return b''
+        items = data if isinstance(data, list) else data.get('hydra:member') or data.get('member') or [data]
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            kind = ' '.join(str(item.get(k) or '') for k in ('type', 'format', 'mimeType', 'name', '@id', 'url')).lower()
+            if len(items) > 1 and 'xml' not in kind:
+                continue
+            if item.get('content'):
+                try:
+                    blob = base64.b64decode(item['content'])
+                except (ValueError, TypeError):
+                    blob = b''
+                if blob.lstrip()[:1] == b'<':
+                    return blob
+            url = item.get('url') or item.get('contentUrl') or item.get('downloadUrl') or item.get('@id')
+            if url and url != item.get('@id') or (url and 'xml' in kind):
+                try:
+                    blob = client._request_raw(url, accept='application/xml')
+                except UserError:
+                    continue
+                if blob.lstrip()[:1] == b'<':
+                    return blob
+        return b''
+
     def _fetch_xml(self):
-        """XML del CFDI desde Syntage (bytes). La ruta es configurable por si
-        cambia la API: parámetro `quimibond_sat.syntage_xml_path` con `{id}`."""
+        """XML del CFDI desde Syntage (bytes). Prueba la ruta configurada y
+        luego las candidatas; la primera que sirve se guarda para las demás."""
         self.ensure_one()
         if not self.syntage_id:
             raise UserError(_('El CFDI %s no tiene id de Syntage.') % self.uuid)
         icp = self.env['ir.config_parameter'].sudo()
-        path = (icp.get_param('quimibond_sat.syntage_xml_path') or '/invoices/{id}/files/xml').format(
-            id=self.syntage_id, uuid=self.uuid)
+        configured = icp.get_param('quimibond_sat.syntage_xml_path') or ''
+        candidates = [configured] if configured else []
+        candidates += [c for c in self.XML_PATH_CANDIDATES if c != configured]
         client = self.env['sat.syntage.client']
-        content = client._request_raw(path, accept='application/xml')
-        if content.lstrip()[:1] == b'{':
-            # Algunas rutas devuelven metadatos (JSON-LD) con la URL o el
-            # contenido en base64 en vez del archivo.
+        errors = []
+        for template in candidates:
+            path = template.format(id=self.syntage_id, uuid=self.uuid)
             try:
-                data = json.loads(content)
-            except ValueError:
-                data = {}
-            url = data.get('url') or data.get('contentUrl') or data.get('downloadUrl')
-            if url:
-                content = client._request_raw(url, accept='application/xml')
-            elif data.get('content'):
-                content = base64.b64decode(data['content'])
-        if b'<' not in content[:200]:
-            raise UserError(_('Syntage no devolvió el XML del CFDI %(uuid)s (%(path)s).') % {
-                'uuid': self.uuid, 'path': path})
-        return content
+                content = client._request_raw(path, accept='application/xml')
+            except UserError as exc:
+                errors.append('%s: %s' % (path, str(exc)[:80]))
+                continue
+            xml = self._xml_from_payload(client, content)
+            if xml:
+                if template != configured:
+                    icp.set_param('quimibond_sat.syntage_xml_path', template)
+                    _logger.info('sat.cfdi: ruta del XML en Syntage fijada a %s', template)
+                return xml
+            errors.append('%s: sin XML en la respuesta' % path)
+        raise UserError(_('Syntage no devolvió el XML del CFDI %(uuid)s. Rutas probadas: %(errors)s') % {
+            'uuid': self.uuid, 'errors': '; '.join(errors)})
 
     def _attach_xml_to_move(self, move):
         """Adjunta el XML del SAT a la factura. En una factura publicada se
@@ -597,7 +663,7 @@ class SatCfdi(models.Model):
         pending = self.sudo().search([
             ('match_status', '=', 'solo_sat'), ('suggestion_rejected', '=', False),
             ('tipo', 'in', ('I', 'E')), ('estado_sat', '=', 'vigente'),
-        ], limit=limit)
+        ], order='fecha_emision desc, id desc', limit=limit)
         found = pending.action_suggest()
         accepted = pending._auto_accept_suggestions()
         _logger.info('sat.cfdi: %s sugerencias para %s CFDI solo en el SAT, %s ligadas automáticamente',
@@ -655,7 +721,7 @@ class SatCfdi(models.Model):
             '<p>Nuevos en los últimos %s días: <b>%s</b></p>'
             '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Fecha</th><th>Hallazgo</th><th>Sentido</th>'
             '<th>Contraparte</th><th>Odoo</th><th>Total SAT</th><th>Δ</th></tr>%s</table>'
-            '<p>Detalle en Odoo: Contabilidad → SAT (Syntage) → Comparación SAT vs Odoo, filtro "Con hallazgo".</p>'
+            '<p>Detalle en Odoo: Contabilidad → SAT (Syntage) → Conciliar, filtro "Con hallazgo".</p>'
         ) % (rows, new_days, len(new), detail or '<tr><td colspan="7">Ninguno</td></tr>')
         mail = self.env['mail.mail'].sudo().create({
             'subject': _('SAT vs Odoo: %(open)s hallazgos abiertos, %(new)s nuevos') % {
@@ -676,7 +742,11 @@ class SatCfdi(models.Model):
 
     @api.model
     def _cron_match_unmatched(self, limit=2000):
-        cfdis = self.sudo().search([('match_status', '=', 'solo_sat')], limit=limit)
+        # Solo facturas y notas de crédito (los P y N no se cruzan aquí), y los
+        # más recientes primero: con el límite, los CFDI nuevos no pueden
+        # quedarse detrás de miles de nóminas viejas.
+        cfdis = self.sudo().search([('match_status', '=', 'solo_sat'), ('tipo', 'in', ('I', 'E'))],
+                                   order='fecha_emision desc, id desc', limit=limit)
         cfdis._match_move()
         matched = len(cfdis.filtered(lambda c: c.match_status == 'matched'))
         _logger.info('sat.cfdi: cruce de %s pendientes, %s ligados', len(cfdis), matched)
