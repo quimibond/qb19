@@ -7,6 +7,7 @@ el campo l10n_mx_edi_cfdi_uuid del asiento. Si hay varios asientos con el
 mismo UUID (XML capturado dos veces) gana el publicado más reciente.
 """
 import base64
+import codecs
 import json
 import logging
 from datetime import timedelta
@@ -539,7 +540,11 @@ class SatCfdi(models.Model):
         """Bytes de XML a partir de lo que respondió una ruta: el archivo tal
         cual, o metadatos JSON-LD (objeto o colección hydra) con URL o
         contenido en base64. Vacío si no hay XML ahí."""
-        head = content.lstrip()[:1]
+        # Syntage sirve el XML con BOM UTF-8 (EF BB BF) antes de <?xml; se quita.
+        content = (content or b'').lstrip()
+        if content.startswith(codecs.BOM_UTF8):
+            content = content[len(codecs.BOM_UTF8):].lstrip()
+        head = content[:1]
         if head == b'<':
             # Tiene que ser el CFDI, no cualquier XML (p.ej. el recurso
             # serializado por la API).

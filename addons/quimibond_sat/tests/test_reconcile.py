@@ -121,6 +121,14 @@ class TestSatReconcile(SatCommon):
         self.assertEqual(self.env['ir.config_parameter'].sudo().get_param('quimibond_sat.syntage_xml_path'),
                          '/invoices/{id}/cfdi')
 
+    def test_fetch_xml_accepts_bom(self):
+        """Syntage manda el CFDI con BOM UTF-8 antes de <?xml (así respondía
+        /invoices/{id}/cfdi y /files/{id}/download en producción)."""
+        cfdi = self._upsert(syntage_invoice(U1))
+        Client = type(self.env['sat.syntage.client'])
+        with patch.object(Client, '_request_raw', return_value=b'\xef\xbb\xbf' + XML):
+            self.assertEqual(cfdi._fetch_xml(), XML)
+
     def test_fetch_xml_tries_paths_and_remembers(self):
         cfdi = self._upsert(syntage_invoice(U1))
         Client = type(self.env['sat.syntage.client'])
