@@ -74,5 +74,12 @@ class SatWebhookEvent(models.Model):
         elif etype.startswith('invoice_payment.'):
             pago = self.env['sat.cfdi.pago']._upsert_from_syntage(obj, company, event_type=etype)
             self.write({'state': 'processed', 'cfdi_id': pago.invoice_cfdi_id.id or False, 'error': False})
+        elif etype.startswith('file.'):
+            # XML/PDF del CFDI: solo el mapa archivo → factura; el contenido se
+            # baja cuando hace falta (conciliación).
+            f = self.env['sat.syntage.file']._upsert_from_syntage(obj, company)
+            cfdi = self.env['sat.cfdi'].sudo().search(
+                [('syntage_id', '=', (f.resource or '').rsplit('/', 1)[-1])], limit=1) if f.resource else False
+            self.write({'state': 'processed', 'cfdi_id': cfdi.id if cfdi else False, 'error': False})
         else:
             self.write({'state': 'skipped', 'error': 'Tipo de evento no manejado: %s' % etype})
