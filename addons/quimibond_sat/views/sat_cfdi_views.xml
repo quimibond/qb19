@@ -34,6 +34,10 @@
                 <field name="move_state" optional="hide"/>
                 <field name="amount_diff" optional="hide"/>
                 <field name="issue"/>
+                <field name="suggested_move_id"/>
+                <field name="suggestion_reason" optional="hide"/>
+                <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
+                        invisible="not suggested_move_id"/>
                 <field name="uuid" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
@@ -54,6 +58,12 @@
                             invisible="not move_id"/>
                     <button name="action_ignore" type="object" string="Ignorar (se registra por póliza)"
                             invisible="move_id or match_status == 'ignorado'"/>
+                    <button name="action_suggest" type="object" string="Buscar sugerencia"
+                            invisible="move_id or match_status == 'ignorado'"/>
+                    <button name="action_accept_suggestion" type="object" string="Aceptar sugerencia"
+                            class="btn-primary" invisible="not suggested_move_id"/>
+                    <button name="action_reject_suggestion" type="object" string="Rechazar sugerencia"
+                            invisible="not suggested_move_id"/>
                     <field name="match_status" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -99,6 +109,12 @@
                             <field name="amount_diff"/>
                             <field name="issue"/>
                             <field name="ignore_reason" invisible="match_status != 'ignorado' and move_id"/>
+                            <field name="note" readonly="1" invisible="not note"/>
+                        </group>
+                        <group string="Sugerencia (RFC + monto + fecha)" invisible="not suggested_move_id and not suggestion_rejected">
+                            <field name="suggested_move_id" readonly="1"/>
+                            <field name="suggestion_reason" readonly="1"/>
+                            <field name="suggestion_rejected" readonly="1"/>
                         </group>
                         <group string="Syntage">
                             <field name="syntage_id" readonly="1"/>
@@ -130,6 +146,7 @@
                 <filter name="pago" string="Pago (P)" domain="[('tipo', '=', 'P')]"/>
                 <separator/>
                 <filter name="solo_sat" string="Solo en el SAT" domain="[('match_status', '=', 'solo_sat')]"/>
+                <filter name="con_sugerencia" string="Con sugerencia" domain="[('suggested_move_id', '!=', False)]"/>
                 <filter name="con_hallazgo" string="Con hallazgo"
                         domain="[('issue', 'in', ('monto', 'cancelado_sat', 'cancelado_odoo'))]"/>
                 <filter name="vigente" string="Vigentes" domain="[('estado_sat', '=', 'vigente')]"/>

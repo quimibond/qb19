@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - SAT (Syntage) en Odoo',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Localizations',
     'summary': 'CFDI del SAT (vía Syntage) dentro de Odoo y comparación contra las facturas registradas.',

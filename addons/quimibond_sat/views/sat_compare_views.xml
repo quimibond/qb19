@@ -4,8 +4,8 @@
     <record id="action_sat_compare" model="ir.actions.act_window">
         <field name="name">Comparación SAT vs Odoo</field>
         <field name="res_model">sat.compare.line</field>
-        <field name="view_mode">list,pivot,graph</field>
-        <field name="context">{'search_default_group_bucket': 1}</field>
+        <field name="view_mode">pivot,list,graph</field>
+        <field name="context">{'search_default_mi_compania': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Nada que comparar todavía</p>
             <p>Descarga CFDI del SAT con "Traer CFDI del SAT"; aquí aparecen cruzados contra las facturas de Odoo.</p>
@@ -34,6 +34,12 @@
                 <field name="total_sat" sum="Total SAT"/>
                 <field name="total_odoo" sum="Total Odoo"/>
                 <field name="amount_diff" sum="Diferencia"/>
+                <field name="sat_vigente" sum="SAT vigente" optional="hide"/>
+                <field name="odoo_posted" sum="Odoo publicado" optional="hide"/>
+                <field name="delta" sum="Δ"/>
+                <field name="suggested_move_id"/>
+                <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
+                        invisible="not suggested_move_id"/>
                 <field name="estado_sat"/>
                 <field name="state_odoo"/>
                 <field name="payment_state" optional="hide"/>
@@ -55,6 +61,8 @@
                 <field name="counterparty_rfc"/>
                 <field name="move_name"/>
                 <field name="partner_id"/>
+                <filter name="mi_compania" string="Mi compañía" domain="[('company_id', 'in', allowed_company_ids)]"/>
+                <separator/>
                 <filter name="issued" string="Emitidos" domain="[('direction', '=', 'issued')]"/>
                 <filter name="received" string="Recibidos" domain="[('direction', '=', 'received')]"/>
                 <separator/>
@@ -63,6 +71,7 @@
                 <filter name="solo_odoo" string="Solo en Odoo" domain="[('bucket', 'in', ('solo_odoo', 'solo_odoo_sin_uuid'))]"/>
                 <filter name="hallazgos" string="Con hallazgo"
                         domain="[('issue', 'in', ('monto', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                <filter name="con_sugerencia" string="Con sugerencia" domain="[('suggested_move_id', '!=', False)]"/>
                 <separator/>
                 <filter name="fecha" string="Fecha" date="fecha"/>
                 <separator/>
@@ -70,7 +79,7 @@
                     <filter name="group_issue" string="Agrupar por hallazgo" context="{'group_by': 'issue'}"/>
                     <filter name="group_direction" string="Agrupar por sentido" context="{'group_by': 'direction'}"/>
                     <filter name="group_counterparty" string="Agrupar por contraparte" context="{'group_by': 'counterparty_name'}"/>
-                    <filter name="group_month" string="Agrupar por mes" context="{'group_by': 'fecha:month'}"/>
+                    <filter name="group_month" string="Agrupar por mes" context="{'group_by': 'mes'}"/>
             </search>
         </field>
     </record>
@@ -79,11 +88,13 @@
         <field name="name">sat.compare.line.pivot</field>
         <field name="model">sat.compare.line</field>
         <field name="arch" type="xml">
-            <pivot>
-                <field name="bucket" type="row"/>
-                <field name="direction" type="col"/>
-                <field name="total_sat" type="measure"/>
-                <field name="total_odoo" type="measure"/>
+            <pivot string="Conciliación al centavo: Δ = SAT vigente − Odoo publicado (egresos restan)">
+                <field name="mes" type="row"/>
+                <field name="direction" type="row"/>
+                <field name="issue" type="col"/>
+                <field name="sat_vigente" type="measure"/>
+                <field name="odoo_posted" type="measure"/>
+                <field name="delta" type="measure"/>
             </pivot>
         </field>
     </record>
