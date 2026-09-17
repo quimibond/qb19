@@ -306,6 +306,32 @@ class SatCfdi(models.Model):
     def _cron_pull_recent(self):
         self.env['sat.syntage.client']._run_pull_recent()
 
+    # ── entrada pública para MCP / acciones de servidor ────────────────
+
+    @api.model
+    def action_pull_period(self, date_from, date_to, company_id=None, mode='pull',
+                           include_retentions=False):
+        """Mismo trabajo que el asistente "Traer CFDI del SAT", pero como método
+        público de un modelo regular: los asistentes (transitorios) no se pueden
+        exponer por MCP y así se puede lanzar una descarga o extracción desde
+        fuera. Devuelve un resumen del registro de bitácora."""
+        company = self.env['res.company'].browse(company_id) if company_id else self.env.company
+        date_from = fields.Date.to_date(date_from)
+        date_to = fields.Date.to_date(date_to)
+        client = self.env['sat.syntage.client']
+        if mode == 'extraction':
+            log = client.request_extraction(company, date_from, date_to, include_retentions)
+        else:
+            log = client.pull_invoices(company, date_from, date_to, commit=False)
+        return {
+            'log_id': log.id,
+            'status': log.status,
+            'summary': log.summary,
+            'items_fetched': log.items_fetched,
+            'items_upserted': log.items_upserted,
+            'items_errored': log.items_errored,
+        }
+
     # ── acciones ───────────────────────────────────────────────────────
 
     def action_open_move(self):
