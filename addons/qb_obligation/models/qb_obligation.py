@@ -298,12 +298,20 @@ class QbObligation(models.Model):
         self.ensure_one()
         targets = []
         anchor = self._anchor()
-        if anchor and 'activity_ids' in anchor._fields:
+        if anchor and 'activity_ids' in anchor._fields and self._owner_can_read(anchor):
             targets.append(anchor)
         if self.partner_id:
             targets.append(self.partner_id)
         targets.append(self)
         return targets
+
+    def _owner_can_read(self, record):
+        """El dueño tiene que poder abrir el documento donde vive su actividad;
+        si no (p.ej. ventas sin acceso a facturas), la actividad va al contacto."""
+        try:
+            return record.with_user(self.user_id).has_access('read')
+        except Exception:  # noqa: BLE001 — ante la duda, al contacto
+            return False
 
     def _activity_summary(self):
         self.ensure_one()

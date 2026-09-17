@@ -14,6 +14,10 @@ class TestActivities(ObligationCommon):
     def _type(self):
         return self.env.ref('qb_obligation.mail_activity_type_obligation')
 
+    def _assert_done(self, act):
+        """Odoo conserva las actividades hechas archivadas (keep_done) o las borra."""
+        self.assertTrue(not act.exists() or act.date_done or not act.active, 'la actividad quedó hecha')
+
     def test_activity_on_anchor_document(self):
         self._configure()
         inv = self._invoice(self.cliente, 1000.0)
@@ -63,7 +67,7 @@ class TestActivities(ObligationCommon):
         act.action_feedback(feedback='Ya pagó, lo vi en el banco')
         self.assertEqual((ob.state, ob.close_method), ('done', 'owner_ack'))
         self.assertIn('Ya pagó', ob.evidence_summary)
-        self.assertFalse(ob.activity_id.exists())
+        self._assert_done(act)
 
     def test_cancel_activity_discards(self):
         self._configure()
@@ -85,7 +89,7 @@ class TestActivities(ObligationCommon):
         self._pay(inv)
         self._run()
         self.assertEqual(ob.state, 'done')
-        self.assertFalse(act.exists(), 'la actividad se marcó hecha')
+        self._assert_done(act)
         done = self.env['mail.message'].search([('model', '=', 'account.move'), ('res_id', '=', inv.id),
                                                 ('mail_activity_type_id', '=', self._type().id)])
         self.assertTrue(done, 'queda el mensaje de actividad hecha en el chatter de la factura')
