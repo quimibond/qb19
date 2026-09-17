@@ -566,41 +566,47 @@ class SatCfdi(models.Model):
                     return blob
         return b''
 
+    # Ruta documentada por Syntage para el CFDI original: GET /invoices/{id}/cfdi
+    # devuelve el XML con Accept text/xml (PDF con application/pdf).
+    CFDI_XML_PATH = '/invoices/{id}/cfdi'
+    XML_ACCEPT = 'text/xml, application/xml;q=0.9'
+
     def _fetch_xml(self):
-        """XML del CFDI desde Syntage (bytes). Prueba la ruta configurada y
-        luego las candidatas; la primera que sirve se guarda para las demás."""
+        """XML del CFDI desde Syntage (bytes). Orden: la ruta guardada en el
+        parámetro, la documentada (`/invoices/{id}/cfdi`), el archivo que
+        registró el webhook `file.created` y las rutas alternas; la primera
+        plantilla que sirve se guarda para las demás."""
         self.ensure_one()
         if not self.syntage_id:
             raise UserError(_('El CFDI %s no tiene id de Syntage.') % self.uuid)
         icp = self.env['ir.config_parameter'].sudo()
         client = self.env['sat.syntage.client']
         errors = []
-        # Ruta documentada: el archivo del webhook file.created.
+        configured = icp.get_param('quimibond_sat.syntage_xml_path') or ''
+        attempts = []  # (ruta, plantilla o None)
+        if configured:
+            attempts.append((configured.format(id=self.syntage_id, uuid=self.uuid), configured))
+        attempts.append((self.CFDI_XML_PATH.format(id=self.syntage_id), self.CFDI_XML_PATH))
         sfile = self.env['sat.syntage.file']._xml_for_invoice(self.syntage_id)
         if sfile:
-            path = sfile.download_path()
-            try:
-                xml = self._xml_from_payload(client, client._request_raw(path, accept='application/xml'))
-                if xml:
-                    return xml
-                errors.append('%s: sin XML en la respuesta' % path)
-            except UserError as exc:
-                errors.append('%s: %s' % (path, str(exc)[:80]))
+            attempts.append((sfile.download_path(), None))
         else:
             errors.append(_('sin archivo registrado por webhook (file.created) para %s') % self.syntage_id)
-        configured = icp.get_param('quimibond_sat.syntage_xml_path') or ''
-        candidates = [configured] if configured else []
-        candidates += [c for c in self.XML_PATH_CANDIDATES if c != configured]
-        for template in candidates:
-            path = template.format(id=self.syntage_id, uuid=self.uuid)
+        for template in self.XML_PATH_CANDIDATES:
+            attempts.append((template.format(id=self.syntage_id, uuid=self.uuid), template))
+        tried = set()
+        for path, template in attempts:
+            if path in tried:
+                continue
+            tried.add(path)
             try:
-                content = client._request_raw(path, accept='application/xml')
+                content = client._request_raw(path, accept=self.XML_ACCEPT)
             except UserError as exc:
                 errors.append('%s: %s' % (path, str(exc)[:80]))
                 continue
             xml = self._xml_from_payload(client, content)
             if xml:
-                if template != configured:
+                if template and template != configured:
                     icp.set_param('quimibond_sat.syntage_xml_path', template)
                     _logger.info('sat.cfdi: ruta del XML en Syntage fijada a %s', template)
                 return xml
