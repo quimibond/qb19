@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Obligaciones',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Accounting',
     'summary': 'Obligaciones vivas: qué hay que hacer, de quién es, sobre qué documento, cómo se prueba y cuándo vence.',
@@ -50,5 +50,5 @@ Odoo para no avisar dos veces.
         'views/account_move_views.xml',
     ],
     'installable': True,
-    'application': False,
+    'application': True,
 }

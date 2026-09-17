@@ -175,7 +175,9 @@
         <field name="context">{'search_default_collection': 1}</field>
     </record>
 
-    <menuitem id="menu_qb_obligation_root" name="Obligaciones" parent="account.menu_finance" sequence="55"/>
+    <!-- App propia en el menú principal: la obligación es de toda la empresa
+         (cobranza hoy; compras, operaciones, SGI y RH después), no solo de Contabilidad. -->
+    <menuitem id="menu_qb_obligation_root" name="Obligaciones" sequence="35" web_icon="qb_obligation,static/description/icon.png"/>
     <menuitem id="menu_qb_obligation_mine" name="Mis obligaciones" parent="menu_qb_obligation_root" action="action_qb_obligation_mine" sequence="10"/>
     <menuitem id="menu_qb_obligation_all" name="Todas" parent="menu_qb_obligation_root" action="action_qb_obligation" sequence="20"/>
     <menuitem id="menu_qb_obligation_metrics" name="Métricas" parent="menu_qb_obligation_root" action="action_qb_obligation_metrics" sequence="30" groups="account.group_account_manager"/>
