@@ -15,6 +15,7 @@ dueño y la fecha. Marcarla hecha cierra la obligación por acuse; cancelarla la
 descarta; y cuando la evidencia la cierra, la actividad se marca hecha sola.
 """
 import logging
+import re
 from datetime import timedelta
 
 from markupsafe import escape
@@ -42,6 +43,9 @@ EMAIL_TYPE_MAP = {
     'rfq': 'compras.rfq',
 }
 EMAIL_SOURCE_PREFIX = 'supabase:email_pending_actions:'
+# Montos y referencias de documento que identifican un pendiente aunque el
+# texto cambie de un buzón a otro (el mismo hilo llega a varios buzones).
+DEDUPE_TOKEN_RE = re.compile(r'\d[\d,]*\.\d{2}|[A-Z]{2,}/\d{4}/\d{2}/\d+|\b[A-Z]{1,5}-?\d{4,}\b')
 
 
 class QbObligation(models.Model):
@@ -106,6 +110,8 @@ class QbObligation(models.Model):
     ], required=True, default='manual')
     source_ref = fields.Char(string='Referencia externa', index=True)
     source_thread_key = fields.Char(string='Hilo de correo')
+    dedupe_key = fields.Char(string='Clave de duplicado', index=True,
+                             help='Contraparte + tipo + montos/referencias: el mismo pendiente en varios buzones es uno.')
     detection_payload = fields.Json(string='Detección')
     weak_key = fields.Boolean(string='Sin fecha firme', help='La fecha se supuso porque el origen no la traía.')
 
@@ -393,7 +399,8 @@ class QbObligation(models.Model):
             existing = self.search([('source_ref', '=', source_ref), ('state', 'in', OPEN_STATES)], limit=1)
             if existing:
                 existing.write({k: v for k, v in vals.items()
-                                if k in ('description', 'date_deadline', 'detection_payload', 'weak_key') and (v or k != 'date_deadline')})
+                                if k in ('description', 'date_deadline', 'detection_payload', 'weak_key', 'dedupe_key')
+                                and (v or k != 'date_deadline')})
                 return existing
         company = self.env['res.company'].browse(vals.get('company_id')) if vals.get('company_id') else self.env.company
         partner = self.env['res.partner'].browse(vals['partner_id']) if vals.get('partner_id') else None
@@ -524,16 +531,67 @@ class QbObligation(models.Model):
         return result
 
     @api.model
-    def _email_owner(self, account, partner, company, obligation_type):
-        """El buzón que recibió el correo es el dueño natural; si no es un
-        usuario de Odoo, el dueño del área."""
+    def _mailbox_user(self, account):
+        """Usuario interno activo cuyo login o correo es ese buzón, o vacío."""
         Users = self.env['res.users'].sudo()
         account = (account or '').strip().lower()
-        owner = Users
-        if account:
-            owner = Users.search(['|', ('login', '=ilike', account), ('email', '=ilike', account),
-                                  ('share', '=', False), ('active', '=', True)], limit=1)
-        return owner or self._default_owner(partner, company, obligation_type)
+        if not account:
+            return Users
+        return Users.search(['|', ('login', '=ilike', account), ('email', '=ilike', account),
+                             ('share', '=', False), ('active', '=', True)], limit=1)
+
+    @api.model
+    def _email_owner(self, account, partner, company, obligation_type):
+        """El buzón que recibió el correo es el dueño natural; si no es un
+        usuario de Odoo, el dueño por defecto (memoria, cobranza, área)."""
+        return self._mailbox_user(account) or self._default_owner(partner, company, obligation_type)
+
+    @api.model
+    def _email_dedupe_key(self, row, partner):
+        """El mismo compromiso detectado en varios buzones (CC) tiene la misma
+        contraparte, tipo y montos/referencias; el texto puede variar."""
+        desc = (row.get('descripcion') or '').upper()
+        who = partner.id if partner else (row.get('company_id') or (row.get('company_name') or '').strip().lower())
+        base = '%s|%s' % (who, row.get('tipo') or '')
+        tokens = sorted({t.replace(',', '') for t in DEDUPE_TOKEN_RE.findall(desc)})
+        if tokens:
+            return '%s|%s' % (base, ','.join(tokens))
+        norm = re.sub(r'[^A-Z0-9]+', ' ', desc).strip()[:60]
+        return '%s|%s|%s' % (base, row.get('deadline') or '', norm)
+
+    @api.model
+    def _email_group_owner(self, rows, partner, company, obligation_type):
+        """Dueño de un pendiente que llegó a varios buzones: el encargado que la
+        memoria aprendió si lo hay; si no, el primer buzón que sea usuario."""
+        if len(rows) > 1 and partner is not None and hasattr(partner, 'memoria_owner_for'):
+            learned = partner.sudo().memoria_owner_for(self._area_of_type(obligation_type))
+            if learned:
+                return learned
+        for row in rows:
+            owner = self._mailbox_user(row.get('account'))
+            if owner:
+                return owner
+        return self._default_owner(partner, company, obligation_type)
+
+    @api.model
+    def _email_dedupe_existing(self, partners=None):
+        """Candidatas abiertas del correo sin clave (creadas antes de 3.1.0): se
+        les calcula y, si varias comparten clave, queda una (la del encargado
+        aprendido si lo hay, si no la más antigua) y las demás se descartan."""
+        opened = self.search([('source', '=', 'email'), ('state', 'in', OPEN_STATES)])
+        for rec in opened.filtered(lambda r: not r.dedupe_key and r.detection_payload):
+            rec.write({'dedupe_key': self._email_dedupe_key(rec.detection_payload, rec.partner_id or None)})
+        discarded = self.browse()
+        for key, recs in opened.grouped('dedupe_key').items():
+            if not key or len(recs) < 2:
+                continue
+            recs = recs.sorted('id')
+            learned = recs[0].partner_id.memoria_owner_for(recs[0].area) if recs[0].partner_id else None
+            keep = recs.filtered(lambda r: learned and r.user_id == learned)[:1] or recs[:1]
+            others = recs - keep
+            others.action_discard(_('Duplicado: el mismo pendiente llegó a varios buzones; queda #%s') % keep.id)
+            discarded |= others
+        return discarded
 
     @api.model
     def _sync_email_pending(self, limit=500):
@@ -548,30 +606,44 @@ class QbObligation(models.Model):
             'select': 'id,thread_id,tipo,descripcion,deadline,company_id,company_name,account,detected_at,status',
             'status': 'eq.open', 'order': 'id.asc', 'limit': limit})
         partners = self._email_partner(client, [r.get('company_id') for r in rows])
+        self._email_dedupe_existing()
         refs = ['%s%s' % (EMAIL_SOURCE_PREFIX, r['id']) for r in rows]
         known = set(self.search([('source_ref', 'in', refs)]).mapped('source_ref'))
-        created = self.browse()
+        # El mismo pendiente en varios buzones: un grupo por clave, en orden de id
+        groups = {}
         for row in rows:
+            partner = partners.get(int(row['company_id'])) if row.get('company_id') else None
+            groups.setdefault(self._email_dedupe_key(row, partner), []).append(row)
+        open_by_key = {r.dedupe_key: r for r in self.search([('dedupe_key', 'in', list(groups)),
+                                                              ('state', 'in', OPEN_STATES)])}
+        created = self.browse()
+        for key, grows in groups.items():
+            row = grows[0]
+            ref = '%s%s' % (EMAIL_SOURCE_PREFIX, row['id'])
+            existing = open_by_key.get(key)
+            if existing and existing.source_ref != ref:
+                continue  # ya vive como obligación (llegó antes por otro buzón)
             otype = EMAIL_TYPE_MAP.get(row.get('tipo') or '', 'otro.generic')
             partner = partners.get(int(row['company_id'])) if row.get('company_id') else None
-            owner = self._email_owner(row.get('account'), partner, company, otype)
+            owner = self._email_group_owner(grows, partner, company, otype)
             if not owner:
                 _logger.info('qb.obligation: pendiente de correo %s sin dueño (buzón %s), se omite',
                              row.get('id'), row.get('account'))
                 continue
             desc = (row.get('descripcion') or '').strip()
+            payload = dict(row, duplicates=[r['id'] for r in grows[1:]])
             vals = {
                 'obligation_type': otype, 'description': desc or _('Pendiente detectado en el correo'),
                 'name': (desc[:80] or _('Pendiente de correo')),
                 'partner_id': partner.id if partner else False, 'user_id': owner.id,
                 'company_id': company.id, 'source': 'email',
-                'source_ref': '%s%s' % (EMAIL_SOURCE_PREFIX, row['id']),
+                'source_ref': ref, 'dedupe_key': key,
                 'source_thread_key': str(row.get('thread_id') or ''),
-                'detection_payload': row, 'date_deadline': row.get('deadline') or False,
+                'detection_payload': payload, 'date_deadline': row.get('deadline') or False,
                 'evidence_rule_key': 'email_resolved',
             }
             rec = self.create_candidate(vals)
-            if rec and vals['source_ref'] not in known:
+            if rec and ref not in known:
                 created |= rec
         # Cierre: lo que la memoria ya dio por resuelto o expirado
         closed = self.browse()
@@ -580,6 +652,10 @@ class QbObligation(models.Model):
                               ('evidence_rule_key', '=', 'email_resolved')])
         by_ref = {int(r.source_ref[len(EMAIL_SOURCE_PREFIX):]): r for r in opened
                   if r.source_ref[len(EMAIL_SOURCE_PREFIX):].isdigit()}
+        # Los duplicados de otros buzones también cierran la obligación
+        for rec in opened:
+            for dup in (rec.detection_payload or {}).get('duplicates') or []:
+                by_ref.setdefault(int(dup), rec)
         ids = sorted(by_ref)
         for i in range(0, len(ids), 200):
             chunk = ids[i:i + 200]

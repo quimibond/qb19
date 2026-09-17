@@ -527,6 +527,14 @@ class SatCfdi(models.Model):
     )
 
     @api.model
+    def _payload_hint(self, content, size=120):
+        """Primeros bytes de una respuesta que no fue el CFDI, legibles, para
+        diagnosticar desde el chatter sin entrar al servidor."""
+        text = (content or b'')[:size * 2].decode('utf-8', errors='replace')
+        text = ' '.join(text.split())
+        return ('%s… (%s bytes)' % (text[:size], len(content or b''))) if content else 'respuesta vacía'
+
+    @api.model
     def _xml_from_payload(self, client, content):
         """Bytes de XML a partir de lo que respondió una ruta: el archivo tal
         cual, o metadatos JSON-LD (objeto o colección hydra) con URL o
@@ -610,7 +618,7 @@ class SatCfdi(models.Model):
                     icp.set_param('quimibond_sat.syntage_xml_path', template)
                     _logger.info('sat.cfdi: ruta del XML en Syntage fijada a %s', template)
                 return xml
-            errors.append('%s: sin XML en la respuesta' % path)
+            errors.append('%s: sin XML en la respuesta (%s)' % (path, self._payload_hint(content)))
         raise UserError(_('Syntage no devolvió el XML del CFDI %(uuid)s. Rutas probadas: %(errors)s') % {
             'uuid': self.uuid, 'errors': '; '.join(errors)})
 
