@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Base de los tests: compañía con dueño de cobranza, un cliente y facturas de
-venta vencidas. La moneda de generic_coa es USD; los montos son de prueba."""
+"""Base de los tests: compañía con dueños, dos clientes y facturas de venta
+vencidas para anclar obligaciones. La moneda de generic_coa es USD."""
 from odoo import Command, fields
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
@@ -13,9 +13,15 @@ class ObligationCommon(AccountTestInvoicingCommon):
         super().setUpClass()
         cls.company = cls.env.company
         Users = cls.env['res.users'].with_context(no_reset_password=True)
-        cls.cxc = Users.create({'name': 'Sandra CXC', 'login': 'cxc@test.local', 'email': 'cxc@test.local'})
-        cls.direccion = Users.create({'name': 'Jose Dirección', 'login': 'dir@test.local', 'email': 'dir@test.local'})
-        cls.conta = Users.create({'name': 'Conta', 'login': 'conta@test.local', 'email': 'conta@test.local'})
+        # Con acceso a facturas: la actividad espejo se agenda sobre el documento
+        # ancla solo si el dueño puede leerlo (mail.activity lo exige).
+        groups = [(6, 0, [cls.env.ref('base.group_user').id, cls.env.ref('account.group_account_invoice').id])]
+        cls.cxc = Users.create({'name': 'Sandra CXC', 'login': 'cxc@test.local', 'email': 'cxc@test.local',
+                                'group_ids': groups})
+        cls.direccion = Users.create({'name': 'Jose Dirección', 'login': 'dir@test.local', 'email': 'dir@test.local',
+                                      'group_ids': groups})
+        cls.conta = Users.create({'name': 'Conta', 'login': 'conta@test.local', 'email': 'conta@test.local',
+                                  'group_ids': groups})
         cls.cliente = cls.env['res.partner'].create({'name': 'BELSUEÑO', 'is_company': True})
         cls.cliente2 = cls.env['res.partner'].create({'name': 'BLANCOS MILENIUM', 'is_company': True})
         cls.Obligation = cls.env['qb.obligation']
@@ -59,3 +65,15 @@ class ObligationCommon(AccountTestInvoicingCommon):
 
     def _open_for(self, move):
         return self.Obligation.search([('res_model', '=', 'account.move'), ('res_id', '=', move.id)])
+
+    def _promise_on(self, move, confirm=True, **extra):
+        """Promesa de pago (correo) anclada a una factura, confirmada por el dueño."""
+        vals = {'obligation_type': 'collection.payment_promise', 'partner_id': move.partner_id.id,
+                'description': 'Prometió pagar %s' % move.name, 'name': 'Pago %s' % move.name,
+                'res_model': 'account.move', 'res_id': move.id, 'source': 'email',
+                'source_ref': 'thread:%s:promise' % move.id, 'date_deadline': move.invoice_date_due}
+        vals.update(extra)
+        rec = self.Obligation.create_candidate(vals)
+        if rec and confirm:
+            rec.action_confirm()
+        return rec

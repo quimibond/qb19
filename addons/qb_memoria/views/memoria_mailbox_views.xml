@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_qb_memoria_mailbox_list" model="ir.ui.view">
+        <field name="name">qb.memoria.mailbox.list</field>
+        <field name="model">qb.memoria.mailbox</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="email"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="area"/>
+                <field name="note"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_qb_memoria_mailbox" model="ir.actions.act_window">
+        <field name="name">Buzones de la memoria</field>
+        <field name="res_model">qb.memoria.mailbox</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Quién está detrás de cada buzón</p>
+            <p>La memoria aprende qué buzón (logistica@, cxcobrar@, innovacion@…) atiende a cada empresa.
+               Aquí dices qué persona de Odoo está detrás de cada buzón compartido; un buzón que es el login
+               de un usuario se resuelve solo.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_qb_memoria_mailbox" name="Buzones (memoria)" parent="contacts.res_partner_menu_config"
+              action="action_qb_memoria_mailbox" sequence="60"/>
+
+    <record id="view_partner_form_memoria_owner" model="ir.ui.view">
+        <field name="name">res.partner.form.memoria.owner</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="qb_memoria.view_partner_form_memoria"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='memoria']/div" position="before">
+                <group>
+                    <group string="Encargado según la memoria">
+                        <field name="memoria_owner_user_id" widget="many2one_avatar_user"/>
+                        <field name="memoria_owner_locked"/>
+                        <field name="memoria_owner_evidence"/>
+                        <field name="memoria_owner_at"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
