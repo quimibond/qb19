@@ -152,3 +152,36 @@ class TestSatPull(SatCommon):
         self.env['ir.config_parameter'].sudo().set_param('quimibond_sat.api_key', '')
         with self.assertRaises(UserError):
             self.env['sat.cfdi'].action_pull_period('2026-09-01', '2026-09-17')
+
+    def test_queue_budget_and_stale_rescue(self):
+        Log = self.env['sat.sync.log']
+        Client = type(self.env['sat.syntage.client'])
+        done = []
+
+        def fake_pull(client, company, date_from=None, date_to=None, log=None, **kw):
+            done.append(log.name)
+            log.write({'status': 'success', 'summary': 'ok'})
+            return log
+
+        first = Log.create({'name': 'A', 'kind': 'pull', 'mode': 'pull', 'company_id': self.company.id,
+                            'status': 'queued', 'date_from': '2026-01-01', 'date_to': '2026-01-31'})
+        second = Log.create({'name': 'B', 'kind': 'pull', 'mode': 'pull', 'company_id': self.company.id,
+                             'status': 'queued', 'date_from': '2026-02-01', 'date_to': '2026-02-28'})
+        stuck = Log.create({'name': 'S', 'kind': 'pull', 'mode': 'pull', 'company_id': self.company.id,
+                            'status': 'running', 'date_from': '2025-12-01', 'date_to': '2025-12-31'})
+        self.env.flush_all()
+        # Corrida colgada hace una hora (worker muerto): se re-encola
+        self.env.cr.execute("UPDATE sat_sync_log SET write_date = now() - interval '1 hour' WHERE id = %s", (stuck.id,))
+        stuck.invalidate_recordset()
+        with patch.object(Client, 'pull_invoices', fake_pull):
+            # Presupuesto cero: procesa uno y vuelve a disparar el cron
+            self.env['sat.syntage.client']._run_queued(budget_seconds=0)
+        self.assertEqual(done, ['A'])
+        self.assertEqual(first.status, 'success')
+        self.assertEqual(second.status, 'queued')
+        self.assertEqual(stuck.status, 'queued')
+        self.assertIn('Re-encolado', stuck.summary)
+        with patch.object(Client, 'pull_invoices', fake_pull):
+            self.env['sat.syntage.client']._run_queued(budget_seconds=600)
+        self.assertEqual(done, ['A', 'B', 'S'])
+        self.assertEqual((second + stuck).mapped('status'), ['success', 'success'])

@@ -230,12 +230,108 @@ class SyntageClient(models.AbstractModel):
         return log
 
     @api.model
-    def _run_queued(self):
+    def pull_payments(self, company, date_from=None, date_to=None, max_pages=200,
+                      page_size=100, commit=True, log=None):
+        """Descarga los complementos de pago (InvoicePayment, uno por documento
+        relacionado) de /invoices/payments para el periodo y los guarda en
+        sat.cfdi.pago. Solo se guardan los que pagan una factura que ya está
+        en sat.cfdi (el listado es de toda la organización). El endpoint es
+        frágil con paginación profunda: pedir por meses."""
+        start = time.time()
+        Pago = self.env['sat.cfdi.pago']
+        Cfdi = self.env['sat.cfdi'].sudo()
+        Log = self.env['sat.sync.log'].sudo()
+        if log is None:
+            log = Log.create({
+                'name': _('Pagos %(rfc)s %(from)s..%(to)s') % {
+                    'rfc': self._rfc(company), 'from': date_from or '', 'to': date_to or ''},
+                'kind': 'pull', 'mode': 'payments', 'company_id': company.id,
+                'date_from': date_from, 'date_to': date_to,
+            })
+        log.write({'status': 'running', 'summary': False})
+        if commit:
+            self._commit()
+        try:
+            params = {'itemsPerPage': page_size}
+            if date_from:
+                params['date[after]'] = fields.Date.to_string(fields.Date.to_date(date_from) - timedelta(days=1))
+            if date_to:
+                params['date[before]'] = fields.Date.to_string(fields.Date.to_date(date_to) + timedelta(days=2))
+            url = '%s/invoices/payments?%s' % (self._api_base(), urlencode(params))
+            headers = {'X-Pagination-Style': 'cursor', 'X-Pagination-Enable-Partial': '0'}
+            fetched = upserted = errored = skipped = pages = 0
+            errors = []
+            while url and pages < max_pages:
+                body = self._request('GET', url, headers=headers)
+                pages += 1
+                items = body.get('hydra:member') or []
+                fetched += len(items)
+                uuids = {(o.get('invoiceUuid') or '').lower() for o in items if o.get('invoiceUuid')}
+                known = set(Cfdi.search([('uuid', 'in', list(uuids))]).mapped(lambda c: c.uuid.lower())) if uuids else set()
+                for obj in items:
+                    if (obj.get('invoiceUuid') or '').lower() not in known:
+                        skipped += 1
+                        continue
+                    try:
+                        with self.env.cr.savepoint():
+                            Pago._upsert_from_syntage(obj, company, event_type='pull')
+                        upserted += 1
+                    except Exception as exc:
+                        errored += 1
+                        errors.append('%s: %s' % (obj.get('id'), str(exc)[:200]))
+                log.write({'items_fetched': fetched, 'items_upserted': upserted, 'items_errored': errored,
+                           'duration_seconds': round(time.time() - start, 1)})
+                if commit:
+                    self._commit()
+                nxt = (body.get('hydra:view') or {}).get('hydra:next')
+                url = (self._api_base() + nxt) if nxt else None
+        except Exception as exc:
+            log.write({'status': 'error', 'summary': str(exc)[:2000],
+                       'duration_seconds': round(time.time() - start, 1)})
+            if commit:
+                self._commit()
+            raise
+        status = 'success' if not errored else ('partial' if upserted else 'error')
+        summary = _('%(pages)s página(s), %(fetched)s pagos recibidos, %(upserted)s guardados, '
+                    '%(skipped)s de facturas que no están en Odoo, %(errored)s con error.') % {
+            'pages': pages, 'fetched': fetched, 'upserted': upserted, 'skipped': skipped, 'errored': errored}
+        if url:
+            summary += _(' Se alcanzó el máximo de páginas (%s); vuelve a correr para continuar.') % max_pages
+        if errors:
+            summary += '\n' + '\n'.join(errors[:50])
+        log.write({'status': status, 'summary': summary, 'items_fetched': fetched,
+                   'items_upserted': upserted, 'items_errored': errored,
+                   'duration_seconds': round(time.time() - start, 1)})
+        if commit:
+            self._commit()
+        return log
+
+    QUEUE_STALE_MINUTES = 30
+
+    @api.model
+    def _run_queued(self, budget_seconds=None):
         """Procesa las descargas/extracciones encoladas (status queued), una
         por una, con commit por página. Lo dispara action_pull_period(background)
-        vía cron._trigger()."""
+        vía cron._trigger().
+
+        El worker del cron muere a los ~15 min (Odoo.sh): se trabaja con un
+        presupuesto de tiempo (quimibond_sat.queue_budget_seconds, default 600)
+        y si queda cola se vuelve a disparar el cron. Una corrida que quedó en
+        'running' sin avanzar en 30 min (worker muerto) se re-encola."""
         Log = self.env['sat.sync.log'].sudo()
-        for log in Log.search([('status', '=', 'queued')], order='id'):
+        if budget_seconds is None:
+            budget_seconds = int(self._param('quimibond_sat.queue_budget_seconds') or 600)
+        start = time.time()
+        stale_before = fields.Datetime.now() - timedelta(minutes=self.QUEUE_STALE_MINUTES)
+        stale = Log.search([('status', '=', 'running'), ('write_date', '<', stale_before)])
+        if stale:
+            stale.write({'status': 'queued', 'summary': _('Re-encolado: la corrida anterior se interrumpió')})
+        for index, log in enumerate(Log.search([('status', '=', 'queued')], order='id')):
+            # Siempre se procesa al menos una; el presupuesto corta ANTES de la siguiente.
+            if index and time.time() - start > budget_seconds:
+                _logger.info('Cola SAT: presupuesto agotado, se vuelve a disparar el cron')
+                self.env.ref('quimibond_sat.cron_sat_run_queued').sudo()._trigger()
+                return
             try:
                 if log.mode == 'extraction':
                     result = self.request_extraction(log.company_id, log.date_from, log.date_to,
@@ -243,6 +339,8 @@ class SyntageClient(models.AbstractModel):
                     log.write({'status': result.status, 'summary': result.summary,
                                'duration_seconds': result.duration_seconds})
                     result.unlink()
+                elif log.mode == 'payments':
+                    self.pull_payments(log.company_id, log.date_from, log.date_to, log=log)
                 else:
                     self.pull_invoices(log.company_id, log.date_from, log.date_to, log=log)
             except Exception as exc:
@@ -307,12 +405,13 @@ class SyntageClient(models.AbstractModel):
     def _run_pull_recent(self, lookback_days=7):
         today = fields.Date.context_today(self)
         for company in self._companies_to_sync():
-            try:
-                self.pull_invoices(company, today - timedelta(days=lookback_days), today)
-            except Exception as exc:
-                _logger.exception('Descarga reciente falló para %s', company.display_name)
-                self.env['sat.sync.log'].sudo().create({
-                    'name': _('Descarga %s') % (company.vat or company.display_name),
-                    'kind': 'pull', 'company_id': company.id, 'status': 'error',
-                    'summary': str(exc)[:2000],
-                })
+            for label, fn in (('Descarga', self.pull_invoices), ('Pagos', self.pull_payments)):
+                try:
+                    fn(company, today - timedelta(days=lookback_days), today)
+                except Exception as exc:
+                    _logger.exception('%s reciente falló para %s', label, company.display_name)
+                    self.env['sat.sync.log'].sudo().create({
+                        'name': _('%(label)s %(rfc)s') % {'label': label, 'rfc': company.vat or company.display_name},
+                        'kind': 'pull', 'company_id': company.id, 'status': 'error',
+                        'summary': str(exc)[:2000],
+                    })

@@ -245,6 +245,10 @@ class SatCfdi(models.Model):
             rec.write(vals)
         else:
             rec = self.sudo().create(vals)
+            if rec.tipo == 'I':
+                # Pagos que llegaron antes que la factura (webhook, 2024...).
+                self.env['sat.cfdi.pago'].sudo().search([
+                    ('invoice_uuid', '=ilike', rec.uuid), ('invoice_cfdi_id', '=', False)])._relink()
         rec._match_move()
         return rec
 
@@ -557,13 +561,14 @@ class SatCfdi(models.Model):
         date_from = fields.Date.to_date(date_from)
         date_to = fields.Date.to_date(date_to)
         client = self.env['sat.syntage.client']
+        labels = {'extraction': _('Extracción'), 'payments': _('Pagos')}
         if background:
             log = self.env['sat.sync.log'].sudo().create({
                 'name': _('%(kind)s %(rfc)s %(from)s..%(to)s') % {
-                    'kind': _('Extracción') if mode == 'extraction' else _('Descarga'),
+                    'kind': labels.get(mode, _('Descarga')),
                     'rfc': company.vat or company.display_name, 'from': date_from, 'to': date_to},
                 'kind': 'extraction' if mode == 'extraction' else 'pull',
-                'mode': 'extraction' if mode == 'extraction' else 'pull',
+                'mode': mode if mode in ('extraction', 'payments') else 'pull',
                 'include_retentions': include_retentions,
                 'company_id': company.id, 'status': 'queued',
                 'date_from': date_from, 'date_to': date_to,
@@ -571,6 +576,8 @@ class SatCfdi(models.Model):
             self.env.ref('quimibond_sat.cron_sat_run_queued').sudo()._trigger()
         elif mode == 'extraction':
             log = client.request_extraction(company, date_from, date_to, include_retentions)
+        elif mode == 'payments':
+            log = client.pull_payments(company, date_from, date_to, commit=False)
         else:
             log = client.pull_invoices(company, date_from, date_to, commit=False)
         return {
