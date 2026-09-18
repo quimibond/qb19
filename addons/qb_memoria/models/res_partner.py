@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """Pestaña Memoria del contacto: lo que la memoria de correo sabe de la
-empresa (hilos, pendientes, demanda, contactos, notas). Se resuelve por el
-partner comercial (``companies.odoo_partner_id``) y, si no, por RFC."""
+empresa. Se resuelve por el partner comercial (``companies.odoo_partner_id``)
+y, si no, por RFC. Dos fuentes:
+
+* la **ficha consolidada** (RPC ``memoria_brief``): quién la atiende, lo que
+  sabemos (hechos con vigencia), conversaciones resumidas por Claude con su
+  estado y pendientes, contactos del grafo;
+* las tablas crudas (hilos, pendientes detectados, demanda, contactos) como
+  hasta ahora."""
 import logging
 from datetime import timedelta
 
@@ -9,6 +15,7 @@ from markupsafe import Markup, escape
 from psycopg2.extras import Json
 
 from odoo import _, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -43,11 +50,16 @@ class ResPartner(models.Model):
         client = self.env['qb.memoria.client']
         partner = self._memoria_partner()
         company = self._memoria_company_row(client, partner)
-        data = {'company': company, 'threads': [], 'threads_90d': 0, 'waiting_us': 0,
+        data = {'company': company, 'brief': None, 'threads': [], 'threads_90d': 0, 'waiting_us': 0,
                 'pending': [], 'demand': [], 'contacts': []}
         if not company:
             return data
         cid = company['id']
+        try:
+            data['brief'] = client.rpc('memoria_brief', {'p_company_id': cid}) or None
+        except UserError as exc:  # la ficha consolidada es opcional: el resto sigue
+            _logger.warning('memoria_brief %s: %s', cid, exc)
+            data['brief_error'] = str(exc)
         since = (fields.Date.today() - timedelta(days=90)).isoformat()
         data['threads'] = client.get('threads', {
             'select': 'id,gmail_thread_id,subject,account,status,message_count,last_sender_type,'
@@ -118,6 +130,70 @@ class ResPartner(models.Model):
         except (TypeError, ValueError):
             return ''
 
+    ESTADO_BADGE = {'abierto': 'text-bg-warning', 'cerrado': 'text-bg-success', 'informativo': 'text-bg-secondary'}
+    ESPERANDO = {'nosotros': 'esperan respuesta nuestra', 'ellos': 'esperamos a ellos', 'nadie': ''}
+    CATEGORIA = {'condiciones_pago': 'Condiciones de pago', 'precio': 'Precios', 'producto': 'Producto',
+                 'logistica': 'Logística', 'calidad': 'Calidad', 'contacto_clave': 'Contactos clave',
+                 'proceso': 'Proceso', 'preferencia': 'Preferencias', 'riesgo': 'Riesgos', 'otro': 'Otros'}
+
+    def _memoria_render_brief(self, brief):
+        """Secciones de la ficha consolidada (memoria_brief): quién atiende,
+        lo que sabemos, conversaciones resumidas."""
+        e = escape
+        parts = []
+        if not brief:
+            return parts
+        # Quién atiende
+        enc = [x for x in (brief.get('encargados') or []) if x.get('buzon')]
+        if enc:
+            items = Markup('').join(Markup('<li><b>%s</b>%s: %s correos (%s %%)</li>') % (
+                e(x.get('buzon') or ''), (' · %s' % e(x['area'])) if x.get('area') else '',
+                self._num(x.get('n')), x.get('share') if x.get('share') is not None else '—') for x in enc[:8])
+            parts.append(Markup('<h5>%s</h5><ul class="mb-2">%s</ul>') % (_('Quién la atiende (según el correo)'), items))
+        # Lo que sabemos
+        facts = brief.get('hechos') or []
+        if facts:
+            by_cat = {}
+            for f in facts:
+                by_cat.setdefault(f.get('categoria') or 'otro', []).append(f)
+            blocks = []
+            for cat, rows in by_cat.items():
+                lis = Markup('').join(Markup('<li>%s%s%s</li>') % (
+                    e(f.get('hecho') or ''),
+                    Markup(' <span class="text-muted small">(%s)</span>') % e(f['sobre']) if f.get('sobre') and f['sobre'] != 'empresa' else '',
+                    Markup(' <span class="text-muted small">desde %s</span>') % e(f['vigente_desde']) if f.get('vigente_desde') else '')
+                    for f in rows[:8])
+                blocks.append(Markup('<div class="col-12 col-md-6"><b>%s</b><ul class="mb-2">%s</ul></div>') % (
+                    self.CATEGORIA.get(cat, cat), lis))
+            parts.append(Markup('<h5>%s</h5><div class="row">%s</div>') % (_('Lo que sabemos'), Markup('').join(blocks)))
+        # Conversaciones resumidas
+        hilos = brief.get('hilos') or []
+        if hilos:
+            cards = []
+            for h in hilos[:12]:
+                pend = h.get('pendientes') or []
+                pend_html = Markup('<ul class="mb-1 small">%s</ul>') % Markup('').join(Markup('<li>%s%s%s</li>') % (
+                    e(p.get('que') or ''), ' (%s)' % e(p['quien']) if p.get('quien') else '',
+                    ' · vence %s' % e(p['vence']) if p.get('vence') else '') for p in pend[:4]) if pend else ''
+                cards.append(Markup(
+                    '<div class="border rounded p-2 mb-2">'
+                    '<div class="d-flex justify-content-between"><b>%s</b>'
+                    '<span><span class="badge %s">%s</span> <span class="text-muted small">%s</span></span></div>'
+                    '<div class="text-muted small">%s · %s · %s msjs · <a href="%s" target="_blank">%s</a></div>'
+                    '<p class="mb-1">%s</p>%s</div>') % (
+                    e(h.get('tema') or h.get('asunto') or _('(sin tema)')),
+                    self.ESTADO_BADGE.get(h.get('estado'), 'text-bg-light'), e(h.get('estado') or ''),
+                    self.ESPERANDO.get(h.get('esperando_a') or '', ''),
+                    self._dt(h.get('ultimo')), e(h.get('buzon') or ''), h.get('mensajes') or 0,
+                    GMAIL_THREAD_URL % e(h.get('gmail_thread_id') or ''), e(h.get('asunto') or ''),
+                    e(h.get('resumen') or ''), pend_html))
+            st = brief.get('stats') or {}
+            parts.append(Markup('<h5>%s <span class="text-muted small">%s</span></h5>%s') % (
+                _('Conversaciones (resumen de la memoria)'),
+                _('%s resumidas, %s abiertas') % (st.get('hilos_resumidos', len(hilos)), st.get('hilos_abiertos', 0)),
+                Markup('').join(cards)))
+        return parts
+
     def _memoria_render(self, data, cached_at):
         e = escape
         if not data:
@@ -154,6 +230,7 @@ class ResPartner(models.Model):
             body = Markup('').join(Markup('<p>%s</p>') % e(n) for n in notes if n)
             body += Markup('').join(Markup('<p>%s</p>') % s for s in signals)
             parts.append(Markup('<h5>%s</h5>%s') % (_('Relación'), body))
+        parts.extend(self._memoria_render_brief(data.get('brief') or {}))
         # Pendientes detectados en correo
         pending = data.get('pending') or []
         opened = [x for x in pending if x.get('status') == 'open']

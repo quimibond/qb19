@@ -13,6 +13,23 @@ de Odoo sin copiar correos: en cada contacto, la pestaña **Memoria**.
 | Demanda mencionada | Producto, cantidad y periodo que el cliente mencionó | `customer_demand_signals` |
 | Contactos y ritmo de respuesta | Personas de la empresa, último correo, interacciones, horas promedio de respuesta | `contacts` |
 
+### Ficha consolidada (v1.2, RPC `memoria_brief`)
+
+Encima de las tablas crudas, la pestaña muestra lo que la memoria **entiende**
+(Fase 3 del diseño de memoria, `docs/memoria-quimibond-diseno.md` en
+`quimibond-intelligence`):
+
+| Sección | Qué muestra | De dónde |
+|---|---|---|
+| Quién la atiende | Buzón interno que más le escribe y el que atiende cada tipo de pendiente, con volumen y % | grafo `kg_edges` (`atiende`, `atiende:<area>`) |
+| Lo que sabemos | Hechos con vigencia por categoría (condiciones de pago, precios, producto, logística, calidad, contactos clave, proceso, preferencias, riesgos), con fecha desde la que aplican y sobre quién | `memoria_facts` |
+| Conversaciones (resumen de la memoria) | Por conversación: tema, estado (abierto / cerrado / informativo), quién debe responder, resumen de 3-6 frases, pendientes con vencimiento y enlace a Gmail | `memoria_thread_summaries` |
+
+Los resúmenes y hechos los escribe Claude cada 5 minutos sobre las
+conversaciones con correo nuevo (Edge Function `memory-consolidate`); una
+conversación se resume una sola vez aunque Gmail la tenga en varios buzones
+(`threads.conv_key`). Si la ficha no responde, el resto de la pestaña sigue.
+
 Resolución: por el partner comercial (`companies.odoo_partner_id`) y, si no,
 por RFC. Un contacto persona muestra la memoria de su empresa. Caché por
 contacto (`memoria_cache`, 6 h) y botón **Actualizar**. Si Supabase no responde,

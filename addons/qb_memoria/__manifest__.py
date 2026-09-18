@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Memoria del contacto',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'license': 'LGPL-3',
     'category': 'Sales/CRM',
     'summary': 'Pestaña Memoria en cada contacto: hilos de correo, pendientes detectados, demanda y contactos, desde la memoria en Supabase.',
@@ -20,6 +20,12 @@ relación. Se cachea por contacto y se refresca con un botón o al caducar.
 No copia correos a Odoo: consulta la API REST de Supabase con la llave que ya
 tiene ``quimibond_intelligence`` (``quimibond_intelligence.supabase_url`` /
 ``supabase_service_key``).
+
+Ficha consolidada (v1.2): la memoria resume cada conversación con Claude
+(tema, estado, quién debe responder, acuerdos, pendientes) y extrae hechos con
+vigencia (condiciones de pago, precios, contactos clave, logística, calidad,
+riesgos). La pestaña los muestra en "Quién la atiende", "Lo que sabemos" y
+"Conversaciones (resumen de la memoria)" (RPC ``memoria_brief``).
 
 Dueños aprendidos: cada noche la memoria cuenta qué buzón interno atiende a
 cada empresa (y cada tipo de pendiente) y lo escribe en el contacto como

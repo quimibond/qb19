@@ -18,6 +18,36 @@ PENDING = {'id': 9, 'thread_id': 1, 'tipo': 'compromiso_entrega', 'descripcion':
            'detected_at': '2026-08-06T10:00:00+00:00', 'resolved_at': None}
 
 
+BRIEF = {
+    'empresa': {'id': 6031, 'name': 'SHAWMUT LLC'},
+    'encargados': [{'buzon': 'innovacion@quimibond.com', 'area': None, 'n': 42, 'share': 71},
+                   {'buzon': 'cxcobrar@quimibond.com', 'area': 'finanzas', 'n': 5, 'share': 100}],
+    'contactos': [{'email': 'ana@shawmut.com', 'nombre': 'Ana', 'rol': 'Compras', 'interacciones': 12}],
+    'hechos': [{'categoria': 'condiciones_pago', 'hecho': 'Paga a 60 días contra factura.', 'vigente_desde': '2026-08-01',
+                'veces': 2, 'confianza': 0.9, 'sobre': 'empresa'},
+               {'categoria': 'contacto_clave', 'hecho': 'Ana decide las compras de entretela.', 'vigente_desde': None,
+                'veces': 1, 'confianza': 0.8, 'sobre': 'ana@shawmut.com'}],
+    'hilos': [{'thread_id': 1, 'gmail_thread_id': 'abc123', 'asunto': 'Pedido de agosto', 'buzon': 'ventas@quimibond.com',
+               'tema': 'Pedido de agosto de entretela WM4032', 'resumen': 'Pidieron 1,200 m; falta confirmar fecha.',
+               'estado': 'abierto', 'esperando_a': 'nosotros', 'tono': 'neutral', 'acuerdos': [],
+               'pendientes': [{'que': 'Confirmar fecha de entrega', 'quien': 'nosotros', 'vence': '2026-08-10'}],
+               'ultimo': '2026-08-05T22:22:57+00:00', 'mensajes': 4}],
+    'stats': {'hilos_90d': 2, 'esperan_respuesta_nuestra': 1, 'hilos_resumidos': 1, 'hilos_abiertos': 1},
+}
+
+
+def fake_rpc(result):
+    calls = []
+
+    def rpc(_self, name, params):
+        calls.append((name, dict(params or {})))
+        if isinstance(result, Exception):
+            raise result
+        return result
+    rpc.calls = calls
+    return rpc
+
+
 def fake_get(rows_by_table):
     calls = []
 
@@ -43,6 +73,13 @@ class TestMemoria(TransactionCase):
         cls.Client = type(cls.env['qb.memoria.client'])
         cls.partner = cls.env['res.partner'].create({'name': 'SHAWMUT LLC', 'is_company': True, 'vat': 'SHA010101AAA'})
         cls.person = cls.env['res.partner'].create({'name': 'Ana', 'parent_id': cls.partner.id})
+
+    def setUp(self):
+        super().setUp()
+        # Las pruebas que no miran la ficha consolidada no deben salir a la red.
+        patcher = patch.object(self.Client, 'rpc', fake_rpc({}))
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_render_by_partner_and_cache(self):
         company = dict(COMPANY, odoo_partner_id=self.partner.id)
@@ -80,6 +117,39 @@ class TestMemoria(TransactionCase):
         with patch.object(self.Client, 'get', get):
             self.person.action_memoria_refresh()
         self.assertGreater(len(get.calls), n)
+
+    def test_brief_sections(self):
+        company = dict(COMPANY, odoo_partner_id=self.partner.id)
+        get = fake_get({'companies': lambda params: [company] if 'odoo_partner_id' in params else []})
+        rpc = fake_rpc(BRIEF)
+        with patch.object(self.Client, 'get', get), patch.object(self.Client, 'rpc', rpc):
+            self.partner.action_memoria_refresh()
+        html = self.partner.memoria_html
+        self.assertEqual(rpc.calls, [('memoria_brief', {'p_company_id': 6031})])
+        self.assertIn('Quién la atiende', html)
+        self.assertIn('innovacion@quimibond.com', html)
+        self.assertIn('Lo que sabemos', html)
+        self.assertIn('Condiciones de pago', html)
+        self.assertIn('Paga a 60 días contra factura.', html)
+        self.assertIn('Contactos clave', html)
+        self.assertIn('(ana@shawmut.com)', html)
+        self.assertIn('Conversaciones (resumen de la memoria)', html)
+        self.assertIn('Pedido de agosto de entretela WM4032', html)
+        self.assertIn('esperan respuesta nuestra', html)
+        self.assertIn('Confirmar fecha de entrega', html)
+        self.assertIn('1 resumidas, 1 abiertas', html)
+
+    def test_brief_failure_is_soft(self):
+        company = dict(COMPANY, odoo_partner_id=self.partner.id)
+        get = fake_get({'companies': lambda params: [company] if 'odoo_partner_id' in params else [],
+                        'threads': [THREAD]})
+        with patch.object(self.Client, 'get', get), \
+                patch.object(self.Client, 'rpc', fake_rpc(UserError('La memoria respondió 500 en memoria_brief'))):
+            self.partner.action_memoria_refresh()
+        html = self.partner.memoria_html
+        self.assertIn('Hilos recientes', html)
+        self.assertNotIn('Lo que sabemos', html)
+        self.assertEqual(self.partner.memoria_cache.get('brief'), None)
 
     def test_fallback_by_rfc_and_unknown(self):
         get = fake_get({'companies': lambda params: [COMPANY] if 'rfc' in params else []})
