@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Tres atributos del complemento de nómina que el módulo de Odoo saca
-         mal o no saca. Los valores los pone hr.payslip._qb_nomina_cfdi_values
+    <!-- Atributos del complemento de nómina que el módulo de Odoo saca mal o
+         deja vacíos (registro patronal, SDI, SBC, ClaveEntFed, NumEmpleado). Los valores los pone hr.payslip._qb_nomina_cfdi_values
          en cfdi_values['qb_nomina'] (valores planos: _clean_cfdi_values
          destruye los recordsets antes de renderizar).
 
@@ -22,6 +22,8 @@
         <xpath expr="//*[local-name()='Nomina']//*[local-name()='Receptor']" position="attributes">
             <attribute name="t-att-SalarioDiarioIntegrado">qb_nomina['salario_diario_integrado']</attribute>
             <attribute name="t-att-SalarioBaseCotApor">qb_nomina['salario_base_cot_apor']</attribute>
+            <attribute name="t-att-ClaveEntFed">qb_nomina['clave_ent_fed']</attribute>
+            <attribute name="t-att-NumEmpleado">qb_nomina['num_empleado']</attribute>
         </xpath>
     </template>
 

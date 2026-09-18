@@ -3,8 +3,17 @@
 
 ``l10n_mx_hr_payroll_account_edi`` arma el CFDI con
 ``_l10n_mx_edi_add_payslip_cfdi_values``. Aquí se llama al original y se
-agrega ``cfdi_values['qb_nomina']``; la plantilla heredada
-(``data/cfdi_nomina_templates.xml``) lee de ahí los tres atributos.
+corrige por dos vías, para que el XML salga bien y para que al inspeccionar
+``cfdi_values`` se vea lo corregido (así se verifica en staging):
+
+1. Se sobrescriben las llaves del diccionario que arma el módulo
+   (``salario_diario_integrado``, ``salario_base_cot_apor``,
+   ``registro_patronal``, ``clave_ent_fed``, ``num_empleado``), estén donde
+   estén (``nomina_receptor``, ``nomina_emisor``…): sólo se tocan llaves que
+   ya existen, nunca se inventan.
+2. Se agrega ``cfdi_values['qb_nomina']`` y la plantilla heredada
+   (``data/cfdi_nomina_templates.xml``) sobrescribe los atributos con eso.
+   Es la red de seguridad por si el módulo cambia el nombre de una llave.
 
 Las líneas del recibo se buscan POR CÓDIGO y nunca con ``env.ref()``. Es
 deliberado: el módulo resuelve las reglas por XML id, y cuando la regla de
@@ -37,6 +46,10 @@ _logger = logging.getLogger(__name__)
 CODE_SDI = 'INT_DAY_WAGE_BASE'     # SalarioDiarioIntegrado: el SDI declarado
 CODE_SBC = 'INT_DAY_WAGE'          # SalarioBaseCotApor: el mismo, topado a 25 UMA
 UMA_CAP = 25
+
+# Parámetro con la entidad federativa por defecto (c_Estado del SAT) si el
+# empleado no tiene dirección laboral con estado ni la compañía tampoco.
+PARAM_CLAVE_ENT_FED = 'quimibond_nomina.clave_ent_fed'
 
 # Reglas cuyas líneas suman ImportePagado de las horas extra (gravado + exento).
 RULES_HORAS_EXTRA = ('HE_EXEMPT', 'HE_TAX')
@@ -85,7 +98,87 @@ class HrPayslip(models.Model):
             'registro_patronal': registro or False,
             'salario_diario_integrado': '%.2f' % sdi,
             'salario_base_cot_apor': '%.2f' % sbc,
+            'sdi': round(sdi, 2),
+            'sbc': round(sbc, 2),
+            'clave_ent_fed': self._qb_nomina_clave_ent_fed(),
+            'num_empleado': self._qb_nomina_num_empleado(),
         }
+
+    def _qb_nomina_clave_ent_fed(self):
+        """``ClaveEntFed`` del Receptor: entidad federativa donde el empleado
+        prestó el servicio (c_Estado del SAT, obligatorio cuando hay ISR
+        retenido; el módulo de Odoo lo deja vacío y el PAC rechaza).
+
+        Los códigos de estado de México en Odoo son los del SAT (``MEX``,
+        ``CMX``…). Orden: dirección laboral del empleado → ubicación de trabajo
+        → estado de la compañía → parámetro ``quimibond_nomina.clave_ent_fed``.
+        NOI manda ``MEX`` (Toluca)."""
+        self.ensure_one()
+        employee = self.employee_id.sudo()
+        company = self.company_id.sudo()
+        candidatos = (
+            employee.address_id.state_id.code,
+            employee.work_location_id.address_id.state_id.code if employee.work_location_id else False,
+            company.state_id.code,
+            (self.env['ir.config_parameter'].sudo().get_param(PARAM_CLAVE_ENT_FED) or '').strip(),
+        )
+        for code in candidatos:
+            code = (code or '').strip().upper()
+            if len(code) == 3 and code.isalpha():
+                return code
+        _logger.warning('quimibond_nomina: recibo %s sin entidad federativa (dirección laboral, '
+                        'compañía o parámetro %s); ClaveEntFed sale vacío', self.id, PARAM_CLAVE_ENT_FED)
+        return False
+
+    def _qb_nomina_num_empleado(self):
+        """``NumEmpleado`` del Receptor (obligatorio). Referencia de empleado
+        (``registration_number``) → credencial (``barcode``) → id de Odoo. En
+        esta base casi nadie tiene referencia y el id coincide con el número
+        de NOI (Genaro: 325); RH debería llenar la referencia para no depender
+        de eso."""
+        self.ensure_one()
+        employee = self.employee_id.sudo()
+        for value in (employee.registration_number, employee.barcode, employee.id):
+            value = str(value or '').strip()
+            if value:
+                return value[:15]      # el SAT admite hasta 15 caracteres
+        return False
+
+    # Llaves del diccionario del módulo de Odoo que se corrigen, y con qué
+    # valor de _qb_nomina_cfdi_values. Los importes van como número, que es
+    # como los deja el módulo (la plantilla los formatea).
+    PATCH_KEYS = {
+        'registro_patronal': 'registro_patronal',
+        'salario_diario_integrado': 'sdi',
+        'salario_base_cot_apor': 'sbc',
+        'clave_ent_fed': 'clave_ent_fed',
+        'num_empleado': 'num_empleado',
+    }
+
+    @api.model
+    def _qb_nomina_patch_cfdi_values(self, cfdi_values, vals):
+        """Escribe los valores corregidos sobre las llaves que el módulo de
+        Odoo ya puso en ``cfdi_values`` (en el nivel raíz o en cualquier dict
+        anidado un nivel, p. ej. ``nomina_receptor``). Devuelve las llaves
+        tocadas. No inventa llaves: si el módulo cambia de nombres, la
+        plantilla heredada sigue cubriendo el XML."""
+        tocadas = []
+        contenedores = [cfdi_values] + [v for v in cfdi_values.values() if isinstance(v, dict)]
+        for d in contenedores:
+            for key, fuente in self.PATCH_KEYS.items():
+                if key not in d:
+                    continue
+                nuevo = vals.get(fuente)
+                if nuevo in (None, False, ''):
+                    continue
+                if isinstance(d[key], str) and not isinstance(nuevo, str):
+                    nuevo = '%.2f' % nuevo
+                d[key] = nuevo
+                tocadas.append(key)
+        if 'salario_diario_integrado' not in tocadas:
+            _logger.warning('quimibond_nomina: cfdi_values no trae la llave salario_diario_integrado; '
+                            'sólo la plantilla heredada corrige el XML (llaves: %s)', sorted(cfdi_values))
+        return tocadas
 
     # ------------------------------------------------------------------
     # nomina12:HorasExtra
@@ -152,7 +245,9 @@ class HrPayslip(models.Model):
     def _l10n_mx_edi_add_payslip_cfdi_values(self, cfdi_values, *args, **kwargs):
         res = super()._l10n_mx_edi_add_payslip_cfdi_values(cfdi_values, *args, **kwargs)
         if len(self) == 1:
-            cfdi_values['qb_nomina'] = self._qb_nomina_cfdi_values()
+            vals = self._qb_nomina_cfdi_values()
+            cfdi_values['qb_nomina'] = vals
+            self._qb_nomina_patch_cfdi_values(cfdi_values, vals)
             try:
                 self._qb_add_horas_extra(cfdi_values)
             except Exception:  # noqa: BLE001 — nunca tumbar el CFDI por el nodo
