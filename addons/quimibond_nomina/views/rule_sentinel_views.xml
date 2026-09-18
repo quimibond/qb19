@@ -75,7 +75,7 @@
                 <field name="code"/>
                 <field name="rule_id"/>
                 <filter name="changed" string="Cambiaron" domain="[('changed', '=', True)]"/>
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter name="group_struct" string="Estructura" context="{'group_by': 'struct_id'}"/>
                 </group>
             </search>
