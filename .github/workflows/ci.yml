@@ -92,6 +92,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Dependencias Python de los módulos
+        # quimibond_intelligence declara `httpx` en external_dependencies
+        # y Odoo se niega a instalarlo si falta. Odoo.sh lo trae por el
+        # requirements.txt; la imagen oficial no. Primero pip (rápido);
+        # si la imagen no trae pip, el paquete de Debian.
+        run: |
+          set -e
+          python3 -m pip install --quiet --break-system-packages httpx \
+            || (apt-get update -qq && apt-get install -y -qq --no-install-recommends python3-httpx)
+          python3 -c "import httpx; print('httpx', httpx.__version__)"
+
       - name: Instalar el módulo y correr su suite
         # La imagen de Odoo NO trae bash, así que GitHub cae a `sh` (dash) y
         # ahí `set -o pipefail` no existe. Sin pipefail un `| tee` se comería
@@ -118,8 +129,8 @@ jobs:
           odoo -d qbci \
             --db_host=db --db_user=odoo --db_password=odoo \
             --addons-path="$ODOO_ADDONS,$GITHUB_WORKSPACE/addons,$GITHUB_WORKSPACE" \
-            -i qb_capacidad_costeo,quimibond_sat,qb_obligation,qb_memoria,quimibond_intelligence,mrp_caja_surtido,reporte_orden_fabricacion,reporte_plano_piso_tejido,reporte_produccion_diaria,stock_dymo_labels \
-            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat,/qb_obligation,/qb_memoria \
+            -i qb_capacidad_costeo,quimibond_sat,qb_obligation,qb_memoria,qb_build_limpio,quimibond_intelligence,mrp_caja_surtido,reporte_orden_fabricacion,reporte_plano_piso_tejido,reporte_produccion_diaria,stock_dymo_labels \
+            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat,/qb_obligation,/qb_memoria,/qb_build_limpio \
             --stop-after-init --log-level=test \
             --data-dir=/tmp/odoo-data > /tmp/odoo-tests.log 2>&1 || rc=$?
           cat /tmp/odoo-tests.log
