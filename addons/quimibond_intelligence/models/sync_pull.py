@@ -2,9 +2,8 @@
 Pull intelligence commands from Supabase back to Odoo.
 
 Handles:
-1. sync_commands: manual triggers from frontend (e.g., "reprocess emails")
+1. sync_commands: manual triggers (force_push, force_push_full, sync_contacts)
 2. New contacts: create in Odoo if they exist in Supabase but not in res.partner
-3. Completed actions: close corresponding Odoo activities
 """
 import logging
 from datetime import datetime
@@ -40,9 +39,8 @@ class QuimibondSyncPull(models.TransientModel):
         try:
             commands = self._process_commands(client)
             contacts = self._sync_new_contacts(client)
-            actions = self._sync_completed_actions(client)
 
-            summary = f'commands={commands}, contacts={contacts}, actions={actions}'
+            summary = f'commands={commands}, contacts={contacts}'
             _logger.info('✓ Pull from Supabase: %s', summary)
             elapsed = (datetime.now() - _start).total_seconds()
             self.env['quimibond.sync.log'].sudo().create({
@@ -115,12 +113,11 @@ class QuimibondSyncPull(models.TransientModel):
             self.env['quimibond.sync'].push_to_supabase()
             return 'Push completed'
         elif command == 'force_push_full':
-            # Full re-sync: ignora last_sync, repushea TODAS las tablas. Útil
-            # para recuperar staleness cuando el cron nightly de las 3am no
-            # corrió (account_payments con 0 rows hour-tras-hora porque
-            # write_date no se tocó pero hay cambios en payment_state, FX,
-            # amount_residual). Idempotente; tarda ~3-4 minutos.
-            self.env['quimibond.sync'].push_to_supabase_full()
+            # Re-push completo: ignora last_sync y vuelve a mandar todos los
+            # contactos/empresas y usuarios. Idempotente.
+            ICP = self.env['ir.config_parameter'].sudo()
+            ICP.set_param('quimibond_intelligence.force_full_sync', '1')
+            self.env['quimibond.sync'].push_to_supabase()
             return 'Full push completed'
         elif command == 'sync_contacts':
             client = _get_client(self.env)
@@ -203,21 +200,3 @@ class QuimibondSyncPull(models.TransientModel):
                 _logger.warning('Failed to create partner for %s: %s', email, exc)
 
         return created
-
-    # ── Sync completed actions back to Odoo ──────────────────────────────
-
-    def _sync_completed_actions(self, client: SupabaseClient) -> int:
-        """Sync action state changes from Supabase to Odoo activities."""
-        # Fetch recently completed/dismissed actions
-        actions = client.fetch('action_items', {
-            'state': 'in.(completed,dismissed)',
-            'updated_at': f'gte.{datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()}',
-            'select': 'id,state,contact_name,description',
-            'limit': '50',
-        })
-        if not actions:
-            return 0
-
-        # For now, just log — full bidirectional sync can be added later
-        _logger.info('Found %d completed/dismissed actions in Supabase', len(actions))
-        return len(actions)
