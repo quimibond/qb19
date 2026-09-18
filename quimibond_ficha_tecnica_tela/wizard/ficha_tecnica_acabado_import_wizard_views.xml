@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ficha_tecnica_acabado_import_wizard_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.acabado.import.wizard.form</field>
+        <field name="model">ficha.tecnica.acabado.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importar Fichas Técnicas de Acabado (masivo)">
+                <group>
+                    <p>
+                        Sube un archivo Excel tabular: la primera fila debe
+                        tener encabezados y cada fila siguiente es un
+                        artículo de tela acabada distinto. Columnas
+                        requeridas: "Artículo", "Artículo Tejido" (el
+                        artículo de la ficha de tejido base, ya debe
+                        existir) y "Producto Acabado" (referencia interna o
+                        nombre del producto en Odoo, ya debe existir). El
+                        resto de columnas (rendimiento, ancho, peso,
+                        encogimiento, elongación) son opcionales.
+                    </p>
+                    <field name="file_data" filename="file_name"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="update_if_exists"/>
+                </group>
+                <footer>
+                    <button name="action_import" type="object" string="Importar"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_acabado_import_wizard" model="ir.actions.act_window">
+        <field name="name">Importar Acabado desde Excel</field>
+        <field name="res_model">ficha.tecnica.acabado.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_ficha_tecnica_acabado_import"
+              name="Importar Acabado desde Excel"
+              parent="menu_ficha_tecnica_tela_root"
+              action="action_ficha_tecnica_acabado_import_wizard"
+              sequence="40"/>
+
+</odoo>
