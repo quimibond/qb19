@@ -75,13 +75,24 @@ class TestCfdiValues(TransactionCase):
         self.env['ir.config_parameter'].sudo().set_param('quimibond_nomina.clave_ent_fed', 'cmx')
         self.assertEqual(slip._qb_nomina_cfdi_values()['clave_ent_fed'], 'CMX')
 
-    def test_num_empleado(self):
+    @mute_logger(LOG)
+    def test_num_empleado_solo_la_referencia(self):
         slip = self._recibo()
-        self.assertEqual(slip._qb_nomina_cfdi_values()['num_empleado'], str(self.employee.id))
-        self.employee.barcode = 'CRED-9'
-        self.assertEqual(slip._qb_nomina_cfdi_values()['num_empleado'], 'CRED-9')
-        self.employee.registration_number = '325'
-        self.assertEqual(slip._qb_nomina_cfdi_values()['num_empleado'], '325')
+        # Sin referencia: no se emite, aunque haya credencial (la de Ricardo es
+        # 041460744711 y NOI manda 32) e id de Odoo.
+        self.employee.barcode = '041460744711'
+        self.assertFalse(slip._qb_nomina_cfdi_values()['num_empleado'])
+        self.employee.registration_number = '32'
+        self.assertEqual(slip._qb_nomina_cfdi_values()['num_empleado'], '32')
+
+    @mute_logger(LOG)
+    def test_parche_vacia_num_empleado_sin_referencia(self):
+        slip = self._recibo({'INT_DAY_WAGE_BASE': 411.32, 'INT_DAY_WAGE': 411.32})
+        cv = {'nomina_receptor': {'salario_diario_integrado': 0, 'salario_base_cot_apor': 0,
+                                  'num_empleado': '041460744711'}}
+        slip._qb_nomina_patch_cfdi_values(cv, slip._qb_nomina_cfdi_values())
+        self.assertFalse(cv['nomina_receptor']['num_empleado'])
+        self.assertEqual(cv['nomina_receptor']['salario_diario_integrado'], 411.32)
 
     def test_parche_sobre_el_diccionario_del_modulo(self):
         slip = self._recibo({'INT_DAY_WAGE_BASE': 889.43, 'INT_DAY_WAGE': 889.43})
@@ -99,7 +110,7 @@ class TestCfdiValues(TransactionCase):
         self.assertEqual(cv['nomina_receptor']['salario_diario_integrado'], 889.43)
         self.assertEqual(cv['nomina_receptor']['salario_base_cot_apor'], 889.43)
         self.assertEqual(cv['nomina_receptor']['clave_ent_fed'], 'MEX')
-        self.assertEqual(cv['nomina_receptor']['num_empleado'], str(self.employee.id))
+        self.assertFalse(cv['nomina_receptor']['num_empleado'])          # sin referencia no se emite
         self.assertEqual(cv['nomina_receptor']['curp'], 'Y')          # lo demás no se toca
         self.assertEqual(cv['otra'], 'cosa')
 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Días en que hubo tiempo extra en el periodo: el atributo Dias del
+             nodo nomina12:HorasExtra. Es un dato capturado (NOI lo captura),
+             no se deduce de las horas: 3 horas en un día son 1 día, 1 hora en
+             tres días son 3. RH lo captura junto con HE_DOBLE / HE_TRIPLE.
+             Sin él, Dias se estima (ver models/horas_extra.py). -->
+        <record id="input_type_he_dias" model="hr.payslip.input.type">
+            <field name="name">Días con tiempo extra</field>
+            <field name="code">HE_DIAS</field>
+            <field name="country_id" ref="base.mx"/>
+            <field name="is_quantity" eval="True"/>
+        </record>
+
+    </data>
+
+    <!-- Fuera del noupdate: se liga a la estructura MX_REGULAR en cada
+         instalación/actualización (la estructura no tiene xmlid conocido). -->
+    <function model="hr.payslip" name="qb_nomina_ensure_he_dias_input"/>
+
+</odoo>
