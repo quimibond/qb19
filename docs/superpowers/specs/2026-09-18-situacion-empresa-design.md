@@ -40,7 +40,7 @@ calculan estados en rojo que no se le avisan a nadie.
 | Supabase **no copia cifras de Odoo**: guarda **señales derivadas** (una fila por hecho, con `modelo + id` del documento) | Respeta la decisión del 17-sep ("Supabase solo lo que Odoo no tiene"); la cifra viva se consulta en Odoo |
 | **SQL hace lo determinístico** (identidad, edad, dedup, agrupación, calidad, reglas); **la IA solo redacta y decide sobre lo que cambió** | Costo bajo, comportamiento predecible, auditable |
 | Lo único que el sistema escribe en Odoo es la **actividad nativa** cuando el CEO delega | El sistema propone; no modifica documentos de negocio |
-| `qb_obligation` se **retira** al final de la fase 1; sus 74 registros se migran como situaciones de origen `memoria` | Evitar dos mapas |
+| `qb_obligation` se **retira** en el paso 6 (junto con la app de Odoo); sus 74 registros se migran como situaciones de origen `memoria` en el paso 2 | Evitar dos mapas |
 
 ## 3. Modelo de datos (Supabase, esquema `public`)
 
@@ -51,7 +51,9 @@ clave estable.
 
 | Columna | Tipo | Notas |
 |---|---|---|
-| `clave` | text PK | `entrega_vencida:stock.picking:1234`, `cliente_sin_respuesta:company:6031`. La define la fuente, nunca la IA |
+| `id` | bigserial PK | Una fila por **episodio**: si la señal se resuelve y reaparece (factura vencida otra vez tras un abono, OP re-atrasada) se crea una fila nueva; la anterior conserva su `resuelta_en`. Índice único `(clave) WHERE resuelta_en IS NULL` |
+| `clave` | text | `entrega_vencida:stock.picking:1234`, `cliente_sin_respuesta:company:6031`. La define la fuente, nunca la IA |
+| `episodio` | int | 1, 2, 3… para la misma clave; la situación registra "reapareció (3ª vez)" |
 | `senal` | text | Nombre del catálogo (§4) |
 | `area` | text | `comercial`, `operaciones`, `compras`, `finanzas`, `calidad_sgi`, `rh`, `sistemas`, `direccion` |
 | `tipo` | text | `obligacion`, `credito`, `problema`, `riesgo`, `oportunidad`, `higiene` |
@@ -69,7 +71,19 @@ clave estable.
 | `calidad_motivo` | text | Regla que la clasificó |
 | `payload` | jsonb | Campos extra de la señal (moneda, etapa, etc.) |
 
-Índices: `(area, calidad)`, `(company_id)`, `(resuelta_en) WHERE resuelta_en IS NULL`.
+Índices: único `(clave) WHERE resuelta_en IS NULL`, `(senal, resuelta_en)`, `(area, calidad)`, `(company_id)`.
+
+### 3.1.1 `senales_lotes` — un lote por señal y corrida
+
+`id`, `senal`, `fuente`, `corrida` (uuid que Odoo genera por push), `recibido_en`,
+`n_claves`, `ok` boolean, `error` text. **La resolución se calcula por señal y
+solo cuando llegó su lote completo**: al ingerir el lote de `cartera_vencida`,
+las filas abiertas de `cartera_vencida` cuyas claves no vienen en el lote se
+marcan `resuelta_en`. Si el lote de una señal no llegó o llegó con `ok=false`,
+sus filas no se tocan y `situacion_salud()` la reporta como `sin_datos` con la
+edad del último lote bueno. Así un método del push que falle (cada `_push_*`
+falla aislado en `_run_push`) o un push atrasado nunca cierra situaciones por
+error.
 
 ### 3.2 `senales_config` — catálogo y umbrales, editables
 
@@ -128,10 +142,10 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
 |---|---|---|
 | `entrega_vencida` | `stock.picking` outgoing, estado no done/cancel, `scheduled_date < hoy`; agrupa por cliente | 73 |
 | `pedido_sin_fecha` | `sale.order` state=sale sin `commitment_date` y con líneas por entregar | por medir |
-| `cliente_sin_respuesta` | memoria: `get_unanswered_client_threads(dias)`; agrupa por empresa | 57 (7 d) |
+| `cliente_sin_respuesta` | memoria: `threads.status IN ('needs_response','stalled')` con `last_sender_type='external'` y `last_activity < hoy − 3 d` (campos que `memoria_link_recent` ya mantiene); agrupa por empresa | 57 (7 d) |
 | `compromiso_correo` | memoria: `memoria_thread_summaries.pendientes` con `quien='nosotros'`; clave por conversación + hash del texto | 452 |
 | `cliente_callado` | memoria + facturas: sin correo ni pedido en > 2× su intervalo habitual (ritmo del contacto ya calculado en `memoria_link_recent`) | por medir |
-| `oportunidad_demanda` | `customer_demand_signals` no procesadas | 752 |
+| `oportunidad_demanda` | `customer_demand_signals` cuya `id` aún no es clave de señal (`oportunidad_demanda:demand:<id>`); no requiere columna nueva | 752 |
 | `lead_frio` | `crm.lead` abierto sin actividad > 14 d | por medir |
 | `venta_margen_negativo` | `sale.order.line` state=sale, `margin < 0`, 90 d; **`dato_malo` si costo = 0 o precio = 0** | 41 líneas |
 | `producto_pierde` | `qb.producto.rentabilidad.semaforo = 'rojo'` (computado; el push lo lee por ORM) | por medir |
@@ -164,7 +178,7 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
 ### Finanzas
 | Señal | Fuente y regla | Hoy |
 |---|---|---|
-| `cartera_vencida` | `account.move` out_invoice posted, `payment_state` not_paid/partial, `invoice_date_due < hoy`; agrupa por cliente; **`dato_malo` si `is_related_party`** (misma lista de RFC de partes relacionadas que usaba el cash projection) | 413, $53.6M |
+| `cartera_vencida` | `account.move` out_invoice posted, `payment_state` not_paid/partial, `invoice_date_due < hoy`; agrupa por cliente; **`dato_malo` si el RFC del cliente está en la lista de partes relacionadas** (`senales_config.umbrales.rfc_relacionados` de esta señal; arranque con los 5 RFC de `20260426_ap_delay_related_party.sql`) | 413, $53.6M |
 | `promesa_pago_vencida` | memoria: `email_pending_actions.tipo='promesa_pago'` con `deadline < hoy`; se une a `cartera_vencida` del mismo cliente | 30 abiertas |
 | `cxp_vencida` | `account.move` in_invoice vencida; agrupa por proveedor | 175, $4.4M |
 | `factura_proveedor_borrador` | `account.move` in_invoice draft > 3 d | 12 |
@@ -214,11 +228,26 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
 
 **Reglas del catálogo**
 
-1. Cada señal trae `responsable_odoo_user_id` = dueño natural en Odoo.
+1. Cada señal trae `responsable_odoo_user_id` = dueño natural en Odoo. Para las
+   señales de **memoria** (que solo conocen buzones) el responsable se resuelve
+   en SQL: buzón que más participa en la conversación → `odoo_users.email`; si
+   es buzón compartido (rhmexico@, ventas@…), la tabla `buzon_personas` que el
+   push de usuarios manda desde la configuración "Buzones (memoria)" de
+   `qb_memoria` (nueva columna en `_push_users`).
 2. Las señales de Odoo se calculan en Odoo (`_push_senales`, un método por
-   señal, todos en `quimibond_intelligence/models/senales/`) y se mandan como
-   lista de claves activas con valores; las de memoria y SAT-en-Supabase se
-   calculan en SQL (`senales_memoria()`). Nada se copia en masa.
+   señal, todos en `quimibond_intelligence/models/senales/`). **Contrato de
+   ingesta:** una llamada por señal al RPC
+   `senales_ingestar(p_senal, p_fuente, p_corrida uuid, p_filas jsonb)` con la
+   **lista completa** de claves activas y sus valores; el RPC hace upsert por
+   clave abierta, abre episodio nuevo para claves que reaparecen, cierra las
+   abiertas que no vienen en el lote, y registra el lote en `senales_lotes`.
+   Al terminar todos los métodos, Odoo llama `senales_push_terminado(p_corrida)`,
+   que dispara la consolidación (`invoke_edge('situacion-consolidar')`): el bot
+   corre **después** del push por evento, no por reloj. Las de memoria y SAT-en-
+   Supabase se calculan en SQL (`senales_memoria()`) dentro de la misma
+   consolidación. Las señales caras (cash flow, costeo, SGI) llevan
+   `senales_config.cada_horas` (p.ej. 6) y el push las omite fuera de su turno
+   sin cerrar nada (no manda lote, no hay resolución). Nada se copia en masa.
 3. Lo que no está en `senales_config` no existe para la IA. Agregar una señal =
    agregar una consulta + una fila de config, sin tocar el bot.
 4. Las apps de Studio "Calendario de obligaciones", "Actividades obligatorias",
@@ -228,8 +257,10 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
 ## 5. Calidad: viejo, basura, duplicado
 
 ### 5.1 Vida de una señal
-`primera_vista`, `vista_en`, `valor_cambio_en`, `resuelta_en`. Lo que la
-corrida no ve queda resuelto con fecha. Nunca se borra: la historia es la
+`primera_vista`, `vista_en`, `valor_cambio_en`, `resuelta_en`, `episodio`.
+Una señal se resuelve solo cuando **llega el lote completo de su señal** y su
+clave no viene en él (§3.1.1); nunca por ausencia de push. Si reaparece, es un
+episodio nuevo (fila nueva, misma clave). Nunca se borra: la historia es la
 evidencia.
 
 ### 5.2 Etiquetas de calidad (SQL, reglas en `senales_config.reglas_calidad`)
@@ -259,7 +290,7 @@ no infiere nada.
 
 Cada hora, después del push de Odoo:
 
-1. `senales_actualizar()` (SQL): marca resueltas, recalcula edad, aplica calidad y reglas del CEO.
+1. `senales_actualizar()` (SQL): recalcula edad y `calidad`, aplica reglas del CEO. (La resolución ya la hizo `senales_ingestar` por lote, §3.1.1; aquí solo se propaga a las situaciones.) El bot arranca por evento (`senales_push_terminado`) y, como respaldo, por pg_cron cada hora si no corrió en los últimos 50 min; si el último lote bueno de una señal tiene más de 2 h, sus situaciones se marcan `sin_datos` en `situacion_salud` y no se cierran.
 2. `situacion_candidatas()` (SQL): agrupa señales vivas en candidatas; devuelve solo las **nuevas, empeoradas (valor o severidad subió) o resueltas** desde la corrida anterior, con tope por corrida (config, 40).
 3. Por candidata, `situacion_contexto()` arma el contexto: señales y documentos, ficha de memoria de la empresa (`memoria_brief`), últimas conversaciones ligadas (resumen, no correos completos), situaciones hermanas abiertas, posibles duplicados, reglas aplicables, historia previa.
 4. Claude (Sonnet, `effort low`, JSON cerrado) devuelve: `titulo`, `resumen`, `severidad` (dentro de la banda), `responsable_sugerido` + `motivo`, `recomendacion`, `estado` (`abierta|empeoro|mejoro`), `duplicados: [{id, decision, motivo}]`, `evento_historia`. Si se corta o no es JSON, la candidata se reintenta en la siguiente corrida y se registra en `situacion_corridas`.
@@ -305,12 +336,21 @@ lo mismo. Destinatario: el CEO (parámetro).
 ### 7.3 Delegar
 
 `situacion_decidir(id, 'delegar', {user_id, texto, vence})` deja la situación
-`delegada` e inserta un comando en `sync_commands` (`crear_actividad`). El pull
-de 5 min de `quimibond_intelligence` lo ejecuta: crea la `mail.activity` sobre
-el documento principal (o el contacto) al usuario, con el texto, y escribe el
-`mail_activity_id` de vuelta. El push horario informa el estado de esa
-actividad (hecha, cancelada); hecha o señal desaparecida ⇒ situación
-`resuelta` con historia "cerrada por <usuario>".
+`delegada` e inserta en `sync_commands` un comando `crear_actividad` con
+**`payload` jsonb** (`situacion_id`, `user_id`, `texto`, `vence`, `modelo`,
+`res_id`) — columna nueva; hoy la tabla solo tiene `command`. El pull de 5 min
+(`_execute_command(command, payload)`, firma extendida) crea la `mail.activity`
+sobre el documento (o el contacto si no hay documento) y confirma con el RPC
+`situacion_delegacion_confirmar(p_situacion_id, p_mail_activity_id, p_estado)`,
+que escribe `delegacion.mail_activity_id`. Estado de vuelta: el push horario
+incluye `_push_actividades_delegadas`, que pide a Supabase la lista de
+actividades delegadas abiertas (`situacion_delegaciones_abiertas()`), lee su
+estado en Odoo (abierta, hecha con `feedback`, cancelada, reasignada) y lo
+manda como lote de la señal `delegacion_estado`. Hecha o señal desaparecida ⇒
+situación `resuelta` con historia "cerrada por <usuario>: <feedback>";
+cancelada ⇒ vuelve a `abierta` con historia. En el mismo paso se corrige el
+bug existente del pull, que escribe `status='error'` cuando el CHECK de
+`sync_commands` solo admite `failed`.
 
 ### 7.4 Odoo (fase 2)
 
@@ -325,15 +365,17 @@ desinstala tras migrar sus registros.
 
 | Paso | Entrega | Se acepta cuando |
 |---|---|---|
-| 1 | Esquema (`senales`, `senales_config`, `situaciones`, `situacion_reglas`, `situacion_corridas`), `senales_memoria()`, `senales_actualizar()`, `situacion_candidatas()`, `situacion_mapa`, `situacion_contexto`, `situacion_salud` | `select * from situacion_mapa('comercial')` devuelve las conversaciones sin respuesta y los compromisos de correo como situaciones agrupadas por empresa, con calidad y edad |
+| 1 | Esquema (`senales`, `senales_lotes`, `senales_config`, `situaciones`, `situacion_reglas`, `situacion_corridas`), `senales_ingestar()`, `senales_push_terminado()`, `senales_memoria()`, `senales_actualizar()`, `situacion_candidatas()`, `situacion_mapa`, `situacion_contexto`, `situacion_salud` | `select * from situacion_mapa('comercial')` devuelve las conversaciones sin respuesta y los compromisos de correo como situaciones agrupadas por empresa, con calidad y edad |
 | 2 | `quimibond_intelligence._push_senales` (finanzas y comercial primero, luego el resto del catálogo), migración de los 74 `qb.obligation` | Las 413 facturas vencidas aparecen agrupadas por cliente; las de partes relacionadas caen en `dato_malo`; las 296 OPs viejas caen en `zombie`; el push corre en < 60 s |
 | 3 | Edge Function `situacion-consolidar` + cron horario | 20 situaciones reales redactadas y revisadas por el CEO por MCP; fusiones correctas en 3 casos preparados; costo dentro de estimación |
 | 4 | `situacion_cambios`, `situacion-digest`, retiro de `email-digest` | El correo del día siguiente coincide con `situacion_cambios` |
-| 5 | `situacion_decidir`, reglas persistentes, comando `crear_actividad` en el pull, cierre por actividad hecha | Delegar una situación crea la actividad en Odoo en ≤ 5 min y marcarla hecha la cierra |
+| 5 | `situacion_decidir`, reglas persistentes, `sync_commands.payload`, comando `crear_actividad` en el pull, `situacion_delegacion_confirmar`, `_push_actividades_delegadas`, cierre por actividad hecha, fix del `status='error'` | Delegar una situación crea la actividad en Odoo en ≤ 5 min y marcarla hecha la cierra |
 | 6 | `qb_situacion` (app en Odoo) y desinstalación de `qb_obligation` | El CEO ve el mapa en Odoo y delega desde ahí |
 
 Cada paso se prueba con datos reales de producción (lectura) y se documenta en
-`CLAUDE.md` de ambos repos.
+`CLAUDE.md` de ambos repos. Se planifica en **dos planes**: plan A = pasos 1–3
+(esquema, push, bot: el mapa consultable por MCP), plan B = pasos 4–6 (correo,
+delegación, app en Odoo).
 
 ## 9. Riesgos y mitigaciones
 
