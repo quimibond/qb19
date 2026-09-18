@@ -49,13 +49,29 @@ log. Si el recibo no trae la línea, se cae al salario diario simple (lo que
 hacía el módulo) y se escribe un aviso en el log.
 
 Cómo está hecho: `hr.payslip._l10n_mx_edi_add_payslip_cfdi_values` llama al
-original y agrega `cfdi_values['qb_nomina']` (valores planos, porque
-`_clean_cfdi_values` destruye los recordsets antes de renderizar); la
-plantilla `cfdiv40_nomina_quimibond` hereda
-`l10n_mx_hr_payroll_account_edi.cfdiv40_nomina` y sobrescribe los tres
-atributos. **Revisar esa herencia en cada actualización del módulo de Odoo.**
+original y corrige por dos vías. Primero **sobrescribe las llaves del
+diccionario** que arma el módulo (`salario_diario_integrado`,
+`salario_base_cot_apor`, `registro_patronal`, `clave_ent_fed`,
+`num_empleado`, estén en `nomina_receptor`, `nomina_emisor` o donde estén;
+nunca inventa llaves), así al inspeccionar `cfdi_values` en staging se ve lo
+corregido. Segundo, agrega `cfdi_values['qb_nomina']` (valores planos, porque
+`_clean_cfdi_values` destruye los recordsets) y la plantilla
+`cfdiv40_nomina_quimibond`, que hereda
+`l10n_mx_hr_payroll_account_edi.cfdiv40_nomina`, sobrescribe los atributos
+con eso: es la red de seguridad si el módulo cambia el nombre de una llave.
+**Revisar esa herencia en cada actualización del módulo de Odoo.**
 
-### 3. Centinela de reglas
+### 3. ClaveEntFed y NumEmpleado del Receptor
+
+El módulo los deja vacíos y los dos son obligatorios en el Anexo 20
+(`ClaveEntFed` además lo exige el PAC cuando hay ISR retenido).
+
+| Atributo | De dónde sale |
+|---|---|
+| `ClaveEntFed` | estado de la **dirección laboral** del empleado → de la ubicación de trabajo → de la compañía → parámetro `quimibond_nomina.clave_ent_fed`. Los códigos de estado de México en Odoo son los del SAT (`MEX`, `CMX`). La compañía está en `MEX`, que es lo que manda NOI |
+| `NumEmpleado` | *Referencia de empleado* (`registration_number`) → credencial (`barcode`) → id del empleado en Odoo. Hoy casi nadie tiene referencia; el id coincide con el número de NOI (Genaro: 325), pero RH debería capturar la referencia para no depender de eso |
+
+### 4. Centinela de reglas
 
 `SUBSIDY` (id 42) e `INT_DAY_WAGE` (id 95) de «Paga regular» **no son copias
 propias**: son registros del módulo de Odoo con el código de Quimibond escrito
@@ -76,7 +92,7 @@ problema. Cuando el cambio es querido, «Aceptar huella actual». Al instalar se
 siembra con las dos reglas y toma como línea base lo que esté vivo: el estado
 ya verificado contra el despacho. Se pueden agregar más reglas a mano.
 
-### 4. El nodo `nomina12:HorasExtra`
+### 5. El nodo `nomina12:HorasExtra`
 
 El módulo de Odoo **nunca lo emite**: escribe cada `nomina12:Percepcion` como
 elemento vacío, incluidas las de `TipoPercepcion="019"`. El Anexo 20 obliga a
@@ -154,7 +170,19 @@ print(env['ir.qweb'].with_context(lang='es_MX')._render(
    Qué mirar en el XML: `nomina12:Emisor/@RegistroPatronal` (si al contrato
    se le puso `Y6087828106`, debe salir ese y no el de la compañía);
    `nomina12:Receptor/@SalarioDiarioIntegrado` con el SDI y
-   `@SalarioBaseCotApor` el mismo topado a 25 UMA.
+   `@SalarioBaseCotApor` el mismo topado a 25 UMA (Genaro, recibo 4358:
+   889.43 en los dos, que es lo que NOI le timbra; 517.13 es el salario
+   diario simple, o sea el bug sin parchar); `@ClaveEntFed="MEX"` y
+   `@NumEmpleado` con el número del empleado.
+
+   Y en el diccionario, antes de renderizar, lo mismo ya corregido:
+
+```python
+print(cv['qb_nomina'])                       # lo que calcula el módulo
+for k, v in cv.items():                      # las llaves del módulo de Odoo, ya parchadas
+    if isinstance(v, dict) and 'salario_diario_integrado' in v:
+        print(k, {j: v[j] for j in ('salario_diario_integrado', 'salario_base_cot_apor', 'clave_ent_fed', 'num_empleado') if j in v})
+```
 5. **El nodo HorasExtra.** En el log de la instalación debe aparecer
    `herencia HorasExtra activa (variable del t-foreach: …)`. En el XML del
    recibo 4358 (o cualquiera de la corrida 117 con horas extra), dentro de la
@@ -207,6 +235,15 @@ print(env['ir.qweb'].with_context(lang='es_MX')._render(
 - Nómina de aguinaldo contra la de diciembre; un finiquito real contra su CFDI;
   quincena 19 (cierra el 30 de septiembre) para cumplir dos periodos seguidos
   también en la quincenal.
+- **Datos que hay que corregir en Odoo antes de timbrar** (no es código):
+  `TipoJornada` sale `01` (Diurna) y NOI manda `03` (Mixta): es el campo *Tipo
+  de jornada* del contrato (`l10n_mx_shift_type`), hay que ponerlo en los
+  contratos de planta. `CuentaBancaria`: Odoo trae `11323066620` y NOI manda
+  la CLABE `012180011323066628`; con CLABE de 18 dígitos el SAT no exige el
+  atributo `Banco`, y es la que el SAT ya aceptó, así que en la cuenta
+  bancaria del empleado debe ir la CLABE (la de Odoo parece una captura
+  trunca: le falta el `0` inicial y le sobra un `0` final). `NumEmpleado`:
+  capturar la *Referencia de empleado* con el número de NOI.
 - Pendientes de terceros: RFC, CURP y NSS de un empleado; destrabar la app de
   Ausencias («Debe configurar al menos una cuenta analítica», sin eso no hay
   nodo de Incapacidades); la cuenta archivada `201.01.02 Reembolso empleados`
