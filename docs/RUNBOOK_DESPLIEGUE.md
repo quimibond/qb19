@@ -125,6 +125,21 @@ SELECT to_regclass('qb_cotizacion_tramo'), to_regclass('qb_producto_ficha');
 
 Ningún `NULL`.
 
+### Los crons de sync siguen vivos
+
+Odoo 19 apaga solo un cron tras 5 fallos en más de 7 días y no lo vuelve a
+encender. Así murieron el push a Supabase (3-jul-2026) y el pull (1-jun-2026)
+sin que nadie lo viera. El update de `quimibond_intelligence` los reactiva, pero
+compruébalo: a la hora del despliegue, en Ajustes → Técnico → Quimibond Sync
+(Historial de Sync) debe haber una corrida de **OdooBot** ("Push completo" con
+`contacts=…, users=…`) y otra "Pull completo". Si solo hay corridas tuyas
+("Forzar Push"), el cron está apagado o fallando:
+
+```sql
+SELECT name, active, nextcall, failure_count, first_failure_date
+FROM ir_cron WHERE cron_name ILIKE 'Quimibond%';
+```
+
 ---
 
 ## Cuando algo truena
