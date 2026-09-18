@@ -19,21 +19,25 @@ LOG = 'odoo.addons.quimibond_nomina.models.hr_payslip'
 class TestHorasExtraCalculo(TransactionCase):
     """Cálculo puro (sin recibos)."""
 
-    def test_dias_semanal(self):
-        # 3 a 9 horas → 3 días (116 de 142 casos en NOI)
-        for horas in (3, 4, 6, 9):
-            self.assertEqual(he.horas_extra_dias(horas, 7), 3)
-        # 1 o 2 horas sueltas → 1 día (5 casos)
-        self.assertEqual(he.horas_extra_dias(1, 7), 1)
-        self.assertEqual(he.horas_extra_dias(2, 7), 1)
+    def test_dias_capturados_mandan(self):
+        # Ricardo Salgado, quincena 18 de CDMX: 3 horas en un solo día → Dias=1
+        self.assertEqual(he.horas_extra_dias(3, 15, dias_capturados=1), 1)
+        self.assertEqual(he.horas_extra_dias(9, 7, dias_capturados=2), 2)
+        self.assertEqual(he.horas_extra_dias(1, 7, dias_capturados=3), 3)   # sin tocarlo
 
-    def test_dias_quincenal(self):
-        # 18 horas en quincena → 6 días (19 casos); 15 o 16 días de periodo
+    def test_dias_estimados_semanal(self):
+        # Sin HE_DIAS: acotado por las horas y por 3 días por semana
+        self.assertEqual(he.horas_extra_dias(3, 7), 3)
+        self.assertEqual(he.horas_extra_dias(9, 7), 3)
+        self.assertEqual(he.horas_extra_dias(1, 7), 1)
+        self.assertEqual(he.horas_extra_dias(2, 7), 2)
+        self.assertEqual(he.horas_extra_dias(2.5, 7), 3)
+
+    def test_dias_estimados_quincenal(self):
         self.assertEqual(he.horas_extra_dias(18, 15), 6)
         self.assertEqual(he.horas_extra_dias(18, 16), 6)
-        self.assertEqual(he.horas_extra_dias(2, 15), 1)
-        # nunca más días que horas
-        self.assertEqual(he.horas_extra_dias(4, 15), 4)
+        self.assertEqual(he.horas_extra_dias(3, 15), 3)     # nunca más días que horas
+        self.assertEqual(he.horas_extra_dias(1, 15), 1)
 
     def test_nodo_dobles(self):
         nodos = he.horas_extra_nodos({'01': 9}, 746.56, 7)
@@ -54,7 +58,12 @@ class TestHorasExtraCalculo(TransactionCase):
 
     def test_una_y_dos_horas(self):
         self.assertEqual(he.horas_extra_nodos({'01': 1}, 80.0, 7)[0]['dias'], 1)
-        self.assertEqual(he.horas_extra_nodos({'01': 2}, 160.0, 7)[0]['dias'], 1)
+        self.assertEqual(he.horas_extra_nodos({'01': 2}, 160.0, 7)[0]['dias'], 2)
+        self.assertEqual(he.horas_extra_nodos({'01': 2}, 160.0, 7, dias_capturados=1)[0]['dias'], 1)
+
+    def test_dias_capturados_aplican_a_dobles_y_triples(self):
+        nodos = he.horas_extra_nodos({'01': 6, '02': 3}, 1000.0, 7, dias_capturados=2)
+        self.assertEqual([n['dias'] for n in nodos], [2, 2])
 
     def test_sin_horas(self):
         self.assertEqual(he.horas_extra_nodos({}, 100.0, 7), [])
@@ -91,7 +100,8 @@ class TestHorasExtraRecibo(TransactionCase):
             })
         InputType = env['hr.payslip.input.type']
         cls.inputs = {}
-        for code, name in (('HE_DOBLE', 'Horas extra dobles'), ('HE_TRIPLE', 'Horas extra triples')):
+        for code, name in (('HE_DOBLE', 'Horas extra dobles'), ('HE_TRIPLE', 'Horas extra triples'),
+                           ('HE_DIAS', 'Días con tiempo extra')):
             itype = InputType.search([('code', '=', code)], limit=1)
             if not itype:
                 itype = InputType.create({'name': name, 'code': code})
@@ -136,6 +146,28 @@ class TestHorasExtraRecibo(TransactionCase):
             1: [{'tipo_horas': '01', 'horas_extra': 9, 'dias': 3, 'importe_pagado': '746.56'}]})
         # percepcion_list no se toca: gravado y exento siguen igual
         self.assertEqual(cv['percepcion_list'][1]['importe_gravado'], 373.28)
+
+    def test_ricardo_tres_horas_un_dia(self):
+        """Quincena 18 de CDMX, recibo 4501: 3 horas dobles en un solo día.
+        Con HE_DIAS=1 sale Dias=1 (lo que timbra NOI); sin ella se estima 3."""
+        cv = self._cv()
+        cv['percepcion_list'][1].update(importe_gravado=146.05, importe_exento=146.04)
+        slip = self._recibo({'HE_DOBLE': 3, 'HE_DIAS': 1}, date_from=date(2026, 9, 1), date_to=date(2026, 9, 15))
+        slip._qb_add_horas_extra(cv)
+        self.assertEqual(cv[KEY_HORAS_EXTRA][1], [
+            {'tipo_horas': '01', 'horas_extra': 3, 'dias': 1, 'importe_pagado': '292.09'}])
+        cv = self._cv()
+        cv['percepcion_list'][1].update(importe_gravado=146.05, importe_exento=146.04)
+        slip = self._recibo({'HE_DOBLE': 3}, date_from=date(2026, 9, 1), date_to=date(2026, 9, 15))
+        slip._qb_add_horas_extra(cv)
+        self.assertEqual(cv[KEY_HORAS_EXTRA][1][0]['dias'], 3)
+
+    def test_he_dias_disponible_en_mx_regular(self):
+        itype = self.env.ref('quimibond_nomina.input_type_he_dias')
+        self.assertEqual(itype.code, 'HE_DIAS')
+        struct = self.env['hr.payroll.structure'].search([('code', '=', 'MX_REGULAR')], limit=1)
+        if struct:
+            self.assertIn(struct, itype.struct_ids)
 
     def test_quincenal_emite_seis_dias(self):
         slip = self._recibo({'HE_DOBLE': 18}, {'HE_EXEMPT': 746.56, 'HE_TAX': 746.56},

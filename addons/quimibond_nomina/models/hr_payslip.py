@@ -131,18 +131,22 @@ class HrPayslip(models.Model):
         return False
 
     def _qb_nomina_num_empleado(self):
-        """``NumEmpleado`` del Receptor (obligatorio). Referencia de empleado
-        (``registration_number``) → credencial (``barcode``) → id de Odoo. En
-        esta base casi nadie tiene referencia y el id coincide con el número
-        de NOI (Genaro: 325); RH debería llenar la referencia para no depender
-        de eso."""
+        """``NumEmpleado`` del Receptor: la *Referencia de empleado*
+        (``registration_number``), que es el número de trabajador de NOI, o
+        False para NO emitir el atributo (es opcional en el Anexo 20).
+
+        Antes se rellenaba con la credencial o con el id de Odoo: la credencial
+        de Ricardo Salgado es ``041460744711`` y NOI manda ``32``; el id de
+        Genaro es 325 y NOI manda 1. Un número inventado es peor que ninguno.
+        Hoy sólo un empleado tiene la referencia capturada; RH tiene que
+        cargarla con el número de NOI."""
         self.ensure_one()
-        employee = self.employee_id.sudo()
-        for value in (employee.registration_number, employee.barcode, employee.id):
-            value = str(value or '').strip()
-            if value:
-                return value[:15]      # el SAT admite hasta 15 caracteres
-        return False
+        value = str(self.employee_id.sudo().registration_number or '').strip()
+        if not value:
+            _logger.info('quimibond_nomina: recibo %s sin referencia de empleado; NumEmpleado no se emite',
+                         self.id)
+            return False
+        return value[:15]      # el SAT admite hasta 15 caracteres
 
     # Llaves del diccionario del módulo de Odoo que se corrigen, y con qué
     # valor de _qb_nomina_cfdi_values. Los importes van como número, que es
@@ -169,6 +173,12 @@ class HrPayslip(models.Model):
                 if key not in d:
                     continue
                 nuevo = vals.get(fuente)
+                if key == 'num_empleado' and not nuevo:
+                    # Sin referencia de empleado el atributo NO se emite: se
+                    # vacía lo que haya puesto el módulo (credencial, NSS…).
+                    d[key] = False
+                    tocadas.append(key)
+                    continue
                 if nuevo in (None, False, ''):
                     continue
                 if isinstance(d[key], str) and not isinstance(nuevo, str):
@@ -183,6 +193,14 @@ class HrPayslip(models.Model):
     # ------------------------------------------------------------------
     # nomina12:HorasExtra
     # ------------------------------------------------------------------
+    def _qb_horas_extra_dias_capturados(self):
+        """Cantidad de la entrada ``HE_DIAS`` del recibo (días en que hubo
+        tiempo extra, capturados por RH), o None si no viene."""
+        self.ensure_one()
+        total = sum(inp.amount for inp in self.input_line_ids
+                    if inp.input_type_id.code == he.INPUT_HE_DIAS and inp.amount)
+        return total or None
+
     def _qb_horas_extra_por_tipo(self):
         """``{'01': horas dobles, '02': horas triples}`` desde las entradas del
         recibo (``HE_DOBLE`` id 16, ``HE_TRIPLE`` id 17; ``amount`` = horas).
@@ -275,7 +293,12 @@ class HrPayslip(models.Model):
                 return {}
             importe_total = sum(t or 0.0 for t in totales)
         dias_periodo = (self.date_to - self.date_from).days + 1
-        nodos = {indice: he.horas_extra_nodos(horas, importe_total, dias_periodo)}
+        dias = self._qb_horas_extra_dias_capturados()
+        if not dias:
+            # info, no warning: pasa en todos los recibos hasta que RH capture HE_DIAS
+            _logger.info('quimibond_nomina: recibo %s sin entrada HE_DIAS; Dias del nodo HorasExtra se '
+                         'ESTIMA a partir de las horas (%s)', self.id, horas)
+        nodos = {indice: he.horas_extra_nodos(horas, importe_total, dias_periodo, dias)}
         cfdi_values[KEY_HORAS_EXTRA] = nodos
         return nodos
 
@@ -339,6 +362,25 @@ class HrPayslip(models.Model):
     # La vista que imprime los nodos se configura sola
     # ------------------------------------------------------------------
     @api.model
+    def qb_nomina_ensure_he_dias_input(self):
+        """Deja la entrada ``HE_DIAS`` disponible en la estructura de nómina de
+        Quimibond («Paga regular», código ``MX_REGULAR``). El registro nace en
+        ``data/payslip_input_types.xml``; la estructura no tiene xmlid conocido,
+        así que se liga aquí por código en cada instalación/actualización."""
+        itype = self.env.ref('quimibond_nomina.input_type_he_dias', raise_if_not_found=False)
+        if not itype:
+            return False
+        structs = self.env['hr.payroll.structure'].sudo().with_context(active_test=False).search(
+            [('code', '=', 'MX_REGULAR')])
+        if not structs:
+            _logger.warning('quimibond_nomina: no hay estructura MX_REGULAR; la entrada HE_DIAS queda sin '
+                            'estructura (agregarla a mano en Nómina → Configuración → Otras entradas)')
+            return False
+        faltan = structs - itype.sudo().struct_ids
+        if faltan:
+            itype.sudo().write({'struct_ids': [(4, st.id) for st in faltan]})
+        return True
+
     def qb_nomina_ensure_horas_extra_view(self):
         """Deja lista la herencia de la plantilla del CFDI que imprime
         ``HorasExtra``. Se llama desde ``data/cfdi_horas_extra.xml`` en cada

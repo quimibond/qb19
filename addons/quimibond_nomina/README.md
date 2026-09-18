@@ -69,7 +69,7 @@ El módulo los deja vacíos y los dos son obligatorios en el Anexo 20
 | Atributo | De dónde sale |
 |---|---|
 | `ClaveEntFed` | estado de la **dirección laboral** del empleado → de la ubicación de trabajo → de la compañía → parámetro `quimibond_nomina.clave_ent_fed`. Los códigos de estado de México en Odoo son los del SAT (`MEX`, `CMX`). La compañía está en `MEX`, que es lo que manda NOI |
-| `NumEmpleado` | *Referencia de empleado* (`registration_number`) → credencial (`barcode`) → id del empleado en Odoo. Hoy casi nadie tiene referencia; el id coincide con el número de NOI (Genaro: 325), pero RH debería capturar la referencia para no depender de eso |
+| `NumEmpleado` | *Referencia de empleado* (`registration_number`), que es el número de trabajador de NOI. **Si está vacía no se emite** (es opcional en el Anexo 20). Antes se rellenaba con la credencial o el id de Odoo y salían números inventados: la credencial de Ricardo es `041460744711` y NOI manda `32`; el id de Genaro es 325 y NOI manda 1. **Pendiente de RH:** capturar la referencia con el número de NOI; hoy sólo un empleado la tiene (id 287, "83") |
 
 ### 4. Centinela de reglas
 
@@ -115,16 +115,31 @@ Así lo timbra NOI hoy (empleado 325, semana 39):
 | `TipoHoras` | entrada `HE_DOBLE` (id 16) → `01`; `HE_TRIPLE` (id 17) → `02`. Las horas sencillas (`H_SENCILLA`) **no llevan nodo**: van al concepto 038 |
 | `HorasExtra` | `amount` de esas entradas (son horas) |
 | `ImportePagado` | líneas `HE_EXEMPT` (id 463) + `HE_TAX` (id 464) del recibo, por código. Con dobles y triples en el mismo recibo se reparte en proporción a horas × factor (2 y 3) y la suma queda exacta |
-| `Dias` | criterio medido, abajo |
+| `Dias` | entrada `HE_DIAS` (días con tiempo extra, captura de RH); si falta, se estima (abajo) |
 
-**El criterio de `Dias` — medido, no inventado.** RH captura horas por semana,
-no días. Se leyeron **142 nodos `HorasExtra`** de CFDI que NOI ya timbró (cuatro
-periodos de 2026): semanal con 1 o 2 horas → `Dias=1` (5 casos); semanal con 3 a
-9 horas → `Dias=3` (116); quincenal con 18 horas → `Dias=6` (19). La regla es el
-tope legal (LFT art. 66: 3 horas diarias, 3 días por semana): 3 por semana
-completa del periodo, 1 si fueron una o dos horas sueltas, y nunca más días que
-horas. Dos excepciones en 142 fueron captura manual. El detalle y la fórmula
-viven en `models/horas_extra.py`.
+**`Dias` es un dato capturado, no una fórmula.** Es el número real de
+días en que se generó el tiempo extra, y NOI lo captura: 3 horas en un solo
+día son `Dias=1` (Ricardo Salgado, quincena 18 de CDMX:
+`Dias="1" HorasExtra="3"`); las mismas 3 horas en tres días son `Dias=3`
+(semanal de Toluca). No se deduce de las horas. La primera versión del módulo
+traía una regla sacada de medir 142 nodos de NOI (3 por semana del periodo, 1
+si fueron una o dos horas): describía el caso más común y lo generalizó de
+más; la quincena de CDMX la desmintió.
+
+Hoy sale así:
+
+1. **Entrada `HE_DIAS` ("Días con tiempo extra")**, cantidad, en la
+   estructura `MX_REGULAR`. Si el recibo la trae con cantidad > 0, **ese
+   valor es `Dias`**, sin tocarlo. Es el dato que RH captura junto con las
+   horas (`HE_DOBLE`, `HE_TRIPLE`). Aplica a **todos** los nodos del recibo,
+   dobles y triples: son los días en que hubo tiempo extra, no los días de
+   cada tipo.
+2. **Sin `HE_DIAS`, `Dias` se estima** con `max(1, min(3 × semanas,
+   ceil(horas)))`: 3 horas dan 3, 9 dan 3, 18 en quincena dan 6, 1 da 1.
+   Nunca emite un valor imposible (más días que horas, cero, más de 3 por
+   semana), pero **es una estimación**: en el caso de Ricardo saldría 3 y NOI
+   timbra 1. Queda un `info` en el log cada vez que se estima. El dato bueno
+   es la captura de RH.
 
 **Primero se fusionan las dos percepciones 019.** Odoo genera una percepción
 por regla, así que las horas extra salen partidas: `P19_2` exenta
@@ -218,7 +233,13 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
    `cv['qb_horas_extra_por_indice']` trae `{<índice>: [{'dias': 3,
    'tipo_horas': '01', 'horas_extra': 9, 'importe_pagado': '1163.54'}]}`. En
    el XML: `<nomina12:HorasExtra Dias="3" TipoHoras="01" HorasExtra="9"
-   ImportePagado="1163.54"/>` dentro de la 019. Un recibo sin horas extra no
+   ImportePagado="1163.54"/>` dentro de la 019. En el recibo **4501**
+   (Ricardo Salgado, quincena 18 de CDMX, 3 horas): con una entrada
+   `HE_DIAS = 1` sale `dias: 1` (lo que timbra NOI) y sin ella `dias: 3`
+   (estimado). `num_empleado` sale `False` mientras no haya referencia de
+   empleado. Ojo: el diccionario sólo se arma con el recibo `paid` y su
+   asiento `posted`; en borrador truena con `'bool' object has no attribute
+   'rpartition'` y validado sin pagar con `... 'isoformat'`. Un recibo sin horas extra no
    cambia en nada. Un recibo quincenal con horas extra emite `Dias="6"`. Los
    conceptos salen en español aunque el shell esté en `en_US`.
 6. **La nómina no se movió.** Recalcular la corrida 117 (semana 38, 87
@@ -274,8 +295,10 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
   atributo `Banco`, y es la que el SAT ya aceptó, así que en la cuenta
   bancaria del empleado debe ir la CLABE (la de Odoo parece una captura
   trunca: le falta el `0` inicial y le sobra un `0` final). `NumEmpleado`:
-  capturar la *Referencia de empleado* con el número de NOI (hoy sale el id
-  de Odoo, 325 para Genaro, y NOI le pone 1: otra numeración). `Antigüedad`:
+  capturar la *Referencia de empleado* con el número de NOI en cada empleado
+  (mientras esté vacía el atributo no se emite). **`HE_DIAS`:** capturar en
+  cada recibo con tiempo extra los días en que se generó (mientras falte,
+  `Dias` se estima). `Antigüedad`:
   Odoo manda `P1365W` y NOI `P1367W`, dos semanas de diferencia por la fecha
   de corte que usa cada uno; definir con RH cuál es la fecha de ingreso buena.
 - Pendientes de terceros: RFC, CURP y NSS de un empleado; destrabar la app de

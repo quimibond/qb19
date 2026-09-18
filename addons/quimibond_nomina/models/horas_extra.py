@@ -17,27 +17,38 @@ Cuatro atributos, los cuatro obligatorios:
 * ``ImportePagado`` — lo pagado por esas horas (gravado + exento).
 * ``Dias`` — ver abajo.
 
-El criterio de ``Dias`` — medido, no inventado
+``Dias`` es un dato capturado, no una fórmula
 ----------------------------------------------
 
-``Dias`` es el único atributo que no se deduce de nuestros datos (RH captura
-el total semanal de horas extra, no los días). Se resolvió leyendo **142 nodos
-HorasExtra reales** de los CFDI que NOI ya timbró, en cuatro periodos de 2026
-(12–18 ene, 16–31 jul quincenal, 27 jul–2 ago, 7–13 sep, 14–20 sep):
+``Dias`` es **el número real de días en que se generó el tiempo extra**, y en
+NOI se captura: tres horas en un solo día son 1 día; una hora en tres días
+son 3 días. Las mismas tres horas dan ``Dias=1`` en un recibo (Ricardo
+Salgado, quincena 18 de CDMX: ``Dias="1" HorasExtra="3"``) y ``Dias=3`` en
+otro (semanal de Toluca). No se deduce de las horas.
 
-    Periodicidad     Horas    Dias   Casos
-    Semanal (02)     1 o 2      1        5
-    Semanal (02)     3 a 9      3      116
-    Quincenal (04)   18         6       19
+La primera versión de este módulo traía una regla sacada de medir 142 nodos
+de NOI (3 por semana del periodo, 1 si fueron una o dos horas). Describía bien
+el caso más común (9 horas en 3 días de 3, el 55 % de los casos) y lo
+generalizó de más: la quincena de CDMX la desmintió.
 
-La regla no depende de las horas sino del tope legal: la LFT art. 66 permite
-3 horas diarias durante 3 días por semana. NOI pone ``Dias = 3`` por semana
-completa del periodo (6 en la quincena) y sólo baja a 1 cuando fueron una o
-dos horas sueltas. Hubo 2 excepciones en 142 (8h→1d y 9h→5d): captura manual,
-ruido, no un patrón. ``Dias`` es informativo y el SAT no lo valida contra
-nada más, así que replicar el criterio dominante es correcto y defendible.
+Hoy:
+
+1. Si el recibo trae la entrada ``HE_DIAS`` ("Días con tiempo extra") con
+   cantidad > 0, **ese valor es ``Dias``**, sin tocarlo. Es el dato que RH
+   captura junto con las horas. Aplica a **todos** los nodos del recibo
+   (dobles y triples): son los días en que hubo tiempo extra, no los días de
+   cada tipo.
+2. Si no la trae, se **estima** con la heurística acotada por las horas:
+   ``max(1, min(3 × semanas, ceil(horas)))``. 3 horas dan 3, 9 dan 3, 18 en
+   quincena dan 6, 1 da 1. Sigue equivocándose en casos como el de Ricardo
+   (no hay manera de acertar sin el dato) pero nunca emite un valor imposible
+   (más días que horas, cero, o más de 3 por semana). ``Dias`` es informativo
+   y el SAT no lo valida contra nada más.
 """
 import math
+
+# Entrada (hr.payslip.input.type) con los días en que hubo tiempo extra.
+INPUT_HE_DIAS = 'HE_DIAS'
 
 # Código del tipo de entrada (hr.payslip.input.type) → c_TipoHoras del SAT.
 TIPO_HORAS_POR_INPUT = {
@@ -54,23 +65,24 @@ FACTOR_POR_TIPO = {
 }
 
 
-def horas_extra_dias(horas, dias_periodo):
-    """``Dias`` del nodo para ``horas`` en un periodo de ``dias_periodo`` días.
+def horas_extra_dias(horas, dias_periodo, dias_capturados=None):
+    """``Dias`` del nodo. Con ``dias_capturados`` (entrada ``HE_DIAS`` del
+    recibo) devuelve ese valor; sin él, la ESTIMACIÓN acotada por las horas.
 
-    >>> horas_extra_dias(9, 7), horas_extra_dias(2, 7), horas_extra_dias(18, 15)
-    (3, 1, 6)
+    >>> horas_extra_dias(3, 7), horas_extra_dias(9, 7), horas_extra_dias(18, 15), horas_extra_dias(1, 7)
+    (3, 3, 6, 1)
+    >>> horas_extra_dias(3, 7, dias_capturados=1)
+    1
     """
+    if dias_capturados:
+        return max(1, int(round(dias_capturados)))
     semanas = max(int(dias_periodo / 7), 1)      # 1 en semanal, 2 en quincenal
-    if horas <= 2:
-        dias = 1
-    else:
-        dias = 3 * semanas
-    # Nunca más días que horas (1 hora → 1 día) y nunca 0: es lo único que el
-    # SAT podría considerar incoherente.
-    return max(1, min(dias, int(math.ceil(horas))))
+    # Tope legal (LFT art. 66: 3 días por semana), nunca más días que horas
+    # (1 hora → 1 día) y nunca 0.
+    return max(1, min(3 * semanas, int(math.ceil(horas))))
 
 
-def horas_extra_nodos(horas_por_tipo, importe_total, dias_periodo):
+def horas_extra_nodos(horas_por_tipo, importe_total, dias_periodo, dias_capturados=None):
     """Lista de nodos ``HorasExtra`` (dicts con las llaves en minúsculas) para
     un recibo.
 
@@ -79,6 +91,8 @@ def horas_extra_nodos(horas_por_tipo, importe_total, dias_periodo):
     recibo (gravado + exento). Con un solo tipo, el nodo lleva el total; con
     varios se reparte en proporción a horas × factor y el último absorbe el
     redondeo, de modo que la suma de ``ImportePagado`` es exactamente el total.
+    ``dias_capturados``: la entrada ``HE_DIAS`` del recibo; vale para todos los
+    nodos. Sin ella, ``Dias`` se estima (ver arriba).
     """
     tipos = [(t, float(h)) for t, h in sorted(horas_por_tipo.items()) if h and h > 0]
     if not tipos:
@@ -94,7 +108,7 @@ def horas_extra_nodos(horas_por_tipo, importe_total, dias_periodo):
         nodos.append({
             'tipo_horas': tipo,
             'horas_extra': int(round(horas)),
-            'dias': horas_extra_dias(horas, dias_periodo),
+            'dias': horas_extra_dias(horas, dias_periodo, dias_capturados),
             'importe_pagado': '%.2f' % importe,
         })
     return nodos
