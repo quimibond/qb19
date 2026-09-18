@@ -113,10 +113,19 @@ class TestHorasExtraRecibo(TransactionCase):
         return slip
 
     @staticmethod
-    def _cv(con_019=True):
-        lista = [{'tipo_percepcion': '001', 'clave': 'P001', 'importe_gravado': 3000.0, 'importe_exento': 0.0}]
-        if con_019:
-            lista.append({'tipo_percepcion': '019', 'clave': 'P19', 'importe_gravado': 373.28, 'importe_exento': 373.28})
+    def _cv(con_019=True, partida=False):
+        """percepcion_list como la arma Odoo (llaves reales). ``partida``: las
+        dos 019 separadas, una por regla, que es lo que sale hoy."""
+        lista = [{'tipo_percepcion': '001', 'clave': 'P01', 'concepto': 'Sueldos',
+                  'importe_gravado': 3000.0, 'importe_exento': 0.0}]
+        if con_019 and partida:
+            lista.append({'tipo_percepcion': '019', 'clave': 'P19_2', 'concepto': 'Horas extra exento',
+                          'importe_gravado': 0, 'importe_exento': 373.28})
+            lista.append({'tipo_percepcion': '019', 'clave': 'P19', 'concepto': 'Horas extra',
+                          'importe_gravado': 373.28, 'importe_exento': 0})
+        elif con_019:
+            lista.append({'tipo_percepcion': '019', 'clave': 'P19', 'concepto': 'Horas extra',
+                          'importe_gravado': 373.28, 'importe_exento': 373.28})
         return {'percepcion_list': lista}
 
     def test_dobles_semanal(self):
@@ -162,16 +171,71 @@ class TestHorasExtraRecibo(TransactionCase):
         slip._qb_add_horas_extra(cv)
         self.assertEqual(cv[KEY_HORAS_EXTRA], {})
 
-    def test_dos_percepciones_019_cada_una_con_su_importe(self):
-        slip = self._recibo({'HE_DOBLE': 9}, {'HE_EXEMPT': 373.28, 'HE_TAX': 373.28})
-        cv = {'percepcion_list': [
-            {'tipo_percepcion': '019', 'clave': 'P19', 'importe_gravado': 373.28, 'importe_exento': 0.0},
-            {'tipo_percepcion': '019', 'clave': 'P19_2', 'importe_gravado': 0.0, 'importe_exento': 373.28},
-        ]}
+    def test_dos_percepciones_019_se_fusionan_en_una(self):
+        """Lo que sale hoy de Odoo: P19_2 exenta y P19 gravada por separado.
+        Debe quedar UNA 019 con los dos importes y un solo nodo con el total."""
+        slip = self._recibo({'HE_DOBLE': 9}, {'HE_EXEMPT': 581.77, 'HE_TAX': 581.77})
+        cv = self._cv(partida=True)
+        cv['percepcion_list'][1]['importe_exento'] = 581.77
+        cv['percepcion_list'][2]['importe_gravado'] = 581.77
         slip._qb_add_horas_extra(cv)
-        self.assertEqual(sorted(cv[KEY_HORAS_EXTRA]), [0, 1])
-        self.assertEqual(cv[KEY_HORAS_EXTRA][0][0]['importe_pagado'], '373.28')
-        self.assertEqual(cv[KEY_HORAS_EXTRA][1][0]['importe_pagado'], '373.28')
+        lista = cv['percepcion_list']
+        p019 = [p for p in lista if p['tipo_percepcion'] == '019']
+        self.assertEqual(len(p019), 1)
+        self.assertEqual(p019[0]['clave'], 'P19')                 # la gravada manda
+        self.assertEqual(p019[0]['concepto'], 'Horas extra')
+        self.assertEqual(p019[0]['importe_gravado'], 581.77)
+        self.assertEqual(p019[0]['importe_exento'], 581.77)
+        self.assertEqual(lista[0]['clave'], 'P01')               # las demás no se tocan
+        self.assertEqual(len(lista), 2)
+        self.assertEqual(cv[KEY_HORAS_EXTRA], {1: [
+            {'tipo_horas': '01', 'horas_extra': 9, 'dias': 3, 'importe_pagado': '1163.54'}]})
+
+    def test_fusion_es_idempotente_y_solo_019(self):
+        slip = self._recibo({'HE_DOBLE': 9})
+        cv = self._cv(partida=True)
+        cv['percepcion_list'].append({'tipo_percepcion': '029', 'clave': 'P29', 'concepto': 'Vales',
+                                      'importe_gravado': 0, 'importe_exento': 100.0})
+        cv['percepcion_list'].append({'tipo_percepcion': '029', 'clave': 'P29_2', 'concepto': 'Vales exento',
+                                      'importe_gravado': 50.0, 'importe_exento': 0})
+        self.assertEqual(slip._qb_fusionar_percepciones_019(cv), 1)
+        antes = [dict(p) for p in cv['percepcion_list']]
+        self.assertEqual(slip._qb_fusionar_percepciones_019(cv), 1)   # segunda vez: nada cambia
+        self.assertEqual(cv['percepcion_list'], antes)
+        self.assertEqual([p['clave'] for p in cv['percepcion_list']], ['P01', 'P19', 'P29', 'P29_2'])
+        self.assertIsNone(slip._qb_fusionar_percepciones_019({'percepcion_list': []}))
+        self.assertIsNone(slip._qb_fusionar_percepciones_019({}))
+
+    def test_importe_pagado_cae_a_las_lineas_si_la_percepcion_no_trae_importe(self):
+        slip = self._recibo({'HE_DOBLE': 9}, {'HE_EXEMPT': 373.28, 'HE_TAX': 373.28})
+        cv = {'percepcion_list': [{'tipo_percepcion': '019', 'clave': 'P19', 'concepto': 'Horas extra'}]}
+        slip._qb_add_horas_extra(cv)
+        self.assertEqual(cv[KEY_HORAS_EXTRA][0][0]['importe_pagado'], '746.56')
+
+    def test_dobles_y_triples_dos_nodos_en_la_misma_019(self):
+        slip = self._recibo({'HE_DOBLE': 6, 'HE_TRIPLE': 3})
+        cv = self._cv()
+        cv['percepcion_list'][1].update(importe_gravado=500.0, importe_exento=500.0)
+        slip._qb_add_horas_extra(cv)
+        nodos = cv[KEY_HORAS_EXTRA][1]
+        self.assertEqual([(n['tipo_horas'], n['horas_extra']) for n in nodos], [('01', 6), ('02', 3)])
+        self.assertEqual(round(sum(float(n['importe_pagado']) for n in nodos), 2), 1000.0)
+
+    def test_conceptos_en_espanol(self):
+        if 'es_MX' not in [c for c, _ in self.env['res.lang'].get_installed()]:
+            self.skipTest('es_MX no está instalado')
+        Concept = self.env['l10n.mx.concept']
+        concept = Concept.search([('payroll_code', '=', 'P19')], limit=1)
+        if not concept:
+            self.skipTest('no hay concepto P19')
+        esperado = concept.with_context(lang='es_MX').name
+        slip = self._recibo()
+        cv = {'percepcion_list': [{'tipo_percepcion': '019', 'clave': 'P19', 'concepto': 'Overtime',
+                                   'importe_gravado': 1.0, 'importe_exento': 0.0}],
+              'deduccion_list': [{'clave': 'D_INEXISTENTE', 'concepto': 'Whatever'}]}
+        slip._qb_conceptos_en_espanol(cv)
+        self.assertEqual(cv['percepcion_list'][0]['concepto'], esperado)
+        self.assertEqual(cv['deduccion_list'][0]['concepto'], 'Whatever')   # sin registro: se queda
 
 
 class TestHorasExtraVista(TransactionCase):

@@ -126,6 +126,20 @@ completa del periodo, 1 si fueron una o dos horas sueltas, y nunca más días qu
 horas. Dos excepciones en 142 fueron captura manual. El detalle y la fórmula
 viven en `models/horas_extra.py`.
 
+**Primero se fusionan las dos percepciones 019.** Odoo genera una percepción
+por regla, así que las horas extra salen partidas: `P19_2` exenta
+(`HE_EXEMPT`) y `P19` gravada (`HE_TAX`). El SAT exige que *toda* percepción
+019 lleve un hijo `HorasExtra`, y con la lista partida sólo hay dos salidas,
+ambas malas: colgar el nodo a las dos declara el doble de horas; colgarlo a
+una deja a la otra sin hijo y el PAC rechaza. NOI emite una sola con los dos
+importes dentro, y eso es lo que el SAT ya acepta.
+`_qb_fusionar_percepciones_019` suma `importe_gravado` e `importe_exento`,
+conserva clave y concepto de la gravada, no toca las demás percepciones y es
+idempotente (si Odoo deja de partirlas, no hace nada). `ImportePagado` del
+nodo = gravado + exento de la percepción fusionada (Genaro, semana 38:
+581.77 + 581.77 = 1163.54); si no se puede leer, se cae a las líneas
+`HE_EXEMPT` + `HE_TAX`.
+
 **Cómo está hecho.** `hr.payslip._qb_add_horas_extra` anota los nodos en
 `cfdi_values['qb_horas_extra_por_indice']` (índice de la percepción 019 dentro
 de `percepcion_list` → lista de nodos) y la vista
@@ -144,6 +158,19 @@ una instalación rota por un xpath que no resuelve.
 log y el CFDI sale como estaba. Más vale un CFDI sin nodo (el PAC lo rechaza y
 se ve) que uno con un nodo inventado. Desinstalar el módulo basta para
 quitarlo: no toca reglas, entradas, conceptos ni registros de fábrica.
+
+### 6. Conceptos en español
+
+Los conceptos del CFDI son lo que el trabajador lee en su recibo y NOI los
+manda en español. El módulo los toma del nombre del concepto
+(`l10n.mx.concept.name`) en el idioma del contexto, y cuando el CFDI se arma
+en `en_US` (shell de Odoo, cron) salen "Overtime", "Savings Fund". Los
+registros ya están traducidos a `es_MX`; `_qb_conceptos_en_espanol` vuelve a
+leer cada `concepto` de percepciones, deducciones y otros pagos desde su
+registro (por `clave` = `payroll_code`) en `es_MX`. No hay diccionario en el
+código: un concepto sin traducción se queda como estaba. Si algún concepto
+sigue saliendo en inglés, es que a su registro le falta la traducción: se
+corrige en Nómina → Configuración → Conceptos CFDI, en español.
 
 ## Cómo verificarlo después del build
 
@@ -184,12 +211,16 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
         print(k, {j: v[j] for j in ('salario_diario_integrado', 'salario_base_cot_apor', 'clave_ent_fed', 'num_empleado') if j in v})
 ```
 5. **El nodo HorasExtra.** En el log de la instalación debe aparecer
-   `herencia HorasExtra activa (variable del t-foreach: …)`. En el XML del
-   recibo 4358 (o cualquiera de la corrida 117 con horas extra), dentro de la
-   percepción 019: `<nomina12:HorasExtra Dias="3" TipoHoras="01" HorasExtra="9"
-   ImportePagado="…"/>`, con `ImporteExento` e `ImporteGravado` iguales que
-   antes. Un recibo sin horas extra no cambia en nada. Un recibo quincenal con
-   horas extra emite `Dias="6"`.
+   `herencia HorasExtra activa (variable del t-foreach: …)`. En el
+   diccionario del recibo 4358, `percepcion_list` trae **una sola**
+   percepción 019 con `importe_gravado = 581.77` e `importe_exento = 581.77`
+   (antes salían dos, P19_2 exenta y P19 gravada), y
+   `cv['qb_horas_extra_por_indice']` trae `{<índice>: [{'dias': 3,
+   'tipo_horas': '01', 'horas_extra': 9, 'importe_pagado': '1163.54'}]}`. En
+   el XML: `<nomina12:HorasExtra Dias="3" TipoHoras="01" HorasExtra="9"
+   ImportePagado="1163.54"/>` dentro de la 019. Un recibo sin horas extra no
+   cambia en nada. Un recibo quincenal con horas extra emite `Dias="6"`. Los
+   conceptos salen en español aunque el shell esté en `en_US`.
 6. **La nómina no se movió.** Recalcular la corrida 117 (semana 38, 87
    recibos) y confirmar que el neto sigue en 302,757.31. El módulo no toca el
    cálculo, sólo el CFDI.
@@ -243,7 +274,10 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
   atributo `Banco`, y es la que el SAT ya aceptó, así que en la cuenta
   bancaria del empleado debe ir la CLABE (la de Odoo parece una captura
   trunca: le falta el `0` inicial y le sobra un `0` final). `NumEmpleado`:
-  capturar la *Referencia de empleado* con el número de NOI.
+  capturar la *Referencia de empleado* con el número de NOI (hoy sale el id
+  de Odoo, 325 para Genaro, y NOI le pone 1: otra numeración). `Antigüedad`:
+  Odoo manda `P1365W` y NOI `P1367W`, dos semanas de diferencia por la fecha
+  de corte que usa cada uno; definir con RH cuál es la fecha de ingreso buena.
 - Pendientes de terceros: RFC, CURP y NSS de un empleado; destrabar la app de
   Ausencias («Debe configurar al menos una cuenta analítica», sin eso no hay
   nodo de Incapacidades); la cuenta archivada `201.01.02 Reembolso empleados`
