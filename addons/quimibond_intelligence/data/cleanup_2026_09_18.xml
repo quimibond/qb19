@@ -23,4 +23,36 @@
         'Quimibond: Audit integrity weekly',
         'Quimibond: Retry ingestion failures',
     ])]"/>
+
+    <!-- Los dos crons que quedan se vuelven a encender en cada actualización.
+
+         Odoo 19 apaga solo un cron tras 5 fallos seguidos repartidos en más
+         de 7 días (ir.cron._update_failure_count) y NUNCA lo vuelve a
+         encender; el aviso llega por _notify_admin y es fácil no verlo. Así
+         pasó en producción: el push horario dejó de correr el 3-jul-2026 y
+         el pull cada 5 min el 1-jun-2026 (Historial de Sync: ninguna corrida
+         de OdooBot después de esas fechas) y nadie se enteró hasta que el
+         watchdog de la memoria avisó "odoo contacts: 39h sin push exitoso".
+
+         ir_cron_data.xml es noupdate, así que un `odoo-update` no los toca.
+         Aquí se buscan por nombre SOLO los apagados (active_test=False) y se
+         escriben active=True con los contadores de fallo en cero. Solo los
+         apagados a propósito: ir.cron.write toma un lock del registro y si
+         el cron estuviera corriendo en ese momento el update abortaría con
+         "This cron task is currently being executed"; un cron apagado nunca
+         corre, así que no hay choque. Si un cron falla por una causa real,
+         Odoo lo volverá a apagar a los 7 días y este paso lo vuelve a
+         encender en el siguiente despliegue: el síntoma se ve en el
+         Historial de Sync, no se esconde. Apagarlos a mano no sobrevive a
+         un despliegue; el módulo sin sus crons no hace nada. -->
+    <function model="ir.cron" name="write">
+        <function model="ir.cron" name="search">
+            <value eval="[('name', 'in', [
+                'Quimibond Sync - Push to Supabase (every 1h)',
+                'Quimibond Sync - Pull from Supabase (every 5min)',
+            ]), ('active', '=', False)]"/>
+            <value name="context" eval="{'active_test': False}"/>
+        </function>
+        <value eval="{'active': True, 'failure_count': 0, 'first_failure_date': False}"/>
+    </function>
 </odoo>

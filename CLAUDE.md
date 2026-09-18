@@ -67,6 +67,7 @@ de modelos que desaparecen del código.
 - **Cada 1 hora:** `push_to_supabase()` — `contacts` y `users` (parámetro `quimibond_intelligence.push_models`, default `contacts,users`; `all` significa esos dos; cualquier otro nombre se ignora con aviso). Incremental por `write_date` (`last_sync_date`); `users` siempre completo. Para re-mandar todo una vez: `quimibond_intelligence.force_full_sync = 1`.
 - **Cada 5 min:** `pull_from_supabase()` — comandos de `sync_commands` (`force_push`, `force_push_full`, `sync_contacts`) + contactos de Supabase sin `odoo_partner_id` → se crean en Odoo.
 - Cada corrida del push escribe una fila por método en `pipeline_logs` (`phase='odoo_push'`); la vista `odoo_push_last_events` que lee el watchdog de la memoria sale de ahí.
+- **Los crons se vuelven a encender en cada `odoo-update`** (`data/cleanup_2026_09_18.xml`). Odoo 19 apaga solo un cron tras 5 fallos en más de 7 días y no lo vuelve a encender; así murieron el push (3-jul-2026) y el pull (1-jun-2026) sin que nadie lo viera. Si el Historial de Sync (Ajustes → Técnico → Quimibond Sync) no muestra corridas de OdooBot en la última hora, el cron está apagado o fallando: revisar Acciones planificadas. `ir.cron` no está expuesto por MCP.
 
 ## Deploy a produccion
 
