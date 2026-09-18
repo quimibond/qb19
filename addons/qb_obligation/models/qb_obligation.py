@@ -138,7 +138,7 @@ class QbObligation(models.Model):
     escalated_to = fields.Many2one('res.users')
 
     # ── métricas ─────────────────────────────────────────────────────
-    currency_id = fields.Many2one('res.currency')
+    currency_id = fields.Many2one('res.currency', string='Moneda del documento')
     amount_at_creation = fields.Monetary(string='Saldo al crear', currency_field='currency_id')
     amount_residual = fields.Monetary(string='Saldo', currency_field='currency_id',
                                       help='Último saldo conocido del documento (se refresca en cada corrida).')
@@ -146,7 +146,7 @@ class QbObligation(models.Model):
                                        help='Saldo al crear menos saldo al cerrar.')
     amount_residual_company = fields.Monetary(string='Saldo (moneda compañía)',
                                               currency_field='company_currency_id')
-    company_currency_id = fields.Many2one(related='company_id.currency_id')
+    company_currency_id = fields.Many2one(related='company_id.currency_id', string='Moneda de la compañía')
     days_overdue = fields.Integer(string='Días vencida', compute='_compute_days', store=True)
     days_to_close = fields.Integer(string='Días para cerrar', compute='_compute_days', store=True)
     times_notified = fields.Integer(default=0)
