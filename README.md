@@ -9,7 +9,7 @@ Linked to Odoo.sh.
 |--------|-------------|
 | `mrp_caja_surtido` | Assorted box in manufacturing picking |
 | `stock_dymo_labels` | Dymo/Zebra label printing |
-| `quimibond_intelligence` | Intelligence system (Gmail sync, Knowledge Graph, briefings, alerts, scoring) |
+| `quimibond_intelligence` | Puente mínimo Odoo ↔ Supabase: contactos, empresas y usuarios para la memoria de correo (ver `CLAUDE.md`) |
 
 ## Setup
 

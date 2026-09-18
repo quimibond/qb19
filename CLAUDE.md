@@ -2,10 +2,22 @@
 
 ## Que es
 
-Addon de Odoo 19 que sincroniza datos operativos a Supabase para Quimibond Intelligence.
+Addons de Odoo 19 de Quimibond. `quimibond_intelligence` es el puente mínimo
+Odoo ↔ Supabase: empuja **contactos, empresas y usuarios** para que la memoria
+de correo (Supabase) pueda ligar correos con Odoo, y trae de vuelta comandos y
+contactos nuevos.
 
-**Frontend:** `quimibond/quimibond-intelligence` (Vercel)
-**Supabase:** `tozqezmivpblmcubmnpi`
+> **2026-09-18 — Supabase quedó solo con la memoria de correo.** Se borraron
+> de Supabase todas las tablas que duplicaban Odoo (`odoo_*` salvo
+> `odoo_users`, `canonical_*`, `gold_*`, `mv_*`, `syntage_*`, `mrp_bom*`,
+> `reconciliation_issues`, `audit_*`, el esquema `ingestion`). Todo lo demás
+> vive en Odoo: SAT en `quimibond_sat`, costeo en `qb_capacidad_costeo`,
+> indicadores en el SGI. El módulo se recortó ese día a `_push_contacts` +
+> `_push_users` (PR "quimibond_intelligence: solo contactos y usuarios a
+> Supabase"). Las cifras se toman de Odoo por MCP, no de Supabase.
+
+**Supabase:** `tozqezmivpblmcubmnpi` (repo `quimibond/quimibond-intelligence`
+guarda las Edge Functions y migraciones; el frontend de Vercel está retirado).
 
 ## Estructura
 
@@ -13,14 +25,21 @@ Addon de Odoo 19 que sincroniza datos operativos a Supabase para Quimibond Intel
 addons/quimibond_intelligence/
   __manifest__.py          # v19.0.30.0.0 (NO cambiar — ver nota abajo)
   models/
-    sync_push.py           # Push Odoo → Supabase (21 modelos)
-    sync_pull.py           # Pull Supabase → Odoo
-    supabase_client.py     # REST client HTTP
-    sync_log.py            # Modelo de log
-  views/sync_status_views.xml
-  data/ir_cron_data.xml
+    sync_push.py           # quimibond.sync: cron push_to_supabase(), helpers, _run_push
+    sync_push_partners.py  # _push_contacts (contacts + companies) y _push_users (odoo_users)
+    sync_pull.py           # quimibond.sync.pull: sync_commands + contactos nuevos → Odoo
+    supabase_client.py     # REST client HTTP (upsert, insert, fetch, patch, rpc)
+    sync_log.py            # quimibond.sync.log (Historial de Sync)
+  views/sync_status_views.xml   # historial + acciones "Forzar Push/Pull"
+  data/ir_cron_data.xml         # push 1h + pull 5min (noupdate)
+  data/cleanup_2026_09_18.xml   # borra los crons viejos (noupdate no se limpia solo)
   security/ir.model.access.csv
+  tests/                        # pytest puro sobre supabase_client (no corre en CI)
 ```
+
+Tabla huérfana en la base de Odoo tras el recorte: `quimibond_sync_audit`
+(modelo transitorio `quimibond.sync.audit`, eliminado). Odoo no borra tablas
+de modelos que desaparecen del código.
 
 ## Otros módulos del repo
 
@@ -30,46 +49,24 @@ addons/quimibond_intelligence/
 - Módulos de Consolti en la raíz del repo (venían solo en `qbtesting`; desde 2026-09-18 viven en `main`/`quimibond` y se instalan a mano desde Apps): `quimibond_ficha_tecnica_tela` (fichas técnicas de tejido y acabado, importación desde Excel), `quimibond_tintoreria_rendimiento` (capacidad por rendimiento y relación de baño por centro de trabajo de tintorería), `mantenimiento_surtido_refacciones` (refacciones en solicitudes de mantenimiento con surtido desde almacén). README propio en los dos primeros.
 - `qb_memoria`: pestaña Memoria del contacto (Supabase). Desde 1.2.0 muestra la **ficha consolidada** (RPC `memoria_brief`): quién atiende a la empresa, hechos con vigencia y conversaciones resumidas por Claude con estado y pendientes. Además **dueños aprendidos**: cron nocturno que lee la vista `memoria_encargados` (buzón que atiende a cada empresa / área) y lo escribe en el contacto; personas detrás de buzones compartidos en Contactos → Configuración → Buzones (memoria). README propio.
 
-## Modelos sincronizados (21)
+## Modelos sincronizados (2)
 
-| Metodo | Odoo Model | Supabase Table |
-|---|---|---|
-| `_push_contacts` | res.partner | contacts + companies (incluye RFC/vat) |
-| `_push_products` | product.product | odoo_products |
-| `_push_order_lines` | sale/purchase.order.line | odoo_order_lines |
-| `_push_users` | res.users + hr.employee | odoo_users |
-| `_push_invoices` | account.move | odoo_invoices |
-| `_push_invoice_lines` | account.move.line | odoo_invoice_lines |
-| `_push_payments` | account.move (paid) | odoo_payments |
-| `_push_deliveries` | stock.picking | odoo_deliveries |
-| `_push_crm_leads` | crm.lead | odoo_crm_leads |
-| `_push_activities` | mail.activity | odoo_activities |
-| `_push_manufacturing` | mrp.production | odoo_manufacturing |
-| `_push_employees` | hr.employee | odoo_employees |
-| `_push_departments` | hr.department | odoo_departments |
-| `_push_sale_orders` | sale.order | odoo_sale_orders |
-| `_push_purchase_orders` | purchase.order | odoo_purchase_orders |
-| `_push_orderpoints` | stock.warehouse.orderpoint | odoo_orderpoints |
-| `_push_account_payments` | account.payment | odoo_account_payments |
-| `_push_chart_of_accounts` | account.account | odoo_chart_of_accounts |
-| `_push_account_balances` | account.move.line (aggregated) | odoo_account_balances |
-| `_push_bank_balances` | account.journal (bank/cash) | odoo_bank_balances |
-| `_push_currency_rates` | res.currency.rate | odoo_currency_rates |
+| Metodo | Odoo Model | Supabase Table | Para qué |
+|---|---|---|---|
+| `_push_contacts` | res.partner (con email y rank, más los partners con facturas del último año) | contacts + companies (incluye RFC/vat, dominio, totales) | ligar remitentes y empresas de los correos con Odoo |
+| `_push_users` | res.users + hr.employee | odoo_users | grafo nocturno de la memoria (`kg_refresh_deterministic`: quién atiende a quién) |
 
 ## Campos clave de Odoo
 
-- **`default_code`** = Referencia Interna del producto → se guarda como `internal_ref` en odoo_products y `product_ref` en order/invoice lines. **SIEMPRE usar para display en frontend.**
-- **`commercial_partner_id`** = Empresa padre en Odoo → se resuelve via `_commercial_partner_id()` para linkear a companies.
+- **`commercial_partner_id`** = Empresa padre en Odoo → se resuelve via `_commercial_partner_id()` para linkear contactos a `companies`.
 - **`vat`** = RFC fiscal → se guarda como `rfc` en companies.
-- **`salesperson_user_id`** en sale_orders = vendedor real → se usa para asignar insights.
-- **`buyer_user_id`** en purchase_orders = comprador real → se usa para insights de proveedores.
-
-Ver mapeo completo de campos en `quimibond-intelligence/CLAUDE.md`.
+- **`email`** del partner puede traer varios (separados por `;,`); cada uno es una fila de `contacts` y solo la primera lleva `odoo_partner_id`.
 
 ## Crons
 
-- **Cada 1 hora:** `push_to_supabase()` — por default **solo `contacts`** (contactos + empresas), que es lo único que la memoria de correo en Supabase consume (decisión CEO 2026-09-17: Supabase solo guarda lo que Odoo no tiene). Para volver a empujar todo: parámetro `quimibond_intelligence.push_models = all` (o lista con comas). El push pesado (`push_to_supabase_heavy`) respeta la misma lista.
-- **Cada 5 min:** `pull_from_supabase()` — comandos + contactos
+- **Cada 1 hora:** `push_to_supabase()` — `contacts` y `users` (parámetro `quimibond_intelligence.push_models`, default `contacts,users`; `all` significa esos dos; cualquier otro nombre se ignora con aviso). Incremental por `write_date` (`last_sync_date`); `users` siempre completo. Para re-mandar todo una vez: `quimibond_intelligence.force_full_sync = 1`.
+- **Cada 5 min:** `pull_from_supabase()` — comandos de `sync_commands` (`force_push`, `force_push_full`, `sync_contacts`) + contactos de Supabase sin `odoo_partner_id` → se crean en Odoo.
+- Cada corrida del push escribe una fila por método en `pipeline_logs` (`phase='odoo_push'`); la vista `odoo_push_last_events` que lee el watchdog de la memoria sale de ahí.
 
 ## Deploy a produccion
 
@@ -99,13 +96,3 @@ quimibond_intelligence.supabase_url = https://tozqezmivpblmcubmnpi.supabase.co
 quimibond_intelligence.supabase_service_key = (service key)
 ```
 
-## Modelos pendientes de sincronizar
-
-| Modelo | Prioridad | Valor |
-|---|---|---|
-| stock.warehouse.orderpoint | High | Deteccion de desabasto |
-| account.payment.term | Medium | Prediccion de pago |
-| res.partner.category | Medium | Segmentacion |
-| mail.message | Medium | Comunicacion interna |
-| mrp.bom | Medium | Costos produccion |
-| quality.check | Medium | Calidad |
