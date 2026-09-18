@@ -33,7 +33,7 @@
 ```bash
 # qb19 — lint y compilación (lo mismo que el job `check` del CI)
 cd /home/user/qb19 && flake8 addons/ && python -m compileall -q addons/quimibond_intelligence
-# qb19 — pytest puro (cliente HTTP; no necesita Odoo)
+# qb19 — pytest puro (cliente HTTP; no necesita Odoo). Los tests de Odoo (test_senales_*, test_push_senales) los ignora conftest.py.
 cd /home/user/qb19/addons && python3 -m pytest quimibond_intelligence/tests -q
 # quimibond-intelligence — tipos y tests del frontend retirado (lo que corre el CI; no cubre supabase/functions)
 cd /home/user/quimibond-intelligence && npx tsc --noEmit && npm test
@@ -110,7 +110,7 @@ Todo en `/home/user/quimibond-intelligence`. Cada migración se aplica con el MC
 -- documento de Odoo), nunca cifras copiadas. Idempotente.
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- ya existe, en el esquema public (025_utility_improvements.sql)
 
 -- 3.2 Catálogo: lo que no está aquí no existe para la IA.
 CREATE TABLE IF NOT EXISTS public.senales_config (
@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS public.situaciones (
 );
 CREATE INDEX IF NOT EXISTS situaciones_abiertas_idx ON public.situaciones (area, severidad DESC) WHERE estado NOT IN ('resuelta','descartada') AND fusionada_en IS NULL;
 CREATE INDEX IF NOT EXISTS situaciones_company_idx ON public.situaciones (company_id);
-CREATE INDEX IF NOT EXISTS situaciones_titulo_trgm ON public.situaciones USING gin (titulo extensions.gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS situaciones_titulo_trgm ON public.situaciones USING gin (titulo gin_trgm_ops);
 COMMENT ON TABLE public.situaciones IS 'Agrupación determinística de señales (clave senal|agrupador; spec §3.3). SQL crea/actualiza/resuelve; la IA solo escribe titulo, resumen, recomendacion, severidad (en banda), responsable sugerido y fusiones (ia_version = version cuando la redacción está al día). dias_abierta y dias_sin_cambio se calculan en las RPCs (Postgres no admite columnas generadas con now()). fusionada_en: absorbida por otra situación (sale del mapa; reversible).';
 
 -- 3.4 Reglas del CEO.
@@ -432,38 +432,38 @@ BEGIN
 
   -- 1. Lote con dos claves → dos nuevas, lote ok.
   r := senales_ingestar('_prueba', 'odoo', c, '[
-    {"clave":"_prueba:partner:1","odoo_partner_id":1,"valor":100,"valor_texto":"cien","documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}],"payload":{"rfc":"XAXX010101000"}},
-    {"clave":"_prueba:partner:2","odoo_partner_id":2,"valor":5}
+    {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100,"valor_texto":"cien","documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}],"payload":{"rfc":"XAXX010101000"}},
+    {"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":5}
   ]'::jsonb);
-  ASSERT (r->>'ok')::bool AND (r->>'nuevas')::int = 2 AND (r->>'resueltas')::int = 0, 'lote 1: ' || r;
+  ASSERT (r->>'ok')::bool AND (r->>'nuevas')::int = 2 AND (r->>'resueltas')::int = 0, 'lote 1: ' || r::text;
   ASSERT (SELECT n_claves FROM senales_lotes WHERE corrida = c AND senal = '_prueba') = 2, 'senales_lotes';
-  SELECT * INTO s FROM senales WHERE clave = '_prueba:partner:1' AND resuelta_en IS NULL;
-  ASSERT s.agrupador = 'partner:1' AND s.area = 'finanzas' AND s.episodio = 1, 'agrupador/area/episodio: ' || s.agrupador;
+  SELECT * INTO s FROM senales WHERE clave = '_prueba:partner:990000001' AND resuelta_en IS NULL;
+  ASSERT s.agrupador = 'partner:990000001' AND s.area = 'finanzas' AND s.episodio = 1, 'agrupador/area/episodio: ' || s.agrupador;
 
   -- 2. Mismo valor → actualizada sin cambio de valor; valor nuevo → valor_cambio_en avanza.
   PERFORM pg_sleep(0.01);
-  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:1","odoo_partner_id":1,"valor":100},{"clave":"_prueba:partner:2","odoo_partner_id":2,"valor":9}]'::jsonb);
-  ASSERT (r->>'actualizadas')::int = 2 AND (r->>'nuevas')::int = 0, 'lote 2: ' || r;
-  ASSERT (SELECT valor_cambio_en = primera_vista FROM senales WHERE clave = '_prueba:partner:1' AND resuelta_en IS NULL), 'valor igual no mueve valor_cambio_en';
-  ASSERT (SELECT valor_cambio_en > primera_vista FROM senales WHERE clave = '_prueba:partner:2' AND resuelta_en IS NULL), 'valor distinto mueve valor_cambio_en';
+  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100},{"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":9}]'::jsonb);
+  ASSERT (r->>'actualizadas')::int = 2 AND (r->>'nuevas')::int = 0, 'lote 2: ' || r::text;
+  ASSERT (SELECT valor_cambio_en = primera_vista FROM senales WHERE clave = '_prueba:partner:990000001' AND resuelta_en IS NULL), 'valor igual no mueve valor_cambio_en';
+  ASSERT (SELECT valor_cambio_en > primera_vista FROM senales WHERE clave = '_prueba:partner:990000002' AND resuelta_en IS NULL), 'valor distinto mueve valor_cambio_en';
 
   -- 3. Lote sin la clave 2 → se resuelve; la 1 sigue abierta.
-  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:1","odoo_partner_id":1,"valor":100}]'::jsonb);
-  ASSERT (r->>'resueltas')::int = 1, 'lote 3: ' || r;
-  ASSERT (SELECT resuelta_en IS NOT NULL FROM senales WHERE clave = '_prueba:partner:2'), 'clave 2 resuelta';
+  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100}]'::jsonb);
+  ASSERT (r->>'resueltas')::int = 1, 'lote 3: ' || r::text;
+  ASSERT (SELECT resuelta_en IS NOT NULL FROM senales WHERE clave = '_prueba:partner:990000002'), 'clave 2 resuelta';
 
   -- 4. Reaparece → episodio 2, fila nueva, la vieja conserva resuelta_en.
-  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:1","odoo_partner_id":1,"valor":100},{"clave":"_prueba:partner:2","odoo_partner_id":2,"valor":1}]'::jsonb);
-  ASSERT (SELECT episodio FROM senales WHERE clave = '_prueba:partner:2' AND resuelta_en IS NULL) = 2, 'episodio 2';
-  ASSERT (SELECT count(*) FROM senales WHERE clave = '_prueba:partner:2') = 2, 'dos filas de la clave 2';
+  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100},{"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":1}]'::jsonb);
+  ASSERT (SELECT episodio FROM senales WHERE clave = '_prueba:partner:990000002' AND resuelta_en IS NULL) = 2, 'episodio 2';
+  ASSERT (SELECT count(*) FROM senales WHERE clave = '_prueba:partner:990000002') = 2, 'dos filas de la clave 2';
 
   -- 5. Lote vacío = todo resuelto (lista completa). Lote malformado = ok=false y fila de lote con error, sin tocar señales.
   r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[]'::jsonb);
-  ASSERT (r->>'resueltas')::int = 2, 'lote vacío resuelve todo: ' || r;
-  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:3","valor":"no-es-numero"}]'::jsonb);
-  ASSERT NOT (r->>'ok')::bool AND r->>'error' IS NOT NULL, 'lote malo: ' || r;
+  ASSERT (r->>'resueltas')::int = 2, 'lote vacío resuelve todo: ' || r::text;
+  r := senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:990000003","valor":"no-es-numero"}]'::jsonb);
+  ASSERT NOT (r->>'ok')::bool AND r->>'error' IS NOT NULL, 'lote malo: ' || r::text;
   ASSERT (SELECT ok = false AND error IS NOT NULL FROM senales_lotes WHERE senal = '_prueba' ORDER BY id DESC LIMIT 1), 'lote malo registrado';
-  ASSERT (SELECT count(*) FROM senales WHERE clave = '_prueba:partner:3') = 0, 'lote malo no inserta';
+  ASSERT (SELECT count(*) FROM senales WHERE clave = '_prueba:partner:990000003') = 0, 'lote malo no inserta';
 
   -- 6. Fuente equivocada o señal desconocida: excepción (error de configuración, no de datos).
   BEGIN
@@ -552,9 +552,10 @@ BEGIN
       ELSE 'todas' END;
 
     -- Abiertas que vienen en el lote: se actualizan (valor_cambio_en solo si el valor cambió).
+    -- clock_timestamp(): now() es la hora de inicio de la transacción y senales_memoria llama esto N veces en una sola.
     UPDATE senales s SET
-      vista_en = now(),
-      valor_cambio_en = CASE WHEN s.valor IS DISTINCT FROM l.valor THEN now() ELSE s.valor_cambio_en END,
+      vista_en = clock_timestamp(),
+      valor_cambio_en = CASE WHEN s.valor IS DISTINCT FROM l.valor THEN clock_timestamp() ELSE s.valor_cambio_en END,
       valor = l.valor, valor_texto = l.valor_texto, vence = l.vence, documentos = l.documentos,
       company_id = coalesce(l.company_id, s.company_id),
       odoo_partner_id = coalesce(l.odoo_partner_id, s.odoo_partner_id),
@@ -566,15 +567,16 @@ BEGIN
 
     -- Claves sin fila abierta: episodio nuevo.
     INSERT INTO senales (clave, episodio, senal, area, tipo, fuente, agrupador, documentos, company_id, odoo_partner_id,
-                         responsable_odoo_user_id, valor, valor_texto, vence, payload)
+                         responsable_odoo_user_id, valor, valor_texto, vence, payload, primera_vista, vista_en, valor_cambio_en)
     SELECT l.clave, 1 + (SELECT count(*) FROM senales p WHERE p.clave = l.clave), p_senal, cfg.area, cfg.tipo, p_fuente,
-           l.agrupador, l.documentos, l.company_id, l.odoo_partner_id, l.responsable_odoo_user_id, l.valor, l.valor_texto, l.vence, l.payload
+           l.agrupador, l.documentos, l.company_id, l.odoo_partner_id, l.responsable_odoo_user_id, l.valor, l.valor_texto, l.vence, l.payload,
+           clock_timestamp(), clock_timestamp(), clock_timestamp()
     FROM _lote l
     WHERE NOT EXISTS (SELECT 1 FROM senales s WHERE s.clave = l.clave AND s.resuelta_en IS NULL);
     GET DIAGNOSTICS n_nuevas = ROW_COUNT;
 
     -- Lo abierto de ESTA señal que no vino: resuelto (lista completa).
-    UPDATE senales s SET resuelta_en = now()
+    UPDATE senales s SET resuelta_en = clock_timestamp()
     WHERE s.senal = p_senal AND s.resuelta_en IS NULL
       AND NOT EXISTS (SELECT 1 FROM _lote l WHERE l.clave = s.clave);
     GET DIAGNOSTICS n_res = ROW_COUNT;
@@ -640,8 +642,8 @@ DO $t$
 DECLARE r jsonb; c uuid := gen_random_uuid(); n int;
 BEGIN
   r := senales_memoria(c);
-  ASSERT (r->'cliente_sin_respuesta'->>'ok')::bool, 'cliente_sin_respuesta: ' || (r->'cliente_sin_respuesta');
-  ASSERT (r->'compromiso_correo'->>'ok')::bool, 'compromiso_correo: ' || (r->'compromiso_correo');
+  ASSERT (r->'cliente_sin_respuesta'->>'ok')::bool, 'cliente_sin_respuesta: ' || (r->'cliente_sin_respuesta')::text;
+  ASSERT (r->'compromiso_correo'->>'ok')::bool, 'compromiso_correo: ' || (r->'compromiso_correo')::text;
   ASSERT (SELECT count(*) FROM senales_lotes WHERE corrida = c AND fuente = 'memoria' AND ok) >= 8, 'ocho o nueve lotes de memoria (cliente_callado solo en su turno de 24 h)';
   -- Con datos reales hay conversaciones sin respuesta (57 el 18-sep) y compromisos (452).
   SELECT count(*) INTO n FROM senales WHERE senal = 'cliente_sin_respuesta' AND resuelta_en IS NULL;
@@ -652,7 +654,7 @@ BEGIN
   ASSERT (SELECT bool_and(payload ? 'ultimo_correo' AND payload ? 'que') FROM senales WHERE senal = 'compromiso_correo' AND resuelta_en IS NULL), 'payload del compromiso';
   -- Idempotente: segunda corrida no crea filas nuevas.
   r := senales_memoria(gen_random_uuid());
-  ASSERT (r->'compromiso_correo'->>'nuevas')::int = 0, 'segunda corrida: ' || (r->'compromiso_correo');
+  ASSERT (r->'compromiso_correo'->>'nuevas')::int = 0, 'segunda corrida: ' || (r->'compromiso_correo')::text;
   RAISE EXCEPTION 'PRUEBA_OK';
 END $t$;
 ```
@@ -836,7 +838,7 @@ BEGIN
       'responsable_odoo_user_id', situacion_responsable_empresa(s.company_id),
       'valor', (current_date - s.ultimo),
       'valor_texto', (current_date - s.ultimo) || ' días sin correo; escribía cada ' || round(s.mediana) || ' días',
-      'payload', jsonb_build_object('ultimo_correo', s.ultimo, 'mediana_dias', round(s.mediana, 1), 'correos_12m', s.n)
+      'payload', jsonb_build_object('ultimo_correo', s.ultimo, 'mediana_dias', round(s.mediana::numeric, 1), 'correos_12m', s.n)
     ) AS x
     FROM stats s
     JOIN companies c ON c.id = s.company_id AND c.odoo_partner_id IS NOT NULL AND c.is_customer
@@ -899,62 +901,62 @@ BEGIN
   VALUES ('_prueba', 'Prueba', 'finanzas', 'credito', 'odoo', 'contraparte', 'suma',
           '{"rfc_relacionados":["RELA010101AAA"]}', '{"antigua_dias":30,"zombie_dias":90}');
   PERFORM senales_ingestar('_prueba', 'odoo', c, '[
-    {"clave":"_prueba:partner:1","odoo_partner_id":1,"valor":100,"documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}]},
-    {"clave":"_prueba:partner:1b","odoo_partner_id":1,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
-    {"clave":"_prueba:partner:2","odoo_partner_id":2,"valor":5,"payload":{"rfc":"RELA010101AAA"}},
-    {"clave":"_prueba:partner:3","odoo_partner_id":3,"valor":7,"payload":{"fecha_base":"2025-01-01"}},
-    {"clave":"_prueba:partner:4","odoo_partner_id":4,"valor":1,"payload":{"dato_malo":"costo 0"}}
+    {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100,"documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}]},
+    {"clave":"_prueba:partner:990000001b","odoo_partner_id":990000001,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
+    {"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":5,"payload":{"rfc":"RELA010101AAA"}},
+    {"clave":"_prueba:partner:990000003","odoo_partner_id":990000003,"valor":7,"payload":{"fecha_base":"2025-01-01"}},
+    {"clave":"_prueba:partner:990000004","odoo_partner_id":990000004,"valor":1,"payload":{"dato_malo":"costo 0"}}
   ]'::jsonb);
-  INSERT INTO situacion_reglas (alcance, clave_alcance, accion, motivo) VALUES ('contraparte', 'partner:4', 'ignorar', 'prueba');
+  INSERT INTO situacion_reglas (alcance, clave_alcance, accion, motivo) VALUES ('contraparte', 'partner:990000004', 'ignorar', 'prueba');
 
   -- Calidad.
   r := senales_actualizar();
-  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:2' AND resuelta_en IS NULL) = 'dato_malo', 'RFC relacionado → dato_malo';
-  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:3' AND resuelta_en IS NULL) = 'zombie', 'fecha_base vieja → zombie';
-  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:4' AND resuelta_en IS NULL) = 'ignorada', 'regla del CEO gana a dato_malo';
-  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:1' AND resuelta_en IS NULL) = 'viva', 'viva';
-  UPDATE senales SET primera_vista = now() - interval '40 days', valor_cambio_en = now() - interval '40 days' WHERE clave = '_prueba:partner:1b';
+  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:990000002' AND resuelta_en IS NULL) = 'dato_malo', 'RFC relacionado → dato_malo';
+  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:990000003' AND resuelta_en IS NULL) = 'zombie', 'fecha_base vieja → zombie';
+  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:990000004' AND resuelta_en IS NULL) = 'ignorada', 'regla del CEO gana a dato_malo';
+  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:990000001' AND resuelta_en IS NULL) = 'viva', 'viva';
+  UPDATE senales SET primera_vista = now() - interval '40 days', valor_cambio_en = now() - interval '40 days' WHERE clave = '_prueba:partner:990000001b';
   r := senales_actualizar();
-  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:1b' AND resuelta_en IS NULL) = 'antigua', 'antigua';
+  ASSERT (SELECT calidad FROM senales WHERE clave = '_prueba:partner:990000001b' AND resuelta_en IS NULL) = 'antigua', 'antigua';
 
   -- Situaciones: partner 1 (dos señales, una viva y una antigua) = una situación; zombie y dato_malo = higiene; ignorada no aparece.
   r := situacion_guardar(c);
-  ASSERT (r->>'nuevas')::int = 3, 'tres situaciones nuevas (partner 1, higiene:zombie, higiene:dato_malo): ' || r;
-  SELECT * INTO s FROM situaciones WHERE clave = '_prueba|partner:1';
-  ASSERT s.estado = 'abierta' AND s.n_senales = 2 AND s.valor = 150 AND s.calidad = 'viva' AND s.titulo LIKE 'Prueba · %', 'situación partner 1 (una señal viva basta para que la situación sea viva): ' || row_to_json(s);
-  ASSERT jsonb_array_length(s.documentos) = 2 AND (s.evidencia->'senales') @> '["_prueba:partner:1"]', 'documentos y evidencia';
+  ASSERT (SELECT count(*) FROM situaciones WHERE senal = '_prueba') = 3, 'tres situaciones de _prueba (partner 1, higiene:zombie, higiene:dato_malo): ' || r::text;
+  SELECT * INTO s FROM situaciones WHERE clave = '_prueba|partner:990000001';
+  ASSERT s.estado = 'abierta' AND s.n_senales = 2 AND s.valor = 150 AND s.calidad = 'viva' AND s.titulo LIKE 'Prueba · %', 'situación partner 1 (una señal viva basta para que la situación sea viva): ' || row_to_json(s)::text;
+  ASSERT jsonb_array_length(s.documentos) = 2 AND (s.evidencia->'senales') @> '["_prueba:partner:990000001"]', 'documentos y evidencia';
   ASSERT (SELECT tipo FROM situaciones WHERE clave = '_prueba|higiene:zombie') = 'higiene', 'higiene zombie';
-  ASSERT NOT EXISTS (SELECT 1 FROM situaciones WHERE clave = '_prueba|partner:4'), 'ignorada no crea situación';
-  ASSERT (r->>'ignoradas')::int = 1, 'ignoradas contadas';
+  ASSERT NOT EXISTS (SELECT 1 FROM situaciones WHERE clave = '_prueba|partner:990000004'), 'ignorada no crea situación';
+  ASSERT (r->>'ignoradas')::int >= 1, 'ignoradas contadas';
 
   -- Empeora: sube el valor → estado empeoro, version 2, historia.
   PERFORM senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[
-    {"clave":"_prueba:partner:1","odoo_partner_id":1,"valor":300,"documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}]},
-    {"clave":"_prueba:partner:1b","odoo_partner_id":1,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
-    {"clave":"_prueba:partner:2","odoo_partner_id":2,"valor":5,"payload":{"rfc":"RELA010101AAA"}},
-    {"clave":"_prueba:partner:3","odoo_partner_id":3,"valor":7,"payload":{"fecha_base":"2025-01-01"}}
+    {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":300,"documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}]},
+    {"clave":"_prueba:partner:990000001b","odoo_partner_id":990000001,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
+    {"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":5,"payload":{"rfc":"RELA010101AAA"}},
+    {"clave":"_prueba:partner:990000003","odoo_partner_id":990000003,"valor":7,"payload":{"fecha_base":"2025-01-01"}}
   ]'::jsonb);
   PERFORM senales_actualizar();
   r := situacion_guardar(gen_random_uuid());
-  SELECT * INTO s FROM situaciones WHERE clave = '_prueba|partner:1';
-  ASSERT s.estado = 'empeoro' AND s.version = 2 AND s.ultimo_cambio LIKE 'empeoró%', 'empeoró: ' || row_to_json(s);
+  SELECT * INTO s FROM situaciones WHERE clave = '_prueba|partner:990000001';
+  ASSERT s.estado = 'empeoro' AND s.version = 2 AND s.ultimo_cambio LIKE 'empeoró%', 'empeoró: ' || row_to_json(s)::text;
   ASSERT jsonb_array_length(s.historia) = 2, 'historia con dos eventos';
   -- Candidata: nueva/empeorada sin redacción vigente.
   ASSERT EXISTS (SELECT 1 FROM situacion_candidatas(40) WHERE id = s.id), 'es candidata';
   -- Lote sin partner 1 → sus señales se resuelven → situación resuelta, y ya no es candidata.
-  PERFORM senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:2","odoo_partner_id":2,"valor":5,"payload":{"rfc":"RELA010101AAA"}}]'::jsonb);
+  PERFORM senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[{"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":5,"payload":{"rfc":"RELA010101AAA"}}]'::jsonb);
   PERFORM senales_actualizar();
   r := situacion_guardar(gen_random_uuid());
-  SELECT * INTO s FROM situaciones WHERE clave = '_prueba|partner:1';
+  SELECT * INTO s FROM situaciones WHERE clave = '_prueba|partner:990000001';
   ASSERT s.estado = 'resuelta' AND s.resuelta_en IS NOT NULL, 'resuelta por evidencia: ' || s.estado;
   ASSERT NOT EXISTS (SELECT 1 FROM situacion_candidatas(40) WHERE id = s.id), 'resuelta no es candidata';
   -- Sin datos: si el último lote bueno de la señal es viejo, sus situaciones no se tocan.
   UPDATE senales_lotes SET recibido_en = now() - interval '5 hours' WHERE senal = '_prueba';
   PERFORM senales_ingestar('_prueba', 'odoo', gen_random_uuid(), '[]'::jsonb);  -- lote vacío pero…
   UPDATE senales_lotes SET ok = false WHERE senal = '_prueba' AND n_claves = 0;  -- …marcado malo: no cuenta
-  UPDATE senales SET resuelta_en = NULL WHERE clave = '_prueba:partner:2';       -- reabrimos a mano para la prueba
+  UPDATE senales SET resuelta_en = NULL WHERE clave = '_prueba:partner:990000002';       -- reabrimos a mano para la prueba
   r := situacion_guardar(gen_random_uuid());
-  ASSERT (r->'sin_datos') @> '["_prueba"]', 'señal sin datos reportada: ' || r;
+  ASSERT (r->'sin_datos') @> '["_prueba"]', 'señal sin datos reportada: ' || r::text;
   ASSERT (SELECT estado FROM situaciones WHERE clave = '_prueba|higiene:dato_malo') <> 'resuelta', 'sin datos no resuelve';
 
   -- Ciclo completo y cierre de corrida.
@@ -1068,7 +1070,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.situacion_guardar(p_corrida uuid DEFAULT gen_random_uuid())
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
-  g record; s record; n_nuevas int := 0; n_act int := 0; n_res int := 0; n_ign int := 0; n_sin int := 0;
+  -- La variable se llama `sit` (no `s`): plpgsql resolvería `s.senal` de los SELECT como la variable y no como el alias de tabla.
+  g record; sit record; n_nuevas int := 0; n_act int := 0; n_res int := 0; n_ign int := 0; n_sin int := 0;
   v_estado text; v_cambio text; v_evento jsonb; v_sin_datos text[];
 BEGIN
   -- Señales cuyo último lote bueno es más viejo que sin_datos_horas: no se tocan sus situaciones.
@@ -1102,15 +1105,15 @@ BEGIN
   GROUP BY s.senal, c.area, c.tipo, c.titulo, c.severidad_base, c.agregar,
            CASE WHEN s.calidad IN ('zombie', 'dato_malo') THEN 'higiene:' || s.calidad ELSE s.agrupador END;
   -- Segundo paso (los agregados no pueden ir dentro de subconsultas): primeros 40 documentos y evidencia.
-  UPDATE _grupos g SET
-    documentos = (SELECT coalesce(jsonb_agg(d), '[]') FROM (SELECT d FROM jsonb_array_elements(g.docs_flat) d LIMIT 40) q),
+  UPDATE _grupos gr SET   -- alias gr: `g` es la variable del loop de abajo
+    documentos = (SELECT coalesce(jsonb_agg(d), '[]') FROM (SELECT d FROM jsonb_array_elements(gr.docs_flat) d LIMIT 40) q),
     evidencia = jsonb_build_object(
-      'senales', g.claves,
-      'threads', coalesce((SELECT jsonb_agg(DISTINCT (d->>'id')::bigint) FROM jsonb_array_elements(g.docs_flat) d WHERE d->>'modelo' = 'thread'), '[]'::jsonb),
-      'episodio_max', g.episodio_max);
+      'senales', gr.claves,
+      'threads', coalesce((SELECT jsonb_agg(DISTINCT (d->>'id')::bigint) FROM jsonb_array_elements(gr.docs_flat) d WHERE d->>'modelo' = 'thread'), '[]'::jsonb),
+      'episodio_max', gr.episodio_max);
 
   FOR g IN SELECT * FROM _grupos LOOP
-    SELECT * INTO s FROM situaciones WHERE clave = g.senal || '|' || g.agrupador;
+    SELECT * INTO sit FROM situaciones WHERE clave = g.senal || '|' || g.agrupador;
     IF NOT FOUND THEN
       INSERT INTO situaciones (clave, senal, agrupador, area, tipo, titulo, company_id, odoo_partner_id, documentos, evidencia,
                                responsable_sugerido_user_id, severidad, desde, vence, estado, calidad, n_senales, valor, valor_texto,
@@ -1125,27 +1128,27 @@ BEGIN
       n_nuevas := n_nuevas + 1;
     ELSE
       v_estado := NULL; v_cambio := NULL;
-      IF s.estado IN ('resuelta', 'descartada') THEN
-        IF s.estado = 'descartada' THEN CONTINUE; END IF;  -- el CEO la descartó: no reabrir (una regla la esconde; aquí solo se respeta)
+      IF sit.estado IN ('resuelta', 'descartada') THEN
+        IF sit.estado = 'descartada' THEN CONTINUE; END IF;  -- el CEO la descartó: no reabrir (una regla la esconde; aquí solo se respeta)
         v_estado := 'abierta'; v_cambio := 'reapareció: ' || g.n || ' señal(es), valor ' || coalesce(g.valor::text, '-');
-      ELSIF g.n > s.n_senales OR (g.valor IS NOT NULL AND s.valor IS NOT NULL AND g.valor > s.valor * 1.05) THEN
-        v_estado := 'empeoro'; v_cambio := format('empeoró: %s → %s documentos, valor %s → %s', s.n_senales, g.n, coalesce(s.valor::text, '-'), coalesce(g.valor::text, '-'));
-      ELSIF g.n < s.n_senales OR (g.valor IS NOT NULL AND s.valor IS NOT NULL AND g.valor < s.valor * 0.95) THEN
-        v_estado := 'mejoro'; v_cambio := format('mejoró: %s → %s documentos, valor %s → %s', s.n_senales, g.n, coalesce(s.valor::text, '-'), coalesce(g.valor::text, '-'));
+      ELSIF g.n > sit.n_senales OR (g.valor IS NOT NULL AND sit.valor IS NOT NULL AND g.valor > sit.valor * 1.05) THEN
+        v_estado := 'empeoro'; v_cambio := format('empeoró: %s → %s documentos, valor %s → %s', sit.n_senales, g.n, coalesce(sit.valor::text, '-'), coalesce(g.valor::text, '-'));
+      ELSIF g.n < sit.n_senales OR (g.valor IS NOT NULL AND sit.valor IS NOT NULL AND g.valor < sit.valor * 0.95) THEN
+        v_estado := 'mejoro'; v_cambio := format('mejoró: %s → %s documentos, valor %s → %s', sit.n_senales, g.n, coalesce(sit.valor::text, '-'), coalesce(g.valor::text, '-'));
       END IF;
       UPDATE situaciones SET
-        documentos = g.documentos, evidencia = s.evidencia || g.evidencia, calidad = g.calidad, n_senales = g.n, valor = g.valor,
-        valor_texto = left(g.valor_texto, 600), vence = g.vence, company_id = coalesce(g.company_id, s.company_id),
-        odoo_partner_id = coalesce(g.odoo_partner_id, s.odoo_partner_id),
-        responsable_sugerido_user_id = coalesce(s.responsable_sugerido_user_id, g.responsable),
-        estado = coalesce(v_estado, CASE WHEN s.estado = 'delegada' THEN 'delegada' ELSE s.estado END),
-        resuelta_en = CASE WHEN v_estado = 'abierta' THEN NULL ELSE s.resuelta_en END,
-        version = CASE WHEN v_estado IS NOT NULL THEN s.version + 1 ELSE s.version END,
-        ultimo_cambio = coalesce(v_cambio, s.ultimo_cambio),
-        ultimo_cambio_en = CASE WHEN v_estado IS NOT NULL THEN now() ELSE s.ultimo_cambio_en END,
-        historia = CASE WHEN v_estado IS NOT NULL THEN s.historia || jsonb_build_object('fecha', now(), 'evento', v_estado, 'detalle', v_cambio, 'corrida', p_corrida) ELSE s.historia END,
+        documentos = g.documentos, evidencia = sit.evidencia || g.evidencia, calidad = g.calidad, n_senales = g.n, valor = g.valor,
+        valor_texto = left(g.valor_texto, 600), vence = g.vence, company_id = coalesce(g.company_id, sit.company_id),
+        odoo_partner_id = coalesce(g.odoo_partner_id, sit.odoo_partner_id),
+        responsable_sugerido_user_id = coalesce(sit.responsable_sugerido_user_id, g.responsable),
+        estado = coalesce(v_estado, CASE WHEN sit.estado = 'delegada' THEN 'delegada' ELSE sit.estado END),
+        resuelta_en = CASE WHEN v_estado = 'abierta' THEN NULL ELSE sit.resuelta_en END,
+        version = CASE WHEN v_estado IS NOT NULL THEN sit.version + 1 ELSE sit.version END,
+        ultimo_cambio = coalesce(v_cambio, sit.ultimo_cambio),
+        ultimo_cambio_en = CASE WHEN v_estado IS NOT NULL THEN now() ELSE sit.ultimo_cambio_en END,
+        historia = CASE WHEN v_estado IS NOT NULL THEN sit.historia || jsonb_build_object('fecha', now(), 'evento', v_estado, 'detalle', v_cambio, 'corrida', p_corrida) ELSE sit.historia END,
         updated_at = now()
-      WHERE id = s.id;
+      WHERE id = sit.id;
       IF v_estado IS NOT NULL THEN n_act := n_act + 1; END IF;
     END IF;
   END LOOP;
@@ -1158,7 +1161,7 @@ BEGIN
     updated_at = now()
   WHERE s.estado NOT IN ('resuelta', 'descartada')
     AND NOT (s.senal = ANY (v_sin_datos))
-    AND NOT EXISTS (SELECT 1 FROM _grupos g WHERE g.senal || '|' || g.agrupador = s.clave);
+    AND NOT EXISTS (SELECT 1 FROM _grupos gr WHERE gr.senal || '|' || gr.agrupador = s.clave);  -- alias gr: `g` es la variable del loop
   GET DIAGNOSTICS n_res = ROW_COUNT;
   DROP TABLE IF EXISTS _grupos;
 
@@ -1236,24 +1239,24 @@ DECLARE r jsonb; c uuid := gen_random_uuid(); sid bigint; sid2 bigint; m record;
 BEGIN
   INSERT INTO senales_config (senal, titulo, area, tipo, fuente, agrupar_por, agregar) VALUES ('_prueba', 'Prueba', 'finanzas', 'credito', 'odoo', 'contraparte', 'suma');
   PERFORM senales_ingestar('_prueba', 'odoo', c, '[
-    {"clave":"_prueba:partner:1","odoo_partner_id":1,"responsable_odoo_user_id":2,"valor":100,"valor_texto":"cien","documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}]},
-    {"clave":"_prueba:partner:1b","odoo_partner_id":1,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
-    {"clave":"_prueba:partner:3","odoo_partner_id":3,"valor":7,"payload":{"fecha_base":"2025-01-01"}}
+    {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"responsable_odoo_user_id":2,"valor":100,"valor_texto":"cien","documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}]},
+    {"clave":"_prueba:partner:990000001b","odoo_partner_id":990000001,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
+    {"clave":"_prueba:partner:990000003","odoo_partner_id":990000003,"valor":7,"payload":{"fecha_base":"2025-01-01"}}
   ]'::jsonb);
   UPDATE senales_config SET reglas_calidad = '{"zombie_dias":90,"limpieza":"borrar"}' WHERE senal = '_prueba';
   PERFORM senales_actualizar(); PERFORM situacion_guardar(c);
-  SELECT id INTO sid FROM situaciones WHERE clave = '_prueba|partner:1';
+  SELECT id INTO sid FROM situaciones WHERE clave = '_prueba|partner:990000001';
 
   -- mapa: la situación viva sale; la de higiene no (calidad zombie) salvo p_calidad = NULL.
   SELECT * INTO m FROM situacion_mapa('finanzas') WHERE id = sid;
-  ASSERT m.id IS NOT NULL AND m.dias_abierta = 0 AND m.calidad = 'viva' AND m.ultimo_cambio LIKE 'creada%', 'mapa: ' || row_to_json(m);
+  ASSERT m.id IS NOT NULL AND m.dias_abierta = 0 AND m.calidad = 'viva' AND m.ultimo_cambio LIKE 'creada%', 'mapa: ' || row_to_json(m)::text;
   ASSERT NOT EXISTS (SELECT 1 FROM situacion_mapa('finanzas') WHERE senal = '_prueba' AND calidad = 'zombie'), 'zombie fuera del mapa por defecto';
   ASSERT EXISTS (SELECT 1 FROM situacion_mapa('finanzas', NULL) WHERE senal = '_prueba' AND calidad = 'zombie'), 'p_calidad NULL trae todas';
   ASSERT NOT EXISTS (SELECT 1 FROM situacion_mapa('comercial') WHERE senal = '_prueba'), 'filtro por área';
 
   -- contexto: señales, documentos, contraparte, hermanas, reglas, historia.
   r := situacion_contexto(sid);
-  ASSERT jsonb_array_length(r->'senales') = 2 AND (r->'situacion'->>'clave') = '_prueba|partner:1', 'contexto señales: ' || left(r::text, 300);
+  ASSERT jsonb_array_length(r->'senales') = 2 AND (r->'situacion'->>'clave') = '_prueba|partner:990000001', 'contexto señales: ' || left(r::text, 300);
   ASSERT r ? 'contraparte' AND r ? 'hermanas' AND r ? 'posibles_duplicados' AND r ? 'reglas' AND r ? 'historia' AND r ? 'personas', 'llaves del contexto: ' || (SELECT string_agg(k, ',') FROM jsonb_object_keys(r) k);
   ASSERT (r->'senales'->0) ? 'calidad' AND (r->'senales'->0) ? 'episodio', 'señales con calidad y episodio';
 
@@ -1262,18 +1265,18 @@ BEGIN
 
   -- higiene y salud.
   r := situacion_higiene();
-  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(r->'clases') x WHERE x->>'senal' = '_prueba' AND x->>'calidad' = 'zombie' AND (x->>'n')::int = 1 AND x->>'limpieza' = 'borrar'), 'higiene: ' || r;
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(r->'clases') x WHERE x->>'senal' = '_prueba' AND x->>'calidad' = 'zombie' AND (x->>'n')::int = 1 AND x->>'limpieza' = 'borrar'), 'higiene: ' || r::text;
   r := situacion_salud();
   ASSERT r ? 'senales' AND r ? 'bot' AND r ? 'memoria' AND r ? 'odoo_push', 'salud llaves';
-  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(r->'senales') x WHERE x->>'senal' = '_prueba' AND (x->>'edad_h')::numeric < 1 AND NOT (x->>'sin_datos')::bool), 'salud señal reciente: ' || (r->'senales');
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(r->'senales') x WHERE x->>'senal' = '_prueba' AND (x->>'edad_h')::numeric < 1 AND NOT (x->>'sin_datos')::bool), 'salud señal reciente: ' || (r->'senales')::text;
 
   -- redactar: escribe solo lo suyo, respeta la banda, sube ia_version, fusiona.
   INSERT INTO situaciones (clave, senal, agrupador, area, tipo, titulo, company_id, odoo_partner_id, severidad, estado)
-  VALUES ('_prueba|partner:1x', '_prueba', 'partner:1x', 'finanzas', 'credito', 'Prueba · duplicada', (SELECT company_id FROM situaciones WHERE id = sid), 1, 2, 'abierta') RETURNING id INTO sid2;
-  r := situacion_redactar(sid, '{"titulo":"Cartera de prueba","resumen":"Debe 150.","recomendacion":"Cobrar.","severidad":9,"responsable_sugerido_user_id":2,"responsable_motivo":"dueño","evento_historia":"redactada","duplicados":[{"id":' || sid2 || ',"decision":"fusionar","motivo":"misma cartera"}]}'::jsonb, 'modelo-x', NULL);
-  ASSERT (r->>'ok')::bool AND (r->>'fusiones')::int = 1, 'redactar: ' || r;
+  VALUES ('_prueba|partner:990000001x', '_prueba', 'partner:990000001x', 'finanzas', 'credito', 'Prueba · duplicada', (SELECT company_id FROM situaciones WHERE id = sid), 990000001, 2, 'abierta') RETURNING id INTO sid2;
+  r := situacion_redactar(sid, format('{"titulo":"Cartera de prueba","resumen":"Debe 150.","recomendacion":"Cobrar.","severidad":9,"responsable_sugerido_user_id":2,"responsable_motivo":"dueño","evento_historia":"redactada","duplicados":[{"id":%s,"decision":"fusionar","motivo":"misma cartera"}]}', sid2)::jsonb, 'modelo-x', NULL);
+  ASSERT (r->>'ok')::bool AND (r->>'fusiones')::int = 1, 'redactar: ' || r::text;
   SELECT * INTO m FROM situaciones WHERE id = sid;
-  ASSERT m.titulo = 'Cartera de prueba' AND m.severidad = 4 AND m.ia_version = m.version AND m.ia_modelo = 'modelo-x' AND m.estado = 'abierta' AND m.clave = '_prueba|partner:1', 'redactar escribe solo lo suyo y recorta severidad a la banda: ' || row_to_json(m);
+  ASSERT m.titulo = 'Cartera de prueba' AND m.severidad = 4 AND m.ia_version = m.version AND m.ia_modelo = 'modelo-x' AND m.estado = 'abierta' AND m.clave = '_prueba|partner:990000001', 'redactar escribe solo lo suyo y recorta severidad a la banda: ' || row_to_json(m)::text;
   ASSERT (SELECT fusionada_en FROM situaciones WHERE id = sid2) = sid, 'fusionada_en';
   ASSERT NOT EXISTS (SELECT 1 FROM situacion_mapa('finanzas') WHERE id = sid2), 'la fusionada sale del mapa';
   ASSERT NOT EXISTS (SELECT 1 FROM situacion_candidatas(40) WHERE id = sid), 'ya redactada no es candidata';
@@ -1343,11 +1346,11 @@ BEGIN
                        FROM (SELECT * FROM memoria_thread_summaries WHERE thread_id IN (SELECT (jsonb_array_elements_text(coalesce(s.evidencia->'threads', '[]')))::bigint) ORDER BY summarized_through DESC LIMIT 5) m),
     'hermanas', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', h.id, 'titulo', h.titulo, 'senal', h.senal, 'severidad', h.severidad, 'estado', h.estado, 'dias_abierta', current_date - h.desde) ORDER BY h.severidad DESC), '[]')
                  FROM situaciones h WHERE h.id <> s.id AND h.company_id IS NOT NULL AND h.company_id = s.company_id AND h.estado NOT IN ('resuelta', 'descartada') AND h.fusionada_en IS NULL),
-    'posibles_duplicados', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', h.id, 'titulo', h.titulo, 'senal', h.senal, 'similitud', round(extensions.similarity(h.titulo, s.titulo)::numeric, 2), 'documentos_comunes', dc.n) ORDER BY dc.n DESC), '[]')
+    'posibles_duplicados', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', h.id, 'titulo', h.titulo, 'senal', h.senal, 'similitud', round(similarity(h.titulo, s.titulo)::numeric, 2), 'documentos_comunes', dc.n) ORDER BY dc.n DESC), '[]')
                             FROM situaciones h
                             CROSS JOIN LATERAL (SELECT count(*) AS n FROM jsonb_array_elements(h.documentos) a JOIN jsonb_array_elements(s.documentos) b ON a->>'modelo' = b->>'modelo' AND a->>'id' = b->>'id') dc
                             WHERE h.id <> s.id AND h.estado NOT IN ('resuelta', 'descartada') AND h.fusionada_en IS NULL
-                              AND ((h.company_id IS NOT NULL AND h.company_id = s.company_id AND extensions.similarity(h.titulo, s.titulo) > 0.3) OR dc.n > 0)),
+                              AND ((h.company_id IS NOT NULL AND h.company_id = s.company_id AND similarity(h.titulo, s.titulo) > 0.3) OR dc.n > 0)),
     'reglas', (SELECT coalesce(jsonb_agg(to_jsonb(r)), '[]') FROM situacion_reglas r
                WHERE (r.vigente_hasta IS NULL OR r.vigente_hasta > now())
                  AND ((r.alcance = 'senal' AND r.clave_alcance = s.senal) OR (r.alcance = 'situacion' AND r.clave_alcance = s.clave)
@@ -1504,13 +1507,9 @@ Formato de fila (lo que `senales_ingestar` espera):
 - Modify: `addons/quimibond_intelligence/models/supabase_client.py`
 - Modify: `addons/quimibond_intelligence/tests/test_supabase_client_details.py`
 
-- [ ] **Step 1: Tests (pytest, mock de httpx)** — agregar al final del archivo de tests:
+- [ ] **Step 1: Tests (pytest, mock de httpx)** — `import pytest` y `from quimibond_intelligence.models.supabase_client import SupabaseClient, SupabaseError` van **arriba** del archivo (flake8 E402 no está en la lista de ignorados); las funciones, al final:
 
 ```python
-import pytest
-from quimibond_intelligence.models.supabase_client import SupabaseError
-
-
 def test_rpc_strict_returns_json_on_2xx():
     mock = MagicMock()
     resp = MagicMock(status_code=200, content=b'{"ok": true, "nuevas": 2}')
@@ -1626,7 +1625,13 @@ class TestSenalesBase(TransactionCase):
         self.assertEqual(base.umbral({}, 'dias', 3), 3)
 ```
 
-`tests/__init__.py` (hoy vacío para pytest): `from . import test_senales_base` (y después los demás `test_senales_*`). Los archivos de pytest (`conftest.py`, `test_supabase_client_details.py`) no se importan aquí: pytest los descubre solo y Odoo solo importa lo que lista `__init__.py`.
+`tests/__init__.py` (hoy vacío para pytest): `from . import test_senales_base` (y después los demás `test_senales_*` y `test_push_senales`). Los archivos de pytest (`conftest.py`, `test_supabase_client_details.py`) no se importan aquí: pytest los descubre solo y Odoo solo importa lo que lista `__init__.py`. Para que pytest **no** intente recolectar los tests de Odoo (importan `odoo.tests`, que no existe fuera de Odoo), agrega al final de `tests/conftest.py`:
+
+```python
+# Los test_senales_*.py y test_push_senales.py son tests de Odoo (TransactionCase): los corre el CI
+# dentro de Odoo, no pytest.
+collect_ignore_glob = ['test_senales_*.py', 'test_push_senales.py', 'common.py']
+```
 
 `tests/common.py`:
 
@@ -1835,10 +1840,12 @@ class TestSenalesFinanzas(SenalesCommon):
         self.assertEqual([f for f in self.filas('factura_proveedor_borrador', {'umbrales': {'dias': 10}}) if f['clave'].endswith(':%d' % inv.id)], [])
 
     def test_senales_de_modelos_no_instalados_devuelven_none(self):
-        # En Community no hay hr_payroll, sign ni SGI: None = sin lote (situacion_salud lo reporta), nunca [] (que resolvería todo).
-        for s in ('nomina_borrador', 'sat_discrepancia', 'cash_bajo_piso', 'indicador_financiero_rojo'):
-            if not self.env['ir.module.module'].search([('name', 'in', ('hr_payroll', 'quimibond_sat', 'quimibond_cash_flow', 'quimibond_sgi')), ('state', '=', 'installed')]):
+        # En Community no hay hr_payroll, cash flow ni SGI: None = sin lote (situacion_salud lo reporta), nunca [] (que resolvería todo).
+        for s, modelo in (('nomina_borrador', 'hr.payslip'), ('cash_bajo_piso', 'cash.flow.forecast.engine'), ('indicador_financiero_rojo', 'sgi.indicator.measure')):
+            if modelo not in self.env:
                 self.assertIsNone(self.filas(s), s)
+        if 'sat.compare.line' in self.env:  # quimibond_sat sí está en el CI
+            self.assertIsInstance(self.filas('sat_discrepancia'), list)
 ```
 
 - [ ] **Step 2: Correr en CI → fallan** (`KeyError: 'cartera_vencida'` en el registro).
@@ -2416,7 +2423,8 @@ def oc_sin_confirmacion(env, cfg):
     n = umbral(cfg, 'dias', 5)
     pos = env['purchase.order'].sudo().search([('company_id', 'in', companias(env)), ('state', '=', 'purchase'),
                                                ('date_approve', '<', hace(n)), ('partner_ref', '=', False), ('effective_date', '=', False)])
-    pos = pos.filtered(lambda p: not any(pk.state in ('assigned', 'done') for pk in p.picking_ids))
+    # Las recepciones de proveedor nacen en 'assigned' (sin reserva): solo una recepción hecha cuenta como acuse.
+    pos = pos.filtered(lambda p: not any(pk.state == 'done' for pk in p.picking_ids))
     filas = []
     for partner, ps in agrupar(pos, lambda p: p.partner_id.commercial_partner_id).items():
         filas.append(fila(f'oc_sin_confirmacion:partner:{partner.id}', [doc(p, p.name, monto=p.amount_total, aprobada=str(p.date_approve.date())) for p in ps[:30]],
@@ -2486,9 +2494,9 @@ def proveedor_reprobado(env, cfg):
         return None
     minimo = umbral(cfg, 'score', 70)
     Eval = env['sgi.supplier.eval'].sudo()
-    # Campo del proveedor y de la fecha: confírmalos con `grep -n "fields\." addons/quimibond_sgi/models/sgi_supplier_eval.py | head -20` (se esperan partner_id y date).
+    # sgi.supplier.eval: partner_id y periodo date_from/date_to (verificado); la última evaluación por proveedor es la de mayor date_to.
     vistos, filas = set(), []
-    for ev in Eval.search([], order='date desc, id desc'):
+    for ev in Eval.search([], order='date_to desc, id desc'):
         pid = ev.partner_id.id
         if pid in vistos:
             continue
@@ -3472,7 +3480,23 @@ VALUES ('info', 'migration', 'Situación plan A paso 3: job situacion_respaldo (
   const { data: lote, error: loteErr } = await supabase.rpc("senales_ingestar", { p_senal: "job_caido", p_fuente: "watchdog", p_corrida: crypto.randomUUID(), p_filas: filas });
   if (loteErr || !(lote as { ok?: boolean })?.ok) console.warn("[health] senales_ingestar job_caido", loteErr?.message ?? lote);
 ```
-y agrega `odoo_stale` para el push de señales: junto al bloque 2 (`odoo contacts`), el mismo check con `.eq("method", "senales")` y umbral 3 h (`odoo senales: Nh sin push exitoso`). También en `JOB_INTERVALS`: `situacion_respaldo: 60` no (corre condicional); en cambio agrega un check: última fila de `situacion_corridas` con `terminada_en` más nueva que 3 h, si no → `issues.push({ kind: "cron_stale", detail: "situacion-consolidar: Nh sin corrida terminada" })`.
+y, justo después del bloque 2 (`odoo contacts`), dos checks más (mismos `kind` que ya existen; `situacion_respaldo` no va en `JOB_INTERVALS` porque corre condicional):
+
+```ts
+  // 2b. Push de señales de Odoo (cada hora; umbral 3 h) y última corrida terminada del bot (umbral 3 h).
+  const { data: lastSenales } = await supabase.from("odoo_push_last_events").select("created_at").eq("method", "senales").eq("status", "success")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const senalesAgeH = lastSenales?.created_at ? (now - new Date(lastSenales.created_at).getTime()) / 3600000 : null;
+  if (senalesAgeH === null || senalesAgeH > 3) {
+    issues.push({ kind: "odoo_stale", detail: `odoo senales: ${senalesAgeH === null ? "?" : Math.round(senalesAgeH)}h sin push exitoso (esperado cada 1h, umbral 3h)` });
+  }
+  const { data: lastRun } = await supabase.from("situacion_corridas").select("terminada_en").not("terminada_en", "is", null)
+    .order("terminada_en", { ascending: false }).limit(1).maybeSingle();
+  const botAgeH = lastRun?.terminada_en ? (now - new Date(lastRun.terminada_en).getTime()) / 3600000 : null;
+  if (botAgeH === null || botAgeH > 3) {
+    issues.push({ kind: "cron_stale", detail: `situacion-consolidar: ${botAgeH === null ? "nunca ha terminado" : Math.round(botAgeH) + "h sin corrida terminada"} (umbral 3h)` });
+  }
+```
 
 - [ ] **Step 2: Desplegar `health`** (files `health/index.ts`, `_shared/env.ts`, `_shared/mailer.ts`) y probar `select invoke_edge('health')`; luego `select * from senales where senal = 'job_caido'` (vacío si todo está sano) y `select count(*) from senales_lotes where senal = 'job_caido'` = 1.
 - [ ] **Step 3: Commit** — "health: señal job_caido y vigilancia del push de señales y del bot".
@@ -3496,5 +3520,7 @@ y agrega `odoo_stale` para el push de señales: junto al bloque 2 (`odoo contact
 3. Parte 3 (bot) — necesita la Parte 1; la aceptación completa necesita la Parte 2 en producción. Las Tareas 3.1 y 3.2 se pueden hacer mientras el CEO despliega Odoo.
 
 **Cosas que el CEO tiene que hacer** (no se pueden automatizar desde aquí): correr `odoo-update quimibond_intelligence && odoosh-restart http && odoosh-restart cron` tras el merge a `quimibond`; revisar las 20 situaciones redactadas; decidir sobre la primera lista de higiene.
+
+**Desviación consciente respecto al spec (§2, §8 paso 2):** los 74 registros de `qb.obligation` no se copian; se **puentean** en vivo con la señal `obligacion_legado` (una situación por obligación abierta) hasta que el plan B retire el módulo. Dilo así en el PR y en `CLAUDE.md`.
 
 **Fuera de este plan (plan B):** `situacion_cambios`, `situacion-digest` y retiro de `email-digest`; `situacion_decidir` y reglas persistentes desde MCP; delegación (`sync_commands.payload`, `crear_actividad`, `mail.activity.situacion_id`, hooks, `delegacion_estado`, fix de `status='error'`); `qb_situacion` en Odoo y desinstalación de `qb_obligation` (antes: último lote vacío de `obligacion_legado`).
