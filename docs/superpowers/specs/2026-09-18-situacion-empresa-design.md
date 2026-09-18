@@ -93,7 +93,7 @@ error.
 `senal` PK, `area`, `tipo`, `fuente`, `activa`, `umbrales` jsonb (p.ej.
 `{"dias":7}`), `severidad_base` (1-5) y `severidad_max`, `reglas_calidad` jsonb
 (cuándo es `zombie`/`dato_malo`, ver §5), `agrupar_por` (`contraparte`,
-`documento`, `responsable`, `ninguno`), `cada_horas` (1 por defecto; 6 para
+`documento`, `responsable`, `situacion`, `ninguno`), `cada_horas` (1 por defecto; 6 para
 cash flow, costeo y SGI), `sin_datos_horas` (por defecto `2 × cada_horas`: edad
 del último lote bueno a partir de la cual la señal se reporta `sin_datos`),
 `descripcion` (para que el bot sepa qué significa). Cambiar un umbral es un
@@ -118,7 +118,7 @@ del último lote bueno a partir de la cual la señal se reporta `sin_datos`),
 | `estado` | text | `abierta`, `empeoro`, `mejoro`, `resuelta`, `descartada`, `delegada` |
 | `calidad` | text | Peor calidad entre sus señales vivas (`viva` > `antigua` > …) |
 | `recomendacion` | text | Qué haría la IA, con la acción concreta |
-| `delegacion` | jsonb | `{"user_id", "fecha", "texto", "mail_activity_id", "estado"}` |
+| `delegacion` | jsonb | `{"user_id", "fecha", "texto", "vence", "mail_activity_id", "estado", "error"}` |
 | `historia` | jsonb | Lista de `{fecha, evento, detalle}`: creada, empeoró (+8 días), fusionada con X, delegada, resuelta por evidencia |
 | `dias_abierta`, `dias_sin_cambio` | int (generados) | Para que ningún lector infiera nada |
 | `ultimo_cambio` | text | "empeoró: +8 días, cliente reclamó el 17-sep" |
@@ -150,7 +150,7 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
 | `pedido_sin_fecha` | `sale.order` state=sale sin `commitment_date` y con líneas por entregar | por medir |
 | `cliente_sin_respuesta` | memoria: `threads.status IN ('needs_response','stalled')` con `last_sender_type='external'` y `last_activity < hoy − 3 d` (campos que `memoria_link_recent` ya mantiene); agrupa por empresa | 57 (7 d) |
 | `compromiso_correo` | memoria: `memoria_thread_summaries.pendientes` con `quien='nosotros'`; clave por conversación + hash del texto | 452 |
-| `cliente_callado` | memoria + facturas: sin correo ni pedido en > 2× su intervalo habitual (ritmo del contacto ya calculado en `memoria_link_recent`) | por medir |
+| `cliente_callado` | memoria + facturas: sin correo ni pedido en > 2× su intervalo habitual (el intervalo por empresa es un cálculo SQL nuevo en el paso 1: mediana de días entre correos entrantes de los últimos 12 meses) | por medir |
 | `oportunidad_demanda` | `customer_demand_signals` cuya `id` aún no es clave de señal (`oportunidad_demanda:demand:<id>`); no requiere columna nueva | 752 |
 | `lead_frio` | `crm.lead` abierto sin actividad > 14 d | por medir |
 | `venta_margen_negativo` | `sale.order.line` state=sale, `margin < 0`, 90 d; **`dato_malo` si costo = 0 o precio = 0** | 41 líneas |
@@ -222,7 +222,7 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
 | Señal | Fuente y regla | Hoy |
 |---|---|---|
 | `ticket_abierto` | `helpdesk.ticket` no resuelto > 7 d | 10 |
-| `job_caido` | watchdog: `memoria_cron_health`, `odoo_push_last_events` > 6 h, crons de Odoo sin corrida | 0 |
+| `job_caido` | watchdog: la Edge Function `health` (cada hora) llama `senales_ingestar` con `fuente='watchdog'` a partir de `memoria_cron_health`, `odoo_push_last_events` > 6 h y `senales_lotes` viejos | 0 |
 
 ### Dirección
 | Señal | Fuente y regla | Hoy |
@@ -241,7 +241,10 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
    es buzón compartido (rhmexico@, ventas@…), la tabla `buzon_personas(buzon,
    odoo_user_id, area)` (tabla aparte, varios buzones por usuario) que
    `_push_users` manda como segundo upsert desde la configuración "Buzones
-   (memoria)" de `qb_memoria` (`qb.memoria.mailbox`).
+   (memoria)" de `qb_memoria` (`qb.memoria.mailbox`). `quimibond_intelligence`
+   no depende de `qb_memoria`: el push comprueba `'qb.memoria.mailbox' in
+   self.env` y, si no está, manda `buzon_personas` vacío (no se cambia el
+   manifest de un módulo en `tools/no_bump.txt`).
 2. Las señales de Odoo se calculan en Odoo (`_push_senales`, un método por
    señal, todos en `quimibond_intelligence/models/senales/`). **Contrato de
    ingesta:** una llamada por señal al RPC
@@ -251,7 +254,9 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
    abiertas que no vienen en el lote, y registra el lote en `senales_lotes`.
    Al terminar todos los métodos, Odoo llama `senales_push_terminado(p_corrida)`,
    que dispara la consolidación (`invoke_edge('situacion-consolidar')`): el bot
-   corre **después** del push por evento, no por reloj. Las señales del SAT
+   corre **después** del push por evento, no por reloj. Mientras la Edge
+   Function no exista (entre los pasos 2 y 3 del plan) el RPC registra el
+   intento y devuelve sin error. Las señales del SAT
    (`sat.compare.line`, `sat.pago.compare`) son modelos de Odoo y van por el
    mismo push con `fuente='odoo'`. Las de **memoria** las calcula
    `senales_memoria()` en SQL al inicio de la consolidación y **pasan por el
@@ -307,7 +312,7 @@ no infiere nada.
 
 Cada hora, después del push de Odoo:
 
-1. `senales_actualizar()` (SQL): recalcula edad y `calidad`, aplica reglas del CEO. (La resolución ya la hizo `senales_ingestar` por lote, §3.1.1; aquí solo se propaga a las situaciones.) El bot arranca por evento (`senales_push_terminado`) y, como respaldo, por pg_cron cada hora si no corrió en los últimos 50 min; si el último lote bueno de una señal tiene más de 2 h, sus situaciones se marcan `sin_datos` en `situacion_salud` y no se cierran.
+1. `senales_actualizar()` (SQL): recalcula edad y `calidad`, aplica reglas del CEO. (La resolución ya la hizo `senales_ingestar` por lote, §3.1.1; aquí solo se propaga a las situaciones.) El bot arranca por evento (`senales_push_terminado`) y, como respaldo, por pg_cron cada hora si no corrió en los últimos 50 min; si el último lote bueno de una señal es más viejo que su `sin_datos_horas` (§3.2), sus situaciones se marcan `sin_datos` en `situacion_salud` y no se cierran.
 2. `situacion_guardar()` (SQL, determinístico): agrupa señales vivas por `agrupar_por` y **crea o actualiza la fila de `situaciones`** sin IA: clave, área, tipo, contraparte, documentos, evidencia, `severidad` = `severidad_base`, `calidad`, `estado` (`abierta`/`empeoro`/`mejoro`/`resuelta` según el valor agregado vs la corrida anterior), `titulo` provisional (`<señal> · <contraparte>`, p.ej. "Cartera vencida · Proyecciones de la Moda"), `ultimo_cambio` y evento en `historia`. Desde el paso 1 del plan el mapa existe y es consultable aunque el bot no corra.
    `situacion_candidatas()` devuelve, de esas filas, las **nuevas, empeoradas o mejoradas** en esta corrida que aún no tienen redacción vigente (`ia_version` < versión de la situación), con tope por corrida (config, 40).
 3. Por candidata (ya con `id`), `situacion_contexto(p_id)` arma el contexto: señales y documentos, ficha de memoria de la empresa (`memoria_brief`), últimas conversaciones ligadas (resumen, no correos completos), situaciones hermanas abiertas, posibles duplicados, reglas aplicables, historia previa.
@@ -366,7 +371,12 @@ que no se puede leer después. `quimibond_intelligence` hereda esos dos hooks
 (hoy viven en `qb_obligation`, que se retira) y, cuando la actividad lleva
 `situacion_id` (campo nuevo en `mail.activity`), escribe un evento en el modelo
 `quimibond.delegacion.evento` (`situacion_id`, `mail_activity_id`, `evento`
-∈ `hecha|cancelada|reasignada`, `feedback`, `user_id`, `fecha`, `enviado`). El
+∈ `hecha|cancelada`, `feedback`, `user_id`, `fecha`, `enviado`). Guardia
+obligatoria: en Odoo `_action_done` termina llamando `unlink`, así que el hook
+de `unlink` **no** escribe `cancelada` si esa actividad ya tiene evento `hecha`
+en la misma transacción (bandera de contexto puesta por `_action_done`); sin
+esa guardia cada "hecha" reabriría la situación. La reasignación no se rastrea
+en esta fase. El
 push horario incluye `_push_actividades_delegadas`, que manda los eventos no
 enviados como lote de la señal **`delegacion_estado`** (en el catálogo, área
 `direccion`, `agrupar_por='situacion'`, clave `delegacion_estado:situacion:<id>`)
