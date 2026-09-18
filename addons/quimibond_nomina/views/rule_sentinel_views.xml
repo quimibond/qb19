@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_qb_nomina_rule_sentinel_list" model="ir.ui.view">
+        <field name="name">qb.nomina.rule.sentinel.list</field>
+        <field name="model">qb.nomina.rule.sentinel</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="changed" decoration-muted="not rule_active">
+                <field name="code"/>
+                <field name="rule_id"/>
+                <field name="struct_id"/>
+                <field name="rule_active" optional="hide"/>
+                <field name="changed" widget="boolean_toggle" readonly="1"/>
+                <field name="changed_at"/>
+                <field name="accepted_at"/>
+                <field name="accepted_uid" widget="many2one_avatar_user" optional="show"/>
+                <field name="checked_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_rule_sentinel_form" model="ir.ui.view">
+        <field name="name">qb.nomina.rule.sentinel.form</field>
+        <field name="model">qb.nomina.rule.sentinel</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_accept" type="object" string="Aceptar huella actual" class="btn-primary"
+                            invisible="not changed" groups="hr_payroll.group_hr_payroll_manager"
+                            confirm="La condición y la fórmula de hoy pasan a ser la línea base. ¿Ya las verificaste contra la última nómina cuadrada?"/>
+                    <button name="action_accept" type="object" string="Volver a tomar la huella"
+                            invisible="changed" groups="hr_payroll.group_hr_payroll_manager"/>
+                    <button name="action_check_now" type="object" string="Revisar ahora"
+                            groups="hr_payroll.group_hr_payroll_manager"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="not changed">
+                        La condición o la fórmula de esta regla ya no coinciden con la huella aceptada.
+                        No se revirtió nada: revisa la regla contra la última nómina cuadrada y, si el
+                        cambio es deliberado, acepta la huella.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="rule_id" options="{'no_create': True}"/>
+                            <field name="code"/>
+                            <field name="struct_id"/>
+                            <field name="rule_active"/>
+                        </group>
+                        <group>
+                            <field name="changed"/>
+                            <field name="changed_at"/>
+                            <field name="accepted_at"/>
+                            <field name="accepted_uid" widget="many2one_avatar_user"/>
+                            <field name="checked_at"/>
+                        </group>
+                    </group>
+                    <group string="Huellas (SHA-256 de condición y fórmula)">
+                        <field name="fingerprint_accepted"/>
+                        <field name="fingerprint_current"/>
+                    </group>
+                    <group string="Notas">
+                        <field name="note" nolabel="1" placeholder="Por qué se vigila esta regla, qué se verificó y contra qué…"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_rule_sentinel_search" model="ir.ui.view">
+        <field name="name">qb.nomina.rule.sentinel.search</field>
+        <field name="model">qb.nomina.rule.sentinel</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="rule_id"/>
+                <filter name="changed" string="Cambiaron" domain="[('changed', '=', True)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_struct" string="Estructura" context="{'group_by': 'struct_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_nomina_rule_sentinel" model="ir.actions.act_window">
+        <field name="name">Centinela de reglas</field>
+        <field name="res_model">qb.nomina.rule.sentinel</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ninguna regla vigilada</p>
+            <p>El centinela guarda una huella (SHA-256) de la condición y la fórmula de cada regla
+               salarial que agregues, la revisa a diario y avisa a los responsables de nómina si
+               cambió. No revierte nada solo.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_qb_nomina_rule_sentinel" name="Centinela de reglas"
+              parent="hr_payroll.menu_hr_payroll_configuration"
+              action="action_qb_nomina_rule_sentinel" sequence="95"
+              groups="hr_payroll.group_hr_payroll_manager"/>
+
+</odoo>

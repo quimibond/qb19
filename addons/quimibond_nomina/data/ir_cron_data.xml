@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Revisión diaria de las reglas vigiladas. 13:00 UTC = 7:00 en
+             Ciudad de México, antes de que RH arme la corrida. -->
+        <record id="cron_qb_nomina_rule_sentinel" model="ir.cron">
+            <field name="name">Nómina Quimibond - Centinela de reglas salariales</field>
+            <field name="model_id" ref="model_qb_nomina_rule_sentinel"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_check()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=13, minute=0, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
+    </data>
+</odoo>

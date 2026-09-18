@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tres atributos del complemento de nómina que el módulo de Odoo saca
+         mal o no saca. Los valores los pone hr.payslip._qb_nomina_cfdi_values
+         en cfdi_values['qb_nomina'] (valores planos: _clean_cfdi_values
+         destruye los recordsets antes de renderizar).
+
+         Los nodos se localizan por nombre local dentro de nomina12:Nomina
+         (cfdi:Emisor y cfdi:Receptor también existen, en otro espacio de
+         nombres), sin depender de cómo declare el prefijo la plantilla.
+         Un atributo t-att-* agregado al final gana sobre el que ya traiga el
+         nodo: QWeb los aplica en orden de documento.
+
+         Revisar esta herencia en cada actualización del módulo
+         l10n_mx_hr_payroll_account_edi. -->
+    <template id="cfdiv40_nomina_quimibond" name="CFDI 4.0 nómina (Quimibond)"
+              inherit_id="l10n_mx_hr_payroll_account_edi.cfdiv40_nomina">
+        <xpath expr="//*[local-name()='Nomina']//*[local-name()='Emisor']" position="attributes">
+            <attribute name="t-att-RegistroPatronal">qb_nomina['registro_patronal']</attribute>
+        </xpath>
+        <xpath expr="//*[local-name()='Nomina']//*[local-name()='Receptor']" position="attributes">
+            <attribute name="t-att-SalarioDiarioIntegrado">qb_nomina['salario_diario_integrado']</attribute>
+            <attribute name="t-att-SalarioBaseCotApor">qb_nomina['salario_base_cot_apor']</attribute>
+        </xpath>
+    </template>
+
+</odoo>
