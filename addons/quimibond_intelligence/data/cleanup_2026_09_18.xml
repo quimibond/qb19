@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2026-09-18: Supabase quedó solo con la memoria de correo y el módulo
+         se recortó a contactos + usuarios. Estos crons desaparecieron del
+         código, pero estaban declarados en <data noupdate="1"> y Odoo NO
+         borra registros noupdate al actualizar el módulo aunque ya no estén
+         en el XML. Por eso se eliminan aquí explícitamente.
+
+         Se busca por nombre y no por xml_id: cuando ya no existan (todas las
+         actualizaciones siguientes) un <delete id="..."> dejaría un aviso
+         "Skipping deletion for missing XML ID" en cada build; una búsqueda
+         vacía no deja nada.
+
+         Las acciones de servidor, menús y vistas que se quitaron (backfill
+         histórico, "Run audit now", "Abrir Intelligence (Vercel)") NO están
+         aquí: no eran noupdate, y esos sí los borra Odoo solo al actualizar
+         cuando su xml_id desaparece del módulo. El cron de auditoría además
+         caería en cascada al borrarse el ir.model de quimibond.sync.audit,
+         pero se lista igual para no depender de ese orden. -->
+    <delete model="ir.cron" search="[('name', 'in', [
+        'Quimibond Sync - Full Push to Supabase (nightly 3am)',
+        'Quimibond Sync - Heavy Push to Supabase (every 2h)',
+        'Quimibond: Audit integrity weekly',
+        'Quimibond: Retry ingestion failures',
+    ])]"/>
+</odoo>

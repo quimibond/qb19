@@ -1,7 +1,8 @@
-"""Sync push: contacts, users, employees, departments.
+"""Sync push: contactos/empresas (`contacts` + `companies`) y usuarios (`odoo_users`).
 
-Mixin that adds partner-domain push methods to the quimibond.sync model.
-Split out of sync_push.py for readability.
+Mixin con los dos únicos métodos _push_* que quedan en quimibond.sync. Son
+el puente mínimo para que la memoria de correo en Supabase ligue correos
+con partners y usuarios de Odoo (2026-09-18).
 """
 import logging
 import re
@@ -267,39 +268,14 @@ class QuimibondSyncPartners(models.TransientModel):
                 all_keys.update(row.keys())
             template = {k: None for k in all_keys}
             company_rows = [{**template, **row} for row in company_rows]
+            # rfc, totales financieros y odoo_context van en el mismo upsert
+            # (las columnas existen en `companies`). Los RPC de backfill
+            # (backfill_company_financials / backfill_rfc_from_json) se
+            # borraron de Supabase el 2026-09-18.
             synced += client.upsert(
                 'companies', company_rows,
                 on_conflict='odoo_partner_id', batch_size=100,
             )
-            # Backfill financial data via RPC (PostgREST upsert may miss
-            # columns added after schema cache was built)
-            fin_map = {}
-            for c in companies.values():
-                pid = c.get('odoo_partner_id')
-                if not pid:
-                    continue
-                fin = {}
-                if c.get('total_receivable') is not None:
-                    fin['total_receivable'] = c['total_receivable']
-                if c.get('total_payable') is not None:
-                    fin['total_payable'] = c['total_payable']
-                if c.get('total_invoiced_odoo') is not None:
-                    fin['total_invoiced_odoo'] = c['total_invoiced_odoo']
-                if c.get('total_overdue_odoo') is not None:
-                    fin['total_overdue_odoo'] = c['total_overdue_odoo']
-                if c.get('odoo_context'):
-                    fin['odoo_context'] = c['odoo_context']
-                if fin:
-                    fin_map[str(pid)] = fin
-            if fin_map:
-                client.rpc('backfill_company_financials', {'data': fin_map})
-
-            # Update RFC via RPC
-            rfc_map = {str(c['odoo_partner_id']): c['rfc']
-                       for c in companies.values()
-                       if c.get('rfc') and c.get('odoo_partner_id')}
-            if rfc_map:
-                client.rpc('backfill_rfc_from_json', {'data': rfc_map})
         if contacts:
             # Dedupe by email before upsert. Sin esto Postgres rompía el
             # chunk entero con "ON CONFLICT DO UPDATE command cannot affect
@@ -361,7 +337,9 @@ class QuimibondSyncPartners(models.TransientModel):
                 )
         return synced
 
-    # ── Products ─────────────────────────────────────────────────────────
+    # ── Users ────────────────────────────────────────────────────────────
+    # odoo_users la lee el grafo nocturno de la memoria (kg_refresh_deterministic:
+    # nodos `usuario` y quién atiende a quién). Siempre full push (<200 filas).
 
     def _push_users(self, client: SupabaseClient, last_sync=None) -> int:
         User = self.env['res.users'].sudo()
@@ -423,76 +401,3 @@ class QuimibondSyncPartners(models.TransientModel):
             })
 
         return client.upsert('odoo_users', rows, on_conflict='odoo_user_id')
-
-    def _push_employees(self, client: SupabaseClient, last_sync=None) -> int:
-        """Push hr.employee → odoo_employees table."""
-        try:
-            Employee = self.env['hr.employee'].sudo()
-        except KeyError:
-            _logger.info('hr.employee not available, skipping')
-            return 0
-
-        cids = self._get_company_ids()
-        domain = [('active', '=', True), ('company_id', 'in', cids)]
-        if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        employees = Employee.search(domain, limit=500)
-        rows = []
-        for emp in employees:
-            rows.append({
-                'odoo_employee_id': emp.id,
-                'odoo_user_id': emp.user_id.id if emp.user_id else None,
-                'name': emp.name,
-                'work_email': emp.work_email or (emp.user_id.email if emp.user_id else None),
-                'work_phone': emp.work_phone or emp.mobile_phone or None,
-                'department_name': emp.department_id.name if emp.department_id else None,
-                'department_id': emp.department_id.id if emp.department_id else None,
-                'job_title': emp.job_title or None,
-                'job_name': emp.job_id.name if emp.job_id else None,
-                'manager_name': emp.parent_id.name if emp.parent_id else None,
-                'manager_id': emp.parent_id.id if emp.parent_id else None,
-                'coach_name': emp.coach_id.name if emp.coach_id else None,
-                'is_active': emp.active,
-                'odoo_company_id': emp.company_id.id if emp.company_id else None,
-            })
-
-        return client.upsert('odoo_employees', rows,
-                              on_conflict='odoo_employee_id', batch_size=100)
-
-    # ── HR Departments ───────────────────────────────────────────────────
-
-    def _push_departments(self, client: SupabaseClient, last_sync=None) -> int:
-        """Push hr.department → odoo_departments table."""
-        try:
-            Dept = self.env['hr.department'].sudo()
-        except KeyError:
-            _logger.info('hr.department not available, skipping')
-            return 0
-
-        cids = self._get_company_ids()
-        domain = [('active', '=', True), ('company_id', 'in', cids)]
-        if last_sync:
-            domain.append(('write_date', '>=', last_sync.strftime('%Y-%m-%d %H:%M:%S')))
-        departments = Dept.search(domain, limit=200)
-        rows = []
-        for dept in departments:
-            # Count members
-            member_count = 0
-            try:
-                member_count = len(dept.member_ids) if hasattr(dept, 'member_ids') else 0
-            except Exception:
-                pass
-
-            rows.append({
-                'odoo_department_id': dept.id,
-                'name': dept.name,
-                'parent_name': dept.parent_id.name if dept.parent_id else None,
-                'parent_id': dept.parent_id.id if dept.parent_id else None,
-                'manager_name': dept.manager_id.name if dept.manager_id else None,
-                'manager_id': dept.manager_id.id if dept.manager_id else None,
-                'member_count': member_count,
-                'odoo_company_id': dept.company_id.id if dept.company_id else None,
-            })
-
-        return client.upsert('odoo_departments', rows,
-                              on_conflict='odoo_department_id', batch_size=100)
