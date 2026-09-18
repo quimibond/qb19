@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """Política de CFDI por contacto, aceptación automática y alerta diaria."""
+from datetime import timedelta
+
+from odoo import fields
 from odoo.tests import tagged
 
 from .common import RFC_PROVEEDOR, SatCommon, syntage_invoice
@@ -87,9 +90,13 @@ class TestSatPolicy(SatCommon):
         ICP.set_param('quimibond_sat.alert_email', '')
         self.assertFalse(self.env['sat.cfdi']._cron_daily_alert())
         ICP.set_param('quimibond_sat.alert_email', 'ceo@example.com, conta@example.com')
-        bill = self._invoice(self.proveedor, 1000.0, day='2026-09-10')
+        # Fechas relativas a hoy: el hallazgo debe caer en la ventana de
+        # "nuevos en los últimos 7 días" cualquier día que corra la prueba.
+        issued = fields.Date.today() - timedelta(days=3)
+        bill = self._invoice(self.proveedor, 1000.0, day=issued.isoformat())
         cfdi = self._upsert(syntage_invoice(UUID_C, total=1000.0, status='CANCELADO',
-                                            canceledAt='2026-09-12 00:00:00', issuedAt='2026-09-10 12:00:00'))
+                                            canceledAt='%s 00:00:00' % (issued + timedelta(days=1)).isoformat(),
+                                            issuedAt='%s 12:00:00' % issued.isoformat()))
         cfdi.write({'move_id': bill.id})
         self.assertEqual(cfdi.issue, 'cancelado_sat')
         self.env.flush_all()
