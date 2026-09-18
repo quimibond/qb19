@@ -46,10 +46,11 @@
          Historial de Sync, no se esconde. Apagarlos a mano no sobrevive a
          un despliegue; el módulo sin sus crons no hace nada. -->
     <function model="ir.cron" name="write">
-        <function model="ir.cron" name="search" eval="[[('name', 'in', [
-            'Quimibond Sync - Push to Supabase (every 1h)',
-            'Quimibond Sync - Pull from Supabase (every 5min)',
-        ]), ('active', '=', False)]]">
+        <function model="ir.cron" name="search">
+            <value eval="[('name', 'in', [
+                'Quimibond Sync - Push to Supabase (every 1h)',
+                'Quimibond Sync - Pull from Supabase (every 5min)',
+            ]), ('active', '=', False)]"/>
             <value name="context" eval="{'active_test': False}"/>
         </function>
         <value eval="{'active': True, 'failure_count': 0, 'first_failure_date': False}"/>
