@@ -94,9 +94,18 @@
         </field>
     </record>
 
-    <menuitem id="menu_qb_nomina_rule_sentinel" name="Centinela de reglas"
-              parent="hr_payroll.menu_hr_payroll_configuration"
-              action="action_qb_nomina_rule_sentinel" sequence="95"
-              groups="hr_payroll.group_hr_payroll_manager"/>
+    <!-- El menú nace sin padre e inactivo: el xmlid del menú Configuración de
+         Nómina cambió en Odoo 19 (hr_payroll.menu_hr_payroll_configuration ya
+         no existe y tumbó la instalación). qb_nomina_colgar_menu() lo busca
+         por el icono de la app y lo cuelga ahí en cada instalación/actualización. -->
+    <record id="menu_qb_nomina_rule_sentinel" model="ir.ui.menu">
+        <field name="name">Centinela de reglas</field>
+        <field name="sequence">95</field>
+        <field name="active" eval="False"/>
+        <field name="action" eval="'ir.actions.act_window,%d' % ref('action_qb_nomina_rule_sentinel')"/>
+        <field name="group_ids" eval="[(4, ref('hr_payroll.group_hr_payroll_manager'))]"/>
+    </record>
+
+    <function model="qb.nomina.rule.sentinel" name="qb_nomina_colgar_menu"/>
 
 </odoo>

@@ -216,6 +216,53 @@ class QbNominaRuleSentinel(models.Model):
         return mail
 
     # ------------------------------------------------------------------
+    # Menú
+    # ------------------------------------------------------------------
+    MENU_XMLID = 'quimibond_nomina.menu_qb_nomina_rule_sentinel'
+    PAYROLL_APP_ICON = 'hr_payroll,static/description/icon.png'
+    CONFIG_MENU_NAMES = ('Configuración', 'Configuration', 'Ajustes', 'Settings')
+
+    @api.model
+    def qb_nomina_colgar_menu(self):
+        """Cuelga el menú del centinela de Nómina → Configuración y lo activa.
+        Se llama desde views/rule_sentinel_views.xml en cada instalación y
+        actualización (``<function>``).
+
+        Por qué no va en el XML: el xmlid del menú de configuración de Nómina
+        cambió en Odoo 19 (``hr_payroll.menu_hr_payroll_configuration`` ya no
+        existe) y un ``parent`` que no resuelve tumba la instalación del módulo
+        entero. Aquí se busca la app de Nómina por su icono (no depende del
+        idioma ni del xmlid) y dentro el menú Configuración; si no está, el
+        centinela cuelga de la raíz de Nómina; si ni eso, queda inactivo y se
+        avisa (la acción sigue existiendo)."""
+        menu = self.env.ref(self.MENU_XMLID, raise_if_not_found=False)
+        if not menu:
+            return False
+        Menu = self.env['ir.ui.menu'].sudo().with_context(active_test=False)
+        root = Menu.search([('parent_id', '=', False), ('web_icon', '=', self.PAYROLL_APP_ICON)], limit=1)
+        if not root:
+            _logger.warning('quimibond_nomina: no hay app de Nómina (icono %s); el menú del centinela '
+                            'queda inactivo', self.PAYROLL_APP_ICON)
+            menu.sudo().write({'active': False})
+            return False
+        parent = Menu.search([('parent_id', '=', root.id), ('action', '=', False),
+                              ('name', 'in', list(self.CONFIG_MENU_NAMES))], limit=1)
+        if not parent:
+            # Segundo intento en todos los idiomas instalados.
+            for lang in self.env['res.lang'].get_installed():
+                parent = Menu.with_context(lang=lang[0]).search(
+                    [('parent_id', '=', root.id), ('action', '=', False),
+                     ('name', 'in', list(self.CONFIG_MENU_NAMES))], limit=1)
+                if parent:
+                    break
+        if not parent:
+            _logger.warning('quimibond_nomina: la app de Nómina no tiene menú Configuración; '
+                            'el centinela cuelga de la raíz')
+            parent = root
+        menu.sudo().write({'parent_id': parent.id, 'active': True})
+        return True
+
+    # ------------------------------------------------------------------
     # Siembra
     # ------------------------------------------------------------------
     @api.model
