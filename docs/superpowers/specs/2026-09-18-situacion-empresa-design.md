@@ -57,7 +57,7 @@ clave estable.
 | `senal` | text | Nombre del catálogo (§4) |
 | `area` | text | `comercial`, `operaciones`, `compras`, `finanzas`, `calidad_sgi`, `rh`, `sistemas`, `direccion` |
 | `tipo` | text | `obligacion`, `credito`, `problema`, `riesgo`, `oportunidad`, `higiene` |
-| `fuente` | text | `odoo`, `memoria`, `sat`, `watchdog` |
+| `fuente` | text | `odoo` (incluye las señales del SAT: `quimibond_sat` vive en Odoo), `memoria`, `watchdog` |
 | `documentos` | jsonb | `[{"modelo":"sale.order","id":1234,"nombre":"SO/2026/0410"}]` |
 | `company_id`, `odoo_partner_id` | bigint | Contraparte (nullable) |
 | `responsable_odoo_user_id` | int | Dueño natural del documento en Odoo |
@@ -70,6 +70,9 @@ clave estable.
 | `calidad` | text | `viva`, `antigua`, `zombie`, `dato_malo`, `vencida_memoria`, `ignorada` (§5) |
 | `calidad_motivo` | text | Regla que la clasificó |
 | `payload` | jsonb | Campos extra de la señal (moneda, etapa, etc.) |
+
+`senal` es FK a `senales_config.senal` (aquí y en `senales_lotes`): la regla
+"lo que no está en el catálogo no existe" se cumple por esquema.
 
 Índices: único `(clave) WHERE resuelta_en IS NULL`, `(senal, resuelta_en)`, `(area, calidad)`, `(company_id)`.
 
@@ -90,8 +93,11 @@ error.
 `senal` PK, `area`, `tipo`, `fuente`, `activa`, `umbrales` jsonb (p.ej.
 `{"dias":7}`), `severidad_base` (1-5) y `severidad_max`, `reglas_calidad` jsonb
 (cuándo es `zombie`/`dato_malo`, ver §5), `agrupar_por` (`contraparte`,
-`documento`, `responsable`, `ninguno`), `descripcion` (para que el bot sepa qué
-significa). Cambiar un umbral es un `UPDATE`, no un despliegue.
+`documento`, `responsable`, `ninguno`), `cada_horas` (1 por defecto; 6 para
+cash flow, costeo y SGI), `sin_datos_horas` (por defecto `2 × cada_horas`: edad
+del último lote bueno a partir de la cual la señal se reporta `sin_datos`),
+`descripcion` (para que el bot sepa qué significa). Cambiar un umbral es un
+`UPDATE`, no un despliegue.
 
 ### 3.3 `situaciones` — unidades de atención
 
@@ -225,15 +231,17 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
 | `firma_pendiente` | `sign.request` pendiente > 7 d | 128 |
 | `acuse_documento` | `sgi.document.ack.state='pendiente'` | por medir |
 | `acuerdo_direccion_vencido` | `sgi.management.review.agreement` vencido | por medir |
+| `delegacion_estado` | eventos hecha/cancelada/reasignada de actividades delegadas (§7.3); `agrupar_por='situacion'` | 0 (fase 2) |
 
 **Reglas del catálogo**
 
 1. Cada señal trae `responsable_odoo_user_id` = dueño natural en Odoo. Para las
    señales de **memoria** (que solo conocen buzones) el responsable se resuelve
    en SQL: buzón que más participa en la conversación → `odoo_users.email`; si
-   es buzón compartido (rhmexico@, ventas@…), la tabla `buzon_personas` que el
-   push de usuarios manda desde la configuración "Buzones (memoria)" de
-   `qb_memoria` (nueva columna en `_push_users`).
+   es buzón compartido (rhmexico@, ventas@…), la tabla `buzon_personas(buzon,
+   odoo_user_id, area)` (tabla aparte, varios buzones por usuario) que
+   `_push_users` manda como segundo upsert desde la configuración "Buzones
+   (memoria)" de `qb_memoria` (`qb.memoria.mailbox`).
 2. Las señales de Odoo se calculan en Odoo (`_push_senales`, un método por
    señal, todos en `quimibond_intelligence/models/senales/`). **Contrato de
    ingesta:** una llamada por señal al RPC
@@ -243,11 +251,20 @@ Cada señal tiene una consulta en su fuente y una clave. Umbrales en
    abiertas que no vienen en el lote, y registra el lote en `senales_lotes`.
    Al terminar todos los métodos, Odoo llama `senales_push_terminado(p_corrida)`,
    que dispara la consolidación (`invoke_edge('situacion-consolidar')`): el bot
-   corre **después** del push por evento, no por reloj. Las de memoria y SAT-en-
-   Supabase se calculan en SQL (`senales_memoria()`) dentro de la misma
-   consolidación. Las señales caras (cash flow, costeo, SGI) llevan
-   `senales_config.cada_horas` (p.ej. 6) y el push las omite fuera de su turno
-   sin cerrar nada (no manda lote, no hay resolución). Nada se copia en masa.
+   corre **después** del push por evento, no por reloj. Las señales del SAT
+   (`sat.compare.line`, `sat.pago.compare`) son modelos de Odoo y van por el
+   mismo push con `fuente='odoo'`. Las de **memoria** las calcula
+   `senales_memoria()` en SQL al inicio de la consolidación y **pasan por el
+   mismo `senales_ingestar`** (una llamada por señal, `fuente='memoria'`,
+   `p_corrida` = uuid de la corrida del bot, fila en `senales_lotes`): misma
+   resolución por lote, sin excepciones. Las señales caras llevan
+   `senales_config.cada_horas` (p.ej. 6); el push lee `senales_config` al
+   arrancar (un `fetch`) y guarda la última corrida por señal en el parámetro
+   `quimibond_intelligence.senales_last_run` (json); fuera de su turno no manda
+   lote y no hay resolución. **El push de señales usa un `rpc_strict`** (error
+   HTTP = excepción; el `rpc()` actual traga errores y devuelve `None`): un lote
+   solo se manda si la consulta en Odoo terminó bien, y un error de ingesta deja
+   el método en `error` en el Historial de Sync. Nada se copia en masa.
 3. Lo que no está en `senales_config` no existe para la IA. Agregar una señal =
    agregar una consulta + una fila de config, sin tocar el bot.
 4. Las apps de Studio "Calendario de obligaciones", "Actividades obligatorias",
@@ -271,7 +288,7 @@ evidencia.
 | `antigua` | Abierta > 30 d sin cambio de valor ni correo | No la razona cada hora; entra al bloque semanal "rezago" con su edad |
 | `zombie` | Estado imposible por edad (OP confirmada > 90 d sin movimientos, transferencia interna confirmada > 90 d, actividad vencida > 180 d, pedido de 2025 sin entregar ni cancelar) | Sale del mapa operativo; se agrupa en **situaciones de higiene** por clase con la limpieza recomendada en Odoo |
 | `dato_malo` | El número no puede ser: margen negativo con costo 0 o precio 0; cartera vencida de parte relacionada; contacto no-reply; factura con moneda inconsistente | Situación de higiene con el campo culpable; nunca se mezcla con problemas reales |
-| `vencida_memoria` | Compromiso o promesa con `vence` pasado y sin correo nuevo en 21 d | Se cierra como "expiró sin respuesta"; se menciona una vez como riesgo |
+| `vencida_memoria` | Compromiso o promesa con `vence` pasado y sin correo nuevo en 21 d | Etiqueta de calidad, no un cierre aparte: la consulta de `senales_memoria()` deja de emitir la clave en la siguiente corrida, así que se resuelve **por lote** como todas; la situación registra "expiró sin respuesta" y el bot lo menciona una vez como riesgo |
 | `ignorada` | Cubierta por una regla del CEO | Se cuenta, no se muestra |
 
 Umbrales (30, 90, 180, 21 días) en `senales_config`.
@@ -291,11 +308,12 @@ no infiere nada.
 Cada hora, después del push de Odoo:
 
 1. `senales_actualizar()` (SQL): recalcula edad y `calidad`, aplica reglas del CEO. (La resolución ya la hizo `senales_ingestar` por lote, §3.1.1; aquí solo se propaga a las situaciones.) El bot arranca por evento (`senales_push_terminado`) y, como respaldo, por pg_cron cada hora si no corrió en los últimos 50 min; si el último lote bueno de una señal tiene más de 2 h, sus situaciones se marcan `sin_datos` en `situacion_salud` y no se cierran.
-2. `situacion_candidatas()` (SQL): agrupa señales vivas en candidatas; devuelve solo las **nuevas, empeoradas (valor o severidad subió) o resueltas** desde la corrida anterior, con tope por corrida (config, 40).
-3. Por candidata, `situacion_contexto()` arma el contexto: señales y documentos, ficha de memoria de la empresa (`memoria_brief`), últimas conversaciones ligadas (resumen, no correos completos), situaciones hermanas abiertas, posibles duplicados, reglas aplicables, historia previa.
+2. `situacion_guardar()` (SQL, determinístico): agrupa señales vivas por `agrupar_por` y **crea o actualiza la fila de `situaciones`** sin IA: clave, área, tipo, contraparte, documentos, evidencia, `severidad` = `severidad_base`, `calidad`, `estado` (`abierta`/`empeoro`/`mejoro`/`resuelta` según el valor agregado vs la corrida anterior), `titulo` provisional (`<señal> · <contraparte>`, p.ej. "Cartera vencida · Proyecciones de la Moda"), `ultimo_cambio` y evento en `historia`. Desde el paso 1 del plan el mapa existe y es consultable aunque el bot no corra.
+   `situacion_candidatas()` devuelve, de esas filas, las **nuevas, empeoradas o mejoradas** en esta corrida que aún no tienen redacción vigente (`ia_version` < versión de la situación), con tope por corrida (config, 40).
+3. Por candidata (ya con `id`), `situacion_contexto(p_id)` arma el contexto: señales y documentos, ficha de memoria de la empresa (`memoria_brief`), últimas conversaciones ligadas (resumen, no correos completos), situaciones hermanas abiertas, posibles duplicados, reglas aplicables, historia previa.
 4. Claude (Sonnet, `effort low`, JSON cerrado) devuelve: `titulo`, `resumen`, `severidad` (dentro de la banda), `responsable_sugerido` + `motivo`, `recomendacion`, `estado` (`abierta|empeoro|mejoro`), `duplicados: [{id, decision, motivo}]`, `evento_historia`. Si se corta o no es JSON, la candidata se reintenta en la siguiente corrida y se registra en `situacion_corridas`.
-5. `situacion_guardar()` (SQL, transacción): upsert por clave, fusiones, historia, `ultimo_cambio`.
-6. Resueltas: sin IA; SQL cierra y escribe "resuelta por evidencia: <señal desapareció>".
+5. `situacion_redactar()` (SQL, transacción): escribe **solo** `titulo`, `resumen`, `recomendacion`, `severidad` (validada contra la banda), `responsable_sugerido`, fusiones y el evento de historia; sube `ia_version`. La IA nunca toca clave, documentos, evidencia ni estado.
+6. Resueltas: sin IA; ya las cerró `situacion_guardar()` con "resuelta por evidencia: <señal desapareció>".
 
 Prompt del bot (contrato): habla desde Quimibond; solo lo que está en el
 contexto; una situación = una decisión posible del CEO; la recomendación nombra
@@ -342,15 +360,28 @@ lo mismo. Destinatario: el CEO (parámetro).
 (`_execute_command(command, payload)`, firma extendida) crea la `mail.activity`
 sobre el documento (o el contacto si no hay documento) y confirma con el RPC
 `situacion_delegacion_confirmar(p_situacion_id, p_mail_activity_id, p_estado)`,
-que escribe `delegacion.mail_activity_id`. Estado de vuelta: el push horario
-incluye `_push_actividades_delegadas`, que pide a Supabase la lista de
-actividades delegadas abiertas (`situacion_delegaciones_abiertas()`), lee su
-estado en Odoo (abierta, hecha con `feedback`, cancelada, reasignada) y lo
-manda como lote de la señal `delegacion_estado`. Hecha o señal desaparecida ⇒
-situación `resuelta` con historia "cerrada por <usuario>: <feedback>";
-cancelada ⇒ vuelve a `abierta` con historia. En el mismo paso se corrige el
-bug existente del pull, que escribe `status='error'` cuando el CHECK de
-`sync_commands` solo admite `failed`.
+que escribe `delegacion.mail_activity_id`. Estado de vuelta: en Odoo una actividad
+hecha o cancelada **se borra** (`mail.activity._action_done` y `unlink`), así
+que no se puede leer después. `quimibond_intelligence` hereda esos dos hooks
+(hoy viven en `qb_obligation`, que se retira) y, cuando la actividad lleva
+`situacion_id` (campo nuevo en `mail.activity`), escribe un evento en el modelo
+`quimibond.delegacion.evento` (`situacion_id`, `mail_activity_id`, `evento`
+∈ `hecha|cancelada|reasignada`, `feedback`, `user_id`, `fecha`, `enviado`). El
+push horario incluye `_push_actividades_delegadas`, que manda los eventos no
+enviados como lote de la señal **`delegacion_estado`** (en el catálogo, área
+`direccion`, `agrupar_por='situacion'`, clave `delegacion_estado:situacion:<id>`)
+y los marca enviados solo si el RPC respondió bien; además informa las
+delegaciones que siguen abiertas (`situacion_delegaciones_abiertas()` devuelve
+los ids; si esa consulta falla, **no se manda lote**, para no cerrar
+delegaciones por error). `delegacion.estado` ∈ `pendiente` (comando creado),
+`creada` (actividad en Odoo), `error` (el pull no pudo crearla; motivo en
+`delegacion.error`), `hecha`, `cancelada`; son también los valores válidos de
+`p_estado` en `situacion_delegacion_confirmar`. Una delegación `pendiente` sin
+`mail_activity_id` después de 15 min se marca `error` y el mapa lo muestra.
+Hecha o señal desaparecida ⇒ situación `resuelta` con historia "cerrada por
+<usuario>: <feedback>"; cancelada ⇒ vuelve a `abierta` con historia. En el
+mismo paso se corrige el bug existente del pull, que escribe `status='error'`
+cuando el CHECK de `sync_commands` solo admite `failed`.
 
 ### 7.4 Odoo (fase 2)
 
@@ -365,11 +396,11 @@ desinstala tras migrar sus registros.
 
 | Paso | Entrega | Se acepta cuando |
 |---|---|---|
-| 1 | Esquema (`senales`, `senales_lotes`, `senales_config`, `situaciones`, `situacion_reglas`, `situacion_corridas`), `senales_ingestar()`, `senales_push_terminado()`, `senales_memoria()`, `senales_actualizar()`, `situacion_candidatas()`, `situacion_mapa`, `situacion_contexto`, `situacion_salud` | `select * from situacion_mapa('comercial')` devuelve las conversaciones sin respuesta y los compromisos de correo como situaciones agrupadas por empresa, con calidad y edad |
-| 2 | `quimibond_intelligence._push_senales` (finanzas y comercial primero, luego el resto del catálogo), migración de los 74 `qb.obligation` | Las 413 facturas vencidas aparecen agrupadas por cliente; las de partes relacionadas caen en `dato_malo`; las 296 OPs viejas caen en `zombie`; el push corre en < 60 s |
-| 3 | Edge Function `situacion-consolidar` + cron horario | 20 situaciones reales redactadas y revisadas por el CEO por MCP; fusiones correctas en 3 casos preparados; costo dentro de estimación |
+| 1 | Esquema (`senales`, `senales_lotes`, `senales_config`, `situaciones`, `situacion_reglas`, `situacion_corridas`, `buzon_personas`), `senales_ingestar()`, `senales_push_terminado()`, `senales_memoria()`, `senales_actualizar()`, `situacion_guardar()`, `situacion_candidatas()`, `situacion_mapa`, `situacion_contexto`, `situacion_por_persona`, `situacion_higiene`, `situacion_salud` | `select * from situacion_mapa('comercial')` devuelve las conversaciones sin respuesta y los compromisos de correo como situaciones agrupadas por empresa (título provisional), con calidad y edad |
+| 2 | `quimibond_intelligence._push_senales` con `rpc_strict` (finanzas y comercial primero, luego el resto del catálogo), `senales_last_run`, `buzon_personas` en `_push_users`, migración de los 74 `qb.obligation` | Las 413 facturas vencidas aparecen agrupadas por cliente; las de partes relacionadas caen en `dato_malo`; las 296 OPs viejas caen en `zombie`; el push corre en < 60 s |
+| 3 | Edge Function `situacion-consolidar` (`situacion_redactar()`, fusiones) + disparo por evento y cron de respaldo | 20 situaciones reales redactadas y revisadas por el CEO por MCP; fusiones correctas en 3 casos preparados; costo dentro de estimación |
 | 4 | `situacion_cambios`, `situacion-digest`, retiro de `email-digest` | El correo del día siguiente coincide con `situacion_cambios` |
-| 5 | `situacion_decidir`, reglas persistentes, `sync_commands.payload`, comando `crear_actividad` en el pull, `situacion_delegacion_confirmar`, `_push_actividades_delegadas`, cierre por actividad hecha, fix del `status='error'` | Delegar una situación crea la actividad en Odoo en ≤ 5 min y marcarla hecha la cierra |
+| 5 | `situacion_decidir`, reglas persistentes, `sync_commands.payload`, comando `crear_actividad` en el pull, `situacion_delegacion_confirmar`, `mail.activity.situacion_id` + hooks `_action_done`/`unlink` → `quimibond.delegacion.evento`, `_push_actividades_delegadas`, señal `delegacion_estado`, fix del `status='error'` | Delegar una situación crea la actividad en Odoo en ≤ 5 min y marcarla hecha la cierra |
 | 6 | `qb_situacion` (app en Odoo) y desinstalación de `qb_obligation` | El CEO ve el mapa en Odoo y delega desde ahí |
 
 Cada paso se prueba con datos reales de producción (lectura) y se documenta en
