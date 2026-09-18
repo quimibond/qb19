@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_build_limpio" model="ir.actions.server">
+        <field name="name">Build limpio: corregir avisos ahora</field>
+        <field name="model_id" ref="model_qb_build_limpio"/>
+        <field name="state">code</field>
+        <field name="group_ids" eval="[(4, ref('base.group_system'))]"/>
+        <field name="code">action = model.sudo().ejecutar_y_mostrar()</field>
+    </record>
+
+    <menuitem id="menu_build_limpio"
+              name="Build limpio"
+              parent="base.menu_custom"
+              action="action_build_limpio"
+              groups="base.group_system"
+              sequence="90"/>
+</odoo>
