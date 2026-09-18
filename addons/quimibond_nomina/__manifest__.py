@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
-    'summary': 'Registro patronal por contrato en el CFDI de nómina, SDI y SBC tomados del recibo, '
+    'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
                'y un centinela que avisa cuando una regla salarial cambia por detrás.',
     'description': """
 Nómina Quimibond
@@ -25,9 +25,12 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
 * **Centinela de reglas.** Guarda un SHA-256 de la condición y la fórmula de
   las reglas vigiladas, revisa a diario y avisa a los responsables de nómina
   si cambiaron. No revierte nada solo.
-
-No trae el nodo ``nomina12:HorasExtra`` (ver README: falta el dato de días y
-hay un ticket abierto con Odoo).
+* **Nodo ``nomina12:HorasExtra``.** Obligatorio en toda percepción 019 y el
+  módulo de Odoo nunca lo emite. Sale de las entradas ``HE_DOBLE``/``HE_TRIPLE``
+  y de las líneas ``HE_EXEMPT`` + ``HE_TAX``; ``Dias`` sigue el criterio medido
+  en 142 nodos de NOI (3 por semana del periodo, 1 si fueron una o dos horas).
+  La herencia de la plantilla se configura sola al instalar y se apaga si Odoo
+  ya emite el nodo.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
@@ -39,6 +42,7 @@ hay un ticket abierto con Odoo).
     'data': [
         'security/ir.model.access.csv',
         'data/cfdi_nomina_templates.xml',
+        'data/cfdi_horas_extra.xml',
         'data/ir_cron_data.xml',
         'views/hr_employee_views.xml',
         'views/rule_sentinel_views.xml',

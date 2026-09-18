@@ -8,7 +8,7 @@ contra una nómina de 284,892).
 El cálculo ya cuadra contra el despacho: 87 de 87 en la semana 38 y 89 de 89 en
 la semana 39 (59 centavos de diferencia en toda la nómina). La póliza contable
 está probada de punta a punta en staging. Lo que falta para timbrar son tres
-defectos de `l10n_mx_hr_payroll_account_edi`; este módulo resuelve dos.
+defectos de `l10n_mx_hr_payroll_account_edi`; este módulo resuelve los tres.
 
 > **Regla que no se rompe nunca:** no validar, no contabilizar y no timbrar
 > nada en producción. El PAC apunta a producción y validar es el paso previo a
@@ -76,23 +76,58 @@ problema. Cuando el cambio es querido, «Aceptar huella actual». Al instalar se
 siembra con las dos reglas y toma como línea base lo que esté vivo: el estado
 ya verificado contra el despacho. Se pueden agregar más reglas a mano.
 
-## Lo que NO trae, y por qué
+### 4. El nodo `nomina12:HorasExtra`
 
-El nodo **`nomina12:HorasExtra`**, obligatorio cuando hay percepción `019`.
-Hoy la plantilla emite `nomina12:Percepcion` como elemento vacío, así que
-ningún recibo con tiempo extra se puede timbrar (en una semana normal, 39 de
-87). Dos razones para no escribirlo todavía:
+El módulo de Odoo **nunca lo emite**: escribe cada `nomina12:Percepcion` como
+elemento vacío, incluidas las de `TipoPercepcion="019"`. El Anexo 20 obliga a
+que toda percepción 019 lleve al menos un `HorasExtra`; sin él el PAC rechaza
+el CFDI, y en una semana normal 39 de 86 recibos traen horas extra. Hay ticket
+abierto con Odoo; este parche funciona solo y **se apaga solo** si Odoo lo
+corrige de origen (ver abajo).
 
-1. **Falta el dato.** El nodo pide `Dias`: en cuántos días se generaron las
-   horas extra. El archivo de incidencias de RH trae horas trabajadas por día
-   y el total semanal de horas extra, pero no los días, y no se deduce.
-   Pendiente: que RH lo capture o que se acuerde una convención.
-2. **Hay un ticket abierto con Odoo** (18-sep-2026). Si ellos lo implementan
-   en la plantilla y nosotros la sobrescribimos, salen dos nodos `HorasExtra`
-   y el CFDI queda inválido. Revisar el estado del ticket antes de escribirlo.
+Así lo timbra NOI hoy (empleado 325, semana 39):
 
-Cuando se escriba, va como herencia de la misma plantilla, en
-`data/cfdi_nomina_templates.xml`.
+```xml
+<nomina12:Percepcion Clave="P003" Concepto="HORAS EXTRAS DOBLES"
+                     ImporteExento="373.28" ImporteGravado="373.28" TipoPercepcion="019">
+  <nomina12:HorasExtra Dias="3" TipoHoras="01" HorasExtra="9" ImportePagado="746.55"/>
+</nomina12:Percepcion>
+```
+
+| Atributo | De dónde sale |
+|---|---|
+| `TipoHoras` | entrada `HE_DOBLE` (id 16) → `01`; `HE_TRIPLE` (id 17) → `02`. Las horas sencillas (`H_SENCILLA`) **no llevan nodo**: van al concepto 038 |
+| `HorasExtra` | `amount` de esas entradas (son horas) |
+| `ImportePagado` | líneas `HE_EXEMPT` (id 463) + `HE_TAX` (id 464) del recibo, por código. Con dobles y triples en el mismo recibo se reparte en proporción a horas × factor (2 y 3) y la suma queda exacta |
+| `Dias` | criterio medido, abajo |
+
+**El criterio de `Dias` — medido, no inventado.** RH captura horas por semana,
+no días. Se leyeron **142 nodos `HorasExtra`** de CFDI que NOI ya timbró (cuatro
+periodos de 2026): semanal con 1 o 2 horas → `Dias=1` (5 casos); semanal con 3 a
+9 horas → `Dias=3` (116); quincenal con 18 horas → `Dias=6` (19). La regla es el
+tope legal (LFT art. 66: 3 horas diarias, 3 días por semana): 3 por semana
+completa del periodo, 1 si fueron una o dos horas sueltas, y nunca más días que
+horas. Dos excepciones en 142 fueron captura manual. El detalle y la fórmula
+viven en `models/horas_extra.py`.
+
+**Cómo está hecho.** `hr.payslip._qb_add_horas_extra` anota los nodos en
+`cfdi_values['qb_horas_extra_por_indice']` (índice de la percepción 019 dentro
+de `percepcion_list` → lista de nodos) y la vista
+`quimibond_nomina.cfdiv40_nomina_horas_extra` los imprime dentro de cada
+`nomina12:Percepcion` leyendo `<variable>_index` del `t-foreach`. Esa vista
+**se configura sola** (`qb_nomina_ensure_horas_extra_view`, llamada por
+`<function>` en `data/cfdi_horas_extra.xml` en cada instalación/actualización):
+lee la plantilla real de Odoo, saca el nombre de la variable del `t-foreach`
+sobre `percepcion_list` y escribe el arch. Si la plantilla ya trae
+`HorasExtra` (Odoo corrigió el defecto) o no tiene la forma esperada, la vista
+queda apagada y se avisa en el log: sale un CFDI sin nodo, nunca uno con dos ni
+una instalación rota por un xpath que no resuelve.
+
+**Falla en silencio hacia el lado seguro.** Horas capturadas sin percepción
+019, percepción 019 sin horas, o sin líneas `HE_EXEMPT`/`HE_TAX`: aviso en el
+log y el CFDI sale como estaba. Más vale un CFDI sin nodo (el PAC lo rechaza y
+se ve) que uno con un nodo inventado. Desinstalar el módulo basta para
+quitarlo: no toca reglas, entradas, conceptos ni registros de fábrica.
 
 ## Cómo verificarlo después del build
 
@@ -120,10 +155,17 @@ print(env['ir.qweb'].with_context(lang='es_MX')._render(
    se le puso `Y6087828106`, debe salir ese y no el de la compañía);
    `nomina12:Receptor/@SalarioDiarioIntegrado` con el SDI y
    `@SalarioBaseCotApor` el mismo topado a 25 UMA.
-5. **La nómina no se movió.** Recalcular la corrida 117 (semana 38, 87
+5. **El nodo HorasExtra.** En el log de la instalación debe aparecer
+   `herencia HorasExtra activa (variable del t-foreach: …)`. En el XML del
+   recibo 4358 (o cualquiera de la corrida 117 con horas extra), dentro de la
+   percepción 019: `<nomina12:HorasExtra Dias="3" TipoHoras="01" HorasExtra="9"
+   ImportePagado="…"/>`, con `ImporteExento` e `ImporteGravado` iguales que
+   antes. Un recibo sin horas extra no cambia en nada. Un recibo quincenal con
+   horas extra emite `Dias="6"`.
+6. **La nómina no se movió.** Recalcular la corrida 117 (semana 38, 87
    recibos) y confirmar que el neto sigue en 302,757.31. El módulo no toca el
    cálculo, sólo el CFDI.
-6. **Tests** (no corren en el CI porque dependen de Enterprise):
+7. **Tests** (no corren en el CI porque dependen de Enterprise):
    `odoo-bin ... --test-tags /quimibond_nomina --stop-after-init`.
 
 ## Datos que cuesta trabajo redescubrir
@@ -161,8 +203,7 @@ print(env['ir.qweb'].with_context(lang='es_MX')._render(
 
 ## Lo que sigue
 
-- Timbrado de prueba con el PAC en ambiente de pruebas (bloqueado por
-  `HorasExtra` para quien tiene tiempo extra).
+- Timbrado de prueba con el PAC en ambiente de pruebas.
 - Nómina de aguinaldo contra la de diciembre; un finiquito real contra su CFDI;
   quincena 19 (cierra el 30 de septiembre) para cumplir dos periodos seguidos
   también en la quincenal.
