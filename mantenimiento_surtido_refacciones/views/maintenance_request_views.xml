@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_maintenance_request_form_refacciones" model="ir.ui.view">
+        <field name="name">maintenance.request.form.refacciones</field>
+        <field name="model">maintenance.request</field>
+        <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Esta vista base NO trae button_box (verificado contra el
+                 arch real vía odoo-bin shell en Odoo.sh, 09/ago/2026):
+                 se crea aquí, insertado justo antes del campo
+                 kanban_state, que es el primer elemento dentro de
+                 <sheet>. -->
+            <xpath expr="//field[@name='kanban_state']" position="before">
+                <div name="button_box" class="oe_button_box">
+                    <button name="action_ver_pickings_refacciones" type="object"
+                            class="oe_stat_button" icon="fa-truck"
+                            invisible="picking_refaccion_count == 0">
+                        <field name="picking_refaccion_count" widget="statinfo"
+                               string="Traslados"/>
+                    </button>
+                </div>
+            </xpath>
+
+            <!-- El <header> sí existe tal cual en la vista base. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_generar_requerimiento_refacciones" type="object"
+                        string="Generar Requerimiento de Surtido"
+                        class="btn-primary"
+                        invisible="not refaccion_line_ids"/>
+            </xpath>
+
+            <!-- El <notebook> sí existe tal cual en la vista base
+                 (pestañas "Notas" e "Instrucciones"). -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Refacciones" name="refacciones">
+                    <group>
+                        <group>
+                            <field name="location_mantto_id"/>
+                        </group>
+                        <group>
+                            <field name="location_consumo_id"/>
+                            <field name="costo_total_refacciones"/>
+                        </group>
+                    </group>
+                    <field name="refaccion_line_ids">
+                        <list editable="bottom">
+                            <field name="product_id"/>
+                            <field name="quantity"/>
+                            <field name="product_uom_id"/>
+                            <field name="qty_available_mantto"/>
+                            <field name="disponible" widget="boolean_toggle" readonly="1"/>
+                            <field name="unit_cost"/>
+                            <field name="subtotal_cost" sum="Total"/>
+                            <field name="company_currency_id" column_invisible="1"/>
+                            <field name="move_id" readonly="1"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ficha_tecnica_import_wizard_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.import.wizard.form</field>
+        <field name="model">ficha.tecnica.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importar Ficha Técnica desde Excel">
+                <group>
+                    <p>
+                        Sube el archivo Excel con el formato actual de
+                        "Ficha Técnica de Proceso Tejido Circular". Se
+                        extraerán automáticamente los datos de tejido; los
+                        campos de la sección de Acabado deberán capturarse
+                        o completarse manualmente después, ya que aún no
+                        forman parte del formato de origen.
+                    </p>
+                    <field name="file_data" filename="file_name"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="product_proceso_id"/>
+                    <field name="product_acabado_id" widget="many2many_tags"/>
+                    <field name="update_if_exists"/>
+                </group>
+                <footer>
+                    <button name="action_import" type="object" string="Importar"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_import_wizard" model="ir.actions.act_window">
+        <field name="name">Importar Ficha Técnica desde Excel</field>
+        <field name="res_model">ficha.tecnica.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_ficha_tecnica_import"
+              name="Importar desde Excel"
+              parent="menu_ficha_tecnica_tela_root"
+              action="action_ficha_tecnica_import_wizard"
+              sequence="20"/>
+
+</odoo>
