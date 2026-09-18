@@ -150,18 +150,20 @@ class TestBuildLimpio(TransactionCase):
     def test_columnas_sin_not_null(self):
         # Como en producción: una columna required a la que Odoo no pudo poner
         # NOT NULL porque había filas en NULL (website.*, sale.order.template.*).
-        secuencia = self.env['ir.sequence'].create({'name': 'qbl', 'code': 'qbl.test'})
-        self.env.cr.execute("ALTER TABLE ir_sequence ALTER COLUMN implementation DROP NOT NULL")
-        self.env.cr.execute("UPDATE ir_sequence SET implementation = NULL WHERE id = %s", (secuencia.id,))
+        # res.lang.direction: required, default 'ltr' y su write no tiene
+        # efectos colaterales (ir.sequence, por ejemplo, recrea la secuencia SQL).
+        idioma = self.env.ref('base.lang_en')
+        self.env.cr.execute("ALTER TABLE res_lang ALTER COLUMN direction DROP NOT NULL")
+        self.env.cr.execute("UPDATE res_lang SET direction = NULL WHERE id = %s", (idioma.id,))
 
         hechos = self.Limpio._columnas_sin_not_null()
 
-        self.assertIn('ir.sequence.implementation: NOT NULL puesto (1 filas rellenadas)', hechos)
-        secuencia.invalidate_recordset()
-        self.assertEqual(secuencia.implementation, 'standard', 'se rellena con el valor por defecto del campo')
+        self.assertIn('res.lang.direction: NOT NULL puesto (1 filas rellenadas)', hechos)
+        idioma.invalidate_recordset()
+        self.assertEqual(idioma.direction, 'ltr', 'se rellena con el valor por defecto del campo')
         self.env.cr.execute("""
             SELECT a.attnotnull FROM pg_attribute a JOIN pg_class c ON a.attrelid = c.oid
-             WHERE c.relname = 'ir_sequence' AND a.attname = 'implementation'""")
+             WHERE c.relname = 'res_lang' AND a.attname = 'direction'""")
         self.assertTrue(self.env.cr.fetchone()[0])
 
     def test_ejecutar_no_revienta(self):
