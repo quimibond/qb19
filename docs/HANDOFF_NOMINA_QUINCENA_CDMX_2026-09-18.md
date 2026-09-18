@@ -3,7 +3,8 @@
 **Para:** la siguiente sesión de Claude Code sobre la nómina de Quimibond.
 **Fecha:** 18 de septiembre de 2026.
 **Sustituye a:** `PROMPT_horas_extra_cfdi_v2.md`. Esa tarea ya está cerrada; aquí
-va el estado verificado y lo que sigue.
+va el estado verificado y lo que sigue. **Corregido el mismo día:** la quincena
+de CDMX son 11 personas, no 14 (sección 2).
 
 ---
 
@@ -60,54 +61,77 @@ La **quincena 18 (1–15 de septiembre)**: NOI ya la timbró para CDMX, así que
 hay contra qué comparar hoy. Después, la 19 (16–30 sep), que cierra el
 criterio de dos periodos seguidos en la quincenal.
 
-### Quiénes (verificado en producción por MCP, 18-sep-2026)
+### Quiénes: 11 personas (confirmado contra los CFDI de NOI, 18-sep-2026)
 
-Hay **71** empleados activos con calendario de pago quincenal
-(`hr.version.schedule_pay = 'bi-weekly'`, compañía 1). **49** fueron a la
-quincena 18 de Toluca (corrida 118). Los **22** restantes, por exclusión:
+La primera versión de este handoff traía 14 candidatos sacados **por
+exclusión** en Odoo (71 quincenales activos − 49 de la quincena 18 de Toluca
+= 22, de los cuales 14 con sueldo). Se confirmó contra los CFDI que NOI
+emitió y el SAT certificó, leídos de los correos de `rhmexico@quimibond.com`:
+para el periodo 01/Sep/2026–15/Sep/2026 hay **exactamente 11 comprobantes con
+registro patronal `Y6087828106`**, y son éstos:
 
-**Con contrato vigente y sueldo — la quincena de CDMX candidata (14):**
-
-| id | Nombre | Puesto | Sueldo (quincenal en el contrato) |
+| id Odoo | Nombre | Puesto | Sueldo quincenal en el contrato |
 |---|---|---|---|
-| 2 | José Jaime Mizrahi | Director de finanzas y administración | 52,000.00 |
-| 6 | Jorge Manuel Eduardo Ortiz Velázquez | Director de operaciones | 42,523.78 |
 | 8 | Irma Luna Ángeles | Contador general | 15,136.21 |
 | 13 | Aurelio Álvarez García | Auditor interno contable | 10,633.80 |
 | 19 | Lorena Mondragón Reinoso | Responsable de nóminas | 8,639.23 |
 | 539 | Sandra Dávila Centeno | Cuentas por cobrar y facturación | 8,311.49 |
 | 9 | Ma. Guadalupe Guerrero García | Atención a clientes y vendedores | 6,997.80 |
 | 255 | Ricardo Salgado Saldo | Chofer | 5,922.87 |
-| 541 | Zaira Hamdan Pérez | Asistente administrativo | 5,697.03 |
+| 541 | Zaira Hamdán Pérez | Asistente administrativo | 5,697.03 |
 | 538 | Nelly Esquivel Hermenegildo | Limpieza | 4,998.06 |
 | 556 | Verónica Luna Vázquez | Auxiliar de oficina | 4,805.82 |
 | 557 | Juan Alberto Hernández Hernández | Vendedor | 4,805.82 |
 | 535 | Juan José Hernández López | Representante de ventas | 4,805.82 |
-| 339 | Javier Hernández Ramírez | Representante de ventas | 3,750.00 |
 
-Once de los catorce tienen CURP de la Ciudad de México; cuadra con una
-oficina de CDMX. **Confírmalo contra la quincena 18 de CDMX en NOI** antes de
-armar nada: la lista sale por exclusión, no de un campo "CDMX" (no existe).
+**Esta es la corrida.** En staging los 11 ya tienen
+`l10n_mx_employer_registration = 'Y6087828106'` (se cargó el 18-sep junto con
+dos que resultaron no ir; sobra, no estorba).
 
-**Con contrato pero sin sueldo ni fecha de inicio (8) — no entran hasta que
-RH los complete o los archive:** 4 José Mizrahi Daniel, 5 Jacobo Mizrahi
-Penhos, 24 José Juan Aramiz, 27 Gilberto López Rangel, 277 Reynaldo González,
-527 "Fatima Bustamante" (duplicado de 254), 563 José Gómez, 564 Francisco
-González. Ninguno debería estar en NOI con sueldo; si alguno sí, es hallazgo.
+**Los tres de la lista original que NO entran:**
+
+- **José Jaime Mizrahi (id 2).** Activo, contrato desde 2023-03-31, sueldo
+  52,000, y **cero CFDI de nómina en todo 2026**: no cobra por nómina, presta
+  servicios bajo RESICO y factura a Quimibond. No entra en ninguna corrida.
+  RH debería archivarlo o marcarlo de otra forma: hoy cualquier barrido de
+  "quincenales con sueldo" lo incluye.
+- **Javier Hernández Ramírez (id 339).** Activo, representante de ventas,
+  sueldo 3,750, **cero CFDI en 2026**. Cobra por otra vía o el registro está
+  obsoleto; no entra hasta que RH diga cuál.
+- **Jorge Manuel Eduardo Ortiz Velázquez (id 6).** Éste sí cobraba: 16 CFDI
+  en 2026 con `Y6087828106`, el último de la quincena 16–31 de agosto; en la
+  del 1–15 de septiembre ya no aparece. En Odoo sigue activo y sin fecha de
+  baja: es una baja de finales de agosto sin registrar, o algo cambió.
+  **No entra en la 18** y hay que aclararlo antes de enero. Además está
+  **duplicado**: empleado 6 (activo, alta 18-ago-2025) y empleado 34
+  (archivado, alta 1-ene-2026), mismo RFC `OIVJ6912293Q5` (verificado por
+  MCP). Decidir cuál se queda.
+
+**Una que no está en ninguna lista, para que nadie la "recupere":** Silvia
+Carmen Chávez Carreón (id 540), archivada en producción sin fecha de baja. Su
+último CFDI es la quincena 1–15 de agosto, con `Y6087828106`. Es baja y está
+bien excluida.
+
+**Con contrato pero sin sueldo ni fecha de inicio (8) — tampoco entran:** 4
+José Mizrahi Daniel, 5 Jacobo Mizrahi Penhos, 24 José Juan Aramiz, 27
+Gilberto López Rangel, 277 Reynaldo González, 527 "Fatima Bustamante"
+(duplicado de 254), 563 José Gómez, 564 Francisco González. Ninguno debería
+estar en NOI con sueldo; si alguno sí, es hallazgo.
 
 ### Antes de crear recibos: tres datos que el módulo necesita y hoy no están
 
 Los tres son de contrato/empleado, no de código. **Cámbialos en staging**, que
-es donde está instalado el módulo (producción no lo tiene todavía):
+es donde está instalado el módulo (producción no lo tiene todavía). El
+primero ya está hecho para los 11:
 
-1. **Registro patronal.** En cada uno de los 14 contratos (`hr.version` de la
+1. **Registro patronal.** En cada uno de los 11 contratos (`hr.version` de la
    versión vigente), `l10n_mx_employer_registration = 'Y6087828106'`. Es lo
    que prueba el parche con datos reales: el CFDI debe traer ese y no el de la
    compañía (`C-675994510-1`).
-2. **Dirección laboral en CDMX.** Hoy los 14 tienen `address_id` = la
+2. **Dirección laboral en CDMX.** Hoy los 11 tienen `address_id` = la
    compañía (Toluca), así que `ClaveEntFed` saldría `MEX`. Crear un
    `res.partner` "Quimibond — oficina CDMX" con `state_id` = Ciudad de México
-   (id 493, código `CMX`) y ponerlo como *Dirección laboral* de los 14. Con
+   (id 493, código `CMX`) y ponerlo como *Dirección laboral* de los 11. Con
    eso `ClaveEntFed` sale `CMX` sin tocar código. Verifica contra NOI qué
    entidad manda para ellos.
 3. **Tipo de jornada** (`l10n_mx_shift_type`): lo que mande NOI para CDMX.
@@ -138,11 +162,11 @@ mapeo):
 2. **CFDI de un recibo** con el snippet del README (sección "Cómo
    verificarlo"): `RegistroPatronal="Y6087828106"`, `ClaveEntFed` la de NOI,
    `PeriodicidadPago="04"`, SDI/SBC contra el CFDI de NOI de esa persona.
-3. **`Dias="6"`**: hace falta un quincenal con horas extra. En oficina es
-   raro; los 19 casos de `Dias=6` medidos en NOI salieron de la quincena
-   16–31 jul, casi seguro de mantenimiento (mecánicos quincenales de Toluca,
-   corrida 118). Si ningún CDMX trae tiempo extra en la 18, prueba `Dias="6"`
-   sobre un recibo de la **corrida 118** que sí traiga: es el mismo código.
+3. **`Dias="6"`**: hace falta un quincenal con horas extra. Con 11 personas
+   de oficina es casi seguro que ninguna traiga; los 19 casos de `Dias=6`
+   medidos en NOI salieron de la quincena 16–31 jul, de mantenimiento
+   (mecánicos quincenales de Toluca, corrida 118). Prueba `Dias="6"` sobre un
+   recibo de la **corrida 118** que sí traiga tiempo extra: es el mismo código.
 4. Un recibo **sin** horas extra no debe traer nodo ni cambiar en nada.
 
 ### Regla que no se rompe nunca
