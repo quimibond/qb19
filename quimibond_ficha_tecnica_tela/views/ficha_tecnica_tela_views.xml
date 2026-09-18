@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ficha_tecnica_tela_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.tela.list</field>
+        <field name="model">ficha.tecnica.tela</field>
+        <field name="arch" type="xml">
+            <list string="Fichas Técnicas de Tela">
+                <field name="articulo"/>
+                <field name="revision"/>
+                <field name="product_proceso_id"/>
+                <field name="product_acabado_id" widget="many2many_tags"/>
+                <field name="rendimiento_tela_acabada"/>
+                <field name="ancho_acabado"/>
+                <field name="encogimiento_largo_dentro_norma" widget="boolean_toggle"/>
+                <field name="encogimiento_ancho_dentro_norma" widget="boolean_toggle"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_tela_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.tela.form</field>
+        <field name="model">ficha.tecnica.tela</field>
+        <field name="arch" type="xml">
+            <form string="Ficha Técnica de Tela">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="articulo" placeholder="Ej. WJ044Q22HNT235"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="revision"/>
+                            <field name="fecha_elaboracion"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="product_proceso_id"/>
+                            <field name="product_acabado_id" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="jefe_manufactura"/>
+                            <field name="auxiliar_procesos"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Tejido — Máquina e Hilos">
+                            <group>
+                                <group string="Datos de máquina">
+                                    <field name="maquina_tejido"/>
+                                    <field name="marca_maquina"/>
+                                    <field name="galga"/>
+                                    <field name="diametro"/>
+                                    <field name="no_agujas"/>
+                                    <field name="no_alimentadores"/>
+                                    <field name="velocidad"/>
+                                    <field name="vueltas_por_rollo"/>
+                                </group>
+                            </group>
+                            <field name="hilo_line_ids">
+                                <list editable="bottom">
+                                    <field name="numero"/>
+                                    <field name="tipo_hilo"/>
+                                    <field name="titulo_hilo"/>
+                                    <field name="torsion"/>
+                                    <field name="porcentaje"/>
+                                    <field name="lote"/>
+                                    <field name="proveedor"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Tejido — Especificaciones">
+                            <group>
+                                <group>
+                                    <label for="longitud_malla"/>
+                                    <div class="o_row">
+                                        <field name="longitud_malla"/> <span>+/-</span>
+                                        <field name="longitud_malla_tol"/>
+                                    </div>
+                                    <label for="consumo_cm_vta"/>
+                                    <div class="o_row">
+                                        <field name="consumo_cm_vta"/> <span>+/-</span>
+                                        <field name="consumo_cm_vta_tol"/>
+                                    </div>
+                                    <field name="polea_alimentacion"/>
+                                    <field name="tension"/>
+                                    <field name="punto_cilindro"/>
+                                    <field name="punto_plato"/>
+                                    <field name="altura_plato"/>
+                                    <field name="estiraje"/>
+                                </group>
+                                <group>
+                                    <label for="ancho_bastidor"/>
+                                    <div class="o_row">
+                                        <field name="ancho_bastidor"/> <span>+/-</span>
+                                        <field name="ancho_bastidor_tol"/>
+                                    </div>
+                                    <label for="ancho_rollo"/>
+                                    <div class="o_row">
+                                        <field name="ancho_rollo"/> <span>+/-</span>
+                                        <field name="ancho_rollo_tol"/>
+                                    </div>
+                                    <label for="peso_promedio_rollo"/>
+                                    <div class="o_row">
+                                        <field name="peso_promedio_rollo"/> <span>+/-</span>
+                                        <field name="peso_promedio_rollo_tol"/>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Tela Acondicionada">
+                            <group>
+                                <group>
+                                    <field name="peso_acondicionado"/>
+                                    <field name="ancho_acondicionado"/>
+                                    <field name="espesor_acondicionado"/>
+                                </group>
+                                <group>
+                                    <field name="columnas"/>
+                                    <field name="mallas"/>
+                                    <field name="elongacion_carga_largo"/>
+                                    <field name="elongacion_carga_ancho"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Acabado" name="acabado">
+                            <group>
+                                <group>
+                                    <field name="rendimiento_tela_acabada"/>
+                                    <field name="peso_acabado"/>
+                                    <field name="ancho_acabado"/>
+                                    <field name="espesor_acabado"/>
+                                </group>
+                                <group>
+                                    <field name="encogimiento_largo"/>
+                                    <field name="encogimiento_largo_dentro_norma"/>
+                                    <field name="encogimiento_ancho"/>
+                                    <field name="encogimiento_ancho_dentro_norma"/>
+                                    <field name="elongacion_largo_acabado"/>
+                                    <field name="elongacion_ancho_acabado"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Notas">
+                            <field name="notas"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_tela_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.tela.search</field>
+        <field name="model">ficha.tecnica.tela</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Ficha Técnica">
+                <field name="articulo"/>
+                <field name="product_proceso_id"/>
+                <field name="product_acabado_id"/>
+                <filter string="Encogimiento fuera de norma" name="fuera_norma"
+                        domain="['|', ('encogimiento_largo_dentro_norma','=',False),
+                                      ('encogimiento_ancho_dentro_norma','=',False)]"/>
+                <filter string="Archivadas" name="inactive" domain="[('active','=',False)]"/>
+                <group>
+                    <filter string="Artículo" name="group_articulo" context="{'group_by':'articulo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_tela" model="ir.actions.act_window">
+        <field name="name">Fichas Técnicas de Tela</field>
+        <field name="res_model">ficha.tecnica.tela</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_tela_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea la primera ficha técnica de tela
+            </p>
+            <p>
+                Captura manual, o usa "Importar desde Excel" para cargar el
+                formato actual de ficha técnica de tejido de Quimibond.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_ficha_tecnica_tela_root"
+              name="Fichas Técnicas de Tela"
+              sequence="60"/>
+    <menuitem id="menu_ficha_tecnica_tela_list"
+              name="Fichas Técnicas"
+              parent="menu_ficha_tecnica_tela_root"
+              action="action_ficha_tecnica_tela"
+              sequence="10"/>
+
+</odoo>

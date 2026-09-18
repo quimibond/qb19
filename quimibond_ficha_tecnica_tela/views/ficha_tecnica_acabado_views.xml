@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ficha_tecnica_acabado_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.acabado.list</field>
+        <field name="model">ficha.tecnica.acabado</field>
+        <field name="arch" type="xml">
+            <list string="Fichas Técnicas de Acabado">
+                <field name="articulo"/>
+                <field name="revision"/>
+                <field name="tejido_id"/>
+                <field name="product_acabado_id"/>
+                <field name="rendimiento_tela_acabada"/>
+                <field name="ancho_acabado"/>
+                <field name="encogimiento_largo_dentro_norma" widget="boolean_toggle"/>
+                <field name="encogimiento_ancho_dentro_norma" widget="boolean_toggle"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_acabado_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.acabado.form</field>
+        <field name="model">ficha.tecnica.acabado</field>
+        <field name="arch" type="xml">
+            <form string="Ficha Técnica de Acabado">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="articulo" placeholder="Ej. WJ044Q22HNT235-NEGRO"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="revision"/>
+                            <field name="fecha_elaboracion"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="tejido_id"/>
+                            <field name="product_acabado_id"/>
+                            <field name="rendimiento_tela_acabada"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Tela Acondicionada">
+                            <h4>Datos de tela acabada</h4>
+                            <table class="table table-bordered o_list_view" style="width:100%">
+                                <thead>
+                                    <tr class="text-center">
+                                        <th>Condiciones</th>
+                                        <th>Especificación</th>
+                                        <th colspan="2">Tolerancia</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Peso</td>
+                                        <td><field name="peso_acabado" nolabel="1"/></td>
+                                        <td><field name="peso_acabado_tol" nolabel="1"
+                                                   placeholder="ej. +12 / -6"/></td>
+                                        <td><field name="peso_acabado_tol_unit" nolabel="1"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ancho</td>
+                                        <td><field name="ancho_acabado" nolabel="1"/></td>
+                                        <td>+/- <field name="ancho_acabado_tol" nolabel="1"/></td>
+                                        <td><field name="ancho_acabado_tol_unit" nolabel="1"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Encogimiento a lo Largo</td>
+                                        <td><field name="encogimiento_largo" nolabel="1"/></td>
+                                        <td>+/- <field name="encogimiento_largo_tol" nolabel="1"/></td>
+                                        <td><field name="encogimiento_largo_tol_unit" nolabel="1"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Encogimiento a lo Ancho</td>
+                                        <td><field name="encogimiento_ancho" nolabel="1"/></td>
+                                        <td>+/- <field name="encogimiento_ancho_tol" nolabel="1"/></td>
+                                        <td><field name="encogimiento_ancho_tol_unit" nolabel="1"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Espesor</td>
+                                        <td><field name="espesor_acabado" nolabel="1"/></td>
+                                        <td>+/- <field name="espesor_acabado_tol" nolabel="1"/></td>
+                                        <td><field name="espesor_acabado_tol_unit" nolabel="1"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Elongación Largo</td>
+                                        <td><field name="elongacion_largo_acabado" nolabel="1"/></td>
+                                        <td>+/- <field name="elongacion_largo_acabado_tol" nolabel="1"/></td>
+                                        <td><field name="elongacion_largo_acabado_tol_unit" nolabel="1"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Elongación Ancho</td>
+                                        <td><field name="elongacion_ancho_acabado" nolabel="1"/></td>
+                                        <td>+/- <field name="elongacion_ancho_acabado_tol" nolabel="1"/></td>
+                                        <td><field name="elongacion_ancho_acabado_tol_unit" nolabel="1"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <group>
+                                <group>
+                                    <field name="encogimiento_largo_dentro_norma"/>
+                                    <field name="encogimiento_ancho_dentro_norma"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+
+                    <group>
+                        <field name="notas" placeholder="Notas"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_acabado_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.acabado.search</field>
+        <field name="model">ficha.tecnica.acabado</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Ficha Técnica de Acabado">
+                <field name="articulo"/>
+                <field name="tejido_id"/>
+                <field name="product_acabado_id"/>
+                <filter string="Encogimiento fuera de norma" name="fuera_norma"
+                        domain="['|', ('encogimiento_largo_dentro_norma','=',False),
+                                      ('encogimiento_ancho_dentro_norma','=',False)]"/>
+                <filter string="Archivadas" name="inactive" domain="[('active','=',False)]"/>
+                <group>
+                    <filter string="Ficha de Tejido (base)" name="group_tejido" context="{'group_by':'tejido_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_acabado" model="ir.actions.act_window">
+        <field name="name">Fichas Técnicas de Acabado</field>
+        <field name="res_model">ficha.tecnica.acabado</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_acabado_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea la primera ficha técnica de acabado
+            </p>
+            <p>
+                Cada producto de tela acabada (ej. un color específico) tiene
+                su propia ficha, vinculada a la ficha de tejido que le sirve
+                de base. Captura manual, o usa "Importar Acabado desde
+                Excel" para cargar varios artículos a la vez.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_ficha_tecnica_acabado_list"
+              name="Fichas Técnicas de Acabado"
+              parent="menu_ficha_tecnica_tela_root"
+              action="action_ficha_tecnica_acabado"
+              sequence="20"/>
+
+</odoo>
