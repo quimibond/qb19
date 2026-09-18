@@ -195,52 +195,127 @@ class HrPayslip(models.Model):
                 horas[tipo] = horas.get(tipo, 0.0) + inp.amount
         return horas
 
+    @api.model
+    def _qb_fusionar_percepciones_019(self, cfdi_values):
+        """Deja UNA sola percepción 019 en ``percepcion_list``. Devuelve su
+        índice, o None si no hay ninguna.
+
+        Por qué: Odoo genera una percepción por regla, así que las horas
+        extra salen partidas en dos (``P19`` gravada por ``HE_TAX`` y
+        ``P19_2`` exenta por ``HE_EXEMPT``). El SAT exige que TODA percepción
+        019 lleve al menos un hijo ``HorasExtra``, y con la lista partida sólo
+        hay dos salidas, ambas malas: colgar el nodo a las dos declara el
+        doble de horas; colgarlo a una deja a la otra sin hijo y el PAC
+        rechaza. NOI emite una sola con los dos importes dentro, y eso es lo
+        que el SAT ya acepta.
+
+        Se suman ``importe_gravado`` e ``importe_exento`` y se conservan la
+        clave y el concepto de la gravada. Sólo toca las 019; con una o
+        ninguna no hace nada (idempotente, por si Odoo deja de partirlas)."""
+        lista = cfdi_values.get('percepcion_list')
+        if not isinstance(lista, list):
+            return None
+        indices = [i for i, item in enumerate(lista) if isinstance(item, dict) and he.es_percepcion_019(item)]
+        if not indices:
+            return None
+        if len(indices) == 1:
+            return indices[0]
+        items = [lista[i] for i in indices]
+        gravada = next((it for it in items if self._qb_importe(it.get('importe_gravado'))), items[0])
+        fusion = dict(gravada)
+        for campo in ('importe_gravado', 'importe_exento'):
+            fusion[campo] = round(sum(self._qb_importe(it.get(campo)) for it in items), 2)
+        lista[indices[0]] = fusion
+        for i in reversed(indices[1:]):
+            del lista[i]
+        _logger.info('quimibond_nomina: %d percepciones 019 fusionadas en una (gravado %.2f, exento %.2f)',
+                     len(items), fusion['importe_gravado'], fusion['importe_exento'])
+        return indices[0]
+
+    @staticmethod
+    def _qb_importe(value):
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
     def _qb_add_horas_extra(self, cfdi_values):
-        """Anota en ``cfdi_values[KEY_HORAS_EXTRA]`` los nodos ``HorasExtra`` de
-        cada percepción 019 de ``percepcion_list``, por índice.
+        """Fusiona las percepciones 019 y anota en
+        ``cfdi_values[KEY_HORAS_EXTRA]`` los nodos ``HorasExtra`` de la
+        percepción 019 resultante, por índice dentro de ``percepcion_list``.
+
+        ``ImportePagado`` = gravado + exento de la percepción ya fusionada
+        (es lo que el propio CFDI declara para esas horas); si no se puede
+        leer, se cae a las líneas ``HE_EXEMPT`` + ``HE_TAX`` del recibo.
 
         Falla en silencio hacia el lado seguro: si hay horas sin percepción 019,
-        percepción 019 sin horas, o no aparecen las líneas ``HE_EXEMPT``/``HE_TAX``,
-        se registra un aviso y el CFDI sale como estaba. Más vale un CFDI sin
-        nodo (el PAC lo rechaza y se ve) que uno con un nodo inventado."""
+        percepción 019 sin horas, o ningún importe, se registra un aviso y el
+        CFDI sale como estaba. Más vale un CFDI sin nodo (el PAC lo rechaza y se
+        ve) que uno con un nodo inventado."""
         self.ensure_one()
         cfdi_values[KEY_HORAS_EXTRA] = {}
         horas = self._qb_horas_extra_por_tipo()
-        lista = cfdi_values.get('percepcion_list') or []
-        indices = [i for i, item in enumerate(lista) if he.es_percepcion_019(item)]
-        if not horas and not indices:
+        indice = self._qb_fusionar_percepciones_019(cfdi_values)
+        if not horas and indice is None:
             return {}
         if not horas:
             _logger.warning('quimibond_nomina: recibo %s trae percepción 019 en el CFDI pero ninguna '
                             'entrada HE_DOBLE/HE_TRIPLE; sale sin nodo HorasExtra', self.id)
             return {}
-        if not indices:
+        if indice is None:
             _logger.warning('quimibond_nomina: recibo %s trae %s horas extra capturadas pero el CFDI no '
                             'trae percepción 019; sale sin nodo HorasExtra', self.id, horas)
             return {}
-        totales = [self._qb_nomina_line_total(code) for code in RULES_HORAS_EXTRA]
-        if all(t is None for t in totales):
-            _logger.warning('quimibond_nomina: recibo %s sin líneas %s; sale sin nodo HorasExtra',
-                            self.id, '/'.join(RULES_HORAS_EXTRA))
-            return {}
-        importe_total = sum(t or 0.0 for t in totales)
+        importe_total = he.importe_de_percepcion(cfdi_values['percepcion_list'][indice])
+        if not importe_total:
+            totales = [self._qb_nomina_line_total(code) for code in RULES_HORAS_EXTRA]
+            if all(t is None for t in totales):
+                _logger.warning('quimibond_nomina: recibo %s sin importe en la percepción 019 ni líneas %s; '
+                                'sale sin nodo HorasExtra', self.id, '/'.join(RULES_HORAS_EXTRA))
+                return {}
+            importe_total = sum(t or 0.0 for t in totales)
         dias_periodo = (self.date_to - self.date_from).days + 1
-        if len(indices) == 1:
-            nodos = {indices[0]: he.horas_extra_nodos(horas, importe_total, dias_periodo)}
-        else:
-            # Más de una percepción 019 (p. ej. P19 gravada y P19_2 exenta por
-            # separado): cada una lleva sus nodos con su propio importe, que
-            # se lee del mismo elemento. Si no se reconoce, mejor nada.
-            nodos = {}
-            for i in indices:
-                importe = he.importe_de_percepcion(lista[i])
-                if importe is None:
-                    _logger.warning('quimibond_nomina: recibo %s con %d percepciones 019 y no se '
-                                    'reconoce su importe; sale sin nodo HorasExtra', self.id, len(indices))
-                    return {}
-                nodos[i] = he.horas_extra_nodos(horas, importe, dias_periodo)
+        nodos = {indice: he.horas_extra_nodos(horas, importe_total, dias_periodo)}
         cfdi_values[KEY_HORAS_EXTRA] = nodos
         return nodos
+
+    # ------------------------------------------------------------------
+    # Conceptos en español
+    # ------------------------------------------------------------------
+    LISTAS_CON_CONCEPTO = ('percepcion_list', 'deduccion_list', 'otro_pago_list')
+
+    def _qb_conceptos_en_espanol(self, cfdi_values, lang='es_MX'):
+        """Vuelve a leer el ``concepto`` de cada percepción, deducción y otro
+        pago desde su registro de ``l10n.mx.concept`` (por ``clave`` =
+        ``payroll_code``) en español.
+
+        Por qué: los conceptos son lo que el trabajador lee en su recibo y NOI
+        los manda en español; el módulo los toma del nombre del concepto en el
+        idioma del contexto, y cuando el CFDI se arma en ``en_US`` (shell,
+        cron) salen "Overtime", "Savings Fund"… Los registros ya están
+        traducidos; aquí sólo se leen en ``es_MX``. No hay diccionario en el
+        código: si un concepto no tiene traducción, se queda como estaba.
+        Devuelve cuántos conceptos cambió."""
+        if lang not in [code for code, _ in self.env['res.lang'].get_installed()]:
+            return 0
+        Concept = self.env['l10n.mx.concept'].sudo().with_context(lang=lang)
+        cambiados = 0
+        for llave in self.LISTAS_CON_CONCEPTO:
+            lista = cfdi_values.get(llave)
+            if not isinstance(lista, list):
+                continue
+            claves = {it.get('clave') for it in lista if isinstance(it, dict) and it.get('clave')}
+            if not claves:
+                continue
+            nombres = {c.payroll_code: c.name for c in Concept.search([('payroll_code', 'in', list(claves))])}
+            for item in lista:
+                if not isinstance(item, dict) or 'concepto' not in item:
+                    continue
+                nombre = nombres.get(item.get('clave'))
+                if nombre and nombre != item['concepto']:
+                    item['concepto'] = nombre
+                    cambiados += 1
+        return cambiados
 
     def _l10n_mx_edi_add_payslip_cfdi_values(self, cfdi_values, *args, **kwargs):
         res = super()._l10n_mx_edi_add_payslip_cfdi_values(cfdi_values, *args, **kwargs)
@@ -254,6 +329,10 @@ class HrPayslip(models.Model):
                 _logger.exception('quimibond_nomina: recibo %s: no se pudieron calcular los nodos '
                                   'HorasExtra; el CFDI sale sin ellos', self.id)
                 cfdi_values[KEY_HORAS_EXTRA] = {}
+            try:
+                self._qb_conceptos_en_espanol(cfdi_values)
+            except Exception:  # noqa: BLE001 — los conceptos en inglés no invalidan el CFDI
+                _logger.exception('quimibond_nomina: recibo %s: no se pudieron traducir los conceptos', self.id)
         return res
 
     # ------------------------------------------------------------------
