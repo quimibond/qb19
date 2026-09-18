@@ -305,6 +305,8 @@ class QbBuildLimpio(models.AbstractModel):
         View = self.env['ir.ui.view']
         cr = self.env.cr
         self.env.flush_all()
+        cr.execute("SELECT name FROM ir_module_module WHERE state = 'installed'")
+        instalados = {r[0] for r in cr.fetchall()}
         cr.execute("""
             SELECT v.id, md.module
               FROM ir_ui_view v
@@ -312,8 +314,6 @@ class QbBuildLimpio(models.AbstractModel):
              WHERE v.active AND v.arch_db::text LIKE '%groups%'
              ORDER BY v.id
         """)
-        cr.execute("SELECT name FROM ir_module_module WHERE state = 'installed'")
-        instalados = {r[0] for r in cr.fetchall()}
         for view_id, modulo in cr.fetchall():
             view = View.browse(view_id)
             arch = view.arch_db or ''
