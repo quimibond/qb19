@@ -75,6 +75,7 @@ class QbBuildLimpio(models.AbstractModel):
     def ejecutar(self):
         """Corre todas las correcciones. Devuelve {paso: [descripciones]}."""
         informe = {}
+        self.env.flush_all()  # los pasos leen con SQL crudo: que vean lo que la ORM tiene pendiente
         for nombre, paso in (
             ('etiquetas_duplicadas', self._etiquetas_duplicadas),
             ('dependencias_no_buscables', self._dependencias_no_buscables),
@@ -104,6 +105,7 @@ class QbBuildLimpio(models.AbstractModel):
     def _etiquetas_duplicadas(self):
         hechos = []
         cr = self.env.cr
+        self.env.flush_all()
         for model_name in list(self.env.registry):
             model = self.env[model_name]
             por_etiqueta = defaultdict(list)
@@ -148,8 +150,8 @@ class QbBuildLimpio(models.AbstractModel):
         self.env.cr.execute("""
             UPDATE ir_model_fields
                SET field_description = (
-                    SELECT jsonb_object_agg(k, CASE WHEN v IS NULL THEN NULL ELSE v || %s END)
-                      FROM jsonb_each_text(field_description))
+                    SELECT jsonb_object_agg(t.k, CASE WHEN t.v IS NULL THEN NULL ELSE t.v || %s END)
+                      FROM jsonb_each_text(field_description) AS t(k, v))
              WHERE model = %s AND name = %s AND state = 'manual'
                AND jsonb_typeof(field_description) = 'object'
         """, (sufijo, model_name, field_name))
@@ -252,6 +254,7 @@ class QbBuildLimpio(models.AbstractModel):
     def _vistas_studio_invalidas(self):
         hechos = []
         View = self.env['ir.ui.view']
+        self.env.flush_all()
         self.env.cr.execute("""
             SELECT v.id FROM ir_ui_view v
               JOIN ir_model_data md ON md.model = 'ir.ui.view' AND md.res_id = v.id
@@ -301,6 +304,7 @@ class QbBuildLimpio(models.AbstractModel):
         Data = self.env['ir.model.data']
         View = self.env['ir.ui.view']
         cr = self.env.cr
+        self.env.flush_all()
         cr.execute("""
             SELECT v.id, md.module
               FROM ir_ui_view v
@@ -370,6 +374,7 @@ class QbBuildLimpio(models.AbstractModel):
     def _columnas_sin_not_null(self):
         hechos = []
         cr = self.env.cr
+        self.env.flush_all()
         cr.execute("""
             SELECT c.relname, a.attname
               FROM pg_attribute a
@@ -402,7 +407,11 @@ class QbBuildLimpio(models.AbstractModel):
                     default = model.default_get([field.name]).get(field.name)
                     if default in (None, False) and field.type != 'boolean':
                         return '%s: %d filas en NULL y el campo no tiene valor por defecto; revisar a mano' % (etiqueta, nulos)
-                    model.browse(ids).write({field.name: default})
+                    registros = model.browse(ids)
+                    # La caché puede traer el valor viejo (o el mismo default) y la
+                    # ORM se saltaría el write: se lee de nuevo desde la base.
+                    registros.invalidate_recordset([field.name])
+                    registros.write({field.name: default})
                     self.env.flush_all()
                 cr.execute('ALTER TABLE "%s" ALTER COLUMN "%s" SET NOT NULL' % (model._table, field.name))
                 return '%s: NOT NULL puesto (%d filas rellenadas)' % (etiqueta, nulos)
