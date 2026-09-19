@@ -2772,14 +2772,14 @@ class TestSenalesDireccion(SenalesCommon):
             self.assertIsNone(self.filas('obligacion_legado'))
             return
         ob = self.env['qb.obligation'].create({'name': 'Enviar cotización', 'description': 'Enviar cotización a cliente', 'user_id': self.env.user.id,
-                                               'date_deadline': self.hace(1), 'partner_id': self.cliente.id, 'obligation_type': 'other', 'state': 'confirmed'})
+                                               'date_deadline': self.hace(1), 'partner_id': self.cliente.id, 'obligation_type': 'comercial.quote', 'state': 'confirmed'})
         f = self.fila_de(self.filas('obligacion_legado'), 'obligacion_legado:qb.obligation:%d' % ob.id)
         self.assertEqual(f['vence'], str(self.hace(1)))
         ob.write({'state': 'done'})
         self.assertEqual([x for x in self.filas('obligacion_legado') if x['clave'].endswith(':%d' % ob.id)], [])
 ```
 
-(Si `obligation_type: 'other'` no es un valor válido del Selection de `qb.obligation`, mira `addons/qb_obligation/models/qb_obligation.py:59` y usa uno que exista.)
+(`obligation_type` válido: `comercial.quote`; la lista está en `addons/qb_obligation/models/qb_obligation.py:59`.)
 
 - [ ] **Step 2: Implementar `direccion.py`**
 

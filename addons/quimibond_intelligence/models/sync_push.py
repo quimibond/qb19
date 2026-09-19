@@ -142,17 +142,17 @@ class QuimibondSync(models.TransientModel):
         return [self._get_company_id()]
 
     # Lo único que Odoo empuja a Supabase. El orden es el de ejecución.
-    PUSH_MODELS = ('contacts', 'users')
-    PUSH_MODELS_DEFAULT = 'contacts,users'
+    PUSH_MODELS = ('contacts', 'users', 'senales')
+    PUSH_MODELS_DEFAULT = 'contacts,users,senales'
 
     # Tablas que SIEMPRE hacen full push (no incremental por write_date).
     # `users` es un catálogo chico (<200 filas) y su write_date no se toca
     # cuando cambia el empleado/departamento ligado; re-enviarlo cuesta <1s.
-    FULL_PUSH_METHODS = frozenset(['users'])
+    FULL_PUSH_METHODS = frozenset(['users', 'senales'])
 
     def _push_models_allowed(self):
         """Conjunto de métodos _push_* que corren. Parámetro
-        quimibond_intelligence.push_models: 'all' (= contacts y users) o
+        quimibond_intelligence.push_models: 'all' (= contacts, users y senales) o
         lista con comas tomada de PUSH_MODELS. Nombres desconocidos se
         ignoran con aviso: desde el 2026-09-18 ya no existe nada más que
         empujar (las tablas odoo_* de Supabase se borraron)."""
@@ -218,7 +218,7 @@ class QuimibondSync(models.TransientModel):
 
     @api.model
     def push_to_supabase(self):
-        """Cron horario: empuja contactos/empresas y usuarios a Supabase."""
+        """Cron horario: empuja contactos/empresas, usuarios y señales a Supabase."""
         client = _get_client(self.env)
         if not client:
             return
@@ -249,6 +249,7 @@ class QuimibondSync(models.TransientModel):
             methods = [
                 ('contacts', self._push_contacts),
                 ('users', self._push_users),
+                ('senales', self._push_senales),
             ]
             allowed = self._push_models_allowed()
             methods = [(label, fn) for label, fn in methods if label in allowed]
