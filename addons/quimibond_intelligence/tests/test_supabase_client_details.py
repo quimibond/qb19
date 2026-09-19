@@ -5,7 +5,8 @@ Correr con: cd addons && python3 -m pytest quimibond_intelligence/tests
 """
 from unittest.mock import MagicMock
 import httpx
-from quimibond_intelligence.models.supabase_client import SupabaseClient
+import pytest
+from quimibond_intelligence.models.supabase_client import SupabaseClient, SupabaseError
 
 
 def _make_client(mock_http):
@@ -60,3 +61,30 @@ def test_rpc_lenient_returns_none_on_error():
     c = _make_client(mock)
     result = c.rpc('memoria_brief', {'p_odoo_partner_id': 1})
     assert result is None  # lenient catches and returns None
+
+
+def test_rpc_strict_returns_json_on_2xx():
+    mock = MagicMock()
+    resp = MagicMock(status_code=200, content=b'{"ok": true, "nuevas": 2}')
+    resp.json.return_value = {'ok': True, 'nuevas': 2}
+    mock.post.return_value = resp
+    c = _make_client(mock)
+    assert c.rpc_strict('senales_ingestar', {'p_senal': 'x'}) == {'ok': True, 'nuevas': 2}
+    assert mock.post.call_args[0][0].endswith('/rest/v1/rpc/senales_ingestar')
+
+
+def test_rpc_strict_raises_on_http_error():
+    mock = MagicMock()
+    mock.post.return_value = MagicMock(status_code=400, content=b'{"message":"bad"}', text='{"message":"bad"}')
+    c = _make_client(mock)
+    with pytest.raises(SupabaseError) as exc:
+        c.rpc_strict('senales_ingestar', {})
+    assert 'HTTP 400' in str(exc.value) and 'bad' in str(exc.value)
+
+
+def test_rpc_strict_raises_on_network_error():
+    mock = MagicMock()
+    mock.post.side_effect = httpx.ConnectError('down')
+    c = _make_client(mock)
+    with pytest.raises(SupabaseError):
+        c.rpc_strict('senales_ingestar', {})

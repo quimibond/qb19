@@ -39,3 +39,7 @@ def _load_supabase_client():
 
 
 _load_supabase_client()
+
+# Los test_senales_*.py y test_push_senales.py son tests de Odoo (TransactionCase): los corre el CI
+# dentro de Odoo, no pytest.
+collect_ignore_glob = ['test_senales_*.py', 'test_push_senales.py', 'common.py']
