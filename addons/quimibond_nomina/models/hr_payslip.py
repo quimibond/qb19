@@ -381,6 +381,7 @@ class HrPayslip(models.Model):
             itype.sudo().write({'struct_ids': [(4, st.id) for st in faltan]})
         return True
 
+    @api.model
     def qb_nomina_ensure_horas_extra_view(self):
         """Deja lista la herencia de la plantilla del CFDI que imprime
         ``HorasExtra``. Se llama desde ``data/cfdi_horas_extra.xml`` en cada
