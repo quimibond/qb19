@@ -187,6 +187,29 @@ código: un concepto sin traducción se queda como estaba. Si algún concepto
 sigue saliendo en inglés, es que a su registro le falta la traducción: se
 corrige en Nómina → Configuración → Conceptos CFDI, en español.
 
+**El módulo sólo LEE `l10n.mx.concept`; no escribe ni traduce registros.**
+`_qb_conceptos_en_espanol` hace un `search` por `payroll_code` y lee `name`
+con `lang='es_MX'`; el resultado va al diccionario del CFDI de ese recibo y
+nada más. `l10n.mx.concept` lo usa todo el CFDI mexicano y no se toca.
+
+## Qué escribe el módulo en la base (inventario completo)
+
+Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
+lectura o valores en memoria del CFDI de cada recibo.
+
+| Qué | Cuándo | Registro |
+|---|---|---|
+| Campo `l10n_mx_employer_registration` en `hr.version` (y su reflejo en `hr.employee`) | al instalar | columna nueva, nace vacía: inerte hasta que alguien la llene |
+| Modelo `qb.nomina.rule.sentinel` (tabla nueva) y sus dos filas `SUBSIDY` / `INT_DAY_WAGE` | al instalar (`post_init_hook`) | sólo lee las reglas para sacar la huella; **nunca escribe en `hr.salary.rule`** |
+| Cron «Nómina Quimibond - Centinela de reglas salariales» | al instalar | diario, 7:00 CDMX; manda correo, no modifica nada |
+| Tipo de entrada `HE_DIAS` (`hr.payslip.input.type`) | al instalar; en cada actualización se liga a la estructura `MX_REGULAR` (`struct_ids`) | registro propio del módulo (`noupdate`) |
+| Vista QWeb `cfdiv40_nomina_quimibond` y vista `cfdiv40_nomina_horas_extra` (herencias de la plantilla del CFDI) | al instalar; la segunda reescribe su propio `arch`/`active` en cada actualización | registros propios del módulo; la plantilla de Odoo no se modifica |
+| Vistas del empleado, plantilla de contrato y del centinela; menú del centinela (se cuelga de Nómina → Configuración en cada actualización) | al instalar | registros propios del módulo |
+| Fila de `hr.payslip.line`, `hr.payslip`, `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner` | nunca | — |
+
+Desinstalar el módulo borra lo propio (modelo, vistas, cron, tipo de entrada,
+campo) y no deja nada cambiado en registros de Odoo.
+
 ## Cómo verificarlo después del build
 
 1. Instalar `quimibond_nomina` en la staging de `main`.

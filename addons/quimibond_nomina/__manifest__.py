@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.4.1',
+    'version': '19.0.1.4.2',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
     'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
