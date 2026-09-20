@@ -14,7 +14,7 @@ class TestSenalesComercial(SenalesCommon):
             'partner_id': partner.id, 'picking_type_id': wh.out_type_id.id,
             'location_id': wh.lot_stock_id.id, 'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'scheduled_date': self.hace(hace),
-            'move_ids': [(0, 0, {'name': 'Tela', 'product_id': prod.id, 'product_uom_qty': 5, 'product_uom': prod.uom_id.id,
+            'move_ids': [(0, 0, {'product_id': prod.id, 'product_uom_qty': 5, 'product_uom': prod.uom_id.id,
                                  'location_id': wh.lot_stock_id.id, 'location_dest_id': self.env.ref('stock.stock_location_customers').id})],
         })
         pick.action_confirm()

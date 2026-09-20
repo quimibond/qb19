@@ -12,6 +12,7 @@ class TestSenalesCompras(SenalesCommon):
         po = self.env['purchase.order'].create({'partner_id': self.proveedor.id, 'partner_ref': ref,
                                                 'order_line': [(0, 0, {'product_id': prod.id, 'product_qty': 1, 'price_unit': 10})]})
         po.button_confirm()
+        po.flush_recordset()  # button_confirm deja date_approve pendiente; sin flush, invalidate_recordset lo escribiría encima del UPDATE
         self.env.cr.execute('UPDATE purchase_order SET date_approve = %s WHERE id = %s', (self.hace(hace_aprobada), po.id))
         po.invalidate_recordset(['date_approve'])
         return po

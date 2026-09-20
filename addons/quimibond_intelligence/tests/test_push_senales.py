@@ -67,8 +67,12 @@ class TestPushSenales(TransactionCase):
 
     def test_error_en_una_senal_no_detiene_las_demas_pero_deja_error(self):
         c = ClienteFalso([x for x in self.config if x['senal'] in ('_a', '_boom', '_b')], fallar_en=('_a',))
-        with self.assertRaises(SupabaseError):
+        # No usar assertRaises: el de Odoo envuelve el bloque en un savepoint y deshace el sync.log que aquí se verifica.
+        try:
             self.sync._push_senales(c)
+            self.fail('debió levantar SupabaseError')
+        except SupabaseError:
+            pass
         self.assertEqual([p['p_senal'] for f, p in c.calls if f == 'senales_ingestar'], ['_a', '_b'])  # _boom no manda; _b sí
         self.assertEqual(c.calls[-1][0], 'senales_push_terminado')
         log = self.env['quimibond.sync.log'].search([('name', '=', 'Push señales con errores')], limit=1)
