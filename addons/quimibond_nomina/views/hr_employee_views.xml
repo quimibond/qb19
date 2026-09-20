@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Ficha del empleado: en Odoo 19 el contrato (hr.version) se edita desde
+         la pestaña de nómina del empleado. El campo va junto a Fondo de
+         ahorro, dentro del grupo que sólo se ve con country_code == 'MX'. -->
+    <record id="view_employee_form_quimibond_nomina" model="ir.ui.view">
+        <field name="name">hr.employee.form.quimibond.nomina</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_mx_savings_fund']" position="after">
+                <field name="l10n_mx_employer_registration" placeholder="C-675994510-1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Plantillas de contrato (hr.version sin empleado). -->
+    <record id="hr_contract_template_form_view_quimibond_nomina" model="ir.ui.view">
+        <field name="name">hr.contract.template.form.quimibond.nomina</field>
+        <field name="model">hr.version</field>
+        <field name="inherit_id" ref="hr.hr_contract_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='salary_info']" position="inside">
+                <group name="quimibond_nomina" string="IMSS" invisible="country_code != 'MX'">
+                    <field name="country_code" invisible="1"/>
+                    <field name="l10n_mx_employer_registration" placeholder="C-675994510-1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

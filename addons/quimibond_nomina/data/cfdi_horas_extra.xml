@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Herencia de la plantilla del CFDI que imprime nomina12:HorasExtra.
+         Nace apagada y con arch vacío: el arch real lo escribe
+         hr.payslip.qb_nomina_ensure_horas_extra_view() justo después, en
+         cada instalación/actualización, leyendo la plantilla de Odoo para
+         sacar la variable del t-foreach y para apagarse si Odoo ya emite el
+         nodo. Ver models/hr_payslip.py y models/horas_extra.py. -->
+    <record id="cfdiv40_nomina_horas_extra" model="ir.ui.view">
+        <field name="name">CFDI 4.0 nómina: nodo HorasExtra (Quimibond)</field>
+        <field name="type">qweb</field>
+        <field name="mode">extension</field>
+        <field name="key">quimibond_nomina.cfdiv40_nomina_horas_extra</field>
+        <field name="inherit_id" ref="l10n_mx_hr_payroll_account_edi.cfdiv40_nomina"/>
+        <field name="active" eval="False"/>
+        <field name="arch" type="xml"><data/></field>
+    </record>
+
+    <function model="hr.payslip" name="qb_nomina_ensure_horas_extra_view"/>
+
+</odoo>
