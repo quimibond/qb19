@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Detección de Necesidades de Capacitación (DNC) F-P-A01-17 -->
+    <record id="sgi_survey_dnc" model="survey.survey">
+        <field name="title">DNC - Detección de Necesidades de Capacitación (F-P-A01-17)</field>
+        <field name="description">Cuestionario para identificar brechas de competencia y necesidades de formación por puesto.</field>
+        <field name="questions_layout">page_per_section</field>
+        <field name="access_mode">token</field>
+        <field name="users_login_required" eval="True"/>
+    </record>
+
+    <record id="sgi_survey_dnc_page1" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_dnc"/>
+        <field name="title">Competencias del puesto</field>
+        <field name="sequence">1</field>
+        <field name="is_page" eval="True"/>
+    </record>
+
+    <record id="sgi_survey_dnc_q1" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_dnc"/>
+        <field name="title">¿Qué actividades de su puesto le resultan más difíciles de ejecutar?</field>
+        <field name="sequence">2</field>
+        <field name="question_type">text_box</field>
+    </record>
+
+    <record id="sgi_survey_dnc_q2" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_dnc"/>
+        <field name="title">¿Considera que requiere capacitación adicional para su puesto?</field>
+        <field name="sequence">3</field>
+        <field name="question_type">simple_choice</field>
+        <field name="suggested_answer_ids" eval="[
+            (0, 0, {'value': 'Sí, urgente'}),
+            (0, 0, {'value': 'Sí, deseable'}),
+            (0, 0, {'value': 'No'}),
+        ]"/>
+    </record>
+
+    <record id="sgi_survey_dnc_q3" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_dnc"/>
+        <field name="title">Nivel de dominio autopercibido en las competencias clave de su puesto</field>
+        <field name="sequence">4</field>
+        <field name="question_type">scale</field>
+        <field name="scale_min">1</field>
+        <field name="scale_max">5</field>
+    </record>
+
+    <record id="sgi_survey_dnc_page2" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_dnc"/>
+        <field name="title">Temas de formación</field>
+        <field name="sequence">5</field>
+        <field name="is_page" eval="True"/>
+    </record>
+
+    <record id="sgi_survey_dnc_q4" model="survey.question">
+        <field name="survey_id" ref="sgi_survey_dnc"/>
+        <field name="title">Enliste los temas de capacitación que considera necesarios</field>
+        <field name="sequence">6</field>
+        <field name="question_type">text_box</field>
+    </record>
+</odoo>

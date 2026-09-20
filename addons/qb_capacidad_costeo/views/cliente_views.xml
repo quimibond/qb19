@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Rentabilidad por cliente ============ -->
+    <record id="cliente_rentabilidad_view_list" model="ir.ui.view">
+        <field name="name">qb.cliente.rentabilidad.list</field>
+        <field name="model">qb.cliente.rentabilidad</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="contrib_pct &lt; 30"
+                  decoration-success="contrib_pct &gt;= 55">
+                <field name="partner_id"/>
+                <field name="revenue_12m" sum="Total"/>
+                <field name="contrib_12m" sum="Total"/>
+                <field name="contrib_pct"/>
+                <field name="margen_bruto_12m" sum="Total" optional="show"/>
+                <field name="margen_bruto_pct"/>
+                <field name="margen_neto_12m" sum="Total" optional="show"/>
+                <field name="margen_neto_pct"
+                       decoration-danger="margen_neto_pct &lt; 0"/>
+                <field name="costo_cobertura_pct"
+                       decoration-warning="costo_cobertura_pct &lt; 95"
+                       optional="show"/>
+                <field name="horas_cuello_12m" sum="Total"/>
+                <field name="contrib_por_hora"/>
+                <field name="n_productos"/>
+                <field name="meses_activo"/>
+                <field name="ultima_compra"/>
+            </list>
+        </field>
+    </record>
+    <!-- Form de solo lectura: la "ficha 360" del cliente — sus números de
+         12 meses y botones a todo lo relacionado. -->
+    <record id="cliente_rentabilidad_view_form" model="ir.ui.view">
+        <field name="name">qb.cliente.rentabilidad.form</field>
+        <field name="model">qb.cliente.rentabilidad</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_productos" type="object"
+                                class="oe_stat_button" icon="fa-cubes"
+                                string="Productos que compra"/>
+                        <button name="action_ver_cotizaciones" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                string="Cotizaciones"/>
+                        <button name="action_ver_facturas" type="object"
+                                class="oe_stat_button" icon="fa-book"
+                                string="Facturas"/>
+                        <button name="action_abrir_cliente" type="object"
+                                class="oe_stat_button" icon="fa-address-card-o"
+                                string="Contacto"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="partner_id" readonly="1"/></h1>
+                    </div>
+                    <!-- El veredicto primero: un juicio en una línea, con
+                         sus números — la misma gramática de alertas del
+                         resto del módulo. -->
+                    <field name="semaforo" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="semaforo != 'rojo'">
+                        🔴 <b>Pierde dinero:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="semaforo != 'ambar'">
+                        🟡 <b>Al filo:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-success" role="alert"
+                         invisible="semaforo != 'verde'">
+                        🟢 <b>Sano:</b> <field name="veredicto"
+                        readonly="1" class="oe_inline"/>
+                    </div>
+                    <field name="company_currency_id" invisible="1"/>
+                    <group>
+                        <group string="Venta (12 meses)">
+                            <field name="revenue_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="n_productos"/>
+                            <field name="meses_activo"/>
+                            <field name="ultima_compra"/>
+                        </group>
+                        <group string="Márgenes reales (12 meses)">
+                            <field name="contrib_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="contrib_pct"/>
+                            <field name="margen_bruto_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="margen_bruto_pct"/>
+                            <field name="margen_neto_12m" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="margen_neto_pct"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Capacidad">
+                            <field name="horas_cuello_12m"/>
+                            <field name="contrib_por_hora" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
+                        </group>
+                        <group string="Calidad del dato">
+                            <field name="costo_cobertura_pct"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="🛒 Qué compra (precio y margen)">
+                            <field name="productos_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                        <page string="📈 Tendencia 12 meses">
+                            <field name="tendencia_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                        <page string="📋 Cotizaciones">
+                            <field name="cotizaciones_html" nolabel="1"
+                                   readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="cliente_rentabilidad_view_graph" model="ir.ui.view">
+        <field name="name">qb.cliente.rentabilidad.graph</field>
+        <field name="model">qb.cliente.rentabilidad</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="partner_id"/>
+                <field name="contrib_12m" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="cliente_rentabilidad_action" model="ir.actions.act_window">
+        <field name="name">Rentabilidad por cliente (12m)</field>
+        <field name="res_model">qb.cliente.rentabilidad</field>
+        <field name="view_mode">list,form,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Rentabilidad por cliente</p>
+            <p>Los tres márgenes reales de cada cuenta en 12 meses —
+            contribución (facturado − costo variable), margen bruto (− costo
+            de producción) y margen neto (− operación) — más las horas del
+            cuello que ocupa y qué tan bien las paga. La vista para decidir
+            "¿me conviene pelear este cliente?". Requiere costos calculados
+            (Recalcular costeo) de los meses del período.</p>
+        </field>
+    </record>
+
+    <!-- ============ Win/Loss de cotizaciones ============ -->
+    <record id="winloss_view_pivot" model="ir.ui.view">
+        <field name="name">qb.cotizacion.winloss.pivot</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="state" type="row"/>
+                <field name="precio_vs_piso_pct" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="winloss_view_graph" model="ir.ui.view">
+        <field name="name">qb.cotizacion.winloss.graph</field>
+        <field name="model">qb.cotizacion</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="state"/>
+                <field name="precio_vs_piso_pct" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="winloss_action" model="ir.actions.act_window">
+        <field name="name">Win/Loss: ¿a qué % sobre el piso ganamos?</field>
+        <field name="res_model">qb.cotizacion</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('state', 'in', ('won', 'lost'))]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('winloss_view_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('winloss_view_graph')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Win/Loss</p>
+            <p>Marca tus cotizaciones como Ganada o Perdida (en el statusbar
+            de cada una) y aquí verás a qué % sobre el piso lleno ganas y a
+            cuál pierdes — el margen REAL que el mercado te está pagando.
+            Agrupa por cliente para ver su sensibilidad de precio.</p>
+        </field>
+    </record>
+
+</odoo>

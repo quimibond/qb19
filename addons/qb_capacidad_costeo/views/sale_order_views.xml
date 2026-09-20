@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Botón "Cotizar costo" en la orden de venta: abre la calculadora
+         viva con cliente, línea, producto, precio y cantidad precargados
+         (default_get del wizard lee active_model/active_id). Solo agrega
+         un botón a la vista — no extiende el modelo sale.order. -->
+    <record id="view_order_form_qb_cotizador" model="ir.ui.view">
+        <field name="name">sale.order.form.qb.cotizador</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="%(qb_capacidad_costeo.cotizador_orden_action)d"
+                        type="action" string="Cotizar costos"
+                        class="btn-secondary"
+                        help="Todas las líneas del pedido con su costo
+                              variable, pisos, precio de mercado y semáforo;
+                              corrige precios en lote o abre el detalle de
+                              cualquier producto."/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

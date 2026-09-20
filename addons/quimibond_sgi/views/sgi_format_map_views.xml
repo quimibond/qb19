@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===== sgi.format.map: administración del mapeo ===== -->
+
+    <record id="sgi_format_map_view_list" model="ir.ui.view">
+        <field name="name">sgi.format.map.list</field>
+        <field name="model">sgi.format.map</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sgi_code"/>
+                <field name="sgi_code_alt" optional="show"/>
+                <field name="model_id"/>
+                <field name="note" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_format_map_view_form" model="ir.ui.view">
+        <field name="name">sgi.format.map.form</field>
+        <field name="model">sgi.format.map</field>
+        <field name="arch" type="xml">
+            <form string="Formato SGI en documento de Odoo">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="model_id"/>
+                            <field name="sgi_code"/>
+                            <field name="sgi_code_alt"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                            <field name="note"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">
+                        La revisión no se captura: se lee del documento
+                        <b>vigente</b> con esa clave en Documentos, tanto en el
+                        formulario como en el PDF impreso.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_format_map_action" model="ir.actions.act_window">
+        <field name="name">Formatos en documentos de Odoo</field>
+        <field name="res_model">sgi.format.map</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Mapea un formato del SGI a su documento de Odoo</p>
+            <p>El registro de Odoo (cotización, OC, remisión…) mostrará e imprimirá
+               la clave y la revisión vigente del formato que sustituye.</p>
+        </field>
+    </record>
+
+    <!-- ===== Banner "Formato controlado" en formularios internos ===== -->
+
+    <record id="sgi_format_banner_sale_order" model="ir.ui.view">
+        <field name="name">sale.order.form.sgi.format</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_format_banner_purchase_order" model="ir.ui.view">
+        <field name="name">purchase.order.form.sgi.format</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_format_banner_stock_picking" model="ir.ui.view">
+        <field name="name">stock.picking.form.sgi.format</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_format_banner_mrp_production" model="ir.ui.view">
+        <field name="name">mrp.production.form.sgi.format</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_format_banner_maintenance_request" model="ir.ui.view">
+        <field name="name">maintenance.request.form.sgi.format</field>
+        <field name="model">maintenance.request</field>
+        <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_format_banner_quality_alert" model="ir.ui.view">
+        <field name="name">quality.alert.form.sgi.format</field>
+        <field name="model">quality.alert</field>
+        <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_format_banner_stock_lot" model="ir.ui.view">
+        <field name="name">stock.lot.form.sgi.format</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI (CoA):
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_format_banner_mgmt_review" model="ir.ui.view">
+        <field name="name">sgi.management.review.form.sgi.format</field>
+        <field name="model">sgi.management.review</field>
+        <field name="inherit_id" ref="sgi_management_review_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

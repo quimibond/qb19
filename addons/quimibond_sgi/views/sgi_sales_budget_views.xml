@@ -1,0 +1,764 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ LÍNEA: LISTA / FICHA / GRID / PIVOT / GRAPH ============ -->
+    <record id="sgi_sales_budget_line_view_list" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.list</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <list string="Líneas de presupuesto" editable="bottom"
+                  decoration-warning="price_gap_alert == 'leve'"
+                  decoration-danger="price_gap_alert == 'grave'">
+                <field name="budget_id" column_invisible="context.get('default_budget_id')"/>
+                <field name="kind" column_invisible="1"/>
+                <field name="price_gap_alert" column_invisible="1"/>
+                <field name="product_id"/>
+                <field name="customer_code" optional="hide"/>
+                <field name="partner_id" optional="show"/>
+                <field name="date"/>
+                <field name="uom_id"/>
+                <field name="qty_budget"/>
+                <field name="qty_forecast" readonly="1" optional="show"/>
+                <field name="price_unit_currency" readonly="1" optional="show"/>
+                <field name="price_real_unit_currency" readonly="1" optional="show"/>
+                <field name="price_gap_pct" readonly="1" optional="show"/>
+                <field name="price_gap_fx" readonly="1" optional="hide"/>
+                <field name="amount_currency" readonly="1" optional="hide"/>
+                <field name="list_currency_id" optional="hide"/>
+                <field name="price_unit_budget" readonly="1" optional="hide"/>
+                <field name="amount_budget" readonly="1" optional="show"/>
+                <field name="has_list_price" readonly="1" optional="hide"/>
+                <field name="price_source" readonly="1" optional="hide"/>
+                <field name="qty_real" readonly="1" optional="show"/>
+                <field name="qty_net_demand" readonly="1" optional="show"/>
+                <field name="amount_real" readonly="1" optional="show"/>
+                <field name="qty_ordered" readonly="1" optional="hide"/>
+                <field name="amount_ordered" readonly="1" optional="hide"/>
+                <field name="coverage_pct" widget="percentage" readonly="1" optional="show"
+                       column_invisible="context.get('sgi_hide_coverage')"/>
+                <field name="coverage_state" widget="badge" readonly="1" optional="show"
+                       column_invisible="context.get('sgi_hide_coverage')"
+                       decoration-success="coverage_state == 'cubierto'"
+                       decoration-warning="coverage_state == 'parcial'"
+                       decoration-danger="coverage_state == 'sin_pedido'"
+                       decoration-info="coverage_state == 'excedido'"/>
+                <field name="avg_price_budget" readonly="1" optional="hide"/>
+                <field name="avg_price_real" readonly="1" optional="hide"/>
+                <field name="unconverted_count" readonly="1" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <button name="action_view_week_orders" type="object" icon="fa-shopping-cart"
+                        string="Ver pedidos de la semana" title="Ver pedidos de la semana"
+                        invisible="kind != 'pronostico'"/>
+                <button name="action_create_draft_quotation" type="object" icon="fa-file-o"
+                        string="Crear cotización" title="Crear cotización (borrador)"
+                        invisible="kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')"/>
+                <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
+                        string="Ver facturas del mes" title="Ver facturas del mes"
+                        invisible="kind == 'pronostico'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_form" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.form</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <form string="Línea de presupuesto">
+                <header>
+                    <field name="kind" invisible="1"/>
+                    <field name="coverage_state" invisible="1"/>
+                    <button name="action_view_week_orders" type="object"
+                            string="Ver pedidos de la semana" icon="fa-shopping-cart"
+                            invisible="kind != 'pronostico'"/>
+                    <button name="action_create_draft_quotation" type="object"
+                            string="Crear cotización (borrador)" icon="fa-file-o"
+                            invisible="kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')"/>
+                    <button name="action_view_month_invoices" type="object"
+                            string="Ver facturas del mes" icon="fa-file-text-o"
+                            invisible="kind == 'pronostico'"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="budget_id"/>
+                            <field name="product_id"/>
+                            <field name="customer_code"/>
+                            <field name="partner_id" readonly="kind == 'pronostico'"/>
+                            <field name="date"/>
+                            <field name="uom_id"/>
+                        </group>
+                        <group>
+                            <field name="qty_budget"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="list_currency_id" invisible="1"/>
+                            <label for="price_unit_currency" string="Precio (divisa)"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="price_unit_currency" nolabel="1" readonly="1"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="amount_currency" readonly="1"
+                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
+                            <field name="price_unit_budget" readonly="1"/>
+                            <field name="amount_budget" readonly="1"/>
+                            <field name="has_list_price" readonly="1"/>
+                            <field name="price_source" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Real (facturado) y pedido — automático">
+                        <group>
+                            <field name="qty_real" readonly="1"/>
+                            <field name="qty_forecast" readonly="1"
+                                   invisible="kind == 'pronostico'"/>
+                            <field name="amount_real" readonly="1"/>
+                            <field name="unconverted_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="qty_ordered" readonly="1"/>
+                            <field name="amount_ordered" readonly="1"/>
+                            <field name="coverage_pct" widget="percentage" readonly="1"
+                                   invisible="kind != 'pronostico'"/>
+                            <field name="coverage_state" widget="badge" readonly="1"
+                                   invisible="kind != 'pronostico'"/>
+                            <field name="avg_price_budget" readonly="1"/>
+                            <field name="avg_price_real" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_grid_qty" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.grid.qty</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <grid string="Matriz de cantidades" editable="1" create_inline="1"
+                  display_empty="1">
+                <field name="product_id" type="row"/>
+                <field name="date" type="col">
+                    <range name="month" string="Mes" span="year" step="month" default="1"/>
+                </field>
+                <field name="qty_budget" type="measure"/>
+            </grid>
+        </field>
+    </record>
+
+    <!-- La grid de importes se eliminó: solo se capturan cantidades; el importe
+         lo pone la lista de precios. La grid de cantidades es LA captura. -->
+
+    <record id="sgi_sales_budget_line_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.pivot</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Ppto vs facturado vs pedido">
+                <field name="uom_id" type="row"/>
+                <field name="product_id" type="row"/>
+                <field name="partner_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+                <field name="qty_budget" type="measure"/>
+                <field name="qty_real" type="measure"/>
+                <field name="qty_net_demand" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_graph" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.graph</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Ppto vs facturado vs pedido" type="bar">
+                <field name="date" interval="month"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_graph_curve" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.graph.curve</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Curva acumulada (Dirección)" type="line" cumulated="1">
+                <field name="date" interval="month"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_line_view_search" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.line.search</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <search string="Líneas de presupuesto">
+                <field name="product_id"/>
+                <field name="budget_id"/>
+                <field name="team_id"/>
+                <field name="partner_id"/>
+                <filter name="vigente" string="Vigente"
+                        domain="[('budget_id.state', '=', 'aprobado')]"/>
+                <separator/>
+                <filter name="presupuesto" string="Presupuesto"
+                        domain="[('kind', '=', 'presupuesto')]"/>
+                <filter name="pronostico" string="Pronóstico"
+                        domain="[('kind', '=', 'pronostico')]"/>
+                <separator/>
+                <filter name="year_current" string="Año actual"
+                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d')),
+                                 ('date', '&lt;', (context_today().replace(month=1, day=1) + relativedelta(years=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="year_next" string="Año siguiente"
+                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1) + relativedelta(years=1)).strftime('%Y-%m-%d')),
+                                 ('date', '&lt;', (context_today().replace(month=1, day=1) + relativedelta(years=2)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="con_facturacion" string="Con facturación"
+                        domain="[('amount_real', '!=', 0)]"/>
+                <filter name="price_out_of_tolerance" string="Precio fuera de tolerancia"
+                        domain="[('price_gap_alert', 'in', ('leve', 'grave'))]"/>
+                <filter name="sin_precio_lista" string="Sin precio de lista"
+                        domain="[('has_list_price', '=', False)]"/>
+                <separator/>
+                <filter name="cov_sin_pedido" string="Sin pedido (en horizonte)"
+                        domain="[('coverage_state', '=', 'sin_pedido')]"/>
+                <filter name="cov_parcial" string="Parciales"
+                        domain="[('coverage_state', '=', 'parcial')]"/>
+                <filter name="cov_excedido" string="Excedidos"
+                        domain="[('coverage_state', '=', 'excedido')]"/>
+                <group>
+                    <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_budget" string="Presupuesto" context="{'group_by': 'budget_id'}"/>
+                    <filter name="group_uom" string="Unidad" context="{'group_by': 'uom_id'}"/>
+                    <filter name="group_price_alert" string="Alerta de precio" context="{'group_by': 'price_gap_alert'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción global de líneas (importación base_import del Excel de MAST). -->
+    <record id="sgi_sales_budget_line_action" model="ir.actions.act_window">
+        <field name="name">Líneas de presupuesto de ventas</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Importa o captura las líneas del presupuesto</p>
+            <p>Para cargar el 2026 desde el Excel, usa <b>Favoritos → Importar registros</b>.
+            Columnas esperadas:</p>
+            <ul>
+                <li><b>Presupuesto</b> (budget_id) — el presupuesto del mercado y año</li>
+                <li><b>Producto</b> (product_id) — por referencia interna o nombre</li>
+                <li><b>Cliente</b> (partner_id) — opcional; vacío = presupuesto global del producto para el mercado</li>
+                <li><b>Unidad</b> (uom_id) — opcional; por defecto la unidad de venta del producto</li>
+                <li><b>Mes</b> (date) — primer día del mes (AAAA-MM-01)</li>
+                <li><b>Cantidad presupuestada</b> (qty_budget) — en la unidad de la línea</li>
+                <li><b>Importe presupuestado</b> (amount_budget) — en moneda de la compañía</li>
+            </ul>
+        </field>
+    </record>
+
+    <!-- ============ PRESUPUESTO: FICHA / LISTA / SEARCH ============ -->
+    <record id="sgi_sales_budget_view_form" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.form</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <form string="Presupuesto de ventas">
+                <header>
+                    <!-- Flujo (P-A28 Rev.15): captura → revisado (Admin ventas) →
+                         aprobado (alta dirección, solo presupuesto). El pronóstico
+                         es documento vivo: solo se marca revisado. -->
+                    <button name="action_download_template" type="object"
+                            string="1. Descargar plantilla" icon="fa-file-excel-o"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_open_import" type="object"
+                            string="2. Importar" icon="fa-upload"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_open_grid_qty" type="object"
+                            string="2. Capturar en la matriz" icon="fa-th"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_preload_from_orders" type="object"
+                            string="Precargar desde pedidos" icon="fa-download"
+                            invisible="kind != 'pronostico' or state != 'borrador'"/>
+                    <button name="action_preload_from_orders" type="object"
+                            string="Precargar (pronóstico + real)" icon="fa-download"
+                            invisible="kind != 'presupuesto' or state != 'borrador'"/>
+                    <button name="action_refresh_actuals" type="object"
+                            string="3. Actualizar" icon="fa-refresh"/>
+                    <button name="action_send_to_review" type="object"
+                            string="Enviar a revisión" class="btn-primary"
+                            invisible="kind != 'presupuesto' or state != 'borrador'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_send_to_review" type="object"
+                            string="Marcar revisado" class="btn-primary"
+                            invisible="kind != 'pronostico' or state != 'borrador'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_approve" type="object" string="Aprobar (Dirección)"
+                            class="btn-primary"
+                            invisible="kind != 'presupuesto' or state != 'revisado'"
+                            groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_revise" type="object" string="Revisar (nueva Rev.)"
+                            invisible="kind != 'presupuesto' or state != 'aprobado'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            invisible="state not in ('revisado', 'aprobado')"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_send_to_mps" type="object"
+                            string="Enviar demanda al MPS" icon="fa-industry"
+                            invisible="not sgi_mps_available or (kind == 'pronostico' and state != 'revisado') or (kind == 'presupuesto' and state != 'aprobado')"/>
+                    <field name="sgi_mps_available" invisible="1"/>
+                    <button name="action_open_comparison" type="object"
+                            string="Comparación" icon="fa-bar-chart"/>
+                    <button name="action_open_analysis" type="object"
+                            string="Análisis" icon="fa-table"/>
+                    <button name="action_reconcile_invoiced" type="object"
+                            string="Conciliar facturado" icon="fa-balance-scale"
+                            invisible="kind != 'presupuesto'"/>
+                    <button name="action_open_cumulative" type="object"
+                            string="Curva (Dirección)" icon="fa-line-chart"/>
+                    <button name="action_print_budget" type="object"
+                            string="Imprimir" icon="fa-print"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,revisado,aprobado,obsoleto"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_price_deviations" type="object"
+                                class="oe_stat_button" icon="fa-exclamation-triangle"
+                                invisible="price_deviation_count == 0">
+                            <field name="price_deviation_count" widget="statinfo"
+                                   string="Desviaciones de precio"/>
+                        </button>
+                        <button name="action_view_uncovered" type="object"
+                                class="oe_stat_button" icon="fa-calendar-times-o"
+                                invisible="kind != 'pronostico' or uncovered_count == 0">
+                            <field name="uncovered_count" widget="statinfo"
+                                   string="Semanas descubiertas"/>
+                        </button>
+                        <button name="action_view_orders_without_forecast" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart"
+                                invisible="kind != 'pronostico'"
+                                string="Pedidos fuera de pronóstico"/>
+                    </div>
+                    <widget name="web_ribbon" title="Obsoleto" bg_color="text-bg-secondary"
+                            invisible="state != 'obsoleto'"/>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="unconverted_count == 0">
+                        <field name="unconverted_count" class="oe_inline"/> línea(s) de factura
+                        del periodo vienen en una unidad de otra categoría: cuentan en importe
+                        pero NO en cantidad. Corrige la unidad en la factura o en la línea.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="no_price_count == 0">
+                        <field name="no_price_count" class="oe_inline"/> producto(s) SIN precio
+                        en la lista aplicable. El precio no se captura aquí: corrige
+                        <b>LA LISTA de precios</b> (y arregla cotizaciones, pedidos y presupuesto
+                        de un golpe).
+                        <button name="action_view_no_price" type="object"
+                                string="Ver líneas sin precio" class="btn-link"/>
+                        <button name="action_price_coverage_report" type="object"
+                                string="Auditar cobertura de precios" class="btn-link"/>
+                    </div>
+                    <field name="needs_justification" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not needs_justification">
+                        Este presupuesto aprobado va por <b>debajo del umbral de
+                        cumplimiento</b> (Ajustes → «Cumplimiento mínimo del
+                        presupuesto»). Captura la <b>justificación del incumplimiento</b>
+                        (P-A28 4.3.6.1) abajo. No bloquea nada: es evidencia del
+                        análisis, no un candado.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <div class="text-muted">
+                            <field name="sgi_format_banner" readonly="1"/> ·
+                            Folio <field name="folio" readonly="1" class="oe_inline"/>
+                        </div>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="year"/>
+                            <field name="team_id"/>
+                            <field name="partner_id"
+                                   required="kind == 'pronostico'"
+                                   invisible="kind != 'pronostico'"/>
+                            <field name="revision"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id"/>
+                            <field name="line_count"/>
+                        </group>
+                    </group>
+                    <group string="Totales (importe en moneda de la compañía)">
+                        <group>
+                            <field name="amount_budget_total"/>
+                            <field name="amount_real_total"/>
+                            <field name="amount_ordered_total"/>
+                            <field name="fulfillment_pct" widget="percentage"/>
+                            <field name="amount_real_unbudgeted"/>
+                        </group>
+                        <group>
+                            <field name="amount_currency_text"/>
+                            <field name="qty_budget_text"/>
+                            <field name="qty_real_text"/>
+                        </group>
+                    </group>
+                    <group string="Justificación de incumplimiento (P-A28 4.3.6.1)"
+                           invisible="kind != 'presupuesto'">
+                        <field name="nonfulfillment_note" nolabel="1"
+                               placeholder="Análisis del porqué del incumplimiento del presupuesto (contexto de mercado, causas, acciones). No es candado: es evidencia."/>
+                    </group>
+                    <notebook>
+                        <page string="Matriz (producto × mes)">
+                            <field name="line_ids" context="{'default_budget_id': id}">
+                                <list string="Líneas" editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="partner_id" optional="show"/>
+                                    <field name="date"/>
+                                    <field name="uom_id"/>
+                                    <field name="qty_budget"/>
+                                    <field name="qty_forecast" readonly="1"
+                                           column_invisible="parent.kind != 'presupuesto'"/>
+                                    <field name="price_unit_currency" readonly="1" optional="show"/>
+                                    <field name="amount_currency" readonly="1" optional="show"/>
+                                    <field name="list_currency_id" optional="hide"/>
+                                    <field name="price_unit_budget" readonly="1"/>
+                                    <field name="amount_budget" readonly="1"/>
+                                    <field name="qty_real" readonly="1"/>
+                                    <field name="qty_net_demand" readonly="1"
+                                           column_invisible="parent.kind != 'pronostico'"/>
+                                    <field name="amount_real" readonly="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_view_list" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.list</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <list string="Presupuestos de ventas"
+                  decoration-muted="state == 'obsoleto'"
+                  decoration-success="state == 'aprobado'">
+                <field name="folio"/>
+                <field name="year"/>
+                <field name="team_id"/>
+                <field name="revision"/>
+                <field name="amount_budget_total" optional="show"/>
+                <field name="amount_real_total" optional="show"/>
+                <field name="fulfillment_pct" widget="percentage" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'aprobado'"
+                       decoration-warning="state == 'revisado'"
+                       decoration-info="state == 'borrador'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_view_search" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.search</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <search string="Presupuestos de ventas">
+                <field name="team_id"/>
+                <field name="partner_id"/>
+                <field name="year"/>
+                <filter name="mensual" string="Presupuesto mensual" domain="[('kind', '=', 'presupuesto')]"/>
+                <filter name="semanal" string="Pronóstico semanal" domain="[('kind', '=', 'pronostico')]"/>
+                <separator/>
+                <filter name="approved" string="Aprobados" domain="[('state', '=', 'aprobado')]"/>
+                <filter name="revised" string="Revisados" domain="[('state', '=', 'revisado')]"/>
+                <filter name="draft" string="Borradores" domain="[('state', '=', 'borrador')]"/>
+                <filter name="not_obsolete" string="Vigentes (no obsoletos)"
+                        domain="[('state', '!=', 'obsoleto')]"/>
+                <group>
+                    <filter name="group_year" string="Año" context="{'group_by': 'year'}"/>
+                    <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============ ASISTENTE DE IMPORTACIÓN DESDE EXCEL ============ -->
+    <record id="sgi_sales_budget_import_view_form" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.import.form</field>
+        <field name="model">sgi.sales.budget.import</field>
+        <field name="arch" type="xml">
+            <form string="Importar presupuesto desde Excel">
+                <sheet>
+                    <div class="alert alert-info" role="alert" invisible="result">
+                        Sube el Excel. En un <b>presupuesto</b> se lee el F-P-A28-18
+                        (producto × pares «&lt;mes&gt; m»/«&lt;mes&gt; $»); en un
+                        <b>pronóstico</b>, el forecast F-P-A28-13 (fila «SEMANA» con
+                        números 1–52, producto en col A y código de cliente en col B;
+                        bloques repetidos se suman, filas PO/TOTAL/FECHA se ignoran).
+                        Los productos sin match se reportan; ninguno se crea solo.
+                    </div>
+                    <group invisible="result">
+                        <field name="budget_id" readonly="1"/>
+                        <field name="file" filename="filename"/>
+                        <field name="filename" invisible="1"/>
+                        <field name="available_sheets" invisible="not available_sheets"/>
+                        <field name="sheet_name"/>
+                        <field name="conflict_mode"/>
+                    </group>
+                    <group invisible="not result">
+                        <field name="result" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_import" type="object" string="Importar"
+                            class="btn-primary" invisible="result"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_import_action" model="ir.actions.act_window">
+        <field name="name">Importar desde Excel</field>
+        <field name="res_model">sgi.sales.budget.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_view_types">form</field>
+    </record>
+
+    <record id="sgi_sales_budget_action" model="ir.actions.act_window">
+        <field name="name">Presupuesto de ventas (F-P-A28-17/18)</field>
+        <field name="res_model">sgi.sales.budget</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
+        <field name="domain">[('kind', '=', 'presupuesto')]</field>
+        <field name="context">{'search_default_not_obsolete': 1, 'default_kind': 'presupuesto'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el presupuesto maestro de ventas</p>
+            <p>Un presupuesto por mercado (equipo de ventas) y año (F-P-A28-18).
+            Captura la matriz producto × mes en cantidad y pesos; el real se calcula
+            solo desde lo facturado. En junio, revísalo con «Revisar (nueva Rev.)».</p>
+        </field>
+    </record>
+
+    <record id="sgi_sales_forecast_view_list" model="ir.ui.view">
+        <field name="name">sgi.sales.forecast.list</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <list string="Pronósticos de ventas"
+                  decoration-muted="state == 'obsoleto'"
+                  decoration-success="state == 'aprobado'">
+                <field name="folio"/>
+                <field name="year"/>
+                <field name="partner_id"/>
+                <field name="team_id" optional="show"/>
+                <field name="revision"/>
+                <field name="qty_real_text" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'aprobado'"
+                       decoration-warning="state == 'revisado'"
+                       decoration-info="state == 'borrador'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_sales_forecast_action" model="ir.actions.act_window">
+        <field name="name">Pronóstico de ventas (F-P-A28-13)</field>
+        <field name="res_model">sgi.sales.budget</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
+        <field name="domain">[('kind', '=', 'pronostico')]</field>
+        <field name="context">{'search_default_not_obsolete': 1, 'default_kind': 'pronostico'}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_forecast_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el pronóstico semanal por cliente</p>
+            <p>Un pronóstico por cliente y año (F-P-A28-13, forecast). Captura la
+            matriz producto × semana; el real es lo comprometido a entregar
+            (pedidos confirmados por fecha de compromiso). Importa desde el
+            forecast.xlsx con «Importar desde Excel».</p>
+        </field>
+    </record>
+
+    <!-- ============ KANBAN de presupuestos/pronósticos ============ -->
+    <record id="sgi_sales_budget_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.sales.budget.kanban</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="fulfillment_pct"/>
+                <field name="kind"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="row">
+                            <div class="col-8">
+                                <strong><field name="year"/></strong> ·
+                                <field name="partner_id" invisible="kind != 'pronostico'"/>
+                                <field name="team_id" invisible="kind == 'pronostico'"/>
+                            </div>
+                            <div class="col-4 text-end">
+                                <field name="state" widget="label_selection"
+                                       options="{'classes': {'borrador': 'info', 'revisado': 'warning', 'aprobado': 'success', 'obsoleto': 'muted'}}"/>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6 text-muted">
+                                <field name="amount_budget_total" widget="monetary"/>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span t-attf-class="badge #{record.fulfillment_pct.raw_value >= 90 ? 'text-bg-success' : (record.fulfillment_pct.raw_value >= 80 ? 'text-bg-warning' : 'text-bg-danger')}">
+                                    <field name="fulfillment_pct"/>%
+                                </span>
+                            </div>
+                        </div>
+                        <field name="currency_id" invisible="1"/>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============ ANÁLISIS (4 vistas preconfiguradas) ============ -->
+    <!-- Anti-doble conteo: el default es 'Vigente' (aprobado) + 'Presupuesto' vía
+         search_default (NO domain duro), para poder quitar el filtro y comparar
+         revisiones si hace falta. -->
+    <record id="sgi_sales_analysis_pivot_mercado" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.pivot.mercado</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Por mercado">
+                <field name="team_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_pivot_cliente" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.pivot.cliente</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Por cliente">
+                <field name="partner_id" type="row"/>
+                <field name="team_id" type="row"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_ordered" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_pivot_producto" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.pivot.producto</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Por producto">
+                <field name="product_id" type="row"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="qty_budget" type="measure"/>
+                <field name="qty_real" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_graph_global" model="ir.ui.view">
+        <field name="name">sgi.sales.analysis.graph.global</field>
+        <field name="model">sgi.sales.budget.line</field>
+        <field name="arch" type="xml">
+            <graph string="Global (Dirección)" type="bar" stacked="1">
+                <field name="date" interval="month"/>
+                <field name="team_id"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_mercado_action" model="ir.actions.act_window">
+        <field name="name">Por mercado</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_mercado')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
+    </record>
+
+    <record id="sgi_sales_analysis_cliente_action" model="ir.actions.act_window">
+        <field name="name">Por cliente</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_cliente')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Presupuesto por cliente</p>
+            <p>Las líneas sin cliente (esquema global por producto) se agrupan como
+            «Sin cliente» — no desaparecen.</p>
+        </field>
+    </record>
+
+    <record id="sgi_sales_analysis_producto_action" model="ir.actions.act_window">
+        <field name="name">Por producto</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_producto')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
+    </record>
+
+    <record id="sgi_sales_analysis_global_action" model="ir.actions.act_window">
+        <field name="name">Global (Dirección)</field>
+        <field name="res_model">sgi.sales.budget.line</field>
+        <field name="view_mode">graph</field>
+        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('sgi_sales_analysis_graph_global')})]"/>
+        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
+            'search_default_year_current': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Panel de Dirección</p>
+            <p>Presupuesto vs facturado por mes, apilado por mercado (solo importes:
+            no se mezclan m y kg). La curva acumulada está en el botón «Curva
+            (Dirección)» de la ficha.</p>
+        </field>
+    </record>
+
+    <!-- Reprograma las acciones de presupuesto/pronóstico con kanban primero. -->
+    <record id="sgi_sales_budget_action" model="ir.actions.act_window">
+        <field name="view_mode">kanban,list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_sales_budget_view_kanban')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
+    </record>
+    <record id="sgi_sales_forecast_action" model="ir.actions.act_window">
+        <field name="view_mode">kanban,list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_sales_budget_view_kanban')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_forecast_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
+    </record>
+</odoo>

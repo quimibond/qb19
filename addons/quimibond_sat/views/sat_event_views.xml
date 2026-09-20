@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_sat_webhook_event" model="ir.actions.act_window">
+        <field name="name">Eventos de webhook</field>
+        <field name="res_model">sat.webhook.event</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_sat_webhook_event_list" model="ir.ui.view">
+        <field name="name">sat.webhook.event.list</field>
+        <field name="model">sat.webhook.event</field>
+        <field name="arch" type="xml">
+            <list create="0" decoration-danger="state == 'error'" decoration-muted="state == 'skipped'">
+                <field name="received_at"/>
+                <field name="event_type"/>
+                <field name="taxpayer"/>
+                <field name="state"/>
+                <field name="cfdi_id"/>
+                <field name="error"/>
+                <field name="event_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_webhook_event_form" model="ir.ui.view">
+        <field name="name">sat.webhook.event.form</field>
+        <field name="model">sat.webhook.event</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <header>
+                    <button name="process" type="object" string="Reprocesar" invisible="state == 'processed'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="event_id" readonly="1"/>
+                            <field name="event_type" readonly="1"/>
+                            <field name="taxpayer" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="received_at" readonly="1"/>
+                            <field name="cfdi_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="error" readonly="1"/>
+                    <field name="payload_text" readonly="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sat_sync_log" model="ir.actions.act_window">
+        <field name="name">Bitácora Syntage</field>
+        <field name="res_model">sat.sync.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_sat_sync_log_list" model="ir.ui.view">
+        <field name="name">sat.sync.log.list</field>
+        <field name="model">sat.sync.log</field>
+        <field name="arch" type="xml">
+            <list create="0" decoration-danger="status == 'error'" decoration-warning="status == 'partial'"
+                  decoration-info="status in ('queued', 'running')">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="kind"/>
+                <field name="mode" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="status"/>
+                <field name="items_fetched"/>
+                <field name="items_upserted"/>
+                <field name="items_errored"/>
+                <field name="duration_seconds"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_sync_log_form" model="ir.ui.view">
+        <field name="name">sat.sync.log.form</field>
+        <field name="model">sat.sync.log</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="kind" readonly="1"/>
+                            <field name="status" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                            <field name="create_date" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="date_from" readonly="1"/>
+                            <field name="date_to" readonly="1"/>
+                            <field name="items_fetched" readonly="1"/>
+                            <field name="items_upserted" readonly="1"/>
+                            <field name="items_errored" readonly="1"/>
+                            <field name="duration_seconds" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="summary" readonly="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====== Detalle de una actividad del procedimiento (modal) ====== -->
+    <record id="sgi_process_activity_view_form" model="ir.ui.view">
+        <field name="name">sgi.process.activity.form</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <form string="Actividad del procedimiento">
+                <header>
+                    <button name="action_open_odoo" type="object"
+                            string="Abrir en Odoo" icon="fa-external-link"
+                            invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
+                    <button name="action_view_measure_records" type="object"
+                            string="Ver evidencia" icon="fa-check-square-o"
+                            invisible="not measure_model_id"/>
+                    <button name="action_open_next" type="object"
+                            string="Siguiente paso" icon="fa-arrow-right"
+                            invisible="not next_activity_ids"/>
+                    <field name="measure_state" widget="statusbar"
+                           invisible="not measure_state"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info mb-3" role="status">
+                        <b>¿Qué es una actividad?</b> Un <b>paso numerado</b> del
+                        procedimiento vivo del proceso (sección 4 del F-P-G01-02):
+                        qué se hace, quién lo hace, con qué formato (sale en
+                        <span class="text-danger">rojo</span> en el PDF) y en qué
+                        menú de Odoo se ejecuta (botón <b>Abrir en Odoo</b>).
+                        Editarla marca el procedimiento como <b>pendiente de
+                        revisión documental</b> y avisa a su dueño.
+                    </div>
+                    <div class="oe_title">
+                        <label for="number" string="Numeral"/>
+                        <h2><field name="number" placeholder="4.2.3.1"/></h2>
+                    </div>
+                    <group>
+                        <group string="Dónde va en el procedimiento (PDF)">
+                            <field name="block"/>
+                            <field name="section" placeholder="4.2.3 Cotización de productos"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Quién lo hace y dónde se ejecuta">
+                            <field name="responsible_role" placeholder="Administrador de ventas y marketing"/>
+                            <field name="responsible_job_ids" widget="many2many_tags"/>
+                            <field name="odoo_menu_id"/>
+                            <field name="odoo_ref" placeholder="Se llena solo al elegir el menú (ej. Ventas &gt; Pedidos)"/>
+                        </group>
+                    </group>
+                    <group string="Resumen">
+                        <field name="name" nolabel="1" placeholder="Resumen corto de la actividad"/>
+                    </group>
+                    <group string="Descripción (texto del numeral)">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                    <group>
+                        <group string="Formatos referenciados">
+                            <field name="format_document_ids" nolabel="1"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group string="Procedimiento relacionado">
+                            <field name="related_procedure_id" nolabel="1"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <group string="Nota">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                    <group string="Encadenamiento — de dónde viene y a dónde va">
+                        <group string="Recibe de">
+                            <field name="in_link_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="from_activity_id"/>
+                                    <field name="name"/>
+                                    <field name="is_cross_process" string="Cruza" optional="show"/>
+                                </list>
+                            </field>
+                        </group>
+                        <group string="Entrega a">
+                            <field name="out_link_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="to_activity_id"/>
+                                    <field name="name"/>
+                                    <field name="is_cross_process" string="Cruza" optional="show"/>
+                                </list>
+                            </field>
+                        </group>
+                        <field name="next_activity_ids" invisible="1"/>
+                    </group>
+                    <group string="Medición — la actividad como acciones reales de Odoo">
+                        <group>
+                            <field name="measure_model_id" options="{'no_create': True}"/>
+                            <field name="measure_model_name"
+                                   placeholder="o escribe el nombre técnico: sale.order"/>
+                            <field name="measure_domain"
+                                   invisible="not measure_model_id"
+                                   placeholder="[('state', '=', 'done')]"/>
+                            <field name="measure_date_field"
+                                   invisible="not measure_model_id"/>
+                            <field name="measure_cadence"
+                                   invisible="not measure_model_id"/>
+                        </group>
+                        <group>
+                            <field name="measure_last_date" invisible="not measure_model_id"/>
+                            <field name="measure_count_30d" invisible="not measure_model_id"/>
+                        </group>
+                        <div class="text-muted" colspan="2" invisible="measure_model_id">
+                            Liga un modelo de Odoo y esta actividad dejará de ser
+                            texto: el cron diario contará sus registros reales
+                            (quién y cuándo) y pintará el semáforo contra la
+                            cadencia esperada.
+                        </div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_view_list" model="ir.ui.view">
+        <field name="name">sgi.process.activity.list</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <list string="Actividades" default_order="process_id, sequence, number">
+                <field name="process_id" optional="show"/>
+                <field name="number"/>
+                <field name="section" optional="show"/>
+                <field name="name"/>
+                <field name="responsible_role" optional="show"/>
+                <field name="responsible_job_ids" widget="many2many_tags" optional="show"/>
+                <field name="format_document_ids" widget="many2many_tags" optional="show"/>
+                <field name="odoo_ref" optional="hide"/>
+                <field name="odoo_menu_id" optional="show"/>
+                <field name="measure_cadence" optional="hide"/>
+                <field name="measure_count_30d" optional="hide"/>
+                <field name="measure_model_id" column_invisible="1"/>
+                <field name="measure_state" optional="show" widget="badge"
+                       decoration-success="measure_state == 'verde'"
+                       decoration-danger="measure_state == 'rojo'"/>
+                <button name="action_open_odoo" type="object"
+                        string="Abrir en Odoo" icon="fa-external-link"
+                        invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
+                <button name="action_view_measure_records" type="object"
+                        string="Evidencia" icon="fa-check-square-o"
+                        invisible="not measure_model_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_view_search" model="ir.ui.view">
+        <field name="name">sgi.process.activity.search</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <search string="Actividades de procedimiento">
+                <field name="name" string="Resumen / descripción"
+                       filter_domain="['|', '|', ('name', 'ilike', self), ('description', 'ilike', self), ('number', 'ilike', self)]"/>
+                <field name="number"/>
+                <field name="responsible_role"/>
+                <field name="process_id"/>
+                <separator/>
+                <filter name="my_activities" string="Mis actividades"
+                        domain="[('responsible_job_ids.employee_ids.user_id', '=', uid)]"/>
+                <filter name="no_responsible" string="Sin responsable"
+                        domain="[('responsible_job_ids', '=', False), ('responsible_role', '=', False)]"/>
+                <filter name="no_format" string="Sin formato ligado"
+                        domain="[('format_document_ids', '=', False)]"/>
+                <filter name="no_menu" string="Sin menú de Odoo"
+                        domain="[('odoo_menu_id', '=', False)]"/>
+                <separator/>
+                <filter name="measurable" string="Medibles"
+                        domain="[('measure_model_id', '!=', False)]"/>
+                <filter name="not_measurable" string="Aún en texto (sin medición)"
+                        domain="[('measure_model_id', '=', False)]"/>
+                <filter name="measure_red" string="Sin evidencia en su periodo"
+                        domain="[('measure_state', '=', 'rojo')]"/>
+                <group>
+                    <filter name="group_process" string="Proceso"
+                            context="{'group_by': 'process_id'}"/>
+                    <filter name="group_block" string="Bloque"
+                            context="{'group_by': 'block'}"/>
+                    <filter name="group_section" string="Sección"
+                            context="{'group_by': 'section'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_action" model="ir.actions.act_window">
+        <field name="name">Actividades de procedimiento</field>
+        <field name="res_model">sgi.process.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
+        <field name="context">{'search_default_group_process': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El Desarrollo de los procedimientos, como datos vivos</p>
+            <p>El procedimiento dejó de ser un PDF muerto: cada <b>actividad</b> es un numeral (4.2.3.1) con su <b>rol responsable</b>, sus <b>formatos</b> (en rojo en el PDF) y el <b>menú de Odoo</b> donde se ejecuta — el botón <i>Abrir en Odoo</i> te lleva ahí. Se capturan en la pestaña <i>Procedimiento</i> de cada proceso; el PDF F-P-G01-02 se imprime desde el botón con el contador de actividades. Editar una actividad marca el procedimiento como pendiente de revisión documental (candado G14).</p>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_action_mine" model="ir.actions.act_window">
+        <field name="name">Mis actividades de procedimiento</field>
+        <field name="res_model">sgi.process.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
+        <field name="context">{'search_default_my_activities': 1, 'search_default_group_process': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Los pasos de procedimiento que le tocan a tu puesto</p>
+            <p>Aquí ves <b>qué te toca hacer y dónde</b>: cada línea es un numeral de procedimiento asignado a tu puesto, con su formato y el botón <i>Abrir en Odoo</i> que te lleva directo al menú donde se ejecuta. Si está vacío, pide a RH que asigne tu puesto (hr.job) a tu ficha de empleado.</p>
+        </field>
+    </record>
+
+    <!-- ====== Cadena de actividades: el hilo conductor paso a paso ====== -->
+    <record id="sgi_activity_link_view_list" model="ir.ui.view">
+        <field name="name">sgi.activity.link.list</field>
+        <field name="model">sgi.activity.link</field>
+        <field name="arch" type="xml">
+            <list string="Cadena de actividades" default_order="from_process_id, id"
+                  decoration-info="is_cross_process">
+                <field name="from_process_id" optional="show"/>
+                <field name="from_activity_id"/>
+                <field name="name" string="Entregable"/>
+                <field name="to_activity_id"/>
+                <field name="to_process_id" optional="show"/>
+                <field name="is_cross_process" string="Cruza procesos" optional="show"/>
+                <field name="chain_state" widget="badge" optional="show"
+                       decoration-success="chain_state == 'fluye'"
+                       decoration-danger="chain_state == 'atorado'"/>
+                <field name="lag_days" optional="show"/>
+                <field name="nc_alert_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_link_view_search" model="ir.ui.view">
+        <field name="name">sgi.activity.link.search</field>
+        <field name="model">sgi.activity.link</field>
+        <field name="arch" type="xml">
+            <search string="Cadena de actividades">
+                <field name="name" string="Entregable"/>
+                <field name="from_activity_id"/>
+                <field name="to_activity_id"/>
+                <field name="from_process_id"/>
+                <field name="to_process_id"/>
+                <filter name="cross" string="Cruzan procesos"
+                        domain="[('is_cross_process', '=', True)]"/>
+                <filter name="internal" string="Dentro del proceso"
+                        domain="[('is_cross_process', '=', False)]"/>
+                <separator/>
+                <filter name="stuck" string="Atorados"
+                        domain="[('chain_state', '=', 'atorado')]"/>
+                <filter name="flowing" string="Fluyen"
+                        domain="[('chain_state', '=', 'fluye')]"/>
+                <group>
+                    <filter name="group_from" string="Proceso origen"
+                            context="{'group_by': 'from_process_id'}"/>
+                    <filter name="group_to" string="Proceso destino"
+                            context="{'group_by': 'to_process_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_link_action" model="ir.actions.act_window">
+        <field name="name">Cadena de actividades</field>
+        <field name="res_model">sgi.activity.link</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="sgi_activity_link_view_search"/>
+        <field name="context">{'search_default_group_from': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El hilo conductor de la operación</p>
+            <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Se capturan en la actividad (Recibe de / Entrega a) y se imprimen en el F-P-G01-02.</p>
+        </field>
+    </record>
+
+    <!-- ====== Tablero de cumplimiento: por proceso y por puesto ====== -->
+    <record id="sgi_activity_compliance_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.process.activity.pivot.compliance</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <pivot string="Cumplimiento de procedimientos">
+                <field name="process_id" type="row"/>
+                <field name="measure_state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_activity_compliance_view_graph" model="ir.ui.view">
+        <field name="name">sgi.process.activity.graph.compliance</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <graph string="Cumplimiento de procedimientos" type="bar" stacked="1">
+                <field name="process_id"/>
+                <field name="measure_state"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_activity_compliance_action" model="ir.actions.act_window">
+        <field name="name">Cumplimiento de procedimientos</field>
+        <field name="res_model">sgi.process.activity</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('measure_model_id', '!=', False)]</field>
+        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El procedimiento medido con acciones reales</p>
+            <p>Cada actividad medible contra su cadencia: verde con evidencia en su periodo, rojo sin ella. Agrupa por <b>proceso</b> o por <b>puesto responsable</b> para ver quién cumple su procedimiento — la base de la mejora continua.</p>
+        </field>
+    </record>
+
+    <!-- ====== Pestaña "Procedimiento" en la ficha del proceso ====== -->
+    <record id="sgi_process_view_form_procedure" model="ir.ui.view">
+        <field name="name">sgi.process.form.procedure</field>
+        <field name="model">sgi.process</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_print_procedure" type="object"
+                        class="oe_stat_button" icon="fa-print"
+                        invisible="activity_count == 0">
+                    <field name="activity_count" widget="statinfo" string="Actividades"/>
+                </button>
+                <button name="action_view_chain" type="object"
+                        class="oe_stat_button" icon="fa-link"
+                        invisible="chain_link_count == 0">
+                    <field name="chain_link_count" widget="statinfo" string="Cadena"/>
+                </button>
+                <button name="action_view_inbound_references" type="object"
+                        class="oe_stat_button" icon="fa-quote-right"
+                        invisible="inbound_reference_count == 0">
+                    <field name="inbound_reference_count" widget="statinfo"
+                           string="Me referencian"/>
+                </button>
+            </xpath>
+            <!-- El procedimiento es lo que más se usa: va como PRIMERA pestaña. -->
+            <xpath expr="//page[@name='entradas_salidas']" position="before">
+                <page string="Procedimiento" name="procedimiento">
+                    <div class="alert alert-info mb-3" role="status">
+                        <b>Esta pestaña ES el procedimiento vivo</b> (F-P-G01-02):
+                        el PDF se imprime con el botón «Actividades» de arriba, y
+                        cualquier cambio de fondo lo marca <b>pendiente de revisión
+                        documental</b> y avisa a su dueño.
+                    </div>
+                    <group string="¿Se está cumpliendo? (medido con acciones reales de Odoo)"
+                           invisible="measurable_activity_count == 0">
+                        <group>
+                            <field name="procedure_compliance" widget="progressbar"/>
+                        </group>
+                        <group>
+                            <field name="measurable_activity_count" string="Pasos medibles"/>
+                            <field name="measure_red_count" string="Sin evidencia"/>
+                        </group>
+                    </group>
+                    <separator string="Desarrollo — las actividades, paso a paso"/>
+                    <field name="procedure_activity_ids" context="{'default_process_id': id}">
+                        <list string="Actividades" default_order="sequence, number">
+                            <field name="sequence" widget="handle"/>
+                            <field name="block"/>
+                            <field name="number"/>
+                            <field name="section" optional="show"/>
+                            <field name="name"/>
+                            <field name="responsible_role" optional="show"/>
+                            <field name="format_document_ids" widget="many2many_tags" optional="show"/>
+                            <field name="odoo_ref" optional="hide"/>
+                            <field name="odoo_menu_id" column_invisible="1"/>
+                            <field name="measure_model_id" column_invisible="1"/>
+                            <field name="measure_state" optional="show" widget="badge"
+                                   decoration-success="measure_state == 'verde'"
+                                   decoration-danger="measure_state == 'rojo'"/>
+                            <button name="action_open_odoo" type="object"
+                                    string="Abrir en Odoo" icon="fa-external-link"
+                                    invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
+                            <button name="action_view_measure_records" type="object"
+                                    string="Evidencia" icon="fa-check-square-o"
+                                    invisible="not measure_model_id"/>
+                        </list>
+                    </field>
+                    <separator string="Secciones fijas del procedimiento (salen en el PDF)"/>
+                    <group string="Alcance">
+                        <field name="scope" nolabel="1"
+                               placeholder="A qué áreas/actividades aplica el procedimiento…"/>
+                    </group>
+                    <group string="Responsabilidades de las áreas">
+                        <field name="job_responsibility_ids" nolabel="1">
+                            <list string="Responsabilidades" editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="name"/>
+                                <field name="job_id"/>
+                                <field name="responsibilities"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group>
+                        <group string="Descripción de aspectos ambientales">
+                            <field name="env_aspects" nolabel="1"/>
+                        </group>
+                        <group string="Marco normativo">
+                            <field name="norm_ids" nolabel="1" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

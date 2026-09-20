@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_coa" model="ir.actions.report">
+        <field name="name">Certificado de Calidad / Certificate of Analysis (P-C07)</field>
+        <field name="model">stock.lot</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_coa_document</field>
+        <field name="report_file">quimibond_sgi.report_coa_document</field>
+        <field name="print_report_name">'CoA-%s' % (object.name or '')</field>
+    </record>
+
+    <template id="report_coa_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-set="checks" t-value="doc._sgi_coa_checks()"/>
+                    <div class="page">
+                        <h2 class="text-center">
+                            Certificado de Conformidad<br/>
+                            <small>Certificate of Conformity (CoA) — P-C07</small>
+                        </h2>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tr>
+                                <td><strong>Producto / Product:</strong>
+                                    <span t-field="doc.product_id"/></td>
+                                <td><strong>Lote / Batch:</strong>
+                                    <span t-field="doc.name"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Referencia / Reference:</strong>
+                                    <span t-field="doc.product_id.default_code"/></td>
+                                <td><strong>Fecha / Date:</strong>
+                                    <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d')"/></td>
+                            </tr>
+                        </table>
+
+                        <h4>Resultados / Results</h4>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Característica / Characteristic</th>
+                                    <th>Crit.</th>
+                                    <th>Especificación / Specification</th>
+                                    <th>Unidad / Unit</th>
+                                    <th>Resultado / Result</th>
+                                    <th>Estado / Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="checks" t-as="check">
+                                    <td>
+                                        <span t-esc="check.point_id.sgi_characteristic or check.point_id.title or check.point_id.name"/>
+                                    </td>
+                                    <td><span t-field="check.point_id.sgi_criticality"/></td>
+                                    <td>
+                                        <t t-if="check.tolerance_min or check.tolerance_max">
+                                            <span t-field="check.tolerance_min"/> –
+                                            <span t-field="check.tolerance_max"/>
+                                        </t>
+                                    </td>
+                                    <td><span t-field="check.norm_unit"/></td>
+                                    <td><span t-field="check.measure"/></td>
+                                    <td>
+                                        <span t-if="check.quality_state == 'pass'">Conforme / Pass</span>
+                                        <span t-elif="check.quality_state == 'fail'">No conforme / Fail</span>
+                                        <span t-else="">—</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p class="mt-4">
+                            Se certifica que el lote indicado cumple con las especificaciones
+                            aplicables.<br/>
+                            <em>This is to certify that the above batch complies with the
+                            applicable specifications.</em>
+                        </p>
+
+                        <div class="row mt-5">
+                            <div class="col-6 text-center">
+                                <br/><hr/>Control de Calidad / Quality Control
+                            </div>
+                            <div class="col-6 text-center">
+                                <br/><hr/>Autorizó / Approved by
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

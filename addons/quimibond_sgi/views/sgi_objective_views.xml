@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_objective_view_list" model="ir.ui.view">
+        <field name="name">sgi.objective.list</field>
+        <field name="model">sgi.objective</field>
+        <field name="arch" type="xml">
+            <list string="Objetivos Integrales">
+                <field name="name"/>
+                <field name="target_year"/>
+                <field name="indicator_count"/>
+                <field name="health" widget="badge"
+                       decoration-success="health == 'verde'"
+                       decoration-warning="health == 'amarillo'"
+                       decoration-danger="health == 'rojo'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_objective_view_form" model="ir.ui.view">
+        <field name="name">sgi.objective.form</field>
+        <field name="model">sgi.objective</field>
+        <field name="arch" type="xml">
+            <form string="Objetivo Integral">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_indicators" type="object"
+                                class="oe_stat_button" icon="fa-tachometer">
+                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nombre del objetivo integral"/></h1>
+                        <field name="health" widget="badge"
+                               decoration-success="health == 'verde'"
+                               decoration-warning="health == 'amarillo'"
+                               decoration-danger="health == 'rojo'"/>
+                    </div>
+                    <group>
+                        <field name="policy_id"/>
+                        <field name="target_year"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                    <group string="Descripción">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Plan de acción (6.2.2)" name="action_plan">
+                            <p class="text-muted">ISO 6.2.2: qué se hará para
+                            lograr el objetivo, quién y para cuándo. Cada
+                            acción genera su actividad espejo al responsable;
+                            la evaluación del resultado la dan los KPIs
+                            ligados.</p>
+                            <field name="action_line_ids" context="{'default_objective_id': id}">
+                                <list editable="bottom"
+                                      decoration-danger="state == 'vencida'"
+                                      decoration-success="state == 'terminada'">
+                                    <field name="name"/>
+                                    <field name="responsible_id"/>
+                                    <field name="date_commit"/>
+                                    <field name="date_done"/>
+                                    <field name="progress"/>
+                                    <field name="state"/>
+                                    <field name="action_type" column_invisible="1"/>
+                                    <field name="alert_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_objective_action" model="ir.actions.act_window">
+        <field name="name">Objetivos Integrales</field>
+        <field name="res_model">sgi.objective</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registra los objetivos integrales</p>
+            <p>Los del ANEXO 6 (Planeación Estratégica). Cada indicador del SGI se liga a uno de estos objetivos, y el semáforo del objetivo hereda el peor color de los procesos de sus indicadores — la Línea Dorada se lee de abajo hacia arriba.</p>
+        </field>
+    </record>
+</odoo>

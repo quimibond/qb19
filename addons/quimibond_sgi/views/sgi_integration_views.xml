@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- stock.picking -->
+    <record id="sgi_stock_picking_view_form" model="ir.ui.view">
+        <field name="name">sgi.stock.picking.form.inherit</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                    <field name="sgi_nc_count" widget="statinfo" string="NC"/>
+                </button>
+            </xpath>
+            <!-- Sello del transporte (sustituye F-IT-P-A07-01-07/08): solo en
+                 embarques de salida; se imprime en la remisión. -->
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sgi_seal_number"
+                       invisible="picking_type_code != 'outgoing'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- mrp.production -->
+    <record id="sgi_mrp_production_view_form" model="ir.ui.view">
+        <field name="name">sgi.mrp.production.form.inherit</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                    <field name="sgi_nc_count" widget="statinfo" string="NC"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- hr.employee -->
+    <record id="sgi_hr_employee_view_form" model="ir.ui.view">
+        <field name="name">sgi.hr.employee.form.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_my_procedures" type="object" class="oe_stat_button"
+                        icon="fa-book">
+                    <field name="sgi_procedure_count" widget="statinfo" string="Mis procedimientos"/>
+                </button>
+                <button name="action_sgi_pending_acks" type="object" class="oe_stat_button"
+                        icon="fa-check-square-o">
+                    <field name="sgi_pending_ack_count" widget="statinfo" string="Acuses pendientes"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- hr.job -->
+    <record id="sgi_hr_job_view_form" model="ir.ui.view">
+        <field name="name">sgi.hr.job.form.inherit</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Documentos SGI aplicables">
+                    <field name="sgi_document_ids">
+                        <list>
+                            <field name="sgi_code"/>
+                            <field name="name"/>
+                            <field name="sgi_revision"/>
+                            <field name="sgi_state"/>
+                        </list>
+                    </field>
+                </page>
+                <page string="EPP requerido (SGI)">
+                    <div class="text-muted mb-2">
+                        El EPP que exige este puesto — fuente única del
+                        F-P-S03-01. El cron de EPP vigila reposiciones; la
+                        responsiva de entrega se firma en la ficha del
+                        empleado.
+                    </div>
+                    <field name="sgi_epp_required" nolabel="1"
+                           placeholder="Ej. casco, lentes de seguridad, guantes de nitrilo, protección auditiva..."/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- res.partner -->
+    <!-- Los smart buttons del partner (Reclamaciones/NC) viven CONSOLIDADOS
+         en sgi_res_partner_views.xml junto a Evaluaciones (deuda D.30: dos
+         herencias del mismo button_box dejaban el orden al azar de carga). -->
+
+    <!-- product.template: especificaciones controladas (C04-06 y C14-02).
+         La spec ES un documento controlado; aquí queda a un clic desde el
+         producto para inspección y almacén. -->
+    <record id="sgi_product_template_view_form_spec" model="ir.ui.view">
+        <field name="name">product.template.form.sgi.spec</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="SGI">
+                    <group>
+                        <group string="Especificación del material">
+                            <field name="sgi_spec_document_id"/>
+                        </group>
+                        <group>
+                            <button name="action_sgi_open_spec" type="object"
+                                    string="Ver especificación" icon="fa-file-pdf-o"
+                                    class="btn-secondary"
+                                    invisible="not sgi_spec_document_id"/>
+                        </group>
+                    </group>
+                    <group string="Manejo y empaque (C14-02)">
+                        <field name="sgi_packaging_notes" nolabel="1"
+                               placeholder="Indicaciones de manejo y empaque: orientación, apilado máximo, protección, etiquetado..."/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

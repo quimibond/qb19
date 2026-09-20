@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Seeds idempotentes (noupdate: los ajustes del usuario sobreviven
+         updates del módulo). Arrancan con la clasificación ya validada con
+         dirección; todo es editable desde Configuración. -->
+    <data noupdate="1">
+
+        <!-- ============ Parámetros globales ============ -->
+        <record id="factor_fab_weight_share" model="qb.costeo.factor.config">
+            <field name="key">fab_weight_share</field>
+            <field name="value">0.67</field>
+            <field name="descripcion">Share del pool de fabricación repartido por PESO (tejido+tintorería+gas); el resto por LARGO (acabado).</field>
+        </record>
+        <record id="factor_energia_por_kg" model="qb.costeo.factor.config">
+            <field name="key">energia_por_kg</field>
+            <field name="value">0</field>
+            <field name="descripcion">Energía variable $/kg. 0 = automático (pool cuentas bucket=energia ÷ kg producidos).</field>
+        </record>
+        <record id="factor_op_driver" model="qb.costeo.factor.config">
+            <field name="key">op_driver</field>
+            <field name="value">0</field>
+            <field name="value_text">produccion</field>
+            <field name="descripcion">Driver del costo de OPERACIÓN en el reporte: "produccion" reparte sobre el costo de producción (recomendado: el costo deja de depender del precio); "ventas" lo reparte como % del precio, como antes. El piso de precio del cotizador usa op% sobre venta en los dos casos.</field>
+        </record>
+        <record id="factor_mp_ajuste_min" model="qb.costeo.factor.config">
+            <field name="key">mp_ajuste_min</field>
+            <field name="value">0.5</field>
+            <field name="descripcion">Piso del ajuste de MP (receta vs. costo primo del mayor). Fuera de la banda se recorta y se loggea: casi siempre es una cuenta mal clasificada en el bucket "mp".</field>
+        </record>
+        <record id="factor_mp_ajuste_max" model="qb.costeo.factor.config">
+            <field name="key">mp_ajuste_max</field>
+            <field name="value">1.5</field>
+            <field name="descripcion">Techo del ajuste de MP. Ver mp_ajuste_min.</field>
+        </record>
+        <!-- Rendimiento de calidad (memo 31-ago, bloque A). Los ids son de
+             la base de Toluca; editables desde Configuración → Parámetros. -->
+        <record id="calidad_locs_vendible" model="qb.costeo.factor.config">
+            <field name="key">calidad_locs_vendible</field>
+            <field name="value">0</field>
+            <field name="value_text">40</field>
+            <field name="descripcion">Ubicaciones de PRIMERA calidad (ids de stock.location, coma-separados). Default: 14 PRODUCTO TERMINADO PQ.</field>
+        </record>
+        <record id="calidad_locs_merma" model="qb.costeo.factor.config">
+            <field name="key">calidad_locs_merma</field>
+            <field name="value">0</field>
+            <field name="value_text">41,42,43</field>
+            <field name="descripcion">Ubicaciones de MERMA: 15 FE (sin canal de venta directo — se recupera resinándolo como entretela de confección), 16 SEGUNDAS, 17 DESPERDICIO.</field>
+        </record>
+        <record id="calidad_locs_origen" model="qb.costeo.factor.config">
+            <field name="key">calidad_locs_origen</field>
+            <field name="value">0</field>
+            <field name="value_text">15,36,246</field>
+            <field name="descripcion">Solo entradas DESDE estas ubicaciones cuentan al rendimiento (Virtual/Producción, 10 INSPECCIÓN, Liberación): los reingresos por cuarentena/reetiquetado ya se clasificaron antes y contarían doble (C6).</field>
+        </record>
+        <record id="calidad_picking_excluir" model="qb.costeo.factor.config">
+            <field name="key">calidad_picking_excluir</field>
+            <field name="value">0</field>
+            <field name="value_text">77,147</field>
+            <field name="descripcion">Tipos de operación excluidos del rendimiento: Conversión de unidades (TL/CVU) y Cambio de artículo (TL/CONV-ART) reetiquetan material ya clasificado (C2/C3).</field>
+        </record>
+        <record id="calidad_rendimiento_min_m" model="qb.costeo.factor.config">
+            <field name="key">rendimiento_min_m</field>
+            <field name="value">10000</field>
+            <field name="descripcion">Unidades clasificadas mínimas en la ventana para usar el rendimiento PROPIO del producto; abajo de esto se usa la tasa de planta (A4: pocos metros dan porcentajes sin sentido).</field>
+        </record>
+        <record id="factor_rendimiento_min" model="qb.costeo.factor.config">
+            <field name="key">rendimiento_min</field>
+            <field name="value">2</field>
+            <field name="descripcion">Piso del rendimiento sano (unidades/hora) en el reporte de excepciones de tiempo. Tejido circular ronda 5-14 kg/h con nominal 11; la banda va ancha a propósito, para señalar timers rotos y no variación normal de artículo.</field>
+        </record>
+        <record id="factor_rendimiento_max" model="qb.costeo.factor.config">
+            <field name="key">rendimiento_max</field>
+            <field name="value">25</field>
+            <field name="descripcion">Techo del rendimiento sano (unidades/hora). Arriba de esto casi siempre son horas sin registrar, no una máquina rapidísima.</field>
+        </record>
+        <record id="factor_refs_fuera_de_costeo" model="qb.costeo.factor.config">
+            <field name="key">refs_fuera_de_costeo</field>
+            <field name="value">0</field>
+            <field name="value_text">CIERRE ANUAL,ENAJENACI</field>
+            <field name="descripcion">Referencias de asiento que NO entran al costeo, separadas por coma (se comparan en mayúsculas, como subcadena). CIERRE ANUAL: la póliza que reversa el año entero contra diciembre. ENAJENACI: la baja de un activo vendido — en dic-2025 fueron $5,827,157 de dos máquinas que hoy se arriendan, ya compensados por $5,896,997 de utilidad en venta que el costeo no mira, y cuyo costo actual ya entra al pool por el arrendamiento. Cargarlos además sería cobrar la misma máquina dos veces.</field>
+        </record>
+        <record id="factor_utilizacion_min_comparable" model="qb.costeo.factor.config">
+            <field name="key">utilizacion_min_comparable</field>
+            <field name="value">0.70</field>
+            <field name="descripcion">Debajo de esta utilización ponderada, el período se marca «Producción baja en la ventana»: la energía se divide entre kilos reales, así que su $/kg —y con él el costo unitario— sale inflado y no compara contra un mes normal. Un mes sano ronda 93-98%.</field>
+        </record>
+        <record id="factor_utilizacion_min_utilizable" model="qb.costeo.factor.config">
+            <field name="key">utilizacion_min_utilizable</field>
+            <field name="value">0.40</field>
+            <field name="descripcion">Debajo de esto el período se marca «Ventana casi sin producción». Enero-2024 salió en 26.6% porque su ventana cae en 2023, cuando las órdenes todavía no se registraban en Odoo: la energía dio $34.22/kg contra $11.09 en diciembre del mismo año.</field>
+        </record>
+        <record id="factor_importacion_driver" model="qb.costeo.factor.config">
+            <field name="key">importacion_driver</field>
+            <field name="value">0</field>
+            <field name="value_text">landed</field>
+            <field name="descripcion">Cómo llega la aduana al costo. "landed" (default y recomendado): NO se prorratea — el pedimento se captura con el landed cost de Odoo sobre la recepción y cae en los productos que lo causaron; el módulo solo mide cuánta aduana se quedó en resultados. "compras": prorrateo aproximado sobre el valor de las compras importadas (proveedor extranjero); útil si no se van a capturar los pedimentos, pero le cobra al hilo el pedimento de una máquina y viceversa.</field>
+        </record>
+        <record id="factor_nomina_operacion_refs" model="qb.costeo.factor.config">
+            <field name="key">nomina_operacion_refs</field>
+            <field name="value">0</field>
+            <field name="value_text">DISEÑO</field>
+            <field name="descripcion">Pólizas de nómina que cobran por cuentas de fábrica (501.06) pero cuyo trabajo es gasto del período: se detectan por estos textos en la referencia (separados por coma) y su importe se mueve del pool fabril a operación. Hoy: DISEÑO (desarrollo de producto). La administración de la PLANTA se queda en fabril — administrar el sitio productivo sí es overhead (IAS 2).</field>
+        </record>
+        <record id="factor_importacion_factor_max" model="qb.costeo.factor.config">
+            <field name="key">importacion_factor_max</field>
+            <field name="value">1.0</field>
+            <field name="descripcion">Techo del factor de importación (aduana ÷ valor importado). Arriba de esto se recorta y se loggea: una cuenta grande mal puesta en el bucket dispararía el costo de todos los importados.</field>
+        </record>
+        <record id="factor_denominador_capacidad_normal" model="qb.costeo.factor.config">
+            <field name="key">denominador_capacidad_normal</field>
+            <field name="value">1</field>
+            <field name="descripcion">1 = el pool fijo se divide entre capacidad NORMAL (IAS 2: la ociosidad va al resultado del período, no al producto). 0 = entre producción real, como antes.</field>
+        </record>
+        <record id="factor_ficha_peso_tol_pct" model="qb.costeo.factor.config">
+            <field name="key">ficha_peso_tol_pct</field>
+            <field name="value">2</field>
+            <field name="descripcion">Tolerancia (%) entre el peso guardado en la ficha técnica y el maestro de pesos. La ficha guarda una COPIA, y esa hoja va al cliente: arriba de esto el panel avisa. El WJ032Q22JNT160 vivió 16 días con 0.0512 kg/m del código contra 0.059114 de báscula.</field>
+        </record>
+        <record id="factor_capacidad_superada_meses" model="qb.costeo.factor.config">
+            <field name="key">capacidad_superada_meses</field>
+            <field name="value">12</field>
+            <field name="descripcion">Cuántos períodos mira el check «Capacidad normal vs producción real». Mirar solo el último dejaba pasar el caso real: enero–mayo de 2026 produjeron arriba de la capacidad capturada y el check se pintaba verde con agosto.</field>
+        </record>
+        <record id="factor_capacidad_capturada_tol_pct" model="qb.costeo.factor.config">
+            <field name="key">capacidad_capturada_tol_pct</field>
+            <field name="value">10</field>
+            <field name="descripcion">Tolerancia (%) entre la capacidad capturada del centro y la que dan sus turnos por su throughput nominal. Arriba de esto el panel avisa: uno de los dos está viejo.</field>
+        </record>
+        <record id="factor_op_pct_override" model="qb.costeo.factor.config">
+            <field name="key">op_pct_override</field>
+            <field name="value">0</field>
+            <field name="descripcion">Operación % sobre ventas. 0 = automático (Σ cuentas operación ÷ Σ ventas, suavizado).</field>
+        </record>
+        <record id="factor_target_margin" model="qb.costeo.factor.config">
+            <field name="key">target_margin</field>
+            <field name="value">0.30</field>
+            <field name="descripcion">Margen meta default del cotizador (fracción sobre venta).</field>
+        </record>
+        <record id="factor_escalera_desc_doble" model="qb.costeo.factor.config">
+            <field name="key">escalera_desc_doble</field>
+            <field name="value">0.03</field>
+            <field name="descripcion">Escalera de volumen: descuento (fracción) por cada DUPLICACIÓN del volumen. 0.03 = 3% por doblar. El precio nunca baja del piso a planta llena y la contribución total nunca baja.</field>
+        </record>
+        <record id="factor_escalera_multiplos" model="qb.costeo.factor.config">
+            <field name="key">escalera_multiplos</field>
+            <field name="value_text">0.5,1,2,4</field>
+            <field name="descripcion">Escalera de volumen: múltiplos del volumen cotizado que forman los tramos (separados por coma).</field>
+        </record>
+        <record id="factor_smoothing_months" model="qb.costeo.factor.config">
+            <field name="key">smoothing_months</field>
+            <field name="value">12</field>
+            <field name="descripcion">Ventana de suavizado de gastos GL (meses). La renta se paga a saltos y la energía con rezago: promediar.</field>
+        </record>
+        <record id="factor_production_window" model="qb.costeo.factor.config">
+            <field name="key">production_window_months</field>
+            <field name="value">3</field>
+            <field name="descripcion">Ventana de promedio de producción real (meses completos).</field>
+        </record>
+        <record id="factor_weeks_per_month" model="qb.costeo.factor.config">
+            <field name="key">weeks_per_month</field>
+            <field name="value">4.33</field>
+            <field name="descripcion">Semanas por mes para convertir horas de calendario.</field>
+        </record>
+        <record id="factor_m_per_kg_default" model="qb.costeo.factor.config">
+            <field name="key">m_per_kg_default</field>
+            <field name="value">8.0</field>
+            <field name="descripcion">Factor kg↔m default cuando el producto no tiene peso resuelto (balance de línea en metros-equivalentes).</field>
+        </record>
+        <record id="factor_quote_validity" model="qb.costeo.factor.config">
+            <field name="key">quote_validity_days</field>
+            <field name="value">15</field>
+            <field name="descripcion">Días de vigencia de una cotización: después, TC y último costo de MP pueden haber cambiado — re-cotizar.</field>
+        </record>
+        <record id="factor_entretela_extra" model="qb.costeo.factor.config">
+            <field name="key">entretela_overhead_extra_mxn</field>
+            <field name="value">0</field>
+            <field name="descripcion">Overhead extra mensual del centro de entretelas (energía/depreciación de carda) si se cuantifica.</field>
+        </record>
+
+        <!-- ============ Centros de costo/proceso ============ -->
+        <record id="centro_tejido" model="qb.costeo.centro">
+            <field name="sequence">10</field>
+            <field name="code">TEJIDO</field>
+            <field name="name">Tejido circular</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">peso</field>
+            <field name="std_output_per_hour">11.73</field>
+            <field name="capacidad_normal">197529</field>
+            <field name="renta_contractual_mxn">284269</field>
+            <field name="es_denominador_kg" eval="True"/>
+            <field name="mo_name_pattern">TL/OP-TE%,OP-TE%</field>
+            <field name="notes">37 circulares instaladas, 27 tejiendo en el mes. Capacidad = cada una a su velocidad del formato de planta (11.73 kg/h promedio, rango 9.1-28.2 según galga y artículo) por 623.5 h/mes (144 h/semana: 12 turnos de 12 h). Las 10 restantes existen y tejieron algo en 12 meses, pero no se dotan: son ociosidad instalada, no capacidad normal. Producción medida por orden (TL/OP-TE), no por workorder: la cantidad por workorder está mal registrada (abril colapsa a ~1/5); la DURACIÓN sí sirve y confirma que las máquinas corren a velocidad nominal — lo que falta son horas, no kilos por hora. Fuente: CapacidadesProducto + Turnos, informacion_de_carga_produccion.</field>
+        </record>
+        <record id="centro_tintoreria" model="qb.costeo.centro">
+            <field name="sequence">20</field>
+            <field name="code">TINTORERIA</field>
+            <field name="name">Tintorería</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">peso</field>
+            <field name="std_output_per_hour">138.62</field>
+            <field name="capacidad_normal">216089</field>
+            <field name="renta_contractual_mxn">178467</field>
+            <field name="mo_name_pattern">TL/OP-TIN%,OP-TIN%</field>
+            <field name="notes">Cuatro tinas trabajando (HTJ-1 SCHOLL, HTJ-2 y HTJ-5 THEN, HTJ-3 y HTJ-4 SCLAVOS; la HTJ-5 de 1,200 kg en pruebas). 554.5 kg/h ponderando el ciclo real de cada tina por la mezcla de color de las OPs: 2:20 h en naturales, 10:20 h en obscuros, 3.1 h efectivas. Con ese ciclo las tinas NO son el cuello. Producción medida por orden (TL/OP-TIN, kg) — sin patrón salía en CERO. Fuente: TIEMPOS TINTORERIA + CAP DE CARGAS, F-IT-P-P01-10-06 rev 02 abr-2026.</field>
+        </record>
+        <record id="centro_acabado" model="qb.costeo.centro">
+            <field name="sequence">30</field>
+            <field name="code">ACABADO</field>
+            <field name="name">Acabado / Rama</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">largo</field>
+            <field name="std_output_per_hour">1508</field>
+            <field name="capacidad_normal">1175313</field>
+            <field name="renta_contractual_mxn">178467</field>
+            <field name="mo_name_pattern">TL/OP-ACA%,OP-ACA%</field>
+            <field name="es_denominador_m" eval="True"/>
+            <field name="notes">Ramas UNITECH (29.08 m/min, −10%) y BRUCKNER (28.35 m/min, −15%) = 3,015.9 m/h netos entre las dos, o 1,508 m/h por rama. La ICOMATEX (RAMA 3) sigue en montaje: al arrancar, subir máquinas a 3 y recapturar la capacidad. Producción por patrón TL/OP-ACA (tela). V10 NO es acabado — es entretelas/resina, va en su centro. Fuente: T RAMA, F-IT-P-P01-10-06 rev 02 abr-2026.</field>
+        </record>
+        <record id="centro_entretelas" model="qb.costeo.centro">
+            <field name="sequence">40</field>
+            <field name="code">ENTRETELAS</field>
+            <field name="name">Entretelas (carda / puntos)</field>
+            <field name="nature">fabril_directo</field>
+            <field name="driver_principal">largo</field>
+            <field name="renta_contractual_mxn">352062</field>
+            <field name="mo_name_pattern">TL/OP-CAR%,TL/OP-V10%,OP-CAR%,OP-V1%</field>
+            <field name="notes">Carda, puntos (resina), espolvoreo, perfoquim, impregnación, termofijado. Lote 10. Factor propio $/m. Producción TL/OP-CAR (carda) + TL/OP-V10 (aplicación de resina / fusionable) — antes V10 no se contaba en ningún centro.</field>
+        </record>
+        <record id="centro_insp" model="qb.costeo.centro">
+            <field name="sequence">50</field>
+            <field name="code">INSP_EMPAQUE</field>
+            <field name="name">Inspección y empaque</field>
+            <field name="nature">fabril_indirecto</field>
+            <field name="driver_principal">largo</field>
+            <field name="mo_name_pattern">TL/CONV%</field>
+            <field name="notes">Gate final: mide toda la tela vendible.</field>
+        </record>
+        <record id="centro_admin" model="qb.costeo.centro">
+            <field name="sequence">90</field>
+            <field name="code">ADMINISTRACION</field>
+            <field name="name">Administración</field>
+            <field name="nature">admin</field>
+            <field name="driver_principal">largo</field>
+        </record>
+
+        <!-- ============ Familias de máquinas ============
+             Grupos intercambiables segun la columna «Alternos» del
+             formato de planta: componentes conexos de esa relacion, asi
+             que particionan el centro sin traslape. Un producto SI puede
+             caber en varias (el WJ047 sale en galga 18 de los dos
+             diametros) y ahi la carga se reparte. -->
+        <record id="familia_tej_g24_d30_a" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G24_D30_A</field>
+            <field name="name">Tejido galga 24/28 Ø30 (grupo grande)</field>
+            <field name="machine_names">CIRCULAR 6, CIRCULAR 7, CIRCULAR 8, CIRCULAR 9, CIRCULAR 14, CIRCULAR 15, CIRCULAR 16, CIRCULAR 20, CIRCULAR 27, CIRCULAR 29, CIRCULAR 30</field>
+            <field name="machine_count">9</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">10.51</field>
+            <field name="capacidad_normal">58983</field>
+            <field name="notes">11 instaladas, 9 dotadas. Galga 24 Diametro 30 / Galga 28 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wb057q66hnt092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WB057Q66HNT092</field>
+            <field name="std_output_per_hour">10.64</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wd040q46hnt098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WD040Q46HNT098</field>
+            <field name="std_output_per_hour">10.60</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wj045r46hnt090" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WJ045R46HNT090</field>
+            <field name="std_output_per_hour">8.39</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wj064q66hnt135" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WJ064Q66HNT135</field>
+            <field name="std_output_per_hour">10.64</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wn048q66hnt098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WN048Q66HNT098</field>
+            <field name="std_output_per_hour">11.20</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wn063q66hnt106" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WN063Q66HNT106</field>
+            <field name="std_output_per_hour">10.95</field>
+        </record>
+        <record id="famprod_tej_g24_d30_a_wt065q66hnt097" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_a"/>
+            <field name="product_code">WT065Q66HNT097</field>
+            <field name="std_output_per_hour">9.14</field>
+        </record>
+        <record id="familia_tej_g18_d32" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G18_D32</field>
+            <field name="name">Tejido galga 18 Ø32</field>
+            <field name="machine_names">CIRCULAR 17, CIRCULAR 18, CIRCULAR 28, CIRCULAR 31, CIRCULAR 32, CIRCULAR 33, CIRCULAR 34, CIRCULAR 35, CIRCULAR 36, CIRCULAR 37</field>
+            <field name="machine_count">10</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">7.67</field>
+            <field name="capacidad_normal">47794</field>
+            <field name="notes">10 instaladas, 10 dotadas. Galga 18 Diametro 32. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj030q22hnn200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ030Q22HNN200</field>
+            <field name="std_output_per_hour">14.43</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj035q22hnn200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ035Q22HNN200</field>
+            <field name="std_output_per_hour">6.68</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj035q22hnt200" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ035Q22HNT200</field>
+            <field name="std_output_per_hour">6.56</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj044q22hnt235" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ044Q22HNT235</field>
+            <field name="std_output_per_hour">7.61</field>
+        </record>
+        <record id="famprod_tej_g18_d32_wj047q21hnt112" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d32"/>
+            <field name="product_code">WJ047Q21HNT112</field>
+            <field name="std_output_per_hour">8.07</field>
+        </record>
+        <record id="familia_tej_g18_d30" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G18_D30</field>
+            <field name="name">Tejido galga 18 Ø30</field>
+            <field name="machine_names">CIRCULAR 19, CIRCULAR 21, CIRCULAR 22, CIRCULAR 25, CIRCULAR 26</field>
+            <field name="machine_count">4</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">23.53</field>
+            <field name="capacidad_normal">58675</field>
+            <field name="notes">5 instaladas, 4 dotadas. Galga 18 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g18_d30_tj094q22hnt100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">TJ094Q22HNT100</field>
+            <field name="std_output_per_hour">23.51</field>
+        </record>
+        <record id="famprod_tej_g18_d30_wj047q21hnt112" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">WJ047Q21HNT112</field>
+            <field name="std_output_per_hour">18.65</field>
+        </record>
+        <record id="famprod_tej_g18_d30_wn140q21hnt096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">WN140Q21HNT096</field>
+            <field name="std_output_per_hour">14.79</field>
+        </record>
+        <record id="famprod_tej_g18_d30_xj130q21hnt096" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g18_d30"/>
+            <field name="product_code">XJ130Q21HNT096</field>
+            <field name="std_output_per_hour">25.99</field>
+        </record>
+        <record id="familia_tej_g24_d30_b" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G24_D30_B</field>
+            <field name="name">Tejido galga 24 Ø30 (CIRCULAR 1-4)</field>
+            <field name="machine_names">CIRCULAR 1, CIRCULAR 2, CIRCULAR 3, CIRCULAR 4</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">9.13</field>
+            <field name="capacidad_normal">5695</field>
+            <field name="notes">4 instaladas, 1 dotadas. Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g24_d30_b_wb045q46hnt098" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_b"/>
+            <field name="product_code">WB045Q46HNT098</field>
+            <field name="std_output_per_hour">9.76</field>
+        </record>
+        <record id="famprod_tej_g24_d30_b_wb046q47hnt111" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_b"/>
+            <field name="product_code">WB046Q47HNT111</field>
+            <field name="std_output_per_hour">9.76</field>
+        </record>
+        <record id="famprod_tej_g24_d30_b_wb048q47hnt100" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g24_d30_b"/>
+            <field name="product_code">WB048Q47HNT100</field>
+            <field name="std_output_per_hour">9.74</field>
+        </record>
+        <record id="familia_tej_g16_d30" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_G16_D30</field>
+            <field name="name">Tejido galga 16 Ø30 (CIRCULAR 5 y 23)</field>
+            <field name="machine_names">CIRCULAR 5, CIRCULAR 23</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">18.98</field>
+            <field name="capacidad_normal">11831</field>
+            <field name="notes">2 instaladas, 1 dotadas. Galga 16 Diametro 30 / Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="famprod_tej_g16_d30_wc090q11hnt092" model="qb.familia.producto">
+            <field name="familia_id" ref="familia_tej_g16_d30"/>
+            <field name="product_code">WC090Q11HNT092</field>
+            <field name="std_output_per_hour">13.77</field>
+        </record>
+        <record id="familia_tej_c38" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_C38</field>
+            <field name="name">Tejido CIRCULAR 38 (Wellrich)</field>
+            <field name="machine_names">CIRCULAR 38</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">11.67</field>
+            <field name="capacidad_normal">7275</field>
+            <field name="notes">1 instaladas, 1 dotadas. Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+        <record id="familia_tej_c40" model="qb.costeo.familia">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="code">TEJ_C40</field>
+            <field name="name">Tejido CIRCULAR 40 (Wellrich)</field>
+            <field name="machine_names">CIRCULAR 40</field>
+            <field name="machine_count">1</field>
+            <field name="hours_per_week">144</field>
+            <field name="std_output_per_hour">11.67</field>
+            <field name="capacidad_normal">7275</field>
+            <field name="notes">1 instaladas, 1 dotadas. Galga 24 Diametro 30. Fuente: CapacidadesProducto + centros de trabajo (columna Alternos), informacion_de_carga_produccion.</field>
+        </record>
+
+        <!-- ============ Turnos ============
+             El horario declarado de planta (HORARIO, F-IT-P-P01-10-06):
+             dos turnos, 90 h/semana. No manda sobre `capacidad_normal`
+             cuando está capturada, pero es contra lo que el panel la
+             valida: horario × throughput nominal contra el número
+             capturado. Sin esto la capacidad no tiene fuente viva. -->
+        <record id="turno_tejido" model="qb.turno.config">
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="name">Tres turnos (144 h/semana)</field>
+            <field name="hours_per_week">144</field>
+            <field name="machine_count">27</field>
+            <field name="notes">12 turnos de 12 h: L-V día, M-J noche, sábado y domingo noche, domingo día. Para de viernes 19:00 a sábado 19:00. Máquinas = las que tejieron en el mes, no las 37 instaladas.</field>
+        </record>
+        <record id="turno_acabado" model="qb.turno.config">
+            <field name="centro_id" ref="centro_acabado"/>
+            <field name="name">Dos turnos (90 h/semana)</field>
+            <field name="hours_per_week">90</field>
+            <field name="machine_count">2</field>
+            <field name="notes">RAMA 1 y RAMA 2. La ICOMATEX (RAMA 3) está en montaje: al arrancar, 3.</field>
+        </record>
+        <record id="turno_tintoreria" model="qb.turno.config">
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="name">Dos turnos (90 h/semana)</field>
+            <field name="hours_per_week">90</field>
+            <field name="machine_count">4</field>
+            <field name="notes">HTJ-1 a HTJ-4. La HTJ-5 (THEN, 1,200 kg) está en pruebas: al liberarla, 5.</field>
+        </record>
+
+        <!-- ============ Clasificación de cuentas ============
+             El patrón más LARGO gana cuando varios matchean, así que
+             504.01.0002 (energía) le gana a 504.01% (overhead). -->
+        <record id="cc_ventas" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">401%</field>
+            <field name="bucket">ventas</field>
+        </record>
+        <record id="cc_mod" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">501.06%</field>
+            <field name="bucket">mod</field>
+            <field name="driver">peso</field>
+            <field name="notes">MOD. La nómina por centro se separa vía departamentos (RH); el GL entra completo al pool de fabricación.</field>
+        </record>
+        <record id="cc_energia_luz" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0002%</field>
+            <field name="bucket">energia</field>
+            <field name="es_variable" eval="True"/>
+            <field name="centro_id" ref="centro_tejido"/>
+            <field name="driver">peso</field>
+            <field name="notes">ENERGETICOS (electricidad) → Tejido. OJO: la 504.01.0001
+                es SERVICIOS ADMINISTRATIVOS (fija, esporádica) — estuvo cruzada
+                con esta hasta ago-2026 y el pool variable traía la cuenta
+                equivocada.</field>
+        </record>
+        <record id="cc_energia_gas" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0003%</field>
+            <field name="bucket">energia</field>
+            <field name="es_variable" eval="True"/>
+            <field name="centro_id" ref="centro_acabado"/>
+            <field name="driver">peso</field>
+            <field name="notes">Gas → Acabado (secar tela pesada consume más gas: driver peso).</field>
+        </record>
+        <record id="cc_energia_agua" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0004%</field>
+            <field name="bucket">energia</field>
+            <field name="es_variable" eval="True"/>
+            <field name="centro_id" ref="centro_tintoreria"/>
+            <field name="driver">peso</field>
+            <field name="notes">Agua (la grande, del teñido) → Tintorería.</field>
+        </record>
+        <record id="cc_renta_planta" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01.0008%</field>
+            <field name="bucket">no_costeo</field>
+            <field name="notes">Renta de planta según flujo (a saltos). Se usa la renta CONTRACTUAL fija de cada centro en su lugar — no doble contar.</field>
+        </record>
+        <record id="cc_overhead_fab" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.01%</field>
+            <field name="bucket">overhead_fab</field>
+            <field name="notes">Overhead fábrica general (mantenimiento, agujados, etc.). Las cuentas con patrón más largo (energía, renta) salen de aquí solas.</field>
+        </record>
+        <record id="cc_deprec_08" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.08%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_deprec_09" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.09%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_deprec_1x" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.1%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_deprec_2x" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">504.2%</field>
+            <field name="bucket">depreciacion</field>
+        </record>
+        <record id="cc_arrend_maq" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">701.11%</field>
+            <field name="bucket">arrend_maquinaria</field>
+            <field name="notes">Leaseback de maquinaria productiva (~$909k/mes): overhead fijo de fabricación, análogo a depreciación de maquinaria propia.</field>
+        </record>
+        <record id="cc_op_601" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">601%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+        </record>
+        <record id="cc_op_602" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">602%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+        </record>
+        <record id="cc_op_603" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">603%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+        </record>
+        <record id="cc_op_613" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">613%</field>
+            <field name="bucket">operacion</field>
+            <field name="driver">ventas</field>
+            <field name="notes">Depreciación corporativa: gasto de operación, no de fábrica.</field>
+        </record>
+        <record id="cc_cogs_no" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">501.01%</field>
+            <field name="bucket">no_costeo</field>
+            <field name="notes">COGS contable AVCO: el módulo calcula MP desde BOM a último costo — no se toma del GL.</field>
+        </record>
+        <record id="cc_mp_ajustes_merma" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">501.01.02%</field>
+            <field name="bucket">mp</field>
+            <field name="filtro_etiqueta">SP/</field>
+            <field name="notes">Ajustes a cantidad. La cuenta mezcla naturalezas: la merma real lleva etiqueta SP/ (el scrap de Odoo) y SÍ es costo del producto; los embarques (TL/EMB/), el encogimiento (TL/ENC/) y las entradas de refacciones (TVAR/ENT-REF/) son ajustes de cantidad y NO lo son. El filtro de etiqueta deja pasar solo la merma. Gana por patrón más largo sobre 501.01%.</field>
+        </record>
+        <record id="cc_502_no" model="qb.costeo.cuenta.class">
+            <field name="code_pattern">502%</field>
+            <field name="bucket">no_costeo</field>
+            <field name="notes">Compras de importación: ya viven en el landed cost del producto.</field>
+        </record>
+
+        <!-- ============ Ruteo por familia ============ -->
+        <record id="ruteo_subproducto" model="qb.producto.ruteo">
+            <field name="sequence">5</field>
+            <field name="name_pattern">^(SALDO|DESPERDICIO)</field>
+            <field name="product_bucket">subproducto</field>
+            <field name="notes">MP $0: su materia ya está en la receta del producto principal. Su venta es recuperación pura de margen.</field>
+        </record>
+        <record id="ruteo_importado" model="qb.producto.ruteo">
+            <field name="sequence">8</field>
+            <field name="name_pattern"> I$</field>
+            <field name="product_bucket">importado</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_insp')])]"/>
+            <field name="notes">Solo inspección/reempaque: no cargan fabricación ni energía; sí operación.</field>
+        </record>
+        <record id="ruteo_importado_categ" model="qb.producto.ruteo">
+            <field name="sequence">9</field>
+            <field name="categ_pattern">%Importaci%</field>
+            <field name="product_bucket">importado</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_insp')])]"/>
+        </record>
+        <record id="ruteo_entretela_tejida" model="qb.producto.ruteo">
+            <field name="sequence">10</field>
+            <field name="categ_pattern">%fusionable tejida%</field>
+            <field name="product_bucket">entretela_tejida</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_tejido'), ref('centro_tintoreria'), ref('centro_entretelas')])]"/>
+            <field name="notes">Base tejido circular + resina (puntos): carga tejido+tintorería por peso + factor entretela por metro.</field>
+        </record>
+        <record id="ruteo_entretela_tejida_nombre" model="qb.producto.ruteo">
+            <field name="sequence">11</field>
+            <field name="categ_pattern">%Entretela%</field>
+            <field name="name_pattern">(?i)tejido circular|(?&lt;!no )tejida</field>
+            <field name="product_bucket">entretela_tejida</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_tejido'), ref('centro_tintoreria'), ref('centro_entretelas')])]"/>
+        </record>
+        <record id="ruteo_entretela_carda" model="qb.producto.ruteo">
+            <field name="sequence">12</field>
+            <field name="categ_pattern">%Entretela%</field>
+            <field name="product_bucket">entretela_carda</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_entretelas')])]"/>
+        </record>
+        <record id="ruteo_perfoquim" model="qb.producto.ruteo">
+            <field name="sequence">13</field>
+            <field name="categ_pattern">%Perfoquim%</field>
+            <field name="product_bucket">entretela_carda</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_entretelas')])]"/>
+            <field name="notes">Árbol nuevo: Perfoquim ya no contiene la palabra Entretela.</field>
+        </record>
+        <record id="ruteo_tela_default" model="qb.producto.ruteo">
+            <field name="sequence">100</field>
+            <field name="categ_pattern">%Tejido Circular%</field>
+            <field name="product_bucket">tela</field>
+            <field name="centro_ids" eval="[(6, 0, [ref('centro_tejido'), ref('centro_tintoreria'), ref('centro_acabado')])]"/>
+            <field name="notes">Tren completo de tela: tejido (kg) → tintorería (kg) → rama (m).</field>
+        </record>
+
+    </data>
+</odoo>

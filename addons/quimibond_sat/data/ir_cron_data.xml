@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Pide a Syntage la extracción incremental del SAT (últimos 4 días,
+             con solape para timbrados tardíos). Una llamada HTTP por compañía. -->
+        <record id="cron_sat_daily_extraction" model="ir.cron">
+            <field name="name">SAT (Syntage) - Pedir extracción diaria</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_daily_extraction()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=5, minute=0, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
+        <!-- Descarga por API lo que Syntage ya tiene de los últimos 7 días.
+             Cubre lo que el webhook no re-emite. Idempotente. -->
+        <record id="cron_sat_pull_recent" model="ir.cron">
+            <field name="name">SAT (Syntage) - Descargar CFDI recientes</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_pull_recent()</field>
+            <field name="interval_number">6</field>
+            <field name="interval_type">hours</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
+        <!-- Vuelve a cruzar los CFDI "solo en el SAT" (la factura pudo capturarse después). -->
+        <record id="cron_sat_match_unmatched" model="ir.cron">
+            <field name="name">SAT (Syntage) - Cruzar CFDI pendientes con Odoo</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_match_unmatched()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
+        <!-- Cola de descargas/extracciones por periodo (action_pull_period con
+             background=True). Se dispara al encolar vía _trigger(); el horario
+             diario es solo red de seguridad. -->
+        <record id="cron_sat_run_queued" model="ir.cron">
+            <field name="name">SAT (Syntage) - Procesar cola de descargas</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_run_queued()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
+        <!-- Correo diario con los hallazgos abiertos (cancelados, monto, moneda).
+             Destinatarios en el parámetro quimibond_sat.alert_email. -->
+        <record id="cron_sat_daily_alert" model="ir.cron">
+            <field name="name">SAT (Syntage) - Alerta diaria de hallazgos</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_daily_alert()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=13, minute=0, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
+    </data>
+</odoo>

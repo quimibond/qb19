@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_fmea_view_form" model="ir.ui.view">
+        <field name="name">sgi.fmea.form</field>
+        <field name="model">sgi.fmea</field>
+        <field name="arch" type="xml">
+            <form string="AMEF">
+                <header>
+                    <button name="action_set_vigente" type="object" string="Marcar vigente"
+                            class="btn-primary" invisible="state == 'vigente'"/>
+                    <button name="action_set_obsoleto" type="object" string="Marcar obsoleto"
+                            invisible="state != 'vigente'"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            invisible="state == 'borrador'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,vigente,obsoleto"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_sgi_ncs" type="object"
+                                class="oe_stat_button" icon="fa-exclamation-triangle"
+                                invisible="sgi_nc_count == 0">
+                            <field name="sgi_nc_count" widget="statinfo"
+                                   string="NCs ligadas"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nombre del AMEF"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="fmea_type"/>
+                            <field name="product_tmpl_id"/>
+                            <field name="process_id"/>
+                            <field name="control_plan_id"/>
+                        </group>
+                        <group>
+                            <field name="revision"/>
+                            <field name="date"/>
+                            <field name="max_npr"/>
+                            <field name="team_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Modos de falla">
+                            <div class="text-muted mb-2">
+                                Escalas AIAG 1–10: <b>S</b>everidad ·
+                                <b>O</b>currencia · <b>D</b>etección.
+                                NPR = S × O × D. Un NPR ≥ 100 marca la línea
+                                en rojo y para marcar el AMEF vigente exige:
+                                acción <b>TERMINADA</b> + re-evaluación
+                                capturada (S/O/D post, dentro de la línea) +
+                                <b>NPR post menor al inicial</b> o
+                                justificación escrita de por qué no baja.
+                            </div>
+                            <field name="line_ids">
+                                <list editable="bottom" decoration-danger="requires_action == True">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="step"/>
+                                    <field name="failure_mode"/>
+                                    <field name="effect"/>
+                                    <field name="severity"/>
+                                    <field name="cause"/>
+                                    <field name="occurrence"/>
+                                    <field name="current_controls"/>
+                                    <field name="detection"/>
+                                    <field name="npr"/>
+                                    <field name="requires_action"/>
+                                    <field name="npr_post"/>
+                                </list>
+                                <form string="Modo de falla">
+                                    <group>
+                                        <group string="Análisis">
+                                            <field name="step"/>
+                                            <field name="failure_mode"/>
+                                            <field name="effect"/>
+                                            <field name="severity"/>
+                                            <field name="cause"/>
+                                            <field name="occurrence"/>
+                                            <field name="current_controls"/>
+                                            <field name="detection"/>
+                                            <field name="npr"/>
+                                            <field name="requires_action"/>
+                                        </group>
+                                        <group string="Re-evaluación (post-acción)">
+                                            <field name="severity_post"/>
+                                            <field name="occurrence_post"/>
+                                            <field name="detection_post"/>
+                                            <field name="npr_post"/>
+                                            <field name="post_note"
+                                                   invisible="not npr_post or npr_post &lt; npr"
+                                                   required="npr_post and npr_post >= npr and requires_action"/>
+                                        </group>
+                                    </group>
+                                    <group string="Acciones">
+                                        <field name="action_line_ids" nolabel="1"
+                                               context="{'default_fmea_line_id': id}">
+                                            <list editable="bottom">
+                                                <field name="action_type"/>
+                                                <field name="name"/>
+                                                <field name="responsible_id"/>
+                                                <field name="date_commit"/>
+                                                <field name="date_done"/>
+                                                <field name="state"/>
+                                            </list>
+                                        </field>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_fmea_view_list" model="ir.ui.view">
+        <field name="name">sgi.fmea.list</field>
+        <field name="model">sgi.fmea</field>
+        <field name="arch" type="xml">
+            <list string="AMEF"
+                  decoration-success="state == 'vigente'"
+                  decoration-muted="state == 'obsoleto'">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="fmea_type"/>
+                <field name="process_id"/>
+                <field name="product_tmpl_id"/>
+                <field name="max_npr"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_fmea_view_search" model="ir.ui.view">
+        <field name="name">sgi.fmea.search</field>
+        <field name="model">sgi.fmea</field>
+        <field name="arch" type="xml">
+            <search string="AMEF">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="process_id"/>
+                <field name="product_tmpl_id"/>
+                <filter name="vigente" string="Vigentes" domain="[('state','=','vigente')]"/>
+                <filter name="proceso" string="PFMEA" domain="[('fmea_type','=','proceso')]"/>
+                <filter name="diseno" string="DFMEA" domain="[('fmea_type','=','diseno')]"/>
+                <group>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'fmea_type'}"/>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_fmea_action" model="ir.actions.act_window">
+        <field name="name">AMEF</field>
+        <field name="res_model">sgi.fmea</field>
+        <field name="view_mode">list,form,activity</field>
+        <field name="search_view_id" ref="sgi_fmea_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el primer AMEF</p>
+            <p>El NPR se calcula solo (S × O × D); un NPR ≥ 100 exige acción TERMINADA y re-evaluación con NPR post a la baja (o justificada) antes de que el AMEF pueda marcarse vigente.</p>
+        </field>
+    </record>
+
+    <!-- Vista de actividades: el motor del SGI corre sobre actividades y esta
+         vista nativa permite gestionarlas por registro y responsable. -->
+    <record id="sgi_fmea_view_activity" model="ir.ui.view">
+        <field name="name">sgi.fmea.activity</field>
+        <field name="model">sgi.fmea</field>
+        <field name="arch" type="xml">
+            <activity string="AMEF">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mapeo curso eLearning → competencia SGI: lista editable propia (no se
+         hereda la vista nativa de website_slides para no acoplarse a sus ids). -->
+    <record id="sgi_slide_channel_view_list" model="ir.ui.view">
+        <field name="name">slide.channel.sgi.list</field>
+        <field name="model">slide.channel</field>
+        <field name="arch" type="xml">
+            <list string="Cursos y competencias" editable="bottom" create="false" delete="false">
+                <field name="name" readonly="1"/>
+                <field name="channel_type" readonly="1"/>
+                <field name="sgi_skill_id" options="{'no_create': True}"/>
+                <field name="sgi_skill_type_id" column_invisible="1"/>
+                <field name="sgi_skill_level_id" options="{'no_create': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_slide_channel_action" model="ir.actions.act_window">
+        <field name="name">Cursos y competencias (eLearning)</field>
+        <field name="res_model">slide.channel</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sgi_slide_channel_view_list"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Liga cursos de eLearning con competencias</p>
+            <p>Un curso que otorga una competencia cierra solo la brecha en la
+            DNC: al terminarlo, el cron diario registra (o sube de nivel) la
+            competencia del empleado. Los cursos se crean y editan en la app
+            eLearning; aquí solo se mapean.</p>
+        </field>
+    </record>
+</odoo>

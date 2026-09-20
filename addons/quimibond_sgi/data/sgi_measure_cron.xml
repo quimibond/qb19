@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Medición de actividades de procedimiento: cuenta la evidencia real
+         (registros de Odoo) de cada actividad medible y pinta su semáforo
+         contra la cadencia esperada. -->
+    <record id="sgi_cron_measure_activities" model="ir.cron">
+        <field name="name">SGI: Medición de actividades de procedimiento</field>
+        <field name="model_id" ref="model_sgi_process_activity"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_measure_activities()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

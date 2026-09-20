@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_mrp_eco_view_form" model="ir.ui.view">
+        <field name="name">mrp.eco.form.sgi</field>
+        <field name="model">mrp.eco</field>
+        <field name="inherit_id" ref="mrp_plm.mrp_eco_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_sgi_ppap" type="object"
+                        class="oe_stat_button" icon="fa-check-circle-o"
+                        invisible="not sgi_ppap_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">PPAP</span>
+                    </div>
+                </button>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="SGI - Control de cambios" name="sgi_change_control">
+                    <group>
+                        <group string="PPAP">
+                            <field name="sgi_requires_ppap"/>
+                            <field name="sgi_customer_id"
+                                   invisible="not sgi_requires_ppap"
+                                   required="sgi_requires_ppap"/>
+                            <field name="sgi_ppap_id" readonly="1"
+                                   invisible="not sgi_ppap_id"/>
+                        </group>
+                        <group string="Cliente">
+                            <field name="sgi_customer_notice"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="sgi_fmea_ids" widget="many2many_tags"/>
+                        <field name="sgi_control_plan_ids" widget="many2many_tags"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

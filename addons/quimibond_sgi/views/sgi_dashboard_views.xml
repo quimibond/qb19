@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================== -->
+    <!--  Vistas pivot/graph para armar los tableros (Spreadsheet/       -->
+    <!--  Dashboards) sin JS custom. Fase 4.4.                           -->
+    <!-- ============================================================== -->
+
+    <!-- Pareto de alertas de calidad por etiqueta / equipo / producto -->
+    <record id="sgi_quality_alert_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.quality.alert.pivot</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <pivot string="Alertas de calidad" sample="1">
+                <field name="team_id" type="row"/>
+                <field name="tag_ids" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_quality_alert_view_graph" model="ir.ui.view">
+        <field name="name">sgi.quality.alert.graph</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <graph string="Alertas de calidad" type="bar" sample="1">
+                <field name="tag_ids"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_quality_alert_action_pareto" model="ir.actions.act_window">
+        <field name="name">Pareto de alertas de calidad</field>
+        <field name="res_model">quality.alert</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin datos para el pareto</p>
+            <p>Se alimenta de las alertas de calidad del piso (defectos TEJIDO-*).</p>
+        </field>
+    </record>
+</odoo>

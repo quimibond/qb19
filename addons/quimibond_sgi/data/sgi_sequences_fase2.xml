@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="sgi_seq_audit" model="ir.sequence">
+        <field name="name">Auditorías SGI</field>
+        <field name="code">sgi.audit</field>
+        <field name="prefix">AUD-%(range_year)s-</field>
+        <field name="padding">2</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+
+    <record id="sgi_seq_risk" model="ir.sequence">
+        <field name="name">Riesgos y oportunidades SGI</field>
+        <field name="code">sgi.risk</field>
+        <field name="prefix">RSG-%(range_year)s-</field>
+        <field name="padding">2</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+
+    <record id="sgi_seq_mgmt_review" model="ir.sequence">
+        <field name="name">Revisión por la Dirección SGI</field>
+        <field name="code">sgi.management.review</field>
+        <field name="prefix">RD-%(range_year)s-</field>
+        <field name="padding">2</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+</odoo>

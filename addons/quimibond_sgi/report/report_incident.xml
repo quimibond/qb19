@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_incident" model="ir.actions.report">
+        <field name="name">Investigación de Incidente SST (P-S02)</field>
+        <field name="model">sgi.incident</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_incident_document</field>
+        <field name="report_file">quimibond_sgi.report_incident_document</field>
+        <field name="binding_model_id" ref="model_sgi_incident"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_incident_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Investigación de Incidente SST — P-S02 (SCAT)</h2>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tr>
+                                <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
+                                <td><strong>Fecha/hora:</strong> <span t-field="doc.date"/></td>
+                                <td><strong>Tipo:</strong> <span t-field="doc.incident_type"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Severidad:</strong> <span t-field="doc.severity"/></td>
+                                <td><strong>Lugar:</strong> <span t-field="doc.location"/></td>
+                                <td><strong>Días perdidos:</strong> <span t-field="doc.days_lost"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Proceso:</strong> <span t-field="doc.process_id"/></td>
+                                <td><strong>Área:</strong> <span t-field="doc.sgi_area_id"/></td>
+                                <td><strong>Reportó:</strong> <span t-field="doc.reporter_id"/></td>
+                            </tr>
+                        </table>
+
+                        <h4>Personas afectadas</h4>
+                        <p>
+                            <span t-foreach="doc.employee_ids" t-as="emp">
+                                <span t-field="emp.name"/><t t-if="not emp_last">, </t>
+                            </span>
+                        </p>
+
+                        <h4>Descripción del evento</h4>
+                        <p t-field="doc.description"/>
+
+                        <h4>Análisis SCAT</h4>
+                        <table class="table table-sm table-bordered">
+                            <tr>
+                                <th style="width:30%;">Causas inmediatas</th>
+                                <td><span t-field="doc.immediate_causes"/></td>
+                            </tr>
+                            <tr>
+                                <th>Causas básicas</th>
+                                <td><span t-field="doc.basic_causes"/></td>
+                            </tr>
+                            <tr>
+                                <th>Falta de control</th>
+                                <td><span t-field="doc.lack_of_control"/></td>
+                            </tr>
+                        </table>
+
+                        <h4>Acciones</h4>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th><th>Descripción</th><th>Responsable</th>
+                                    <th>Compromiso</th><th>Terminada</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.action_line_ids" t-as="line">
+                                    <td><span t-field="line.action_type"/></td>
+                                    <td><span t-field="line.name"/></td>
+                                    <td><span t-field="line.responsible_id"/></td>
+                                    <td><span t-field="line.date_commit"/></td>
+                                    <td><span t-field="line.date_done"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

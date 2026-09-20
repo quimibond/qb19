@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ANEXO 6 — Objetivos Integrales 2026-2030 -->
+    <record id="sgi_objective_ingresos" model="sgi.objective">
+        <field name="name">Ingresos MX$360M a 2030</field>
+        <field name="description">Alcanzar ingresos por MX$360 millones al año 2030.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_no_automotriz" model="sgi.objective">
+        <field name="name">≥30% de ventas no automotrices</field>
+        <field name="description">Diversificar la cartera para que al menos el 30% de las ventas provengan de sectores no automotrices.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_exportaciones" model="sgi.objective">
+        <field name="name">Exportaciones ≥40%</field>
+        <field name="description">Que las exportaciones representen al menos el 40% de las ventas.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_ebitda" model="sgi.objective">
+        <field name="name">EBITDA 15%</field>
+        <field name="description">Mantener un EBITDA del 15%.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_cero_residuos" model="sgi.objective">
+        <field name="name">Cero residuos a relleno 2030</field>
+        <field name="description">Eliminar el envío de residuos a relleno sanitario para 2030.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_certificaciones" model="sgi.objective">
+        <field name="name">Mantener ISO 9001/14001/45001</field>
+        <field name="description">Conservar la certificación de las tres normas del SGI.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_innovacion" model="sgi.objective">
+        <field name="name">1-2 productos innovadores por año</field>
+        <field name="description">Lanzar entre uno y dos productos innovadores cada año.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_seguridad" model="sgi.objective">
+        <field name="name">Cultura de seguridad ISO 45001</field>
+        <field name="description">Consolidar la cultura de seguridad y salud en el trabajo bajo ISO 45001.</field>
+        <field name="target_year">2030</field>
+    </record>
+    <record id="sgi_objective_gobierno" model="sgi.objective">
+        <field name="name">Profesionalización y gobierno corporativo</field>
+        <field name="description">Avanzar en la profesionalización y el gobierno corporativo de la empresa.</field>
+        <field name="target_year">2030</field>
+    </record>
+</odoo>

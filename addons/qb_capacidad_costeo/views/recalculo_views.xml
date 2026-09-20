@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="recalculo_wizard_form" model="ir.ui.view">
+        <field name="name">qb.recalculo.wizard.form</field>
+        <field name="model">qb.recalculo.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Recalcular costeo por rango">
+                <div class="alert alert-info" role="status">
+                    Recalcula el costo por producto mes a mes. Úsalo para ver
+                    <b>años anteriores</b>: el menú «Recalcular costeo (año en
+                    curso)» solo alcanza el año corriente.
+                    <br/>
+                    Son unos <b>10 segundos por mes</b> — un año completo tarda
+                    alrededor de dos minutos. No cierres la ventana.
+                </div>
+                <group>
+                    <group>
+                        <field name="desde"/>
+                        <field name="hasta"/>
+                    </group>
+                    <group>
+                        <field name="incluir_cerrados"/>
+                    </group>
+                </group>
+                <field name="resultado" readonly="1" nolabel="1"
+                       invisible="not resultado"/>
+                <footer>
+                    <button name="action_recalcular" type="object"
+                            string="Recalcular" class="btn-primary"/>
+                    <button string="Cerrar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="recalculo_wizard_action" model="ir.actions.act_window">
+        <field name="name">Recalcular costeo (rango de meses)</field>
+        <field name="res_model">qb.recalculo.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

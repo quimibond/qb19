@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ===== Fase 7: emergencias, MSA, voz del cliente y DNC ===== -->
+
+    <!-- Secuencias -->
+    <record id="sgi_seq_emergency_plan" model="ir.sequence">
+        <field name="name">Planes de emergencia SGI</field>
+        <field name="code">sgi.emergency.plan</field>
+        <field name="prefix">PE-%(range_year)s-</field>
+        <field name="padding">2</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+    <record id="sgi_seq_emergency_drill" model="ir.sequence">
+        <field name="name">Simulacros SGI</field>
+        <field name="code">sgi.emergency.drill</field>
+        <field name="prefix">SIM-%(range_year)s-</field>
+        <field name="padding">2</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+    <record id="sgi_seq_msa" model="ir.sequence">
+        <field name="name">Estudios MSA SGI</field>
+        <field name="code">sgi.msa.study</field>
+        <field name="prefix">MSA-%(range_year)s-</field>
+        <field name="padding">2</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+
+    <!-- Crons -->
+    <record id="sgi_cron_emergency_drills" model="ir.cron">
+        <field name="name">SGI: Simulacros de emergencia (8.2)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_emergency_drills()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+    <record id="sgi_cron_satisfaction" model="ir.cron">
+        <field name="name">SGI: Encuesta de satisfacción del cliente (9.1.2)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_satisfaction_survey()</field>
+        <field name="interval_number">3</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
+    <record id="sgi_cron_dnc" model="ir.cron">
+        <field name="name">SGI: DNC y plan de capacitación (P-A01)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_dnc()</field>
+        <field name="interval_number">3</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- KPI CA-02: satisfacción del cliente (9001 9.1.2). Nace con cálculo
+         automático desde las respuestas de la encuesta; nc_on_red apagado
+         como el resto (se enciende tras validar un periodo). -->
+    <record id="sgi_ind_satisfaccion" model="sgi.indicator">
+        <field name="code">CA-02</field>
+        <field name="name">Satisfacción del cliente</field>
+        <field name="sgi_area_id" ref="sgi_area_c"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">80</field>
+        <field name="frequency">monthly</field>
+        <field name="calc_mode">satisfaccion_cliente</field>
+    </record>
+</odoo>

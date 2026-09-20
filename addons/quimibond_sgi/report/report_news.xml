@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_news" model="ir.actions.report">
+        <field name="name">Boletín NEWS (F-P-G01-16)</field>
+        <field name="model">approval.request</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_news_document</field>
+        <field name="report_file">quimibond_sgi.report_news_document</field>
+    </record>
+
+    <template id="report_news_document">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2 class="text-center">NEWS — Cambios documentales SGI (F-P-G01-16)</h2>
+                    <table class="table table-sm table-bordered mt-3">
+                        <thead>
+                            <tr>
+                                <th>Área</th>
+                                <th>Clave</th>
+                                <th>Documento</th>
+                                <th>Modificaciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs" t-as="req">
+                                <td t-esc="req.sgi_document_id.sgi_area_id.name or ''"/>
+                                <td t-esc="req.sgi_document_id.sgi_code or ''"/>
+                                <td t-esc="req.sgi_document_id.name or req.name or ''"/>
+                                <td>
+                                    <span t-esc="req.sgi_changes or req.sgi_reason or ''"/>
+                                    <strong t-if="req.sgi_pilot" class="text-danger"> [P. PILOTO]</strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

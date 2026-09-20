@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Correos inmediatos para los 3 eventos críticos del SGI. Todo lo demás
+     sigue siendo actividad (la bandeja del SGI); el correo es solo para lo
+     que no puede esperar a que el destinatario abra Odoo. Los destinatarios
+     (Jefe MAST + Dirección) los resuelve el código y llegan por contexto
+     (ctx.sgi_email_to). Sin email_from: cae al remitente por defecto de la
+     compañía. noupdate: MAST puede afinar los textos. Nota: el render de
+     plantillas prohíbe atributos con guión bajo — de ahí los mapeos
+     literales en vez de _fields. -->
+<odoo noupdate="1">
+
+    <record id="mail_template_sgi_incident_grave" model="mail.template">
+        <field name="name">SGI: Incidente grave/fatal</field>
+        <field name="model_id" ref="model_sgi_incident"/>
+        <field name="subject">⚠ Incidente {{ object.severity == 'fatal' and 'FATAL' or 'GRAVE' }}: {{ object.name }}</field>
+        <field name="email_to">{{ ctx.get('sgi_email_to') }}</field>
+        <field name="body_html" type="html">
+<div>
+    <p>Se registró (o se reclasificó a) un incidente de Seguridad y Salud
+       <b><t t-out="object.severity == 'fatal' and 'FATAL' or 'GRAVE'"/></b>:</p>
+    <ul>
+        <li><b>Incidente:</b> <t t-out="object.folio or ''"/> — <t t-out="object.name"/></li>
+        <li><b>Fecha y hora:</b> <t t-out="object.date"/></li>
+        <li><b>Lugar:</b> <t t-out="object.location or 'sin capturar'"/></li>
+        <li><b>Personas afectadas:</b> <t t-out="', '.join(object.employee_ids.mapped('name')) or 'sin capturar'"/></li>
+    </ul>
+    <p>Inicie la investigación SCAT de inmediato (45001 §10.2). La NC mayor
+       asociada se generó automáticamente si la fuente está activa.</p>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <record id="mail_template_sgi_nc_mayor" model="mail.template">
+        <field name="name">SGI: NC mayor</field>
+        <field name="model_id" ref="quality.model_quality_alert"/>
+        <field name="subject">⚠ NC MAYOR {{ object.sgi_folio or '' }}: {{ object.title or object.name }}</field>
+        <field name="email_to">{{ ctx.get('sgi_email_to') }}</field>
+        <field name="body_html" type="html">
+<div>
+    <p>Se abrió (o se reclasificó a) una <b>No Conformidad MAYOR</b> del SGI:</p>
+    <ul>
+        <li><b>Folio:</b> <t t-out="object.sgi_folio or ''"/></li>
+        <li><b>Título:</b> <t t-out="object.title or object.name"/></li>
+        <li><b>Origen:</b> <t t-out="{'proceso': 'Proceso', 'auditoria_interna': 'Auditoría interna', 'auditoria_externa': 'Auditoría externa', 'reclamacion': 'Reclamación de cliente', 'indicador': 'Indicador incumplido'}.get(object.sgi_origin_type, '')"/></li>
+        <li><b>Proceso:</b> <t t-out="object.sgi_process_id.display_name or 'sin capturar'"/></li>
+        <li><b>Desviación:</b> <t t-out="object.sgi_deviation or 'sin capturar'"/></li>
+    </ul>
+    <p>Una NC mayor exige análisis de causa completo (5 porqués), acción
+       correctiva terminada y lección aplicada antes de poder cerrarse.</p>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <record id="mail_template_sgi_calibration_blocked" model="mail.template">
+        <field name="name">SGI: Equipo bloqueado por calibración vencida</field>
+        <field name="model_id" ref="maintenance.model_maintenance_equipment"/>
+        <field name="subject">⚠ Equipo BLOQUEADO por calibración vencida: {{ object.name }}</field>
+        <field name="email_to">{{ ctx.get('sgi_email_to') }}</field>
+        <field name="body_html" type="html">
+<div>
+    <p>El equipo de medición <b><t t-out="object.name"/></b> tiene la
+       calibración vencida desde el
+       <b><t t-out="object.sgi_next_calibration_date"/></b> y quedó marcado
+       <b>«No usar»</b>: las inspecciones que lo seleccionen quedarán
+       bloqueadas (IATF 7.1.5.2.1).</p>
+    <p>Programe la calibración y evalúe el producto medido desde la última
+       calibración conforme.</p>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+</odoo>

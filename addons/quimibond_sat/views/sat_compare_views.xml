@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_sat_compare" model="ir.actions.act_window">
+        <field name="name">Conciliar SAT ↔ Odoo</field>
+        <field name="res_model">sat.compare.line</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="context">{'search_default_mi_compania': 1, 'search_default_por_conciliar': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todo conciliado</p>
+            <p>Aquí aparece lo que no cuadra entre el SAT y Odoo: CFDI sin factura, facturas sin CFDI, montos
+               distintos y cancelaciones. Cada fila se resuelve con <b>Conciliar</b>, <b>Aceptar</b> la sugerencia
+               o, desde el CFDI, <b>Ignorar</b>.</p>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_list" model="ir.ui.view">
+        <field name="name">sat.compare.line.list</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0"
+                  decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
+                  decoration-warning="issue in ('monto', 'moneda', 'solo_odoo', 'solo_odoo_sin_uuid')"
+                  decoration-info="issue == 'solo_sat'"
+                  decoration-muted="issue in ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat')">
+                <field name="cfdi_id" column_invisible="1"/>
+                <field name="move_id" column_invisible="1"/>
+                <field name="fecha"/>
+                <field name="direction"/>
+                <field name="counterparty_name"/>
+                <field name="move_name"/>
+                <field name="uuid" optional="hide"/>
+                <field name="total_sat"/>
+                <field name="total_odoo"/>
+                <field name="moneda"/>
+                <field name="amount_diff"/>
+                <field name="issue"/>
+                <field name="suggested_move_id" optional="show"/>
+                <button name="action_reconcile" type="object" string="Conciliar" icon="fa-link" class="btn-primary"
+                        invisible="issue not in ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda')"/>
+                <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
+                        invisible="not suggested_move_id"/>
+                <button name="action_open_cfdi" type="object" string="CFDI" icon="fa-file-text-o" invisible="not cfdi_id"/>
+                <button name="action_open_move" type="object" string="Factura" icon="fa-external-link" invisible="not move_id"/>
+                <field name="bucket" optional="hide"/>
+                <field name="tipo" optional="hide"/>
+                <field name="counterparty_rfc" optional="hide"/>
+                <field name="moneda_odoo" optional="hide"/>
+                <field name="estado_sat" optional="hide"/>
+                <field name="state_odoo" optional="hide"/>
+                <field name="payment_state" optional="hide"/>
+                <field name="total_sat_mxn" sum="Total SAT (MXN)" optional="hide"/>
+                <field name="total_odoo_mxn" sum="Total Odoo (MXN)" optional="hide"/>
+                <field name="sat_vigente" sum="SAT vigente (MXN)" optional="hide"/>
+                <field name="odoo_posted" sum="Odoo publicado (MXN)" optional="hide"/>
+                <field name="delta" sum="Δ (MXN)" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_search" model="ir.ui.view">
+        <field name="name">sat.compare.line.search</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="uuid"/>
+                <field name="counterparty_name"/>
+                <field name="counterparty_rfc"/>
+                <field name="move_name"/>
+                <field name="partner_id"/>
+                <filter name="mi_compania" string="Mi compañía" domain="[('company_id', 'in', allowed_company_ids)]"/>
+                <separator/>
+                <filter name="por_conciliar" string="Por conciliar"
+                        domain="[('issue', 'in', ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                <filter name="este_anio" string="Este año" domain="[('fecha', '>=', context_today().strftime('%Y-01-01'))]"/>
+                <separator/>
+                <filter name="issued" string="Emitidos" domain="[('direction', '=', 'issued')]"/>
+                <filter name="received" string="Recibidos" domain="[('direction', '=', 'received')]"/>
+                <separator/>
+                <filter name="ambos" string="En ambos" domain="[('bucket', '=', 'ambos')]"/>
+                <filter name="solo_sat" string="Solo en el SAT" domain="[('bucket', '=', 'solo_sat')]"/>
+                <filter name="solo_odoo" string="Solo en Odoo" domain="[('bucket', 'in', ('solo_odoo', 'solo_odoo_sin_uuid'))]"/>
+                <filter name="pendiente_sat" string="Aún no extraído del SAT" domain="[('bucket', '=', 'pendiente_sat')]"/>
+                <filter name="fuera" string="Fuera de conciliación" domain="[('bucket', 'in', ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat'))]"/>
+                <filter name="hallazgos" string="Con hallazgo"
+                        domain="[('issue', 'in', ('monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                <filter name="usd" string="En dólares" domain="[('moneda', '=', 'USD')]"/>
+                <filter name="con_sugerencia" string="Con sugerencia" domain="[('suggested_move_id', '!=', False)]"/>
+                <separator/>
+                <filter name="fecha" string="Fecha" date="fecha"/>
+                <separator/>
+                    <filter name="group_bucket" string="Agrupar por cubeta" context="{'group_by': 'bucket'}"/>
+                    <filter name="group_issue" string="Agrupar por hallazgo" context="{'group_by': 'issue'}"/>
+                    <filter name="group_direction" string="Agrupar por sentido" context="{'group_by': 'direction'}"/>
+                    <filter name="group_counterparty" string="Agrupar por contraparte" context="{'group_by': 'counterparty_name'}"/>
+                    <filter name="group_month" string="Agrupar por mes" context="{'group_by': 'mes'}"/>
+                    <filter name="group_moneda" string="Agrupar por moneda" context="{'group_by': 'moneda'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_pivot" model="ir.ui.view">
+        <field name="name">sat.compare.line.pivot</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Conciliación al centavo en MXN: Δ = SAT vigente − Odoo publicado (egresos restan)">
+                <field name="mes" type="row"/>
+                <field name="direction" type="row"/>
+                <field name="issue" type="col"/>
+                <field name="sat_vigente" type="measure"/>
+                <field name="odoo_posted" type="measure"/>
+                <field name="delta" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_sat_compare_graph" model="ir.ui.view">
+        <field name="name">sat.compare.line.graph</field>
+        <field name="model">sat.compare.line</field>
+        <field name="arch" type="xml">
+            <graph type="bar" stacked="1">
+                <field name="fecha" interval="month"/>
+                <field name="bucket"/>
+                <field name="sat_vigente" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diseño y desarrollo (9001 §8.3 / P-D01): el flujo por etapas-gate vive
+     en Proyecto (donde D&D ya trabaja), no en un modelo nuevo. El proyecto se
+     marca como mejora SGI para heredar el candado de evidencia existente: una
+     tarea no llega a la etapa de cierre sin fecha límite y sin al menos un
+     adjunto (la evidencia de la validación/transferencia). Cada tarea = un
+     desarrollo; las etapas son las fases 8.3.2–8.3.6. noupdate: D&D puede
+     ajustar nombres y orden sin que el update los revierta. -->
+<odoo noupdate="1">
+
+    <record id="sgi_project_dyd" model="project.project">
+        <field name="name">Diseño y Desarrollo (P-D01 · 8.3)</field>
+        <field name="sgi_is_improvement" eval="True"/>
+        <field name="allow_timesheets" eval="False"/>
+    </record>
+
+    <record id="sgi_dyd_stage_plan" model="project.task.type">
+        <field name="name">Planificación (8.3.2)</field>
+        <field name="sequence">10</field>
+        <field name="project_ids" eval="[(4, ref('sgi_project_dyd'))]"/>
+    </record>
+    <record id="sgi_dyd_stage_inputs" model="project.task.type">
+        <field name="name">Entradas del diseño (8.3.3)</field>
+        <field name="sequence">20</field>
+        <field name="project_ids" eval="[(4, ref('sgi_project_dyd'))]"/>
+    </record>
+    <record id="sgi_dyd_stage_review" model="project.task.type">
+        <field name="name">Revisión (8.3.4)</field>
+        <field name="sequence">30</field>
+        <field name="project_ids" eval="[(4, ref('sgi_project_dyd'))]"/>
+    </record>
+    <record id="sgi_dyd_stage_verification" model="project.task.type">
+        <field name="name">Verificación (8.3.4)</field>
+        <field name="sequence">40</field>
+        <field name="project_ids" eval="[(4, ref('sgi_project_dyd'))]"/>
+    </record>
+    <record id="sgi_dyd_stage_validation" model="project.task.type">
+        <field name="name">Validación con cliente (8.3.4)</field>
+        <field name="sequence">50</field>
+        <field name="project_ids" eval="[(4, ref('sgi_project_dyd'))]"/>
+    </record>
+    <record id="sgi_dyd_stage_transfer" model="project.task.type">
+        <field name="name">Transferencia a producción (8.3.6)</field>
+        <field name="sequence">60</field>
+        <field name="fold" eval="True"/>
+        <field name="sgi_is_done_stage" eval="True"/>
+        <field name="project_ids" eval="[(4, ref('sgi_project_dyd'))]"/>
+    </record>
+
+</odoo>

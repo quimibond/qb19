@@ -1,0 +1,18 @@
+# -*- coding: utf-8 -*-
+from . import sql_view          # primero: los demás heredan de él
+from . import config_costeo
+from . import cuenta_map
+from . import capacidad
+from . import rh_turnos
+from . import balance_linea
+from . import familia
+from . import ociosidad
+from . import costeo
+from . import cotizacion
+from . import snapshot
+from . import panel
+from . import ficha
+from . import cliente_rentabilidad
+from . import producto_reportes
+from . import conciliacion
+from . import workorder_excepcion

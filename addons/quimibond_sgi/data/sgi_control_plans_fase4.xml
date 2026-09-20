@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- La categoría del subproducto de desperdicio (SALDO TEJIDO D) del KPI
+         de desperdicio la siembra sgi.config.seed_parameters() (fuente única;
+         declararla también aquí chocaba con ir_config_parameter_key_uniq en
+         instalación limpia — mismo caso documentado en el puente de pesaje). -->
+
+    <!-- Planes de control SGI que envuelven los puntos de calidad reales del
+         piso (Recepción de MP y Revisado de Tela). El enlace de los puntos se
+         hace en el post_init_hook por BÚSQUEDA SEGURA por equipo (si el equipo
+         no existe en la BD, no truena: log y sigue). -->
+    <record id="sgi_control_plan_mp" model="sgi.control.plan">
+        <field name="name">Recepción de Materias Primas (F-P-P03-01)</field>
+        <field name="phase">produccion</field>
+        <field name="revision">01</field>
+        <field name="state">vigente</field>
+        <field name="notes">Envuelve los puntos de control de MP tipo Hoja de Cálculo
+            (equipo «CALIDAD Materia Prima»). Ubicación de fallo: 18 Cuarentena MP.</field>
+    </record>
+
+    <record id="sgi_control_plan_revisado" model="sgi.control.plan">
+        <field name="name">Tejido Circular — Revisado</field>
+        <field name="phase">produccion</field>
+        <field name="revision">01</field>
+        <field name="state">vigente</field>
+        <field name="notes">Envuelve el punto «Revisado de Tela» (equipo «Revisado de Tela»),
+            control por operación en Toluca:Tejido Circular.</field>
+    </record>
+</odoo>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_helpdesk_ticket_view_form" model="ir.ui.view">
+        <field name="name">sgi.helpdesk.ticket.form.inherit</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_generate_nc" type="object" string="Generar NC"
+                        class="btn-secondary" invisible="sgi_alert_id"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Datos de la reclamación (SGI)">
+                    <group>
+                        <field name="sgi_sale_order_id"/>
+                        <field name="sgi_product_id"/>
+                        <field name="sgi_lot_id"/>
+                    </group>
+                    <group>
+                        <field name="sgi_qty_affected"/>
+                        <field name="sgi_disposition"/>
+                        <field name="sgi_alert_id"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_complaint_action" model="ir.actions.server">
+        <field name="name">Reclamaciones de clientes</field>
+        <field name="model_id" ref="helpdesk.model_helpdesk_ticket"/>
+        <field name="state">code</field>
+        <field name="code">
+team = env.ref('quimibond_sgi.sgi_helpdesk_team_complaints', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Reclamaciones de clientes',
+    'res_model': 'helpdesk.ticket',
+    'view_mode': 'kanban,list,form',
+    'domain': [('team_id', '=', team.id)] if team else [],
+    'context': {'default_team_id': team.id} if team else {},
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Registra la primera reclamación&lt;/p&gt;
+&lt;p&gt;Captura cliente, producto, lote y metros afectados en la pestaña SGI del
+ticket; el SLA de primera respuesta corre solo. Si procede, el botón
+&lt;b&gt;Generar NC&lt;/b&gt; abre la No Conformidad ya ligada. Importante: las
+reclamaciones deben entrar por ESTE equipo — en otros equipos no hay SLA
+SGI, ni NC, ni cuentan para el KPI CA-01.&lt;/p&gt;""",
+}
+        </field>
+    </record>
+
+    <!-- Voz del cliente (9001 9.1.2): respuestas de la Encuesta de
+         Satisfacción. Alimentan el KPI CA-02 automáticamente. -->
+    <record id="sgi_satisfaction_action" model="ir.actions.server">
+        <field name="name">Satisfacción del cliente</field>
+        <field name="model_id" ref="survey.model_survey_user_input"/>
+        <field name="state">code</field>
+        <field name="code">
+survey = env.ref('quimibond_sgi.sgi_survey_satisfaction', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Satisfacción del cliente (respuestas)',
+    'res_model': 'survey.user_input',
+    'view_mode': 'list,form',
+    'domain': [('survey_id', '=', survey.id)] if survey else [('id', '=', False)],
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Aún no hay respuestas de clientes&lt;/p&gt;
+&lt;p&gt;La encuesta se comparte desde la app Encuestas (el cron trimestral se lo
+recuerda al Admin de Ventas). Cada respuesta alimenta AUTOMÁTICAMENTE el KPI
+CA-02 (Satisfacción del cliente): promedio 1-5 convertido a %.&lt;/p&gt;""",
+}
+        </field>
+    </record>
+
+    <!-- Voz del trabajador (45001 5.4): canal interno de quejas y sugerencias.
+         El equipo existe desde Fase 4 (alias quejas-sugerencias) pero no tenía
+         entrada en el menú del SGI. -->
+    <record id="sgi_internal_complaint_action" model="ir.actions.server">
+        <field name="name">Quejas y sugerencias</field>
+        <field name="model_id" ref="helpdesk.model_helpdesk_ticket"/>
+        <field name="state">code</field>
+        <field name="code">
+team = env.ref('quimibond_sgi.sgi_helpdesk_team_voice', raise_if_not_found=False)
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Quejas y sugerencias',
+    'res_model': 'helpdesk.ticket',
+    'view_mode': 'kanban,list,form',
+    'domain': [('team_id', '=', team.id)] if team else [],
+    'context': {'default_team_id': team.id} if team else {},
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;La voz del trabajador (45001 5.4)&lt;/p&gt;
+&lt;p&gt;Cualquier queja, sugerencia o condición insegura entra aquí — también por
+correo al alias &lt;b&gt;quejas-sugerencias&lt;/b&gt;. Usa las etiquetas Queja /
+Sugerencia / SST-Condición insegura para clasificarla.&lt;/p&gt;""",
+}
+        </field>
+    </record>
+</odoo>

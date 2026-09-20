@@ -1,0 +1,15 @@
+# Módulos exentos de subir la versión del manifest al cambiar archivos.
+#
+# Estar aquí NO es gratis: significa que sus cambios NO llegan a la base de
+# datos hasta que alguien corra `odoo-update <modulo>` a mano. Ese olvido es lo
+# que dejó a qb_capacidad_costeo con tablas sin crear, un modelo huérfano y 7
+# restricciones de unicidad sin aplicar.
+#
+# Un módulo por línea, con la razón. Si no puedes escribir la razón, no lo
+# agregues: sube la versión.
+
+# El update automático destapa errores pre-existentes de Odoo Studio y marca el
+# build como Failed. Se despliega con `odoo-update quimibond_intelligence` a
+# mano. Ver CLAUDE.md. Quitar de esta lista cuando se limpien las vistas de
+# Studio inválidas.
+quimibond_intelligence
