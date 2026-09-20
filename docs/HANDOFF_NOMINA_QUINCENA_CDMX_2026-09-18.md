@@ -30,7 +30,9 @@ en verde con `SUBSIDY` e `INT_DAY_WAGE`. Los cuatro PR: #310 (módulo), #311,
 #313 (correcciones de instalación en Odoo 19), #314 (diccionario del CFDI,
 `ClaveEntFed`, `NumEmpleado`), #315 (fusión de las 019, nodo, conceptos).
 
-Detalle de cada parche, criterio de `Dias` (142 nodos de NOI) y verificación:
+Detalle de cada parche y verificación: `addons/quimibond_nomina/README.md`.
+**`Dias` no es una fórmula** (corregido en la 1.4.0): es la entrada `HE_DIAS` que
+captura RH; sin ella se estima y queda avisado en el log. Detalle en el README:
 `addons/quimibond_nomina/README.md`. **No toques el cálculo ni las reglas.**
 
 ### Lo que sigue siendo dato, no código (para RH)
