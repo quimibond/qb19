@@ -3185,7 +3185,7 @@ Deno.test("validarSalida rechaza salida sin título o resumen", () => {
 });
 
 Deno.test("el prompt del sistema fija el contrato", () => {
-  for (const s of ["Quimibond", "JSON", "severidad", "responsable", "duplicados", "nunca"]) assert(SYSTEM.includes(s), s);
+  for (const s of ["quimibond", "json", "severidad", "responsable", "duplicados", "nunca"]) assert(SYSTEM.toLowerCase().includes(s), s);
 });
 ```
 
@@ -3288,7 +3288,7 @@ export function armarContexto(ctx: Contexto, presupuesto = 16_000): string {
 }
 
 /** Normaliza y valida la respuesta de Claude contra la banda y los duplicados ofrecidos. Lanza si no sirve. */
-export function validarSalida(raw: Partial<Salida> & Record<string, unknown>, opts: { base: number; max: number; id: number; candidatos: number[] }): Salida {
+export function validarSalida(raw: Record<string, unknown>, opts: { base: number; max: number; id: number; candidatos: number[] }): Salida {
   const titulo = String(raw.titulo ?? "").trim().slice(0, 160);
   const resumen = String(raw.resumen ?? "").trim();
   if (!titulo || !resumen) throw new Error("salida sin titulo o resumen");
@@ -3296,7 +3296,7 @@ export function validarSalida(raw: Partial<Salida> & Record<string, unknown>, op
   const severidad = Math.min(Math.max(Number.isFinite(sevRaw) ? Math.round(sevRaw) : opts.base, opts.base), opts.max);
   const uidRaw = raw.responsable_sugerido_user_id;
   const uid = uidRaw == null || uidRaw === "" ? null : Number(uidRaw);
-  const estado = (["abierta", "empeoro", "mejoro"] as const).includes(raw.estado as never) ? (raw.estado as Salida["estado"]) : "abierta";
+  const estado = (["abierta", "empeoro", "mejoro"] as string[]).includes(String(raw.estado)) ? (raw.estado as Salida["estado"]) : "abierta";
   const duplicados = (Array.isArray(raw.duplicados) ? raw.duplicados : [])
     .map((d) => ({ id: Number((d as { id: unknown }).id), decision: (d as { decision: string }).decision === "fusionar" ? "fusionar" as const : "distinta" as const, motivo: String((d as { motivo?: unknown }).motivo ?? "").slice(0, 200) }))
     .filter((d) => d.decision === "fusionar" && d.id !== opts.id && opts.candidatos.includes(d.id));
@@ -3335,7 +3335,7 @@ export function validarSalida(raw: Partial<Salida> & Record<string, unknown>, op
  */
 import { serviceClient, authorizeCron, json, pipelineLog, readBody, type Client } from "../_shared/env.ts";
 import { anthropicClient, claudeJSON, MODEL_BULK } from "../_shared/claude.ts";
-import { SYSTEM, armarContexto, validarSalida, type Contexto, type Salida } from "./prompt.ts";
+import { SYSTEM, armarContexto, validarSalida, type Contexto } from "./prompt.ts";
 
 const TIME_BUDGET_MS = 110_000;
 const MAX_CANDIDATAS = 40;
@@ -3347,7 +3347,7 @@ async function redactarUna(supabase: Client, client: any, id: number, model: str
   if (!ctx) throw new Error(`situación ${id} no existe`);
   const c = ctx as Contexto;
   const banda = { base: c.senal_config?.severidad_base ?? 1, max: c.senal_config?.severidad_max ?? 5, id, candidatos: (c.posibles_duplicados ?? []).map((d) => d.id) };
-  const raw = await claudeJSON<Partial<Salida> & Record<string, unknown>>(client, supabase, {
+  const raw = await claudeJSON<Record<string, unknown>>(client, supabase, {
     model, system: SYSTEM, user: armarContexto(c, PROMPT_CHARS), max_tokens: 1200, effort: "low",
   }, "situacion-consolidar");
   const out = validarSalida(raw, banda);
@@ -3520,6 +3520,8 @@ y, justo después del bloque 2 (`odoo contacts`), dos checks más (mismos `kind`
 3. Parte 3 (bot) — necesita la Parte 1; la aceptación completa necesita la Parte 2 en producción. Las Tareas 3.1 y 3.2 se pueden hacer mientras el CEO despliega Odoo.
 
 **Cosas que el CEO tiene que hacer** (no se pueden automatizar desde aquí): correr `odoo-update quimibond_intelligence && odoosh-restart http && odoosh-restart cron` tras el merge a `quimibond`; revisar las 20 situaciones redactadas; decidir sobre la primera lista de higiene.
+
+**Hallazgo al ejecutar el paso 3 (2026-09-20):** PostgREST carga `safeupdate` (rol `authenticator`, `session_preload_libraries=safeupdate`), así que cualquier `UPDATE`/`DELETE` sin `WHERE` falla con "UPDATE requires a WHERE clause" aunque esté dentro de una función llamada por RPC, incluso sobre tablas temporales (el `WHERE` de una subconsulta no cuenta). Los tests SQL de la Parte 1 corren como `postgres` y no lo vieron. Corregido con `WHERE true` en `senales_ingestar` (`UPDATE _lote SET agrupador`), `buzon_personas_reemplazar` (`DELETE FROM buzon_personas`) y `situacion_guardar` (`UPDATE _grupos gr SET …`): migraciones `20260919g_situacion_safeupdate.sql` y `20260919h_situacion_safeupdate_guardar.sql`. Los bloques de código de las Tareas 1.1, 1.2 y 1.4 de este plan quedan como se escribieron; la versión vigente es la de esas dos migraciones.
 
 **Desviación consciente respecto al spec (§2, §8 paso 2):** los 74 registros de `qb.obligation` no se copian; se **puentean** en vivo con la señal `obligacion_legado` (una situación por obligación abierta) hasta que el plan B retire el módulo. Dilo así en el PR y en `CLAUDE.md`.
 
