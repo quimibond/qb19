@@ -344,6 +344,40 @@ def check_new_models_need_bump(mods, base_ref):
                   % (', '.join(sorted(new_models)), new_v.group(1), name))
 
 
+
+# ---------------------------------------------------------------------------
+# Check 8 — <function> sin ids que llama a un método sin @api.model
+#   En Odoo 19, _eval_xml sólo llama al método directamente sobre el modelo si
+#   está decorado con @api.model; si no, exige que el primer argumento sea la
+#   lista de ids (`record_ids, *args = args`) y sin argumentos truena con
+#   «not enough values to unpack». Nos tumbó el build de main el 18-sep-2026:
+#   un método perdió el decorador al insertar otro encima y el mismo
+#   <function> que había instalado tres veces dejó de cargar.
+# ---------------------------------------------------------------------------
+
+def check_function_tags(mods):
+    for name, path in mods.items():
+        sources = {f: open(f, encoding='utf-8').read() for f in py_files(path)}
+        for f in xml_files(path):
+            root = parse_xml(f)
+            if root is None:
+                continue
+            for node in root.iter('function'):
+                if node.get('eval') or len(node):
+                    continue                 # trae argumentos: no se puede juzgar aquí
+                method = node.get('name') or ''
+                defs = [(src_f, m) for src_f, src in sources.items()
+                        for m in re.finditer(r'^([ \t]*)def %s\(' % re.escape(method), src, re.M)]
+                if not defs:
+                    continue                 # método de Odoo o de otro módulo
+                ok = any(re.search(r'@api\.model\s*\n[ \t]*def %s\(' % re.escape(method), src)
+                         for src in sources.values())
+                if not ok:
+                    error(f, "<function name=\"%s\"> sin argumentos llama a un método que no lleva "
+                             "@api.model. En Odoo 19 eso exige la lista de ids como primer argumento y "
+                             "tumba la carga del módulo (`not enough values to unpack`). Ponle "
+                             "@api.model al método o pásale eval=\"[[]]\"." % method)
+
 # ---------------------------------------------------------------------------
 
 def main():
@@ -360,6 +394,7 @@ def main():
     check_config_param_dupes(mods)
     check_env_refs(mods)
     check_access_models(mods)
+    check_function_tags(mods)
     if args.base_ref:
         check_new_models_need_bump(mods, args.base_ref)
         check_version_bump(mods, args.base_ref, load_no_bump('.'))
