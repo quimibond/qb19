@@ -400,4 +400,12 @@ class QuimibondSyncPartners(models.TransientModel):
                 'updated_at': datetime.now().isoformat(),
             })
 
+        # §4 regla 1: personas detrás de buzones compartidos, desde "Buzones (memoria)" de qb_memoria.
+        # quimibond_intelligence NO depende de qb_memoria (manifest congelado): si no está, manda la lista vacía.
+        buzones = []
+        if 'qb.memoria.mailbox' in self.env:
+            for mb in self.env['qb.memoria.mailbox'].sudo().search([('active', '=', True), ('user_id', '!=', False)]):
+                buzones.append({'buzon': mb.email, 'odoo_user_id': mb.user_id.id, 'area': mb.area or None})
+        client.rpc('buzon_personas_reemplazar', {'p_filas': buzones})
+
         return client.upsert('odoo_users', rows, on_conflict='odoo_user_id')

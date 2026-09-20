@@ -130,7 +130,7 @@ jobs:
             --db_host=db --db_user=odoo --db_password=odoo \
             --addons-path="$ODOO_ADDONS,$GITHUB_WORKSPACE/addons,$GITHUB_WORKSPACE" \
             -i qb_capacidad_costeo,quimibond_sat,qb_obligation,qb_memoria,qb_build_limpio,quimibond_intelligence,mrp_caja_surtido,reporte_orden_fabricacion,reporte_plano_piso_tejido,reporte_produccion_diaria,stock_dymo_labels,quimibond_ficha_tecnica_tela,quimibond_tintoreria_rendimiento,mantenimiento_surtido_refacciones \
-            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat,/qb_obligation,/qb_memoria,/qb_build_limpio \
+            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat,/qb_obligation,/qb_memoria,/qb_build_limpio,/quimibond_intelligence \
             --stop-after-init --log-level=test \
             --data-dir=/tmp/odoo-data > /tmp/odoo-tests.log 2>&1 || rc=$?
           cat /tmp/odoo-tests.log
