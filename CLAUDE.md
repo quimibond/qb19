@@ -26,7 +26,9 @@ addons/quimibond_intelligence/
   __manifest__.py          # v19.0.30.0.0 (NO cambiar — ver nota abajo)
   models/
     sync_push.py           # quimibond.sync: cron push_to_supabase(), helpers, _run_push
-    sync_push_partners.py  # _push_contacts (contacts + companies) y _push_users (odoo_users)
+    sync_push_partners.py  # _push_contacts (contacts + companies) y _push_users (odoo_users + buzon_personas)
+    sync_push_senales.py   # _push_senales: una consulta por señal → senales_ingestar (situación de la empresa)
+    senales/               # base.py (registro @senal, helpers) + un módulo por área (finanzas, comercial, …)
     sync_pull.py           # quimibond.sync.pull: sync_commands + contactos nuevos → Odoo
     supabase_client.py     # REST client HTTP (upsert, insert, fetch, patch, rpc)
     sync_log.py            # quimibond.sync.log (Historial de Sync)
@@ -50,12 +52,15 @@ de modelos que desaparecen del código.
 - `quimibond_nomina`: lo que le falta a `l10n_mx_hr_payroll_account_edi` para timbrar la nómina de Quimibond: registro patronal IMSS por contrato (`hr.version`, la compañía como respaldo) en `nomina12:Emisor`, `SalarioDiarioIntegrado`/`SalarioBaseCotApor` tomados del recibo por código (`INT_DAY_WAGE_BASE`, `INT_DAY_WAGE`) un **centinela de reglas** (SHA-256 de condición y fórmula, cron diario, avisa y no revierte) y el nodo **`HorasExtra`** de la percepción 019 (`Dias` sale de la entrada `HE_DIAS` que captura RH y, si falta, se estima; la herencia de la plantilla se configura sola al instalar y se apaga si Odoo ya emite el nodo). `NumEmpleado` sólo con la referencia de empleado capturada. Corte de nómina: 1-ene-2027. **Nunca validar ni timbrar en producción.** README propio.
 - `qb_memoria`: pestaña Memoria del contacto (Supabase). Desde 1.2.0 muestra la **ficha consolidada** (RPC `memoria_brief`): quién atiende a la empresa, hechos con vigencia y conversaciones resumidas por Claude con estado y pendientes. Además **dueños aprendidos**: cron nocturno que lee la vista `memoria_encargados` (buzón que atiende a cada empresa / área) y lo escribe en el contacto; personas detrás de buzones compartidos en Contactos → Configuración → Buzones (memoria). README propio.
 
-## Modelos sincronizados (2)
+## Modelos sincronizados (3)
 
 | Metodo | Odoo Model | Supabase Table | Para qué |
 |---|---|---|---|
 | `_push_contacts` | res.partner (con email y rank, más los partners con facturas del último año) | contacts + companies (incluye RFC/vat, dominio, totales) | ligar remitentes y empresas de los correos con Odoo |
-| `_push_users` | res.users + hr.employee | odoo_users | grafo nocturno de la memoria (`kg_refresh_deterministic`: quién atiende a quién) |
+| `_push_users` | res.users + hr.employee (+ `qb.memoria.mailbox` si está instalado) | odoo_users + buzon_personas | grafo nocturno de la memoria (`kg_refresh_deterministic`: quién atiende a quién); persona detrás de cada buzón compartido |
+| `_push_senales` | ~50 consultas, una por señal (`models/senales/*.py`): facturas vencidas, OPs atrasadas, entregas, stock negativo, actividades vencidas, SAT, SGI… | `senales` (vía RPC `senales_ingestar`, una fila por hecho con modelo+id, nunca cifras en masa) | mapa de **situación de la empresa** (spec `docs/superpowers/specs/2026-09-18-situacion-empresa-design.md`) |
+
+**Cómo agregar una señal:** una función `@senal('nombre')` en el módulo del área (devuelve la lista completa de filas activas; `None` si el modelo no está instalado) y una fila en `senales_config` de Supabase. El bot no se toca. Turnos: `senales_config.cada_horas`; el push guarda la última corrida por señal en `quimibond_intelligence.senales_last_run`. Los errores de una señal no detienen a las demás, pero dejan una fila "Push señales con errores" en el Historial de Sync.
 
 ## Campos clave de Odoo
 
@@ -65,7 +70,7 @@ de modelos que desaparecen del código.
 
 ## Crons
 
-- **Cada 1 hora:** `push_to_supabase()` — `contacts` y `users` (parámetro `quimibond_intelligence.push_models`, default `contacts,users`; `all` significa esos dos; cualquier otro nombre se ignora con aviso). Incremental por `write_date` (`last_sync_date`); `users` siempre completo. Para re-mandar todo una vez: `quimibond_intelligence.force_full_sync = 1`.
+- **Cada 1 hora:** `push_to_supabase()` — `contacts`, `users` y `senales` (parámetro `quimibond_intelligence.push_models`, default `contacts,users,senales`; `all` significa esos tres; cualquier otro nombre se ignora con aviso). Incremental por `write_date` (`last_sync_date`); `users` y `senales` siempre completos. Para re-mandar todo una vez: `quimibond_intelligence.force_full_sync = 1`.
 - **Cada 5 min:** `pull_from_supabase()` — comandos de `sync_commands` (`force_push`, `force_push_full`, `sync_contacts`) + contactos de Supabase sin `odoo_partner_id` → se crean en Odoo.
 - Cada corrida del push escribe una fila por método en `pipeline_logs` (`phase='odoo_push'`); la vista `odoo_push_last_events` que lee el watchdog de la memoria sale de ahí.
 - **Los crons se vuelven a encender en cada `odoo-update`** (`data/cleanup_2026_09_18.xml`). Odoo 19 apaga solo un cron tras 5 fallos en más de 7 días y no lo vuelve a encender; así murieron el push (3-jul-2026) y el pull (1-jun-2026) sin que nadie lo viera. Si el Historial de Sync (Ajustes → Técnico → Quimibond Sync) no muestra corridas de OdooBot en la última hora, el cron está apagado o fallando: revisar Acciones planificadas. `ir.cron` no está expuesto por MCP.

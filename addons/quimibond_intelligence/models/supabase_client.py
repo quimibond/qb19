@@ -12,6 +12,10 @@ import httpx
 _logger = logging.getLogger(__name__)
 
 
+class SupabaseError(Exception):
+    """Error de Supabase que el llamador SÍ quiere ver (rpc_strict)."""
+
+
 class SupabaseClient:
     """Stateless Supabase REST API client."""
 
@@ -166,6 +170,27 @@ class SupabaseClient:
         except Exception as exc:
             _logger.warning('rpc %s: %s', function, exc)
             return None
+
+    def rpc_strict(self, function: str, params: dict, timeout: float = 120.0):
+        """RPC que NO traga errores: HTTP != 2xx o red caída → SupabaseError.
+
+        Para el push de señales (spec §4 regla 2): un lote solo cuenta si
+        Supabase respondió bien, y un error deja el método en error en el
+        Historial de Sync. `rpc()` sigue siendo el tolerante para lo demás.
+        """
+        try:
+            resp = self._http.post(
+                f'{self.url}/rest/v1/rpc/{function}',
+                content=json.dumps(params or {}, default=str),
+                headers=self.headers, timeout=timeout,
+            )
+        except (httpx.HTTPError, OSError) as exc:
+            raise SupabaseError(f'rpc {function}: {exc}') from exc
+        if resp.status_code >= 300:
+            raise SupabaseError(f'rpc {function} HTTP {resp.status_code}: {(resp.text or "")[:300]}')
+        if resp.status_code == 204 or not resp.content:
+            return None
+        return resp.json()
 
     def close(self):
         self._http.close()
