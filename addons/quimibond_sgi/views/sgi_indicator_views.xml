@@ -76,6 +76,10 @@
                             <field name="nc_on_red"/>
                         </group>
                     </group>
+                    <group string="Cómo se calcula">
+                        <field name="formula" placeholder="Qué se divide entre qué, en palabras"/>
+                        <field name="source" placeholder="De qué registros o documentos sale"/>
+                    </group>
                     <field name="source_type" invisible="1"/>
                     <div class="alert alert-success mb-0" role="alert"
                          invisible="source_type != 'auto'">

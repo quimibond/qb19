@@ -22,6 +22,8 @@ corrección tiene que viajar como código y correr dentro de Odoo.
 | `Field 'm.f' in dependency of m.x_studio_… should be searchable` | campo relacionado de Studio cuya ruta pasa por un campo calculado sin búsqueda (`product_variant_id`, `account.account.group_id`, `mail.message.channel_id`) | lo convierte en campo **calculado** equivalente (mismo valor, primer registro en cada salto, como hace `related`) con dependencias que Odoo sí puede seguir: el prefijo buscable de la ruta o, si el primer salto es el no buscable, sus propias dependencias. |
 | `invalid custom view(s) for model X: … Default tree/graph/calendar view for …` | vistas "por defecto" que Studio generó en una versión anterior y que el RNG de 19 ya no acepta | si el arreglo es trivial (`quick_add` → `quick_create`) lo aplica; si no, **archiva** la vista y Odoo vuelve a generar la vista por defecto. |
 | `El grupo "project.group_project_rating" que está definido en la vista no existe` | vistas personalizadas que referencian un grupo que desapareció al migrar | quita el grupo. Si era el único del nodo, quita el nodo: nadie pertenece a un grupo inexistente, así que ya no se mostraba. Vistas de un addon instalado no se tocan (se reporta). |
+| `RELAXNG_ERR_INVALIDATTR: Invalid attribute modifiers for element field` / `Invalid attribute quick_add for element calendar` (y los `NOELEM` / `EXTRACONTENT` que los acompañan) | cualquier vista hecha en la base (Studio, importada) con el arch ya procesado de una versión vieja, no solo las «por defecto» | quita `modifiers` (Odoo 19 ya no lo lee, así que la vista se ve igual) y cambia `quick_add` por `quick_create`, en **todos los idiomas** del arch. Vistas de un addon no se tocan. |
+| `Failed documents.document()._gc_clear_bin() … Impossible to delete folders used by other applications` (cada corrida del autovacuum) | una carpeta que una app sigue usando está en la papelera de Documentos; en producción, «Workers Payroll» (id 1708), carpeta de nómina de la empresa 1, en la papelera desde nov-2025 | **restaura** la carpeta (y las carpetas que la contienen). Busca cualquier campo que apunte a una carpeta fuera de Documentos (empresa, proyecto, empleado). |
 | `Missing not-null constraint on model.field` | campo `required` cuya columna admite nulos porque al poner la restricción había filas en NULL (`website.*`, `sale.order.template.*`, `product.label.layout.*`) | rellena los nulos con el valor por defecto del campo y pone `NOT NULL`. Sin valor por defecto, lo reporta para revisarlo a mano. |
 
 ## Cuándo corre
@@ -45,6 +47,11 @@ build de esa base (y cualquier rama que se rebuildee desde producción después)
 sale limpio.
 
 ## Despliegue
+
+> **Al 22-sep-2026 el módulo NO está instalado en producción** (`uninstalled`).
+> Por eso los avisos que ya sabe corregir (el `quick_add` del calendario, por
+> ejemplo) siguen saliendo en cada build: la base de cada rama es copia de
+> producción y ahí nunca ha corrido.
 
 1. Merge a `main` → `quimibond`. Instalar el módulo en producción desde Apps
    (módulo nuevo: Odoo.sh no instala módulos solo) o desde el shell:

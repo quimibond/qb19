@@ -13,6 +13,9 @@ class TestProcedureModel(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         cls.process = cls.env['sgi.process'].create({
@@ -66,6 +69,9 @@ class TestProcedureReport(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         cls.Doc = cls.env['documents.document']
@@ -77,7 +83,7 @@ class TestProcedureReport(TransactionCase):
         cls.proc_doc = cls.Doc.create({
             'name': 'P-RPT.pdf', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A28',
-            'sgi_revision': '15', 'sgi_issue_date': date(2022, 11, 1),
+            'sgi_revision': 15, 'sgi_issue_date': date(2022, 11, 1),
             'sgi_state': 'vigente', 'sgi_process_id': cls.process.id})
         # Familia FK del procedimiento (para sección 8).
         cls.fam = cls.Doc.create({
@@ -131,7 +137,7 @@ class TestProcedureReport(TransactionCase):
 
     def test_03_header_reads_live_procedure(self):
         self.assertEqual(self.process._sgi_procedure_document(), self.proc_doc)
-        self.assertEqual(self.process._sgi_procedure_document().sgi_revision, '15')
+        self.assertEqual(self.process._sgi_procedure_document().sgi_revision, 15)
 
 
 @tagged('post_install', '-at_install')
@@ -150,6 +156,9 @@ class TestProcedureVentasSeed(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         cls.process = cls.env.ref('quimibond_sgi.proc_ventas')
@@ -158,7 +167,7 @@ class TestProcedureVentasSeed(TransactionCase):
         cls.proc_doc = Doc.create({
             'name': 'P-A28 Ventas.pdf', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A28',
-            'sgi_revision': '15', 'sgi_state': 'vigente',
+            'sgi_revision': 15, 'sgi_state': 'vigente',
             'sgi_process_id': cls.process.id})
         # Formatos referenciados, vigentes.
         for i, code in enumerate(cls.FORMAT_CODES):
@@ -207,7 +216,7 @@ class TestProcedureVentasSeed(TransactionCase):
         if not menu:
             self.skipTest("El menú nativo de Ventas no está en esta base.")
         act = self.process.procedure_activity_ids.filtered(
-            lambda a: a.number == '4.1.2')
+            lambda a: a.legacy_number == '4.1.2')
         self.assertEqual(act.odoo_menu_id, menu,
                          "La actividad de pedidos apunta al menú de Ventas.")
 
@@ -234,6 +243,9 @@ class TestProcedureOdooMenu(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         cls.process = cls.env['sgi.process'].create({
@@ -281,6 +293,9 @@ class TestProcedureActivityMenu(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.process = cls.env['sgi.process'].create({
             'code': 'GLB-01', 'name': 'Proceso global', 'process_type': 'cop'})
         cls.env['sgi.process.activity'].create({

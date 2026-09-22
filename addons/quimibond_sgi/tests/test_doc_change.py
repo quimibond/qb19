@@ -22,7 +22,7 @@ class TestDocChange(TransactionCase):
             'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento',
             'sgi_code': 'P-A01',
-            'sgi_revision': '00',
+            'sgi_revision': 0,
             'sgi_state': 'vigente',
         })
 
@@ -55,13 +55,13 @@ class TestDocChange(TransactionCase):
             })
 
     def test_03_approval_updates_document(self):
-        req = self._new_request(sgi_new_revision='01')
+        req = self._new_request(sgi_new_revision=1)
         req.approver_ids = [(0, 0, {'user_id': self.env.user.id, 'required': True})]
         req.action_confirm()
         req.action_approve()
         self.assertEqual(req.request_status, 'approved')
         self.assertTrue(req.sgi_applied)
-        self.assertEqual(self.doc.sgi_revision, '01')
+        self.assertEqual(self.doc.sgi_revision, 1)
         self.assertEqual(self.doc.sgi_state, 'vigente')
 
 
@@ -92,7 +92,7 @@ class TestDocChangeRevisionSuggestion(TransactionCase):
         doc = self.env['documents.document'].create({
             'name': 'Procedimiento rev', 'type': 'binary',
             'sgi_is_controlled': True, 'sgi_doc_type': 'procedimiento',
-            'sgi_code': 'P-A02', 'sgi_revision': '03', 'sgi_state': 'vigente',
+            'sgi_code': 'P-A02', 'sgi_revision': 3, 'sgi_state': 'vigente',
         })
         category = self.env['approval.category'].create({
             'name': 'Cambio rev', 'sgi_is_doc_change': True,
@@ -102,16 +102,8 @@ class TestDocChangeRevisionSuggestion(TransactionCase):
             'sgi_change_kind': 'modificacion', 'sgi_document_id': doc.id,
         })
         req._onchange_sgi_suggest_revision()
-        self.assertEqual(req.sgi_new_revision, '04')
+        self.assertEqual(req.sgi_new_revision, 4)
         # No pisa lo capturado a mano.
-        req.sgi_new_revision = '07'
+        req.sgi_new_revision = 7
         req._onchange_sgi_suggest_revision()
-        self.assertEqual(req.sgi_new_revision, '07')
-        # Revisión no numérica: no sugiere nada.
-        doc.sgi_revision = 'A'
-        req2 = self.env['approval.request'].new({
-            'name': 'Cambio 2', 'category_id': category.id,
-            'sgi_change_kind': 'modificacion', 'sgi_document_id': doc.id,
-        })
-        req2._onchange_sgi_suggest_revision()
-        self.assertFalse(req2.sgi_new_revision)
+        self.assertEqual(req.sgi_new_revision, 7)

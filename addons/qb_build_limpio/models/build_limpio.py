@@ -13,6 +13,7 @@ Ajustes → Técnico → Build limpio.
 Todo es idempotente y va en savepoints: un tropiezo en un punto no tumba el
 build ni deja el resto sin hacer.
 """
+import json
 import logging
 import re
 from collections import defaultdict
@@ -79,9 +80,11 @@ class QbBuildLimpio(models.AbstractModel):
         for nombre, paso in (
             ('etiquetas_duplicadas', self._etiquetas_duplicadas),
             ('dependencias_no_buscables', self._dependencias_no_buscables),
+            ('atributos_obsoletos', self._atributos_obsoletos),
             ('vistas_studio_invalidas', self._vistas_studio_invalidas),
             ('grupos_inexistentes', self._grupos_inexistentes),
             ('columnas_sin_not_null', self._columnas_sin_not_null),
+            ('carpetas_de_apps_en_papelera', self._carpetas_de_apps_en_papelera),
         ):
             try:
                 with self.env.cr.savepoint():
@@ -245,6 +248,80 @@ class QbBuildLimpio(models.AbstractModel):
                SET related = NULL, compute = %s, depends = %s, readonly = true
              WHERE model = %s AND name = %s AND state = 'manual'
         """, (codigo, ', '.join(depends) or None, model_name, field.name))
+
+    # ------------------------------------------------------------------
+    # 2b. Atributos que el RNG de 19 ya no acepta, en cualquier vista hecha
+    #     en la base (Studio, importada), no solo en las «por defecto»:
+    #     "RELAXNG_ERR_INVALIDATTR: Invalid attribute modifiers for element field"
+    #     "RELAXNG_ERR_INVALIDATTR: Invalid attribute quick_add for element calendar"
+    #     (build de main, 22-sep-2026). ``modifiers`` era el arch ya procesado
+    #     de versiones viejas: Odoo 19 no lo lee, así que quitarlo no cambia
+    #     cómo se ve la vista. ``quick_add`` se llama ``quick_create``.
+    #     Se corrige cada idioma del arch (arch_db es jsonb por idioma).
+    # ------------------------------------------------------------------
+    @api.model
+    def _atributos_obsoletos(self):
+        hechos = []
+        cr = self.env.cr
+        self.env.flush_all()
+        cr.execute("""
+            SELECT v.id, v.name, v.model, v.arch_db, md.module
+              FROM ir_ui_view v
+              LEFT JOIN ir_model_data md ON md.model = 'ir.ui.view' AND md.res_id = v.id
+             WHERE v.active
+               AND (v.arch_db::text LIKE '%%modifiers=%%' OR v.arch_db::text LIKE '%%quick_add=%%')
+             ORDER BY v.id
+        """)
+        for view_id, name, model, arch_db, modulo in cr.fetchall():
+            if modulo and modulo not in MODULOS_DE_LA_BASE:
+                continue  # vista de un addon: se arregla en su código
+            if isinstance(arch_db, str):
+                arch_db = json.loads(arch_db)
+            nuevo, cambios = {}, set()
+            for lang, arch in (arch_db or {}).items():
+                limpio, hecho = self._limpiar_atributos(arch)
+                nuevo[lang] = limpio
+                cambios |= hecho
+            if not cambios:
+                continue
+            try:
+                with cr.savepoint():
+                    cr.execute("UPDATE ir_ui_view SET arch_db = %s::jsonb WHERE id = %s",
+                               (json.dumps(nuevo), view_id))
+                hechos.append('vista %d "%s" (%s): %s' % (view_id, name, model, ', '.join(sorted(cambios))))
+            except Exception as exc:  # noqa: BLE001
+                hechos.append('vista %d "%s": no se pudo corregir (%s)' % (view_id, name, exc))
+        if hechos:
+            self.env['ir.ui.view'].invalidate_model()
+            self.env.registry.clear_cache()
+            self.env.registry.clear_cache('templates')
+        return hechos
+
+    @staticmethod
+    def _limpiar_atributos(arch):
+        """Quita ``modifiers`` y cambia ``quick_add`` por ``quick_create``.
+        Devuelve (arch, {cambios}); si el XML no se puede leer, lo deja igual."""
+        if not arch or ('modifiers=' not in arch and 'quick_add=' not in arch):
+            return arch, set()
+        try:
+            root = etree.fromstring(arch.encode('utf-8'))
+        except etree.XMLSyntaxError:
+            return arch, set()
+        cambios = set()
+        for node in root.iter():
+            if not isinstance(node.tag, str):
+                continue  # comentarios
+            if 'modifiers' in node.attrib:
+                del node.attrib['modifiers']
+                cambios.add('sin modifiers')
+            if 'quick_add' in node.attrib:
+                valor = node.attrib.pop('quick_add')
+                if 'quick_create' not in node.attrib:
+                    node.set('quick_create', valor)
+                cambios.add('quick_add → quick_create')
+        if not cambios:
+            return arch, set()
+        return etree.tostring(root, encoding='unicode'), cambios
 
     # ------------------------------------------------------------------
     # 3. Vistas por defecto de Studio inválidas
@@ -417,3 +494,52 @@ class QbBuildLimpio(models.AbstractModel):
                 return '%s: NOT NULL puesto (%d filas rellenadas)' % (etiqueta, nulos)
         except Exception as exc:  # noqa: BLE001
             return '%s: no se pudo poner NOT NULL (%s)' % (etiqueta, str(exc).splitlines()[0] if str(exc) else exc)
+
+    # ------------------------------------------------------------------
+    # 6. Carpetas que usa otra app y están en la papelera de Documentos
+    #    "Failed documents.document()._gc_clear_bin() ... Impossible to delete
+    #    folders used by other applications" (build de main, 22-sep-2026, en
+    #    cada corrida del autovacuum). La empresa apuntaba su carpeta de nómina
+    #    (worker_payroll_folder_id) a «Workers Payroll», que alguien mandó a la
+    #    papelera: Documentos se niega a borrarla y el vaciado de la papelera
+    #    falla completo, cada hora. Se restaura la carpeta (y las carpetas que
+    #    la contienen): la app la sigue usando.
+    # ------------------------------------------------------------------
+    @api.model
+    def _carpetas_de_apps_en_papelera(self):
+        if 'documents.document' not in self.env.registry:
+            return []
+        Doc = self.env['documents.document'].sudo().with_context(active_test=False)
+        usadas = defaultdict(set)   # id de carpeta -> {"modelo.campo"}
+        for model_name in list(self.env.registry):
+            if model_name.startswith('documents.'):
+                continue  # la jerarquía de Documentos no es «otra aplicación»
+            model = self.env[model_name]
+            if model._abstract or model._transient or not model._auto:
+                continue
+            for name, field in model._fields.items():
+                if (field.type == 'many2one' and field.comodel_name == 'documents.document'
+                        and field.store and field.column_type and not field.inherited):
+                    self.env.cr.execute('SELECT DISTINCT "%s" FROM "%s" WHERE "%s" IS NOT NULL' % (
+                        name, model._table, name))
+                    for (folder_id,) in self.env.cr.fetchall():
+                        usadas[folder_id].add('%s.%s' % (model_name, name))
+        if not usadas:
+            return []
+        en_papelera = Doc.search([('id', 'in', list(usadas)), ('type', '=', 'folder'),
+                                  ('active', '=', False)])
+        hechos = []
+        for carpeta in en_papelera:
+            cadena = carpeta
+            padre = carpeta.folder_id
+            while padre and not padre.active:
+                cadena |= padre
+                padre = padre.folder_id
+            try:
+                with self.env.cr.savepoint():
+                    cadena.write({'active': True})
+                hechos.append('carpeta %d "%s" restaurada de la papelera (la usa %s)' % (
+                    carpeta.id, carpeta.name, ', '.join(sorted(usadas[carpeta.id]))))
+            except Exception as exc:  # noqa: BLE001
+                hechos.append('carpeta %d "%s": no se pudo restaurar (%s)' % (carpeta.id, carpeta.name, exc))
+        return hechos

@@ -51,13 +51,19 @@
                     <group>
                         <group>
                             <field name="sgi_is_controlled"/>
-                            <field name="sgi_doc_type"/>
+                            <field name="sgi_doc_type_id" options="{'no_create': True}"/>
+                            <field name="sgi_doc_type" invisible="1"/>
                             <field name="sgi_area_id"/>
                             <field name="sgi_process_id"/>
+                            <field name="sgi_previous_code" readonly="1"
+                                   invisible="not sgi_previous_code"/>
+                            <field name="sgi_previous_code_date" readonly="1"
+                                   invisible="not sgi_previous_code"/>
                             <field name="type" invisible="1"/>
                         </group>
                         <group>
                             <field name="sgi_revision"/>
+                            <field name="sgi_revision_legacy" invisible="not sgi_revision_legacy"/>
                             <field name="sgi_issue_date"/>
                             <field name="sgi_next_review_date"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
@@ -223,7 +229,9 @@
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
             <search string="Documentos SGI">
-                <field name="sgi_code"/>
+                <field name="sgi_code"
+                       filter_domain="['|', ('sgi_code', 'ilike', self), '&amp;', ('sgi_previous_code', 'ilike', self), ('sgi_previous_code_date', '&gt;=', (context_today() - relativedelta(months=12)).strftime('%Y-%m-%d'))]"/>
+                <field name="sgi_doc_type_id"/>
                 <field name="name"/>
                 <field name="sgi_area_id"/>
                 <field name="sgi_process_id"/>
@@ -237,7 +245,7 @@
                         domain="[('sgi_next_review_date','&lt;', (context_today() + relativedelta(days=60)).strftime('%Y-%m-%d'))]"/>
                 <group>
                     <filter name="group_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
-                    <filter name="group_type" string="Tipo" context="{'group_by': 'sgi_doc_type'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'sgi_doc_type_id'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'sgi_state'}"/>
                 </group>
             </search>

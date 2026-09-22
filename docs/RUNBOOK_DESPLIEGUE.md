@@ -125,6 +125,21 @@ SELECT to_regclass('qb_cotizacion_tramo'), to_regclass('qb_producto_ficha');
 
 Ningún `NULL`.
 
+### Los crons de sync siguen vivos
+
+Odoo 19 apaga solo un cron tras 5 fallos en más de 7 días y no lo vuelve a
+encender. Así murieron el push a Supabase (3-jul-2026) y el pull (1-jun-2026)
+sin que nadie lo viera. El update de `quimibond_intelligence` los reactiva, pero
+compruébalo: a la hora del despliegue, en Ajustes → Técnico → Quimibond Sync
+(Historial de Sync) debe haber una corrida de **OdooBot** ("Push completo" con
+`contacts=…, users=…`) y otra "Pull completo". Si solo hay corridas tuyas
+("Forzar Push"), el cron está apagado o fallando:
+
+```sql
+SELECT name, active, nextcall, failure_count, first_failure_date
+FROM ir_cron WHERE cron_name ILIKE 'Quimibond%';
+```
+
 ---
 
 ## Cuando algo truena
@@ -160,3 +175,18 @@ timestamp y parte los tracebacks.
 3. **`taxes_id` en `purchase.order.line`** — algún cliente externo por `/jsonrpc`
    quedó con el nombre viejo; en Odoo 19 es `tax_ids`. Y `/jsonrpc` desaparece
    en Odoo 22.
+
+## Las señales de situación llegan a Supabase
+
+Tras un `odoo-update quimibond_intelligence` (o "Forzar Push" en Ajustes → Técnico → Quimibond Sync), en Supabase (MCP):
+
+```sql
+-- lotes de Odoo en las últimas 2 horas, uno por señal, todos ok
+select senal, max(recibido_en) ultimo, bool_and(ok) ok from senales_lotes
+ where fuente = 'odoo' and recibido_en > now() - interval '2 hours' group by 1 order by 1;
+-- señales abiertas por área y calidad; salud del mapa
+select area, calidad, count(*) from senales where resuelta_en is null group by 1, 2 order by 1, 2;
+select * from situacion_salud();
+```
+
+En Odoo, el Historial de Sync no debe traer "Push señales con errores"; si lo trae, el resumen dice qué señal falló. El detalle por señal (filas y segundos) está en `pipeline_logs` con `phase = 'odoo_push_senales'`; si el push pasa de 60 s, sube `cada_horas` de las señales caras en `senales_config`.
