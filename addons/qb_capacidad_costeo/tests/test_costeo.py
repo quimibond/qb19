@@ -4019,11 +4019,18 @@ class TestQbCosteo(TransactionCase):
         mo = self.env['mrp.production'].create({
             'name': 'TB5U/TEST1', 'product_id': tela.id,
             'product_qty': 900.0, 'product_uom_id': uom_m.id})
-        hace_20d = datetime.now() - relativedelta(days=20)
+        # Día 15 del mes ANTERIOR, no "hace 20 días": qb.ociosidad sólo
+        # promedia meses completos (date_finished < inicio del mes en curso).
+        # Con "hace 20 días" la OP caía en el mes en curso a partir del día
+        # 21, la vista la ignoraba (utilización 0) y el test fallaba el último
+        # tercio de cada mes. Sigue dentro de la ventana de 12 meses del
+        # período, así que los factores la ven igual.
+        mes_pasado = date.today().replace(day=1) - relativedelta(days=1)
+        fin_op = datetime(mes_pasado.year, mes_pasado.month, 15, 12)
         self.env.flush_all()   # sin esto el UPDATE pisa un renglón que el ORM aún no escribió
         self.env.cr.execute(
             "UPDATE mrp_production SET state = 'done', date_finished = %s "
-            "WHERE id = %s", (hace_20d, mo.id))
+            "WHERE id = %s", (fin_op, mo.id))
         self.env.invalidate_all()
         Config = self.env['qb.costeo.factor.config']
         ov = Config.search([('key', '=', 'denominador_m_override')], limit=1)

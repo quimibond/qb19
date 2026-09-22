@@ -69,7 +69,7 @@ El módulo los deja vacíos y los dos son obligatorios en el Anexo 20
 | Atributo | De dónde sale |
 |---|---|
 | `ClaveEntFed` | estado de la **dirección laboral** del empleado → de la ubicación de trabajo → de la compañía → parámetro `quimibond_nomina.clave_ent_fed`. Los códigos de estado de México en Odoo son los del SAT (`MEX`, `CMX`). La compañía está en `MEX`, que es lo que manda NOI |
-| `NumEmpleado` | *Referencia de empleado* (`registration_number`), que es el número de trabajador de NOI. **Si está vacía no se emite** (es opcional en el Anexo 20). Antes se rellenaba con la credencial o el id de Odoo y salían números inventados: la credencial de Ricardo es `041460744711` y NOI manda `32`; el id de Genaro es 325 y NOI manda 1. **Pendiente de RH:** capturar la referencia con el número de NOI; hoy sólo un empleado la tiene (id 287, "83") |
+| `NumEmpleado` | *Referencia de empleado* (`registration_number`): el número de trabajador de NOI con el prefijo de su nómina, `S-1` semanal, `Q-14` quincenal Toluca, `C-26` CDMX (NOI repite números entre nóminas y en Odoo la referencia es única por compañía; capturada en producción el 22-sep-2026 para los 153 activos). El atributo es **requerido** en Nómina 1.2 (1 a 15 caracteres, todo menos `\|`): **sin referencia el módulo detiene el CFDI con un error** ("El empleado X no tiene Referencia de empleado…") en vez de emitir uno que el PAC rechaza. Nunca se inventa: antes se rellenaba con la credencial o el id de Odoo (la credencial de Ricardo es `041460744711` y NOI manda `32`; el id de Genaro es 325 y NOI manda 1) |
 
 ### 4. Centinela de reglas
 
@@ -259,8 +259,8 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
    ImportePagado="1163.54"/>` dentro de la 019. En el recibo **4501**
    (Ricardo Salgado, quincena 18 de CDMX, 3 horas): con una entrada
    `HE_DIAS = 1` sale `dias: 1` (lo que timbra NOI) y sin ella `dias: 3`
-   (estimado). `num_empleado` sale `False` mientras no haya referencia de
-   empleado. Ojo: el diccionario sólo se arma con el recibo `paid` y su
+   (estimado). `num_empleado` sale la referencia con prefijo (`C-32`); sin
+   referencia `_qb_nomina_cfdi_values()` levanta `UserError`. Ojo: el diccionario sólo se arma con el recibo `paid` y su
    asiento `posted`; en borrador truena con `'bool' object has no attribute
    'rpartition'` y validado sin pagar con `... 'isoformat'`. Un recibo sin horas extra no
    cambia en nada. Un recibo quincenal con horas extra emite `Dias="6"`. Los
@@ -318,8 +318,9 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
   atributo `Banco`, y es la que el SAT ya aceptó, así que en la cuenta
   bancaria del empleado debe ir la CLABE (la de Odoo parece una captura
   trunca: le falta el `0` inicial y le sobra un `0` final). `NumEmpleado`:
-  capturar la *Referencia de empleado* con el número de NOI en cada empleado
-  (mientras esté vacía el atributo no se emite). **`HE_DIAS`:** capturar en
+  la *Referencia de empleado* con prefijo de nómina (`S-1`, `Q-14`, `C-26`),
+  capturada en producción el 22-sep-2026; sin ella el módulo detiene el CFDI
+  (`UserError`), porque el atributo es requerido. **`HE_DIAS`:** capturar en
   cada recibo con tiempo extra los días en que se generó (mientras falte,
   `Dias` se estima). `Antigüedad`:
   Odoo manda `P1365W` y NOI `P1367W`, dos semanas de diferencia por la fecha

@@ -35,8 +35,8 @@ import logging
 
 from lxml import etree
 
-from odoo import api, models
-from odoo.exceptions import AccessError
+from odoo import _, api, models
+from odoo.exceptions import AccessError, UserError
 
 from . import horas_extra as he
 
@@ -132,21 +132,31 @@ class HrPayslip(models.Model):
 
     def _qb_nomina_num_empleado(self):
         """``NumEmpleado`` del Receptor: la *Referencia de empleado*
-        (``registration_number``), que es el número de trabajador de NOI, o
-        False para NO emitir el atributo (es opcional en el Anexo 20).
+        (``registration_number``), que es el número de trabajador de NOI con
+        el prefijo de su nómina (``S-1`` semanal, ``Q-14`` quincenal Toluca,
+        ``C-26`` CDMX; NOI repite números entre nóminas y en Odoo la
+        referencia es única por compañía).
 
-        Antes se rellenaba con la credencial o con el id de Odoo: la credencial
-        de Ricardo Salgado es ``041460744711`` y NOI manda ``32``; el id de
-        Genaro es 325 y NOI manda 1. Un número inventado es peor que ninguno.
-        Hoy sólo un empleado tiene la referencia capturada; RH tiene que
-        cargarla con el número de NOI."""
+        El atributo es **requerido** en Nómina 1.2 (1 a 15 caracteres, todo
+        menos ``|``), así que sin referencia se detiene el CFDI con un error
+        claro en vez de emitir uno que el PAC rechaza. Nunca se inventa: antes
+        se rellenaba con la credencial o el id de Odoo (la credencial de
+        Ricardo Salgado es ``041460744711`` y NOI manda ``32``)."""
         self.ensure_one()
-        value = str(self.employee_id.sudo().registration_number or '').strip()
+        employee = self.employee_id.sudo()
+        value = str(employee.registration_number or '').strip()
         if not value:
-            _logger.info('quimibond_nomina: recibo %s sin referencia de empleado; NumEmpleado no se emite',
-                         self.id)
-            return False
-        return value[:15]      # el SAT admite hasta 15 caracteres
+            raise UserError(_(
+                'El empleado %(empleado)s no tiene Referencia de empleado (número de trabajador '
+                'de NOI con prefijo S-, Q- o C-). El CFDI de nómina la exige en NumEmpleado; '
+                'capturarla en la ficha del empleado antes de generar el recibo %(recibo)s.',
+                empleado=employee.name, recibo=self.display_name))
+        if '|' in value or len(value) > 15:
+            raise UserError(_(
+                'La Referencia de empleado de %(empleado)s (%(valor)s) no sirve como NumEmpleado: '
+                'el SAT admite de 1 a 15 caracteres y no permite "|".',
+                empleado=employee.name, valor=value))
+        return value
 
     # Llaves del diccionario del módulo de Odoo que se corrigen, y con qué
     # valor de _qb_nomina_cfdi_values. Los importes van como número, que es
@@ -173,12 +183,6 @@ class HrPayslip(models.Model):
                 if key not in d:
                     continue
                 nuevo = vals.get(fuente)
-                if key == 'num_empleado' and not nuevo:
-                    # Sin referencia de empleado el atributo NO se emite: se
-                    # vacía lo que haya puesto el módulo (credencial, NSS…).
-                    d[key] = False
-                    tocadas.append(key)
-                    continue
                 if nuevo in (None, False, ''):
                     continue
                 if isinstance(d[key], str) and not isinstance(nuevo, str):
