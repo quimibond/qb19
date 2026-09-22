@@ -13,6 +13,9 @@ class TestActivityMeasurement(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.process = cls.env['sgi.process'].create({
             'code': 'P-TST-MEAS', 'name': 'Proceso medible'})
         cls.partner_model = cls.env['ir.model']._get('res.partner')

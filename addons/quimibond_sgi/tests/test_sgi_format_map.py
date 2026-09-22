@@ -22,7 +22,7 @@ class TestSgiFormatMap(TransactionCase):
             'sgi_is_controlled': True,
             'sgi_doc_type': 'formato',
             'sgi_code': 'F-P-A28-12',
-            'sgi_revision': '03',
+            'sgi_revision': 3,
             'sgi_state': 'vigente',
         })
 
@@ -43,7 +43,7 @@ class TestSgiFormatMap(TransactionCase):
             'sgi_is_controlled': True,
             'sgi_doc_type': 'formato',
             'sgi_code': 'F-P-A28-12',
-            'sgi_revision': '04',
+            'sgi_revision': 4,
             'sgi_state': 'vigente',
         })
         order.invalidate_recordset()

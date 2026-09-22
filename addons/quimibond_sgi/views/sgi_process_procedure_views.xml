@@ -41,13 +41,43 @@
                         </group>
                         <group string="Quién lo hace y dónde se ejecuta">
                             <field name="responsible_role" placeholder="Administrador de ventas y marketing"/>
-                            <field name="responsible_job_ids" widget="many2many_tags"/>
+                            <field name="responsible_job_ids" widget="many2many_tags"
+                                   readonly="1" string="Ejecuta"/>
                             <field name="odoo_menu_id"/>
                             <field name="odoo_ref" placeholder="Se llena solo al elegir el menú (ej. Ventas &gt; Pedidos)"/>
                         </group>
                     </group>
                     <group string="Resumen">
                         <field name="name" nolabel="1" placeholder="Resumen corto de la actividad"/>
+                    </group>
+                    <group string="Roles — quién ejecuta, aprueba, participa y se entera">
+                        <div class="text-muted" colspan="2">
+                            Exactamente un puesto <b>ejecuta</b> (ninguno si la
+                            actividad es automática) y a lo más uno <b>aprueba</b>
+                            sin condición.
+                        </div>
+                        <field name="role_ids" nolabel="1" colspan="2">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="role"/>
+                                <field name="job_id" options="{'no_create': True}"/>
+                                <field name="condition" placeholder="Siempre"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group>
+                        <group string="Valor y automatización">
+                            <field name="value_class"/>
+                            <field name="automation_level_current"/>
+                            <field name="automation_level_target"/>
+                            <field name="automation_method"/>
+                        </group>
+                        <group string="Instructivo">
+                            <field name="instruction_id" nolabel="1" colspan="2"
+                                   options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
                     </group>
                     <group string="Descripción (texto del numeral)">
                         <field name="description" nolabel="1"/>
@@ -125,8 +155,11 @@
                 <field name="number"/>
                 <field name="section" optional="show"/>
                 <field name="name"/>
-                <field name="responsible_role" optional="show"/>
-                <field name="responsible_job_ids" widget="many2many_tags" optional="show"/>
+                <field name="responsible_role" optional="hide"/>
+                <field name="responsible_job_ids" widget="many2many_tags" optional="show" string="Ejecuta"/>
+                <field name="instruction_id" optional="hide"/>
+                <field name="value_class" optional="hide"/>
+                <field name="automation_level_current" optional="hide"/>
                 <field name="format_document_ids" widget="many2many_tags" optional="show"/>
                 <field name="odoo_ref" optional="hide"/>
                 <field name="odoo_menu_id" optional="show"/>
@@ -161,6 +194,9 @@
                         domain="[('responsible_job_ids.employee_ids.user_id', '=', uid)]"/>
                 <filter name="no_responsible" string="Sin responsable"
                         domain="[('responsible_job_ids', '=', False), ('responsible_role', '=', False)]"/>
+                <filter name="no_executor" string="Sin puesto que la ejecuta"
+                        domain="[('responsible_job_ids', '=', False), ('automation_level_current', '!=', 'automatico')]"/>
+                <filter name="archived" string="Archivadas" domain="[('active', '=', False)]"/>
                 <filter name="no_format" string="Sin formato ligado"
                         domain="[('format_document_ids', '=', False)]"/>
                 <filter name="no_menu" string="Sin menú de Odoo"
@@ -179,6 +215,8 @@
                             context="{'group_by': 'block'}"/>
                     <filter name="group_section" string="Sección"
                             context="{'group_by': 'section'}"/>
+                    <filter name="group_automation" string="Automatización"
+                            context="{'group_by': 'automation_level_current'}"/>
                 </group>
             </search>
         </field>
@@ -357,8 +395,12 @@
                             <field name="number"/>
                             <field name="section" optional="show"/>
                             <field name="name"/>
-                            <field name="responsible_role" optional="show"/>
+                            <field name="responsible_role" optional="hide"/>
+                            <field name="responsible_job_ids" widget="many2many_tags"
+                                   string="Ejecuta" optional="show"/>
+                            <field name="instruction_id" optional="show"/>
                             <field name="format_document_ids" widget="many2many_tags" optional="show"/>
+                            <field name="automation_level_current" optional="show"/>
                             <field name="odoo_ref" optional="hide"/>
                             <field name="odoo_menu_id" column_invisible="1"/>
                             <field name="measure_model_id" column_invisible="1"/>

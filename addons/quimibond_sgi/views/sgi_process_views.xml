@@ -216,6 +216,7 @@
                             <field name="active" invisible="1"/>
                             <field name="process_type"/>
                             <field name="parent_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                             <field name="odoo_model_ids" string="Se opera en Odoo con"
                                    widget="many2many_tags" readonly="1"/>
                         </group>
@@ -226,9 +227,28 @@
                                    string="Puestos que participan"/>
                         </group>
                     </group>
+                    <div class="alert alert-danger mb-3" role="alert"
+                         invisible="owner_valid or not id">
+                        El dueño del proceso no es un empleado activo con
+                        usuario de Odoo: nadie recibe sus avisos. Asigna un
+                        dueño válido.
+                    </div>
                     <group string="Objetivo del proceso">
                         <field name="purpose" nolabel="1"
                                placeholder="Para qué existe este proceso (de su caracterización/SIPOC)…"/>
+                    </group>
+                    <group string="Ficha del proceso">
+                        <group>
+                            <field name="start_trigger" placeholder="Qué lo dispara"/>
+                            <field name="inputs"/>
+                        </group>
+                        <group>
+                            <field name="end_trigger" placeholder="Cuándo termina"/>
+                            <field name="outputs"/>
+                        </group>
+                        <field name="replaced_document_ids" widget="many2many_tags"
+                               options="{'no_create': True}" colspan="2"/>
+                        <field name="owner_valid" invisible="1"/>
                     </group>
                     <notebook>
                         <!-- La pestaña «Procedimiento» (el cómo, paso a paso) se

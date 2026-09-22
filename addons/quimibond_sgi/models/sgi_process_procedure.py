@@ -17,11 +17,18 @@ import logging
 
 from datetime import datetime, timedelta
 
-from odoo import models, fields, api
+from odoo import models, fields, api, Command
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 from .sgi_base import sgi_bypass_allowed
+
+SGI_AUTOMATION_LEVELS = [
+    ('manual', "Manual"),
+    ('asistido', "Asistido"),
+    ('automatico', "Automático"),
+    ('agente_ia', "Agente de IA"),
+]
 
 _logger = logging.getLogger(__name__)
 
@@ -232,7 +239,7 @@ class SgiProcessProcedure(models.Model):
                 body="⚠ El procedimiento vivo se modificó después de la revisión "
                      "vigente %s. Queda <b>pendiente de revisión documental</b>: "
                      "el PDF impreso ya no coincide con la revisión aprobada." % (
-                         doc.sgi_revision or ''))
+                         doc.sgi_revision_label or ''))
             user_id = doc.sgi_owner_id.id or self.env['sgi.cron']._sgi_manager_user_id()
             if user_id:
                 doc.activity_schedule(
@@ -308,6 +315,9 @@ class SgiProcessResponsibility(models.Model):
         'sgi.process', string="Proceso", required=True, ondelete='cascade',
         index=True)
     sequence = fields.Integer(string="Secuencia", default=10)
+    company_id = fields.Many2one(
+        related='process_id.company_id', string="Empresa", store=True,
+        index=True)
     job_id = fields.Many2one(
         'hr.job', string="Puesto", required=True,
         help="Puesto de hr.job al que corresponde el rol.")
@@ -349,8 +359,15 @@ class SgiProcessActivity(models.Model):
     process_id = fields.Many2one(
         'sgi.process', string="Proceso", required=True, ondelete='cascade',
         index=True)
+    company_id = fields.Many2one(
+        related='process_id.company_id', string="Empresa", store=True,
+        index=True)
+    active = fields.Boolean(
+        default=True,
+        help="La carga por API archiva las actividades que ya no vienen en "
+             "el catálogo del proceso; nunca las borra.")
     sequence = fields.Integer(string="Secuencia", default=10)
-    number = fields.Char(string="Numeral", help="Ej. 4.2.3.1")
+    number = fields.Char(string="Numeral", help="Ej. C6.22 (antes 4.2.3.1)")
     block = fields.Selection([
         ('inicial', "Actividades iniciales"),
         ('desarrollo', "Desarrollo"),
@@ -361,9 +378,44 @@ class SgiProcessActivity(models.Model):
     name = fields.Char(string="Resumen", help="Resumen corto de la actividad.")
     description = fields.Text(
         string="Descripción", help="Texto completo del numeral del procedimiento.")
+    # Quién ejecuta, aprueba, participa o se entera: filas de
+    # sgi.activity.role. «Puestos responsables» se conserva (vistas, filtros
+    # «Mis actividades», reportes) calculado desde los roles «ejecuta», sobre
+    # la misma tabla de relación de antes; escribirlo crea o quita roles
+    # «ejecuta» para no romper a quien todavía lo escribe.
+    role_ids = fields.One2many(
+        'sgi.activity.role', 'activity_id', string="Roles")
     responsible_job_ids = fields.Many2many(
         'hr.job', 'sgi_activity_job_rel', 'activity_id', 'job_id',
-        string="Puestos responsables")
+        string="Puestos que ejecutan", compute='_compute_responsible_job_ids',
+        inverse='_inverse_responsible_job_ids', store=True)
+    instruction_id = fields.Many2one(
+        'documents.document', string="Instructivo",
+        domain=[('sgi_doc_type', '=', 'instructivo')],
+        help="Instructivo (IT) que explica cómo se hace el paso. El "
+             "«Procedimiento relacionado» es otra cosa: el procedimiento que "
+             "rige la actividad.")
+    value_class = fields.Selection([
+        ('va', "Agrega valor"),
+        ('nva_n', "No agrega valor, necesaria"),
+        ('nva', "No agrega valor (desperdicio)"),
+    ], string="Clase de valor")
+    # Nivel de automatización (fase 5 completa el resto: minutos, volumen,
+    # horas liberables). El nivel actual se necesita ya: una actividad
+    # automática no lleva rol «ejecuta».
+    automation_level_current = fields.Selection(
+        SGI_AUTOMATION_LEVELS, string="Automatización actual",
+        default='manual', required=True)
+    automation_level_target = fields.Selection(
+        SGI_AUTOMATION_LEVELS, string="Automatización meta")
+    automation_method = fields.Selection([
+        ('estandar_odoo', "Estándar de Odoo"),
+        ('accion_automatizada', "Acción automatizada"),
+        ('cron', "Acción planificada"),
+        ('integracion', "Integración"),
+        ('agente_ia', "Agente de IA"),
+        ('otro', "Otro"),
+    ], string="Método de automatización")
     responsible_role = fields.Char(
         string="Rol responsable",
         help="Nombre del rol en negritas del procedimiento (no siempre mapea a "
@@ -398,6 +450,70 @@ class SgiProcessActivity(models.Model):
     prev_activity_ids = fields.Many2many(
         'sgi.process.activity', string="Pasos anteriores",
         compute='_compute_chain')
+
+    @api.depends('role_ids.role', 'role_ids.job_id')
+    def _compute_responsible_job_ids(self):
+        for activity in self:
+            activity.responsible_job_ids = activity.role_ids.filtered(
+                lambda r: r.role == 'ejecuta').job_id
+
+    def _inverse_responsible_job_ids(self):
+        for activity in self:
+            wanted = activity.responsible_job_ids
+            current = activity.role_ids.filtered(lambda r: r.role == 'ejecuta')
+            commands = [Command.delete(role.id) for role in current
+                        if role.job_id not in wanted]
+            commands += [Command.create({'role': 'ejecuta', 'job_id': job.id})
+                         for job in wanted - current.job_id]
+            if commands:
+                activity.write({'role_ids': commands})
+
+    def _sgi_check_roles(self):
+        """Exactamente un «ejecuta» (cero si la actividad es automática) y a
+        lo más un «aprueba» sin condición. Se puede saltar solo desde código
+        de sistema o un Jefe MAST con ``sgi_skip_role_check`` (semillas de
+        procedimientos heredados)."""
+        if self.env.context.get('sgi_skip_role_check') and sgi_bypass_allowed(self.env):
+            return
+        for activity in self:
+            executors = activity.role_ids.filtered(lambda r: r.role == 'ejecuta')
+            label = activity.display_name or activity.number or ''
+            if activity.automation_level_current == 'automatico':
+                if executors:
+                    raise ValidationError(
+                        "La actividad %s es automática: no lleva rol «Ejecuta» "
+                        "(tiene %s)." % (label, ', '.join(executors.job_id.mapped('name'))))
+            elif len(executors) != 1:
+                raise ValidationError(
+                    "La actividad %s debe tener exactamente un puesto que la "
+                    "ejecuta (tiene %d). Si nadie la ejecuta porque es "
+                    "automática, márcala así en «Automatización actual»." % (
+                        label, len(executors)))
+            approvers = activity.role_ids.filtered(
+                lambda r: r.role == 'aprueba' and not (r.condition or '').strip())
+            if len(approvers) > 1:
+                raise ValidationError(
+                    "La actividad %s tiene %d puestos que aprueban sin "
+                    "condición; solo puede haber uno (los demás deben decir "
+                    "cuándo aplican)." % (label, len(approvers)))
+
+    @api.constrains('role_ids', 'automation_level_current')
+    def _check_roles(self):
+        self._sgi_check_roles()
+
+    @api.constrains('number', 'process_id', 'active')
+    def _check_number_unique(self):
+        for activity in self.filtered(lambda a: a.number and a.active):
+            dup = self.with_context(active_test=True).search_count([
+                ('id', '!=', activity.id),
+                ('process_id', '=', activity.process_id.id),
+                ('number', '=', activity.number),
+            ])
+            if dup:
+                raise ValidationError(
+                    "Ya existe otra actividad %s en el proceso %s: el numeral "
+                    "es único por proceso." % (
+                        activity.number, activity.process_id.display_name))
 
     @api.depends('out_link_ids.to_activity_id', 'in_link_ids.from_activity_id')
     def _compute_chain(self):
@@ -469,10 +585,13 @@ class SgiProcessActivity(models.Model):
     }
     # Campos de medición: configurarlos o que el cron los actualice NO es un
     # cambio al cuerpo del procedimiento (no dispara el candado G14).
+    # La clase de valor y la automatización tampoco: describen la actividad
+    # para mejorarla, no cambian lo que dice el procedimiento.
     _SGI_MEASURE_FIELDS = {
         'measure_model_id', 'measure_model_name', 'measure_domain',
         'measure_date_field', 'measure_cadence', 'measure_last_date',
-        'measure_count_30d', 'measure_state'}
+        'measure_count_30d', 'measure_state', 'value_class',
+        'automation_level_target', 'automation_method'}
 
     @api.depends('measure_model_id')
     def _compute_measure_model_name(self):
@@ -646,12 +765,19 @@ class SgiProcessActivity(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        records = super().create(vals_list)
+        # Los roles que vienen en el alta se validan juntos al final, con la
+        # restricción de la actividad.
+        records = super(SgiProcessActivity, self.with_context(
+            sgi_roles_via_activity=True)).create(vals_list).with_env(self.env)
         records.process_id._sgi_flag_procedure_dirty()
         return records
 
     def write(self, vals):
-        res = super().write(vals)
+        # Los roles que llegan por el one2many se validan juntos al final
+        # (restricción de la actividad), no uno por uno a medio camino.
+        records = self.with_context(sgi_roles_via_activity=True) \
+            if 'role_ids' in vals or 'responsible_job_ids' in vals else self
+        res = super(SgiProcessActivity, records).write(vals)
         # La medición (configuración o refresco del cron) no es un cambio al
         # cuerpo del procedimiento: no dispara revisión documental (G14).
         if set(vals) - self._SGI_MEASURE_FIELDS:
@@ -690,6 +816,9 @@ class SgiActivityLink(models.Model):
     to_process_id = fields.Many2one(
         related='to_activity_id.process_id', string="Proceso destino",
         store=True)
+    company_id = fields.Many2one(
+        related='from_activity_id.company_id', string="Empresa", store=True,
+        index=True)
     is_cross_process = fields.Boolean(
         string="Cruza procesos", compute='_compute_cross', store=True)
 

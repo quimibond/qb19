@@ -43,7 +43,7 @@
                 <tr>
                     <td style="padding:3px; border:1px solid #000;"><strong>Rev.:</strong></td>
                     <td style="padding:3px; border:1px solid #000;"
-                        t-out="proc_doc.sgi_revision or ''"/>
+                        t-out="proc_doc.sgi_revision_label or ''"/>
                 </tr>
             </table>
         </div>
@@ -189,7 +189,7 @@
                     <p>
                         Los peligros y riesgos de SST del proceso se administran en la matriz
                         IPER
-                        <strong>F-P-S01-01</strong><t t-if="iper_matrix"> Rev. <span t-out="iper_matrix.sgi_revision"/></t>.
+                        <strong>F-P-S01-01</strong><t t-if="iper_matrix"> Rev. <span t-out="iper_matrix.sgi_revision_label"/></t>.
                     </p>
                     <table t-if="iper_risks" style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
                         <thead>

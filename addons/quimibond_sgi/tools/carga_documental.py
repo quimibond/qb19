@@ -89,7 +89,8 @@ def _detect_code(filename):
 
 def _revision_of(filename):
     match = REV_RE.search(filename)
-    return match.group(1).zfill(2) if match else '00'
+    # Revisión como número (sgi_revision es entero desde 19.0.29.0.0).
+    return int(match.group(1)) if match else 0
 
 
 def _zip_date(info):
@@ -177,7 +178,7 @@ class Loader:
         self.rows.append({
             'seccion': section, 'carpeta': folder, 'archivo': filename,
             'clave': code or '', 'tipo': dtype or '', 'area': area or '',
-            'revision': revision or '', 'estado_carga': status, 'motivo': reason,
+            'revision': '%02d' % revision if revision is not None else '', 'estado_carga': status, 'motivo': reason,
         })
         self._count(section, status)
 

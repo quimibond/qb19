@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====== Roles por actividad (quién ejecuta, aprueba, participa, se entera) ====== -->
+    <record id="sgi_activity_role_view_list" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="arch" type="xml">
+            <list string="Roles en actividades" editable="bottom">
+                <field name="process_id" optional="show"/>
+                <field name="activity_id"/>
+                <field name="role" widget="badge"
+                       decoration-success="role == 'ejecuta'"
+                       decoration-warning="role == 'aprueba'"
+                       decoration-info="role == 'participa'"/>
+                <field name="job_id"/>
+                <field name="condition" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_search" model="ir.ui.view">
+        <field name="name">sgi.activity.role.search</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="arch" type="xml">
+            <search string="Roles en actividades">
+                <field name="job_id"/>
+                <field name="activity_id"/>
+                <field name="process_id"/>
+                <filter name="executes" string="Ejecuta" domain="[('role', '=', 'ejecuta')]"/>
+                <filter name="approves" string="Aprueba" domain="[('role', '=', 'aprueba')]"/>
+                <filter name="participates" string="Participa" domain="[('role', '=', 'participa')]"/>
+                <filter name="informs" string="Se entera" domain="[('role', '=', 'informa')]"/>
+                <group>
+                    <filter name="group_role" string="Rol" context="{'group_by': 'role'}"/>
+                    <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_action" model="ir.actions.act_window">
+        <field name="name">Roles por puesto</field>
+        <field name="res_model">sgi.activity.role</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="sgi_activity_role_view_search"/>
+        <field name="context">{'search_default_group_job': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Quién hace qué, por puesto</p>
+            <p>Cada fila dice qué papel tiene un puesto en una actividad: la <b>ejecuta</b>, la <b>aprueba</b>, <b>participa</b> o <b>se entera</b>. De aquí salen el procedimiento, la descripción de puesto y la medición de quién la hace de verdad.</p>
+        </field>
+    </record>
+
+    <!-- ====== Tipos de documento (datos, no código) ====== -->
+    <record id="sgi_document_type_view_list" model="ir.ui.view">
+        <field name="name">sgi.document.type.list</field>
+        <field name="model">sgi.document.type</field>
+        <field name="arch" type="xml">
+            <list string="Tipos de documento" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="prefix_pattern" placeholder="IT-{process}-{seq:02d}"/>
+                <field name="requires_process"/>
+                <field name="code_required"/>
+                <field name="legacy_code_regex" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_document_type_action" model="ir.actions.act_window">
+        <field name="name">Tipos de documento</field>
+        <field name="res_model">sgi.document.type</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">La nomenclatura de claves, como datos</p>
+            <p>Cada tipo dice cómo se arma su clave: <code>{process}</code> es la clave del proceso (C6, S2…) y <code>{seq:02d}</code> el consecutivo. La <b>clave heredada</b> es la nomenclatura anterior que se sigue aceptando mientras se migra.</p>
+        </field>
+    </record>
+
+    <!-- ====== Puesto: sus roles en el catálogo ====== -->
+    <record id="sgi_hr_job_view_form_roles" model="ir.ui.view">
+        <field name="name">sgi.hr.job.form.roles</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_job_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sgi_documents']" position="before">
+                <page string="Actividades SGI" name="sgi_roles">
+                    <group>
+                        <group>
+                            <field name="sgi_execute_count"/>
+                            <field name="sgi_approve_count"/>
+                        </group>
+                        <group>
+                            <field name="sgi_participate_count"/>
+                            <field name="sgi_inform_count"/>
+                        </group>
+                    </group>
+                    <button name="action_sgi_view_roles" type="object"
+                            string="Ver sus actividades" icon="fa-list" class="btn-link"/>
+                    <field name="sgi_role_ids" readonly="1">
+                        <list>
+                            <field name="process_id"/>
+                            <field name="activity_id"/>
+                            <field name="role"/>
+                            <field name="condition" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

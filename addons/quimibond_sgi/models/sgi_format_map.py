@@ -43,7 +43,9 @@ class SgiFormatMap(models.Model):
     def _check_codes(self):
         for fmap in self:
             for code in filter(None, (fmap.sgi_code, fmap.sgi_code_alt)):
-                if not SGI_CODE_REGEX.match(code.strip()):
+                code = code.strip()
+                if not (SGI_CODE_REGEX.match(code) or self.env[
+                        'sgi.document.type'].sudo()._sgi_any_match(code)):
                     raise ValidationError(
                         "La clave '%s' no cumple la nomenclatura del SGI "
                         "(ej. F-P-A28-04, F-IT-P-P01-08-01)." % code)
@@ -59,7 +61,7 @@ class SgiFormatMap(models.Model):
             ('sgi_code', '=', code),
             ('sgi_state', '=', 'vigente'),
         ], limit=1)
-        return doc.sgi_revision or False
+        return doc.sgi_revision_label if doc else False
 
 
 class SgiConfig(models.AbstractModel):
@@ -71,6 +73,8 @@ class SgiConfig(models.AbstractModel):
     # lo editado en Ajustes > Técnico > Parámetros del sistema nunca se pisa.
     _SGI_DEFAULT_PARAMS = {
         'quimibond_sgi.nc_escalation_days': '5',
+        # Días por omisión de una prueba piloto documental.
+        'quimibond_sgi.pilot_days': '60',
         'quimibond_sgi.nc_escalation_days_external': '3',
         'quimibond_sgi.nc_recurrence_months': '12',
         'quimibond_sgi.action_escalation_manager_days': '7',
@@ -560,7 +564,10 @@ class SgiConfig(models.AbstractModel):
                 'odoo_ref': ref or False, 'note': note or False,
                 'odoo_menu_id': menu.id or False,
             })
-        self.env['sgi.process.activity'].create(act_vals)
+        # Semilla heredada del P-A28: sus actividades traen el rol como texto
+        # (responsible_role), sin puestos «ejecuta».
+        self.env['sgi.process.activity'].with_context(
+            sgi_skip_role_check=True).create(act_vals)
 
         _logger.info(
             "SGI piloto P-A28: proceso Ventas cargado — %d responsabilidades, "
