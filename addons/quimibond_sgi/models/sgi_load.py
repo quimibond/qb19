@@ -48,7 +48,7 @@ _PROCESS_TEXT_FIELDS = (
     'name', 'purpose', 'scope', 'start_trigger', 'end_trigger', 'inputs',
     'outputs', 'env_aspects')
 _ACTIVITY_TEXT_FIELDS = (
-    'section', 'name', 'description', 'odoo_ref', 'note', 'responsible_role')
+    'name', 'description', 'odoo_ref', 'note', 'responsible_role')
 _INDICATOR_FIELDS = (
     'name', 'uom', 'direction', 'target_objective', 'target_acceptable',
     'frequency', 'calc_mode', 'monthly_budget', 'nc_on_red')
@@ -194,6 +194,7 @@ class _SgiLoader:
     def run(self):
         payload = self.payload
         self._load_families(payload.get('families') or [])
+        self._load_deliverables(payload.get('deliverables') or [])
         activities_by_process = {}
         for item in payload.get('activities') or []:
             activities_by_process.setdefault(item.get('process'), []).append(item)
@@ -354,31 +355,53 @@ class _SgiLoader:
     def _load_activities(self, process, items, archive_missing):
         seen = set()
         for index, item in enumerate(items):
-            number = item.get('number')
+            number = item.get('number') or item.get('step')
             key = "%s/%s" % (process.code, number)
-            if not number:
-                self.report.error('activity', key, "Actividad sin «number».")
+            step = self.Activity._sgi_parse_number(process, number) if number else None
+            if not step:
+                self.report.error('activity', key, (
+                    "El numeral debe ser «%s.nn» (clave del proceso + paso) o el paso "
+                    "como número." % process.code))
                 continue
-            if number in seen:
-                self.report.error('activity', key, "Numeral repetido en el payload.")
+            if step in seen:
+                self.report.error('activity', key, "Paso repetido en el payload.")
                 continue
-            seen.add(number)
-            self._savepoint(lambda: self._upsert_activity(process, item, index),
+            seen.add(step)
+            self._savepoint(lambda: self._upsert_activity(process, item, index, step),
                             'activity', key)
         if archive_missing:
             stale = self.Activity.search([('process_id', '=', process.id),
                                           ('active', '=', True),
-                                          ('number', 'not in', list(seen) or [''])])
+                                          ('step', 'not in', list(seen) or [0])])
             for activity in stale:
                 self.report.change('activity', "%s/%s" % (process.code, activity.number),
                                    'archived')
             if stale:
                 stale.write({'active': False})
 
+    def _resolve_deliverables(self, codes, key, what):
+        ids = []
+        for code in codes or []:
+            deliverable = self.env['sgi.deliverable'].with_context(active_test=False).search(
+                [('code', '=', code), ('company_id', '=', self.company.id)], limit=1)
+            if not deliverable:
+                raise ValidationError("%s: el entregable «%s» no existe (decláralo en "
+                                      "«deliverables»)." % (what, code))
+            ids.append(deliverable.id)
+        return ids
+
     def _activity_vals(self, process, item, index):
-        key = "%s/%s" % (process.code, item['number'])
+        key = "%s/%s" % (process.code, item.get('number'))
         vals = {name: item[name] for name in _ACTIVITY_TEXT_FIELDS if name in item}
         vals['sequence'] = item.get('sequence') or (index + 1) * 10
+        stage_text = item.get('stage') or item.get('section')
+        if 'stage' in item or 'section' in item:
+            vals['stage_id'] = self.env['sgi.process.stage']._sgi_get_or_create(
+                process, stage_text).id if stage_text else False
+        if 'inputs' in item:
+            vals['input_deliverable_ids'] = self._resolve_deliverables(item['inputs'], key, "Recibe")
+        if 'outputs' in item:
+            vals['output_deliverable_ids'] = self._resolve_deliverables(item['outputs'], key, "Entrega")
         Activity = self.Activity
         for name in ('block', 'value_class'):
             if name in item:
@@ -485,6 +508,51 @@ class _SgiLoader:
             'measure_date_field': date_field,
             'measure_user_field': user_field,
         }
+
+    # ------------------------------------------------------------------
+    # Entregables (lo que pasa de una actividad a otra)
+    # ------------------------------------------------------------------
+    def _load_deliverables(self, deliverables):
+        Deliverable = self.env['sgi.deliverable'].with_context(active_test=False)
+        for item in deliverables:
+            key = item.get('code')
+
+            def run(item=item, key=key):
+                if not key:
+                    raise ValidationError("Entregable sin «code».")
+                vals = {}
+                if 'name' in item:
+                    vals['name'] = item['name']
+                if 'acceptance_criteria' in item:
+                    vals['acceptance_criteria'] = item['acceptance_criteria'] or False
+                if 'document' in item:
+                    doc = self.Doc._sgi_find_by_code(item['document'], states=None) \
+                        if item['document'] else self.Doc
+                    if item['document'] and not doc:
+                        self.report.warn('deliverable', key,
+                                         "Formato %s no encontrado." % item['document'])
+                    else:
+                        vals['document_id'] = doc.id
+                if 'model' in item:
+                    model = self.env['ir.model']._get(item['model']) if item['model'] else False
+                    if item['model'] and not model:
+                        raise ValidationError("Modelo %s no existe." % item['model'])
+                    vals['odoo_model_id'] = model.id if model else False
+                deliverable = Deliverable.search([('code', '=', key),
+                                                  ('company_id', '=', self.company.id)], limit=1)
+                if deliverable:
+                    if not deliverable.active:
+                        vals['active'] = True
+                    changed = _diff(deliverable, vals)
+                    if changed:
+                        deliverable.write(changed)
+                        self.report.change('deliverable', key, 'updated', changed)
+                else:
+                    if not vals.get('name'):
+                        raise ValidationError("El entregable nuevo %s necesita «name»." % key)
+                    Deliverable.create(dict(vals, code=key, company_id=self.company.id))
+                    self.report.change('deliverable', key, 'created')
+            self._savepoint(run, 'deliverable', key)
 
     # ------------------------------------------------------------------
     # Familias de puestos
@@ -606,11 +674,11 @@ class _SgiLoader:
             touched = True
         return commands, touched
 
-    def _upsert_activity(self, process, item, index):
-        number = item['number']
+    def _upsert_activity(self, process, item, index, step):
+        number = item.get('number') or item.get('step')
         key = "%s/%s" % (process.code, number)
         activity = self.Activity.search([('process_id', '=', process.id),
-                                         ('number', '=', number)], limit=1)
+                                         ('step', '=', step)], limit=1)
         vals = self._activity_vals(process, item, index)
         role_cmds, roles_touched = self._roles_commands(activity, item, key) \
             if 'roles' in item else ([], False)
@@ -624,12 +692,15 @@ class _SgiLoader:
                 activity.write(changed)
                 self.report.change('activity', key, 'updated', changed)
         else:
-            vals.update(process_id=process.id, number=number, role_ids=role_cmds)
-            if 'format_document_ids' in vals:
-                vals['format_document_ids'] = [Command.set(vals['format_document_ids'])]
+            vals.update(process_id=process.id, step=step, role_ids=role_cmds)
+            for m2m in ('format_document_ids', 'input_deliverable_ids', 'output_deliverable_ids'):
+                if m2m in vals:
+                    vals[m2m] = [Command.set(vals[m2m])]
             activity = self.Activity.create(vals)
             self.report.change('activity', key, 'created')
+        # Se encuentra por el numeral como vino en el JSON y por el calculado.
         self.activities[(process.code, number)] = activity
+        self.activities[(process.code, activity.number)] = activity
         measure = item.get('measure') or {}
         if measure.get('method') == 'consecuencia':
             if not measure.get('proxy'):

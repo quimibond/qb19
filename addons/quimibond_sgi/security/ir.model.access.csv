@@ -114,3 +114,7 @@ access_sgi_job_family_manager,sgi.job.family.manager,model_sgi_job_family,group_
 access_sgi_activity_exec_stat_user,sgi.activity.exec.stat.user,model_sgi_activity_exec_stat,group_sgi_user,1,0,0,0
 access_sgi_catalog_load_wizard_admin,sgi.catalog.load.wizard.admin,model_sgi_catalog_load_wizard,group_sgi_admin,1,1,1,1
 access_sgi_catalog_load_wizard_line_admin,sgi.catalog.load.wizard.line.admin,model_sgi_catalog_load_wizard_line,group_sgi_admin,1,1,1,1
+access_sgi_deliverable_user,sgi.deliverable.user,model_sgi_deliverable,group_sgi_user,1,0,0,0
+access_sgi_deliverable_manager,sgi.deliverable.manager,model_sgi_deliverable,group_sgi_manager,1,1,1,1
+access_sgi_process_stage_user,sgi.process.stage.user,model_sgi_process_stage,group_sgi_user,1,0,0,0
+access_sgi_process_stage_manager,sgi.process.stage.manager,model_sgi_process_stage,group_sgi_manager,1,1,1,1

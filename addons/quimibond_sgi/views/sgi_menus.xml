@@ -40,6 +40,8 @@
               action="sgi_process_activity_action" sequence="10"/>
     <menuitem id="menu_sgi_activity_roles" name="Roles por puesto"
               parent="menu_sgi_processes" action="sgi_activity_role_action" sequence="15"/>
+    <menuitem id="menu_sgi_deliverables" name="Entregables" parent="menu_sgi_processes"
+              action="sgi_deliverable_action" sequence="17"/>
     <menuitem id="menu_sgi_activity_chain" name="Cadena de actividades"
               parent="menu_sgi_processes" action="sgi_activity_link_action" sequence="20"/>
     <menuitem id="menu_sgi_flows" name="Flujos entre procesos" parent="menu_sgi_processes"

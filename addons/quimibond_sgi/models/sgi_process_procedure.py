@@ -479,7 +479,7 @@ class SgiProcessActivity(models.Model):
     """Actividad (numeral) del Desarrollo del procedimiento (sección 4)."""
     _name = 'sgi.process.activity'
     _description = "Actividad del procedimiento"
-    _order = 'process_id, sequence, number, id'
+    _order = 'process_id, sequence, step, id'
 
     process_id = fields.Many2one(
         'sgi.process', string="Proceso", required=True, ondelete='cascade',
@@ -492,14 +492,34 @@ class SgiProcessActivity(models.Model):
         help="La carga por API archiva las actividades que ya no vienen en "
              "el catálogo del proceso; nunca las borra.")
     sequence = fields.Integer(string="Secuencia", default=10)
-    number = fields.Char(string="Numeral", help="Ej. C6.22 (antes 4.2.3.1)")
+    # El numeral ya no se escribe: es la clave del proceso + un paso entero,
+    # único dentro del proceso (C6 + 22 → «C6.22»). Si el proceso cambia de
+    # clave, sus numerales cambian solos; el paso nunca se reutiliza. El
+    # numeral viejo en texto («4.2.3.1», «P-C16», «3.4-3.6») queda en
+    # «Numeral anterior» para buscarlo.
+    step = fields.Integer(
+        string="Paso", index=True, copy=False,
+        help="Número del paso dentro del proceso. Vacío = el siguiente libre.")
+    number = fields.Char(
+        string="Numeral", compute='_compute_number', store=True, index=True,
+        help="Clave del proceso + paso, ej. C6.22. Se calcula.")
+    legacy_number = fields.Char(
+        string="Numeral anterior", readonly=True, copy=False, index=True,
+        help="Numeral en texto de la versión anterior del procedimiento.")
+    # Etapa del proceso (A. Recepción, D. Inventario…): antes, texto libre
+    # «sección» y un bloque fijo inicial/desarrollo/final.
+    stage_id = fields.Many2one(
+        'sgi.process.stage', string="Etapa", index=True, ondelete='set null',
+        domain="[('process_id', '=', process_id)]")
     block = fields.Selection([
         ('inicial', "Actividades iniciales"),
         ('desarrollo', "Desarrollo"),
         ('final', "Actividades finales"),
-    ], string="Bloque", default='desarrollo', required=True)
+    ], string="Bloque (anterior)", default='desarrollo', required=True,
+        help="Agrupación fija de la versión anterior; hoy mandan las etapas.")
     section = fields.Char(
-        string="Sección", help="Título del apartado, ej. '4.2.3 Cotización de productos'.")
+        string="Sección", compute='_compute_section', store=True,
+        help="Nombre de la etapa (se calcula de «Etapa»).")
     name = fields.Char(string="Resumen", help="Resumen corto de la actividad.")
     description = fields.Text(
         string="Descripción", help="Texto completo del numeral del procedimiento.")
@@ -733,19 +753,67 @@ class SgiProcessActivity(models.Model):
             root = root.measure_proxy_activity_id
         return root
 
-    @api.constrains('number', 'process_id', 'active')
-    def _check_number_unique(self):
-        for activity in self.filtered(lambda a: a.number and a.active):
-            dup = self.with_context(active_test=True).search_count([
-                ('id', '!=', activity.id),
-                ('process_id', '=', activity.process_id.id),
-                ('number', '=', activity.number),
-            ])
-            if dup:
+    _process_step_uniq = models.Constraint(
+        'unique(process_id, step)',
+        "El paso ya existe en el proceso: cada actividad tiene su propio número.",
+    )
+
+    @api.depends('process_id.code', 'step')
+    def _compute_number(self):
+        for activity in self:
+            activity.number = "%s.%02d" % (activity.process_id.code, activity.step) \
+                if activity.process_id.code and activity.step else False
+
+    @api.depends('stage_id.name', 'stage_id.code')
+    def _compute_section(self):
+        for activity in self:
+            activity.section = activity.stage_id.display_name or False
+
+    @api.constrains('stage_id', 'process_id')
+    def _check_stage_process(self):
+        for activity in self.filtered('stage_id'):
+            if activity.stage_id.process_id != activity.process_id:
                 raise ValidationError(
-                    "Ya existe otra actividad %s en el proceso %s: el numeral "
-                    "es único por proceso." % (
-                        activity.number, activity.process_id.display_name))
+                    "La etapa «%s» es de otro proceso." % activity.stage_id.display_name)
+
+    @api.model
+    def _sgi_parse_number(self, process, number):
+        """«C6.22» → 22 si la clave es la del proceso; un entero → ese paso;
+        cualquier otra cosa → None (numeral en texto de la versión anterior)."""
+        if isinstance(number, int) and not isinstance(number, bool):
+            return number
+        text = (number or '').strip()
+        if text.isdigit():
+            return int(text)
+        prefix = '%s.' % (process.code or '')
+        if process.code and text.startswith(prefix) and text[len(prefix):].isdigit():
+            return int(text[len(prefix):])
+        return None
+
+    def _sgi_structure_vals(self, vals, process=None):
+        """Traduce lo que llega como texto (numeral, sección) a estructura
+        (paso, etapa). Así la carga y el código viejo que escriben «number» y
+        «section» siguen funcionando."""
+        vals = dict(vals)
+        process = process or self.env['sgi.process'].browse(vals.get('process_id'))
+        if 'number' in vals:
+            number = vals.pop('number')
+            step = self._sgi_parse_number(process, number) if process else None
+            if step is not None:
+                vals.setdefault('step', step)
+            elif number:
+                vals.setdefault('legacy_number', number)
+        if 'section' in vals:
+            section = vals.pop('section')
+            if section and process and 'stage_id' not in vals:
+                vals['stage_id'] = self.env['sgi.process.stage']._sgi_get_or_create(process, section).id
+        return vals
+
+    def _sgi_next_step(self, process, taken=()):
+        self.env.cr.execute(
+            "SELECT COALESCE(MAX(step), 0) FROM sgi_process_activity WHERE process_id = %s",
+            (process.id,))
+        return max([self.env.cr.fetchone()[0], *taken]) + 1
 
     @api.depends('out_link_ids.to_activity_id', 'in_link_ids.from_activity_id')
     def _compute_chain(self):
@@ -1273,6 +1341,16 @@ class SgiProcessActivity(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # Numeral y sección llegan como texto desde código viejo o la carga:
+        # se traducen a paso y etapa; sin paso, el siguiente libre.
+        vals_list = [self._sgi_structure_vals(vals) for vals in vals_list]
+        taken = {}
+        for vals in vals_list:
+            if not vals.get('step') and vals.get('process_id'):
+                process = self.env['sgi.process'].browse(vals['process_id'])
+                vals['step'] = self._sgi_next_step(process, taken.get(process.id, ()))
+            if vals.get('step') and vals.get('process_id'):
+                taken.setdefault(vals['process_id'], []).append(vals['step'])
         # Los roles que vienen en el alta se validan juntos al final, con la
         # restricción de la actividad.
         records = super(SgiProcessActivity, self.with_context(
@@ -1284,6 +1362,10 @@ class SgiProcessActivity(models.Model):
         return records
 
     def write(self, vals):
+        if 'number' in vals or 'section' in vals:
+            if len(self.process_id) > 1:
+                raise UserError("Cambia el numeral o la sección de una actividad a la vez.")
+            vals = self._sgi_structure_vals(vals, self.process_id)
         # Los roles que llegan por el one2many se validan juntos al final
         # (restricción de la actividad), no uno por uno a medio camino.
         records = self.with_context(sgi_roles_via_activity=True) \

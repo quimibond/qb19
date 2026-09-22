@@ -237,12 +237,17 @@
                             <group>
                                 <group>
                                     <field name="start_trigger" placeholder="Qué lo dispara"/>
-                                    <field name="inputs"/>
+                                    <field name="input_deliverable_ids" widget="many2many_tags"/>
                                 </group>
                                 <group>
                                     <field name="end_trigger" placeholder="Cuándo termina"/>
-                                    <field name="outputs"/>
+                                    <field name="output_deliverable_ids" widget="many2many_tags"/>
                                 </group>
+                            </group>
+                            <group string="Entradas y salidas escritas (versión anterior)"
+                                   invisible="not inputs and not outputs">
+                                <field name="inputs" readonly="1"/>
+                                <field name="outputs" readonly="1"/>
                             </group>
                             <group>
                                 <group>

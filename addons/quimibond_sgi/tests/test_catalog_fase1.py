@@ -137,14 +137,17 @@ class TestCatalogFase1(TransactionCase):
 
     def test_05_number_unique_per_process(self):
         process = self._process()
-        vals = {'process_id': process.id, 'number': 'QA.40', 'name': 'A',
+        vals = {'process_id': process.id, 'number': 'QA1.40', 'name': 'A',
                 'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job_inv.id})]}
-        self.Activity.create(vals)
-        with self.assertRaises(ValidationError):
+        act = self.Activity.create(vals)
+        self.assertEqual((act.step, act.number), (40, 'QA1.40'))
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'), self.cr.savepoint():
             self.Activity.create(dict(vals, name='B', role_ids=[
                 (0, 0, {'role': 'ejecuta', 'job_id': self.job_alm.id})]))
+            self.env.flush_all()
         # En otro proceso sí puede repetirse.
         other = self._process('QA2')
+        vals['number'] = 'QA2.40'
         self.Activity.create(dict(vals, process_id=other.id, role_ids=[
             (0, 0, {'role': 'ejecuta', 'job_id': self.job_alm.id})]))
 
@@ -321,14 +324,14 @@ class TestCatalogFase1(TransactionCase):
     def test_42_relative_executor(self):
         process = self._process('QF3')
         act = self.Activity.create({
-            'process_id': process.id, 'number': 'QF.20', 'name': 'Solicitar',
+            'process_id': process.id, 'number': 'QF3.20', 'name': 'Solicitar',
             'role_ids': [(0, 0, {'role': 'ejecuta', 'target_type': 'relative',
                                  'relative_role': 'solicitante'})]})
         self.assertEqual(act.role_ids._sgi_staffing_state(), 'na',
                          "Un relativo no dispara «puesto sin persona».")
         self.assertIsNone(act._sgi_executor_jobs())
         payload = {'processes': [{'code': 'QF3', 'name': 'Proceso QF3'}],
-                   'activities': [{'process': 'QF3', 'number': 'QF.20', 'name': 'Solicitar',
+                   'activities': [{'process': 'QF3', 'number': 'QF3.20', 'name': 'Solicitar',
                                    'roles': [{'role': 'ejecuta', 'relative': 'solicitante'},
                                              {'role': 'aprueba',
                                               'relative': 'jefe_del_solicitante'}]}]}
@@ -342,7 +345,7 @@ class TestCatalogFase1(TransactionCase):
         def load():
             return self.Process.load_payload({
                 'processes': [{'code': 'QF4', 'name': 'Proceso QF4'}],
-                'activities': [{'process': 'QF4', 'number': 'QF.30', 'name': 'Coordinar',
+                'activities': [{'process': 'QF4', 'number': 'QF4.30', 'name': 'Coordinar',
                                 'roles': [{'role': 'ejecuta', 'job': empty.id}]}]},
                 dry_run=True)
         result = load()
@@ -375,7 +378,7 @@ class TestCatalogFase1(TransactionCase):
         self.env['hr.employee'].create([{'name': 'e%d' % j.id, 'job_id': j.id} for j in dup])
         result = self.Process.load_payload({
             'processes': [{'code': 'QF5', 'name': 'Proceso QF5'}],
-            'activities': [{'process': 'QF5', 'number': 'QF.40', 'name': 'x',
+            'activities': [{'process': 'QF5', 'number': 'QF5.40', 'name': 'x',
                             'roles': [{'role': 'ejecuta', 'job': 'ambiguo qa'}]}]},
             dry_run=True)
         message = ' '.join(e['message'] for e in result['errors'])
@@ -553,7 +556,7 @@ class TestCatalogFase1(TransactionCase):
         process = self._process('QV1')
         with Form(self.Activity) as form:
             form.process_id = process
-            form.number = 'QV.01'
+            form.step = 1
             form.name = 'Desde el formulario'
             with form.role_ids.new() as role:
                 role.role = 'ejecuta'

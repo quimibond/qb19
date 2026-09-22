@@ -216,7 +216,7 @@ class TestProcedureVentasSeed(TransactionCase):
         if not menu:
             self.skipTest("El menú nativo de Ventas no está en esta base.")
         act = self.process.procedure_activity_ids.filtered(
-            lambda a: a.number == '4.1.2')
+            lambda a: a.legacy_number == '4.1.2')
         self.assertEqual(act.odoo_menu_id, menu,
                          "La actividad de pedidos apunta al menú de Ventas.")
 

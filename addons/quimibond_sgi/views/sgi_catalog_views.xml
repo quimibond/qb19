@@ -68,6 +68,96 @@
         </field>
     </record>
 
+    <!-- ====== Entregables: lo que pasa de una actividad a otra ====== -->
+    <record id="sgi_deliverable_view_list" model="ir.ui.view">
+        <field name="name">sgi.deliverable.list</field>
+        <field name="model">sgi.deliverable</field>
+        <field name="arch" type="xml">
+            <list string="Entregables" sample="1" multi_edit="1" default_order="name"
+                  decoration-warning="orphan">
+                <field name="code" optional="show"/>
+                <field name="name"/>
+                <field name="producer_process_ids" widget="many2many_tags" string="De"/>
+                <field name="consumer_process_ids" widget="many2many_tags" string="A"/>
+                <field name="document_id" optional="show"/>
+                <field name="odoo_model_id" optional="hide"/>
+                <field name="orphan" widget="badge" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_deliverable_view_form" model="ir.ui.view">
+        <field name="name">sgi.deliverable.form</field>
+        <field name="model">sgi.deliverable</field>
+        <field name="arch" type="xml">
+            <form string="Entregable">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_links" type="object" class="oe_stat_button"
+                                icon="fa-link" string="Ligas"/>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Pedido confirmado"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code" placeholder="PEDIDO-CONF"/>
+                            <field name="document_id" options="{'no_create': True}"/>
+                            <field name="odoo_model_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="orphan" invisible="not orphan"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <field name="acceptance_criteria" placeholder="Cuándo se da por bueno…"/>
+                    <group>
+                        <group string="Lo entregan">
+                            <field name="producer_activity_ids" nolabel="1" colspan="2"
+                                   widget="many2many_tags" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Lo reciben">
+                            <field name="consumer_activity_ids" nolabel="1" colspan="2"
+                                   widget="many2many_tags" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_deliverable_view_search" model="ir.ui.view">
+        <field name="name">sgi.deliverable.search</field>
+        <field name="model">sgi.deliverable</field>
+        <field name="arch" type="xml">
+            <search string="Entregables">
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="producer_activity_ids" string="Lo entrega"/>
+                <field name="consumer_activity_ids" string="Lo recibe"/>
+                <filter name="sin_origen" string="Nadie lo entrega"
+                        domain="[('consumer_activity_ids', '!=', False), ('producer_activity_ids', '=', False)]"/>
+                <filter name="sin_destino" string="Nadie lo recibe"
+                        domain="[('producer_activity_ids', '!=', False), ('consumer_activity_ids', '=', False)]"/>
+                <filter name="archived" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_deliverable_action" model="ir.actions.act_window">
+        <field name="name">Entregables</field>
+        <field name="res_model">sgi.deliverable</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_deliverable_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Lo que pasa de un paso al siguiente</p>
+            <p>El pedido confirmado, el programa semanal, el lote liberado. Se captura una vez; cada actividad dice cuál <b>recibe</b> y cuál <b>entrega</b>, y las ligas entre actividades, los flujos entre procesos y las entradas y salidas de cada proceso salen solos.</p>
+        </field>
+    </record>
+
     <!-- ====== Familias de puestos ====== -->
     <record id="sgi_job_family_view_list" model="ir.ui.view">
         <field name="name">sgi.job.family.list</field>

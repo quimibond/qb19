@@ -101,6 +101,16 @@
         <field name="model_id" ref="model_sgi_activity_exec_stat"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="rule_sgi_deliverable_company" model="ir.rule">
+        <field name="name">SGI: Entregables por empresa</field>
+        <field name="model_id" ref="model_sgi_deliverable"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_process_stage_company" model="ir.rule">
+        <field name="name">SGI: Etapas por empresa</field>
+        <field name="model_id" ref="model_sgi_process_stage"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
     <record id="rule_sgi_document_type_company" model="ir.rule">
         <field name="name">SGI: Tipos de documento por empresa</field>
         <field name="model_id" ref="model_sgi_document_type"/>
