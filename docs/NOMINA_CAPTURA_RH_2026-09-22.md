@@ -25,13 +25,14 @@ y CLABEs no se copian aquí: están en Odoo (Empleado → Cuentas bancarias).
 
 ## Lo que NO se pudo resolver
 
-1. **21 números de empleado en colisión.** NOI repite claves entre nóminas
-   (semanal / quincenal Toluca / CDMX) y `registration_number` es único por
-   compañía en Odoo. Estos quedan **sin número** hasta que se decida un
-   prefijo (p. ej. `Q-14`, `C-26`). Dejarlos vacíos **no** es opción para
-   timbrar: en el complemento Nómina 1.2 `NumEmpleado` es un atributo
-   **requerido** de `Receptor` (1 a 15 caracteres, cualquiera menos `|`),
-   así que un recibo sin referencia lo rechaza el PAC:
+1. **Números de empleado: resuelto con prefijo uniforme** (decisión del
+   CEO, mismo día). NOI repite claves entre nóminas (semanal / quincenal
+   Toluca / CDMX) y `registration_number` es único por compañía en Odoo, así
+   que los 153 activos quedaron con `S-<n>` (semanal), `Q-<n>` (quincenal
+   Toluca) y `C-<n>` (CDMX). Dejarlos vacíos no era opción: en Nómina 1.2
+   `NumEmpleado` es **requerido** en `Receptor` (1 a 15 caracteres,
+   cualquiera menos `|`); el módulo (19.0.1.5.0) ahora detiene el CFDI con
+   error si falta la referencia. Los 21 que chocaban eran:
 
    | Odoo | Empleado | NOI | El número lo tiene |
    |---|---|---|---|
