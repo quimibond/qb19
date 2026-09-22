@@ -77,6 +77,14 @@ class SgiIndicator(models.Model):
     ], string="Frecuencia", default='monthly', required=True)
     calc_mode = fields.Selection(CALC_MODES, string="Modo de cálculo",
                                  default='manual', required=True)
+    formula = fields.Text(
+        string="Fórmula",
+        help="Cómo se calcula, en palabras: «Entregas completas en la fecha "
+             "compromiso ÷ entregas del mes». Sale en el procedimiento impreso.")
+    source = fields.Text(
+        string="De dónde sale el dato",
+        help="Qué registros o documentos alimentan la fórmula: «Fecha compromiso "
+             "del pedido contra fecha de la orden de entrega».")
     source_type = fields.Selection([
         ('auto', "Automático"),
         ('manual', "Manual"),

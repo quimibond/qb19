@@ -253,3 +253,76 @@ class TestStructure(TransactionCase):
             {'code': 'XV', 'name': 'Ventas X', 'start_trigger': 'Llega la OC'}]}, dry_run=True)
         self.assertTrue(result['ok'], result['errors'])
         self.assertTrue(any('start_trigger' in w['message'] for w in result['warnings']))
+
+    def test_13_unknown_keys_are_errors_with_path(self):
+        payload = {'processes': [{'code': 'XK', 'name': 'Llaves', 'activities': [
+            {'number': 1, 'name': 'Uno', 'origin_note': 'algo',
+             'roles': [{'role': 'ejecuta', 'job': self.job_a.id}]}]}]}
+        result = self.Process.load_payload(payload, dry_run=True)
+        self.assertFalse(result['ok'])
+        message = result['errors'][0]['message']
+        self.assertIn('processes[0].activities[0].origin_note', message)
+        self.assertIn('Válidas aquí', message)
+        self.assertIn('outputs', message, "Trae la lista de llaves válidas.")
+        # Indicadores dentro del proceso: así se perdieron los de C2.
+        nested = {'processes': [{'code': 'XK', 'name': 'Llaves',
+                                 'indicators': [{'code': 'XK-01', 'name': 'I'}]}]}
+        result = self.Process.load_payload(nested)
+        self.assertFalse(result['ok'])
+        self.assertIn('processes[0].indicators', result['errors'][0]['message'])
+        self.assertFalse(self.Process.search([('code', '=', 'XK')]),
+                         "Con una llave desconocida no se carga nada.")
+        bad_role = {'activities': [{'process': 'XV', 'number': 1, 'name': 'R',
+                                    'roles': [{'role': 'ejecuta', 'puesto': 'X'}]}]}
+        result = self.Process.load_payload(bad_role, dry_run=True)
+        self.assertIn('activities[0].roles[0].puesto', result['errors'][0]['message'])
+
+    def test_14_indicator_formula_source_and_employee_responsible(self):
+        user = self.env['res.users'].create({'name': 'Dueña X', 'login': 'duena.x.sgi'})
+        emp = self.env['hr.employee'].create({'name': 'Dueña X', 'user_id': user.id,
+                                              'job_id': self.job_a.id})
+        payload = {'indicators': [{
+            'code': 'XV-01', 'name': 'OTIF X', 'process': 'XV', 'frequency': 'monthly',
+            'formula': 'Entregas completas a tiempo ÷ entregas del mes',
+            'source': 'Fecha compromiso contra fecha de entrega',
+            'responsible_employee_id': emp.id}]}
+        result = self.Process.load_payload(payload)
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertFalse(result['warnings'], "Con responsable no hay aviso.")
+        ind = self.env['sgi.indicator'].search([('code', '=', 'XV-01')])
+        self.assertEqual(ind.responsible_id, user)
+        self.assertIn('÷', ind.formula)
+        self.assertEqual(ind.source, 'Fecha compromiso contra fecha de entrega')
+        self.assertFalse(self.Process.load_payload(payload)['changes'])
+        no_user = self.env['hr.employee'].create({'name': 'Sin usuario X'})
+        payload['indicators'][0]['responsible_employee_id'] = no_user.id
+        self.assertFalse(self.Process.load_payload(payload, dry_run=True)['ok'])
+
+    def test_15_replaces_archives_the_old_process(self):
+        old = self.Process.create({'code': 'X-VIEJO', 'name': 'Ventas viejo'})
+        payload = {'processes': [{'code': 'XN', 'name': 'Nuevo', 'replaces': ['X-VIEJO']}]}
+        dry = self.Process.load_payload(payload, dry_run=True)
+        self.assertTrue(dry['ok'], dry['errors'])
+        self.assertEqual(dry['summary'].get('archived', {}).get('process'), 1)
+        self.assertTrue(old.active, "Con dry_run solo se reporta.")
+        result = self.Process.load_payload(payload)
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertFalse(old.active)
+        self.assertTrue(any('Sustituido por XN' in (m.body or '') for m in old.message_ids))
+        self.assertFalse(self.Process.load_payload(payload)['changes'], "Una sola vez.")
+        missing = {'processes': [{'code': 'XN', 'name': 'Nuevo', 'replaces': ['NO-EXISTE']}]}
+        self.assertFalse(self.Process.load_payload(missing, dry_run=True)['ok'])
+
+    def test_16_commitment_date_stamp(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente X'})
+        order = self.env['sale.order'].create({'partner_id': partner.id})
+        self.assertFalse(order.sgi_commitment_set_at)
+        order.commitment_date = datetime(2026, 10, 1, 12, 0)
+        stamp = order.sgi_commitment_set_at
+        self.assertTrue(stamp)
+        self.assertEqual(order.sgi_commitment_set_uid, self.env.user)
+        order.commitment_date = datetime(2026, 10, 8, 12, 0)
+        self.assertEqual(order.sgi_commitment_set_at, stamp, "Solo la primera vez.")
+        born = self.env['sale.order'].create({'partner_id': partner.id,
+                                              'commitment_date': datetime(2026, 10, 2)})
+        self.assertTrue(born.sgi_commitment_set_at, "También al crear con fecha.")

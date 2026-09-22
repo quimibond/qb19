@@ -605,8 +605,8 @@ Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
     {"code": "C2-OC-CLIENTE", "name": "Orden de compra del cliente", "document": "F-C2-01"}
   ],
   "processes": [{"code": "C2", "name": "Ventas", "process_type": "cadena de valor",
-                 "owner_job": "DIRECTOR DE VENTAS",
-                 "replaced_documents": ["P-A31"]}],
+                 "owner_employee_id": 244,
+                 "replaced_documents": ["P-A28"], "replaces": ["P-VEN"]}],
   "activities": [
     {"process": "C2", "number": "C2.03", "stage": "A. Pedido",
      "name": "Verificar número de parte y precio", "value_class": "nva_n",
@@ -618,11 +618,24 @@ Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
      "cadence": "evento",
      "automation": {"current": "manual", "target": "asistido"}}
   ],
-  "indicators": [{"code": "C2-01", "name": "Pedidos confirmados a tiempo",
-                  "process": "C2", "responsible": "login@quimibond.com"}]
+  "indicators": [{"code": "C2-01", "name": "Entregas completas y a tiempo (OTIF)",
+                  "process": "C2", "frequency": "monthly",
+                  "formula": "Entregas completas en la fecha compromiso ÷ entregas del mes",
+                  "source": "Fecha compromiso del pedido contra fecha de la entrega",
+                  "responsible_employee_id": 244}]
 }
 ```
 
+- **Llaves desconocidas = error**, con la ruta completa
+  (`processes[0].activities[5].origin_note`) y la lista de llaves válidas de
+  ese nivel. Si hay una, no se carga nada. Los indicadores van al nivel
+  principal con `process`, no dentro del proceso.
+- **`replaces`** (proceso): códigos de procesos que el nuevo sustituye. En la
+  carga real se archivan y su chatter dice «Sustituido por C2»; con `dry_run`
+  solo se reportan. Un código que no existe es error.
+- **Indicadores**: `formula` y `source` (texto; salen en la ficha y en el
+  procedimiento impreso), `frequency` `monthly`/`weekly`, y el responsable
+  como `responsible_employee_id` (su usuario) o `responsible` (id o login).
 - **`number`**: `"C2.03"` (clave del proceso + paso) o el paso como entero
   (`3`). Es un número, no texto: el numeral que se imprime se calcula y se
   renumera solo si cambia la clave del proceso. Otro formato es error.

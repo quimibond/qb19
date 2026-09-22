@@ -185,6 +185,27 @@
                     </t>
 
                     <!-- 5. Información ambiental -->
+                    <!-- Indicadores del proceso: qué se mide y cómo se calcula. -->
+                    <t t-set="sgi_indicators" t-value="doc.indicator_ids.filtered('active')"/>
+                    <div t-if="sgi_indicators" class="mt-2">
+                        <h5>Indicadores</h5>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr><th>Clave</th><th>Indicador</th><th>Fórmula</th>
+                                    <th>De dónde sale el dato</th><th>Frecuencia</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="sgi_indicators" t-as="ind">
+                                    <td t-out="ind.code"/>
+                                    <td t-out="ind.name"/>
+                                    <td t-out="ind.formula or ''"/>
+                                    <td t-out="ind.source or ''"/>
+                                    <td t-field="ind.frequency"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
                     <h4 class="mt-3">5. Información ambiental</h4>
                     <p t-out="doc.env_aspects"/>
                     <table t-if="env_risks" style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
