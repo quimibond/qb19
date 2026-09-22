@@ -136,8 +136,9 @@ class SgiActivityRole(models.Model):
              "cuentan para «puesto sin persona» ni para adherencia).")
     condition = fields.Char(
         string="Condición",
-        help="Cuándo aplica el rol, ej. «arriba del monto que se fije». "
-             "Vacío = siempre.")
+        help="Solo para quien aprueba o se entera: cuándo aplica, ej. «arriba "
+             "del monto que se fije». Vacío = siempre. Si según el caso la "
+             "ejecuta otro puesto, son dos actividades.")
     sequence = fields.Integer(string="Secuencia", default=10)
     process_id = fields.Many2one(
         related='activity_id.process_id', string="Proceso", store=True,
@@ -172,6 +173,17 @@ class SgiActivityRole(models.Model):
                     "Cada rol se asigna a exactamente una cosa: un puesto, una "
                     "familia o un rol relativo, según «Asignado a» (%s)." % (
                         dict(SGI_ROLE_TARGETS)[role.target_type]))
+
+    @api.constrains('role', 'condition')
+    def _check_condition(self):
+        """Un ejecutor (o participante) condicionado es otra actividad: así
+        cada actividad tiene un solo ejecutor y se mide limpio."""
+        for role in self:
+            if (role.condition or '').strip() and role.role not in ('aprueba', 'informa'):
+                raise ValidationError(
+                    "«%s» tiene condición («%s»). La condición solo va en quien "
+                    "aprueba o se entera; si según el caso lo hace otro puesto, "
+                    "parte la actividad en dos." % (role.display_name, role.condition))
 
     def _sgi_target_label(self):
         self.ensure_one()

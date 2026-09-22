@@ -249,18 +249,18 @@
                             <field name="purpose" placeholder="Para qué existe este proceso…"/>
                             <group>
                                 <group>
-                                    <field name="start_trigger" placeholder="Qué lo dispara"/>
                                     <field name="input_deliverable_ids" widget="many2many_tags"/>
                                 </group>
                                 <group>
-                                    <field name="end_trigger" placeholder="Cuándo termina"/>
                                     <field name="output_deliverable_ids" widget="many2many_tags"/>
                                 </group>
                             </group>
-                            <group string="Entradas y salidas escritas (versión anterior)"
-                                   invisible="not inputs and not outputs">
-                                <field name="inputs" readonly="1"/>
-                                <field name="outputs" readonly="1"/>
+                            <group string="Texto de la versión anterior"
+                                   invisible="not inputs and not outputs and not start_trigger and not end_trigger">
+                                <field name="start_trigger" readonly="1" invisible="not start_trigger"/>
+                                <field name="end_trigger" readonly="1" invisible="not end_trigger"/>
+                                <field name="inputs" readonly="1" invisible="not inputs"/>
+                                <field name="outputs" readonly="1" invisible="not outputs"/>
                             </group>
                             <group>
                                 <group>
