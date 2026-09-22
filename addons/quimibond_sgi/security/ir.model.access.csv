@@ -118,3 +118,5 @@ access_sgi_deliverable_user,sgi.deliverable.user,model_sgi_deliverable,group_sgi
 access_sgi_deliverable_manager,sgi.deliverable.manager,model_sgi_deliverable,group_sgi_manager,1,1,1,1
 access_sgi_process_stage_user,sgi.process.stage.user,model_sgi_process_stage,group_sgi_user,1,0,0,0
 access_sgi_process_stage_manager,sgi.process.stage.manager,model_sgi_process_stage,group_sgi_manager,1,1,1,1
+access_sgi_activity_input_user,sgi.activity.input.user,model_sgi_activity_input,group_sgi_user,1,0,0,0
+access_sgi_activity_input_manager,sgi.activity.input.manager,model_sgi_activity_input,group_sgi_manager,1,1,1,1

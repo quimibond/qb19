@@ -5,12 +5,15 @@
         <field name="name">sgi.process.flow.list</field>
         <field name="model">sgi.process.flow</field>
         <field name="arch" type="xml">
-            <list string="Flujos" editable="bottom">
+            <list string="Flujos" create="0" decoration-muted="not active">
+                <field name="active" column_invisible="1"/>
                 <field name="from_process_id"/>
                 <field name="name"/>
                 <field name="to_process_id"/>
                 <field name="document_id"/>
                 <field name="odoo_model_id"/>
+                <field name="origin" optional="show"/>
+                <field name="inactive_reason" optional="hide"/>
                 <button name="action_view_records" type="object" string="Ver registros"
                         icon="fa-external-link" invisible="not odoo_model_id"/>
             </list>
@@ -21,20 +24,22 @@
         <field name="name">sgi.process.flow.form</field>
         <field name="model">sgi.process.flow</field>
         <field name="arch" type="xml">
-            <form string="Flujo">
+            <form string="Flujo" create="0" edit="0">
                 <header>
                     <button name="action_view_records" type="object"
                             string="Ver registros" class="btn-primary"
                             invisible="not odoo_model_id"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Anterior" bg_color="text-bg-secondary"
+                            invisible="deliverable_id"/>
+                    <widget name="web_ribbon" title="Apagado" bg_color="text-bg-danger"
+                            invisible="active"/>
                     <div class="alert alert-info mb-3" role="status">
-                        <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>:
-                        qué se entrega, quién lo entrega, quién lo recibe, con qué
-                        formato controlado y con qué criterio se acepta. Si el
-                        entregable vive en Odoo (un pedido, una OF, una remisión…),
-                        liga el modelo y el botón <b>Ver registros</b> abre las
-                        entregas reales; si es documental, déjalo sin modelo.
+                        <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>.
+                        Se calcula solo del <b>entregable</b>: sale de las actividades
+                        que lo entregan y llega a las que lo reciben. Para cambiarlo,
+                        cambia el entregable o las actividades.
                     </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
@@ -46,8 +51,11 @@
                             <field name="to_process_id" string="Lo recibe (destino)"/>
                         </group>
                         <group string="Con qué">
+                            <field name="deliverable_id"/>
                             <field name="document_id" string="Formato de entrega"/>
                             <field name="odoo_model_id" string="Dónde vive en Odoo"/>
+                            <field name="active" invisible="1"/>
+                            <field name="inactive_reason" invisible="active"/>
                         </group>
                     </group>
                     <group string="Criterio de aceptación (¿cuándo se recibe como buena la entrega?)">
@@ -71,6 +79,11 @@
                         domain="[('odoo_model_id', '!=', False)]"/>
                 <filter name="documentales" string="Documentales (sin modelo)"
                         domain="[('odoo_model_id', '=', False)]"/>
+                <separator/>
+                <filter name="manual" string="Capturados a mano (anteriores)"
+                        domain="[('deliverable_id', '=', False)]"/>
+                <filter name="inactive" string="Apagados o reemplazados"
+                        domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_from" string="Proceso que entrega"
                             context="{'group_by': 'from_process_id'}"/>
@@ -89,7 +102,7 @@
         <field name="context">{'search_default_group_from': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Cada flecha del mapa de procesos es una entrega real</p>
-            <p>Un flujo dice <b>qué</b> entrega un proceso a otro, <b>con qué formato</b> y <b>cuándo se acepta</b>. Si el entregable vive en Odoo (pedido, OF, remisión, inspección…), el botón <i>Ver registros</i> abre las entregas reales; los flujos sin modelo son entregables documentales. También se editan desde las pestañas <i>Entradas</i> y <i>Salidas</i> de cada proceso.</p>
+            <p>Un flujo dice <b>qué</b> entrega un proceso a otro, <b>con qué formato</b> y <b>cuándo se acepta</b>. Si el entregable vive en Odoo (pedido, OF, remisión, inspección…), el botón <i>Ver registros</i> abre las entregas reales; los flujos sin modelo son entregables documentales. No se capturan: salen solos de lo que cada actividad recibe y entrega (catálogo de entregables).</p>
         </field>
     </record>
 
@@ -295,8 +308,8 @@
                         </page>
                         <page string="Conexiones" name="entradas_salidas">
                             <separator string="Recibe de otros procesos"/>
-                            <field name="in_flow_ids">
-                                <list editable="bottom">
+                            <field name="in_flow_ids" readonly="1">
+                                <list>
                                     <field name="from_process_id" string="Lo entrega"/>
                                     <field name="name" string="Entregable"/>
                                     <field name="document_id" optional="hide"/>
@@ -308,8 +321,8 @@
                                 </list>
                             </field>
                             <separator string="Entrega a otros procesos"/>
-                            <field name="out_flow_ids">
-                                <list editable="bottom">
+                            <field name="out_flow_ids" readonly="1">
+                                <list>
                                     <field name="name" string="Entregable"/>
                                     <field name="to_process_id" string="Lo recibe"/>
                                     <field name="document_id" optional="hide"/>

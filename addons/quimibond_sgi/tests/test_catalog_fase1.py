@@ -37,6 +37,7 @@ class TestCatalogFase1(TransactionCase):
 
     def _payload(self, **extra):
         payload = {
+            'deliverables': [{'code': 'QA-DIF', 'name': 'Diferencias con su causa'}],
             'processes': [{
                 'code': 'QC6', 'name': 'Almacén e inventarios QA',
                 'process_type': 'cadena de valor',
@@ -60,10 +61,11 @@ class TestCatalogFase1(TransactionCase):
                     'automation': {'current': 'manual', 'target': 'asistido',
                                    'method': 'accion_automatizada'},
                     'cadence': 'semanal',
-                    'links_to': ['QC6.23'],
+                    'outputs': ['QA-DIF'],
                 },
                 {
                     'process': 'QC6', 'number': 'QC6.23', 'name': 'Ajustar inventario',
+                    'inputs': [{'code': 'QA-DIF', 'days': 1}],
                     'roles': [{'role': 'ejecuta', 'job': self.job_alm.id}],
                 },
             ],
@@ -158,7 +160,7 @@ class TestCatalogFase1(TransactionCase):
         result = self.Process.load_payload(self._payload())
         self.assertTrue(result['ok'], result['errors'])
         self.assertEqual(result['summary']['created']['activity'], 2)
-        self.assertEqual(result['summary']['created']['link'], 1)
+        self.assertEqual(result['summary']['created']['deliverable'], 1)
         process = self.Process.search([('code', '=', 'QC6')])
         self.assertEqual(process.owner_id, self.owner)
         self.assertEqual(process.process_type, 'cop')
@@ -207,7 +209,6 @@ class TestCatalogFase1(TransactionCase):
         self.Process.load_payload(self._payload())
         payload = self._payload()
         payload['activities'] = payload['activities'][:1]
-        payload['activities'][0].pop('links_to')
         result = self.Process.load_payload(payload, dry_run=True)
         self.assertEqual(result['summary'].get('archived', {}).get('activity'), 1)
         result = self.Process.load_payload(payload)

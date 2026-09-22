@@ -255,7 +255,7 @@ class SgiProcessProcedure(models.Model):
         for process in self:
             by_method = counts.get(process.id, {})
             total = sum(by_method.values())
-            real = by_method.get('odoo', 0) + by_method.get('consecuencia', 0)
+            real = sum(by_method.get(m, 0) for m in ('odoo', 'entregable', 'consecuencia'))
             process.measure_real_pct = int(round(real * 100.0 / total)) if total else 0
             process.measure_method_summary = ' · '.join(
                 "%s %d" % (labels.get(method, method), count)
@@ -702,6 +702,9 @@ class SgiProcessActivity(models.Model):
             return ["«Por consecuencia» sin la actividad que la prueba"]
         if self.measure_method == 'odoo' and not self.measure_model_id:
             return ["«Registro en Odoo» sin modelo"]
+        if self.measure_method == 'entregable' and not (
+                self.measure_deliverable_id and self.measure_deliverable_id.odoo_model_id):
+            return ["«Por su entregable» sin un entregable con modelo de Odoo"]
         return []
 
     def _sgi_check_measure_strict(self):
@@ -725,7 +728,8 @@ class SgiProcessActivity(models.Model):
                         process.display_name, activity.display_name, problems[0]))
 
     @api.constrains('measure_method', 'measure_justification',
-                    'measure_proxy_activity_id', 'measure_model_id', 'process_id')
+                    'measure_proxy_activity_id', 'measure_model_id', 'process_id',
+                    'measure_deliverable_id')
     def _check_measure_method(self):
         self._sgi_check_measure_strict()
 
@@ -882,6 +886,7 @@ class SgiProcessActivity(models.Model):
     # --- Cómo se mide (toda actividad tiene un método) ---
     measure_method = fields.Selection([
         ('odoo', "Registro en Odoo"),
+        ('entregable', "Por su entregable"),
         ('consecuencia', "Por consecuencia"),
         ('correo', "Por correo"),
         ('manual', "Registro manual"),
@@ -889,7 +894,9 @@ class SgiProcessActivity(models.Model):
         ('no_aplica', "No aplica"),
     ], string="Método de medición", index=True,
         help="De mejor a peor. Odoo: deja registro (modelo, dominio, fecha, "
-             "usuario). Consecuencia: no deja rastro pero la actividad que la "
+             "usuario). Por su entregable: igual que Odoo, pero el modelo, el "
+             "filtro y la fecha son los del entregable que produce (se capturan "
+             "una vez, en el entregable). Consecuencia: no deja rastro pero la actividad que la "
              "prueba sí (se copia su conteo). Correo: conector de la fase 2. "
              "Manual: registro de un toque (fase 2). Muestreo: se verifica de "
              "vez en cuando. No aplica: su resultado se mide en otra parte "
@@ -967,7 +974,7 @@ class SgiProcessActivity(models.Model):
         'automation_level_target', 'automation_method', 'measure_user_field',
         'measure_adherence_pct', 'measure_top_users',
         'measure_method', 'measure_proxy_activity_id', 'sample_cadence',
-        'measure_justification', 'measure_count_generic',
+        'measure_justification', 'measure_deliverable_id', 'measure_count_generic',
         'measure_count_no_employee', 'measure_count_system',
         'measure_count_other_job', 'measure_warning'}
 
@@ -1004,7 +1011,7 @@ class SgiProcessActivity(models.Model):
         la actividad que la prueba, al final), y los que aún no tienen fuente
         (correo, manual, muestreo) quedan «pendiente»; «no aplica» no se mide.
         Sin método pero con modelo (heredadas) se mide como Odoo."""
-        odoo = self.filtered(lambda a: a.measure_method in (False, 'odoo'))
+        odoo = self.filtered(lambda a: a.measure_method in (False, 'odoo', 'entregable'))
         consequence = self.filtered(lambda a: a.measure_method == 'consecuencia')
         others = self - odoo - consequence
         odoo._sgi_measure_odoo()
@@ -1019,7 +1026,7 @@ class SgiProcessActivity(models.Model):
             activity._sgi_write_if_changed(vals)
         for activity in consequence:
             root = activity._sgi_proxy_root()
-            if root not in odoo and root.measure_method in (False, 'odoo') \
+            if root not in odoo and root.measure_method in (False, 'odoo', 'entregable') \
                     and root.measure_model_id:
                 root._sgi_measure_odoo()
             vals = dict(self._SGI_EXECUTOR_RESET,
@@ -1426,7 +1433,8 @@ class SgiActivityLink(models.Model):
     lag_days = fields.Float(
         string="Rezago (días)", readonly=True, digits=(6, 1),
         help="Días que la última evidencia del paso destino va detrás de la "
-             "del paso origen. 0 = el eslabón está al día.")
+             "del paso origen. 0 = el eslabón está al día. Si el «recibe» tiene "
+             "plazo, son días hábiles desde que se entregó.")
     atorado_since = fields.Datetime("Atorado desde", readonly=True)
     nc_alert_id = fields.Many2one(
         'quality.alert', string="NC generada", readonly=True, copy=False)
@@ -1451,15 +1459,20 @@ class SgiActivityLink(models.Model):
         for link in self:
             frm, to = link.from_activity_id, link.to_activity_id
             vals = {'chain_state': False, 'lag_days': 0.0}
-            if frm.measure_state == 'verde' and to.measure_state == 'rojo':
-                vals['chain_state'] = 'atorado'
-            elif frm.measure_state and to.measure_state:
-                vals['chain_state'] = 'fluye'
-            if frm.measure_last_date and to.measure_last_date \
-                    and frm.measure_last_date > to.measure_last_date:
-                vals['lag_days'] = round(
-                    (frm.measure_last_date - to.measure_last_date
-                     ).total_seconds() / 86400.0, 1)
+            verdict = link._sgi_chain_verdict(now)
+            if verdict is not None:
+                # Con plazo en el «recibe»: días hábiles desde que se entregó.
+                vals['chain_state'], vals['lag_days'] = verdict
+            else:
+                if frm.measure_state == 'verde' and to.measure_state == 'rojo':
+                    vals['chain_state'] = 'atorado'
+                elif frm.measure_state and to.measure_state:
+                    vals['chain_state'] = 'fluye'
+                if frm.measure_last_date and to.measure_last_date \
+                        and frm.measure_last_date > to.measure_last_date:
+                    vals['lag_days'] = round(
+                        (frm.measure_last_date - to.measure_last_date
+                         ).total_seconds() / 86400.0, 1)
             if vals['chain_state'] == 'atorado':
                 since = link.atorado_since or now
                 vals['atorado_since'] = since
@@ -1469,10 +1482,12 @@ class SgiActivityLink(models.Model):
                     Cron._sgi_schedule(
                         to.process_id,
                         "Eslabón atorado: %s" % (link.name or ''),
-                        "«%s» entregó (%s) pero «%s» no tiene evidencia en su "
-                        "periodo. Revise el paso o su medición." % (
+                        "«%s» entregó (%s) pero «%s» no tiene evidencia %s. "
+                        "Revise el paso o su medición." % (
                             frm.display_name, link.name or '',
-                            to.display_name),
+                            to.display_name,
+                            "dentro de su plazo de %d días hábiles" % link.max_days
+                            if link.max_days else "en su periodo"),
                         owner_user)
                 elif (now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS \
                         and not link._sgi_chain_nc_open():
