@@ -28,8 +28,10 @@ y CLABEs no se copian aquí: están en Odoo (Empleado → Cuentas bancarias).
 1. **21 números de empleado en colisión.** NOI repite claves entre nóminas
    (semanal / quincenal Toluca / CDMX) y `registration_number` es único por
    compañía en Odoo. Estos quedan **sin número** hasta que se decida un
-   prefijo (p. ej. `Q-14`, `C-26`) o dejarlos vacíos (el CFDI omite
-   `NumEmpleado`):
+   prefijo (p. ej. `Q-14`, `C-26`). Dejarlos vacíos **no** es opción para
+   timbrar: en el complemento Nómina 1.2 `NumEmpleado` es un atributo
+   **requerido** de `Receptor` (1 a 15 caracteres, cualquiera menos `|`),
+   así que un recibo sin referencia lo rechaza el PAC:
 
    | Odoo | Empleado | NOI | El número lo tiene |
    |---|---|---|---|
