@@ -61,7 +61,72 @@ _ACTIVITY_TEXT_FIELDS = (
     'name', 'description', 'odoo_ref', 'note', 'responsible_role')
 _INDICATOR_FIELDS = (
     'name', 'uom', 'direction', 'target_objective', 'target_acceptable',
-    'frequency', 'calc_mode', 'monthly_budget', 'nc_on_red')
+    'frequency', 'calc_mode', 'monthly_budget', 'nc_on_red', 'formula', 'source')
+
+# Llaves válidas de cada nivel del JSON. Una llave que no está aquí es error:
+# una llave que se ignora en silencio es como se perdieron los indicadores de
+# C2 (venían dentro del proceso). (llaves, {llave: (tipo, sub-esquema)}).
+_KEYS_ROLE = ({'role', 'job', 'job_id', 'family', 'relative', 'condition'}, {})
+_KEYS_INPUT = ({'code', 'days'}, {})
+_KEYS_MEASURE = ({'method', 'proxy', 'deliverable', 'justification', 'sample_cadence',
+                  'cadence'}, {})
+_KEYS_AUTOMATION = ({'current', 'target', 'method'}, {})
+_KEYS_EVIDENCE = ({'source_type', 'model', 'domain', 'date_field', 'user_field'}, {})
+_KEYS_ACTIVITY = ({
+    'process', 'number', 'step', 'sequence', 'name', 'description', 'odoo_ref',
+    'note', 'responsible_role', 'stage', 'section', 'block', 'value_class',
+    'cadence', 'roles', 'inputs', 'outputs', 'instruction', 'related_procedure',
+    'formats', 'evidence', 'measure', 'automation',
+    'links_to',             # anterior: error propio
+}, {'roles': (list, _KEYS_ROLE), 'inputs': (list, _KEYS_INPUT),
+    'measure': (dict, _KEYS_MEASURE), 'automation': (dict, _KEYS_AUTOMATION),
+    'evidence': (list, _KEYS_EVIDENCE)})
+_KEYS_PROCESS = ({
+    'code', 'name', 'purpose', 'scope', 'env_aspects', 'process_type', 'type',
+    'owner', 'owner_job', 'owner_employee_id', 'parent', 'replaced_documents',
+    'replaces', 'activities',
+    'inputs', 'outputs', 'start_trigger', 'end_trigger',   # anteriores
+}, {'activities': (list, _KEYS_ACTIVITY)})
+_KEYS_FAMILY = ({'code', 'name', 'jobs'}, {})
+_KEYS_DELIVERABLE = ({'code', 'name', 'document', 'model', 'domain', 'date_field',
+                      'user_field', 'acceptance_criteria'}, {})
+_KEYS_INDICATOR = ({'code', 'process', 'responsible', 'responsible_employee_id',
+                    *_INDICATOR_FIELDS}, {})
+_KEYS_PAYLOAD = ({
+    'dry_run', 'company_id', 'archive_missing', 'families', 'deliverables',
+    'processes', 'activities', 'indicators',
+    'links', 'flows',       # anteriores: error propio
+}, {'families': (list, _KEYS_FAMILY), 'deliverables': (list, _KEYS_DELIVERABLE),
+    'processes': (list, _KEYS_PROCESS), 'activities': (list, _KEYS_ACTIVITY),
+    'indicators': (list, _KEYS_INDICATOR)})
+
+
+def _unknown_keys(node, schema, path=''):
+    """[(ruta, mensaje)] de cada llave desconocida o de tipo equivocado."""
+    keys, children = schema
+    if not isinstance(node, dict):
+        return [(path or '(raíz)', "debe ser un objeto JSON")]
+    problems = []
+    for key, value in node.items():
+        where = "%s.%s" % (path, key) if path else key
+        if key not in keys:
+            problems.append((where, "llave desconocida. Válidas aquí: %s." % (
+                ', '.join(sorted(keys)))))
+            continue
+        if key not in children or value is None:
+            continue
+        kind, sub = children[key]
+        if kind is dict:
+            problems += _unknown_keys(value, sub, where)
+        elif not isinstance(value, list):
+            problems.append((where, "debe ser una lista"))
+        else:
+            for index, item in enumerate(value):
+                # Un «recibe» puede ser solo el código del entregable.
+                if sub is _KEYS_INPUT and isinstance(item, str):
+                    continue
+                problems += _unknown_keys(item, sub, "%s[%d]" % (where, index))
+    return problems
 
 
 class _Rollback(Exception):
@@ -198,11 +263,18 @@ class _SgiLoader:
         self.processes = {}     # code -> sgi.process
         self.activities = {}    # (process code, number) -> sgi.process.activity
         self.job_cache = {}
+        self.replaces = []      # (código del proceso nuevo, [códigos que sustituye])
         self.family_cache = {}
 
     # ------------------------------------------------------------------
     def run(self):
         payload = self.payload
+        problems = _unknown_keys(payload, _KEYS_PAYLOAD)
+        if problems:
+            # Nada se carga: un JSON con llaves que no se entienden no carga a medias.
+            for where, message in problems:
+                self.report.error('payload', where, "%s: %s" % (where, message))
+            return
         for key in ('links', 'flows'):
             if payload.get(key):
                 self.report.error(key, None, _LEGACY_KEYS[key])
@@ -230,6 +302,7 @@ class _SgiLoader:
             self._load_process_tx(
                 proc, activities_by_process.get(code), archive_missing)
         self._load_proxies()
+        self._load_replaces()
         self._load_indicators(payload.get('indicators') or [])
 
     def _savepoint(self, fn, kind, key):
@@ -347,6 +420,8 @@ class _SgiLoader:
             if proc['parent'] and not parent:
                 raise ValidationError("Macroproceso %s no existe." % proc['parent'])
             vals['parent_id'] = parent.id
+        if proc.get('replaces'):
+            self.replaces.append((code, proc['replaces']))
         if 'replaced_documents' in proc:
             docs = []
             for doc_code in proc['replaced_documents'] or []:
@@ -849,6 +924,37 @@ class _SgiLoader:
             raise ValidationError("Proceso %s no existe." % code)
         return process
 
+    def _load_replaces(self):
+        """«replaces»: el proceso nuevo archiva a los que sustituye (una sola
+        vez; con dry_run solo se reporta) y lo deja dicho en su chatter."""
+        for code, olds in self.replaces:
+            new = self.processes.get(code)
+            if not new:
+                continue    # su proceso no se cargó: el error ya está reportado
+
+            def run(new=new, olds=olds, code=code):
+                for old_code in olds:
+                    if old_code == code:
+                        raise ValidationError("%s no puede sustituirse a sí mismo." % code)
+                    old = self.Process.search([('code', '=', old_code),
+                                               ('company_id', '=', self.company.id)], limit=1)
+                    if not old:
+                        raise ValidationError("«replaces»: el proceso %s no existe." % old_code)
+                    if not old.active:
+                        continue
+                    self.report.change('process', old_code, 'archived')
+                    active_acts = self.env['sgi.process.activity'].search_count(
+                        [('process_id', '=', old.id)])
+                    if active_acts:
+                        self.report.warn('process', old_code, (
+                            "Se archiva con %d actividad(es) activa(s); quedan como "
+                            "estaban, dentro del proceso archivado." % active_acts))
+                    old.write({'active': False})
+                    if not self.report.dry_run:
+                        old.message_post(body="Sustituido por %s — %s." % (
+                            new.code, new.name))
+            self._savepoint(run, 'process', code)
+
     def _load_indicators(self, indicators):
         Indicator = self.env['sgi.indicator'].with_context(active_test=False)
         Users = self.env['res.users']
@@ -862,6 +968,20 @@ class _SgiLoader:
                 if 'process' in item:
                     vals['process_id'] = self._find_process(item['process']).id \
                         if item['process'] else False
+                if item.get('responsible_employee_id') and item.get('responsible'):
+                    raise ValidationError("Indica «responsible» o «responsible_employee_id», "
+                                          "no los dos.")
+                if 'responsible_employee_id' in item:
+                    emp_id = item['responsible_employee_id']
+                    emp = self.env['hr.employee'].browse(int(emp_id)).exists() \
+                        if emp_id else self.env['hr.employee']
+                    if emp_id and not emp:
+                        raise ValidationError("El empleado %s no existe." % emp_id)
+                    if emp and not emp.user_id:
+                        raise ValidationError(
+                            "El empleado %s (%s) no tiene usuario: no puede ser "
+                            "responsable del indicador." % (emp.id, emp.name))
+                    vals['responsible_id'] = emp.user_id.id
                 if 'responsible' in item:
                     ref = item['responsible']
                     user = Users.browse(ref).exists() if isinstance(ref, int) else \
