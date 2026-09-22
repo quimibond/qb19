@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.28.1.0',
+    'version': '19.0.29.5.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -44,6 +44,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'web_grid',
         'sign',
         'website_slides',
+        'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
     ],
     'data': [
         # security
@@ -51,6 +52,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'security/ir.model.access.csv',
         # data
         'data/sgi_sequences.xml',
+        'data/sgi_document_types.xml',
         'data/sgi_sequences_fase2.xml',
         'data/sgi_areas.xml',
         'data/sgi_norms.xml',
@@ -121,6 +123,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_sales_budget_views.xml',
         'views/sgi_settings_views.xml',
         'views/sgi_sign_elearning_views.xml',
+        'views/sgi_catalog_views.xml',
         # reports
         'report/report_nc.xml',
         'report/report_8d.xml',

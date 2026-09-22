@@ -468,10 +468,252 @@ Configuración manual restante: crear las plantillas de Sign por documento
 (una vez, colocando el campo de firma sobre el PDF) y mapear los cursos
 existentes a competencias.
 
+## Catálogo único — fase 1 del rediseño (v19.0.29.0.0, 2026-09)
+
+El SGI pasa a ser el **catálogo único de actividades** de la empresa: cada
+actividad existe una vez y de ella salen el procedimiento, la descripción de
+puesto, los indicadores y la lista de automatización. Fase 1 de 5 (las
+siguientes: evidencia y medición por ejecutor real, motor de reglas,
+revisiones y descripción de puesto, automatización/tableros/seguridad).
+
+- **Roles como filas** (`sgi.activity.role`): cada actividad dice qué puesto
+  la **ejecuta**, **aprueba**, **participa** o **se entera**, con condición
+  opcional. Exactamente un «ejecuta» (cero si `automation_level_current =
+  automatico`) y a lo más un «aprueba» sin condición. «Puestos responsables»
+  (`responsible_job_ids`) queda calculado desde los roles «ejecuta» sobre la
+  misma tabla de antes; escribirlo crea/quita roles. El puesto (`hr.job`)
+  muestra sus actividades y contadores por rol.
+- **Actividad**: `instruction_id` (instructivo IT), `value_class` (VA / NVA
+  necesaria / NVA), nivel de automatización actual/meta y método, `active`
+  (la carga archiva, nunca borra) y numeral único por proceso.
+- **Proceso**: ficha (`start_trigger`, `end_trigger`, `inputs`, `outputs`),
+  `replaced_document_ids`, `company_id` y clave única **por empresa**. Dueño
+  sin usuario o archivado → salud en rojo y aviso en la ficha. Aprobador por
+  omisión = usuario del dueño; Vo.Bo. por omisión = parámetro
+  `quimibond_sgi.vobo_user_id` (id del usuario Jefe de MAST y SGI; **hay que
+  capturarlo** en Parámetros del sistema).
+- **Tipos de documento como datos** (`sgi.document.type`, Configuración →
+  Tipos de documento): patrón de clave (`PR-{process}`,
+  `IT-{process}-{seq:02d}`, `F-{process}-{seq:02d}`, `CO-{seq:02d}`,
+  `MA-{process}-{seq:02d}`, `DP-{seq:02d}`), si exige proceso y la
+  nomenclatura heredada que se sigue aceptando mientras se migra (`P-A28`,
+  `F-P-A28-04`…). `sgi_doc_type` se conserva calculado desde el tipo.
+  `sgi.document.type.sgi_next_code(proceso)` propone la siguiente clave.
+- **Revisión entera** (`sgi_revision`; `sgi_revision_label` = «05» para
+  imprimir). Única por clave + revisión + empresa entre documentos activos;
+  una revisión nueva va por arriba de la última de su clave y no baja (salvo
+  `sgi_revision_correction` de un Jefe MAST); una clave, aun dada de baja, no
+  se reutiliza en otro tipo ni en otro proceso. Lo no numérico que había queda
+  en `sgi_revision_legacy`.
+- **Clave anterior** (`sgi_previous_code`): al cambiar la clave se guarda sola;
+  la búsqueda «Clave SGI» y `_sgi_find_by_code` la encuentran 12 meses.
+- **Multiempresa**: `company_id` y regla por empresa en proceso, actividad,
+  rol, liga, flujo, responsabilidad y tipo de documento.
+- **Grupo Administrador SGI** (implica Jefe MAST): el único que carga por API,
+  fusiona puestos y administra tipos de documento. Se asigna a mano.
+
+### Fase 1.1 — familias, roles relativos, vacantes y medición
+
+- **Familias de puestos** (`sgi.job.family`, Procesos → Familias de puestos):
+  el mismo rol en puestos que solo cambian por nivel o letra (OP-TEJ, OP-INS,
+  LAB…). Un puesto está en una sola familia por empresa; `hr.job.sgi_family_id`
+  se calcula desde la familia. Un rol se asigna a un **puesto**, una **familia**
+  o un **rol relativo** (`target_type`); la regla de un solo «ejecuta» cuenta
+  filas, así que una familia cuenta como una. `responsible_job_ids` expande las
+  familias. Una familia está vacía solo si todos sus puestos lo están.
+- **Roles relativos** (`relative_role`): solicitante, jefe del solicitante,
+  quien detecta, área responsable, dueño del proceso. Solo el dueño se
+  resuelve a un puesto; los demás no cuentan para «puesto sin persona» ni
+  para adherencia.
+- **Vacante aprobada** (`hr.job.sgi_vacancy_approved` / `sgi_vacancy_until`,
+  pestaña Actividades SGI del puesto): un puesto sin empleados con vacante
+  vigente se carga con advertencia; sin ella, es error.
+- **Método de medición obligatorio** (`measure_method`): Odoo, por
+  consecuencia (`measure_proxy_activity_id`: copia el conteo y el estado de la
+  actividad que la prueba; sin ciclos), correo y manual (grises «pendiente»
+  hasta la fase 2), muestreo (`sample_cadence`) y no aplica (exige
+  `measure_justification`). «Sin medir» solo con el procedimiento en borrador:
+  un procedimiento no pasa a piloto con actividades sin método, ni a vigente con
+  métodos incompletos (el error las lista). La ficha del proceso y
+  Procesos → Medición por método muestran cuánto se mide de verdad
+  (odoo + consecuencia entre el total).
+- **Quién ejecutó** (`measure_user_field`, p. ej. `create_uid`): el cron hace un
+  `read_group` por ese campo en la ventana de 30 días y clasifica cada
+  ejecución en `measure_executor_json`: **correcto**, **otro_puesto**,
+  **generico** (cuentas compartidas del parámetro
+  `quimibond_sgi.generic_user_ids`; la migración pone 92,184,80),
+  **sin_empleado** o **sistema** (OdooBot). Adherencia = correcto entre todo lo
+  que no es sistema. Avisos en la ficha (`measure_warning`): adherencia < 80 %,
+  ejecuciones genéricas o sin empleado, y actividad «manual» con más de la mitad
+  de ejecuciones del sistema. TODO fase 2: pasa a `sgi.activity.evidence`.
+- **El detalle vive en un modelo, no en JSON** (`sgi.activity.exec.stat`): una
+  fila por actividad, semana (lunes), usuario y clase, con empleado, puesto y
+  familia al momento de medir. Lo escribe el cron (reemplaza las 4 semanas que
+  recalcula; si nada cambió no escribe); nadie lo edita. La adherencia y los
+  contadores de la actividad salen de esas 4 semanas.
+
+### Pantallas (reorganizadas el 22-sep-2026)
+
+El menú del SGI tiene **seis entradas y máximo tres niveles** (antes eran 14,
+con tres tableros y las actividades en tres lugares). Todo el árbol vive en
+`views/sgi_menus.xml`; los xmlids no cambiaron.
+
+| Menú | Qué hay |
+|---|---|
+| **Inicio** | Tablero (hoja de cálculo «Salud del SGI», se arma con los pivotes de Análisis), Mis actividades, Mis acciones, Mis mediciones, Mis procedimientos, Mis acuses |
+| **Procesos** | Mapa de procesos (kanban por tipo con barra de medición, dueño, % medido y adherencia), Actividades, Roles por puesto, Cadena de actividades, Flujos, Riesgos y oportunidades, Requisitos legales, Partes interesadas |
+| **Mejora** | No conformidades, Concentrado de NC, Acciones, Reclamaciones, Quejas y sugerencias, Incidentes SST, Mejoras, Lecciones aprendidas, Auditorías y su programa, Planes de emergencia, Simulacros |
+| **Documentos** | Documentos, Cambios documentales, Migración de formatos |
+| **Análisis** | Política → Objetivos → Indicadores → Mediciones, Satisfacción del cliente, Quién hace qué, Tendencia de ejecuciones, Cobertura de medición, Cumplimiento de procedimientos, Diagnóstico, Revisión por la Dirección |
+| **Configuración** | Cargar catálogo (solo Administrador SGI), Familias de puesto, Tipos de documento, Ajustes, Áreas, Normas… (solo MAST) |
+
+Calidad preventiva (AMEF, PPAP, planes de control, metrología) y el Pareto de
+alertas viven en la app **Calidad**; evaluación de proveedores en Compras,
+presupuesto en Ventas y competencias en Empleados.
+
+**Ficha del proceso**: 3 botones (Actividades, En rojo, NC abiertas), botón
+«Imprimir procedimiento» arriba y 4 pestañas: *Ficha* (objetivo, disparadores,
+entradas y salidas, indicadores y riesgos), *Actividades* (lista con quién
+ejecuta y aprueba, método, estado y adherencia; abajo el texto del
+procedimiento y las firmas), *Conexiones* (flujos y ligas) y *Documentos*.
+
+**Ficha de la actividad**: arriba el número, el nombre, el proceso y el método
+(y los avisos en amarillo si los hay); 4 pestañas: *Qué y quién* (roles,
+descripción, instructivo, formatos, valor y automatización), *Cómo se mide*,
+*Quién la ejecutó* (últimas 4 semanas) y *Cadena*.
+
+### Carga por API: `sgi.process.load_payload(payload, dry_run=False)`
+
+Por JSON-RPC o por el conector MCP (`call_model_method` sobre `sgi.process`;
+la migración habilita el modelo en MCP con llamadas a métodos). Alta o
+actualización por llave natural (entregable `code`; proceso `code`; actividad
+proceso + paso; rol actividad + rol + puesto; «recibe» actividad + entregable;
+indicador `code`). Escribe solo lo que cambió: la segunda corrida del mismo
+JSON reporta cero cambios. `dry_run` corre todo en un savepoint que se deshace
+y reporta lo que se crearía, actualizaría o archivaría. Una transacción por
+proceso: si una actividad falla, el proceso entero se deshace y se reporta.
+Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
+(`"archive_missing": false` lo evita); su texto original se queda en ellas.
+
+```json
+{
+  "dry_run": true,
+  "deliverables": [
+    {"code": "C2-PEDIDO", "name": "Pedido confirmado", "model": "sale.order",
+     "domain": "[('state', '=', 'sale')]", "date_field": "date_order",
+     "user_field": "user_id", "acceptance_criteria": "Precio y fecha confirmados"},
+    {"code": "C2-OC-CLIENTE", "name": "Orden de compra del cliente", "document": "F-C2-01"}
+  ],
+  "processes": [{"code": "C2", "name": "Ventas", "process_type": "cadena de valor",
+                 "owner_employee_id": 244,
+                 "replaced_documents": ["P-A28"], "replaces": ["P-VEN"]}],
+  "activities": [
+    {"process": "C2", "number": "C2.03", "stage": "A. Pedido",
+     "name": "Verificar número de parte y precio", "value_class": "nva_n",
+     "roles": [{"role": "ejecuta", "family": "PEDIDOS"},
+               {"role": "informa", "relative": "dueno_proceso"}],
+     "inputs": [{"code": "C2-OC-CLIENTE", "days": 1}],
+     "outputs": ["C2-PEDIDO"],
+     "measure": {"method": "entregable", "deliverable": "C2-PEDIDO"},
+     "cadence": "evento",
+     "automation": {"current": "manual", "target": "asistido"}}
+  ],
+  "indicators": [{"code": "C2-01", "name": "Entregas completas y a tiempo (OTIF)",
+                  "process": "C2", "frequency": "monthly",
+                  "formula": "Entregas completas en la fecha compromiso ÷ entregas del mes",
+                  "source": "Fecha compromiso del pedido contra fecha de la entrega",
+                  "responsible_employee_id": 244}]
+}
+```
+
+- **Llaves desconocidas = error**, con la ruta completa
+  (`processes[0].activities[5].origin_note`) y la lista de llaves válidas de
+  ese nivel. Si hay una, no se carga nada. Los indicadores van al nivel
+  principal con `process`, no dentro del proceso.
+- **`replaces`** (proceso): códigos de procesos que el nuevo sustituye. En la
+  carga real se archivan, **con sus actividades** (que conservan su texto), y
+  su chatter dice «Sustituido por C2»; con `dry_run` solo se reportan. Un código que no existe es error.
+- **Indicadores**: `formula` y `source` (texto; salen en la ficha y en el
+  procedimiento impreso), `frequency` `monthly`/`weekly`, y el responsable
+  como `responsible_employee_id` (su usuario) o `responsible` (id o login).
+- **`number`**: `"C2.03"` (clave del proceso + paso) o el paso como entero
+  (`3`). Es un número, no texto: el numeral que se imprime se calcula y se
+  renumera solo si cambia la clave del proceso. Otro formato es error.
+- **`stage`**: la etapa del proceso («A. Pedido»); se crea la primera vez.
+- **`deliverables`** se procesan antes que los procesos. `model` + `domain` +
+  `date_field` (+ `user_field`) dicen **cuándo quedó entregado**: con ellos, la
+  actividad que lo entrega se mide con `"measure": {"method": "entregable"}`
+  y no lleva `evidence` (se captura una vez, en el entregable). Si la
+  actividad entrega un solo entregable con modelo, `deliverable` se puede
+  omitir. Sin `model`, el entregable es documental.
+- **`inputs`**: lo que la actividad recibe; `"C2-PEDIDO"` o
+  `{"code": "C2-PEDIDO", "days": 2}`. `days` es el **plazo en días hábiles**
+  (lunes a viernes) para que llegue a esta actividad; pasado el plazo sin que
+  ella ejecute, el eslabón está atorado. `0` o sin `days` = sin plazo.
+- **`outputs`**: códigos de lo que la actividad entrega.
+- **Las ligas y los flujos no se cargan**: salen solos de `inputs`/`outputs`
+  (una liga por quien entrega × quien recibe; un flujo si cruzan proceso) y no
+  se editan a mano. Si una no aplica se desactiva con su motivo en la
+  actividad (pestaña Cadena). `links_to`, `links`, `flows` e `inputs`/`outputs`
+  como texto del proceso son **error**.
+- **Un ejecutor por actividad.** Si según el caso la ejecuta otro puesto, son
+  dos actividades. Una familia de puestos (`family`) solo cuando los puestos
+  son intercambiables (PEDIDOS). `condition` solo va en `aprueba` o `informa`
+  («arriba del monto que se fije»); en `ejecuta` o `participa` es error.
+- **Inicio y fin del proceso** no se capturan: inicia con lo que sus
+  actividades reciben y ninguna produce; termina con lo que entregan y ninguna
+  recibe. `start_trigger`/`end_trigger` se ignoran con aviso.
+- Puestos por id o por nombre normalizado (sin mayúsculas, espacios y saltos
+  de línea colapsados). **Nunca se crean**: si no existe o es ambiguo, error.
+- Dueño: `owner_employee_id`, o `owner_job` = el único empleado activo con
+  usuario en ese puesto (si hay 0 o varios, aviso y queda sin dueño).
+- `evidence` (método `odoo`): la primera fuente `odoo_model` va a los campos
+  de medición de la actividad; las demás llegan en la fase 2.
+
+Ejemplo por MCP: `call_model_method("sgi.process", "load_payload", [payload])`.
+
+### Limpiezas a mano (con reporte previo)
+
+- **Puestos duplicados y nombres con saltos de línea**:
+  `hr.job.sgi_merge_duplicate_jobs(dry_run=True)` reporta; con `dry_run=False`
+  conserva el puesto con más empleados, mueve TODAS sus referencias (empleados,
+  roles, documentos, responsabilidades…) y archiva los demás. Hoy hay
+  duplicados por mayúsculas (Director de Ventas, Coordinador de Ventas
+  Industrial, Administrador de Ventas y Marketing…) que hacen ambigua la carga:
+  correrla **antes** de cargar los 14 procesos.
+- **Modelos de Studio vacíos** (`x_emp_activity`, `x_no_conformidades`,
+  `x_actividades_obligato`, `x_calendario_de_obliga`):
+  `sgi.config.sgi_drop_empty_studio_models(dry_run=True)`. Solo borra los que
+  siguen en cero, con sus vistas, acciones y menús. Fuera de un update (borrar
+  un modelo recarga el registro).
+
+### Migración (19.0.29.0.0)
+
+`pre-migrate`: revisión y nueva revisión de texto a entero; quita la
+unicidad global de la clave de proceso. `post-migrate`: `company_id = 1`, un
+rol «ejecuta» por cada puesto responsable (las actividades heredadas con 0 o
+varios ejecutores se listan en el log; la regla se les aplica al editar sus
+roles), tipo de documento como registro, aprobador = usuario del dueño y
+`sgi.process` habilitado en MCP. Nada se borra; los 25 procesos actuales se
+archivan después, desde datos, cuando sus actividades y documentos pasen a los
+14 nuevos.
+
+Verificar después de desplegar:
+
+```sql
+select count(*) from sgi_activity_role;                       -- ≈ roles migrados
+select data_type from information_schema.columns
+ where table_name = 'documents_document' and column_name = 'sgi_revision';  -- integer
+select count(*) from documents_document where sgi_is_controlled and sgi_doc_type_id is null;
+```
+
 ## Alcance multiempresa (decisión de arquitectura)
 
-La instancia tiene varias compañías; **el SGI es exclusivo de PRODUCTORA DE NO
-TEJIDOS QUIMIBOND (PNTQ)** y sus modelos NO llevan `company_id` (salvo el
+La instancia tiene varias compañías. Desde la fase 1 del catálogo
+(v19.0.29.0.0) el **catálogo** (procesos, actividades, roles, ligas, flujos,
+responsabilidades, tipos de documento) lleva `company_id` y regla por empresa.
+El resto del SGI sigue siendo exclusivo de PRODUCTORA DE NO TEJIDOS QUIMIBOND
+(PNTQ) y sus modelos NO llevan `company_id` (salvo el
 presupuesto de ventas, que sí lo necesita para valuar). Es una decisión
 consciente: los registros SGI son globales de la planta. Si otra compañía
 adoptara el SGI, la Fase correspondiente deberá añadir `company_id` por etapas
@@ -543,3 +785,14 @@ flujo documental → botón bloqueado; «Levantar NC» en mantenimiento correcti
 NC ligada (idempotente); y CoA publicado adjunta el PDF a la entrega. **4 tests.**
 
 Suite completa (quimibond_sgi + puentes): **64 tests, 0 fallos.**
+
+Cubren (catálogo, fase 1 — `test_catalog_fase1.py`): exactamente un ejecutor
+(cero si es automática) y un aprobador sin condición; cambio de ejecutor en
+una sola escritura; `responsible_job_ids` heredado crea roles; numeral único
+por proceso; carga idempotente (segunda corrida y su dry-run sin cambios),
+dry-run que no escribe, puesto inexistente = error sin crear nada y proceso
+deshecho, archivado de actividades que ya no vienen, puesto ambiguo; patrones
+de tipo de documento y siguiente clave; revisión única y creciente; clave no
+reutilizable en otra familia; clave anterior encontrada; dueño inválido = rojo.
+**No se han corrido todavía**: el SGI depende de Enterprise y no entra al CI;
+correrlas en la base de pruebas de Odoo.sh con el comando de arriba.

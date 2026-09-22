@@ -16,6 +16,9 @@ class TestAuditHardening(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.team_int = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
         cls.group_user = cls.env.ref('quimibond_sgi.group_sgi_user')

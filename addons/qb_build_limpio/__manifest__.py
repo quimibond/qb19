@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Build limpio',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'category': 'Technical',
     'summary': 'Corrige en la base lo que pinta de naranja el build de Odoo.sh: campos y vistas de Studio con etiquetas duplicadas, dependencias no buscables, vistas inválidas, grupos inexistentes y columnas requeridas sin NOT NULL.',

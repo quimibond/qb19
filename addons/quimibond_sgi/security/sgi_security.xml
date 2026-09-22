@@ -43,10 +43,82 @@
             (4, ref('approvals.group_approval_manager'))]"/>
     </record>
 
+    <!-- Administrador SGI (fase 1 del catálogo): carga el catálogo por API
+         (sgi.process.load_payload), fusiona puestos duplicados y administra
+         los tipos de documento. Se asigna a mano. -->
+    <record id="group_sgi_admin" model="res.groups">
+        <field name="name">Administrador SGI</field>
+        <field name="sequence">35</field>
+        <field name="privilege_id" ref="res_groups_privilege_sgi"/>
+        <field name="implied_ids" eval="[(4, ref('group_sgi_manager'))]"/>
+    </record>
+
     <record id="group_sgi_director" model="res.groups">
         <field name="name">Dirección de Operaciones (SGI)</field>
         <field name="sequence">40</field>
         <field name="privilege_id" ref="res_groups_privilege_sgi"/>
         <field name="implied_ids" eval="[(4, ref('group_sgi_manager'))]"/>
+    </record>
+    <!-- Multiempresa (fase 1): el grupo tiene 8 empresas en la misma base.
+         Vacío = compartido. -->
+    <record id="rule_sgi_process_company" model="ir.rule">
+        <field name="name">SGI: Procesos por empresa</field>
+        <field name="model_id" ref="model_sgi_process"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_process_activity_company" model="ir.rule">
+        <field name="name">SGI: Actividades por empresa</field>
+        <field name="model_id" ref="model_sgi_process_activity"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_activity_role_company" model="ir.rule">
+        <field name="name">SGI: Roles de actividad por empresa</field>
+        <field name="model_id" ref="model_sgi_activity_role"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_activity_link_company" model="ir.rule">
+        <field name="name">SGI: Ligas entre actividades por empresa</field>
+        <field name="model_id" ref="model_sgi_activity_link"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_process_flow_company" model="ir.rule">
+        <field name="name">SGI: Flujos entre procesos por empresa</field>
+        <field name="model_id" ref="model_sgi_process_flow"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_process_responsibility_company" model="ir.rule">
+        <field name="name">SGI: Responsabilidades por empresa</field>
+        <field name="model_id" ref="model_sgi_process_responsibility"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_job_family_company" model="ir.rule">
+        <field name="name">SGI: Familias de puestos por empresa</field>
+        <field name="model_id" ref="model_sgi_job_family"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_activity_exec_stat_company" model="ir.rule">
+        <field name="name">SGI: Ejecuciones por empresa</field>
+        <field name="model_id" ref="model_sgi_activity_exec_stat"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_deliverable_company" model="ir.rule">
+        <field name="name">SGI: Entregables por empresa</field>
+        <field name="model_id" ref="model_sgi_deliverable"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_activity_input_company" model="ir.rule">
+        <field name="name">SGI: Lo que recibe cada actividad, por empresa</field>
+        <field name="model_id" ref="model_sgi_activity_input"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_process_stage_company" model="ir.rule">
+        <field name="name">SGI: Etapas por empresa</field>
+        <field name="model_id" ref="model_sgi_process_stage"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_document_type_company" model="ir.rule">
+        <field name="name">SGI: Tipos de documento por empresa</field>
+        <field name="model_id" ref="model_sgi_document_type"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
 </odoo>

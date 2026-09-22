@@ -264,7 +264,7 @@ def run(env):
         if not DRY_RUN:
             doc.write({'sgi_is_controlled': True, 'sgi_code': code,
                        'sgi_doc_type': dtype, 'sgi_state': 'vigente',
-                       'sgi_revision': doc.sgi_revision or '00'})
+                       'sgi_revision': doc.sgi_revision or 0})
         done['rescatados'] += 1
         tick()
 

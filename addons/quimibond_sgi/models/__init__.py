@@ -13,6 +13,7 @@ from . import sgi_nonconformity
 from . import sgi_complaint
 from . import sgi_improvement
 from . import sgi_integration
+from . import sgi_sale_commitment
 from . import sgi_policy
 from . import sgi_objective
 from . import sgi_indicator
@@ -27,6 +28,11 @@ from . import sgi_ppap
 from . import sgi_incident
 from . import sgi_competence
 from . import sgi_format_map
+from . import sgi_catalog
+from . import sgi_deliverable
+from . import sgi_load
+from . import sgi_exec_stat
+from . import sgi_load_wizard
 from . import sgi_sales_budget
 from . import sgi_sales_budget_line
 from . import sgi_sales_budget_import

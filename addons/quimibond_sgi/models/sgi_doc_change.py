@@ -35,9 +35,9 @@ class ApprovalRequest(models.Model):
         ('formato', "Formato"),
         ('contenido', "Contenido"),
     ], string="¿Qué se modifica?")
-    sgi_current_revision = fields.Char(related='sgi_document_id.sgi_revision',
-                                       string="Revisión vigente", readonly=True)
-    sgi_new_revision = fields.Char(string="Nueva revisión")
+    sgi_current_revision = fields.Integer(related='sgi_document_id.sgi_revision',
+                                          string="Revisión vigente", readonly=True)
+    sgi_new_revision = fields.Integer(string="Nueva revisión")
     sgi_pilot = fields.Boolean(string="Prueba piloto")
     sgi_pilot_start = fields.Date(string="Inicio de piloto")
     sgi_pilot_end = fields.Date(string="Fin de piloto")
@@ -48,15 +48,13 @@ class ApprovalRequest(models.Model):
 
     @api.onchange('sgi_document_id', 'sgi_change_kind')
     def _onchange_sgi_suggest_revision(self):
-        """Sugiere la siguiente revisión (vigente + 1, con ceros a la
-        izquierda). Solo propone: no pisa lo que el solicitante ya capturó."""
+        """Sugiere la siguiente revisión (vigente + 1). Solo propone: no
+        pisa lo que el solicitante ya capturó."""
         for req in self:
             if (req.sgi_change_kind != 'modificacion' or not req.sgi_document_id
                     or req.sgi_new_revision):
                 continue
-            current = (req.sgi_document_id.sgi_revision or '').strip()
-            if current.isdigit():
-                req.sgi_new_revision = str(int(current) + 1).zfill(max(2, len(current)))
+            req.sgi_new_revision = (req.sgi_document_id.sgi_revision or 0) + 1
 
     @api.constrains('sgi_is_doc_change', 'sgi_change_kind', 'sgi_document_id')
     def _check_document_required(self):
@@ -103,8 +101,9 @@ class ApprovalRequest(models.Model):
                 vals['sgi_state'] = 'vigente'
             doc.write(vals)
             doc.message_post(
-                body="Cambio documental aprobado (%s): revisión %s, estado %s." % (
-                    self.name, vals.get('sgi_revision', doc.sgi_revision), vals['sgi_state']))
+                body="Cambio documental aprobado (%s): revisión %02d, estado %s." % (
+                    self.name, vals.get('sgi_revision', doc.sgi_revision) or 0,
+                    vals['sgi_state']))
             doc.action_generate_acks()
         elif self.sgi_change_kind == 'baja' and doc:
             doc.write({'sgi_state': 'obsoleto'})

@@ -92,7 +92,5 @@
         </field>
     </record>
 
-    <menuitem id="menu_sgi_interested_parties" name="Partes interesadas"
-              parent="menu_sgi_panel" action="sgi_interested_party_action"
-              sequence="8"/>
+    <!-- Menú: vive en views/sgi_menus.xml (todo el árbol del SGI en un lugar). -->
 </odoo>
