@@ -109,3 +109,5 @@ access_sgi_activity_role_manager,sgi.activity.role.manager,model_sgi_activity_ro
 access_sgi_document_type_user,sgi.document.type.user,model_sgi_document_type,group_sgi_user,1,0,0,0
 access_sgi_document_type_employee,sgi.document.type.employee,model_sgi_document_type,base.group_user,1,0,0,0
 access_sgi_document_type_admin,sgi.document.type.admin,model_sgi_document_type,group_sgi_admin,1,1,1,1
+access_sgi_job_family_employee,sgi.job.family.employee,model_sgi_job_family,base.group_user,1,0,0,0
+access_sgi_job_family_manager,sgi.job.family.manager,model_sgi_job_family,group_sgi_manager,1,1,1,1

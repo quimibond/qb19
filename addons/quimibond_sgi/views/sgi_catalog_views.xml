@@ -12,7 +12,13 @@
                        decoration-success="role == 'ejecuta'"
                        decoration-warning="role == 'aprueba'"
                        decoration-info="role == 'participa'"/>
-                <field name="job_id"/>
+                <field name="target_type"/>
+                <field name="job_id" invisible="target_type != 'job'"
+                       required="target_type == 'job'"/>
+                <field name="family_id" invisible="target_type != 'family'"
+                       required="target_type == 'family'"/>
+                <field name="relative_role" invisible="target_type != 'relative'"
+                       required="target_type == 'relative'"/>
                 <field name="condition" optional="show"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
@@ -25,8 +31,11 @@
         <field name="arch" type="xml">
             <search string="Roles en actividades">
                 <field name="job_id"/>
+                <field name="family_id"/>
                 <field name="activity_id"/>
                 <field name="process_id"/>
+                <filter name="relative" string="Roles relativos"
+                        domain="[('target_type', '=', 'relative')]"/>
                 <filter name="executes" string="Ejecuta" domain="[('role', '=', 'ejecuta')]"/>
                 <filter name="approves" string="Aprueba" domain="[('role', '=', 'aprueba')]"/>
                 <filter name="participates" string="Participa" domain="[('role', '=', 'participa')]"/>
@@ -49,6 +58,91 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Quién hace qué, por puesto</p>
             <p>Cada fila dice qué papel tiene un puesto en una actividad: la <b>ejecuta</b>, la <b>aprueba</b>, <b>participa</b> o <b>se entera</b>. De aquí salen el procedimiento, la descripción de puesto y la medición de quién la hace de verdad.</p>
+        </field>
+    </record>
+
+    <!-- ====== Familias de puestos ====== -->
+    <record id="sgi_job_family_view_list" model="ir.ui.view">
+        <field name="name">sgi.job.family.list</field>
+        <field name="model">sgi.job.family</field>
+        <field name="arch" type="xml">
+            <list string="Familias de puestos">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="job_ids" widget="many2many_tags"/>
+                <field name="employee_count"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_job_family_view_form" model="ir.ui.view">
+        <field name="name">sgi.job.family.form</field>
+        <field name="model">sgi.job.family</field>
+        <field name="arch" type="xml">
+            <form string="Familia de puestos">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="code" placeholder="OP-TEJ"/>
+                            <field name="name" placeholder="Operador de tejido circular"/>
+                        </group>
+                        <group>
+                            <field name="employee_count"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">
+                        Puestos que solo cambian por nivel o letra. Las
+                        actividades se asignan a la familia; el nivel se queda
+                        en el puesto. Un puesto solo puede estar en una familia.
+                    </div>
+                    <field name="job_ids" options="{'no_create': True}">
+                        <list>
+                            <field name="name"/>
+                            <field name="no_of_employee"/>
+                            <field name="sgi_vacancy_approved"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_job_family_action" model="ir.actions.act_window">
+        <field name="name">Familias de puestos</field>
+        <field name="res_model">sgi.job.family</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Un rol, varios niveles</p>
+            <p>«Operador de tejido circular» vive en once puestos (A a J). La familia los junta para que la actividad tenga un solo ejecutor.</p>
+        </field>
+    </record>
+
+    <!-- ====== Tablero: cuánto de cada proceso se mide de verdad ====== -->
+    <record id="sgi_activity_method_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.process.activity.pivot.method</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <pivot string="Actividades por método de medición">
+                <field name="process_id" type="row"/>
+                <field name="measure_method" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_activity_method_action" model="ir.actions.act_window">
+        <field name="name">Medición por método</field>
+        <field name="res_model">sgi.process.activity</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="view_id" ref="sgi_activity_method_view_pivot"/>
+        <field name="search_view_id" ref="quimibond_sgi.sgi_process_activity_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Cuánto del proceso está a la vista</p>
+            <p>Cada actividad por su método de medición: <b>Registro en Odoo</b> y <b>Por consecuencia</b> se miden de verdad; correo, manual y muestreo esperan su fuente; <b>No aplica</b> exige justificación. «Sin medir» solo se permite con el procedimiento en borrador.</p>
         </field>
     </record>
 
@@ -91,6 +185,16 @@
                 <page string="Actividades SGI" name="sgi_roles">
                     <group>
                         <group>
+                            <field name="sgi_family_id"/>
+                        </group>
+                        <group>
+                            <field name="sgi_vacancy_approved"/>
+                            <field name="sgi_vacancy_until"
+                                   invisible="not sgi_vacancy_approved"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
                             <field name="sgi_execute_count"/>
                             <field name="sgi_approve_count"/>
                         </group>
@@ -106,6 +210,7 @@
                             <field name="process_id"/>
                             <field name="activity_id"/>
                             <field name="role"/>
+                            <field name="target_type" optional="hide"/>
                             <field name="condition" optional="show"/>
                         </list>
                     </field>

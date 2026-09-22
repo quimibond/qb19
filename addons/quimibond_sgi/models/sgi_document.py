@@ -442,6 +442,29 @@ class DocumentsDocument(models.Model):
                     "registrada para esa clave (%02d)." % (
                         doc.sgi_revision or 0, doc.sgi_code, last))
 
+    def _sgi_check_procedure_measures(self, new_state, created=False):
+        """Un procedimiento no pasa a piloto con actividades sin método de
+        medición, ni a vigente con alguna sin método, «no aplica» sin
+        justificación, «consecuencia» sin la actividad que la prueba u «Odoo»
+        sin modelo. El error las lista todas."""
+        if new_state not in ('piloto', 'vigente'):
+            return
+        full = new_state == 'vigente'
+        for doc in self:
+            if doc.sgi_doc_type != 'procedimiento' or not doc.sgi_is_controlled \
+                    or not doc.sgi_process_id or (doc.sgi_state == new_state and not created):
+                continue
+            problems = []
+            for activity in doc.sgi_process_id.procedure_activity_ids:
+                for problem in activity._sgi_measure_problems(full=full):
+                    problems.append("• %s: %s" % (activity.display_name, problem))
+            if problems:
+                raise UserError(
+                    "El procedimiento %s no puede pasar a %s: estas actividades de "
+                    "%s no tienen cómo medirse.\n%s" % (
+                        doc.sgi_code or doc.name, new_state,
+                        doc.sgi_process_id.display_name, "\n".join(problems)))
+
     @api.model
     def _sgi_find_by_code(self, code, states=('vigente',)):
         """Documento por clave; si no hay, por clave anterior cambiada en
@@ -524,6 +547,9 @@ class DocumentsDocument(models.Model):
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
         docs = super().create(vals_list)
+        for state in ('piloto', 'vigente'):
+            docs.filtered(lambda d, state=state: d.sgi_state == state)\
+                ._sgi_check_procedure_measures(state, created=True)
         # Una revisión nueva de una clave existente va por arriba de la última.
         docs._sgi_check_revision_increases()
         docs.filtered(
@@ -545,6 +571,8 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        if vals.get('sgi_state') in ('piloto', 'vigente'):
+            self._sgi_check_procedure_measures(vals['sgi_state'])
         if vals.get('sgi_state') == 'vigente' and len(self) > 1:
             # Selección múltiple con la MISMA clave: el obsoletado excluye solo
             # al doc en turno, ambos quedarían vigentes y el índice único

@@ -19,6 +19,12 @@ los errores que la base daría, sin escribir.
 
 Los puestos se resuelven por id o por nombre normalizado y NUNCA se crean:
 si no existen, la actividad no se carga y el error viene en la respuesta.
+Un rol puede ir a un puesto (``job``), a una familia de puestos (``family``,
+por su código; las familias se dan de alta en el bloque ``families``, que se
+procesa primero) o a un rol relativo (``relative``: solicitante, jefe del
+solicitante, quien detecta, área responsable, dueño del proceso). Un puesto
+sin empleados activos es error, salvo que tenga vacante aprobada y vigente
+(entonces, advertencia); una familia, solo si todos sus puestos están vacíos.
 Cada proceso es una transacción: si una de sus actividades falla, el proceso
 completo se deshace y se reporta.
 """
@@ -28,6 +34,8 @@ import logging
 from odoo import models, api, Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
+
+from .sgi_catalog import SGI_RELATIVE_ROLES
 
 _logger = logging.getLogger(__name__)
 
@@ -169,16 +177,23 @@ class _SgiLoader:
         self.report = report
         self.payload = payload
         self.Process = self.env['sgi.process'].with_context(active_test=False)
-        self.Activity = self.env['sgi.process.activity'].with_context(active_test=False)
+        # La revisión «sin medir / método incompleto» de los procedimientos en
+        # piloto o vigente se hace al final, cuando ya se resolvieron las
+        # actividades que prueban a otras (proxy).
+        self.Activity = self.env['sgi.process.activity'].with_context(
+            active_test=False, sgi_defer_measure_check=True)
+        self.proxies = []       # (actividad, referencia del proxy, clave de proceso)
         self.Job = self.env['hr.job']
         self.Doc = self.env['documents.document']
         self.processes = {}     # code -> sgi.process
         self.activities = {}    # (process code, number) -> sgi.process.activity
         self.job_cache = {}
+        self.family_cache = {}
 
     # ------------------------------------------------------------------
     def run(self):
         payload = self.payload
+        self._load_families(payload.get('families') or [])
         activities_by_process = {}
         for item in payload.get('activities') or []:
             activities_by_process.setdefault(item.get('process'), []).append(item)
@@ -201,6 +216,7 @@ class _SgiLoader:
             self._load_process_tx(
                 proc, activities_by_process.get(code), archive_missing)
         self._load_links()
+        self._load_proxies()
         self._load_flows(payload.get('flows') or [])
         self._load_indicators(payload.get('indicators') or [])
 
@@ -407,6 +423,23 @@ class _SgiLoader:
             vals['format_document_ids'] = docs
         if 'evidence' in item:
             vals.update(self._evidence_vals(key, item['evidence'] or []))
+        measure = item.get('measure') or {}
+        method = measure.get('method') or ('odoo' if item.get('evidence') else None)
+        if method:
+            valid = dict(Activity._fields['measure_method'].selection)
+            if method not in valid:
+                raise ValidationError("Método de medición «%s» inválido (%s)." % (
+                    method, ', '.join(valid)))
+            vals['measure_method'] = method
+            if method == 'muestreo':
+                cadence = measure.get('sample_cadence') or measure.get('cadence')
+                if cadence not in dict(Activity._fields['sample_cadence'].selection):
+                    raise ValidationError("Muestreo sin «sample_cadence» (semanal o mensual).")
+                vals['sample_cadence'] = cadence
+            if method == 'no_aplica':
+                vals['measure_justification'] = measure.get('justification') or False
+            if method != 'consecuencia':
+                vals['measure_proxy_activity_id'] = False
         return vals
 
     def _evidence_vals(self, key, evidence):
@@ -416,6 +449,7 @@ class _SgiLoader:
         hoy se avisan para que la carga se repita entonces."""
         models_ev = [e for e in evidence if e.get('source_type', 'odoo_model') == 'odoo_model']
         if len(evidence) > len(models_ev[:1]):
+            # TODO(fase 2): sgi.activity.evidence guarda todas las fuentes.
             self.report.warn('activity', key,
                              "Solo se guarda la primera evidencia de modelo de Odoo "
                              "hasta la fase 2; el resto se cargará entonces.")
@@ -435,32 +469,129 @@ class _SgiLoader:
         except Exception as exc:  # noqa: BLE001 - el mensaje va al reporte
             raise ValidationError("Evidencia: dominio inválido para %s: %s" % (model_name, exc))
         date_field = ev.get('date_field') or 'create_date'
-        for fname in (date_field, ev.get('user_field')):
+        user_field = ev.get('user_field') or False
+        for fname in (date_field, user_field):
             if fname and fname not in Model._fields:
                 raise ValidationError("Evidencia: %s no tiene el campo «%s»." % (model_name, fname))
+        if user_field:
+            field = Model._fields[user_field]
+            if field.type != 'many2one' or field.comodel_name != 'res.users' or not field.store:
+                raise ValidationError(
+                    "Evidencia: «%s» de %s no es un campo de usuario (res.users) "
+                    "almacenado." % (user_field, model_name))
         return {
             'measure_model_name': model_name,
             'measure_domain': domain_txt,
             'measure_date_field': date_field,
+            'measure_user_field': user_field,
         }
+
+    # ------------------------------------------------------------------
+    # Familias de puestos
+    # ------------------------------------------------------------------
+    def _load_families(self, families):
+        Family = self.env['sgi.job.family'].with_context(active_test=False)
+        Job = self.env['hr.job'].with_context(active_test=False)
+        for item in families:
+            key = item.get('code')
+
+            def run(item=item, key=key):
+                if not key:
+                    raise ValidationError("Familia sin «code».")
+                vals = {}
+                if 'name' in item:
+                    vals['name'] = item['name']
+                if 'jobs' in item:
+                    ids = [int(j) for j in item['jobs'] or []]
+                    jobs = Job.browse(ids).exists()
+                    missing = sorted(set(ids) - set(jobs.ids))
+                    if missing:
+                        raise ValidationError("Puestos inexistentes: %s." % missing)
+                    other = jobs.filtered(lambda j: j.company_id and j.company_id != self.company)
+                    if other:
+                        raise ValidationError("Puestos de otra empresa: %s." % other.ids)
+                    vals['job_ids'] = ids
+                family = Family.search([('code', '=', key),
+                                        ('company_id', '=', self.company.id)], limit=1)
+                if family:
+                    if not family.active:
+                        vals['active'] = True
+                    changed = _diff(family, vals)
+                    if changed:
+                        family.write(changed)
+                        self.report.change('family', key, 'updated', changed)
+                else:
+                    if not vals.get('name'):
+                        raise ValidationError("La familia nueva %s necesita «name»." % key)
+                    vals['job_ids'] = [Command.set(vals.get('job_ids') or [])]
+                    family = Family.create(dict(vals, code=key, company_id=self.company.id))
+                    self.report.change('family', key, 'created')
+                family.flush_recordset()
+            self._savepoint(run, 'family', key)
+
+    def _resolve_family(self, code):
+        if code not in self.family_cache:
+            family = self.env['sgi.job.family'].search(
+                [('code', '=', code), ('company_id', '=', self.company.id)], limit=1)
+            self.family_cache[code] = family
+        family = self.family_cache[code]
+        if not family:
+            raise ValidationError("No existe la familia de puestos «%s» en %s." % (
+                code, self.company.name))
+        return family
+
+    def _check_staffing(self, jobs, label, key):
+        """Puesto (o familia) sin empleados activos: error, salvo vacante
+        aprobada y vigente (advertencia)."""
+        state = jobs._sgi_staffing_state()
+        if state == 'vacante':
+            self.report.warn('activity', key, "%s no tiene personas; se acepta por "
+                                              "vacante aprobada y vigente." % label)
+        elif state == 'sin_persona':
+            raise ValidationError(
+                "%s no tiene empleados activos ni vacante aprobada vigente." % label)
+
+    def _role_target(self, role, key):
+        """(vals del destino, llave natural) de un rol del payload."""
+        given = [k for k in ('job', 'job_id', 'family', 'relative') if role.get(k) not in (None, '', False)]
+        if len(given) != 1:
+            raise ValidationError(
+                "Rol %s: indica exactamente uno de «job», «family» o «relative»."
+                % role.get('role'))
+        kind = given[0]
+        if kind in ('job', 'job_id'):
+            job, error = self._resolve_job(role[kind])
+            if error:
+                raise ValidationError("Rol %s: %s" % (role.get('role'), error))
+            self._check_staffing(job, "El puesto «%s» (id %d)" % (
+                ' '.join(job.name.split()), job.id), key)
+            return {'target_type': 'job', 'job_id': job.id}, ('job', job.id)
+        if kind == 'family':
+            family = self._resolve_family(role['family'])
+            self._check_staffing(family.job_ids, "La familia %s" % family.code, key)
+            return {'target_type': 'family', 'family_id': family.id}, ('family', family.id)
+        relative = role['relative']
+        if relative not in dict(SGI_RELATIVE_ROLES):
+            raise ValidationError("Rol relativo «%s» inválido (%s)." % (
+                relative, ', '.join(dict(SGI_RELATIVE_ROLES))))
+        return {'target_type': 'relative', 'relative_role': relative}, ('relative', relative)
 
     def _roles_commands(self, activity, item, key):
         """Comandos para dejar los roles exactamente como el payload."""
         wanted = []
         for seq, role in enumerate(item.get('roles') or [], start=1):
-            job, error = self._resolve_job(role.get('job_id') or role.get('job'))
-            if error:
-                raise ValidationError("Rol %s: %s" % (role.get('role'), error))
             if role.get('role') not in ('ejecuta', 'aprueba', 'participa', 'informa'):
                 raise ValidationError("Rol «%s» inválido (ejecuta, aprueba, participa, "
                                       "informa)." % role.get('role'))
-            wanted.append({'role': role['role'], 'job_id': job.id,
-                           'condition': role.get('condition') or False,
-                           'sequence': seq * 10})
-        current = {(r.role, r.job_id.id): r for r in activity.role_ids} if activity else {}
+            target, target_key = self._role_target(role, key)
+            wanted.append((target_key, dict(
+                target, role=role['role'], condition=role.get('condition') or False,
+                sequence=seq * 10)))
+        current = {(r.role,) + r._sgi_target_key(): r for r in activity.role_ids} \
+            if activity else {}
         commands, touched = [], False
-        for vals in wanted:
-            existing = current.pop((vals['role'], vals['job_id']), None)
+        for target_key, vals in wanted:
+            existing = current.pop((vals['role'],) + target_key, None)
             if existing:
                 changed = _diff(existing, {'condition': vals['condition'],
                                            'sequence': vals['sequence']})
@@ -499,6 +630,12 @@ class _SgiLoader:
             activity = self.Activity.create(vals)
             self.report.change('activity', key, 'created')
         self.activities[(process.code, number)] = activity
+        measure = item.get('measure') or {}
+        if measure.get('method') == 'consecuencia':
+            if not measure.get('proxy'):
+                raise ValidationError("«Por consecuencia» necesita «proxy» (la actividad "
+                                      "que la prueba).")
+            self.proxies.append((activity, measure['proxy'], process.code))
         # Los roles, el instructivo y la evidencia se validan en la base; la
         # restricción de «exactamente un ejecutor» corre aquí dentro.
         activity.flush_recordset()
@@ -574,6 +711,28 @@ class _SgiLoader:
                         wanted[source.id][to.id] = name
                 self._sync_links(wanted, declared, [s for s, t in entries if t is not None])
             self._savepoint(run, 'link', proc_code)
+
+    def _load_proxies(self):
+        """Resuelve «se prueba con» cuando ya están todas las actividades y
+        luego aplica la revisión de medición de los procedimientos en piloto
+        o vigente, por proceso."""
+        by_process = {}
+        for activity, ref, proc_code in self.proxies:
+            by_process.setdefault(proc_code, []).append((activity, ref))
+        for proc_code in {code for (code, _n) in self.activities}:
+            entries = by_process.get(proc_code, [])
+
+            def run(entries=entries, proc_code=proc_code):
+                for activity, ref in entries:
+                    proxy = self._find_activity(ref, proc_code)
+                    if activity.measure_proxy_activity_id != proxy:
+                        activity.write({'measure_proxy_activity_id': proxy.id})
+                        self.report.change('activity', "%s/%s" % (proc_code, activity.number),
+                                           'updated', ['measure_proxy_activity_id'])
+                activities = self.env['sgi.process.activity'].browse(
+                    [a.id for (code, _n), a in self.activities.items() if code == proc_code])
+                activities.with_context(sgi_defer_measure_check=False)._sgi_check_measure_strict()
+            self._savepoint(run, 'measure', proc_code)
 
     def _sync_links(self, wanted, declared, sources):
         Link = self.env['sgi.activity.link']

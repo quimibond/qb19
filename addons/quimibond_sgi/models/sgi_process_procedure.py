@@ -17,7 +17,7 @@ import logging
 
 from datetime import datetime, timedelta
 
-from odoo import models, fields, api, Command
+from odoo import models, fields, api, Command, SUPERUSER_ID
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
@@ -70,6 +70,14 @@ class SgiProcessProcedure(models.Model):
         compute='_compute_measure_stats',
         help="Porcentaje de actividades medibles con evidencia dentro de su "
              "cadencia esperada (lo calcula el cron de medición).")
+    # Cuánto del proceso está a la vista: actividades medidas de verdad
+    # (odoo + consecuencia) entre el total.
+    measure_real_pct = fields.Integer(
+        string="% medido de verdad", compute='_compute_measure_methods',
+        help="Actividades con método «Registro en Odoo» o «Por consecuencia» "
+             "entre el total de actividades activas del proceso.")
+    measure_method_summary = fields.Char(
+        string="Actividades por método", compute='_compute_measure_methods')
 
     # Firmas del procedimiento (bloque del F-P-G01-02). Se imprimen como
     # nombre + cargo; el PDF generado es copia NO controlada, sin imagen de firma.
@@ -210,6 +218,37 @@ class SgiProcessProcedure(models.Model):
             process.procedure_compliance = (
                 int(round((len(acts) - len(reds)) * 100.0 / len(acts)))
                 if acts else 0)
+
+    def _compute_measure_methods(self):
+        Activity = self.env['sgi.process.activity']
+        processes = self.filtered('id')
+        counts = {}
+        if processes:
+            for process, method, count in Activity._read_group(
+                    [('process_id', 'in', processes.ids)],
+                    ['process_id', 'measure_method'], ['__count']):
+                counts.setdefault(process.id, {})[method or False] = count
+        labels = dict(Activity._fields['measure_method'].selection)
+        labels[False] = "Sin medir"
+        for process in self:
+            by_method = counts.get(process.id, {})
+            total = sum(by_method.values())
+            real = by_method.get('odoo', 0) + by_method.get('consecuencia', 0)
+            process.measure_real_pct = int(round(real * 100.0 / total)) if total else 0
+            process.measure_method_summary = ' · '.join(
+                "%s %d" % (labels.get(method, method), count)
+                for method, count in sorted(by_method.items(), key=lambda kv: -kv[1]))
+
+    def _sgi_measure_strict(self):
+        """¿El procedimiento del proceso está en piloto o vigente? Entonces
+        ninguna actividad puede quedar «sin medir»."""
+        self.ensure_one()
+        return bool(self.env['documents.document'].sudo().search_count([
+            ('sgi_process_id', '=', self.id),
+            ('sgi_doc_type', '=', 'procedimiento'),
+            ('sgi_is_controlled', '=', True),
+            ('sgi_state', 'in', ('piloto', 'vigente')),
+        ], limit=1))
 
     def _sgi_flag_procedure_dirty(self):
         """Marca el procedimiento controlado VIGENTE como 'pendiente de revisión'
@@ -451,22 +490,39 @@ class SgiProcessActivity(models.Model):
         'sgi.process.activity', string="Pasos anteriores",
         compute='_compute_chain')
 
-    @api.depends('role_ids.role', 'role_ids.job_id')
+    @api.depends('role_ids.role', 'role_ids.target_type', 'role_ids.job_id',
+                 'role_ids.family_id.job_ids')
     def _compute_responsible_job_ids(self):
+        # Las familias se expanden a todos sus puestos; los roles relativos no
+        # tienen puesto fijo y no aparecen aquí.
         for activity in self:
-            activity.responsible_job_ids = activity.role_ids.filtered(
-                lambda r: r.role == 'ejecuta').job_id
+            executors = activity.role_ids.filtered(lambda r: r.role == 'ejecuta')
+            activity.responsible_job_ids = executors.job_id | executors.family_id.job_ids
 
     def _inverse_responsible_job_ids(self):
         for activity in self:
             wanted = activity.responsible_job_ids
-            current = activity.role_ids.filtered(lambda r: r.role == 'ejecuta')
+            executors = activity.role_ids.filtered(lambda r: r.role == 'ejecuta')
+            current = executors.filtered(lambda r: r.target_type == 'job')
+            # Lo que ya cubre una familia no se duplica como puesto suelto.
+            covered = current.job_id | executors.family_id.job_ids
             commands = [Command.delete(role.id) for role in current
                         if role.job_id not in wanted]
-            commands += [Command.create({'role': 'ejecuta', 'job_id': job.id})
-                         for job in wanted - current.job_id]
+            commands += [Command.create({'role': 'ejecuta', 'target_type': 'job',
+                                         'job_id': job.id})
+                         for job in wanted - covered]
             if commands:
                 activity.write({'role_ids': commands})
+
+    def _sgi_executor_jobs(self):
+        """Puestos que DEBEN ejecutar la actividad (familias expandidas, dueño
+        del proceso resuelto). None si el ejecutor es un rol relativo sin
+        puesto (solicitante, quien detecta…) o si no hay ejecutor."""
+        self.ensure_one()
+        executors = self.role_ids.filtered(lambda r: r.role == 'ejecuta')
+        if not executors:
+            return None
+        return executors._sgi_jobs()
 
     def _sgi_check_roles(self):
         """Exactamente un «ejecuta» (cero si la actividad es automática) y a
@@ -482,7 +538,8 @@ class SgiProcessActivity(models.Model):
                 if executors:
                     raise ValidationError(
                         "La actividad %s es automática: no lleva rol «Ejecuta» "
-                        "(tiene %s)." % (label, ', '.join(executors.job_id.mapped('name'))))
+                        "(tiene %s)." % (label, ', '.join(
+                            role._sgi_target_label() for role in executors)))
             elif len(executors) != 1:
                 raise ValidationError(
                     "La actividad %s debe tener exactamente un puesto que la "
@@ -500,6 +557,71 @@ class SgiProcessActivity(models.Model):
     @api.constrains('role_ids', 'automation_level_current')
     def _check_roles(self):
         self._sgi_check_roles()
+
+    def _sgi_measure_problems(self, full=True):
+        """Lo que impide que la actividad cuente como medida. ``full`` = las
+        cuatro revisiones del paso a vigente; si no, solo «sin método»."""
+        self.ensure_one()
+        if not self.measure_method:
+            return ["sin método de medición"]
+        if not full:
+            return []
+        if self.measure_method == 'no_aplica' and not (self.measure_justification or '').strip():
+            return ["«No aplica» sin justificación"]
+        if self.measure_method == 'consecuencia' and not self.measure_proxy_activity_id:
+            return ["«Por consecuencia» sin la actividad que la prueba"]
+        if self.measure_method == 'odoo' and not self.measure_model_id:
+            return ["«Registro en Odoo» sin modelo"]
+        return []
+
+    def _sgi_check_measure_strict(self):
+        """Con el procedimiento del proceso en piloto o vigente, ninguna
+        actividad queda sin medir ni con un método incompleto."""
+        if self.env.context.get('sgi_defer_measure_check') or (
+                self.env.context.get('sgi_skip_role_check') and sgi_bypass_allowed(self.env)):
+            return
+        strict = {}
+        for activity in self.filtered('active'):
+            process = activity.process_id
+            if process.id not in strict:
+                strict[process.id] = process._sgi_measure_strict()
+            if not strict[process.id]:
+                continue
+            problems = activity._sgi_measure_problems()
+            if problems:
+                raise ValidationError(
+                    "El procedimiento de %s está en piloto o vigente: la actividad "
+                    "%s no puede quedar así (%s)." % (
+                        process.display_name, activity.display_name, problems[0]))
+
+    @api.constrains('measure_method', 'measure_justification',
+                    'measure_proxy_activity_id', 'measure_model_id', 'process_id')
+    def _check_measure_method(self):
+        self._sgi_check_measure_strict()
+
+    @api.constrains('measure_proxy_activity_id')
+    def _check_proxy_cycle(self):
+        """Una actividad no se prueba con otra que (directa o indirectamente)
+        se prueba con ella."""
+        for activity in self.filtered('measure_proxy_activity_id'):
+            seen = activity
+            current = activity.measure_proxy_activity_id
+            while current:
+                if current in seen:
+                    raise ValidationError(
+                        "Ciclo de «se prueba con»: %s termina probándose con "
+                        "ella misma." % activity.display_name)
+                seen |= current
+                current = current.measure_proxy_activity_id
+
+    def _sgi_proxy_root(self):
+        """La actividad que realmente deja evidencia al final de la cadena de
+        consecuencias."""
+        self.ensure_one()
+        root = self
+        while root.measure_method == 'consecuencia' and root.measure_proxy_activity_id:
+            root = root.measure_proxy_activity_id
+        return root
 
     @api.constrains('number', 'process_id', 'active')
     def _check_number_unique(self):
@@ -575,7 +697,75 @@ class SgiProcessActivity(models.Model):
     measure_state = fields.Selection([
         ('verde', "En cumplimiento"),
         ('rojo', "Sin evidencia en su periodo"),
+        ('pendiente', "Pendiente de conector/registro"),
+        ('no_aplica', "No se mide"),
     ], string="Cumplimiento", readonly=True)
+
+    # --- Cómo se mide (toda actividad tiene un método) ---
+    measure_method = fields.Selection([
+        ('odoo', "Registro en Odoo"),
+        ('consecuencia', "Por consecuencia"),
+        ('correo', "Por correo"),
+        ('manual', "Registro manual"),
+        ('muestreo', "Por muestreo"),
+        ('no_aplica', "No aplica"),
+    ], string="Método de medición", index=True,
+        help="De mejor a peor. Odoo: deja registro (modelo, dominio, fecha, "
+             "usuario). Consecuencia: no deja rastro pero la actividad que la "
+             "prueba sí (se copia su conteo). Correo: conector de la fase 2. "
+             "Manual: registro de un toque (fase 2). Muestreo: se verifica de "
+             "vez en cuando. No aplica: su resultado se mide en otra parte "
+             "(exige justificación). Vacío = sin medir, solo con el "
+             "procedimiento en borrador.")
+    measure_proxy_activity_id = fields.Many2one(
+        'sgi.process.activity', string="Se prueba con", ondelete='restrict',
+        index=True,
+        help="Actividad (de este proceso o de otro) cuya evidencia prueba que "
+             "esta se hizo: si se validó la recepción, se descargó el camión.")
+    sample_cadence = fields.Selection([
+        ('semanal', "Semanal"),
+        ('mensual', "Mensual"),
+    ], string="Cadencia de muestreo")
+    measure_justification = fields.Text(
+        string="Por qué no se mide",
+        help="Obligatoria con «No aplica»: dónde se mide su resultado.")
+
+    # --- Quién la ejecutó (adelanto de la fase 2) ---
+    # TODO(fase 2): measure_user_field pasa a sgi.activity.evidence.user_field
+    # (una por fuente de evidencia) y el detalle a sgi.activity.measure.user.
+    measure_user_field = fields.Char(
+        string="Campo de usuario",
+        help="Campo del modelo de evidencia que dice QUÉ USUARIO ejecutó la "
+             "actividad (create_uid, user_id…). Con él se mide si la hizo el "
+             "puesto que debía.")
+    measure_executor_json = fields.Json(
+        string="Ejecutores (30 días)", readonly=True,
+        help="[{user_id, employee_id, job_id, count, matches}]: matches es "
+             "verdadero si el puesto del empleado está entre los que ejecutan "
+             "(familias expandidas); null si el ejecutor es un rol relativo.")
+    measure_adherence_pct = fields.Float(
+        string="Adherencia (%)", readonly=True, digits=(5, 1),
+        help="Ejecuciones de los últimos 30 días hechas por el puesto asignado, "
+             "entre el total. 0 si no aplica (rol relativo o sin campo de usuario).")
+    measure_top_users = fields.Char(
+        string="Quién la ejecuta", readonly=True,
+        help="Usuarios con más ejecuciones en 30 días (✓ = puesto asignado).")
+    measure_count_generic = fields.Integer(
+        string="Por cuenta genérica (30 d)", readonly=True,
+        help="Ejecuciones con una cuenta compartida (quimibond_sgi.generic_user_ids): "
+             "no se pueden atribuir a nadie.")
+    measure_count_no_employee = fields.Integer(
+        string="Sin empleado (30 d)", readonly=True,
+        help="Ejecuciones de usuarios sin empleado activo.")
+    measure_count_system = fields.Integer(
+        string="Del sistema (30 d)", readonly=True,
+        help="Ejecuciones de OdooBot o procesos automáticos: no cuentan en la "
+             "adherencia.")
+    measure_count_other_job = fields.Integer(
+        string="Por otro puesto (30 d)", readonly=True,
+        help="Ejecuciones de empleados de un puesto al que no le toca.")
+    measure_warning = fields.Text(
+        string="Avisos de medición", readonly=True)
 
     # Ventana de tolerancia por cadencia (días naturales): holgura para fines
     # de semana y cierres sin falsos rojos.
@@ -591,7 +781,12 @@ class SgiProcessActivity(models.Model):
         'measure_model_id', 'measure_model_name', 'measure_domain',
         'measure_date_field', 'measure_cadence', 'measure_last_date',
         'measure_count_30d', 'measure_state', 'value_class',
-        'automation_level_target', 'automation_method'}
+        'automation_level_target', 'automation_method', 'measure_user_field',
+        'measure_executor_json', 'measure_adherence_pct', 'measure_top_users',
+        'measure_method', 'measure_proxy_activity_id', 'sample_cadence',
+        'measure_justification', 'measure_count_generic',
+        'measure_count_no_employee', 'measure_count_system',
+        'measure_count_other_job', 'measure_warning'}
 
     @api.depends('measure_model_id')
     def _compute_measure_model_name(self):
@@ -614,13 +809,53 @@ class SgiProcessActivity(models.Model):
         except Exception:
             return []
 
+    _SGI_EXECUTOR_RESET = {
+        'measure_executor_json': False, 'measure_adherence_pct': 0.0,
+        'measure_top_users': False, 'measure_count_generic': 0,
+        'measure_count_no_employee': 0, 'measure_count_system': 0,
+        'measure_count_other_job': 0, 'measure_warning': False,
+    }
+
     def _sgi_measure(self):
+        """Mide según el método: Odoo (evidencia real), consecuencia (copia de
+        la actividad que la prueba, al final), y los que aún no tienen fuente
+        (correo, manual, muestreo) quedan «pendiente»; «no aplica» no se mide.
+        Sin método pero con modelo (heredadas) se mide como Odoo."""
+        odoo = self.filtered(lambda a: a.measure_method in (False, 'odoo'))
+        consequence = self.filtered(lambda a: a.measure_method == 'consecuencia')
+        others = self - odoo - consequence
+        odoo._sgi_measure_odoo()
+        for activity in others:
+            vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
+                        measure_count_30d=0,
+                        measure_state='no_aplica' if activity.measure_method == 'no_aplica'
+                        else 'pendiente')
+            activity._sgi_write_if_changed(vals)
+        for activity in consequence:
+            root = activity._sgi_proxy_root()
+            if root not in odoo and root.measure_method in (False, 'odoo') \
+                    and root.measure_model_id:
+                root._sgi_measure_odoo()
+            vals = dict(self._SGI_EXECUTOR_RESET,
+                        measure_last_date=root.measure_last_date,
+                        measure_count_30d=root.measure_count_30d,
+                        measure_state=root.measure_state)
+            activity._sgi_write_if_changed(vals)
+
+    def _sgi_write_if_changed(self, vals):
+        self.ensure_one()
+        # Solo se escribe lo que cambió: el cron diario re-mide TODO y la
+        # mayoría de los valores no se mueven.
+        if any(self[key] != value for key, value in vals.items()):
+            self.write(vals)
+
+    def _sgi_measure_odoo(self):
         """Recalcula la evidencia de cada actividad medible. Una actividad con
         dominio o modelo inválido queda sin semáforo, sin tumbar al resto."""
         now = fields.Datetime.now()
         for activity in self:
-            vals = {'measure_last_date': False, 'measure_count_30d': 0,
-                    'measure_state': False}
+            vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
+                        measure_count_30d=0, measure_state=False)
             try:
                 model_name = activity.measure_model_id.model
                 Model = self.env.get(model_name) if model_name else None
@@ -638,8 +873,9 @@ class SgiProcessActivity(models.Model):
                 if last_date and not isinstance(last_date, datetime):
                     last_date = fields.Datetime.to_datetime(last_date)
                 vals['measure_last_date'] = last_date
-                vals['measure_count_30d'] = Model.search_count(
-                    domain + [(date_field, '>=', now - timedelta(days=30))])
+                window = domain + [(date_field, '>=', now - timedelta(days=30))]
+                vals['measure_count_30d'] = Model.search_count(window)
+                vals.update(activity._sgi_measure_executors(Model, window))
                 days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
                 if days:
                     in_window = Model.search_count(
@@ -655,6 +891,102 @@ class SgiProcessActivity(models.Model):
             # write_date y el WAL sin aportar nada.
             if any(activity[key] != value for key, value in vals.items()):
                 activity.write(vals)
+
+    @api.model
+    def _sgi_generic_user_ids(self):
+        """Cuentas compartidas (quimibond_sgi.generic_user_ids, ids separados
+        por coma): lo que hacen no se puede atribuir a nadie."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.generic_user_ids') or ''
+        return {int(x) for x in raw.replace(';', ',').split(',') if x.strip().isdigit()}
+
+    def _sgi_measure_executors(self, Model, window):
+        """Quién ejecutó la actividad en la ventana de 30 días: un read_group
+        por el campo de usuario (sin recorrer registros) y, por usuario, su
+        empleado y puesto al momento de medir. Cada ejecución cae en una
+        clase: correcto (su puesto está entre los que ejecutan, familias
+        incluidas), otro_puesto, generico (cuenta compartida), sin_empleado o
+        sistema (OdooBot). Adherencia = correcto entre todo lo que no es
+        sistema. Con un ejecutor relativo sin puesto, la clase es None y no
+        hay adherencia."""
+        self.ensure_one()
+        user_field = (self.measure_user_field or '').strip()
+        field = Model._fields.get(user_field) if user_field else None
+        if not field or field.type != 'many2one' or field.comodel_name != 'res.users' \
+                or not field.store:
+            return {}
+        groups = Model._read_group(window, [user_field], ['__count'])
+        if not groups:
+            return {}
+        expected = self._sgi_executor_jobs()
+        generic_ids = self._sgi_generic_user_ids()
+        system_ids = {SUPERUSER_ID}
+        root = self.env.ref('base.user_root', raise_if_not_found=False)
+        if root:
+            system_ids.add(root.id)
+        company = self.company_id or self.env.company
+        user_ids = [u.id for u, _c in groups if u]
+        employees = self.env['hr.employee'].sudo().search([
+            ('user_id', 'in', user_ids), ('company_id', '=', company.id)])
+        emp_by_user = {emp.user_id.id: emp for emp in employees}
+        rows = []
+        counts = dict.fromkeys(
+            ('correcto', 'otro_puesto', 'generico', 'sin_empleado', 'sistema'), 0)
+        for user, count in sorted(groups, key=lambda g: -g[1]):
+            emp = emp_by_user.get(user.id)
+            job = emp.job_id if emp else self.env['hr.job']
+            if not user or user.id in system_ids:
+                klass = 'sistema'
+            elif user.id in generic_ids:
+                klass = 'generico'
+            elif not emp:
+                klass = 'sin_empleado'
+            elif expected is not None and job and job in expected:
+                klass = 'correcto'
+            else:
+                klass = 'otro_puesto'
+            counts[klass] += count
+            rows.append({
+                'user_id': user.id or False,
+                'employee_id': emp.id if emp else False,
+                'job_id': job.id or False,
+                'count': count,
+                # Ejecutor relativo (solicitante, quien detecta…): no hay a
+                # quién comparar; solo se cuenta.
+                'class': None if expected is None else klass,
+            })
+        total = sum(counts.values())
+        attributable = total - counts['sistema']
+        adherence = round(counts['correcto'] * 100.0 / attributable, 1) \
+            if expected is not None and attributable else 0.0
+        warnings = []
+        if expected is not None and attributable and adherence < 80:
+            warnings.append("Adherencia de %.0f%%: la hacen puestos que no la tienen "
+                            "asignada." % adherence)
+        if counts['generico'] or counts['sin_empleado']:
+            warnings.append(
+                "%d ejecución(es) con cuenta genérica y %d sin empleado activo: no "
+                "hay forma de saber quién hizo el movimiento." % (
+                    counts['generico'], counts['sin_empleado']))
+        if self.automation_level_current == 'manual' and total \
+                and counts['sistema'] * 2 > total:
+            warnings.append("Parece automática (%d de %d ejecuciones son del "
+                            "sistema): revisar nivel de automatización." % (
+                                counts['sistema'], total))
+        Users = self.env['res.users'].sudo()
+        top = ', '.join("%s%s (%d)" % (
+            Users.browse(row['user_id']).name if row['user_id'] else "Sin usuario",
+            " ✓" if row['class'] == 'correcto' else "", row['count']) for row in rows[:3])
+        return {
+            'measure_executor_json': rows,
+            'measure_adherence_pct': adherence,
+            'measure_top_users': top,
+            'measure_count_generic': counts['generico'],
+            'measure_count_no_employee': counts['sin_empleado'],
+            'measure_count_system': counts['sistema'],
+            'measure_count_other_job': counts['otro_puesto'] if expected is not None else 0,
+            'measure_warning': '\n'.join(warnings) or False,
+        }
 
     def _sgi_resolve_menu(self):
         """Resuelve odoo_menu_id desde el texto de odoo_ref: convierte
@@ -688,7 +1020,8 @@ class SgiProcessActivity(models.Model):
                 ('sgi_migration_target', '!=', False),
             ]).action_sgi_resolve_odoo_menu(),
             lambda: self.search(
-                [('measure_model_id', '!=', False)])._sgi_measure(),
+                ['|', ('measure_model_id', '!=', False),
+                 ('measure_method', '!=', False)])._sgi_measure(),
             lambda: self.env['sgi.activity.link'].search(
                 [])._sgi_evaluate_chain(),
         )
@@ -769,6 +1102,9 @@ class SgiProcessActivity(models.Model):
         # restricción de la actividad.
         records = super(SgiProcessActivity, self.with_context(
             sgi_roles_via_activity=True)).create(vals_list).with_env(self.env)
+        # Una actividad nueva sin método no entra a un procedimiento en
+        # piloto o vigente (la restricción solo corre con el campo presente).
+        records._sgi_check_measure_strict()
         records.process_id._sgi_flag_procedure_dirty()
         return records
 

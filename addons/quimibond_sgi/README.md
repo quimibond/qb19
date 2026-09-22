@@ -512,6 +512,48 @@ revisiones y descripción de puesto, automatización/tableros/seguridad).
 - **Grupo Administrador SGI** (implica Jefe MAST): el único que carga por API,
   fusiona puestos y administra tipos de documento. Se asigna a mano.
 
+### Fase 1.1 — familias, roles relativos, vacantes y medición
+
+- **Familias de puestos** (`sgi.job.family`, Procesos → Familias de puestos):
+  el mismo rol en puestos que solo cambian por nivel o letra (OP-TEJ, OP-INS,
+  LAB…). Un puesto está en una sola familia por empresa; `hr.job.sgi_family_id`
+  se calcula desde la familia. Un rol se asigna a un **puesto**, una **familia**
+  o un **rol relativo** (`target_type`); la regla de un solo «ejecuta» cuenta
+  filas, así que una familia cuenta como una. `responsible_job_ids` expande las
+  familias. Una familia está vacía solo si todos sus puestos lo están.
+- **Roles relativos** (`relative_role`): solicitante, jefe del solicitante,
+  quien detecta, área responsable, dueño del proceso. Solo el dueño se
+  resuelve a un puesto; los demás no cuentan para «puesto sin persona» ni
+  para adherencia.
+- **Vacante aprobada** (`hr.job.sgi_vacancy_approved` / `sgi_vacancy_until`,
+  pestaña Actividades SGI del puesto): un puesto sin empleados con vacante
+  vigente se carga con advertencia; sin ella, es error.
+- **Método de medición obligatorio** (`measure_method`): Odoo, por
+  consecuencia (`measure_proxy_activity_id`: copia el conteo y el estado de la
+  actividad que la prueba; sin ciclos), correo y manual (grises «pendiente»
+  hasta la fase 2), muestreo (`sample_cadence`) y no aplica (exige
+  `measure_justification`). «Sin medir» solo con el procedimiento en borrador:
+  un procedimiento no pasa a piloto con actividades sin método, ni a vigente con
+  métodos incompletos (el error las lista). La ficha del proceso y
+  Procesos → Medición por método muestran cuánto se mide de verdad
+  (odoo + consecuencia entre el total).
+- **Quién ejecutó** (`measure_user_field`, p. ej. `create_uid`): el cron hace un
+  `read_group` por ese campo en la ventana de 30 días y clasifica cada
+  ejecución en `measure_executor_json`: **correcto**, **otro_puesto**,
+  **generico** (cuentas compartidas del parámetro
+  `quimibond_sgi.generic_user_ids`; la migración pone 92,184,80),
+  **sin_empleado** o **sistema** (OdooBot). Adherencia = correcto entre todo lo
+  que no es sistema. Avisos en la ficha (`measure_warning`): adherencia < 80 %,
+  ejecuciones genéricas o sin empleado, y actividad «manual» con más de la mitad
+  de ejecuciones del sistema. TODO fase 2: pasa a `sgi.activity.evidence`.
+
+En la carga: bloque `families` (se procesa primero), roles
+`{"role": "ejecuta", "family": "OP-TEJ"}` / `{"role": "aprueba", "relative":
+"jefe_del_solicitante"}`, `evidence[0].user_field` → `measure_user_field` y
+`"measure": {"method": "consecuencia", "proxy": "C6.02"}` (la evidencia implica
+`odoo`; `muestreo` lleva `sample_cadence`, `no_aplica` lleva `justification`).
+Los nombres de puesto se comparan sin mayúsculas, espacios dobles ni acentos.
+
 ### Carga por API: `sgi.process.load_payload(payload, dry_run=False)`
 
 Por JSON-RPC o por el conector MCP (`call_model_method` sobre `sgi.process`;

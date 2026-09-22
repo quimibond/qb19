@@ -8,6 +8,10 @@
   roles (o las cubre la carga por API de los 14 procesos nuevos).
 - Tipo de documento como registro (sgi_doc_type_id) desde el código viejo.
 - Aprobador del procedimiento = usuario del dueño, donde estaba vacío.
+- Método de medición «Registro en Odoo» en las actividades que ya tenían
+  modelo; las demás quedan «sin medir» (se ven en el tablero por método).
+- quimibond_sgi.generic_user_ids = cuentas compartidas de producción
+  (Supervisor 92, Auditor de Calidad 184, manufactura@ 80), si no existe.
 
 - La carga por API (sgi.process.load_payload) queda disponible en el conector
   MCP de Odoo: sgi.process habilitado con llamadas a métodos. El método mismo
@@ -75,9 +79,9 @@ def migrate(cr, version):
            if backup else "")
     cr.execute("""
         INSERT INTO sgi_activity_role
-            (activity_id, role, job_id, sequence, process_id, company_id,
-             create_uid, write_uid, create_date, write_date)
-        SELECT r.activity_id, 'ejecuta', r.job_id,
+            (activity_id, role, target_type, job_id, sequence, process_id,
+             company_id, create_uid, write_uid, create_date, write_date)
+        SELECT r.activity_id, 'ejecuta', 'job', r.job_id,
                10 * row_number() OVER (PARTITION BY r.activity_id ORDER BY r.job_id),
                a.process_id, a.company_id, 1, 1,
                now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC'
@@ -122,6 +126,18 @@ def migrate(cr, version):
     """)
     _logger.info("SGI fase 1: %d documento(s) con tipo de documento ligado.",
                  cr.rowcount)
+
+    cr.execute("""
+        UPDATE sgi_process_activity SET measure_method = 'odoo'
+        WHERE measure_method IS NULL AND measure_model_id IS NOT NULL
+    """)
+    cr.execute("""
+        INSERT INTO ir_config_parameter (key, value, create_uid, write_uid, create_date, write_date)
+        SELECT 'quimibond_sgi.generic_user_ids', '92,184,80', 1, 1,
+               now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC'
+        WHERE NOT EXISTS (SELECT 1 FROM ir_config_parameter
+                          WHERE key = 'quimibond_sgi.generic_user_ids')
+    """)
 
     # Aprobador por omisión = usuario del dueño del proceso.
     cr.execute("""

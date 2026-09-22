@@ -13,6 +13,7 @@
 """
 import logging
 import re
+import unicodedata
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
@@ -27,11 +28,86 @@ SGI_ROLE_SELECTION = [
 ]
 
 
+SGI_ROLE_TARGETS = [
+    ('job', "Puesto"),
+    ('family', "Familia de puestos"),
+    ('relative', "Rol relativo"),
+]
+
+# Roles que no son de un puesto fijo. La lógica vive en código (pocos y
+# estables); si hacen falta más, se agregan aquí.
+SGI_RELATIVE_ROLES = [
+    ('solicitante', "Solicitante"),
+    ('jefe_del_solicitante', "Jefe del área que pide"),
+    ('quien_detecta', "Quien lo detecta"),
+    ('area_responsable', "Área responsable"),
+    ('dueno_proceso', "Dueño del proceso"),
+]
+
+
 def sgi_normalize_name(name):
-    """Nombre comparable de un puesto: sin distinguir mayúsculas y con los
-    espacios y saltos de línea colapsados («JEFE DE INVENTARIOS Y \\nALMACENES»
-    == «Jefe de inventarios y almacenes»)."""
-    return ' '.join((name or '').split()).casefold()
+    """Nombre comparable de un puesto: sin distinguir mayúsculas ni acentos y
+    con los espacios y saltos de línea colapsados («JEFE DE INVENTARIOS Y
+    \\nALMACENES» == «Jefe de inventarios y almacenes», «Diseño» == «diseno»)."""
+    text = unicodedata.normalize('NFKD', ' '.join((name or '').split()))
+    return ''.join(c for c in text if not unicodedata.combining(c)).casefold()
+
+
+class SgiJobFamily(models.Model):
+    """Familia de puestos: el mismo rol repartido en puestos que solo cambian
+    por nivel o letra (Operador de tejido circular A…J). El nivel se queda en
+    hr.job; el SGI asigna actividades a la familia."""
+    _name = 'sgi.job.family'
+    _description = "Familia de puestos SGI"
+    _order = 'code'
+
+    code = fields.Char(string="Código", required=True, index=True)
+    name = fields.Char(string="Familia", required=True)
+    job_ids = fields.Many2many(
+        'hr.job', 'sgi_job_family_rel', 'family_id', 'job_id',
+        string="Puestos")
+    company_id = fields.Many2one(
+        'res.company', string="Empresa", required=True, index=True,
+        default=lambda self: self.env.company)
+    active = fields.Boolean(default=True)
+    employee_count = fields.Integer(
+        string="Empleados activos", compute='_compute_employee_count')
+
+    _code_company_uniq = models.Constraint(
+        'unique(code, company_id)',
+        "El código de la familia debe ser único por empresa.",
+    )
+
+    @api.depends('code', 'name')
+    def _compute_display_name(self):
+        for family in self:
+            family.display_name = "%s - %s" % (family.code, family.name) \
+                if family.code else family.name
+
+    def _compute_employee_count(self):
+        counts = {}
+        jobs = self.job_ids
+        if jobs:
+            counts = {job.id: count for job, count in self.env['hr.employee'].sudo()._read_group(
+                [('job_id', 'in', jobs.ids)], ['job_id'], ['__count'])}
+        for family in self:
+            family.employee_count = sum(counts.get(j.id, 0) for j in family.job_ids)
+
+    @api.constrains('job_ids', 'company_id', 'active')
+    def _check_job_single_family(self):
+        """Un puesto pertenece a una sola familia por empresa."""
+        for family in self.filtered('active'):
+            others = self.search([
+                ('id', '!=', family.id),
+                ('company_id', '=', family.company_id.id),
+                ('job_ids', 'in', family.job_ids.ids),
+            ]) if family.job_ids else self.browse()
+            for other in others:
+                shared = family.job_ids & other.job_ids
+                raise ValidationError(
+                    "El puesto %s ya pertenece a la familia %s; un puesto solo "
+                    "puede estar en una familia por empresa." % (
+                        ', '.join(shared.mapped('name')), other.display_name))
 
 
 class SgiActivityRole(models.Model):
@@ -44,9 +120,20 @@ class SgiActivityRole(models.Model):
         ondelete='cascade', index=True)
     role = fields.Selection(
         SGI_ROLE_SELECTION, string="Rol", required=True, default='ejecuta')
+    # A quién toca: un puesto, una familia de puestos o un rol relativo
+    # (el solicitante, quien detecta…). Exactamente uno según target_type.
+    target_type = fields.Selection(
+        SGI_ROLE_TARGETS, string="Asignado a", required=True, default='job')
     job_id = fields.Many2one(
-        'hr.job', string="Puesto", required=True, ondelete='restrict',
+        'hr.job', string="Puesto", ondelete='restrict', index=True)
+    family_id = fields.Many2one(
+        'sgi.job.family', string="Familia de puestos", ondelete='restrict',
         index=True)
+    relative_role = fields.Selection(
+        SGI_RELATIVE_ROLES, string="Rol relativo",
+        help="Rol que no es de un puesto fijo. «Dueño del proceso» se resuelve "
+             "al dueño del proceso; los demás no se resuelven a un puesto (no "
+             "cuentan para «puesto sin persona» ni para adherencia).")
     condition = fields.Char(
         string="Condición",
         help="Cuándo aplica el rol, ej. «arriba del monto que se fije». "
@@ -63,13 +150,85 @@ class SgiActivityRole(models.Model):
         'unique(activity_id, role, job_id)',
         "El mismo puesto no puede tener dos veces el mismo rol en una actividad.",
     )
+    _activity_role_family_uniq = models.Constraint(
+        'unique(activity_id, role, family_id)',
+        "La misma familia no puede tener dos veces el mismo rol en una actividad.",
+    )
+    _activity_role_relative_uniq = models.Constraint(
+        'unique(activity_id, role, relative_role)',
+        "El mismo rol relativo no puede repetirse en una actividad.",
+    )
 
-    @api.depends('activity_id', 'role', 'job_id')
+    @api.constrains('target_type', 'job_id', 'family_id', 'relative_role')
+    def _check_target(self):
+        for role in self:
+            filled = {
+                'job': bool(role.job_id),
+                'family': bool(role.family_id),
+                'relative': bool(role.relative_role),
+            }
+            if not filled[role.target_type] or sum(filled.values()) != 1:
+                raise ValidationError(
+                    "Cada rol se asigna a exactamente una cosa: un puesto, una "
+                    "familia o un rol relativo, según «Asignado a» (%s)." % (
+                        dict(SGI_ROLE_TARGETS)[role.target_type]))
+
+    def _sgi_target_label(self):
+        self.ensure_one()
+        if self.target_type == 'family':
+            return self.family_id.display_name or ''
+        if self.target_type == 'relative':
+            return dict(SGI_RELATIVE_ROLES).get(self.relative_role, '')
+        return ' '.join((self.job_id.name or '').split())
+
+    @api.depends('role', 'target_type', 'job_id', 'family_id', 'relative_role')
     def _compute_display_name(self):
         labels = dict(SGI_ROLE_SELECTION)
         for role in self:
             role.display_name = "%s · %s" % (
-                labels.get(role.role, ''), role.job_id.display_name or '')
+                labels.get(role.role, ''), role._sgi_target_label())
+
+    def _sgi_target_key(self):
+        """Llave natural del destino (para la carga idempotente)."""
+        self.ensure_one()
+        if self.target_type == 'family':
+            return ('family', self.family_id.id)
+        if self.target_type == 'relative':
+            return ('relative', self.relative_role)
+        return ('job', self.job_id.id)
+
+    def _sgi_jobs(self):
+        """Puestos a los que se resuelven los roles: el puesto, los de la
+        familia, o el del dueño del proceso. Si alguno es un relativo que no
+        se resuelve a un puesto (solicitante, quien detecta…): None."""
+        jobs = self.env['hr.job']
+        for role in self:
+            if role.target_type == 'job':
+                jobs |= role.job_id
+            elif role.target_type == 'family':
+                jobs |= role.family_id.job_ids
+            elif role.relative_role == 'dueno_proceso':
+                jobs |= role.activity_id.process_id.owner_id.job_id
+            else:
+                return None
+        return jobs
+
+    def _sgi_staffing_state(self):
+        """Para la regla «puesto sin persona»: 'ok', 'vacante' (vacante
+        aprobada y vigente), 'sin_persona', o 'na' (rol relativo que no se
+        resuelve a un puesto). Una familia está vacía solo si TODOS sus
+        puestos tienen cero empleados activos. El dueño del proceso cuenta
+        como el puesto de ese empleado."""
+        self.ensure_one()
+        if self.target_type == 'relative':
+            if self.relative_role != 'dueno_proceso':
+                return 'na'
+            owner = self.activity_id.process_id.owner_id
+            if not owner.active:
+                return 'sin_persona'
+            return owner.job_id._sgi_staffing_state() if owner.job_id else 'ok'
+        jobs = self.job_id if self.target_type == 'job' else self.family_id.job_ids
+        return jobs._sgi_staffing_state()
 
     # Un rol es parte del cuerpo del procedimiento (quién hace qué): moverlo
     # lo marca pendiente de revisión, igual que una responsabilidad. Y como
@@ -111,6 +270,56 @@ class HrJob(models.Model):
 
     sgi_role_ids = fields.One2many(
         'sgi.activity.role', 'job_id', string="Roles en actividades SGI")
+    sgi_family_ids = fields.Many2many(
+        'sgi.job.family', 'sgi_job_family_rel', 'job_id', 'family_id',
+        string="Familias SGI", readonly=True)
+    sgi_family_id = fields.Many2one(
+        'sgi.job.family', string="Familia SGI", compute='_compute_sgi_family_id',
+        store=True, readonly=True, index=True,
+        help="Familia de puestos del SGI (se define en la familia). El puesto "
+             "hereda las actividades de su familia.")
+    # Vacante aprobada: un puesto con actividades y cero personas no es
+    # alarma si ya se autorizó contratar.
+    sgi_vacancy_approved = fields.Boolean(
+        string="Vacante aprobada (SGI)",
+        help="El puesto no tiene personas porque se va a contratar. Mientras "
+             "esté vigente, el SGI lo acepta como responsable con advertencia.")
+    sgi_vacancy_until = fields.Date(
+        string="Vacante vigente hasta",
+        help="Vacío = sin fecha límite.")
+
+    @api.depends('sgi_family_ids', 'sgi_family_ids.active')
+    def _compute_sgi_family_id(self):
+        for job in self:
+            job.sgi_family_id = job.sgi_family_ids.filtered('active')[:1]
+
+    def _sgi_vacancy_valid(self):
+        self.ensure_one()
+        return bool(self.sgi_vacancy_approved) and (
+            not self.sgi_vacancy_until
+            or self.sgi_vacancy_until >= fields.Date.context_today(self))
+
+    def _sgi_staffing_state(self):
+        """Estado de un conjunto de puestos (un puesto o una familia): 'ok' si
+        alguno tiene empleados activos, 'vacante' si ninguno pero alguno tiene
+        vacante vigente, 'sin_persona' si no."""
+        if not self:
+            return 'sin_persona'
+        count = self.env['hr.employee'].sudo().search_count([('job_id', 'in', self.ids)])
+        if count:
+            return 'ok'
+        if any(job._sgi_vacancy_valid() for job in self):
+            return 'vacante'
+        return 'sin_persona'
+
+    def _sgi_roles_domain(self):
+        """Roles del puesto: los suyos y los de su familia (el puesto hereda
+        las actividades de su familia)."""
+        families = self.sgi_family_id
+        domain = [('job_id', 'in', self.ids)]
+        if families:
+            domain = ['|'] + domain + [('family_id', 'in', families.ids)]
+        return domain
     sgi_execute_count = fields.Integer(
         string="Ejecuta", compute='_compute_sgi_role_counts')
     sgi_approve_count = fields.Integer(
@@ -121,17 +330,27 @@ class HrJob(models.Model):
         string="Se entera", compute='_compute_sgi_role_counts')
 
     def _compute_sgi_role_counts(self):
+        """Roles propios más los de su familia."""
         jobs = self.filtered('id')
-        counts = {}
+        by_job, by_family = {}, {}
         if jobs:
-            for job, role, count in self.env['sgi.activity.role']._read_group(
+            Role = self.env['sgi.activity.role']
+            for job, role, count in Role._read_group(
                     [('job_id', 'in', jobs.ids)], ['job_id', 'role'], ['__count']):
-                counts[(job.id, role)] = count
+                by_job[(job.id, role)] = count
+            if jobs.sgi_family_id:
+                for family, role, count in Role._read_group(
+                        [('family_id', 'in', jobs.sgi_family_id.ids)],
+                        ['family_id', 'role'], ['__count']):
+                    by_family[(family.id, role)] = count
         for job in self:
-            job.sgi_execute_count = counts.get((job.id, 'ejecuta'), 0)
-            job.sgi_approve_count = counts.get((job.id, 'aprueba'), 0)
-            job.sgi_participate_count = counts.get((job.id, 'participa'), 0)
-            job.sgi_inform_count = counts.get((job.id, 'informa'), 0)
+            def total(role, job=job):
+                return (by_job.get((job.id, role), 0)
+                        + by_family.get((job.sgi_family_id.id, role), 0))
+            job.sgi_execute_count = total('ejecuta')
+            job.sgi_approve_count = total('aprueba')
+            job.sgi_participate_count = total('participa')
+            job.sgi_inform_count = total('informa')
 
     def action_sgi_view_roles(self):
         self.ensure_one()
@@ -140,7 +359,7 @@ class HrJob(models.Model):
             'name': "Actividades SGI — %s" % self.display_name,
             'res_model': 'sgi.activity.role',
             'view_mode': 'list,form',
-            'domain': [('job_id', '=', self.id)],
+            'domain': self._sgi_roles_domain(),
             'context': {'default_job_id': self.id,
                         'search_default_group_role': 1},
         }

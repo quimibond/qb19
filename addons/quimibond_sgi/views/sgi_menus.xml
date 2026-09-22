@@ -170,6 +170,12 @@
     <menuitem id="menu_sgi_activity_roles" name="Roles por puesto"
               parent="menu_sgi_processes" action="sgi_activity_role_action"
               sequence="25"/>
+    <menuitem id="menu_sgi_activity_methods" name="Medición por método"
+              parent="menu_sgi_processes" action="sgi_activity_method_action"
+              sequence="22"/>
+    <menuitem id="menu_sgi_job_families" name="Familias de puestos"
+              parent="menu_sgi_processes" action="sgi_job_family_action"
+              sequence="30"/>
 
     <!-- 7. Riesgos y auditorías: planificar (6.1) antes de verificar (9.2).
          Los incidentes SST se movieron a Mejora continua (ciclo reactivo). -->
