@@ -606,7 +606,6 @@ Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
   ],
   "processes": [{"code": "C2", "name": "Ventas", "process_type": "cadena de valor",
                  "owner_job": "DIRECTOR DE VENTAS",
-                 "start_trigger": "…", "end_trigger": "…",
                  "replaced_documents": ["P-A31"]}],
   "activities": [
     {"process": "C2", "number": "C2.03", "stage": "A. Pedido",
@@ -646,7 +645,11 @@ Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
   como texto del proceso son **error**.
 - **Un ejecutor por actividad.** Si según el caso la ejecuta otro puesto, son
   dos actividades. Una familia de puestos (`family`) solo cuando los puestos
-  son intercambiables (PEDIDOS).
+  son intercambiables (PEDIDOS). `condition` solo va en `aprueba` o `informa`
+  («arriba del monto que se fije»); en `ejecuta` o `participa` es error.
+- **Inicio y fin del proceso** no se capturan: inicia con lo que sus
+  actividades reciben y ninguna produce; termina con lo que entregan y ninguna
+  recibe. `start_trigger`/`end_trigger` se ignoran con aviso.
 - Puestos por id o por nombre normalizado (sin mayúsculas, espacios y saltos
   de línea colapsados). **Nunca se crean**: si no existe o es ambiguo, error.
 - Dueño: `owner_employee_id`, o `owner_job` = el único empleado activo con

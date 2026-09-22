@@ -384,12 +384,13 @@ class SgiProcessDeliverables(models.Model):
 
     stage_ids = fields.One2many('sgi.process.stage', 'process_id', string="Etapas")
     input_deliverable_ids = fields.Many2many(
-        'sgi.deliverable', compute='_compute_io_deliverables', string="Entradas",
-        help="Lo que sus actividades reciben y ninguna actividad del proceso entrega.")
+        'sgi.deliverable', compute='_compute_io_deliverables', string="Inicia con",
+        help="Inicio del proceso: lo que sus actividades reciben y ninguna "
+             "actividad del proceso produce.")
     output_deliverable_ids = fields.Many2many(
-        'sgi.deliverable', compute='_compute_io_deliverables', string="Salidas",
-        help="Lo que sus actividades entregan y ninguna actividad del proceso recibe "
-             "(lo que sale hacia otros procesos o hacia el cliente).")
+        'sgi.deliverable', compute='_compute_io_deliverables', string="Termina con",
+        help="Fin del proceso: lo que sus actividades entregan y ninguna "
+             "actividad del proceso recibe (sale hacia otros procesos o al cliente).")
 
     @api.depends('procedure_activity_ids.input_deliverable_ids',
                  'procedure_activity_ids.output_deliverable_ids')

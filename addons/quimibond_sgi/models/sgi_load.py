@@ -50,7 +50,7 @@ _PROCESS_TYPES = {
     'cop': 'cop', 'soporte': 'soporte',
 }
 _PROCESS_TEXT_FIELDS = (
-    'name', 'purpose', 'scope', 'start_trigger', 'end_trigger', 'env_aspects')
+    'name', 'purpose', 'scope', 'env_aspects')
 _LEGACY_KEYS = {
     'links_to': "«links_to» ya no existe: declara «outputs» en quien entrega e "
                 "«inputs» en quien recibe; la liga sale sola.",
@@ -325,6 +325,11 @@ class _SgiLoader:
                 raise ValidationError(
                     "«%s» del proceso ya no es texto: sale de lo que reciben y "
                     "entregan sus actividades." % legacy)
+        for legacy in ('start_trigger', 'end_trigger'):
+            if proc.get(legacy):
+                self.report.warn('process', code, (
+                    "«%s» se ignora: el inicio y el fin del proceso salen de los "
+                    "entregables que recibe de fuera y entrega hacia fuera." % legacy))
         vals = {name: proc[name] for name in _PROCESS_TEXT_FIELDS if name in proc}
         if 'process_type' in proc or 'type' in proc:
             raw = str(proc.get('process_type') or proc.get('type') or '').strip().lower()

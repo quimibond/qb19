@@ -70,7 +70,8 @@
                                     <field name="relative_role"
                                            invisible="target_type != 'relative'"
                                            required="target_type == 'relative'"/>
-                                    <field name="condition" placeholder="Siempre"/>
+                                    <field name="condition" placeholder="Siempre"
+                                           readonly="role not in ('aprueba', 'informa') and not condition"/>
                                 </list>
                             </field>
                             <separator string="Recibe"/>

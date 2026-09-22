@@ -89,6 +89,13 @@
                     <!-- 2. Alcance -->
                     <h4>2. Alcance</h4>
                     <p t-out="doc.scope"/>
+                    <!-- Inicio y fin: se calculan de los entregables. -->
+                    <p t-if="doc.input_deliverable_ids">
+                        <b>Inicia con:</b> <t t-out="', '.join(doc.input_deliverable_ids.mapped('name'))"/>.
+                    </p>
+                    <p t-if="doc.output_deliverable_ids">
+                        <b>Termina con:</b> <t t-out="', '.join(doc.output_deliverable_ids.mapped('name'))"/>.
+                    </p>
 
                     <!-- 3. Responsabilidades: se GENERAN de los roles de las
                          actividades (quién ejecuta, aprueba, participa, se

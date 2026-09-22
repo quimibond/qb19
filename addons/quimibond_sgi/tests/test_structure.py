@@ -227,3 +227,29 @@ class TestStructure(TransactionCase):
             ):
                 result = self.Process.load_payload(payload, dry_run=True)
                 self.assertFalse(result['ok'], payload)
+
+    def test_11_condition_only_for_approver_or_informed(self):
+        act = self._act(self.p_ven, 'Con aprobación')
+        Role = self.env['sgi.activity.role']
+        Role.create({'activity_id': act.id, 'role': 'aprueba', 'job_id': self.job_b.id,
+                     'condition': 'arriba del monto que se fije'})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            Role.create({'activity_id': act.id, 'role': 'participa', 'job_id': self.job_b.id,
+                         'condition': 'si es exportación'})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            act.role_ids.filtered(lambda r: r.role == 'ejecuta').condition = 'si es nacional'
+
+    def test_12_start_and_end_come_from_deliverables(self):
+        oc = self.Deliverable.create({'code': 'X-OC', 'name': 'Orden de compra del cliente'})
+        ped = self.Deliverable.create({'code': 'X-PD', 'name': 'Pedido capturado'})
+        conf = self.Deliverable.create({'code': 'X-CF', 'name': 'Pedido confirmado'})
+        self._act(self.p_ven, 'Capturar', input_deliverable_ids=[(6, 0, oc.ids)],
+                  output_deliverable_ids=[(6, 0, ped.ids)])
+        self._act(self.p_ven, 'Confirmar', input_deliverable_ids=[(6, 0, ped.ids)],
+                  output_deliverable_ids=[(6, 0, conf.ids)])
+        self.assertEqual(self.p_ven.input_deliverable_ids, oc, "Inicia con lo que llega de fuera.")
+        self.assertEqual(self.p_ven.output_deliverable_ids, conf, "Termina con lo que sale.")
+        result = self.Process.load_payload({'processes': [
+            {'code': 'XV', 'name': 'Ventas X', 'start_trigger': 'Llega la OC'}]}, dry_run=True)
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertTrue(any('start_trigger' in w['message'] for w in result['warnings']))
