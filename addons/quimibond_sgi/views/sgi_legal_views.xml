@@ -127,7 +127,5 @@
         </field>
     </record>
 
-    <menuitem id="menu_sgi_legal" name="Requisitos legales"
-              parent="menu_sgi_audits" action="sgi_legal_requirement_action"
-              sequence="8"/>
+    <!-- Menú: vive en views/sgi_menus.xml (todo el árbol del SGI en un lugar). -->
 </odoo>

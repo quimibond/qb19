@@ -1,90 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Navegación SGI: SOLO gestión (planear, medir, mejorar). Lo que se
-         opera a diario vive en su app: evaluación de proveedores en Compras,
-         presupuesto/pronóstico en Ventas, calidad preventiva en Calidad y
-         competencias en Empleados — ver la sección "OPERACIÓN EN SU APP".
-         Los xmlids NO cambian: solo padres, secuencias y agrupación. -->
+    <!-- Navegación SGI: SEIS entradas, máximo tres niveles (22-sep-2026).
+
+         Inicio · Procesos · Mejora · Documentos · Análisis · Configuración
+
+         Antes eran 14 entradas con tres tableros y las actividades en tres
+         lugares. Lo que se opera a diario vive en su app (evaluación de
+         proveedores en Compras, presupuesto en Ventas, calidad preventiva en
+         Calidad, competencias en Empleados): ver "OPERACIÓN EN SU APP".
+         Los xmlids NO cambian: solo padres, nombres y secuencias. Todo el
+         árbol del SGI vive en este archivo. -->
 
     <menuitem id="menu_sgi_root" name="SGI" sequence="90"
               web_icon="quimibond_sgi,static/description/icon.png"
               groups="quimibond_sgi.group_sgi_user"/>
 
-    <!-- 0. Tablero: hoja de cálculo armada con los pivotes de Análisis (se
-         edita en la app Tableros, sin programar). -->
-    <menuitem id="menu_sgi_dashboard_health" name="Tablero" parent="menu_sgi_root"
+    <!-- 1. Inicio: el tablero y lo que le toca a cada quien -->
+    <menuitem id="menu_sgi_panel" name="Inicio" parent="menu_sgi_root" sequence="10"/>
+    <menuitem id="menu_sgi_dashboard_health" name="Tablero" parent="menu_sgi_panel"
               action="sgi_spreadsheet_dashboard_action" sequence="5"/>
-
-    <!-- 1. Panel: la salud del sistema de un vistazo -->
-    <menuitem id="menu_sgi_panel" name="Panel" parent="menu_sgi_root"
-              action="sgi_process_action_panel" sequence="10"/>
-    <menuitem id="menu_sgi_policy" name="Política Integral" parent="menu_sgi_panel"
-              action="sgi_policy_action" sequence="5"/>
-    <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_panel"
-              action="sgi_diagnostic_action" sequence="9"
-              groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_compliance" name="Cumplimiento de procedimientos"
-              parent="menu_sgi_panel" action="sgi_activity_compliance_action"
-              sequence="7"/>
-    <!-- Los Paretos de calidad son análisis operativo: viven en la app
-         CALIDAD (ver "OPERACIÓN EN SU APP"). El Panel se queda con la
-         gestión pura: salud, Política, Objetivos y Diagnóstico.
-         El parent declarado es un fallback: la función del final del
-         archivo lo recuelga del raíz de Calidad en runtime (el xmlid de
-         ese menú es Enterprise y una ref dura rompería la carga). -->
-    <menuitem id="menu_sgi_dashboards" name="Tableros (SGI)"
-              parent="menu_sgi_root" sequence="85"
-              groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"
-              parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto"
+    <menuitem id="menu_sgi_my_activities" name="Mis actividades"
+              parent="menu_sgi_panel" action="sgi_process_activity_action_mine"
               sequence="10"/>
+    <menuitem id="menu_sgi_my_actions" name="Mis acciones" parent="menu_sgi_panel"
+              action="sgi_action_line_action_mine" sequence="20"/>
+    <menuitem id="menu_sgi_my_measures" name="Mis mediciones" parent="menu_sgi_panel"
+              action="sgi_measure_action_mine" sequence="30"/>
+    <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_panel"
+              action="sgi_document_action_my_procedures" sequence="40"/>
+    <menuitem id="menu_sgi_my_acks" name="Mis acuses de lectura" parent="menu_sgi_panel"
+              action="sgi_document_ack_action_mine" sequence="50"/>
 
-    <!-- 2. Mi trabajo: lo que le toca a cada persona -->
-    <menuitem id="menu_sgi_mywork" name="Mi trabajo" parent="menu_sgi_root" sequence="20"/>
-    <menuitem id="menu_sgi_my_actions" name="Mis acciones" parent="menu_sgi_mywork"
-              action="sgi_action_line_action_mine" sequence="10"/>
-    <menuitem id="menu_sgi_my_acks" name="Mis acuses de lectura" parent="menu_sgi_mywork"
-              action="sgi_document_ack_action_mine" sequence="15"/>
-    <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos" parent="menu_sgi_mywork"
-              action="sgi_document_action_my_procedures" sequence="20"/>
-    <menuitem id="menu_sgi_my_measures" name="Mis mediciones" parent="menu_sgi_mywork"
-              action="sgi_measure_action_mine" sequence="25"/>
-    <menuitem id="menu_sgi_my_activities" name="Mis actividades de procedimiento"
-              parent="menu_sgi_mywork" action="sgi_process_activity_action_mine"
-              sequence="30"/>
+    <!-- 2. Procesos: el mapa, sus actividades y su contexto (riesgos,
+         requisitos legales, partes interesadas). -->
+    <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root" sequence="20"/>
+    <menuitem id="menu_sgi_process_map" name="Mapa de procesos" parent="menu_sgi_processes"
+              action="sgi_process_action" sequence="5"/>
+    <menuitem id="menu_sgi_activities" name="Actividades" parent="menu_sgi_processes"
+              action="sgi_process_activity_action" sequence="10"/>
+    <menuitem id="menu_sgi_activity_roles" name="Roles por puesto"
+              parent="menu_sgi_processes" action="sgi_activity_role_action" sequence="15"/>
+    <menuitem id="menu_sgi_activity_chain" name="Cadena de actividades"
+              parent="menu_sgi_processes" action="sgi_activity_link_action" sequence="20"/>
+    <menuitem id="menu_sgi_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
+              action="sgi_process_flow_action" sequence="25"/>
+    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_processes"
+              action="sgi_risk_action" sequence="30"/>
+    <menuitem id="menu_sgi_legal" name="Requisitos legales" parent="menu_sgi_processes"
+              action="sgi_legal_requirement_action" sequence="35"/>
+    <menuitem id="menu_sgi_interested_parties" name="Partes interesadas"
+              parent="menu_sgi_processes" action="sgi_interested_party_action" sequence="40"/>
 
-    <!-- 3. Mejora continua: NC, reclamaciones y mejoras (el corazón operativo) -->
-    <menuitem id="menu_sgi_improvement_group" name="Mejora continua" parent="menu_sgi_root"
-              sequence="30"/>
-    <menuitem id="menu_sgi_nc" name="No Conformidades" parent="menu_sgi_improvement_group"
-              sequence="10"/>
-    <menuitem id="menu_sgi_nc_kanban" name="Tablero" parent="menu_sgi_nc"
+    <!-- 3. Mejora: lo que salió mal y lo que se hace para que no vuelva
+         (NC, acciones, reclamaciones, incidentes, auditorías, emergencias). -->
+    <menuitem id="menu_sgi_improvement_group" name="Mejora" parent="menu_sgi_root" sequence="30"/>
+    <menuitem id="menu_sgi_nc" name="No conformidades" parent="menu_sgi_improvement_group"
               action="sgi_nc_board_action" sequence="10"/>
-    <menuitem id="menu_sgi_nc_concentrado" name="Concentrado" parent="menu_sgi_nc"
-              action="sgi_nc_action_concentrado" sequence="20"/>
-    <!-- Las acciones CAPA son transversales (NC, riesgos, AMEF, incidentes):
-         viven al nivel de Mejora continua, no dentro de No Conformidades. -->
-    <menuitem id="menu_sgi_nc_all_actions" name="Acciones (todas)"
-              parent="menu_sgi_improvement_group"
-              action="sgi_action_line_action_all" sequence="15"
-              groups="quimibond_sgi.group_sgi_manager"/>
-    <!-- El incidente SST es un evento operativo, par de la NC: su ciclo
-         reactivo (SCAT → acciones → NC) pertenece a Mejora continua. -->
-    <menuitem id="menu_sgi_incidents" name="Incidentes SST"
-              parent="menu_sgi_improvement_group"
-              action="sgi_incident_action" sequence="18"/>
+    <menuitem id="menu_sgi_nc_concentrado" name="Concentrado de NC"
+              parent="menu_sgi_improvement_group" action="sgi_nc_action_concentrado"
+              sequence="12"/>
+    <menuitem id="menu_sgi_nc_all_actions" name="Acciones"
+              parent="menu_sgi_improvement_group" action="sgi_action_line_action_all"
+              sequence="15" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_complaints" name="Reclamaciones" parent="menu_sgi_improvement_group"
               action="sgi_complaint_action" sequence="20"/>
     <menuitem id="menu_sgi_internal_complaints" name="Quejas y sugerencias"
-              parent="menu_sgi_improvement_group"
-              action="sgi_internal_complaint_action" sequence="25"/>
+              parent="menu_sgi_improvement_group" action="sgi_internal_complaint_action"
+              sequence="25"/>
+    <menuitem id="menu_sgi_incidents" name="Incidentes SST"
+              parent="menu_sgi_improvement_group" action="sgi_incident_action" sequence="30"/>
     <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_improvement_group"
-              action="sgi_improvement_action" sequence="30"/>
+              action="sgi_improvement_action" sequence="35"/>
     <menuitem id="menu_sgi_lessons" name="Lecciones aprendidas"
-              parent="menu_sgi_improvement_group"
-              action="sgi_nc_lessons_action" sequence="40"/>
+              parent="menu_sgi_improvement_group" action="sgi_nc_lessons_action" sequence="40"/>
+    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_improvement_group"
+              action="sgi_audit_action" sequence="50"/>
+    <menuitem id="menu_sgi_audit_programs" name="Programa de auditorías"
+              parent="menu_sgi_improvement_group" action="sgi_audit_program_action"
+              sequence="55"/>
+    <menuitem id="menu_sgi_emergency_plans" name="Planes de emergencia"
+              parent="menu_sgi_improvement_group" action="sgi_emergency_plan_action"
+              sequence="60"/>
+    <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
+              parent="menu_sgi_improvement_group" action="sgi_emergency_drill_action"
+              sequence="65"/>
 
-    <!-- 4. Documental: la biblioteca controlada y su ciclo de vida -->
+    <!-- 4. Documentos: la biblioteca controlada y su ciclo de vida -->
     <menuitem id="menu_sgi_documental" name="Documentos" parent="menu_sgi_root" sequence="40"/>
     <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
               action="sgi_document_action" sequence="10"/>
@@ -94,20 +95,66 @@
               action="sgi_migration_action" sequence="30"
               groups="quimibond_sgi.group_sgi_manager"/>
 
-    <!-- 5. Medición: KPIs y satisfacción — SOLO gestión. Lo operativo vive
-         en su app: evaluación de proveedores en Compras, presupuesto y
-         pronóstico en Ventas, competencias en Empleados (ver abajo). -->
-    <menuitem id="menu_sgi_measurement" name="Medición" parent="menu_sgi_root" sequence="50"/>
-    <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_measurement"
-              action="sgi_indicator_action" sequence="10"/>
-    <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_measurement"
+    <!-- 5. Análisis: la cascada de gestión (Política → Objetivos →
+         Indicadores → Revisión por la Dirección) y quién hace qué. -->
+    <menuitem id="menu_sgi_analysis" name="Análisis" parent="menu_sgi_root" sequence="50"/>
+    <menuitem id="menu_sgi_policy" name="Política integral" parent="menu_sgi_analysis"
+              action="sgi_policy_action" sequence="5"/>
+    <menuitem id="menu_sgi_objectives" name="Objetivos integrales" parent="menu_sgi_analysis"
+              action="sgi_objective_action" sequence="10"/>
+    <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_analysis"
+              action="sgi_indicator_action" sequence="15"/>
+    <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_analysis"
               action="sgi_measure_action" sequence="20"/>
-    <!-- La cascada Política → Objetivos → Indicadores arranca en el Panel:
-         los Objetivos Integrales viven junto a la Política. -->
-    <menuitem id="menu_sgi_objectives" name="Objetivos Integrales" parent="menu_sgi_panel"
-              action="sgi_objective_action" sequence="7"/>
     <menuitem id="menu_sgi_satisfaction" name="Satisfacción del cliente"
-              parent="menu_sgi_measurement" action="sgi_satisfaction_action" sequence="45"/>
+              parent="menu_sgi_analysis" action="sgi_satisfaction_action" sequence="25"/>
+    <menuitem id="menu_sgi_analysis_who" name="Quién hace qué"
+              parent="menu_sgi_analysis" action="sgi_activity_exec_stat_action_who"
+              sequence="30"/>
+    <menuitem id="menu_sgi_analysis_trend" name="Tendencia de ejecuciones"
+              parent="menu_sgi_analysis" action="sgi_activity_exec_stat_action_trend"
+              sequence="35"/>
+    <menuitem id="menu_sgi_activity_methods" name="Cobertura de medición"
+              parent="menu_sgi_analysis" action="sgi_activity_method_action" sequence="40"/>
+    <menuitem id="menu_sgi_compliance" name="Cumplimiento de procedimientos"
+              parent="menu_sgi_analysis" action="sgi_activity_compliance_action"
+              sequence="45"/>
+    <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_analysis"
+              action="sgi_diagnostic_action" sequence="50"
+              groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección"
+              parent="menu_sgi_analysis" action="sgi_management_review_action" sequence="55"
+              groups="quimibond_sgi.group_sgi_manager"/>
+
+    <!-- 6. Configuración (solo MAST) -->
+    <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root"
+              sequence="90" groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_config"
+              action="sgi_catalog_load_wizard_action" sequence="2"
+              groups="quimibond_sgi.group_sgi_admin"/>
+    <menuitem id="menu_sgi_job_families" name="Familias de puesto" parent="menu_sgi_config"
+              action="sgi_job_family_action" sequence="3"/>
+    <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_config"
+              action="sgi_document_type_action" sequence="4"/>
+    <menuitem id="menu_sgi_config_settings" name="Ajustes" parent="menu_sgi_config"
+              action="sgi_config_settings_action" sequence="5"
+              groups="base.group_system"/>
+    <menuitem id="menu_sgi_config_areas" name="Áreas" parent="menu_sgi_config"
+              action="sgi_area_action" sequence="10"/>
+    <menuitem id="menu_sgi_config_norms" name="Normas" parent="menu_sgi_config"
+              action="sgi_norm_action" sequence="20"/>
+    <menuitem id="menu_sgi_config_clauses" name="Cláusulas" parent="menu_sgi_config"
+              action="sgi_norm_clause_action" sequence="30"/>
+    <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_config"
+              action="sgi_document_ack_action" sequence="40"/>
+    <menuitem id="menu_sgi_config_risk_cat" name="Categorías de riesgo" parent="menu_sgi_config"
+              action="sgi_risk_category_action" sequence="50"/>
+    <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
+              action="sgi_ppap_element_template_action" sequence="60"/>
+    <menuitem id="menu_sgi_config_format_map" name="Formatos en documentos de Odoo" parent="menu_sgi_config"
+              action="sgi_format_map_action" sequence="70"/>
+    <menuitem id="menu_sgi_config_alert_sources" name="Fuentes de NC automáticas" parent="menu_sgi_config"
+              action="sgi_alert_source_action" sequence="80"/>
 
     <!-- ============================================================
          OPERACIÓN EN SU APP (criterio: el SGI planea, mide y mejora;
@@ -156,58 +203,6 @@
     <menuitem id="menu_sale_sgi_analysis_global" name="Global (Dirección)"
               parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_global_action" sequence="40"/>
 
-    <!-- 6. Procesos: el mapa y sus flujos. Va justo después del Panel:
-         de lo general (el mapa del sistema) a lo particular (cada flujo). -->
-    <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root"
-              sequence="15"/>
-    <!-- El padre tiene hijos, así que Odoo abre el primer hijo: el mapa de
-         procesos debe ser un hijo explícito ANTES de los flujos, o no se ve. -->
-    <menuitem id="menu_sgi_process_map" name="Mapa de procesos" parent="menu_sgi_processes"
-              action="sgi_process_action" sequence="5"/>
-    <menuitem id="menu_sgi_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
-              action="sgi_process_flow_action" sequence="10"/>
-    <menuitem id="menu_sgi_activity_chain" name="Cadena de actividades"
-              parent="menu_sgi_processes" action="sgi_activity_link_action"
-              sequence="15"/>
-    <menuitem id="menu_sgi_activity_roles" name="Roles por puesto"
-              parent="menu_sgi_processes" action="sgi_activity_role_action"
-              sequence="25"/>
-
-    <!-- Catálogo único: las actividades de todos los procesos, y su análisis
-         (quién hace qué, tendencia, cobertura de medición). -->
-    <menuitem id="menu_sgi_activities" name="Actividades"
-              parent="menu_sgi_root" action="sgi_process_activity_action"
-              sequence="17"/>
-    <menuitem id="menu_sgi_analysis" name="Análisis" parent="menu_sgi_root"
-              sequence="60"/>
-    <menuitem id="menu_sgi_analysis_who" name="Quién hace qué"
-              parent="menu_sgi_analysis" action="sgi_activity_exec_stat_action_who"
-              sequence="10"/>
-    <menuitem id="menu_sgi_analysis_trend" name="Tendencia"
-              parent="menu_sgi_analysis" action="sgi_activity_exec_stat_action_trend"
-              sequence="20"/>
-    <menuitem id="menu_sgi_activity_methods" name="Cobertura de medición"
-              parent="menu_sgi_analysis" action="sgi_activity_method_action"
-              sequence="30"/>
-
-    <!-- 7. Riesgos y auditorías: planificar (6.1) antes de verificar (9.2).
-         Los incidentes SST se movieron a Mejora continua (ciclo reactivo). -->
-    <menuitem id="menu_sgi_audits" name="Riesgos y auditorías" parent="menu_sgi_root"
-              sequence="70"/>
-    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_audits"
-              action="sgi_risk_action" sequence="5"/>
-    <menuitem id="menu_sgi_audit_programs" name="Programa anual" parent="menu_sgi_audits"
-              action="sgi_audit_program_action" sequence="10"/>
-    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
-              action="sgi_audit_action" sequence="20"/>
-    <!-- Preparación y respuesta ante emergencias (14001/45001 8.2) -->
-    <menuitem id="menu_sgi_emergency" name="Emergencias" parent="menu_sgi_audits"
-              sequence="30"/>
-    <menuitem id="menu_sgi_emergency_plans" name="Planes de emergencia"
-              parent="menu_sgi_emergency" action="sgi_emergency_plan_action" sequence="10"/>
-    <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
-              parent="menu_sgi_emergency" action="sgi_emergency_drill_action" sequence="20"/>
-
     <!-- 8. Calidad preventiva: las herramientas que evitan el defecto ANTES
          de producir (AMEF, plan de control, PPAP) + metrología/MSA. Las
          opera el ingeniero de calidad a diario, así que viven en la app
@@ -234,40 +229,18 @@
     <menuitem id="menu_sgi_msa" name="Estudios MSA" parent="menu_sgi_metrology"
               action="sgi_msa_study_action" sequence="30"/>
 
-    <!-- 9. Revisión por la Dirección (solo MAST/Dirección) -->
-    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección" parent="menu_sgi_root"
-              action="sgi_management_review_action" sequence="90"
-              groups="quimibond_sgi.group_sgi_manager"/>
-
-    <!-- 10. Configuración (solo MAST) -->
-    <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root"
-              sequence="100" groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_config_settings" name="Ajustes" parent="menu_sgi_config"
-              action="sgi_config_settings_action" sequence="5"
-              groups="base.group_system"/>
-    <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_config"
-              action="sgi_catalog_load_wizard_action" sequence="2"
-              groups="quimibond_sgi.group_sgi_admin"/>
-    <menuitem id="menu_sgi_job_families" name="Familias de puesto" parent="menu_sgi_config"
-              action="sgi_job_family_action" sequence="3"/>
-    <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_config"
-              action="sgi_document_type_action" sequence="4"/>
-    <menuitem id="menu_sgi_config_areas" name="Áreas" parent="menu_sgi_config"
-              action="sgi_area_action" sequence="10"/>
-    <menuitem id="menu_sgi_config_norms" name="Normas" parent="menu_sgi_config"
-              action="sgi_norm_action" sequence="20"/>
-    <menuitem id="menu_sgi_config_clauses" name="Cláusulas" parent="menu_sgi_config"
-              action="sgi_norm_clause_action" sequence="30"/>
-    <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_config"
-              action="sgi_document_ack_action" sequence="40"/>
-    <menuitem id="menu_sgi_config_risk_cat" name="Categorías de riesgo" parent="menu_sgi_config"
-              action="sgi_risk_category_action" sequence="50"/>
-    <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
-              action="sgi_ppap_element_template_action" sequence="60"/>
-    <menuitem id="menu_sgi_config_format_map" name="Formatos en documentos de Odoo" parent="menu_sgi_config"
-              action="sgi_format_map_action" sequence="70"/>
-    <menuitem id="menu_sgi_config_alert_sources" name="Fuentes de NC automáticas" parent="menu_sgi_config"
-              action="sgi_alert_source_action" sequence="80"/>
+    <!-- Los Paretos de calidad son análisis operativo: viven en la app
+         CALIDAD (ver "OPERACIÓN EN SU APP"). El Panel se queda con la
+         gestión pura: salud, Política, Objetivos y Diagnóstico.
+         El parent declarado es un fallback: la función del final del
+         archivo lo recuelga del raíz de Calidad en runtime (el xmlid de
+         ese menú es Enterprise y una ref dura rompería la carga). -->
+    <menuitem id="menu_sgi_dashboards" name="Tableros (SGI)"
+              parent="menu_sgi_root" sequence="85"
+              groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"
+              parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto"
+              sequence="10"/>
 
     <!-- Recuelga los menús de calidad del raíz de la app Calidad, con
          tolerancia si el xmlid Enterprise no existe (ver ir.ui.menu). -->
