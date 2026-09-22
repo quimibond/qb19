@@ -300,14 +300,18 @@ class TestStructure(TransactionCase):
 
     def test_15_replaces_archives_the_old_process(self):
         old = self.Process.create({'code': 'X-VIEJO', 'name': 'Ventas viejo'})
+        old_act = self._act(old, 'Actividad vieja', description='Texto original')
         payload = {'processes': [{'code': 'XN', 'name': 'Nuevo', 'replaces': ['X-VIEJO']}]}
         dry = self.Process.load_payload(payload, dry_run=True)
         self.assertTrue(dry['ok'], dry['errors'])
         self.assertEqual(dry['summary'].get('archived', {}).get('process'), 1)
+        self.assertEqual(dry['summary'].get('archived', {}).get('activity'), 1)
         self.assertTrue(old.active, "Con dry_run solo se reporta.")
         result = self.Process.load_payload(payload)
         self.assertTrue(result['ok'], result['errors'])
         self.assertFalse(old.active)
+        self.assertFalse(old_act.active, "Sus actividades se archivan con él.")
+        self.assertEqual(old_act.description, 'Texto original', "El texto se conserva.")
         self.assertTrue(any('Sustituido por XN' in (m.body or '') for m in old.message_ids))
         self.assertFalse(self.Process.load_payload(payload)['changes'], "Una sola vez.")
         missing = {'processes': [{'code': 'XN', 'name': 'Nuevo', 'replaces': ['NO-EXISTE']}]}
