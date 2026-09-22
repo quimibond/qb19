@@ -7,6 +7,7 @@ No corre en el CI (depende de Enterprise); se corre en el shell de Odoo.sh:
 ``odoo-bin ... --test-tags /quimibond_nomina --stop-after-init``."""
 from datetime import date
 
+from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 from odoo.tools import mute_logger
 
@@ -33,7 +34,8 @@ class TestCfdiValues(TransactionCase):
             'name': 'México', 'code': 'MEX', 'country_id': env.ref('base.mx').id})
         cls.work = env['res.partner'].create({'name': 'Planta Toluca', 'state_id': cls.mex.id,
                                               'country_id': env.ref('base.mx').id})
-        cls.employee = env['hr.employee'].create({'name': 'Prueba CFDI', 'address_id': cls.work.id})
+        cls.employee = env['hr.employee'].create({'name': 'Prueba CFDI', 'address_id': cls.work.id,
+                                                  'registration_number': 'S-1'})
         cls.company = env.company
 
     def _recibo(self, lineas=None, employee=None):
@@ -67,7 +69,8 @@ class TestCfdiValues(TransactionCase):
         self.assertEqual(slip._qb_nomina_cfdi_values()['clave_ent_fed'], 'MEX')
 
     def test_clave_ent_fed_cae_a_la_compania_y_al_parametro(self):
-        sin_direccion = self.env['hr.employee'].create({'name': 'Sin dirección', 'address_id': False})
+        sin_direccion = self.env['hr.employee'].create({'name': 'Sin dirección', 'address_id': False,
+                                                        'registration_number': 'S-2'})
         slip = self._recibo(employee=sin_direccion)
         self.company.state_id = self.mex
         self.assertEqual(slip._qb_nomina_cfdi_values()['clave_ent_fed'], 'MEX')
@@ -78,20 +81,30 @@ class TestCfdiValues(TransactionCase):
     @mute_logger(LOG)
     def test_num_empleado_solo_la_referencia(self):
         slip = self._recibo()
-        # Sin referencia: no se emite, aunque haya credencial (la de Ricardo es
-        # 041460744711 y NOI manda 32) e id de Odoo.
+        self.employee.registration_number = 'C-32'
+        self.assertEqual(slip._qb_nomina_cfdi_values()['num_empleado'], 'C-32')
+        # Sin referencia se detiene el CFDI (NumEmpleado es requerido): no se
+        # inventa con la credencial (la de Ricardo es 041460744711 y NOI manda
+        # 32) ni con el id de Odoo.
         self.employee.barcode = '041460744711'
-        self.assertFalse(slip._qb_nomina_cfdi_values()['num_empleado'])
-        self.employee.registration_number = '32'
-        self.assertEqual(slip._qb_nomina_cfdi_values()['num_empleado'], '32')
+        self.employee.registration_number = False
+        with self.assertRaises(UserError):
+            slip._qb_nomina_cfdi_values()
+        self.employee.registration_number = 'S|1'
+        with self.assertRaises(UserError):
+            slip._qb_nomina_cfdi_values()
+        self.employee.registration_number = 'S-' + '1' * 14
+        with self.assertRaises(UserError):
+            slip._qb_nomina_cfdi_values()
 
     @mute_logger(LOG)
-    def test_parche_vacia_num_empleado_sin_referencia(self):
+    def test_parche_sobrescribe_num_empleado_del_modulo(self):
         slip = self._recibo({'INT_DAY_WAGE_BASE': 411.32, 'INT_DAY_WAGE': 411.32})
+        self.employee.registration_number = 'C-32'
         cv = {'nomina_receptor': {'salario_diario_integrado': 0, 'salario_base_cot_apor': 0,
                                   'num_empleado': '041460744711'}}
         slip._qb_nomina_patch_cfdi_values(cv, slip._qb_nomina_cfdi_values())
-        self.assertFalse(cv['nomina_receptor']['num_empleado'])
+        self.assertEqual(cv['nomina_receptor']['num_empleado'], 'C-32')
         self.assertEqual(cv['nomina_receptor']['salario_diario_integrado'], 411.32)
 
     def test_parche_sobre_el_diccionario_del_modulo(self):
@@ -110,7 +123,7 @@ class TestCfdiValues(TransactionCase):
         self.assertEqual(cv['nomina_receptor']['salario_diario_integrado'], 889.43)
         self.assertEqual(cv['nomina_receptor']['salario_base_cot_apor'], 889.43)
         self.assertEqual(cv['nomina_receptor']['clave_ent_fed'], 'MEX')
-        self.assertFalse(cv['nomina_receptor']['num_empleado'])          # sin referencia no se emite
+        self.assertEqual(cv['nomina_receptor']['num_empleado'], 'S-1')
         self.assertEqual(cv['nomina_receptor']['curp'], 'Y')          # lo demás no se toca
         self.assertEqual(cv['otra'], 'cosa')
 
