@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import Form, TransactionCase, tagged
 from odoo.tools import mute_logger
 
 
@@ -397,6 +397,12 @@ class TestCatalogFase1(TransactionCase):
         vals.update(extra)
         return self.Activity.create(vals)
 
+    def _classes(self, activity):
+        """Clase por usuario desde sgi.activity.exec.stat (las 4 semanas)."""
+        stats = self.env['sgi.activity.exec.stat'].search([('activity_id', '=', activity.id)])
+        self.assertTrue(stats, "El cron escribe el detalle en sgi.activity.exec.stat.")
+        return {stat.user_id.id: stat.exec_class for stat in stats}
+
     def _user_with_job(self, login, job):
         user = self.env['res.users'].create({'name': login, 'login': login})
         self.env['hr.employee'].create({'name': login, 'user_id': user.id, 'job_id': job.id})
@@ -418,7 +424,7 @@ class TestCatalogFase1(TransactionCase):
         self.assertEqual(act.measure_count_30d, 2)
         self.assertEqual(act.measure_adherence_pct, 50.0)
         self.assertEqual(act.measure_count_other_job, 1)
-        classes = {row['user_id']: row['class'] for row in act.measure_executor_json}
+        classes = self._classes(act)
         self.assertEqual(classes[inside.id], 'correcto')
         self.assertEqual(classes[outside.id], 'otro_puesto')
 
@@ -436,7 +442,7 @@ class TestCatalogFase1(TransactionCase):
         act = self._measured(process, 'QM.10', 'QA-GEN', [
             (0, 0, {'role': 'ejecuta', 'job_id': self.job_inv.id})])
         act._sgi_measure()
-        classes = {row['user_id']: row['class'] for row in act.measure_executor_json}
+        classes = self._classes(act)
         self.assertEqual(classes[generic.id], 'generico')
         self.assertEqual(classes[root.id], 'sistema')
         self.assertEqual(act.measure_count_system, 1)
@@ -506,3 +512,70 @@ class TestCatalogFase1(TransactionCase):
         self.assertEqual(by_number['QC6.22'].measure_user_field, 'create_uid')
         self.assertEqual(by_number['QC6.23'].measure_proxy_activity_id, by_number['QC6.22'])
         self.assertFalse(self.Process.load_payload(payload)['changes'])
+
+    def test_56_exec_stats_replaced_not_duplicated(self):
+        process = self._process('QM6')
+        worker = self._user_with_job('stat.worker.qa', self.job_inv)
+        self.env['res.partner'].create({'name': 'X', 'ref': 'QA-STAT', 'user_id': worker.id})
+        act = self._measured(process, 'QM.50', 'QA-STAT', [
+            (0, 0, {'role': 'ejecuta', 'job_id': self.job_inv.id})])
+        act._sgi_measure()
+        act._sgi_measure()
+        stats = self.env['sgi.activity.exec.stat'].search([('activity_id', '=', act.id)])
+        self.assertEqual(len(stats), 1, "Recalcular reemplaza la semana, no la duplica.")
+        self.assertEqual(stats.count, 1)
+        self.assertEqual(stats.period_start.weekday(), 0, "La semana empieza en lunes.")
+        self.assertEqual(stats.process_id, process)
+        self.assertIn(stats, act.recent_exec_stat_ids)
+
+    # ------------------------------------------------------------------
+    # Decisión 7: vistas y asistente
+    # ------------------------------------------------------------------
+    def test_60_views_render(self):
+        """Las vistas del catálogo cargan combinadas (herencias incluidas)."""
+        for model, types in (
+                ('sgi.process', ('kanban', 'list', 'form', 'search')),
+                ('sgi.process.activity', ('list', 'kanban', 'form', 'search', 'pivot')),
+                ('sgi.activity.exec.stat', ('list', 'pivot', 'graph', 'search')),
+                ('sgi.activity.role', ('list', 'search')),
+                ('sgi.job.family', ('list', 'form')),
+                ('sgi.document.type', ('list',)),
+                ('sgi.catalog.load.wizard', ('form',)),
+                ('hr.job', ('form',))):
+            result = self.env[model].get_views([(False, t) for t in types])
+            self.assertEqual(set(result['views']), set(types), model)
+        views = self.env['ir.ui.view'].search([
+            ('model', 'in', ('sgi.process', 'sgi.process.activity', 'sgi.activity.exec.stat',
+                             'sgi.activity.role', 'sgi.job.family', 'sgi.catalog.load.wizard'))])
+        views._check_xml()
+
+    def test_61_form_adds_roles(self):
+        process = self._process('QV1')
+        with Form(self.Activity) as form:
+            form.process_id = process
+            form.number = 'QV.01'
+            form.name = 'Desde el formulario'
+            with form.role_ids.new() as role:
+                role.role = 'ejecuta'
+                role.target_type = 'job'
+                role.job_id = self.job_inv
+            with form.role_ids.new() as role:
+                role.role = 'informa'
+                role.target_type = 'relative'
+                role.relative_role = 'dueno_proceso'
+        act = form.save()
+        self.assertEqual(len(act.role_ids), 2)
+        self.assertEqual(act.executor_role_ids.job_id, self.job_inv)
+
+    def test_62_wizard_test_then_load(self):
+        import json
+        wizard = self.env['sgi.catalog.load.wizard'].create({
+            'payload_text': json.dumps(self._payload())})
+        wizard.action_test()
+        self.assertEqual(wizard.state, 'tested')
+        self.assertTrue(wizard.dry_run_ok, wizard.line_ids.mapped('message'))
+        self.assertFalse(self.Process.search([('code', '=', 'QC6')]), "Probar no escribe.")
+        self.assertTrue(wizard.line_ids.filtered(lambda l: l.action == 'created'))
+        wizard.action_load()
+        self.assertEqual(wizard.state, 'loaded')
+        self.assertTrue(self.Process.search([('code', '=', 'QC6')]))

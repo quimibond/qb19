@@ -78,6 +78,28 @@ class SgiProcessProcedure(models.Model):
              "entre el total de actividades activas del proceso.")
     measure_method_summary = fields.Char(
         string="Actividades por método", compute='_compute_measure_methods')
+    activity_green_count = fields.Integer(
+        string="En verde", compute='_compute_activity_board')
+    activity_red_count = fields.Integer(
+        string="En rojo", compute='_compute_activity_board')
+    activity_grey_count = fields.Integer(
+        string="Sin evidencia aún", compute='_compute_activity_board',
+        help="Pendientes de conector o registro, no aplica o sin medir.")
+    activity_no_method_count = fields.Integer(
+        string="Sin método", compute='_compute_activity_board')
+    measure_adherence_avg = fields.Float(
+        string="Adherencia promedio (%)", compute='_compute_activity_board',
+        digits=(5, 1),
+        help="Promedio de adherencia de las actividades con campo de usuario.")
+    # Guardado para la barra del kanban (<progressbar> agrupa por él).
+    measure_status = fields.Selection([
+        ('verde', "Todo con evidencia"),
+        ('gris', "Hay actividades sin evidencia aún"),
+        ('rojo', "Hay actividades en rojo"),
+    ], string="Estado de medición", compute='_compute_measure_status', store=True)
+    chain_link_ids = fields.Many2many(
+        'sgi.activity.link', string="Ligas entre actividades",
+        compute='_compute_chain_link_ids')
 
     # Firmas del procedimiento (bloque del F-P-G01-02). Se imprimen como
     # nombre + cargo; el PDF generado es copia NO controlada, sin imagen de firma.
@@ -238,6 +260,70 @@ class SgiProcessProcedure(models.Model):
             process.measure_method_summary = ' · '.join(
                 "%s %d" % (labels.get(method, method), count)
                 for method, count in sorted(by_method.items(), key=lambda kv: -kv[1]))
+
+    def _compute_activity_board(self):
+        Activity = self.env['sgi.process.activity']
+        processes = self.filtered('id')
+        states, methods, adherence = {}, {}, {}
+        if processes:
+            for process, state, count in Activity._read_group(
+                    [('process_id', 'in', processes.ids)],
+                    ['process_id', 'measure_state'], ['__count']):
+                states.setdefault(process.id, {})[state or False] = count
+            for process, count in Activity._read_group(
+                    [('process_id', 'in', processes.ids), ('measure_method', '=', False)],
+                    ['process_id'], ['__count']):
+                methods[process.id] = count
+            for process, avg in Activity._read_group(
+                    [('process_id', 'in', processes.ids),
+                     ('measure_user_field', '!=', False),
+                     ('measure_count_30d', '>', 0)],
+                    ['process_id'], ['measure_adherence_pct:avg']):
+                adherence[process.id] = avg or 0.0
+        for process in self:
+            by_state = states.get(process.id, {})
+            process.activity_green_count = by_state.get('verde', 0)
+            process.activity_red_count = by_state.get('rojo', 0)
+            process.activity_grey_count = sum(by_state.values()) \
+                - process.activity_green_count - process.activity_red_count
+            process.activity_no_method_count = methods.get(process.id, 0)
+            process.measure_adherence_avg = round(adherence.get(process.id, 0.0), 1)
+
+    @api.depends('procedure_activity_ids.measure_state',
+                 'procedure_activity_ids.measure_method')
+    def _compute_measure_status(self):
+        for process in self:
+            acts = process.procedure_activity_ids
+            if any(a.measure_state == 'rojo' for a in acts):
+                process.measure_status = 'rojo'
+            elif not acts or any(a.measure_state != 'verde' for a in acts):
+                process.measure_status = 'gris'
+            else:
+                process.measure_status = 'verde'
+
+    def _compute_chain_link_ids(self):
+        Link = self.env['sgi.activity.link']
+        for process in self:
+            process.chain_link_ids = Link.search([
+                '|', ('from_process_id', '=', process.id),
+                ('to_process_id', '=', process.id)]) if process.id else Link
+
+    def action_view_activities(self, extra_domain=None, name=None):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "%s — %s" % (name or "Actividades", self.name),
+            'res_model': 'sgi.process.activity',
+            'view_mode': 'list,kanban,form',
+            'domain': [('process_id', '=', self.id)] + (extra_domain or []),
+            'context': {'default_process_id': self.id},
+        }
+
+    def action_view_red_activities(self):
+        return self.action_view_activities([('measure_state', '=', 'rojo')], "En rojo")
+
+    def action_view_no_method_activities(self):
+        return self.action_view_activities([('measure_method', '=', False)], "Sin método")
 
     def _sgi_measure_strict(self):
         """¿El procedimiento del proceso está en piloto o vigente? Entonces
@@ -514,6 +600,30 @@ class SgiProcessActivity(models.Model):
             if commands:
                 activity.write({'role_ids': commands})
 
+    executor_role_ids = fields.Many2many(
+        'sgi.activity.role', string="Ejecuta", compute='_compute_role_views')
+    approver_role_ids = fields.Many2many(
+        'sgi.activity.role', string="Aprueba", compute='_compute_role_views')
+    informed_role_ids = fields.Many2many(
+        'sgi.activity.role', string="Se entera", compute='_compute_role_views')
+
+    @api.depends('role_ids.role')
+    def _compute_role_views(self):
+        for activity in self:
+            roles = activity.role_ids
+            activity.executor_role_ids = roles.filtered(lambda r: r.role == 'ejecuta')
+            activity.approver_role_ids = roles.filtered(lambda r: r.role == 'aprueba')
+            activity.informed_role_ids = roles.filtered(lambda r: r.role == 'informa')
+
+    def _compute_recent_exec_stat_ids(self):
+        start = self._sgi_exec_window_start()
+        Stat = self.env['sgi.activity.exec.stat']
+        stats = Stat.search([('activity_id', 'in', self.filtered('id').ids),
+                             ('period_start', '>=', start)]) if self.filtered('id') else Stat
+        for activity in self:
+            activity.recent_exec_stat_ids = stats.filtered(
+                lambda s, a=activity: s.activity_id == a)
+
     def _sgi_executor_jobs(self):
         """Puestos que DEBEN ejecutar la actividad (familias expandidas, dueño
         del proceso resuelto). None si el ejecutor es un rol relativo sin
@@ -738,31 +848,36 @@ class SgiProcessActivity(models.Model):
         help="Campo del modelo de evidencia que dice QUÉ USUARIO ejecutó la "
              "actividad (create_uid, user_id…). Con él se mide si la hizo el "
              "puesto que debía.")
-    measure_executor_json = fields.Json(
-        string="Ejecutores (30 días)", readonly=True,
-        help="[{user_id, employee_id, job_id, count, matches}]: matches es "
-             "verdadero si el puesto del empleado está entre los que ejecutan "
-             "(familias expandidas); null si el ejecutor es un rol relativo.")
+    # El detalle por semana, usuario y clase vive en sgi.activity.exec.stat
+    # (filtrable, agrupable, graficable); aquí quedan los totales de las
+    # últimas 4 semanas que escribe el cron desde ese detalle.
+    exec_stat_ids = fields.One2many(
+        'sgi.activity.exec.stat', 'activity_id', string="Ejecuciones por semana")
+    recent_exec_stat_ids = fields.Many2many(
+        'sgi.activity.exec.stat', string="Últimas 4 semanas",
+        compute='_compute_recent_exec_stat_ids')
     measure_adherence_pct = fields.Float(
         string="Adherencia (%)", readonly=True, digits=(5, 1),
-        help="Ejecuciones de los últimos 30 días hechas por el puesto asignado, "
-             "entre el total. 0 si no aplica (rol relativo o sin campo de usuario).")
+        aggregator='avg',
+        help="Ejecuciones de las últimas 4 semanas hechas por el puesto "
+             "asignado, entre todas las que no son del sistema. 0 si no aplica "
+             "(rol relativo o sin campo de usuario).")
     measure_top_users = fields.Char(
         string="Quién la ejecuta", readonly=True,
-        help="Usuarios con más ejecuciones en 30 días (✓ = puesto asignado).")
+        help="Usuarios con más ejecuciones en las últimas 4 semanas (✓ = puesto asignado).")
     measure_count_generic = fields.Integer(
-        string="Por cuenta genérica (30 d)", readonly=True,
+        string="Por cuenta genérica (4 sem.)", readonly=True,
         help="Ejecuciones con una cuenta compartida (quimibond_sgi.generic_user_ids): "
              "no se pueden atribuir a nadie.")
     measure_count_no_employee = fields.Integer(
-        string="Sin empleado (30 d)", readonly=True,
+        string="Sin empleado (4 sem.)", readonly=True,
         help="Ejecuciones de usuarios sin empleado activo.")
     measure_count_system = fields.Integer(
-        string="Del sistema (30 d)", readonly=True,
+        string="Del sistema (4 sem.)", readonly=True,
         help="Ejecuciones de OdooBot o procesos automáticos: no cuentan en la "
              "adherencia.")
     measure_count_other_job = fields.Integer(
-        string="Por otro puesto (30 d)", readonly=True,
+        string="Por otro puesto (4 sem.)", readonly=True,
         help="Ejecuciones de empleados de un puesto al que no le toca.")
     measure_warning = fields.Text(
         string="Avisos de medición", readonly=True)
@@ -782,7 +897,7 @@ class SgiProcessActivity(models.Model):
         'measure_date_field', 'measure_cadence', 'measure_last_date',
         'measure_count_30d', 'measure_state', 'value_class',
         'automation_level_target', 'automation_method', 'measure_user_field',
-        'measure_executor_json', 'measure_adherence_pct', 'measure_top_users',
+        'measure_adherence_pct', 'measure_top_users',
         'measure_method', 'measure_proxy_activity_id', 'sample_cadence',
         'measure_justification', 'measure_count_generic',
         'measure_count_no_employee', 'measure_count_system',
@@ -810,7 +925,7 @@ class SgiProcessActivity(models.Model):
             return []
 
     _SGI_EXECUTOR_RESET = {
-        'measure_executor_json': False, 'measure_adherence_pct': 0.0,
+        'measure_adherence_pct': 0.0,
         'measure_top_users': False, 'measure_count_generic': 0,
         'measure_count_no_employee': 0, 'measure_count_system': 0,
         'measure_count_other_job': 0, 'measure_warning': False,
@@ -825,6 +940,9 @@ class SgiProcessActivity(models.Model):
         consequence = self.filtered(lambda a: a.measure_method == 'consecuencia')
         others = self - odoo - consequence
         odoo._sgi_measure_odoo()
+        start = self._sgi_exec_window_start()
+        for activity in others | consequence:
+            activity._sgi_replace_exec_stats(start, [])
         for activity in others:
             vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
                         measure_count_30d=0,
@@ -875,7 +993,7 @@ class SgiProcessActivity(models.Model):
                 vals['measure_last_date'] = last_date
                 window = domain + [(date_field, '>=', now - timedelta(days=30))]
                 vals['measure_count_30d'] = Model.search_count(window)
-                vals.update(activity._sgi_measure_executors(Model, window))
+                vals.update(activity._sgi_measure_executors(Model, domain, date_field))
                 days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
                 if days:
                     in_window = Model.search_count(
@@ -900,24 +1018,63 @@ class SgiProcessActivity(models.Model):
             'quimibond_sgi.generic_user_ids') or ''
         return {int(x) for x in raw.replace(';', ',').split(',') if x.strip().isdigit()}
 
-    def _sgi_measure_executors(self, Model, window):
-        """Quién ejecutó la actividad en la ventana de 30 días: un read_group
-        por el campo de usuario (sin recorrer registros) y, por usuario, su
-        empleado y puesto al momento de medir. Cada ejecución cae en una
-        clase: correcto (su puesto está entre los que ejecutan, familias
-        incluidas), otro_puesto, generico (cuenta compartida), sin_empleado o
-        sistema (OdooBot). Adherencia = correcto entre todo lo que no es
-        sistema. Con un ejecutor relativo sin puesto, la clase es None y no
-        hay adherencia."""
+    _SGI_EXEC_WEEKS = 4
+
+    @api.model
+    def _sgi_exec_window_start(self):
+        """Lunes de hace 3 semanas: la ventana de 4 semanas que el cron
+        recalcula y reemplaza en sgi.activity.exec.stat."""
+        today = fields.Date.context_today(self)
+        monday = today - timedelta(days=today.weekday())
+        return monday - timedelta(weeks=self._SGI_EXEC_WEEKS - 1)
+
+    def _sgi_replace_exec_stats(self, start, rows):
+        """Reemplaza las semanas recalculadas (desde ``start``) con ``rows``;
+        si no cambió nada, no escribe."""
         self.ensure_one()
+        Stat = self.env['sgi.activity.exec.stat'].sudo()
+        current = Stat.search([('activity_id', '=', self.id), ('period_start', '>=', start)])
+
+        def key(r):
+            return (r['period_start'], r['user_id'] or False, r['exec_class'] or False,
+                    r['employee_id'] or False, r['job_id'] or False,
+                    r['family_id'] or False, r['count'])
+        before = sorted((key({
+            'period_start': s.period_start, 'user_id': s.user_id.id,
+            'exec_class': s.exec_class, 'employee_id': s.employee_id.id,
+            'job_id': s.job_id.id, 'family_id': s.family_id.id, 'count': s.count,
+        }) for s in current), key=str)
+        after = sorted((key(r) for r in rows), key=str)
+        if before == after:
+            return
+        current.unlink()
+        if rows:
+            Stat.create([dict(r, activity_id=self.id) for r in rows])
+
+    def _sgi_measure_executors(self, Model, domain, date_field):
+        """Quién ejecutó la actividad en las últimas 4 semanas: un read_group
+        por campo de usuario y semana (sin recorrer registros) y, por usuario,
+        su empleado, puesto y familia al momento de medir. Cada ejecución cae
+        en una clase: correcto (su puesto está entre los que ejecutan,
+        familias incluidas), otro_puesto, generico (cuenta compartida),
+        sin_empleado o sistema (OdooBot). El detalle va a
+        sgi.activity.exec.stat (una fila por semana, usuario y clase) y de ahí
+        salen la adherencia (correcto entre todo lo que no es sistema), los
+        contadores y los avisos. Con un ejecutor relativo sin puesto no hay
+        clase ni adherencia: solo el conteo."""
+        self.ensure_one()
+        start = self._sgi_exec_window_start()
         user_field = (self.measure_user_field or '').strip()
         field = Model._fields.get(user_field) if user_field else None
         if not field or field.type != 'many2one' or field.comodel_name != 'res.users' \
                 or not field.store:
+            self._sgi_replace_exec_stats(start, [])
             return {}
-        groups = Model._read_group(window, [user_field], ['__count'])
-        if not groups:
-            return {}
+        since = start if Model._fields[date_field].type == 'date' \
+            else datetime.combine(start, datetime.min.time())
+        groups = Model._read_group(
+            domain + [(date_field, '>=', since)],
+            [user_field, '%s:week' % date_field], ['__count'])
         expected = self._sgi_executor_jobs()
         generic_ids = self._sgi_generic_user_ids()
         system_ids = {SUPERUSER_ID}
@@ -925,14 +1082,12 @@ class SgiProcessActivity(models.Model):
         if root:
             system_ids.add(root.id)
         company = self.company_id or self.env.company
-        user_ids = [u.id for u, _c in groups if u]
+        user_ids = list({u.id for u, _w, _c in groups if u})
         employees = self.env['hr.employee'].sudo().search([
             ('user_id', 'in', user_ids), ('company_id', '=', company.id)])
         emp_by_user = {emp.user_id.id: emp for emp in employees}
-        rows = []
-        counts = dict.fromkeys(
-            ('correcto', 'otro_puesto', 'generico', 'sin_empleado', 'sistema'), 0)
-        for user, count in sorted(groups, key=lambda g: -g[1]):
+        merged = {}
+        for user, week, count in groups:
             emp = emp_by_user.get(user.id)
             job = emp.job_id if emp else self.env['hr.job']
             if not user or user.id in system_ids:
@@ -945,16 +1100,35 @@ class SgiProcessActivity(models.Model):
                 klass = 'correcto'
             else:
                 klass = 'otro_puesto'
-            counts[klass] += count
-            rows.append({
+            week = week.date() if isinstance(week, datetime) else week
+            row_key = (week, user.id or False, klass)
+            if row_key in merged:
+                merged[row_key]['count'] += count
+                continue
+            merged[row_key] = {
+                'period_start': week,
                 'user_id': user.id or False,
                 'employee_id': emp.id if emp else False,
                 'job_id': job.id or False,
-                'count': count,
+                'family_id': job.sgi_family_id.id or False,
                 # Ejecutor relativo (solicitante, quien detecta…): no hay a
                 # quién comparar; solo se cuenta.
-                'class': None if expected is None else klass,
-            })
+                'exec_class': False if expected is None else klass,
+                'count': count,
+                '_class': klass,
+            }
+        rows = list(merged.values())
+        counts = dict.fromkeys(
+            ('correcto', 'otro_puesto', 'generico', 'sin_empleado', 'sistema'), 0)
+        per_user = {}
+        for row in rows:
+            counts[row['_class']] += row['count']
+            per_user.setdefault(row['user_id'], [0, row['exec_class']])
+            per_user[row['user_id']][0] += row['count']
+        self._sgi_replace_exec_stats(start, [
+            {k: v for k, v in row.items() if k != '_class'} for row in rows])
+        if not rows:
+            return {}
         total = sum(counts.values())
         attributable = total - counts['sistema']
         adherence = round(counts['correcto'] * 100.0 / attributable, 1) \
@@ -975,10 +1149,11 @@ class SgiProcessActivity(models.Model):
                                 counts['sistema'], total))
         Users = self.env['res.users'].sudo()
         top = ', '.join("%s%s (%d)" % (
-            Users.browse(row['user_id']).name if row['user_id'] else "Sin usuario",
-            " ✓" if row['class'] == 'correcto' else "", row['count']) for row in rows[:3])
+            Users.browse(user_id).name if user_id else "Sin usuario",
+            " ✓" if klass == 'correcto' else "", count)
+            for user_id, (count, klass) in sorted(
+                per_user.items(), key=lambda kv: -kv[1][0])[:3])
         return {
-            'measure_executor_json': rows,
             'measure_adherence_pct': adherence,
             'measure_top_users': top,
             'measure_count_generic': counts['generico'],

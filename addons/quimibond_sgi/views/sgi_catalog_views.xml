@@ -5,7 +5,9 @@
         <field name="name">sgi.activity.role.list</field>
         <field name="model">sgi.activity.role</field>
         <field name="arch" type="xml">
-            <list string="Roles en actividades" editable="bottom">
+            <list string="Roles en actividades" editable="bottom" multi_edit="1"
+                  sample="1" default_order="process_id, activity_id, sequence">
+                <field name="sequence" widget="handle"/>
                 <field name="process_id" optional="show"/>
                 <field name="activity_id"/>
                 <field name="role" widget="badge"
@@ -43,8 +45,13 @@
                 <group>
                     <filter name="group_role" string="Rol" context="{'group_by': 'role'}"/>
                     <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_family" string="Familia" context="{'group_by': 'family_id'}"/>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
                 </group>
+                <searchpanel>
+                    <field name="process_id" select="one" icon="fa-sitemap"/>
+                    <field name="role" select="multi" icon="fa-user"/>
+                </searchpanel>
             </search>
         </field>
     </record>
@@ -66,11 +73,13 @@
         <field name="name">sgi.job.family.list</field>
         <field name="model">sgi.job.family</field>
         <field name="arch" type="xml">
-            <list string="Familias de puestos">
+            <list string="Familias de puestos" editable="bottom" multi_edit="1"
+                  sample="1" default_order="code">
                 <field name="code"/>
                 <field name="name"/>
-                <field name="job_ids" widget="many2many_tags"/>
-                <field name="employee_count"/>
+                <field name="job_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                <field name="employee_count"
+                       decoration-danger="employee_count == 0"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
         </field>
@@ -122,6 +131,115 @@
         </field>
     </record>
 
+    <!-- ====== Quién hace qué: ejecuciones por semana, usuario y clase ====== -->
+    <record id="sgi_activity_exec_stat_view_list" model="ir.ui.view">
+        <field name="name">sgi.activity.exec.stat.list</field>
+        <field name="model">sgi.activity.exec.stat</field>
+        <field name="arch" type="xml">
+            <list string="Ejecuciones" create="0" edit="0" delete="0" sample="1"
+                  default_order="period_start desc, count desc"
+                  decoration-success="exec_class == 'correcto'"
+                  decoration-warning="exec_class == 'otro_puesto'"
+                  decoration-danger="exec_class in ('generico', 'sin_empleado')"
+                  decoration-muted="exec_class == 'sistema'">
+                <field name="period_start"/>
+                <field name="process_id" optional="show"/>
+                <field name="activity_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="employee_id" optional="hide"/>
+                <field name="job_id" optional="show"/>
+                <field name="family_id" optional="hide"/>
+                <field name="exec_class" widget="badge"/>
+                <field name="count" sum="Total"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_exec_stat_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.activity.exec.stat.pivot</field>
+        <field name="model">sgi.activity.exec.stat</field>
+        <field name="arch" type="xml">
+            <pivot string="Quién hace qué" sample="1">
+                <field name="process_id" type="row"/>
+                <field name="activity_id" type="row"/>
+                <field name="exec_class" type="col"/>
+                <field name="count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_activity_exec_stat_view_graph" model="ir.ui.view">
+        <field name="name">sgi.activity.exec.stat.graph</field>
+        <field name="model">sgi.activity.exec.stat</field>
+        <field name="arch" type="xml">
+            <graph string="Tendencia de ejecuciones" type="bar" stacked="1" sample="1">
+                <field name="period_start" interval="week"/>
+                <field name="exec_class"/>
+                <field name="count" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_activity_exec_stat_view_search" model="ir.ui.view">
+        <field name="name">sgi.activity.exec.stat.search</field>
+        <field name="model">sgi.activity.exec.stat</field>
+        <field name="arch" type="xml">
+            <search string="Ejecuciones">
+                <field name="activity_id"/>
+                <field name="user_id"/>
+                <field name="job_id"/>
+                <field name="process_id"/>
+                <filter name="otro_puesto" string="Otro puesto"
+                        domain="[('exec_class', '=', 'otro_puesto')]"/>
+                <filter name="generico" string="Cuenta genérica"
+                        domain="[('exec_class', '=', 'generico')]"/>
+                <filter name="sin_empleado" string="Sin empleado"
+                        domain="[('exec_class', '=', 'sin_empleado')]"/>
+                <filter name="sin_sistema" string="Sin el sistema"
+                        domain="[('exec_class', '!=', 'sistema')]"/>
+                <separator/>
+                <filter name="period_start" string="Semana" date="period_start"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_activity" string="Actividad" context="{'group_by': 'activity_id'}"/>
+                    <filter name="group_class" string="Clase" context="{'group_by': 'exec_class'}"/>
+                    <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_user" string="Usuario" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_week" string="Semana" context="{'group_by': 'period_start:week'}"/>
+                </group>
+                <searchpanel>
+                    <field name="process_id" select="one" icon="fa-sitemap"/>
+                    <field name="exec_class" select="multi" icon="fa-user-circle"/>
+                </searchpanel>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_exec_stat_action_who" model="ir.actions.act_window">
+        <field name="name">Quién hace qué</field>
+        <field name="res_model">sgi.activity.exec.stat</field>
+        <field name="view_mode">pivot,list,graph</field>
+        <field name="view_id" ref="sgi_activity_exec_stat_view_pivot"/>
+        <field name="search_view_id" ref="sgi_activity_exec_stat_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Quién ejecuta cada actividad</p>
+            <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambia las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
+        </field>
+    </record>
+
+    <record id="sgi_activity_exec_stat_action_trend" model="ir.actions.act_window">
+        <field name="name">Tendencia</field>
+        <field name="res_model">sgi.activity.exec.stat</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="view_id" ref="sgi_activity_exec_stat_view_graph"/>
+        <field name="search_view_id" ref="sgi_activity_exec_stat_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ejecuciones por semana</p>
+            <p>Apiladas por clase de ejecución. Filtra por proceso en el panel de la izquierda.</p>
+        </field>
+    </record>
+
     <!-- ====== Tablero: cuánto de cada proceso se mide de verdad ====== -->
     <record id="sgi_activity_method_view_pivot" model="ir.ui.view">
         <field name="name">sgi.process.activity.pivot.method</field>
@@ -135,7 +253,7 @@
     </record>
 
     <record id="sgi_activity_method_action" model="ir.actions.act_window">
-        <field name="name">Medición por método</field>
+        <field name="name">Cobertura de medición</field>
         <field name="res_model">sgi.process.activity</field>
         <field name="view_mode">pivot,list</field>
         <field name="view_id" ref="sgi_activity_method_view_pivot"/>
@@ -146,12 +264,97 @@
         </field>
     </record>
 
+    <!-- ====== Cargar catálogo (asistente) ====== -->
+    <record id="sgi_catalog_load_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.catalog.load.wizard.form</field>
+        <field name="model">sgi.catalog.load.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cargar catálogo">
+                <field name="state" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="state != 'draft'">
+                    Pega el JSON del catálogo (familias, procesos, actividades con
+                    roles y medición, ligas, flujos, indicadores) o sube el archivo.
+                    <b>Probar</b> no escribe nada: muestra qué se crearía, qué se
+                    actualizaría y los errores. <b>Cargar</b> escribe; se puede
+                    repetir sin duplicar.
+                </div>
+                <div class="alert alert-success" role="status"
+                     invisible="state != 'tested' or not dry_run_ok">
+                    La prueba pasó sin errores. Ya puedes cargar.
+                </div>
+                <div class="alert alert-danger" role="alert"
+                     invisible="state == 'draft' or error_count == 0">
+                    Hay <field name="error_count" class="d-inline"/> error(es): revisa la lista.
+                </div>
+                <group invisible="state == 'loaded'">
+                    <field name="payload_file" filename="payload_filename"/>
+                    <field name="payload_filename" invisible="1"/>
+                    <field name="payload_text" widget="code"
+                           placeholder='{"families": [...], "processes": [...], "activities": [...]}'/>
+                </group>
+                <group invisible="state == 'draft'">
+                    <field name="summary"/>
+                    <field name="dry_run_ok" invisible="1"/>
+                    <field name="change_count" invisible="1"/>
+                </group>
+                <field name="line_ids" invisible="state == 'draft'">
+                    <list decoration-danger="action == 'error'"
+                          decoration-warning="action == 'warning'"
+                          decoration-success="action == 'created'"
+                          decoration-muted="action == 'archived'">
+                        <field name="action" widget="badge"/>
+                        <field name="kind"/>
+                        <field name="key"/>
+                        <field name="message"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_test" type="object" string="Probar" class="btn-primary"
+                            invisible="state == 'loaded'"/>
+                    <button name="action_load" type="object" string="Cargar"
+                            class="btn-secondary" invisible="state == 'loaded'"
+                            confirm="Se escribirá el catálogo en la base. ¿Continuar?"/>
+                    <button string="Cerrar" special="cancel" class="btn-link"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_catalog_load_wizard_action" model="ir.actions.act_window">
+        <field name="name">Cargar catálogo</field>
+        <field name="res_model">sgi.catalog.load.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ====== Tablero de hoja de cálculo (se arma sin programar) ====== -->
+    <record id="sgi_spreadsheet_dashboard_group" model="spreadsheet.dashboard.group">
+        <field name="name">SGI</field>
+        <field name="sequence">90</field>
+    </record>
+    <!-- noupdate: el tablero se arma y se edita en la app Tableros (insertando
+         los pivotes de SGI > Análisis); un update no debe borrarlo. -->
+    <data noupdate="1">
+        <record id="sgi_spreadsheet_dashboard_health" model="spreadsheet.dashboard">
+            <field name="name">Salud del SGI</field>
+            <field name="dashboard_group_id" ref="sgi_spreadsheet_dashboard_group"/>
+            <field name="sequence">10</field>
+            <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_user')])]"/>
+        </record>
+    </data>
+    <record id="sgi_spreadsheet_dashboard_action" model="ir.actions.client">
+        <field name="name">Tablero SGI</field>
+        <field name="tag">action_spreadsheet_dashboard</field>
+        <field name="params" eval="{'dashboard_id': ref('quimibond_sgi.sgi_spreadsheet_dashboard_health')}"/>
+    </record>
+
     <!-- ====== Tipos de documento (datos, no código) ====== -->
     <record id="sgi_document_type_view_list" model="ir.ui.view">
         <field name="name">sgi.document.type.list</field>
         <field name="model">sgi.document.type</field>
         <field name="arch" type="xml">
-            <list string="Tipos de documento" editable="bottom">
+            <list string="Tipos de documento" editable="bottom" multi_edit="1"
+                  default_order="sequence, code">
                 <field name="sequence" widget="handle"/>
                 <field name="code"/>
                 <field name="name"/>
@@ -181,8 +384,14 @@
         <field name="model">hr.job</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_hr_job_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_roles" type="object" class="oe_stat_button"
+                        icon="fa-sitemap" groups="quimibond_sgi.group_sgi_user">
+                    <field name="sgi_role_count" widget="statinfo" string="Actividades SGI"/>
+                </button>
+            </xpath>
             <xpath expr="//page[@name='sgi_documents']" position="before">
-                <page string="Actividades SGI" name="sgi_roles">
+                <page string="SGI" name="sgi_roles" groups="quimibond_sgi.group_sgi_user">
                     <group>
                         <group>
                             <field name="sgi_family_id"/>
@@ -205,11 +414,13 @@
                     </group>
                     <button name="action_sgi_view_roles" type="object"
                             string="Ver sus actividades" icon="fa-list" class="btn-link"/>
-                    <field name="sgi_role_ids" readonly="1">
-                        <list>
+                    <field name="sgi_all_role_ids" readonly="1">
+                        <list default_order="process_id, role">
                             <field name="process_id"/>
                             <field name="activity_id"/>
-                            <field name="role"/>
+                            <field name="role" widget="badge"
+                                   decoration-success="role == 'ejecuta'"
+                                   decoration-warning="role == 'aprueba'"/>
                             <field name="target_type" optional="hide"/>
                             <field name="condition" optional="show"/>
                         </list>

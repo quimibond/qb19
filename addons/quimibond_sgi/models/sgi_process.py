@@ -26,7 +26,8 @@ class SgiProcess(models.Model):
         ('cop', "Cadena de valor (COP)"),
         ('estrategico', "Estratégico"),
         ('soporte', "Soporte"),
-    ], string="Tipo", default='cop', required=True)
+    ], string="Tipo", default='cop', required=True,
+        group_expand='_group_expand_process_type')
     parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True)
     parent_path = fields.Char(index=True)
     child_ids = fields.One2many('sgi.process', 'parent_id', string="Subprocesos")
@@ -94,6 +95,11 @@ class SgiProcess(models.Model):
         'unique(code, company_id)',
         "La clave de proceso debe ser única por empresa.",
     )
+
+    def _group_expand_process_type(self, values, domain):
+        """El kanban muestra siempre las tres columnas (estratégico, cadena de
+        valor, soporte), aunque alguna esté vacía."""
+        return ['estrategico', 'cop', 'soporte']
 
     @api.depends('owner_id.active', 'owner_id.user_id')
     def _compute_owner_valid(self):

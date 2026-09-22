@@ -44,6 +44,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'web_grid',
         'sign',
         'website_slides',
+        'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
     ],
     'data': [
         # security

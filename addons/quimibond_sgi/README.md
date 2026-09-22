@@ -546,6 +546,24 @@ revisiones y descripción de puesto, automatización/tableros/seguridad).
   que no es sistema. Avisos en la ficha (`measure_warning`): adherencia < 80 %,
   ejecuciones genéricas o sin empleado, y actividad «manual» con más de la mitad
   de ejecuciones del sistema. TODO fase 2: pasa a `sgi.activity.evidence`.
+- **El detalle vive en un modelo, no en JSON** (`sgi.activity.exec.stat`): una
+  fila por actividad, semana (lunes), usuario y clase, con empleado, puesto y
+  familia al momento de medir. Lo escribe el cron (reemplaza las 4 semanas que
+  recalcula; si nada cambió no escribe); nadie lo edita. La adherencia y los
+  contadores de la actividad salen de esas 4 semanas.
+
+### Pantallas (Odoo 19)
+
+| Menú | Qué hay |
+|---|---|
+| SGI > Tablero | Tablero de hoja de cálculo «Salud del SGI» (grupo SGI en la app Tableros). Nace vacío: se arma insertando los pivotes de Análisis y se edita sin programar |
+| SGI > Procesos > Mapa de procesos | Kanban por tipo (estratégico, cadena de valor, soporte; columnas siempre visibles), barra de estado de medición, avatar del dueño, barra verde/rojo/gris de actividades, % medido y adherencia promedio; cinta roja si el dueño no es válido. Panel lateral por tipo y estado |
+| Ficha del proceso | Botones Actividades, En rojo, Sin método, NC, KPIs, Riesgos, Documentos, Indicadores. Pestañas Ficha, Actividades (con quién ejecuta y aprueba, método, estado y adherencia), Conexiones (flujos y ligas), Documentos, Indicadores, Riesgos. Chatter |
+| SGI > Actividades | Lista (y kanban en móvil) con filtros En rojo, Sin método, Ejecuta otro puesto, Cuenta genérica, Parece automática, Por evento; agrupable por proceso, método, estado y puesto que ejecuta; panel lateral por proceso y método |
+| Ficha de la actividad | Avisos arriba (alerta amarilla), roles en lista editable, medición según el método, «Quién la ejecutó — últimas 4 semanas» y la cadena |
+| SGI > Análisis | Quién hace qué (pivote proceso > actividad × clase), Tendencia (ejecuciones por semana apiladas por clase), Cobertura de medición (proceso × método) |
+| Puesto (RH) | Botón «Actividades SGI» y pestaña SGI: familia, vacante y sus actividades (propias y de su familia) por rol |
+| SGI > Configuración | Cargar catálogo (asistente con Probar = dry-run y Cargar; solo Administrador SGI), Familias de puesto y Tipos de documento en listas editables |
 
 En la carga: bloque `families` (se procesa primero), roles
 `{"role": "ejecuta", "family": "OP-TEJ"}` / `{"role": "aprueba", "relative":

@@ -328,6 +328,16 @@ class HrJob(models.Model):
         string="Participa", compute='_compute_sgi_role_counts')
     sgi_inform_count = fields.Integer(
         string="Se entera", compute='_compute_sgi_role_counts')
+    sgi_role_count = fields.Integer(
+        string="Actividades SGI", compute='_compute_sgi_role_counts')
+    sgi_all_role_ids = fields.Many2many(
+        'sgi.activity.role', string="Actividades SGI (propias y de su familia)",
+        compute='_compute_sgi_all_role_ids')
+
+    def _compute_sgi_all_role_ids(self):
+        Role = self.env['sgi.activity.role']
+        for job in self:
+            job.sgi_all_role_ids = Role.search(job._sgi_roles_domain()) if job.id else Role
 
     def _compute_sgi_role_counts(self):
         """Roles propios más los de su familia."""
@@ -351,6 +361,8 @@ class HrJob(models.Model):
             job.sgi_approve_count = total('aprueba')
             job.sgi_participate_count = total('participa')
             job.sgi_inform_count = total('informa')
+            job.sgi_role_count = (job.sgi_execute_count + job.sgi_approve_count
+                                  + job.sgi_participate_count + job.sgi_inform_count)
 
     def action_sgi_view_roles(self):
         self.ensure_one()

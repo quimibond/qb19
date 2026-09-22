@@ -98,51 +98,58 @@
         <field name="name">sgi.process.kanban</field>
         <field name="model">sgi.process</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="parent_id" class="o_kanban_small_column">
-                <field name="nc_count"/>
-                <field name="overdue_action_count"/>
-                <field name="red_kpi_count"/>
-                <field name="open_high_risk_count"/>
+            <kanban default_group_by="process_type" sample="1" default_order="code">
                 <field name="health"/>
-                <field name="measure_red_count"/>
-                <field name="measurable_activity_count"/>
-                <field name="procedure_compliance"/>
+                <field name="owner_valid"/>
+                <field name="activity_green_count"/>
+                <field name="activity_red_count"/>
+                <field name="activity_grey_count"/>
+                <field name="activity_count"/>
+                <field name="nc_count"/>
+                <field name="red_kpi_count"/>
                 <field name="chain_stuck_count"/>
+                <progressbar field="measure_status"
+                             colors='{"verde": "success", "rojo": "danger", "gris": "muted"}'/>
                 <templates>
                     <t t-name="card">
-                        <div class="oe_kanban_global_click">
-                            <div class="o_kanban_record_title">
-                                <span t-attf-class="badge me-1 #{record.health.raw_value == 'verde' ? 'text-bg-success' : (record.health.raw_value == 'rojo' ? 'text-bg-danger' : 'text-bg-warning')}"
-                                      t-attf-title="Salud del proceso: #{record.health.value}">●</span>
-                                <strong><field name="code"/> — <field name="name"/></strong>
-                            </div>
-                            <div class="o_kanban_record_subtitle">
-                                <field name="process_type"/>
-                            </div>
-                            <div class="o_kanban_record_bottom flex-wrap">
-                                <span class="text-danger me-2" t-if="record.nc_count.raw_value">
-                                    NC abiertas: <field name="nc_count"/>
-                                </span>
-                                <span class="text-warning me-2" t-if="record.overdue_action_count.raw_value">
-                                    Acciones vencidas: <field name="overdue_action_count"/>
-                                </span>
-                                <span class="text-danger me-2" t-if="record.red_kpi_count.raw_value">
-                                    KPIs en rojo: <field name="red_kpi_count"/>
-                                </span>
-                                <span class="text-danger me-2" t-if="record.open_high_risk_count.raw_value">
-                                    Riesgos altos: <field name="open_high_risk_count"/>
-                                </span>
-                                <span class="text-danger me-2" t-if="record.measure_red_count.raw_value">
-                                    Pasos sin evidencia: <field name="measure_red_count"/>
-                                </span>
-                                <span class="text-muted me-2" t-if="record.measurable_activity_count.raw_value">
-                                    Cumplimiento: <field name="procedure_compliance"/>%
-                                </span>
-                                <span class="text-danger me-2" t-if="record.chain_stuck_count.raw_value">
-                                    Eslabones atorados: <field name="chain_stuck_count"/>
-                                </span>
-                            </div>
+                        <widget name="web_ribbon" title="Dueño no válido" bg_color="text-bg-danger"
+                                invisible="owner_valid"/>
+                        <div class="d-flex align-items-baseline gap-1">
+                            <span t-attf-class="badge #{record.health.raw_value == 'verde' ? 'text-bg-success' : (record.health.raw_value == 'rojo' ? 'text-bg-danger' : 'text-bg-warning')}"
+                                  t-att-title="record.health.value">●</span>
+                            <field name="code" class="fw-bold"/>
+                            <field name="name" class="text-truncate fs-5"/>
                         </div>
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <field name="owner_id" widget="many2one_avatar_employee"/>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px;"
+                             t-if="record.activity_count.raw_value"
+                             t-att-title="record.activity_green_count.raw_value + ' en verde, ' + record.activity_red_count.raw_value + ' en rojo, ' + record.activity_grey_count.raw_value + ' sin evidencia aún'">
+                            <div class="progress-bar bg-success"
+                                 t-attf-style="width: #{record.activity_green_count.raw_value * 100 / record.activity_count.raw_value}%"/>
+                            <div class="progress-bar bg-danger"
+                                 t-attf-style="width: #{record.activity_red_count.raw_value * 100 / record.activity_count.raw_value}%"/>
+                            <div class="progress-bar bg-secondary"
+                                 t-attf-style="width: #{record.activity_grey_count.raw_value * 100 / record.activity_count.raw_value}%"/>
+                        </div>
+                        <footer class="pt-2 text-muted small flex-wrap gap-2">
+                            <span title="Actividades medidas de verdad (Odoo + consecuencia)">
+                                Medido: <field name="measure_real_pct"/>%
+                            </span>
+                            <span title="Adherencia promedio de quién ejecuta">
+                                Adherencia: <field name="measure_adherence_avg"/>%
+                            </span>
+                            <span class="text-danger" t-if="record.nc_count.raw_value">
+                                NC: <field name="nc_count"/>
+                            </span>
+                            <span class="text-danger" t-if="record.red_kpi_count.raw_value">
+                                KPI rojos: <field name="red_kpi_count"/>
+                            </span>
+                            <span class="text-danger" t-if="record.chain_stuck_count.raw_value">
+                                Atorados: <field name="chain_stuck_count"/>
+                            </span>
+                        </footer>
                     </t>
                 </templates>
             </kanban>
@@ -153,13 +160,23 @@
         <field name="name">sgi.process.list</field>
         <field name="model">sgi.process</field>
         <field name="arch" type="xml">
-            <list string="Procesos" decoration-warning="nc_count &gt; 0">
+            <list string="Procesos" sample="1" multi_edit="1" default_order="process_type, code"
+                  decoration-danger="measure_status == 'rojo'"
+                  decoration-muted="measure_status == 'gris'"
+                  decoration-success="measure_status == 'verde'">
                 <field name="code"/>
                 <field name="name"/>
                 <field name="process_type"/>
-                <field name="parent_id"/>
-                <field name="owner_id"/>
-                <field name="nc_count"/>
+                <field name="owner_id" widget="many2one_avatar_employee"/>
+                <field name="parent_id" optional="hide"/>
+                <field name="activity_count" optional="show"/>
+                <field name="measure_real_pct" optional="show"/>
+                <field name="measure_adherence_avg" optional="show"/>
+                <field name="measure_status" widget="badge" optional="show"
+                       decoration-danger="measure_status == 'rojo'"
+                       decoration-success="measure_status == 'verde'"/>
+                <field name="nc_count" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
         </field>
     </record>
@@ -173,6 +190,19 @@
                     <!-- Botones de alerta: solo aparecen cuando hay algo que atender.
                          Los de navegación (Documentos, Indicadores, Riesgos) van al final. -->
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_view_activities" type="object" class="oe_stat_button"
+                                icon="fa-list-ol">
+                            <field name="activity_count" widget="statinfo" string="Actividades"/>
+                        </button>
+                        <button name="action_view_red_activities" type="object" class="oe_stat_button"
+                                icon="fa-times-circle" invisible="activity_red_count == 0">
+                            <field name="activity_red_count" widget="statinfo" string="En rojo"/>
+                        </button>
+                        <button name="action_view_no_method_activities" type="object"
+                                class="oe_stat_button" icon="fa-question-circle"
+                                invisible="activity_no_method_count == 0">
+                            <field name="activity_no_method_count" widget="statinfo" string="Sin método"/>
+                        </button>
                         <button name="action_open_ncs" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-triangle" invisible="nc_count == 0">
                             <field name="nc_count" widget="statinfo" string="NC abiertas"/>
@@ -203,6 +233,8 @@
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
                             invisible="active"/>
+                    <widget name="web_ribbon" title="Dueño no válido" bg_color="text-bg-warning"
+                            invisible="owner_valid or not active or not id"/>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nombre del proceso"/></h1>
                         <h3><field name="code" placeholder="Clave"/></h3>
@@ -237,23 +269,27 @@
                         <field name="purpose" nolabel="1"
                                placeholder="Para qué existe este proceso (de su caracterización/SIPOC)…"/>
                     </group>
-                    <group string="Ficha del proceso">
-                        <group>
-                            <field name="start_trigger" placeholder="Qué lo dispara"/>
-                            <field name="inputs"/>
-                        </group>
-                        <group>
-                            <field name="end_trigger" placeholder="Cuándo termina"/>
-                            <field name="outputs"/>
-                        </group>
-                        <field name="replaced_document_ids" widget="many2many_tags"
-                               options="{'no_create': True}" colspan="2"/>
-                        <field name="owner_valid" invisible="1"/>
-                    </group>
+                    <field name="owner_valid" invisible="1"/>
                     <notebook>
+                        <page string="Ficha" name="ficha">
+                            <group>
+                                <group>
+                                    <field name="start_trigger" placeholder="Qué lo dispara"/>
+                                    <field name="inputs"/>
+                                </group>
+                                <group>
+                                    <field name="end_trigger" placeholder="Cuándo termina"/>
+                                    <field name="outputs"/>
+                                </group>
+                            </group>
+                            <group string="Procedimientos que sustituye">
+                                <field name="replaced_document_ids" nolabel="1" colspan="2"
+                                       widget="many2many_tags" options="{'no_create': True}"/>
+                            </group>
+                        </page>
                         <!-- La pestaña «Procedimiento» (el cómo, paso a paso) se
                              inserta ANTES de esta, desde sgi_process_procedure_views.xml. -->
-                        <page string="Entradas y salidas" name="entradas_salidas">
+                        <page string="Conexiones" name="entradas_salidas">
                             <div class="alert alert-info mb-3" role="status">
                                 Lo que este proceso <b>recibe</b> de otros y lo que
                                 les <b>entrega</b>: cada línea es una entrega real,
@@ -271,6 +307,20 @@
                                     <button name="action_view_records" type="object"
                                             string="Ver registros" icon="fa-external-link"
                                             invisible="not odoo_model_id"/>
+                                </list>
+                            </field>
+                            <separator string="Ligas entre actividades (la cadena, paso a paso)"/>
+                            <field name="chain_link_ids" readonly="1">
+                                <list decoration-danger="chain_state == 'atorado'"
+                                      decoration-info="is_cross_process">
+                                    <field name="from_activity_id"/>
+                                    <field name="name" string="Entregable"/>
+                                    <field name="to_activity_id"/>
+                                    <field name="is_cross_process" optional="hide"/>
+                                    <field name="chain_state" widget="badge"
+                                           decoration-success="chain_state == 'fluye'"
+                                           decoration-danger="chain_state == 'atorado'"/>
+                                    <field name="lag_days" optional="show"/>
                                 </list>
                             </field>
                             <separator string="Entrega a otros procesos (salidas)"/>
@@ -360,14 +410,26 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="owner_id"/>
-                <filter name="tipo_cop" string="COP (operativos)" domain="[('process_type', '=', 'cop')]"/>
+                <filter name="tipo_cop" string="Cadena de valor" domain="[('process_type', '=', 'cop')]"/>
                 <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>
+                <separator/>
+                <filter name="rojo" string="Con actividades en rojo"
+                        domain="[('measure_status', '=', 'rojo')]"/>
+                <filter name="dueno_invalido" string="Dueño no válido"
+                        domain="['|', '|', ('owner_id', '=', False), ('owner_id.active', '=', False), ('owner_id.user_id', '=', False)]"/>
+                <filter name="archived" string="Archivados" domain="[('active', '=', False)]"/>
                 <filter name="macros" string="Solo macroprocesos" domain="[('parent_id', '=', False)]"/>
                 <group>
                     <filter name="group_parent" string="Macroproceso" context="{'group_by': 'parent_id'}"/>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'process_type'}"/>
                     <filter name="group_owner" string="Dueño" context="{'group_by': 'owner_id'}"/>
+                    <filter name="group_measure" string="Estado de medición"
+                            context="{'group_by': 'measure_status'}"/>
                 </group>
+                <searchpanel>
+                    <field name="process_type" select="one" icon="fa-sitemap"/>
+                    <field name="measure_status" select="multi" icon="fa-tachometer"/>
+                </searchpanel>
             </search>
         </field>
     </record>
@@ -375,7 +437,8 @@
     <record id="sgi_process_action" model="ir.actions.act_window">
         <field name="name">Procesos</field>
         <field name="res_model">sgi.process</field>
-        <field name="view_mode">list,kanban,form</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="sgi_process_view_search"/>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Administración del mapa de procesos</p>
             <p>Edite fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
