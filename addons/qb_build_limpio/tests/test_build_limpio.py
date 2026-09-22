@@ -147,6 +147,56 @@ class TestBuildLimpio(TransactionCase):
         self.assertTrue(sana.active)
         self.assertEqual(self.Limpio._vistas_studio_invalidas(), [])
 
+    def test_atributos_obsoletos(self):
+        # Una vista de Studio que NO es «por defecto» (una herencia de lista)
+        # con el arch procesado de una versión vieja: modifiers en los campos,
+        # y un calendario con quick_add. Se corrigen en todos los idiomas.
+        lista = self._vista_studio(
+            'Odoo Studio: res.partner.list customization',
+            '<list><field name="name"/></list>',
+            '<list><field name="name" modifiers=\'{"readonly": true}\'/></list>')
+        calendario = self._vista_studio(
+            'Odoo Studio: res.partner calendar customization',
+            '<calendar string="x" date_start="create_date"><field name="name"/></calendar>',
+            '<calendar string="x" date_start="create_date" quick_add="0"><field name="name"/></calendar>')
+        self.env.cr.execute(
+            "UPDATE ir_ui_view SET arch_db = arch_db || jsonb_build_object('es_MX', arch_db->>'en_US') WHERE id = %s",
+            (lista.id,))
+
+        hechos = self.Limpio._atributos_obsoletos()
+
+        self.assertEqual(len([h for h in hechos if str(lista.id) in h or str(calendario.id) in h]), 2, hechos)
+        self.env.cr.execute("SELECT arch_db FROM ir_ui_view WHERE id = %s", (lista.id,))
+        arch_db = self.env.cr.fetchone()[0]
+        for arch in arch_db.values():
+            self.assertNotIn('modifiers', arch)
+        self.env.cr.execute("SELECT arch_db->>'en_US' FROM ir_ui_view WHERE id = %s", (calendario.id,))
+        self.assertIn('quick_create="0"', self.env.cr.fetchone()[0])
+        self.assertEqual([h for h in self.Limpio._atributos_obsoletos()
+                          if str(lista.id) in h or str(calendario.id) in h], [])
+
+    def test_carpetas_de_apps_en_papelera(self):
+        if 'documents.document' not in self.env:
+            self.skipTest("Documentos (Enterprise) no está instalado")
+        Doc = self.env['documents.document'].with_context(active_test=False)
+        padre = Doc.create({'name': 'Padre QBL', 'type': 'folder'})
+        carpeta = Doc.create({'name': 'Nómina QBL', 'type': 'folder', 'folder_id': padre.id})
+        company = self.env.company
+        campo = next((n for n, f in company._fields.items()
+                      if f.type == 'many2one' and f.comodel_name == 'documents.document' and f.store), None)
+        if not campo:
+            self.skipTest("Ninguna app instalada guarda una carpeta en la empresa")
+        company[campo] = carpeta
+        (carpeta | padre).write({'active': False})
+
+        hechos = self.Limpio._carpetas_de_apps_en_papelera()
+
+        self.assertTrue([h for h in hechos if 'Nómina QBL' in h], hechos)
+        (carpeta | padre).invalidate_recordset()
+        self.assertTrue(carpeta.active)
+        self.assertTrue(padre.active, 'se restaura también la carpeta que la contiene')
+        self.assertEqual([h for h in self.Limpio._carpetas_de_apps_en_papelera() if 'QBL' in h], [])
+
     def test_columnas_sin_not_null(self):
         # Como en producción: una columna required a la que Odoo no pudo poner
         # NOT NULL porque había filas en NULL (website.*, sale.order.template.*).
@@ -169,7 +219,8 @@ class TestBuildLimpio(TransactionCase):
     def test_ejecutar_no_revienta(self):
         informe = self.Limpio.ejecutar()
         self.assertEqual(set(informe), {
-            'etiquetas_duplicadas', 'dependencias_no_buscables', 'vistas_studio_invalidas',
-            'grupos_inexistentes', 'columnas_sin_not_null'})
+            'etiquetas_duplicadas', 'dependencias_no_buscables', 'atributos_obsoletos',
+            'vistas_studio_invalidas', 'grupos_inexistentes', 'columnas_sin_not_null',
+            'carpetas_de_apps_en_papelera'})
         for valores in informe.values():
             self.assertNotIn('ERROR: ver log', valores)
