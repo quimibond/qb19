@@ -316,7 +316,8 @@ class QbBuildLimpio(models.AbstractModel):
                 cambios.add('sin modifiers')
             if 'quick_add' in node.attrib:
                 valor = node.attrib.pop('quick_add')
-                node.attrib.setdefault('quick_create', valor)
+                if 'quick_create' not in node.attrib:
+                    node.set('quick_create', valor)
                 cambios.add('quick_add → quick_create')
         if not cambios:
             return arch, set()
