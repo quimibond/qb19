@@ -552,25 +552,35 @@ revisiones y descripción de puesto, automatización/tableros/seguridad).
   recalcula; si nada cambió no escribe); nadie lo edita. La adherencia y los
   contadores de la actividad salen de esas 4 semanas.
 
-### Pantallas (Odoo 19)
+### Pantallas (reorganizadas el 22-sep-2026)
+
+El menú del SGI tiene **seis entradas y máximo tres niveles** (antes eran 14,
+con tres tableros y las actividades en tres lugares). Todo el árbol vive en
+`views/sgi_menus.xml`; los xmlids no cambiaron.
 
 | Menú | Qué hay |
 |---|---|
-| SGI > Tablero | Tablero de hoja de cálculo «Salud del SGI» (grupo SGI en la app Tableros). Nace vacío: se arma insertando los pivotes de Análisis y se edita sin programar |
-| SGI > Procesos > Mapa de procesos | Kanban por tipo (estratégico, cadena de valor, soporte; columnas siempre visibles), barra de estado de medición, avatar del dueño, barra verde/rojo/gris de actividades, % medido y adherencia promedio; cinta roja si el dueño no es válido. Panel lateral por tipo y estado |
-| Ficha del proceso | Botones Actividades, En rojo, Sin método, NC, KPIs, Riesgos, Documentos, Indicadores. Pestañas Ficha, Actividades (con quién ejecuta y aprueba, método, estado y adherencia), Conexiones (flujos y ligas), Documentos, Indicadores, Riesgos. Chatter |
-| SGI > Actividades | Lista (y kanban en móvil) con filtros En rojo, Sin método, Ejecuta otro puesto, Cuenta genérica, Parece automática, Por evento; agrupable por proceso, método, estado y puesto que ejecuta; panel lateral por proceso y método |
-| Ficha de la actividad | Avisos arriba (alerta amarilla), roles en lista editable, medición según el método, «Quién la ejecutó — últimas 4 semanas» y la cadena |
-| SGI > Análisis | Quién hace qué (pivote proceso > actividad × clase), Tendencia (ejecuciones por semana apiladas por clase), Cobertura de medición (proceso × método) |
-| Puesto (RH) | Botón «Actividades SGI» y pestaña SGI: familia, vacante y sus actividades (propias y de su familia) por rol |
-| SGI > Configuración | Cargar catálogo (asistente con Probar = dry-run y Cargar; solo Administrador SGI), Familias de puesto y Tipos de documento en listas editables |
+| **Inicio** | Tablero (hoja de cálculo «Salud del SGI», se arma con los pivotes de Análisis), Mis actividades, Mis acciones, Mis mediciones, Mis procedimientos, Mis acuses |
+| **Procesos** | Mapa de procesos (kanban por tipo con barra de medición, dueño, % medido y adherencia), Actividades, Roles por puesto, Cadena de actividades, Flujos, Riesgos y oportunidades, Requisitos legales, Partes interesadas |
+| **Mejora** | No conformidades, Concentrado de NC, Acciones, Reclamaciones, Quejas y sugerencias, Incidentes SST, Mejoras, Lecciones aprendidas, Auditorías y su programa, Planes de emergencia, Simulacros |
+| **Documentos** | Documentos, Cambios documentales, Migración de formatos |
+| **Análisis** | Política → Objetivos → Indicadores → Mediciones, Satisfacción del cliente, Quién hace qué, Tendencia de ejecuciones, Cobertura de medición, Cumplimiento de procedimientos, Diagnóstico, Revisión por la Dirección |
+| **Configuración** | Cargar catálogo (solo Administrador SGI), Familias de puesto, Tipos de documento, Ajustes, Áreas, Normas… (solo MAST) |
 
-En la carga: bloque `families` (se procesa primero), roles
-`{"role": "ejecuta", "family": "OP-TEJ"}` / `{"role": "aprueba", "relative":
-"jefe_del_solicitante"}`, `evidence[0].user_field` → `measure_user_field` y
-`"measure": {"method": "consecuencia", "proxy": "C6.02"}` (la evidencia implica
-`odoo`; `muestreo` lleva `sample_cadence`, `no_aplica` lleva `justification`).
-Los nombres de puesto se comparan sin mayúsculas, espacios dobles ni acentos.
+Calidad preventiva (AMEF, PPAP, planes de control, metrología) y el Pareto de
+alertas viven en la app **Calidad**; evaluación de proveedores en Compras,
+presupuesto en Ventas y competencias en Empleados.
+
+**Ficha del proceso**: 3 botones (Actividades, En rojo, NC abiertas), botón
+«Imprimir procedimiento» arriba y 4 pestañas: *Ficha* (objetivo, disparadores,
+entradas y salidas, indicadores y riesgos), *Actividades* (lista con quién
+ejecuta y aprueba, método, estado y adherencia; abajo el texto del
+procedimiento y las firmas), *Conexiones* (flujos y ligas) y *Documentos*.
+
+**Ficha de la actividad**: arriba el número, el nombre, el proceso y el método
+(y los avisos en amarillo si los hay); 4 pestañas: *Qué y quién* (roles,
+descripción, instructivo, formatos, valor y automatización), *Cómo se mide*,
+*Quién la ejecutó* (últimas 4 semanas) y *Cadena*.
 
 ### Carga por API: `sgi.process.load_payload(payload, dry_run=False)`
 
