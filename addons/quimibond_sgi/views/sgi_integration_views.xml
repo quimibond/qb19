@@ -62,7 +62,7 @@
         <field name="inherit_id" ref="hr.view_hr_job_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Documentos SGI aplicables">
+                <page string="Documentos SGI aplicables" name="sgi_documents">
                     <field name="sgi_document_ids">
                         <list>
                             <field name="sgi_code"/>

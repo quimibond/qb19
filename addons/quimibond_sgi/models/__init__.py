@@ -27,6 +27,10 @@ from . import sgi_ppap
 from . import sgi_incident
 from . import sgi_competence
 from . import sgi_format_map
+from . import sgi_catalog
+from . import sgi_load
+from . import sgi_exec_stat
+from . import sgi_load_wizard
 from . import sgi_sales_budget
 from . import sgi_sales_budget_line
 from . import sgi_sales_budget_import

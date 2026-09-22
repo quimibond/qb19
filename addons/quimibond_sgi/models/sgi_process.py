@@ -19,11 +19,15 @@ class SgiProcess(models.Model):
 
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True)
+    company_id = fields.Many2one(
+        'res.company', string="Empresa", required=True, index=True,
+        default=lambda self: self.env.company)
     process_type = fields.Selection([
-        ('cop', "COP (Operativo cliente)"),
+        ('cop', "Cadena de valor (COP)"),
         ('estrategico', "Estratégico"),
         ('soporte', "Soporte"),
-    ], string="Tipo", default='cop', required=True)
+    ], string="Tipo", default='cop', required=True,
+        group_expand='_group_expand_process_type')
     parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True)
     parent_path = fields.Char(index=True)
     child_ids = fields.One2many('sgi.process', 'parent_id', string="Subprocesos")
@@ -35,6 +39,26 @@ class SgiProcess(models.Model):
     purpose = fields.Text(
         string="Objetivo del proceso",
         help="Para qué existe el proceso (de la caracterización/SIPOC).")
+
+    # Ficha del proceso: dónde empieza, dónde termina, qué entra y qué sale.
+    start_trigger = fields.Text(
+        string="Disparador de inicio",
+        help="Qué hace que el proceso arranque (ej. llega un pedido).")
+    end_trigger = fields.Text(
+        string="Termina cuando",
+        help="Qué marca el fin del proceso (ej. la factura queda cobrada).")
+    inputs = fields.Text(string="Entradas")
+    outputs = fields.Text(string="Salidas")
+    replaced_document_ids = fields.Many2many(
+        'documents.document', 'sgi_process_replaced_doc_rel', 'process_id',
+        'document_id', string="Procedimientos que sustituye",
+        help="Documentos vigentes que este proceso reemplaza. Al poner en "
+             "vigor el procedimiento del proceso se ofrece marcarlos "
+             "obsoletos.")
+    owner_valid = fields.Boolean(
+        string="Dueño válido", compute='_compute_owner_valid',
+        help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
+             "nadie recibe los avisos del proceso y la salud se pinta en rojo.")
 
     in_flow_ids = fields.One2many('sgi.process.flow', 'to_process_id', string="Entradas")
     out_flow_ids = fields.One2many('sgi.process.flow', 'from_process_id', string="Salidas")
@@ -67,10 +91,50 @@ class SgiProcess(models.Model):
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
     risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
 
-    _code_uniq = models.Constraint(
-        'unique(code)',
-        "La clave de proceso debe ser única.",
+    _code_company_uniq = models.Constraint(
+        'unique(code, company_id)',
+        "La clave de proceso debe ser única por empresa.",
     )
+
+    def _group_expand_process_type(self, values, domain):
+        """El kanban muestra siempre las tres columnas (estratégico, cadena de
+        valor, soporte), aunque alguna esté vacía."""
+        return ['estrategico', 'cop', 'soporte']
+
+    @api.depends('owner_id.active', 'owner_id.user_id')
+    def _compute_owner_valid(self):
+        for process in self:
+            owner = process.owner_id
+            process.owner_valid = bool(owner and owner.active and owner.user_id)
+
+    @api.onchange('owner_id')
+    def _onchange_owner_id_approver(self):
+        if self.owner_id.user_id and not self.doc_approver_id:
+            self.doc_approver_id = self.owner_id.user_id
+
+    @api.model
+    def _sgi_default_vobo_user(self):
+        """Vo.Bo. por omisión de los procedimientos: parámetro
+        quimibond_sgi.vobo_user_id (Jefe de MAST y SGI)."""
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.vobo_user_id')
+        try:
+            return self.env['res.users'].sudo().browse(int(value)).exists()
+        except (TypeError, ValueError):
+            return self.env['res.users']
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        vobo = self._sgi_default_vobo_user()
+        Employee = self.env['hr.employee'].sudo()
+        for vals in vals_list:
+            if not vals.get('doc_approver_id') and vals.get('owner_id'):
+                user = Employee.browse(vals['owner_id']).user_id
+                if user:
+                    vals['doc_approver_id'] = user.id
+            if not vals.get('doc_vobo_id') and vobo:
+                vals['doc_vobo_id'] = vobo.id
+        return super().create(vals_list)
 
     @api.constrains('parent_id')
     def _check_parent_recursion(self):
@@ -154,7 +218,9 @@ class SgiProcess(models.Model):
             process.overdue_action_count = overdue_counts.get(process.id, 0)
             process.red_kpi_count = red_counts.get(process.id, 0)
             process.open_high_risk_count = risk_counts.get(process.id, 0)
-            if process.open_high_risk_count or (process.nc_count and process.red_kpi_count):
+            # Un proceso sin dueño que reciba avisos no se gobierna: rojo.
+            if (not process.owner_valid or process.open_high_risk_count
+                    or (process.nc_count and process.red_kpi_count)):
                 process.health = 'rojo'
             elif process.nc_count or process.overdue_action_count or process.red_kpi_count:
                 process.health = 'amarillo'
@@ -307,6 +373,9 @@ class SgiProcessFlow(models.Model):
     acceptance_criteria = fields.Text(string="Criterio de aceptación")
     odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa")
     odoo_model_name = fields.Char(related='odoo_model_id.model', string="Modelo técnico")
+    company_id = fields.Many2one(
+        related='from_process_id.company_id', string="Empresa", store=True,
+        index=True)
 
     @api.constrains('from_process_id', 'to_process_id')
     def _check_from_to(self):

@@ -10,6 +10,11 @@
               web_icon="quimibond_sgi,static/description/icon.png"
               groups="quimibond_sgi.group_sgi_user"/>
 
+    <!-- 0. Tablero: hoja de cálculo armada con los pivotes de Análisis (se
+         edita en la app Tableros, sin programar). -->
+    <menuitem id="menu_sgi_dashboard_health" name="Tablero" parent="menu_sgi_root"
+              action="sgi_spreadsheet_dashboard_action" sequence="5"/>
+
     <!-- 1. Panel: la salud del sistema de un vistazo -->
     <menuitem id="menu_sgi_panel" name="Panel" parent="menu_sgi_root"
               action="sgi_process_action_panel" sequence="10"/>
@@ -80,7 +85,7 @@
               action="sgi_nc_lessons_action" sequence="40"/>
 
     <!-- 4. Documental: la biblioteca controlada y su ciclo de vida -->
-    <menuitem id="menu_sgi_documental" name="Documental" parent="menu_sgi_root" sequence="40"/>
+    <menuitem id="menu_sgi_documental" name="Documentos" parent="menu_sgi_root" sequence="40"/>
     <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
               action="sgi_document_action" sequence="10"/>
     <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_documental"
@@ -164,9 +169,26 @@
     <menuitem id="menu_sgi_activity_chain" name="Cadena de actividades"
               parent="menu_sgi_processes" action="sgi_activity_link_action"
               sequence="15"/>
-    <menuitem id="menu_sgi_activities" name="Actividades de procedimiento"
-              parent="menu_sgi_processes" action="sgi_process_activity_action"
+    <menuitem id="menu_sgi_activity_roles" name="Roles por puesto"
+              parent="menu_sgi_processes" action="sgi_activity_role_action"
+              sequence="25"/>
+
+    <!-- Catálogo único: las actividades de todos los procesos, y su análisis
+         (quién hace qué, tendencia, cobertura de medición). -->
+    <menuitem id="menu_sgi_activities" name="Actividades"
+              parent="menu_sgi_root" action="sgi_process_activity_action"
+              sequence="17"/>
+    <menuitem id="menu_sgi_analysis" name="Análisis" parent="menu_sgi_root"
+              sequence="60"/>
+    <menuitem id="menu_sgi_analysis_who" name="Quién hace qué"
+              parent="menu_sgi_analysis" action="sgi_activity_exec_stat_action_who"
+              sequence="10"/>
+    <menuitem id="menu_sgi_analysis_trend" name="Tendencia"
+              parent="menu_sgi_analysis" action="sgi_activity_exec_stat_action_trend"
               sequence="20"/>
+    <menuitem id="menu_sgi_activity_methods" name="Cobertura de medición"
+              parent="menu_sgi_analysis" action="sgi_activity_method_action"
+              sequence="30"/>
 
     <!-- 7. Riesgos y auditorías: planificar (6.1) antes de verificar (9.2).
          Los incidentes SST se movieron a Mejora continua (ciclo reactivo). -->
@@ -223,6 +245,13 @@
     <menuitem id="menu_sgi_config_settings" name="Ajustes" parent="menu_sgi_config"
               action="sgi_config_settings_action" sequence="5"
               groups="base.group_system"/>
+    <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_config"
+              action="sgi_catalog_load_wizard_action" sequence="2"
+              groups="quimibond_sgi.group_sgi_admin"/>
+    <menuitem id="menu_sgi_job_families" name="Familias de puesto" parent="menu_sgi_config"
+              action="sgi_job_family_action" sequence="3"/>
+    <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_config"
+              action="sgi_document_type_action" sequence="4"/>
     <menuitem id="menu_sgi_config_areas" name="Áreas" parent="menu_sgi_config"
               action="sgi_area_action" sequence="10"/>
     <menuitem id="menu_sgi_config_norms" name="Normas" parent="menu_sgi_config"

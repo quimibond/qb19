@@ -14,12 +14,15 @@ class TestOlaAProcedure(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
+        # roles se prueba en test_catalog_fase1).
+        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.process = cls.env['sgi.process'].create({
             'code': 'P-OLAA', 'name': 'Proceso OLA A'})
         cls.doc = cls.env['documents.document'].create({
             'name': 'P-V98.pdf', 'type': 'binary',
             'sgi_is_controlled': True, 'sgi_doc_type': 'procedimiento',
-            'sgi_code': 'P-V98', 'sgi_revision': '15', 'sgi_state': 'vigente',
+            'sgi_code': 'P-V98', 'sgi_revision': 15, 'sgi_state': 'vigente',
             'sgi_process_id': cls.process.id})
 
     def _add_activity(self):
@@ -57,7 +60,7 @@ class TestOlaAProcedure(TransactionCase):
     def test_04_new_revision_clears_flag(self):
         self._add_activity()
         self.assertTrue(self.doc.sgi_procedure_dirty)
-        self.doc.write({'sgi_revision': '16'})
+        self.doc.write({'sgi_revision': 16})
         self.assertFalse(self.doc.sgi_procedure_dirty,
                          "Aprobar una nueva revisión realinea y limpia la divergencia.")
         self.assertFalse(self.doc.sgi_procedure_dirty_since)
@@ -80,7 +83,7 @@ class TestOlaAProcedure(TransactionCase):
 
     def test_06_unlink_activity_flags(self):
         act = self._add_activity()
-        self.doc.write({'sgi_revision': '16'})  # limpia
+        self.doc.write({'sgi_revision': 16})  # limpia
         self.assertFalse(self.doc.sgi_procedure_dirty)
         act.unlink()
         self.assertTrue(self.doc.sgi_procedure_dirty,

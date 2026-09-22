@@ -6,6 +6,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
 
+from .sgi_base import sgi_bypass_allowed
+
 _logger = logging.getLogger(__name__)
 
 # Nomenclatura documental real de PNTQ (áreas G,A,C,D,E,I,M,P,S,V)
@@ -28,6 +30,21 @@ class DocumentsDocument(models.Model):
 
     sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True)
     sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True)
+    # La clave anterior sigue encontrando el documento durante 12 meses
+    # (búsqueda «Clave SGI» y _sgi_find_by_code): nadie pierde un formato
+    # porque cambió la nomenclatura.
+    sgi_previous_code = fields.Char(
+        string="Clave anterior", index=True, copy=False, tracking=True)
+    sgi_previous_code_date = fields.Date(
+        string="Cambio de clave", copy=False,
+        help="Desde cuándo rige la clave actual; la anterior se encuentra "
+             "hasta 12 meses después.")
+    # Tipo de documento como dato (sgi.document.type). El campo de selección
+    # de antes se conserva calculado para las vistas, dominios y reportes
+    # que lo usan; escribirlo resuelve el tipo por su código.
+    sgi_doc_type_id = fields.Many2one(
+        'sgi.document.type', string="Tipo de documento", index=True,
+        tracking=True, ondelete='restrict')
     sgi_doc_type = fields.Selection([
         ('miid', "Manual (MIID)"),
         ('procedimiento', "Procedimiento (P)"),
@@ -41,7 +58,14 @@ class DocumentsDocument(models.Model):
         ('anexo', "Anexo"),
         ('externo', "Documento externo"),
         ('formulario_odoo', "Formulario de Odoo (vista)"),
-    ], string="Tipo de documento")
+        ('control_operacional', "Control operacional (CO)"),
+        ('metodo_anexo', "Método / anexo (MA)"),
+        ('descripcion_puesto', "Descripción de puesto (DP)"),
+    ], string="Tipo (código)", compute='_compute_sgi_doc_type',
+        inverse='_inverse_sgi_doc_type', store=True, readonly=False,
+        help="Código del tipo de documento (compatibilidad). Un tipo nuevo "
+             "creado en Configuración que no esté en esta lista deja este "
+             "campo vacío; usa «Tipo de documento».")
     # El «documento» que ya no es un archivo: el formato migrado vive como
     # vista/transacción de Odoo y este registro solo lo controla (clave,
     # revisión, difusión) y lo abre con un clic.
@@ -51,7 +75,15 @@ class DocumentsDocument(models.Model):
              "El botón «Abrir en Odoo» salta directo a él.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
     sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI")
-    sgi_revision = fields.Char(string="Revisión", default="00")
+    # Revisión como número: se compara, se ordena y no se captura «A» ni
+    # «00» por omisión. La etiqueta de dos dígitos es para imprimir.
+    sgi_revision = fields.Integer(string="Revisión", tracking=True)
+    sgi_revision_label = fields.Char(
+        string="Rev.", compute='_compute_sgi_revision_label')
+    sgi_revision_legacy = fields.Char(
+        string="Revisión (texto anterior)", readonly=True, copy=False,
+        help="Valor de texto que no se pudo convertir a número al migrar "
+             "(p. ej. «A»). Captura la revisión real en «Revisión».")
     sgi_issue_date = fields.Date(string="Fecha de emisión")
     sgi_state = fields.Selection([
         ('borrador', "Borrador"),
@@ -283,20 +315,173 @@ class DocumentsDocument(models.Model):
                   AND sgi_code IS NOT NULL
         """)
 
-    @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type')
-    def _check_sgi_code(self):
+    @api.depends('sgi_doc_type_id.code')
+    def _compute_sgi_doc_type(self):
+        valid = dict(self._fields['sgi_doc_type'].selection)
         for doc in self:
-            # Externos y formularios de Odoo pueden no tener clave PNTQ (el
-            # formulario nativo de Odoo no siempre sustituye a un formato F-).
-            if not doc.sgi_is_controlled or doc.sgi_doc_type in ('externo', 'formulario_odoo'):
+            code = doc.sgi_doc_type_id.code
+            doc.sgi_doc_type = code if code in valid else False
+
+    def _inverse_sgi_doc_type(self):
+        Type = self.env['sgi.document.type'].sudo()
+        for doc in self:
+            if not doc.sgi_doc_type:
+                if doc.sgi_doc_type_id.code in dict(self._fields['sgi_doc_type'].selection):
+                    doc.sgi_doc_type_id = False
                 continue
-            if not doc.sgi_code or not SGI_CODE_REGEX.match(doc.sgi_code.strip()):
+            if doc.sgi_doc_type_id.code == doc.sgi_doc_type:
+                continue
+            company = doc.company_id or self.env.company
+            dtype = Type.search([('code', '=', doc.sgi_doc_type),
+                                 ('company_id', 'in', [company.id, False])],
+                                order='company_id', limit=1)
+            doc.sgi_doc_type_id = dtype
+
+    @api.depends('sgi_revision')
+    def _compute_sgi_revision_label(self):
+        for doc in self:
+            doc.sgi_revision_label = "%02d" % (doc.sgi_revision or 0)
+
+    @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type_id', 'sgi_process_id')
+    def _check_sgi_code(self):
+        """La clave cumple la nomenclatura de su TIPO (patrón nuevo o clave
+        heredada, ambos configurables en Configuración → Tipos de documento).
+        Los tipos sin clave propia (externos, formularios de Odoo) no se
+        revisan. Si el tipo exige proceso, un documento con la nomenclatura
+        nueva debe tenerlo."""
+        for doc in self:
+            dtype = doc.sgi_doc_type_id
+            if not doc.sgi_is_controlled or (dtype and not dtype.code_required):
+                continue
+            code = (doc.sgi_code or '').strip()
+            if not dtype:
+                # Sin tipo: basta con que alguna nomenclatura la acepte.
+                if code and self.env['sgi.document.type'].sudo()._sgi_any_match(code):
+                    continue
                 raise ValidationError(
-                    "La clave SGI '%s' no cumple la nomenclatura de PNTQ.\n"
-                    "Formatos válidos: MIID, P-Xnn, IT-P-Xnn-nn, F-P-Xnn-nn, "
-                    "F-IT-P-Xnn-nn-nn, DAT..., PROT-nn, DF-..., R-..., ANEXO n "
-                    "(X = área G/A/C/D/E/I/M/P/S/V)." % (doc.sgi_code or '')
-                )
+                    "La clave SGI '%s' no corresponde a ningún tipo de "
+                    "documento. Elige el tipo o corrige la clave." % code)
+            if not dtype._sgi_code_ok(code, doc.sgi_process_id):
+                raise ValidationError(
+                    "La clave SGI '%s' no cumple la nomenclatura del tipo «%s» "
+                    "(%s%s)." % (
+                        code, dtype.name,
+                        dtype.prefix_pattern or 'sin patrón',
+                        ", con el proceso %s" % doc.sgi_process_id.code
+                        if doc.sgi_process_id and '{process}' in (dtype.prefix_pattern or '')
+                        else ''))
+            if dtype.requires_process and not doc.sgi_process_id \
+                    and not dtype._sgi_legacy_match(code):
+                raise ValidationError(
+                    "Un documento de tipo «%s» debe estar ligado a su proceso "
+                    "(%s)." % (dtype.name, code))
+
+    def _sgi_same_code_docs(self):
+        """Otros documentos (activos o archivados) con la misma clave y
+        empresa."""
+        self.ensure_one()
+        return self.with_context(active_test=False).search([
+            ('id', '!=', self.id),
+            ('sgi_code', '=', self.sgi_code),
+            ('company_id', '=', self.company_id.id),
+        ])
+
+    @api.constrains('sgi_code', 'sgi_revision', 'sgi_is_controlled', 'active', 'company_id')
+    def _check_sgi_revision_unique(self):
+        """Una sola combinación clave + revisión por empresa entre los
+        documentos activos."""
+        for doc in self.filtered(lambda d: d.sgi_is_controlled and d.sgi_code and d.active):
+            dup = doc._sgi_same_code_docs().filtered(
+                lambda d: d.active and d.sgi_is_controlled
+                and d.sgi_revision == doc.sgi_revision)
+            if dup:
+                raise ValidationError(
+                    "Ya existe el documento %s con la clave %s y la revisión "
+                    "%s. Cada revisión de una clave es única." % (
+                        dup[0].display_name, doc.sgi_code, doc.sgi_revision_label))
+
+    @api.constrains('sgi_code', 'sgi_doc_type_id', 'sgi_process_id', 'sgi_is_controlled')
+    def _check_sgi_code_family(self):
+        """Una clave, aun dada de baja, pertenece a su familia (tipo y
+        proceso): no se reutiliza para otro documento."""
+        for doc in self.filtered(lambda d: d.sgi_is_controlled and d.sgi_code):
+            for other in doc._sgi_same_code_docs().filtered('sgi_is_controlled'):
+                different_type = (other.sgi_doc_type_id and doc.sgi_doc_type_id
+                                  and other.sgi_doc_type_id != doc.sgi_doc_type_id)
+                different_process = (other.sgi_process_id and doc.sgi_process_id
+                                     and other.sgi_process_id != doc.sgi_process_id)
+                if different_type or different_process:
+                    raise ValidationError(
+                        "La clave %s ya la usó %s (%s, %s). Una clave, aunque "
+                        "esté dada de baja, no se reutiliza en otro tipo de "
+                        "documento ni en otro proceso." % (
+                            doc.sgi_code, other.display_name,
+                            other.sgi_doc_type_id.name or 'sin tipo',
+                            other.sgi_process_id.display_name or 'sin proceso'))
+
+    def _sgi_check_revision_increases(self, old_revisions=None):
+        """La revisión nueva es mayor que la última de la misma clave (y que
+        la que el documento tenía). Corregir una revisión mal capturada hacia
+        abajo requiere ``sgi_revision_correction`` (sistema o Jefe MAST)."""
+        if self.env.context.get('sgi_revision_correction') and sgi_bypass_allowed(self.env):
+            return
+        old_revisions = old_revisions or {}
+        for doc in self.filtered(lambda d: d.sgi_is_controlled and d.sgi_code):
+            previous = old_revisions.get(doc.id)
+            if previous is not None and doc.sgi_revision < previous:
+                raise ValidationError(
+                    "La revisión de %s no puede bajar de %02d a %02d." % (
+                        doc.sgi_code, previous, doc.sgi_revision))
+            others = doc._sgi_same_code_docs().filtered('sgi_is_controlled')
+            if not others:
+                continue
+            last = max(others.mapped('sgi_revision'))
+            if doc.sgi_revision <= last:
+                raise ValidationError(
+                    "La revisión %02d de %s debe ser mayor que la última "
+                    "registrada para esa clave (%02d)." % (
+                        doc.sgi_revision or 0, doc.sgi_code, last))
+
+    def _sgi_check_procedure_measures(self, new_state, created=False):
+        """Un procedimiento no pasa a piloto con actividades sin método de
+        medición, ni a vigente con alguna sin método, «no aplica» sin
+        justificación, «consecuencia» sin la actividad que la prueba u «Odoo»
+        sin modelo. El error las lista todas."""
+        if new_state not in ('piloto', 'vigente'):
+            return
+        full = new_state == 'vigente'
+        for doc in self:
+            if doc.sgi_doc_type != 'procedimiento' or not doc.sgi_is_controlled \
+                    or not doc.sgi_process_id or (doc.sgi_state == new_state and not created):
+                continue
+            problems = []
+            for activity in doc.sgi_process_id.procedure_activity_ids:
+                for problem in activity._sgi_measure_problems(full=full):
+                    problems.append("• %s: %s" % (activity.display_name, problem))
+            if problems:
+                raise UserError(
+                    "El procedimiento %s no puede pasar a %s: estas actividades de "
+                    "%s no tienen cómo medirse.\n%s" % (
+                        doc.sgi_code or doc.name, new_state,
+                        doc.sgi_process_id.display_name, "\n".join(problems)))
+
+    @api.model
+    def _sgi_find_by_code(self, code, states=('vigente',)):
+        """Documento por clave; si no hay, por clave anterior cambiada en
+        los últimos 12 meses."""
+        code = (code or '').strip()
+        if not code:
+            return self.browse()
+        domain = [('sgi_state', 'in', list(states))] if states else []
+        doc = self.search([('sgi_code', '=', code)] + domain,
+                          order='sgi_revision desc, id desc', limit=1)
+        if doc:
+            return doc
+        since = fields.Date.context_today(self) - relativedelta(months=12)
+        return self.search([
+            ('sgi_previous_code', '=', code),
+            ('sgi_previous_code_date', '>=', since),
+        ] + domain, order='sgi_revision desc, id desc', limit=1)
 
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_state')
     def _check_unique_vigente(self):
@@ -362,6 +547,11 @@ class DocumentsDocument(models.Model):
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
         docs = super().create(vals_list)
+        for state in ('piloto', 'vigente'):
+            docs.filtered(lambda d, state=state: d.sgi_state == state)\
+                ._sgi_check_procedure_measures(state, created=True)
+        # Una revisión nueva de una clave existente va por arriba de la última.
+        docs._sgi_check_revision_increases()
         docs.filtered(
             lambda d: d.sgi_state == 'vigente' and d.sgi_code)._sgi_reparent_family()
         # Trazabilidad del alta documental: el documento creado desde la
@@ -381,6 +571,8 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        if vals.get('sgi_state') in ('piloto', 'vigente'):
+            self._sgi_check_procedure_measures(vals['sgi_state'])
         if vals.get('sgi_state') == 'vigente' and len(self) > 1:
             # Selección múltiple con la MISMA clave: el obsoletado excluye solo
             # al doc en turno, ambos quedarían vigentes y el índice único
@@ -403,7 +595,22 @@ class DocumentsDocument(models.Model):
             for doc in self:
                 code = vals.get('sgi_code', doc.sgi_code)
                 self._obsolete_code(code, exclude=doc)
+        old_revisions = {doc.id: doc.sgi_revision for doc in self} \
+            if 'sgi_revision' in vals else {}
+        if 'sgi_code' in vals and 'sgi_previous_code' not in vals:
+            # Cambio de clave: la anterior se guarda y sigue encontrando el
+            # documento 12 meses. Documento por documento: cada uno tenía la
+            # suya.
+            new_code = (vals.get('sgi_code') or '').strip()
+            today = fields.Date.context_today(self)
+            for doc in self.filtered(lambda d: d.sgi_code and d.sgi_code != new_code):
+                super(DocumentsDocument, doc).write({
+                    'sgi_previous_code': doc.sgi_code,
+                    'sgi_previous_code_date': today,
+                })
         res = super().write(vals)
+        if 'sgi_revision' in vals or 'sgi_code' in vals:
+            self._sgi_check_revision_increases(old_revisions)
         if vals.get('sgi_state') == 'vigente':
             self._sgi_reparent_family()
         # Una nueva revisión aprobada (bump de revisión o entrada en vigor)

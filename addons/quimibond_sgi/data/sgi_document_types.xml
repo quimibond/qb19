@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tipos de documento del SGI como DATOS (fase 1). noupdate: lo que MAST
+         ajuste en Configuración → Tipos de documento no se pisa al actualizar.
+         Los patrones nuevos (PR-{process}, IT-{process}-{seq:02d}…) conviven
+         con la nomenclatura heredada (P-A28, F-P-A28-04…) mientras se migra. -->
+    <data noupdate="1">
+        <record id="sgi_doc_type_miid" model="sgi.document.type">
+            <field name="code">miid</field>
+            <field name="name">Manual (MIID)</field>
+            <field name="sequence">5</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^MIID$</field>
+        </record>
+        <record id="sgi_doc_type_procedimiento" model="sgi.document.type">
+            <field name="code">procedimiento</field>
+            <field name="name">Procedimiento (PR)</field>
+            <field name="sequence">10</field>
+            <field name="prefix_pattern">PR-{process}</field>
+            <field name="requires_process" eval="True"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^P-[AGCDEIMPSV]\d{2}$</field>
+        </record>
+        <record id="sgi_doc_type_instructivo" model="sgi.document.type">
+            <field name="code">instructivo</field>
+            <field name="name">Instructivo (IT)</field>
+            <field name="sequence">20</field>
+            <field name="prefix_pattern">IT-{process}-{seq:02d}</field>
+            <field name="requires_process" eval="True"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^IT-P-[AGCDEIMPSV]\d{2}-\d{2}$</field>
+        </record>
+        <record id="sgi_doc_type_formato" model="sgi.document.type">
+            <field name="code">formato</field>
+            <field name="name">Formato (F)</field>
+            <field name="sequence">30</field>
+            <field name="prefix_pattern">F-{process}-{seq:02d}</field>
+            <field name="requires_process" eval="True"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^F-P-[AGCDEIMPSV]\d{2}-\d{2}$</field>
+        </record>
+        <record id="sgi_doc_type_formato_it" model="sgi.document.type">
+            <field name="code">formato_it</field>
+            <field name="name">Formato de instructivo (F-IT)</field>
+            <field name="sequence">35</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^F-IT-P-[AGCDEIMPSV]\d{2}-\d{2}-\d{2}$</field>
+        </record>
+        <record id="sgi_doc_type_control_operacional" model="sgi.document.type">
+            <field name="code">control_operacional</field>
+            <field name="name">Control operacional (CO)</field>
+            <field name="sequence">40</field>
+            <field name="prefix_pattern">CO-{seq:02d}</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+        </record>
+        <record id="sgi_doc_type_metodo_anexo" model="sgi.document.type">
+            <field name="code">metodo_anexo</field>
+            <field name="name">Método / anexo (MA)</field>
+            <field name="sequence">45</field>
+            <field name="prefix_pattern">MA-{process}-{seq:02d}</field>
+            <field name="requires_process" eval="True"/>
+            <field name="code_required" eval="True"/>
+        </record>
+        <record id="sgi_doc_type_descripcion_puesto" model="sgi.document.type">
+            <field name="code">descripcion_puesto</field>
+            <field name="name">Descripción de puesto (DP)</field>
+            <field name="sequence">50</field>
+            <field name="prefix_pattern">DP-{seq:02d}</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+        </record>
+        <record id="sgi_doc_type_dat" model="sgi.document.type">
+            <field name="code">dat</field>
+            <field name="name">DAT</field>
+            <field name="sequence">60</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^DAT.*$</field>
+        </record>
+        <record id="sgi_doc_type_protocolo" model="sgi.document.type">
+            <field name="code">protocolo</field>
+            <field name="name">Protocolo (PROT)</field>
+            <field name="sequence">65</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^PROT-\d{2}$</field>
+        </record>
+        <record id="sgi_doc_type_diagrama" model="sgi.document.type">
+            <field name="code">diagrama</field>
+            <field name="name">Diagrama de flujo (DF)</field>
+            <field name="sequence">70</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^DF-.*$</field>
+        </record>
+        <record id="sgi_doc_type_reglamento" model="sgi.document.type">
+            <field name="code">reglamento</field>
+            <field name="name">Reglamento (R)</field>
+            <field name="sequence">75</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^R-.*$</field>
+        </record>
+        <record id="sgi_doc_type_anexo" model="sgi.document.type">
+            <field name="code">anexo</field>
+            <field name="name">Anexo</field>
+            <field name="sequence">80</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+            <field name="legacy_code_regex">^ANEXO \d{1,2}$</field>
+        </record>
+        <record id="sgi_doc_type_externo" model="sgi.document.type">
+            <field name="code">externo</field>
+            <field name="name">Documento externo</field>
+            <field name="sequence">90</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="False"/>
+        </record>
+        <record id="sgi_doc_type_formulario_odoo" model="sgi.document.type">
+            <field name="code">formulario_odoo</field>
+            <field name="name">Formulario de Odoo (vista)</field>
+            <field name="sequence">95</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="False"/>
+        </record>
+    </data>
+</odoo>

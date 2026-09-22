@@ -181,7 +181,7 @@ class TestOla2DocFamily(TransactionCase):
         parent_r1 = self.Doc.create({
             'name': 'P-C95 R01.pdf', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-C95',
-            'sgi_revision': '01', 'sgi_state': 'vigente'})
+            'sgi_revision': 1, 'sgi_state': 'vigente'})
         child = self.Doc.create({
             'name': 'F.xlsx', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'formato', 'sgi_code': 'F-P-C95-01',
@@ -191,7 +191,7 @@ class TestOla2DocFamily(TransactionCase):
         parent_r2 = self.Doc.create({
             'name': 'P-C95 R02.pdf', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-C95',
-            'sgi_revision': '02', 'sgi_state': 'vigente'})
+            'sgi_revision': 2, 'sgi_state': 'vigente'})
         self.assertEqual(parent_r1.sgi_state, 'obsoleto')
         # El hijo sigue al procedimiento vigente, no al obsoleto.
         self.assertEqual(child.sgi_parent_document_id, parent_r2)

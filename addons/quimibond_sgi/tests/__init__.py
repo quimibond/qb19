@@ -40,3 +40,4 @@ from . import test_audit_hardening
 from . import test_ola_certificable
 from . import test_sign_elearning
 from . import test_expansion_kpis
+from . import test_catalog_fase1
