@@ -586,49 +586,73 @@ descripción, instructivo, formatos, valor y automatización), *Cómo se mide*,
 
 Por JSON-RPC o por el conector MCP (`call_model_method` sobre `sgi.process`;
 la migración habilita el modelo en MCP con llamadas a métodos). Alta o
-actualización por llave natural (proceso `code`; actividad proceso + `number`;
-rol actividad + rol + puesto; liga origen + destino; flujo origen + destino +
-entregable; indicador `code`). Escribe solo lo que cambió: la segunda corrida
-del mismo JSON reporta cero cambios. `dry_run` corre todo en un savepoint que
-se deshace y reporta lo que se crearía, actualizaría o archivaría. Una
-transacción por proceso: si una actividad falla, el proceso entero se deshace
-y se reporta. Las actividades de un proceso cargado que no vienen en el JSON se
-**archivan** (`"archive_missing": false` lo evita).
+actualización por llave natural (entregable `code`; proceso `code`; actividad
+proceso + paso; rol actividad + rol + puesto; «recibe» actividad + entregable;
+indicador `code`). Escribe solo lo que cambió: la segunda corrida del mismo
+JSON reporta cero cambios. `dry_run` corre todo en un savepoint que se deshace
+y reporta lo que se crearía, actualizaría o archivaría. Una transacción por
+proceso: si una actividad falla, el proceso entero se deshace y se reporta.
+Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
+(`"archive_missing": false` lo evita); su texto original se queda en ellas.
 
 ```json
 {
   "dry_run": true,
-  "processes": [{"code": "C6", "name": "Almacén e inventarios",
-                 "process_type": "cadena de valor",
-                 "owner_job": "JEFE DE INVENTARIOS Y ALMACENES",
-                 "start_trigger": "…", "end_trigger": "…", "inputs": "…", "outputs": "…",
-                 "replaced_documents": ["P-A20"]}],
-  "activities": [{"process": "C6", "number": "C6.22", "section": "D. Inventario",
-                  "block": "desarrollo", "name": "Revisar cada diferencia y registrar su causa",
-                  "value_class": "nva_n",
-                  "roles": [{"role": "ejecuta", "job": "JEFE DE INVENTARIOS Y ALMACENES"},
-                            {"role": "participa", "job": "ENCARGADO DE ALMACEN"}],
-                  "instruction": "IT-C6-06", "formats": ["F-C6-01"],
-                  "evidence": [{"source_type": "odoo_model", "model": "stock.move",
-                                "domain": "[('is_inventory','=',True),('state','=','done')]",
-                                "date_field": "date", "user_field": "create_uid"}],
-                  "automation": {"current": "manual", "target": "asistido",
-                                 "method": "accion_automatizada"},
-                  "cadence": "semanal", "links_to": ["C6.23"]}],
-  "flows": [{"from": "C2", "to": "C3", "name": "Pedido confirmado", "model": "sale.order"}],
-  "indicators": [{"code": "C6-01", "name": "Exactitud de inventario", "process": "C6",
-                  "responsible": "login@quimibond.com"}]
+  "deliverables": [
+    {"code": "C2-PEDIDO", "name": "Pedido confirmado", "model": "sale.order",
+     "domain": "[('state', '=', 'sale')]", "date_field": "date_order",
+     "user_field": "user_id", "acceptance_criteria": "Precio y fecha confirmados"},
+    {"code": "C2-OC-CLIENTE", "name": "Orden de compra del cliente", "document": "F-C2-01"}
+  ],
+  "processes": [{"code": "C2", "name": "Ventas", "process_type": "cadena de valor",
+                 "owner_job": "DIRECTOR DE VENTAS",
+                 "start_trigger": "…", "end_trigger": "…",
+                 "replaced_documents": ["P-A31"]}],
+  "activities": [
+    {"process": "C2", "number": "C2.03", "stage": "A. Pedido",
+     "name": "Verificar número de parte y precio", "value_class": "nva_n",
+     "roles": [{"role": "ejecuta", "family": "PEDIDOS"},
+               {"role": "informa", "relative": "dueno_proceso"}],
+     "inputs": [{"code": "C2-OC-CLIENTE", "days": 1}],
+     "outputs": ["C2-PEDIDO"],
+     "measure": {"method": "entregable", "deliverable": "C2-PEDIDO"},
+     "cadence": "evento",
+     "automation": {"current": "manual", "target": "asistido"}}
+  ],
+  "indicators": [{"code": "C2-01", "name": "Pedidos confirmados a tiempo",
+                  "process": "C2", "responsible": "login@quimibond.com"}]
 }
 ```
 
+- **`number`**: `"C2.03"` (clave del proceso + paso) o el paso como entero
+  (`3`). Es un número, no texto: el numeral que se imprime se calcula y se
+  renumera solo si cambia la clave del proceso. Otro formato es error.
+- **`stage`**: la etapa del proceso («A. Pedido»); se crea la primera vez.
+- **`deliverables`** se procesan antes que los procesos. `model` + `domain` +
+  `date_field` (+ `user_field`) dicen **cuándo quedó entregado**: con ellos, la
+  actividad que lo entrega se mide con `"measure": {"method": "entregable"}`
+  y no lleva `evidence` (se captura una vez, en el entregable). Si la
+  actividad entrega un solo entregable con modelo, `deliverable` se puede
+  omitir. Sin `model`, el entregable es documental.
+- **`inputs`**: lo que la actividad recibe; `"C2-PEDIDO"` o
+  `{"code": "C2-PEDIDO", "days": 2}`. `days` es el **plazo en días hábiles**
+  (lunes a viernes) para que llegue a esta actividad; pasado el plazo sin que
+  ella ejecute, el eslabón está atorado. `0` o sin `days` = sin plazo.
+- **`outputs`**: códigos de lo que la actividad entrega.
+- **Las ligas y los flujos no se cargan**: salen solos de `inputs`/`outputs`
+  (una liga por quien entrega × quien recibe; un flujo si cruzan proceso) y no
+  se editan a mano. Si una no aplica se desactiva con su motivo en la
+  actividad (pestaña Cadena). `links_to`, `links`, `flows` e `inputs`/`outputs`
+  como texto del proceso son **error**.
+- **Un ejecutor por actividad.** Si según el caso la ejecuta otro puesto, son
+  dos actividades. Una familia de puestos (`family`) solo cuando los puestos
+  son intercambiables (PEDIDOS).
 - Puestos por id o por nombre normalizado (sin mayúsculas, espacios y saltos
   de línea colapsados). **Nunca se crean**: si no existe o es ambiguo, error.
 - Dueño: `owner_employee_id`, o `owner_job` = el único empleado activo con
   usuario en ese puesto (si hay 0 o varios, aviso y queda sin dueño).
-- Evidencia: en esta fase la primera fuente `odoo_model` va a los campos de
-  medición actuales; las demás (correo, manual, externa, `user_field`) llegan
-  en la fase 2 — el aviso lo dice y basta repetir la carga entonces.
-- `links_to` acepta `"C6.23"`, `"C6:C6.23"` o `{"to": …, "name": …}`.
+- `evidence` (método `odoo`): la primera fuente `odoo_model` va a los campos
+  de medición de la actividad; las demás llegan en la fase 2.
 
 Ejemplo por MCP: `call_model_method("sgi.process", "load_payload", [payload])`.
 

@@ -33,14 +33,17 @@
                     </div>
                     <div class="oe_title">
                         <h2 class="d-flex gap-2">
-                            <field name="number" placeholder="C6.22" class="w-auto"/>
-                            <field name="name" placeholder="Qué se hace, en pocas palabras"/>
+                            <field name="number" class="w-auto" readonly="1"/>
+                            <field name="name" placeholder="Verbo + qué: «Validar la recepción»"/>
                         </h2>
                     </div>
                     <group>
                         <group>
                             <field name="process_id" options="{'no_create': True}"/>
-                            <field name="section" placeholder="D. Inventario"/>
+                            <field name="stage_id" options="{'no_quick_create': False}"
+                                   context="{'default_process_id': process_id}"/>
+                            <field name="step"/>
+                            <field name="legacy_number" invisible="not legacy_number"/>
                         </group>
                         <group>
                             <field name="measure_method"/>
@@ -70,7 +73,19 @@
                                     <field name="condition" placeholder="Siempre"/>
                                 </list>
                             </field>
-                            <field name="description" placeholder="Texto completo del paso, como sale en el procedimiento…"/>
+                            <separator string="Recibe"/>
+                            <field name="input_ids" context="{'default_company_id': company_id}">
+                                <list editable="bottom" string="Recibe">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="deliverable_id"
+                                           context="{'default_company_id': parent.company_id}"/>
+                                    <field name="max_days"/>
+                                </list>
+                            </field>
+                            <group>
+                                <field name="output_deliverable_ids" widget="many2many_tags"
+                                       context="{'default_company_id': company_id}"/>
+                            </group>
                             <group>
                                 <group>
                                     <field name="instruction_id" options="{'no_create': True}"/>
@@ -88,16 +103,16 @@
                                            invisible="not automation_level_target or automation_level_target == automation_level_current"/>
                                 </group>
                             </group>
-                            <group string="En el PDF del procedimiento">
-                                <group>
-                                    <field name="block"/>
-                                    <field name="sequence"/>
-                                </group>
-                                <group>
-                                    <field name="responsible_role"/>
-                                    <field name="note"/>
-                                    <field name="company_id" groups="base.group_multi_company"/>
-                                </group>
+                            <group>
+                                <field name="note" placeholder="Solo si hace falta algo que no cabe en los campos"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                            <group string="Texto de la versión anterior"
+                                   invisible="not description and not responsible_role">
+                                <field name="responsible_role" readonly="1"
+                                       invisible="not responsible_role"/>
+                                <field name="description" readonly="1"
+                                       invisible="not description"/>
                             </group>
                         </page>
                         <page string="Cómo se mide" name="medicion">
@@ -113,18 +128,27 @@
                                     <field name="measure_justification"
                                            invisible="measure_method != 'no_aplica'"
                                            required="measure_method == 'no_aplica'"/>
+                                    <field name="measure_deliverable_id"
+                                           invisible="measure_method != 'entregable'"
+                                           required="measure_method == 'entregable'"
+                                           domain="[('id', 'in', output_deliverable_ids), ('odoo_model_id', '!=', False)]"
+                                           options="{'no_create': True}"/>
                                     <field name="measure_model_id" options="{'no_create': True}"
-                                           invisible="measure_method not in (False, 'odoo')"/>
+                                           invisible="measure_method not in (False, 'odoo', 'entregable')"
+                                           readonly="measure_method == 'entregable'"/>
                                     <field name="measure_model_name"
                                            invisible="measure_method not in (False, 'odoo')"
                                            placeholder="o el nombre técnico: sale.order"/>
                                     <field name="measure_domain"
-                                           invisible="not measure_model_id or measure_method not in (False, 'odoo')"
+                                           invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
+                                           readonly="measure_method == 'entregable'"
                                            placeholder="[('state', '=', 'done')]"/>
                                     <field name="measure_date_field"
-                                           invisible="not measure_model_id or measure_method not in (False, 'odoo')"/>
+                                           invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
+                                           readonly="measure_method == 'entregable'"/>
                                     <field name="measure_user_field"
-                                           invisible="not measure_model_id or measure_method not in (False, 'odoo')"
+                                           invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
+                                           readonly="measure_method == 'entregable'"
                                            placeholder="create_uid, user_id…"/>
                                     <field name="measure_cadence"/>
                                 </group>
@@ -168,24 +192,44 @@
                             </field>
                         </page>
                         <page string="Cadena" name="cadena">
+                            <div class="text-muted mb-2">
+                                Las ligas se calculan solas de «Recibe» y «Entrega» y no se
+                                editan a mano. Si una no aplica, apágala y escribe el motivo.
+                            </div>
                             <separator string="Recibe de"/>
-                            <field name="in_link_ids">
-                                <list editable="bottom">
-                                    <field name="from_activity_id"/>
-                                    <field name="name" string="Entregable"/>
+                            <field name="in_link_ids" context="{'active_test': False}">
+                                <list editable="bottom" create="0" delete="0"
+                                      decoration-muted="not active">
+                                    <field name="deliverable_id" column_invisible="1"/>
+                                    <field name="from_activity_id" readonly="1"/>
+                                    <field name="name" string="Entregable" readonly="1"/>
+                                    <field name="max_days" optional="show"/>
                                     <field name="chain_state" widget="badge" optional="show"
                                            decoration-success="chain_state == 'fluye'"
                                            decoration-danger="chain_state == 'atorado'"/>
+                                    <field name="active" widget="boolean_toggle"
+                                           readonly="not deliverable_id"/>
+                                    <field name="inactive_reason" optional="show"
+                                           readonly="not deliverable_id"
+                                           required="deliverable_id and not active"/>
                                 </list>
                             </field>
                             <separator string="Entrega a"/>
-                            <field name="out_link_ids">
-                                <list editable="bottom">
-                                    <field name="to_activity_id"/>
-                                    <field name="name" string="Entregable"/>
+                            <field name="out_link_ids" context="{'active_test': False}">
+                                <list editable="bottom" create="0" delete="0"
+                                      decoration-muted="not active">
+                                    <field name="deliverable_id" column_invisible="1"/>
+                                    <field name="to_activity_id" readonly="1"/>
+                                    <field name="name" string="Entregable" readonly="1"/>
+                                    <field name="max_days" optional="show"/>
                                     <field name="chain_state" widget="badge" optional="show"
                                            decoration-success="chain_state == 'fluye'"
                                            decoration-danger="chain_state == 'atorado'"/>
+                                    <field name="active" widget="boolean_toggle"
+                                           readonly="not deliverable_id"/>
+                                    <field name="inactive_reason" optional="show"
+                                           readonly="not deliverable_id"
+                                           required="deliverable_id and not active"/>
                                 </list>
                             </field>
                         </page>
@@ -369,7 +413,7 @@
         <field name="model">sgi.activity.link</field>
         <field name="arch" type="xml">
             <list string="Cadena de actividades" default_order="from_process_id, id"
-                  decoration-info="is_cross_process">
+                  create="0" decoration-info="is_cross_process" decoration-muted="not active">
                 <field name="from_process_id" optional="show"/>
                 <field name="from_activity_id"/>
                 <field name="name" string="Entregable"/>
@@ -379,8 +423,12 @@
                 <field name="chain_state" widget="badge" optional="show"
                        decoration-success="chain_state == 'fluye'"
                        decoration-danger="chain_state == 'atorado'"/>
+                <field name="max_days" optional="show"/>
                 <field name="lag_days" optional="show"/>
                 <field name="nc_alert_id" optional="hide"/>
+                <field name="origin" optional="hide"/>
+                <field name="active" column_invisible="1"/>
+                <field name="inactive_reason" optional="hide"/>
             </list>
         </field>
     </record>
@@ -404,6 +452,11 @@
                         domain="[('chain_state', '=', 'atorado')]"/>
                 <filter name="flowing" string="Fluyen"
                         domain="[('chain_state', '=', 'fluye')]"/>
+                <separator/>
+                <filter name="manual" string="Capturadas a mano (anteriores)"
+                        domain="[('deliverable_id', '=', False)]"/>
+                <filter name="inactive" string="Desactivadas"
+                        domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_from" string="Proceso origen"
                             context="{'group_by': 'from_process_id'}"/>
@@ -422,7 +475,7 @@
         <field name="context">{'search_default_group_from': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">El hilo conductor de la operación</p>
-            <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Se capturan en la actividad (Recibe de / Entrega a) y se imprimen en el F-P-G01-02.</p>
+            <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Salen solas de lo que cada actividad recibe y entrega (catálogo de entregables) y se imprimen en el procedimiento.</p>
         </field>
     </record>
 
@@ -476,9 +529,17 @@
             </xpath>
             <xpath expr="//page[@name='entradas_salidas']" position="before">
                 <page string="Actividades" name="procedimiento">
-                    <div class="text-muted mb-2" invisible="not measure_method_summary">
-                        <field name="measure_method_summary" class="d-inline"/>
+                    <div class="mb-2">
+                        <span class="text-muted"><field name="measure_method_summary" class="d-inline"/></span>
                     </div>
+                    <field name="stage_ids" context="{'default_process_id': id}">
+                        <list editable="bottom" string="Etapas">
+                            <field name="sequence" widget="handle"/>
+                            <field name="code" string="Letra"/>
+                            <field name="name"/>
+                            <field name="activity_count"/>
+                        </list>
+                    </field>
                     <field name="procedure_activity_ids" context="{'default_process_id': id}">
                         <list string="Actividades" default_order="sequence, number"
                               decoration-danger="measure_state == 'rojo'"
@@ -486,15 +547,16 @@
                             <field name="sequence" widget="handle"/>
                             <field name="number"/>
                             <field name="name"/>
+                            <field name="stage_id" optional="show"/>
                             <field name="executor_role_ids" widget="many2many_tags"/>
+                            <field name="input_deliverable_ids" widget="many2many_tags" optional="hide"/>
+                            <field name="output_deliverable_ids" widget="many2many_tags" optional="show"/>
                             <field name="approver_role_ids" widget="many2many_tags" optional="show"/>
                             <field name="measure_method" optional="show"/>
                             <field name="measure_state" widget="badge" optional="show"
                                    decoration-success="measure_state == 'verde'"
                                    decoration-danger="measure_state == 'rojo'"/>
                             <field name="measure_adherence_pct" optional="show"/>
-                            <field name="block" optional="hide"/>
-                            <field name="section" optional="hide"/>
                             <field name="instruction_id" optional="hide"/>
                             <field name="format_document_ids" widget="many2many_tags" optional="hide"/>
                             <field name="odoo_menu_id" column_invisible="1"/>

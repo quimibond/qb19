@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 """Carga idempotente del catálogo por API (JSON-RPC / MCP).
 
-``sgi.process.load_payload(payload)`` recibe procesos, actividades con sus
-roles, evidencia y automatización, ligas, flujos e indicadores, y da de alta
-o actualiza por llave natural:
+``sgi.process.load_payload(payload)`` recibe entregables, procesos,
+actividades con sus roles, lo que reciben y entregan, evidencia y
+automatización, e indicadores, y da de alta o actualiza por llave natural:
 
+- entregable: ``code`` (por empresa);
 - proceso: ``code`` (por empresa);
-- actividad: clave del proceso + ``number``;
+- actividad: clave del proceso + paso (``number`` = «C2.03» o 3);
 - rol: actividad + rol + puesto;
-- liga: actividad origen + actividad destino;
-- flujo: proceso origen + proceso destino + entregable;
+- recibe: actividad + entregable (con su plazo en días hábiles);
 - indicador: ``code``.
+
+Las ligas entre actividades y los flujos entre procesos NO se cargan: salen
+solos de lo que entrega y recibe cada actividad. Las llaves de la versión
+anterior (``links_to``, ``links``, ``flows`` e ``inputs``/``outputs`` como
+texto del proceso) son error, para que ningún JSON viejo cargue a medias.
 
 Correr dos veces el mismo JSON no duplica nada y la segunda corrida reporta
 cero cambios. ``dry_run`` hace todo dentro de un savepoint que se deshace al
@@ -45,10 +50,15 @@ _PROCESS_TYPES = {
     'cop': 'cop', 'soporte': 'soporte',
 }
 _PROCESS_TEXT_FIELDS = (
-    'name', 'purpose', 'scope', 'start_trigger', 'end_trigger', 'inputs',
-    'outputs', 'env_aspects')
+    'name', 'purpose', 'scope', 'start_trigger', 'end_trigger', 'env_aspects')
+_LEGACY_KEYS = {
+    'links_to': "«links_to» ya no existe: declara «outputs» en quien entrega e "
+                "«inputs» en quien recibe; la liga sale sola.",
+    'links': "«links» ya no existe: las ligas salen de «inputs»/«outputs».",
+    'flows': "«flows» ya no existe: los flujos entre procesos salen de «inputs»/«outputs».",
+}
 _ACTIVITY_TEXT_FIELDS = (
-    'section', 'name', 'description', 'odoo_ref', 'note', 'responsible_role')
+    'name', 'description', 'odoo_ref', 'note', 'responsible_role')
 _INDICATOR_FIELDS = (
     'name', 'uom', 'direction', 'target_objective', 'target_acceptable',
     'frequency', 'calc_mode', 'monthly_budget', 'nc_on_red')
@@ -193,7 +203,11 @@ class _SgiLoader:
     # ------------------------------------------------------------------
     def run(self):
         payload = self.payload
+        for key in ('links', 'flows'):
+            if payload.get(key):
+                self.report.error(key, None, _LEGACY_KEYS[key])
         self._load_families(payload.get('families') or [])
+        self._load_deliverables(payload.get('deliverables') or [])
         activities_by_process = {}
         for item in payload.get('activities') or []:
             activities_by_process.setdefault(item.get('process'), []).append(item)
@@ -215,9 +229,7 @@ class _SgiLoader:
                 continue
             self._load_process_tx(
                 proc, activities_by_process.get(code), archive_missing)
-        self._load_links()
         self._load_proxies()
-        self._load_flows(payload.get('flows') or [])
         self._load_indicators(payload.get('indicators') or [])
 
     def _savepoint(self, fn, kind, key):
@@ -308,6 +320,11 @@ class _SgiLoader:
                     "ni viene en «processes»." % code)
             self.processes[code] = process
             return process
+        for legacy in ('inputs', 'outputs'):
+            if proc.get(legacy):
+                raise ValidationError(
+                    "«%s» del proceso ya no es texto: sale de lo que reciben y "
+                    "entregan sus actividades." % legacy)
         vals = {name: proc[name] for name in _PROCESS_TEXT_FIELDS if name in proc}
         if 'process_type' in proc or 'type' in proc:
             raw = str(proc.get('process_type') or proc.get('type') or '').strip().lower()
@@ -354,31 +371,70 @@ class _SgiLoader:
     def _load_activities(self, process, items, archive_missing):
         seen = set()
         for index, item in enumerate(items):
-            number = item.get('number')
+            number = item.get('number') or item.get('step')
             key = "%s/%s" % (process.code, number)
-            if not number:
-                self.report.error('activity', key, "Actividad sin «number».")
+            step = self.Activity._sgi_parse_number(process, number) if number else None
+            if not step:
+                self.report.error('activity', key, (
+                    "El numeral debe ser «%s.nn» (clave del proceso + paso) o el paso "
+                    "como número." % process.code))
                 continue
-            if number in seen:
-                self.report.error('activity', key, "Numeral repetido en el payload.")
+            if step in seen:
+                self.report.error('activity', key, "Paso repetido en el payload.")
                 continue
-            seen.add(number)
-            self._savepoint(lambda: self._upsert_activity(process, item, index),
+            seen.add(step)
+            self._savepoint(lambda: self._upsert_activity(process, item, index, step),
                             'activity', key)
         if archive_missing:
             stale = self.Activity.search([('process_id', '=', process.id),
                                           ('active', '=', True),
-                                          ('number', 'not in', list(seen) or [''])])
+                                          ('step', 'not in', list(seen) or [0])])
             for activity in stale:
                 self.report.change('activity', "%s/%s" % (process.code, activity.number),
                                    'archived')
             if stale:
                 stale.write({'active': False})
 
+    def _resolve_deliverable(self, code, what):
+        deliverable = self.env['sgi.deliverable'].with_context(active_test=False).search(
+            [('code', '=', code), ('company_id', '=', self.company.id)], limit=1)
+        if not code or not deliverable:
+            raise ValidationError("%s: el entregable «%s» no existe (decláralo en "
+                                  "«deliverables»)." % (what, code))
+        return deliverable
+
+    def _resolve_deliverables(self, codes, key, what):
+        return [self._resolve_deliverable(code, what).id for code in codes or []]
+
+    def _resolve_inputs(self, items):
+        """«inputs»: ["C2-PEDIDO"] o [{"code": "C2-PEDIDO", "days": 2}].
+        Devuelve [(entregable id, plazo en días hábiles)] en orden."""
+        out, seen = [], set()
+        for item in items or []:
+            code, days = (item.get('code'), item.get('days') or 0) if isinstance(item, dict) \
+                else (item, 0)
+            if isinstance(days, bool) or not isinstance(days, int) or days < 0:
+                raise ValidationError("Recibe %s: «days» debe ser un entero de días "
+                                      "hábiles (0 = sin plazo)." % code)
+            deliverable = self._resolve_deliverable(code, "Recibe")
+            if deliverable.id in seen:
+                raise ValidationError("Recibe %s dos veces." % code)
+            seen.add(deliverable.id)
+            out.append((deliverable.id, days))
+        return out
+
     def _activity_vals(self, process, item, index):
-        key = "%s/%s" % (process.code, item['number'])
+        key = "%s/%s" % (process.code, item.get('number'))
         vals = {name: item[name] for name in _ACTIVITY_TEXT_FIELDS if name in item}
         vals['sequence'] = item.get('sequence') or (index + 1) * 10
+        stage_text = item.get('stage') or item.get('section')
+        if 'stage' in item or 'section' in item:
+            vals['stage_id'] = self.env['sgi.process.stage']._sgi_get_or_create(
+                process, stage_text).id if stage_text else False
+        if 'links_to' in item:
+            raise ValidationError(_LEGACY_KEYS['links_to'])
+        if 'outputs' in item:
+            vals['output_deliverable_ids'] = self._resolve_deliverables(item['outputs'], key, "Entrega")
         Activity = self.Activity
         for name in ('block', 'value_class'):
             if name in item:
@@ -440,6 +496,15 @@ class _SgiLoader:
                 vals['measure_justification'] = measure.get('justification') or False
             if method != 'consecuencia':
                 vals['measure_proxy_activity_id'] = False
+            if method == 'entregable':
+                if measure.get('deliverable'):
+                    deliverable = self._resolve_deliverable(measure['deliverable'], "Medición")
+                    vals['measure_deliverable_id'] = deliverable.id
+                if item.get('evidence'):
+                    raise ValidationError("«Por su entregable» no lleva «evidence»: el "
+                                          "modelo, el filtro y la fecha son los del entregable.")
+            else:
+                vals['measure_deliverable_id'] = False
         return vals
 
     def _evidence_vals(self, key, evidence):
@@ -485,6 +550,56 @@ class _SgiLoader:
             'measure_date_field': date_field,
             'measure_user_field': user_field,
         }
+
+    # ------------------------------------------------------------------
+    # Entregables (lo que pasa de una actividad a otra)
+    # ------------------------------------------------------------------
+    def _load_deliverables(self, deliverables):
+        Deliverable = self.env['sgi.deliverable'].with_context(active_test=False)
+        for item in deliverables:
+            key = item.get('code')
+
+            def run(item=item, key=key):
+                if not key:
+                    raise ValidationError("Entregable sin «code».")
+                vals = {}
+                if 'name' in item:
+                    vals['name'] = item['name']
+                if 'acceptance_criteria' in item:
+                    vals['acceptance_criteria'] = item['acceptance_criteria'] or False
+                if 'document' in item:
+                    doc = self.Doc._sgi_find_by_code(item['document'], states=None) \
+                        if item['document'] else self.Doc
+                    if item['document'] and not doc:
+                        self.report.warn('deliverable', key,
+                                         "Formato %s no encontrado." % item['document'])
+                    else:
+                        vals['document_id'] = doc.id
+                if 'model' in item:
+                    model = self.env['ir.model']._get(item['model']) if item['model'] else False
+                    if item['model'] and not model:
+                        raise ValidationError("Modelo %s no existe." % item['model'])
+                    vals['odoo_model_id'] = model.id if model else False
+                for src, dst, default in (('domain', 'measure_domain', '[]'),
+                                          ('date_field', 'measure_date_field', 'create_date'),
+                                          ('user_field', 'measure_user_field', False)):
+                    if src in item:
+                        vals[dst] = item[src] or default
+                deliverable = Deliverable.search([('code', '=', key),
+                                                  ('company_id', '=', self.company.id)], limit=1)
+                if deliverable:
+                    if not deliverable.active:
+                        vals['active'] = True
+                    changed = _diff(deliverable, vals)
+                    if changed:
+                        deliverable.write(changed)
+                        self.report.change('deliverable', key, 'updated', changed)
+                else:
+                    if not vals.get('name'):
+                        raise ValidationError("El entregable nuevo %s necesita «name»." % key)
+                    Deliverable.create(dict(vals, code=key, company_id=self.company.id))
+                    self.report.change('deliverable', key, 'created')
+            self._savepoint(run, 'deliverable', key)
 
     # ------------------------------------------------------------------
     # Familias de puestos
@@ -606,30 +721,37 @@ class _SgiLoader:
             touched = True
         return commands, touched
 
-    def _upsert_activity(self, process, item, index):
-        number = item['number']
+    def _upsert_activity(self, process, item, index, step):
+        number = item.get('number') or item.get('step')
         key = "%s/%s" % (process.code, number)
         activity = self.Activity.search([('process_id', '=', process.id),
-                                         ('number', '=', number)], limit=1)
+                                         ('step', '=', step)], limit=1)
         vals = self._activity_vals(process, item, index)
         role_cmds, roles_touched = self._roles_commands(activity, item, key) \
             if 'roles' in item else ([], False)
+        input_cmds = self._inputs_commands(activity, item) if 'inputs' in item else []
         if activity:
             if not activity.active:
                 vals['active'] = True
             changed = _diff(activity, vals)
             if roles_touched:
                 changed['role_ids'] = role_cmds
+            if input_cmds:
+                changed['input_ids'] = input_cmds
             if changed:
                 activity.write(changed)
                 self.report.change('activity', key, 'updated', changed)
         else:
-            vals.update(process_id=process.id, number=number, role_ids=role_cmds)
-            if 'format_document_ids' in vals:
-                vals['format_document_ids'] = [Command.set(vals['format_document_ids'])]
+            vals.update(process_id=process.id, step=step, role_ids=role_cmds,
+                        input_ids=input_cmds)
+            for m2m in ('format_document_ids', 'output_deliverable_ids'):
+                if m2m in vals:
+                    vals[m2m] = [Command.set(vals[m2m])]
             activity = self.Activity.create(vals)
             self.report.change('activity', key, 'created')
+        # Se encuentra por el numeral como vino en el JSON y por el calculado.
         self.activities[(process.code, number)] = activity
+        self.activities[(process.code, activity.number)] = activity
         measure = item.get('measure') or {}
         if measure.get('method') == 'consecuencia':
             if not measure.get('proxy'):
@@ -640,8 +762,27 @@ class _SgiLoader:
         # restricción de «exactamente un ejecutor» corre aquí dentro.
         activity.flush_recordset()
 
+    def _inputs_commands(self, activity, item):
+        """Comandos para dejar los «recibe» exactamente como vienen (con su
+        plazo); vacío si ya están así."""
+        wanted = self._resolve_inputs(item['inputs'])
+        current = activity.input_ids if activity else self.env['sgi.activity.input']
+        if [(line.deliverable_id.id, line.max_days) for line in current] == wanted:
+            return []
+        by_deliverable = {line.deliverable_id.id: line for line in current}
+        cmds = []
+        for seq, (deliverable_id, days) in enumerate(wanted, start=1):
+            line = by_deliverable.pop(deliverable_id, None)
+            if line:
+                cmds.append(Command.update(line.id, {'max_days': days, 'sequence': seq * 10}))
+            else:
+                cmds.append(Command.create({'deliverable_id': deliverable_id,
+                                            'max_days': days, 'sequence': seq * 10}))
+        cmds.extend(Command.delete(line.id) for line in by_deliverable.values())
+        return cmds
+
     # ------------------------------------------------------------------
-    # Ligas entre actividades
+    # Actividades por referencia («se prueba con»)
     # ------------------------------------------------------------------
     def _find_activity(self, ref, default_process_code):
         """«C6.23» → actividad. Acepta «PROC:NUM». Busca primero en el mismo
@@ -668,49 +809,8 @@ class _SgiLoader:
         if len(matches) == 1:
             return matches
         raise ValidationError(
-            "Actividad destino «%s» %s." % (
+            "Actividad «%s» %s." % (
                 ref, "ambigua (%d procesos)" % len(matches) if matches else "no existe"))
-
-    def _load_links(self):
-        wanted = {}   # from activity id -> {to activity id: name} (solo las declaradas)
-        declared = set()
-        by_process = {}
-        items = []
-        for item in self.payload.get('activities') or []:
-            items.append((item.get('process'), item))
-        for proc in self.payload.get('processes') or []:
-            for item in proc.get('activities') or []:
-                items.append((proc.get('code'), item))
-        for proc_code, item in items:
-            if 'links_to' not in item:
-                continue
-            source = self.activities.get((proc_code, item.get('number')))
-            if not source:
-                continue  # su proceso no se cargó: el error ya está reportado
-            declared.add(source.id)
-            by_process.setdefault(proc_code, []).append((source, item['links_to']))
-        for link in self.payload.get('links') or []:
-            proc_code = link.get('process') or str(link.get('from', '')).split(':')[0]
-            by_process.setdefault(proc_code, []).append((link, None))
-
-        for proc_code, entries in by_process.items():
-            def run(entries=entries, proc_code=proc_code):
-                for source, targets in entries:
-                    if targets is None:   # liga suelta en «links»
-                        link = source
-                        frm = self._find_activity(link.get('from'), proc_code)
-                        to = self._find_activity(link.get('to'), frm.process_id.code)
-                        wanted.setdefault(frm.id, {})[to.id] = link.get('name') or to.name or to.number
-                        continue
-                    wanted.setdefault(source.id, {})
-                    for target in targets or []:
-                        ref = target.get('to') if isinstance(target, dict) else target
-                        to = self._find_activity(ref, proc_code)
-                        name = (target.get('name') if isinstance(target, dict) else None) \
-                            or to.name or to.number
-                        wanted[source.id][to.id] = name
-                self._sync_links(wanted, declared, [s for s, t in entries if t is not None])
-            self._savepoint(run, 'link', proc_code)
 
     def _load_proxies(self):
         """Resuelve «se prueba con» cuando ya están todas las actividades y
@@ -734,35 +834,8 @@ class _SgiLoader:
                 activities.with_context(sgi_defer_measure_check=False)._sgi_check_measure_strict()
             self._savepoint(run, 'measure', proc_code)
 
-    def _sync_links(self, wanted, declared, sources):
-        Link = self.env['sgi.activity.link']
-        Activity = self.env['sgi.process.activity']
-        froms = Activity.browse(list(wanted))
-        for frm in froms:
-            targets = wanted[frm.id]
-            existing = {link.to_activity_id.id: link for link in frm.out_link_ids}
-            for to_id, name in targets.items():
-                key = "%s → %s" % (frm.display_name, Activity.browse(to_id).display_name)
-                link = existing.pop(to_id, None)
-                if link:
-                    if link.name != name:
-                        link.write({'name': name})
-                        self.report.change('link', key, 'updated', ['name'])
-                else:
-                    Link.create({'from_activity_id': frm.id, 'to_activity_id': to_id,
-                                 'name': name})
-                    self.report.change('link', key, 'created')
-            # Solo se quitan las ligas de actividades que declararon links_to.
-            if frm.id in declared and frm in sources:
-                for link in existing.values():
-                    self.report.change('link', "%s → %s" % (
-                        frm.display_name, link.to_activity_id.display_name), 'deleted')
-                    link.unlink()
-        for frm in froms:
-            wanted.pop(frm.id, None)
-
     # ------------------------------------------------------------------
-    # Flujos entre procesos e indicadores
+    # Indicadores
     # ------------------------------------------------------------------
     def _find_process(self, code):
         process = self.processes.get(code) or self.Process.search(
@@ -770,41 +843,6 @@ class _SgiLoader:
         if not process:
             raise ValidationError("Proceso %s no existe." % code)
         return process
-
-    def _load_flows(self, flows):
-        Flow = self.env['sgi.process.flow']
-        for item in flows:
-            key = "%s → %s: %s" % (item.get('from'), item.get('to'), item.get('name'))
-
-            def run(item=item, key=key):
-                if not item.get('name'):
-                    raise ValidationError("Flujo sin «name» (entregable).")
-                frm, to = self._find_process(item.get('from')), self._find_process(item.get('to'))
-                vals = {}
-                if 'acceptance_criteria' in item:
-                    vals['acceptance_criteria'] = item['acceptance_criteria']
-                if 'model' in item:
-                    model = self.env['ir.model']._get(item['model']) if item['model'] else False
-                    if item['model'] and not model:
-                        raise ValidationError("Modelo %s no existe." % item['model'])
-                    vals['odoo_model_id'] = model.id if model else False
-                if 'document' in item:
-                    doc = self.Doc._sgi_find_by_code(item['document'], states=None) \
-                        if item['document'] else self.Doc
-                    vals['document_id'] = doc.id
-                flow = Flow.search([('from_process_id', '=', frm.id),
-                                    ('to_process_id', '=', to.id),
-                                    ('name', '=', item['name'])], limit=1)
-                if flow:
-                    changed = _diff(flow, vals)
-                    if changed:
-                        flow.write(changed)
-                        self.report.change('flow', key, 'updated', changed)
-                else:
-                    Flow.create(dict(vals, from_process_id=frm.id, to_process_id=to.id,
-                                     name=item['name']))
-                    self.report.change('flow', key, 'created')
-            self._savepoint(run, 'flow', key)
 
     def _load_indicators(self, indicators):
         Indicator = self.env['sgi.indicator'].with_context(active_test=False)
