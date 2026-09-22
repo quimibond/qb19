@@ -631,8 +631,8 @@ Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
   ese nivel. Si hay una, no se carga nada. Los indicadores van al nivel
   principal con `process`, no dentro del proceso.
 - **`replaces`** (proceso): códigos de procesos que el nuevo sustituye. En la
-  carga real se archivan y su chatter dice «Sustituido por C2»; con `dry_run`
-  solo se reportan. Un código que no existe es error.
+  carga real se archivan, **con sus actividades** (que conservan su texto), y
+  su chatter dice «Sustituido por C2»; con `dry_run` solo se reportan. Un código que no existe es error.
 - **Indicadores**: `formula` y `source` (texto; salen en la ficha y en el
   procedimiento impreso), `frequency` `monthly`/`weekly`, y el responsable
   como `responsible_employee_id` (su usuario) o `responsible` (id o login).

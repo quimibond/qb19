@@ -925,8 +925,9 @@ class _SgiLoader:
         return process
 
     def _load_replaces(self):
-        """«replaces»: el proceso nuevo archiva a los que sustituye (una sola
-        vez; con dry_run solo se reporta) y lo deja dicho en su chatter."""
+        """«replaces»: el proceso nuevo archiva a los que sustituye y a sus
+        actividades (una sola vez; con dry_run solo se reporta) y lo deja
+        dicho en su chatter. Las actividades archivadas conservan su texto."""
         for code, olds in self.replaces:
             new = self.processes.get(code)
             if not new:
@@ -943,12 +944,13 @@ class _SgiLoader:
                     if not old.active:
                         continue
                     self.report.change('process', old_code, 'archived')
-                    active_acts = self.env['sgi.process.activity'].search_count(
-                        [('process_id', '=', old.id)])
-                    if active_acts:
-                        self.report.warn('process', old_code, (
-                            "Se archiva con %d actividad(es) activa(s); quedan como "
-                            "estaban, dentro del proceso archivado." % active_acts))
+                    acts = self.env['sgi.process.activity'].search(
+                        [('process_id', '=', old.id), ('active', '=', True)])
+                    for act in acts:
+                        self.report.change('activity', "%s/%s" % (
+                            old_code, act.legacy_number or act.number), 'archived')
+                    if acts:
+                        acts.write({'active': False})
                     old.write({'active': False})
                     if not self.report.dry_run:
                         old.message_post(body="Sustituido por %s — %s." % (
