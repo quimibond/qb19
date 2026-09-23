@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- ====== Cliente: requiere COA y quién lo recibe ====== -->
-    <!-- Visible para todos, de solo lectura; SGI y Calidad lo editan (vista
-         de abajo, restringida a esos grupos). -->
+    <!-- SGI y Calidad lo editan; los demás lo ven de solo lectura. La regla
+         real está en res.partner.write; aquí solo la pantalla. -->
     <record id="sgi_coa_res_partner_view_form" model="ir.ui.view">
         <field name="name">sgi.coa.res.partner.form</field>
         <field name="model">res.partner</field>
@@ -10,25 +10,18 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='sales_purchases']//group" position="before">
                 <group string="Certificado de análisis (COA)" name="sgi_coa">
-                    <field name="sgi_requires_coa" readonly="1"/>
+                    <field name="sgi_requires_coa"
+                           groups="quimibond_sgi.group_sgi_user,quality.group_quality_user"/>
                     <field name="sgi_coa_recipient_ids" widget="many2many_tags"
-                           readonly="1" invisible="not sgi_requires_coa"/>
+                           invisible="not sgi_requires_coa"
+                           groups="quimibond_sgi.group_sgi_user,quality.group_quality_user"/>
+                    <field name="sgi_requires_coa" readonly="1"
+                           groups="!quimibond_sgi.group_sgi_user,!quality.group_quality_user"/>
+                    <field name="sgi_coa_recipient_ids" widget="many2many_tags" readonly="1"
+                           invisible="not sgi_requires_coa"
+                           groups="!quimibond_sgi.group_sgi_user,!quality.group_quality_user"/>
                 </group>
             </xpath>
-        </field>
-    </record>
-    <record id="sgi_coa_res_partner_view_form_edit" model="ir.ui.view">
-        <field name="name">sgi.coa.res.partner.form.edit</field>
-        <field name="model">res.partner</field>
-        <field name="inherit_id" ref="sgi_coa_res_partner_view_form"/>
-        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_user'), ref('quality.group_quality_user')])]"/>
-        <field name="arch" type="xml">
-            <field name="sgi_requires_coa" position="attributes">
-                <attribute name="readonly">0</attribute>
-            </field>
-            <field name="sgi_coa_recipient_ids" position="attributes">
-                <attribute name="readonly">0</attribute>
-            </field>
         </field>
     </record>
 
