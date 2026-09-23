@@ -62,7 +62,10 @@ class TestProcedureModel(TransactionCase):
             'block': 'final', 'name': 'Reclamación',
             'format_document_ids': [(6, 0, doc.ids)]})
         self.assertIn(doc, act.format_document_ids)
-        self.assertTrue(act.display_name.startswith('4.3.3.1'))
+        # El numeral ahora es clave del proceso + paso; el de texto se
+        # conserva como numeral anterior.
+        self.assertTrue(act.display_name.startswith('PROC-TST.'))
+        self.assertEqual(act.legacy_number, '4.3.3.1')
 
 
 @tagged('post_install', '-at_install')
@@ -167,6 +170,18 @@ class TestProcedureVentasSeed(TransactionCase):
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         cls.process = cls.env.ref('quimibond_sgi.proc_ventas')
+        # En una copia de producción Ventas ya trae sus actividades reales
+        # (sin método de medición todavía): el P-A28 vigente no pasaría el
+        # candado de medición. Dentro de la transacción de la prueba se
+        # mueven a un proceso aparte, y Ventas queda como en una base limpia.
+        parking = cls.env['sgi.process'].create(
+            {'code': 'VEN-REAL-PRUEBA', 'name': 'Ventas real (prueba)'})
+        cls.env.flush_all()
+        for table in ('sgi_process_activity', 'sgi_process_responsibility'):
+            cls.env.cr.execute(
+                "UPDATE %s SET process_id = %%s WHERE process_id = %%s" % table,
+                (parking.id, cls.process.id))
+        cls.env.invalidate_all()
         Doc = cls.env['documents.document']
         # Procedimiento que encabeza (clave/fecha/rev en vivo).
         cls.proc_doc = Doc.create({

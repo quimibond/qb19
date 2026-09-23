@@ -31,7 +31,10 @@ class TestKpiFase4(TransactionCase):
     def test_01_desperdicio_subproducto(self):
         # Junio 2045: un mes sin producción real (la copia de producción sí
         # tiene órdenes terminadas en 2026 que entraban al cálculo).
-        categ = self.env['product.category'].create({'name': 'SubProducto'})
+        categ = self.env['product.category'].create({'name': 'SubProducto KPI prueba'})
+        # La categoría sale del parámetro (en producción: «Subproducto»).
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.waste_subproduct_category', categ.name)
         main = self.env['product.product'].create({'name': 'Tela KPI test', 'type': 'consu'})
         byp = self.env['product.product'].create({
             'name': 'SALDO TEJIDO D KPI', 'type': 'consu', 'categ_id': categ.id})

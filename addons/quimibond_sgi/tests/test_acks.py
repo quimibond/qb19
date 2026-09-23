@@ -36,8 +36,9 @@ class TestDocsAndAcks(TransactionCase):
         doc1 = self._new_doc(sgi_is_controlled=True, sgi_doc_type='procedimiento',
                              sgi_code='P-C11', sgi_state='vigente')
         self.assertEqual(doc1.sgi_state, 'vigente')
+        # Revisión nueva de la misma clave: va por arriba de la anterior.
         doc2 = self._new_doc(sgi_is_controlled=True, sgi_doc_type='procedimiento',
-                             sgi_code='P-C11', sgi_state='vigente')
+                             sgi_code='P-C11', sgi_state='vigente', sgi_revision=1)
         self.assertEqual(doc2.sgi_state, 'vigente')
         self.assertEqual(doc1.sgi_state, 'obsoleto')
 
