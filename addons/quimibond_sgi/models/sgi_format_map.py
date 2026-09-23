@@ -3,7 +3,7 @@ import logging
 import re
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 from .sgi_document import SGI_CODE_REGEX
 
@@ -529,6 +529,20 @@ class SgiConfig(models.AbstractModel):
                 norm = Norm.create({'code': code, 'name': name})
             norm_ids.append(norm.id)
         process.norm_ids = [(6, 0, norm_ids)]
+
+        # Candado: la reconstrucción borra las actividades del proceso. Solo
+        # procede si todas las que hay salieron de esta misma semilla; si
+        # alguna vino de otro lado (la carga del catálogo, captura de MAST),
+        # se detiene en vez de borrar el trabajo real.
+        seeded = {row[4] for row in self._SGI_VENTAS_ACTIVITIES}  # descripción
+        foreign = process.procedure_activity_ids.filtered(
+            lambda a: (a.description or '') not in seeded)
+        if foreign:
+            raise UserError(
+                "La semilla del piloto P-A28 no se aplica: el proceso Ventas ya "
+                "tiene %d actividad(es) que no salieron de ella (p. ej. «%s»). "
+                "Reconstruirlo las borraría." % (
+                    len(foreign), foreign[0].display_name))
 
         # Reconstrucción idempotente de responsabilidades y actividades.
         process.job_responsibility_ids.unlink()

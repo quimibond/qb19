@@ -29,16 +29,21 @@ class TestKpiFase4(TransactionCase):
         return move
 
     def test_01_desperdicio_subproducto(self):
-        categ = self.env['product.category'].create({'name': 'SubProducto'})
+        # Junio 2045: un mes sin producción real (la copia de producción sí
+        # tiene órdenes terminadas en 2026 que entraban al cálculo).
+        categ = self.env['product.category'].create({'name': 'SubProducto KPI prueba'})
+        # La categoría sale del parámetro (en producción: «Subproducto»).
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.waste_subproduct_category', categ.name)
         main = self.env['product.product'].create({'name': 'Tela KPI test', 'type': 'consu'})
         byp = self.env['product.product'].create({
             'name': 'SALDO TEJIDO D KPI', 'type': 'consu', 'categ_id': categ.id})
         mo = self.env['mrp.production'].create({'product_id': main.id, 'product_qty': 100.0})
         self._mkmove(mo, main, 90.0)
         self._mkmove(mo, byp, 10.0)
-        mo.write({'state': 'done', 'date_finished': datetime.datetime(2026, 6, 15, 10, 0, 0)})
+        mo.write({'state': 'done', 'date_finished': datetime.datetime(2045, 6, 15, 10, 0, 0)})
         indicator = self.Indicator.new({'calc_mode': 'desperdicio'})
-        value = indicator._calc_desperdicio(datetime.date(2026, 6, 1), datetime.date(2026, 6, 30))
+        value = indicator._calc_desperdicio(datetime.date(2045, 6, 1), datetime.date(2045, 6, 30))
         self.assertEqual(value, 11.11, "10 kg de SALDO TEJIDO D sobre 90 kg producidos.")
 
     def test_02_desperdicio_none_sin_categoria(self):
@@ -48,10 +53,10 @@ class TestKpiFase4(TransactionCase):
         main = self.env['product.product'].create({'name': 'Tela KPI test2', 'type': 'consu'})
         mo = self.env['mrp.production'].create({'product_id': main.id, 'product_qty': 100.0})
         self._mkmove(mo, main, 90.0)
-        mo.write({'state': 'done', 'date_finished': datetime.datetime(2026, 6, 15, 10, 0, 0)})
+        mo.write({'state': 'done', 'date_finished': datetime.datetime(2045, 6, 15, 10, 0, 0)})
         indicator = self.Indicator.new({'calc_mode': 'desperdicio'})
         self.assertIsNone(
-            indicator._calc_desperdicio(datetime.date(2026, 6, 1), datetime.date(2026, 6, 30)))
+            indicator._calc_desperdicio(datetime.date(2045, 6, 1), datetime.date(2045, 6, 30)))
 
     def test_03_calidad_pq(self):
         tag = self.env['quality.tag'].create({'name': 'TEJIDO Agujero'})

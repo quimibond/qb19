@@ -9,6 +9,8 @@ from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 
+from .common_accounts import sgi_test_payable
+
 
 @tagged('post_install', '-at_install')
 class TestKpi20Step1(TransactionCase):
@@ -310,6 +312,7 @@ class TestKpi20Step2(TransactionCase):
 
     def test_02_consumo_energia(self):
         partner = self.env['res.partner'].create({'name': 'CFE KPI'})
+        sgi_test_payable(self.env, partner)
         self.Param.set_param('quimibond_sgi.energy_partner_id', partner.id)
         # 5000 facturado - 500 nota de crédito = 4500 neto en 2040-06.
         self._post_bill(partner, 5000.0, date(2040, 6, 10))

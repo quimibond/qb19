@@ -850,12 +850,9 @@ class SgiIndicator(models.Model):
         facturación neta de los últimos 90 días, por 90. Aproximación: usa el
         estado de pago AL MOMENTO de medir (Odoo no guarda la foto histórica);
         medido por el cron pocos días después del cierre, el sesgo es pequeño."""
-        receivable = sum(self.env['account.move'].search([
-            ('move_type', 'in', ('out_invoice', 'out_refund')),
-            ('state', '=', 'posted'),
-            ('invoice_date', '<=', date_to),
-            ('payment_state', 'in', ('not_paid', 'partial')),
-        ]).mapped('amount_residual_signed'))
+        # Solo la compañía del KPI (antes sumaba la cartera de todo el grupo).
+        receivable = sum(self._sgi_open_moves(
+            ('out_invoice', 'out_refund'), date_to).mapped('amount_residual_signed'))
         sales_90 = self._sgi_net_invoiced(
             date_to - relativedelta(days=89), date_to)
         if sales_90 <= 0:

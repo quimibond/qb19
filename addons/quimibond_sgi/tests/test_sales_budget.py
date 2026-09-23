@@ -109,17 +109,21 @@ class TestSalesBudget(TransactionCase):
         self.assertIn('(m)', line.display_name)
 
     def test_06_real_facturado_moneda_companiacon_balance(self):
-        # Factura en MXN (≠ USD compañía): el real usa balance (ya convertido por
-        # contabilidad), NO la cifra facial en MXN.
-        mxn = self.env.ref('base.MXN')
-        mxn.active = True
+        # Factura en una divisa distinta a la de la compañía: el real usa
+        # balance (ya convertido por contabilidad), NO la cifra facial. La
+        # divisa extranjera depende de la base: en producción la compañía está
+        # en MXN (se factura en USD); en una base de demo, en USD (en MXN).
+        foreign = self.env.ref('base.USD')
+        if self.company.currency_id == foreign:
+            foreign = self.env.ref('base.MXN')
+        foreign.active = True
         self.env['res.currency.rate'].create({
-            'currency_id': mxn.id, 'name': date(2040, 6, 1), 'rate': 20.0,
+            'currency_id': foreign.id, 'name': date(2040, 6, 1), 'rate': 20.0,
             'company_id': self.company.id})
-        self._invoice(date(2040, 6, 10), 5.0, self.uom_m, 400.0, currency=mxn)
+        self._invoice(date(2040, 6, 10), 5.0, self.uom_m, 400.0, currency=foreign)
         budget = self._budget()
         line = self._line(budget, date(2040, 6, 1), qty=10.0, amount=150.0)
-        # 2000 MXN / 20 = 100 USD (moneda compañía), no 2000.
+        # 2000 en divisa extranjera / 20 = 100 en moneda de la compañía.
         self.assertAlmostEqual(line.amount_real, 100.0, places=2)
         self.assertEqual(line.qty_real, 5.0)
 
@@ -685,9 +689,15 @@ class TestSalesBudgetOnlyQty(TransactionCase):
         cls.Param = cls.env['ir.config_parameter'].sudo()
         cls.team = cls.env['crm.team'].create({'name': 'Mercado precio PPV'})
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.usd = cls.env.ref('base.USD')  # moneda de la compañía en esta BD
-        cls.mxn = cls.env.ref('base.MXN')
-        cls.mxn.active = True
+        # Moneda de la compañía y la divisa «extranjera» del par USD↔MXN: en
+        # producción la compañía está en MXN; en una base de demo, en USD.
+        usd, mxn = cls.env.ref('base.USD'), cls.env.ref('base.MXN')
+        cls.own = cls.env.company.currency_id
+        cls.foreign = mxn if cls.own == usd else usd
+        (usd | mxn).active = True
+        # Tipo presupuestal 10: de la divisa a la compañía se multiplica por 10
+        # si la compañía está en MXN, o se divide entre 10 si está en USD.
+        cls.factor = 0.1 if cls.own == usd else 10.0
         cls.product = cls.env['product.product'].create({
             'name': 'Tela precio PPV', 'type': 'consu',
             'uom_id': cls.uom_m.id, 'list_price': 100.0})
@@ -715,8 +725,8 @@ class TestSalesBudgetOnlyQty(TransactionCase):
             'partner_id': partner.id if partner else False})
 
     def test_01_price_from_client_list_and_readonly(self):
-        # Precio SIEMPRE de la lista del cliente (USD = compañía): 37.63.
-        partner = self._partner_with_list(self._pricelist(self.usd, 37.63))
+        # Precio SIEMPRE de la lista del cliente (moneda compañía): 37.63.
+        partner = self._partner_with_list(self._pricelist(self.own, 37.63))
         line = self._line(self.budget, partner)
         self.assertAlmostEqual(line.price_unit_budget, 37.63, places=2)
         self.assertAlmostEqual(line.amount_budget, 376.3, places=2)  # 10 × 37.63
@@ -729,34 +739,34 @@ class TestSalesBudgetOnlyQty(TransactionCase):
         self.assertAlmostEqual(line.price_unit_budget, 37.63, places=2)
 
     def test_02_dual_currency_usd_client(self):
-        # Cliente con lista en MXN (≠ USD compañía), tipo presupuestal 10:
-        # precio divisa = 350 MXN; precio compañía = 35 USD.
+        # Cliente con lista en la divisa (≠ moneda compañía), tipo presupuestal
+        # 10: precio divisa = 350; precio compañía = 350 × factor.
         self.Param.set_param('quimibond_sgi.budget_planning_rate', '10')
-        partner = self._partner_with_list(self._pricelist(self.mxn, 350.0))
+        partner = self._partner_with_list(self._pricelist(self.foreign, 350.0))
         line = self._line(self.budget, partner)
-        self.assertEqual(line.list_currency_id, self.mxn)
+        self.assertEqual(line.list_currency_id, self.foreign)
         self.assertAlmostEqual(line.price_unit_currency, 350.0, places=2)
         self.assertAlmostEqual(line.amount_currency, 3500.0, places=2)  # 10 × 350
-        self.assertAlmostEqual(line.price_unit_budget, 35.0, places=2)
-        self.assertAlmostEqual(line.amount_budget, 350.0, places=2)  # 10 × 35
+        self.assertAlmostEqual(line.price_unit_budget, 350.0 * self.factor, places=2)
+        self.assertAlmostEqual(line.amount_budget, 3500.0 * self.factor, places=2)
 
     def test_03_mxn_client_no_currency_columns(self):
-        # Cliente con lista en moneda de la compañía (USD): sin divisa aparte.
-        partner = self._partner_with_list(self._pricelist(self.usd, 20.0))
+        # Cliente con lista en moneda de la compañía: sin divisa aparte.
+        partner = self._partner_with_list(self._pricelist(self.own, 20.0))
         line = self._line(self.budget, partner)
-        self.assertEqual(line.list_currency_id, self.usd)
+        self.assertEqual(line.list_currency_id, self.own)
         self.assertEqual(line.list_currency_id, line.currency_id,
                          "Lista en moneda compañía: las columnas de divisa se ocultan.")
 
     def test_04_currency_text_mixed_clients(self):
         self.Param.set_param('quimibond_sgi.budget_planning_rate', '10')
         budget = self.Budget.create({'year': 2041, 'team_id': self.team.id})
-        p_usd = self._partner_with_list(self._pricelist(self.usd, 20.0), 'C USD')
-        # Segundo producto para el cliente MXN (evita esquema mixto por producto).
+        p_usd = self._partner_with_list(self._pricelist(self.own, 20.0), 'C propia')
+        # Segundo producto para el cliente en divisa (evita esquema mixto).
         prod2 = self.env['product.product'].create(
             {'name': 'Tela 2 PPV', 'type': 'consu', 'uom_id': self.uom_m.id})
         pl_mxn = self.env['product.pricelist'].create(
-            {'name': 'PL MXN', 'currency_id': self.mxn.id})
+            {'name': 'PL divisa', 'currency_id': self.foreign.id})
         self.env['product.pricelist.item'].create({
             'pricelist_id': pl_mxn.id, 'applied_on': '1_product',
             'product_tmpl_id': prod2.product_tmpl_id.id,
@@ -766,7 +776,7 @@ class TestSalesBudgetOnlyQty(TransactionCase):
         self._line(budget, p_usd, qty=10.0, when=date(2041, 6, 1))
         self._line(budget, p_mxn, qty=10.0, when=date(2041, 6, 1), product=prod2)
         text = budget.amount_currency_text
-        self.assertIn('MXN', text)  # divisa por moneda
+        self.assertIn(self.foreign.name, text)  # divisa por moneda
         self.assertIn('Total compañía', text)  # y el único total global en pesos
 
     def test_05_no_list_price_banner(self):
@@ -780,7 +790,7 @@ class TestSalesBudgetOnlyQty(TransactionCase):
         self.assertEqual(budget.no_price_count, 1)
 
     def test_06_price_frozen_on_approve(self):
-        partner = self._partner_with_list(self._pricelist(self.usd, 50.0))
+        partner = self._partner_with_list(self._pricelist(self.own, 50.0))
         budget = self.Budget.create({'year': 2043, 'team_id': self.team.id})
         line = self._line(budget, partner, when=date(2043, 6, 1))
         self.assertAlmostEqual(line.price_unit_budget, 50.0, places=2)
@@ -1026,6 +1036,9 @@ class TestSalesBudgetNetDemand(TransactionCase):
         commit = datetime.combine(monday + timedelta(days=1), datetime.min.time())
         so = self.env['sale.order'].create({
             'partner_id': self.client.id, 'team_id': self.team.id,
+            # Pedido de dos semanas antes de la entrega: la precarga solo mira
+            # pedidos del año del pronóstico o el anterior (no de 2026).
+            'date_order': commit - timedelta(days=14),
             'commitment_date': commit,
             'order_line': [(0, 0, {
                 'product_id': self.product.id, 'product_uom_qty': qty,
@@ -1421,9 +1434,14 @@ class TestSalesBudgetPriceControl(TransactionCase):
         cls.Param = cls.env['ir.config_parameter'].sudo()
         cls.team = cls.env['crm.team'].create({'name': 'Mercado precio 54'})
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.usd = cls.env.ref('base.USD')  # moneda de la compañía
-        cls.mxn = cls.env.ref('base.MXN')
-        cls.mxn.active = True
+        # Moneda de la compañía y divisa del par USD↔MXN (producción: MXN;
+        # base de demo: USD). factor = precio compañía / precio divisa con el
+        # tipo presupuestal 20.
+        usd, mxn = cls.env.ref('base.USD'), cls.env.ref('base.MXN')
+        cls.own = cls.env.company.currency_id
+        cls.foreign = mxn if cls.own == usd else usd
+        (usd | mxn).active = True
+        cls.factor = 1.0 / 20.0 if cls.own == usd else 20.0
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
         cls.product = cls.env['product.product'].create({
@@ -1464,9 +1482,10 @@ class TestSalesBudgetPriceControl(TransactionCase):
             'partner_id': client.id, 'qty_budget': 10.0})
 
     def test_01_gap_usd_list_usd_invoice(self):
-        # Lista USD 100; factura USD a 110 → gap +10% en USD, sin cruce de divisas.
-        client = self._client(self._pricelist(self.usd, 100.0))
-        self._invoice(client, 5.0, 110.0, self.usd)
+        # Lista 100 y factura a 110 en la moneda de la compañía → gap +10%,
+        # sin cruce de divisas.
+        client = self._client(self._pricelist(self.own, 100.0))
+        self._invoice(client, 5.0, 110.0, self.own)
         budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         line = self._line(budget, client)
         self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
@@ -1475,22 +1494,22 @@ class TestSalesBudgetPriceControl(TransactionCase):
         self.assertFalse(line.price_gap_fx)
 
     def test_02_gap_crosses_fx_with_planning_rate(self):
-        # Lista MXN (≠ USD compañía) 2000; factura en USD (compañía). El real
-        # contable (USD) se convierte a MXN con el tipo presupuestal 20.
+        # Lista en la divisa (≠ moneda compañía) equivalente a 1000 de la
+        # compañía; factura en la moneda de la compañía a 1100. El real contable
+        # se convierte a la divisa con el tipo presupuestal 20.
         self.Param.set_param('quimibond_sgi.budget_planning_rate', '20')
-        client = self._client(self._pricelist(self.mxn, 2000.0))
-        # 5 m a 110 USD c/u (moneda compañía) → 110 × 20 = 2200 MXN por unidad.
-        self._invoice(client, 5.0, 110.0, self.usd)
+        client = self._client(self._pricelist(self.foreign, 1000.0 / self.factor))
+        self._invoice(client, 5.0, 1100.0, self.own)
         budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         line = self._line(budget, client)
-        self.assertEqual(line.list_currency_id, self.mxn)
+        self.assertEqual(line.list_currency_id, self.foreign)
         self.assertTrue(line.price_gap_fx, "Factura en otra moneda: cruza divisas.")
-        self.assertAlmostEqual(line.price_real_unit_currency, 2200.0, places=1)
+        self.assertAlmostEqual(line.price_real_unit_currency, 1100.0 / self.factor, places=1)
         self.assertAlmostEqual(line.price_gap_pct, 10.0, places=1)
 
     def test_03_thresholds_from_settings(self):
-        client = self._client(self._pricelist(self.usd, 100.0))
-        self._invoice(client, 5.0, 105.0, self.usd)  # +5%
+        client = self._client(self._pricelist(self.own, 100.0))
+        self._invoice(client, 5.0, 105.0, self.own)  # +5%
         budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         line = self._line(budget, client)
         # Default tol 3 / grave 10 → 5% = leve.
@@ -1559,14 +1578,14 @@ class TestSalesBudgetPriceControl(TransactionCase):
         self.assertEqual(budget.state, 'aprobado')
 
     def test_05_refresh_does_not_change_frozen_price(self):
-        client = self._client(self._pricelist(self.usd, 100.0))
+        client = self._client(self._pricelist(self.own, 100.0))
         budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         line = self._line(budget, client)
         self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
         budget.state = 'aprobado'
         # Cambia la lista y refresca: el precio congelado NO se toca (la referencia).
         client.property_product_pricelist.item_ids.fixed_price = 200.0
-        self._invoice(client, 5.0, 130.0, self.usd)
+        self._invoice(client, 5.0, 130.0, self.own)
         budget.action_refresh_actuals()
         self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2,
                                msg="Precio de lista congelado en aprobado.")
@@ -1574,8 +1593,8 @@ class TestSalesBudgetPriceControl(TransactionCase):
         self.assertAlmostEqual(line.price_real_unit_currency, 130.0, places=2)
 
     def test_06_coverage_report_and_deviation_count(self):
-        client = self._client(self._pricelist(self.usd, 100.0))
-        self._invoice(client, 5.0, 130.0, self.usd)  # +30% → grave
+        client = self._client(self._pricelist(self.own, 100.0))
+        self._invoice(client, 5.0, 130.0, self.own)  # +30% → grave
         budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         self._line(budget, client)
         self.assertEqual(budget.price_deviation_count, 1)
@@ -2012,9 +2031,10 @@ class TestSalesBudgetPricePlausibility(TransactionCase):
         cls.Param = cls.env['ir.config_parameter'].sudo()
         cls.team = cls.env['crm.team'].create({'name': 'Mercado plausible'})
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.usd = cls.env.ref('base.USD')  # moneda compañía en esta BD
-        cls.mxn = cls.env.ref('base.MXN')
-        cls.mxn.active = True
+        cls.usd = cls.env.ref('base.USD')
+        cls.env.ref('base.MXN').active = True
+        # Listas por defecto en la moneda de la compañía (producción: MXN).
+        cls.own = cls.env.company.currency_id
         cls.product = cls.env['product.product'].create({
             'name': 'Tela plausible', 'default_code': 'PLAUS', 'type': 'consu',
             'uom_id': cls.uom_m.id, 'list_price': 1.0})  # placeholder $1
@@ -2028,7 +2048,7 @@ class TestSalesBudgetPricePlausibility(TransactionCase):
     def _list(self, currency=None, rules=True, fixed=None, applied='1_product',
               base='fixed'):
         pl = self.env['product.pricelist'].create({
-            'name': 'PL plaus', 'currency_id': (currency or self.usd).id})
+            'name': 'PL plaus', 'currency_id': (currency or self.own).id})
         if rules:
             vals = {'pricelist_id': pl.id, 'applied_on': applied,
                     'compute_price': base}

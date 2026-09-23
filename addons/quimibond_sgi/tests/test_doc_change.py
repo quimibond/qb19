@@ -4,6 +4,8 @@ from datetime import date, timedelta
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import ValidationError
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestDocChange(TransactionCase):
@@ -11,6 +13,7 @@ class TestDocChange(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         cls.category = cls.env['approval.category'].create({
             'name': 'Test Cambio Documental',
             'sgi_is_doc_change': True,
@@ -87,6 +90,11 @@ class TestComplaintToNc(TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestDocChangeRevisionSuggestion(TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        sgi_hide_real_documents(cls.env)
+
 
     def test_01_onchange_suggests_next_revision(self):
         doc = self.env['documents.document'].create({
