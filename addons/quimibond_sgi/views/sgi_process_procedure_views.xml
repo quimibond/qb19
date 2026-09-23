@@ -528,6 +528,10 @@
                 <field name="to_activity_id"/>
                 <field name="from_process_id"/>
                 <field name="to_process_id"/>
+                <filter name="vigentes" string="Estructura vigente"
+                        domain="[('from_activity_id.active', '=', True), ('to_activity_id.active', '=', True)]"
+                        help="Ligas entre actividades activas (de procesos vigentes)."/>
+                <separator/>
                 <filter name="cross" string="Cruzan procesos"
                         domain="[('is_cross_process', '=', True)]"/>
                 <filter name="internal" string="Dentro del proceso"
@@ -557,7 +561,7 @@
         <field name="res_model">sgi.activity.link</field>
         <field name="view_mode">list</field>
         <field name="search_view_id" ref="sgi_activity_link_view_search"/>
-        <field name="context">{'search_default_group_from': 1}</field>
+        <field name="context">{'search_default_group_from': 1, 'search_default_vigentes': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">El hilo conductor de la operación</p>
             <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Salen solas de lo que cada actividad recibe y entrega (catálogo de entregables) y se imprimen en el procedimiento.</p>

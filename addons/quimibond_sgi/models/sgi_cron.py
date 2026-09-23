@@ -652,8 +652,10 @@ class SgiCron(models.AbstractModel):
         manager_id = self._sgi_manager_user_id()
 
         def _process(risk):
-            owner = risk.process_id.owner_id.user_id
-            user_id = owner.id or manager_id
+            # Con el proceso archivado, la revisión va al Jefe MAST (el dueño
+            # del proceso sustituido ya no responde por él).
+            owner = risk.process_id.owner_id.user_id if risk.sgi_process_active else False
+            user_id = owner.id if owner else manager_id
             self._sgi_schedule(
                 risk,
                 "Revisar riesgo %s" % (risk.folio or risk.name),
@@ -1150,8 +1152,10 @@ class SgiCron(models.AbstractModel):
             ('stage_id.sgi_is_cancel_stage', '=', False)]))
         metric("Acciones CAPA vencidas", lambda: self.env['sgi.action.line'].search_count([
             ('date_done', '=', False), ('state', '=', 'vencida')]))
+        # Indicadores y riesgos de procesos archivados siguen midiéndose, pero
+        # el resumen solo cuenta los de procesos vigentes.
         metric("Indicadores en rojo (último semáforo)", lambda: self.env['sgi.indicator'].search_count([
-            ('last_semaphore', '=', 'rojo')]))
+            ('last_semaphore', '=', 'rojo'), ('sgi_process_active', '=', True)]))
         metric("Evaluaciones legales vencidas", lambda: self.env['sgi.legal.requirement'].search_count([
             ('next_eval_date', '!=', False), ('next_eval_date', '<=', today)]))
         metric("Requisitos legales en incumplimiento (total o parcial)",
@@ -1159,7 +1163,7 @@ class SgiCron(models.AbstractModel):
                    ('compliance_state', 'in', ('no_cumple', 'parcial'))]))
         metric("Riesgos en atención alta sin tratamiento", lambda: self.env['sgi.risk'].search_count([
             ('attention_level', 'in', ('inmediata', 'alto')),
-            ('state', '=', 'identificado')]))
+            ('state', '=', 'identificado'), ('sgi_process_active', '=', True)]))
         metric("Acuses de lectura pendientes", lambda: self.env['sgi.document.ack'].search_count([
             ('state', '=', 'pendiente')]))
         metric("Partes interesadas con revisión vencida",

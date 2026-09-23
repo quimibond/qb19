@@ -1275,8 +1275,11 @@ class SgiProcessActivity(models.Model):
             lambda: self.search(
                 ['|', ('measure_model_id', '!=', False),
                  ('measure_method', '!=', False)])._sgi_measure(),
-            lambda: self.env['sgi.activity.link'].search(
-                [])._sgi_evaluate_chain(),
+            # Solo la estructura vigente: una liga que toca una actividad
+            # archivada (proceso sustituido) ya no se evalúa ni avisa.
+            lambda: self.env['sgi.activity.link'].search([
+                ('from_activity_id.active', '=', True),
+                ('to_activity_id.active', '=', True)])._sgi_evaluate_chain(),
         )
         for step in steps:
             try:
