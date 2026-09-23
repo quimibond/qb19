@@ -32,6 +32,7 @@
 | `supabase/functions/_shared/email-html.ts` | Helpers HTML compartidos (`esc`, `inlineMd`, `mdToHtml`, `layout`) sacados de `digest-email-html.ts` |
 | `supabase/functions/_shared/situacion-digest-html.ts` | Render puro del correo de situación a partir del JSON de `situacion_cambios` + narrativa |
 | `src/__tests__/pipeline/situacion-digest-html.test.ts` | vitest del render |
+| `tsconfig.json` | `allowImportingTsExtensions` (los `_shared` con imports `.ts` entran a `tsc` vía los tests) |
 | `supabase/functions/situacion-digest/index.ts` | Edge Function: `situacion_cambios` → Opus (narrativa) → HTML → correo → `situacion_digests` |
 | `supabase/migrations/20260924b_situacion_digest_cron.sql` | Job `situacion_digest` 12:30 UTC; desprograma `memoria_email_digest` |
 | `supabase/functions/health/index.ts` | Vigila `situacion_digest` (diario) |
@@ -45,9 +46,10 @@
 | Archivo | Responsabilidad |
 |---|---|
 | `addons/quimibond_intelligence/models/sync_pull.py` | Lee `payload`, pasa `(command, payload)` a `_execute_command`, escribe `failed` (no `error`) — sin modelos nuevos, sin bump |
+| `addons/quimibond_intelligence/models/sync_push.py` | `_push_metodos()`: la lista de métodos del push, extensible por `qb_situacion` |
 | `addons/quimibond_intelligence/models/senales/direccion.py` | `obligacion_legado` devuelve `[]` (no `None`) cuando el modelo no está: último lote vacío antes de desinstalar |
 | `addons/quimibond_intelligence/data/cleanup_2026_09_18.xml` | Además de encender los crons, fija el intervalo del push a 1 hora |
-| `addons/qb_situacion/__manifest__.py` | Módulo nuevo `qb_situacion` 19.0.1.0.0 (paso 5) → 19.0.2.0.0 (paso 6); depende de `quimibond_intelligence`, `mail` |
+| `addons/qb_situacion/__manifest__.py` | Módulo nuevo `qb_situacion` 19.0.1.0.0 (paso 5) → 19.0.2.0.0 (paso 6); depende de `mail`, `quimibond_intelligence`, `qb_memoria` (cliente REST) |
 | `addons/qb_situacion/models/mail_activity.py` | `mail.activity.situacion_id`; hooks `_action_done` / `unlink` → `qb.delegacion.evento` |
 | `addons/qb_situacion/models/delegacion_evento.py` | Modelo `qb.delegacion.evento` (situacion_id, mail_activity_id, evento, feedback, user_id, fecha, enviado) |
 | `addons/qb_situacion/models/sync_pull.py` | Comando `crear_actividad` (hereda `quimibond.sync.pull._execute_command`) + `situacion_delegacion_confirmar` |
@@ -86,8 +88,10 @@
 ```sql
 -- Prueba en seco de situacion_cambios: nueva, empeorada, resuelta, delegada, grave, rezago, contadores. Termina en PRUEBA_OK.
 DO $t$
-DECLARE r jsonb; c uuid := gen_random_uuid(); sid bigint; sid2 bigint; sid3 bigint; a jsonb;
+DECLARE r jsonb; c uuid := gen_random_uuid(); sid bigint; sid2 bigint; sid3 bigint; a jsonb; uid int;
 BEGIN
+  SELECT odoo_user_id INTO uid FROM odoo_users ORDER BY odoo_user_id LIMIT 1;
+  ASSERT uid IS NOT NULL, 'hace falta al menos un odoo_users';
   INSERT INTO senales_config (senal, titulo, area, tipo, fuente, agrupar_por, agregar, severidad_base, severidad_max)
   VALUES ('_prueba', 'Prueba', 'finanzas', 'credito', 'odoo', 'contraparte', 'suma', 4, 5);
   PERFORM senales_ingestar('_prueba', 'odoo', c, '[
@@ -101,9 +105,11 @@ BEGIN
   SELECT id INTO sid3 FROM situaciones WHERE clave = '_prueba|partner:990000003';
 
   -- sid2: delegada (a mano, como lo dejará situacion_decidir en el paso 5). sid3: vieja y sin cambio → rezago; además resuelta hoy.
-  UPDATE situaciones SET estado = 'delegada', delegacion = jsonb_build_object('user_id', 2, 'fecha', now(), 'estado', 'creada', 'texto', 'cobrar'),
+  UPDATE situaciones SET estado = 'delegada', delegacion = jsonb_build_object('user_id', uid, 'fecha', now(), 'estado', 'creada', 'texto', 'cobrar'),
     historia = historia || jsonb_build_object('fecha', now(), 'evento', 'delegada', 'detalle', 'a Ana') WHERE id = sid2;
   UPDATE situaciones SET desde = current_date - 60, calidad = 'antigua' WHERE id = sid3;
+  -- sid nació "ayer": así el empeoro de abajo cuenta como empeorada y no como nueva (una situación sale en una sola lista).
+  UPDATE situaciones SET created_at = now() - interval '2 days', desde = current_date - 2 WHERE id = sid;
   -- sid: empeoró en una segunda corrida (más valor).
   PERFORM senales_ingestar('_prueba', 'odoo', c, '[
     {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100,"documentos":[{"modelo":"account.move","id":11,"nombre":"F/1"}]},
@@ -136,7 +142,8 @@ BEGIN
   SELECT x INTO a FROM jsonb_array_elements(r->'areas') x WHERE x->>'area' = 'finanzas';
   ASSERT a IS NOT NULL, 'área finanzas presente';
   ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(a->'empeoradas') e WHERE (e->>'id')::bigint = sid), 'sid en empeoradas: ' || (a->'empeoradas')::text;
-  ASSERT NOT EXISTS (SELECT 1 FROM jsonb_array_elements(a->'nuevas') e WHERE (e->>'id')::bigint = sid), 'sid NO en nuevas (ya empeoró; una situación sale en una sola lista)';
+  ASSERT NOT EXISTS (SELECT 1 FROM jsonb_array_elements(a->'nuevas') e WHERE (e->>'id')::bigint = sid), 'sid NO en nuevas (nació hace 2 días; una situación sale en una sola lista)';
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(a->'nuevas') e WHERE (e->>'id')::bigint = sid2) OR EXISTS (SELECT 1 FROM jsonb_array_elements(a->'delegadas') e WHERE (e->>'id')::bigint = sid2), 'sid2 sale (delegada hoy)';
   ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(a->'delegadas') e WHERE (e->>'id')::bigint = sid2), 'sid2 en delegadas';
   ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements(a->'resueltas') e WHERE (e->>'id')::bigint = sid3), 'sid3 en resueltas';
   ASSERT (SELECT count(*) FROM jsonb_array_elements(a->'graves')) >= 0, 'graves es lista';
@@ -159,7 +166,12 @@ END $t$;
 -- situacion_guardar, delegación visible en situacion_mapa, tabla situacion_digests.
 BEGIN;
 
--- 1. situacion_guardar: una situación delegada sigue delegada aunque empeore o mejore (la actividad vive en Odoo);
+-- 1. senales_config.en_mapa: señales que informan pero no forman situaciones (delegacion_estado, paso 5).
+ALTER TABLE public.senales_config ADD COLUMN IF NOT EXISTS en_mapa boolean NOT NULL DEFAULT true;
+UPDATE public.senales_config SET en_mapa = false WHERE senal = 'delegacion_estado';
+COMMENT ON COLUMN public.senales_config.en_mapa IS 'false: la señal se ingiere y se ve en situacion_salud pero no agrupa situaciones (delegacion_estado se refleja en la situación delegada).';
+
+-- 2. situacion_guardar: una situación delegada sigue delegada aunque empeore o mejore (la actividad vive en Odoo);
 --    el cambio queda en historia y en ultimo_cambio. Solo cambia aquí el CASE del estado y el evento de historia.
 --    (Cuerpo completo = 20260919h_situacion_safeupdate_guardar.sql con estas dos líneas cambiadas.)
 CREATE OR REPLACE FUNCTION public.situacion_guardar(p_corrida uuid DEFAULT gen_random_uuid())
@@ -261,11 +273,6 @@ BEGIN
                             'sin_datos', to_jsonb(v_sin_datos), 'corrida', p_corrida);
 END $$;
 
--- 2. senales_config.en_mapa: señales que informan pero no forman situaciones (delegacion_estado, paso 5).
-ALTER TABLE public.senales_config ADD COLUMN IF NOT EXISTS en_mapa boolean NOT NULL DEFAULT true;
-UPDATE public.senales_config SET en_mapa = false WHERE senal = 'delegacion_estado';
-COMMENT ON COLUMN public.senales_config.en_mapa IS 'false: la señal se ingiere y se ve en situacion_salud pero no agrupa situaciones (delegacion_estado se refleja en la situación delegada).';
-
 -- 3. situacion_mapa: delegación visible. Misma firma + dos columnas al final.
 DROP FUNCTION IF EXISTS public.situacion_mapa(text, text, integer, integer);
 CREATE OR REPLACE FUNCTION public.situacion_mapa(p_area text DEFAULT NULL, p_calidad text DEFAULT 'viva', p_min_severidad integer DEFAULT 1, p_limit integer DEFAULT 100)
@@ -297,84 +304,10 @@ COMMENT ON FUNCTION public.situacion_mapa(text, text, integer, integer) IS 'El m
 
 -- 4. situacion_cambios: lo que cambió desde p_desde, por área, más lo grave que sigue abierto, el rezago y los contadores.
 --    Es la ÚNICA fuente del correo diario (situacion-digest) para que rutina y correo digan lo mismo.
---    Una situación aparece en una sola lista, en este orden de prioridad: resueltas, delegadas, nuevas, empeoradas, mejoradas, graves.
+--    Una situación aparece en una sola lista, en este orden de prioridad: resueltas, delegadas, empeoradas, mejoradas, nuevas, graves.
+--    VOLATILE a propósito: crea una tabla temporal (plpgsql no permite DROP/CREATE TABLE en funciones STABLE).
 CREATE OR REPLACE FUNCTION public.situacion_cambios(p_desde timestamptz DEFAULT now() - interval '24 hours')
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE out jsonb; v_hasta timestamptz := now();
-BEGIN
-  DROP TABLE IF EXISTS _cambios;
-  CREATE TEMP TABLE _cambios AS
-  SELECT s.id, s.area, s.tipo, s.senal, s.titulo, s.severidad, s.estado, s.calidad,
-         coalesce(c.name, situacion_nombre_agrupador(s.agrupador, s.company_id, s.odoo_partner_id, s.documentos)) AS contraparte,
-         u.name AS responsable, d.name AS delegada_a, s.delegacion->>'estado' AS delegacion_estado,
-         (current_date - s.desde) AS dias_abierta, s.recomendacion, s.ultimo_cambio, s.valor_texto,
-         (s.ia_version >= s.version) AS redactada, s.ultimo_cambio_en, s.resuelta_en,
-         CASE
-           WHEN s.estado = 'resuelta' AND s.resuelta_en >= p_desde THEN 'resueltas'
-           WHEN s.estado = 'delegada' AND (s.delegacion->>'fecha')::timestamptz >= p_desde THEN 'delegadas'
-           WHEN s.estado IN ('abierta', 'empeoro', 'mejoro', 'delegada') AND s.created_at >= p_desde THEN 'nuevas'
-           WHEN s.estado IN ('empeoro', 'delegada') AND s.ultimo_cambio_en >= p_desde AND s.ultimo_cambio LIKE 'empeor%' THEN 'empeoradas'
-           WHEN s.estado IN ('mejoro', 'delegada') AND s.ultimo_cambio_en >= p_desde AND s.ultimo_cambio LIKE 'mejor%' THEN 'mejoradas'
-           WHEN s.estado IN ('abierta', 'empeoro', 'mejoro', 'delegada') AND s.severidad >= 4 AND s.calidad = 'viva' THEN 'graves'
-           ELSE NULL END AS lista
-  FROM situaciones s
-  LEFT JOIN companies c ON c.id = s.company_id
-  LEFT JOIN odoo_users u ON u.odoo_user_id = s.responsable_sugerido_user_id
-  LEFT JOIN odoo_users d ON d.odoo_user_id = (s.delegacion->>'user_id')::int
-  WHERE s.fusionada_en IS NULL AND s.tipo <> 'higiene' AND s.calidad IN ('viva', 'antigua', 'vencida_memoria')
-    AND (s.estado NOT IN ('resuelta', 'descartada') OR s.resuelta_en >= p_desde);
-
-  SELECT jsonb_build_object(
-    'desde', p_desde, 'hasta', v_hasta,
-    'areas', coalesce((SELECT jsonb_agg(jsonb_build_object('area', a.area,
-                 'nuevas',     situacion_cambios_lista(a.area, 'nuevas'),
-                 'empeoradas', situacion_cambios_lista(a.area, 'empeoradas'),
-                 'mejoradas',  situacion_cambios_lista(a.area, 'mejoradas'),
-                 'resueltas',  situacion_cambios_lista(a.area, 'resueltas'),
-                 'delegadas',  situacion_cambios_lista(a.area, 'delegadas'),
-                 'graves',     situacion_cambios_lista(a.area, 'graves'),
-                 'abiertas',   (SELECT count(*) FROM _cambios x WHERE x.area = a.area AND x.estado NOT IN ('resuelta', 'descartada')))
-               ORDER BY a.area)
-               FROM (SELECT DISTINCT area FROM _cambios WHERE lista IS NOT NULL) a), '[]'),
-    'rezago', (SELECT coalesce(jsonb_agg(situacion_cambios_fila(x) ORDER BY x.dias_abierta DESC), '[]')
-               FROM (SELECT * FROM _cambios WHERE calidad = 'antigua' AND estado NOT IN ('resuelta', 'descartada') ORDER BY dias_abierta DESC LIMIT 25) x),
-    'ignoradas', (SELECT count(*) FROM senales WHERE resuelta_en IS NULL AND calidad = 'ignorada'),
-    'reglas_vigentes', (SELECT count(*) FROM situacion_reglas WHERE vigente_hasta IS NULL OR vigente_hasta > now()),
-    'higiene', jsonb_build_object(
-      'zombie', (SELECT count(*) FROM senales WHERE resuelta_en IS NULL AND calidad = 'zombie'),
-      'dato_malo', (SELECT count(*) FROM senales WHERE resuelta_en IS NULL AND calidad = 'dato_malo')),
-    'salud', jsonb_build_object(
-      'odoo_push_edad_h', (SELECT round(extract(epoch FROM now() - max(created_at)) / 3600, 1) FROM odoo_push_last_events WHERE method = 'senales' AND status = 'success'),
-      'bot_terminada_en', (SELECT max(terminada_en) FROM situacion_corridas),
-      'sin_datos', (SELECT coalesce(jsonb_agg(c.senal), '[]') FROM senales_config c WHERE c.activa AND c.fuente = 'odoo'
-                    AND EXISTS (SELECT 1 FROM senales s WHERE s.senal = c.senal AND s.resuelta_en IS NULL)
-                    AND NOT EXISTS (SELECT 1 FROM senales_lotes l WHERE l.senal = c.senal AND l.ok AND l.recibido_en > now() - make_interval(hours => coalesce(c.sin_datos_horas, 2 * c.cada_horas))))),
-    'totales', (SELECT jsonb_build_object(
-      'nuevas', count(*) FILTER (WHERE lista = 'nuevas'), 'empeoradas', count(*) FILTER (WHERE lista = 'empeoradas'),
-      'mejoradas', count(*) FILTER (WHERE lista = 'mejoradas'), 'resueltas', count(*) FILTER (WHERE lista = 'resueltas'),
-      'delegadas', count(*) FILTER (WHERE lista = 'delegadas'), 'graves', count(*) FILTER (WHERE lista = 'graves'),
-      'abiertas', count(*) FILTER (WHERE estado NOT IN ('resuelta', 'descartada')),
-      'rezago', count(*) FILTER (WHERE calidad = 'antigua' AND estado NOT IN ('resuelta', 'descartada')))
-      FROM _cambios)
-  ) INTO out;
-  DROP TABLE IF EXISTS _cambios;
-  RETURN out;
-END $$;
-
--- Helpers de situacion_cambios (leen la tabla temporal _cambios de la sesión).
-CREATE OR REPLACE FUNCTION public.situacion_cambios_fila(x _cambios)
-RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
-  SELECT jsonb_build_object('id', x.id, 'titulo', x.titulo, 'senal', x.senal, 'tipo', x.tipo, 'contraparte', x.contraparte, 'severidad', x.severidad,
-    'estado', x.estado, 'calidad', x.calidad, 'dias_abierta', x.dias_abierta, 'responsable', x.responsable, 'delegada_a', x.delegada_a,
-    'delegacion_estado', x.delegacion_estado, 'recomendacion', x.recomendacion, 'ultimo_cambio', x.ultimo_cambio, 'valor_texto', x.valor_texto, 'redactada', x.redactada)
-$$;
-```
-
-**Ojo:** `_cambios` es una tabla temporal, así que `situacion_cambios_fila(x _cambios)` no puede declararse fuera de la sesión que la crea. Reemplaza esa función y `situacion_cambios_lista` por dos subconsultas inline dentro de `situacion_cambios`. La versión final (la que va en el archivo) es:
-
-```sql
-CREATE OR REPLACE FUNCTION public.situacion_cambios(p_desde timestamptz DEFAULT now() - interval '24 hours')
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE out jsonb; v_hasta timestamptz := now(); v_areas jsonb := '[]'; a record; v_area jsonb; l text;
 BEGIN
   DROP TABLE IF EXISTS _cambios;
@@ -387,9 +320,9 @@ BEGIN
          CASE
            WHEN s.estado = 'resuelta' AND s.resuelta_en >= p_desde THEN 'resueltas'
            WHEN s.estado = 'delegada' AND (s.delegacion->>'fecha')::timestamptz >= p_desde THEN 'delegadas'
-           WHEN s.estado IN ('abierta', 'empeoro', 'mejoro', 'delegada') AND s.created_at >= p_desde THEN 'nuevas'
            WHEN s.estado IN ('empeoro', 'delegada') AND s.ultimo_cambio_en >= p_desde AND s.ultimo_cambio LIKE 'empeor%' THEN 'empeoradas'
            WHEN s.estado IN ('mejoro', 'delegada') AND s.ultimo_cambio_en >= p_desde AND s.ultimo_cambio LIKE 'mejor%' THEN 'mejoradas'
+           WHEN s.estado IN ('abierta', 'empeoro', 'mejoro', 'delegada') AND s.created_at >= p_desde THEN 'nuevas'
            WHEN s.estado IN ('abierta', 'empeoro', 'mejoro', 'delegada') AND s.severidad >= 4 AND s.calidad = 'viva' THEN 'graves'
            ELSE NULL END AS lista
   FROM situaciones s
@@ -464,7 +397,7 @@ VALUES ('info', 'migration', 'Situación plan B paso 4: situacion_cambios, deleg
 COMMIT;
 ```
 
-**Nota para el ejecutor:** el archivo lleva SOLO la versión final de `situacion_cambios` (la segunda), sin las funciones `situacion_cambios_fila`/`situacion_cambios_lista`; el primer borrador está aquí para explicar por qué no se hace con helpers. `STABLE` con `CREATE TEMP TABLE` dentro funciona en plpgsql (la temporal no persiste fuera de la sesión); si Postgres se queja de "cannot execute CREATE TABLE in a read-only function", quita `STABLE` (queda VOLATILE) y anótalo.
+**Nota para el ejecutor:** `situacion_cambios` va `VOLATILE` porque crea y borra una tabla temporal; no la declares `STABLE` (plpgsql corre las funciones no volátiles en modo solo lectura y falla con "DROP TABLE is not allowed in a non-volatile function"). Los helpers `situacion_cambios_fila`/`_lista` no existen a propósito: una función no puede declararse sobre el tipo de una tabla temporal de otra sesión.
 
 - [ ] **Step 4: Aplicar la migración en producción** con `apply_migration` (`name: 20260924a_situacion_cambios`). Luego correr `05_cambios.sql` y también `04_lectura.sql` (regresión del mapa). Esperado en ambos: `PRUEBA_OK`.
 
@@ -764,9 +697,11 @@ export function entradaParaClaude(c: Cambios, presupuesto = 40_000): string {
 }
 ```
 
-- [ ] **Step 6: Correr el test:** `npx vitest run src/__tests__/pipeline/situacion-digest-html.test.ts`. Esperado: 5 tests PASS. Luego `npx eslint supabase/functions/_shared/email-html.ts supabase/functions/_shared/situacion-digest-html.ts supabase/functions/situacion-digest && npx tsc --noEmit`: limpios.
+- [ ] **Step 6: `tsconfig.json`:** agregar `"allowImportingTsExtensions": true` en `compilerOptions` (válido porque ya hay `noEmit: true`). Motivo: `situacion-digest-html.ts` importa `./email-html.ts` con extensión (Deno lo exige) y el test de vitest lo importa, así que `npx tsc --noEmit` (que corre el CI) lo sigue y fallaría con TS5097. Ningún `_shared` importado desde vitest tenía imports relativos hasta hoy.
 
-- [ ] **Step 7: Commit** — "situacion-digest: render puro del correo de situación y helpers HTML compartidos".
+- [ ] **Step 7: Correr el test:** `npx vitest run src/__tests__/pipeline/situacion-digest-html.test.ts`. Esperado: 5 tests PASS. Luego `npx eslint supabase/functions/_shared/email-html.ts supabase/functions/_shared/situacion-digest-html.ts supabase/functions/situacion-digest && npx tsc --noEmit`: limpios.
+
+- [ ] **Step 8: Commit** — "situacion-digest: render puro del correo de situación y helpers HTML compartidos".
 
 ### Task 4.3: Edge Function `situacion-digest`
 
@@ -804,13 +739,13 @@ Deno.serve(async (req: Request) => {
 
   try {
     // 1. Ventana: desde el último digest (o 24 h), para que nada se pierda si un día falló.
+    // Regla: desde el `hasta` del último correo del cron si tiene menos de 60 h (cubre un día fallido); si no, 24 h.
     let desde: string | null = typeof body.desde === "string" ? body.desde : null;
     if (!desde) {
       const { data: ult } = await supabase.from("situacion_digests").select("hasta").eq("trigger", "cron").order("hasta", { ascending: false }).limit(1).maybeSingle();
-      const cand = ult?.hasta ? new Date(ult.hasta).getTime() : 0;
-      const minimo = started - 24 * 3600_000;
-      desde = new Date(Math.max(cand, minimo - 36 * 3600_000)).toISOString();   // nunca más de 60 h atrás
-      if (cand < minimo) desde = new Date(minimo).toISOString();
+      const ultimo = ult?.hasta ? new Date(ult.hasta).getTime() : 0;
+      const reciente = ultimo > started - 60 * 3600_000;
+      desde = new Date(reciente ? ultimo : started - 24 * 3600_000).toISOString();
     }
     const { data: cambios, error } = await supabase.rpc("situacion_cambios", { p_desde: desde });
     if (error) throw new Error(`situacion_cambios: ${error.message}`);
@@ -881,11 +816,29 @@ DO $do$ DECLARE j record; BEGIN
   FOR j IN SELECT jobid FROM cron.job WHERE jobname IN ('situacion_digest', 'memoria_email_digest') LOOP PERFORM cron.unschedule(j.jobid); END LOOP;
 END $do$;
 SELECT cron.schedule('situacion_digest', '30 12 * * *', $cmd$SELECT public.invoke_edge('situacion-digest', '{"origen":"cron"}'::jsonb)$cmd$);
+
+-- El watchdog lee memoria_cron_health(), que hoy solo devuelve jobs memoria_%: sin esto, `situacion_digest: job no existe` cada hora.
+-- (Cuerpo de 20260916g con el WHERE ampliado a situacion_%.)
+CREATE OR REPLACE FUNCTION public.memoria_cron_health()
+RETURNS TABLE (jobname text, active boolean, schedule text, last_ok timestamptz, last_run timestamptz, failures_3h bigint)
+LANGUAGE sql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT j.jobname, j.active, j.schedule,
+         max(d.start_time) FILTER (WHERE d.status = 'succeeded') AS last_ok,
+         max(d.start_time) AS last_run,
+         count(*) FILTER (WHERE d.status = 'failed' AND d.start_time > now() - interval '3 hours') AS failures_3h
+  FROM cron.job j
+  LEFT JOIN cron.job_run_details d ON d.jobid = j.jobid AND d.start_time > now() - interval '3 days'
+  WHERE j.jobname LIKE 'memoria_%' OR j.jobname LIKE 'situacion_%'
+  GROUP BY j.jobname, j.active, j.schedule
+  ORDER BY j.jobname;
+$$;
+COMMENT ON FUNCTION public.memoria_cron_health() IS 'Watchdog: última corrida exitosa y fallos recientes de los jobs pg_cron memoria_* y situacion_*.';
+
 INSERT INTO pipeline_logs (level, phase, message, details)
-VALUES ('info', 'migration', 'Situación plan B paso 4: job situacion_digest 12:30 UTC; memoria_email_digest desprogramado', jsonb_build_object('migration', '20260924b_situacion_digest_cron'));
+VALUES ('info', 'migration', 'Situación plan B paso 4: job situacion_digest 12:30 UTC; memoria_email_digest desprogramado; memoria_cron_health ve situacion_*', jsonb_build_object('migration', '20260924b_situacion_digest_cron'));
 ```
 
-- [ ] **Step 2: Aplicar** y verificar: `select jobname, schedule, active from cron.job where jobname in ('situacion_digest','memoria_email_digest');` → solo `situacion_digest`, `30 12 * * *`, activo.
+- [ ] **Step 2: Aplicar** y verificar: `select jobname, schedule, active from cron.job where jobname in ('situacion_digest','memoria_email_digest');` → solo `situacion_digest`, `30 12 * * *`, activo; `select * from memoria_cron_health() where jobname like 'situacion%'` → dos filas (`situacion_digest`, `situacion_respaldo`).
 
 - [ ] **Step 3: `health/index.ts`:** en `JOB_INTERVALS` agregar `situacion_digest: 1440,` (diario; el umbral es `interval * 2.5` = 60 h, así que un día fallido avisa al siguiente). Actualizar el comentario de cabecera (punto 5) con "y el correo diario de situación". Desplegar `health` (files `health/index.ts`, `_shared/env.ts`, `_shared/mailer.ts`, `_shared/gmail.ts`) y probar `select invoke_edge('health');` → `pipeline_logs` phase `watchdog` sin `situacion_digest` entre los problemas (recién programado: `last_run` nulo se salta).
 
@@ -1064,7 +1017,7 @@ CREATE OR REPLACE FUNCTION public.situacion_decidir(p_id bigint, p_accion text, 
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   s situaciones%ROWTYPE; v_user int; v_doc jsonb; v_modelo text; v_res_id bigint; v_cmd bigint; v_regla bigint;
-  v_alcance text; v_clave text; v_texto text; v_vence date; v_sev int; n int := 0; v_nombre text; v_motivo text;
+  v_alcance text; v_clave text; v_texto text; v_vence date; v_sev int; n int := 0; v_nombre text; v_motivo text; v_ids bigint[];
 BEGIN
   SELECT * INTO s FROM situaciones WHERE id = p_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'situación % no existe', p_id; END IF;
@@ -1138,18 +1091,20 @@ BEGIN
     RETURN jsonb_build_object('ok', true, 'id', p_id, 'accion', 'reabrir', 'reglas_vencidas', n);
 
   ELSIF p_accion = 'separar' THEN
-    UPDATE situaciones h SET fusionada_en = NULL, version = h.version + 1, updated_at = now(),
-      historia = h.historia || jsonb_build_object('fecha', now(), 'evento', 'separada', 'detalle', 'de #' || p_id || ' por el director' || coalesce(': ' || v_motivo, ''))
-    WHERE h.fusionada_en = p_id AND (p->>'id' IS NULL OR h.id = (p->>'id')::bigint);
-    GET DIAGNOSTICS n = ROW_COUNT;
+    WITH sep AS (
+      UPDATE situaciones h SET fusionada_en = NULL, version = h.version + 1, updated_at = now(),
+        historia = h.historia || jsonb_build_object('fecha', now(), 'evento', 'separada', 'detalle', 'de #' || p_id || ' por el director' || coalesce(': ' || v_motivo, ''))
+      WHERE h.fusionada_en = p_id AND (p->>'id' IS NULL OR h.id = (p->>'id')::bigint)
+      RETURNING h.id)
+    SELECT coalesce(array_agg(id), '{}') INTO v_ids FROM sep;
+    n := coalesce(array_length(v_ids, 1), 0);
     IF n = 0 THEN RAISE EXCEPTION 'situación % no tiene fusionada %', p_id, coalesce(p->>'id', '(ninguna)'); END IF;
     UPDATE situaciones SET
-      evidencia = evidencia || jsonb_build_object('no_fusionar', (SELECT coalesce(jsonb_agg(DISTINCT x), '[]') FROM jsonb_array_elements(coalesce(evidencia->'no_fusionar', '[]'::jsonb) ||
-                    (SELECT coalesce(jsonb_agg(h.id), '[]') FROM situaciones h WHERE h.fusionada_en IS NULL AND h.id <> p_id AND (p->>'id' IS NULL OR h.id = (p->>'id')::bigint) AND h.historia @> jsonb_build_array(jsonb_build_object('evento', 'separada')))) x)),
-      historia = historia || jsonb_build_object('fecha', now(), 'evento', 'separacion', 'detalle', n || ' situación(es) separada(s) por el director'),
+      evidencia = evidencia || jsonb_build_object('no_fusionar', (SELECT coalesce(jsonb_agg(DISTINCT x), '[]') FROM jsonb_array_elements(coalesce(evidencia->'no_fusionar', '[]'::jsonb) || to_jsonb(v_ids)) x)),
+      historia = historia || jsonb_build_object('fecha', now(), 'evento', 'separacion', 'detalle', n || ' situación(es) separada(s) por el director: ' || array_to_string(v_ids, ', ')),
       updated_at = now()
     WHERE id = p_id;
-    RETURN jsonb_build_object('ok', true, 'id', p_id, 'accion', 'separar', 'separadas', n);
+    RETURN jsonb_build_object('ok', true, 'id', p_id, 'accion', 'separar', 'separadas', to_jsonb(v_ids));
 
   ELSIF p_accion = 'severidad' THEN
     v_sev := (p->>'severidad')::int;
@@ -1340,6 +1295,7 @@ COMMIT;
 
 **Files:**
 - Modify: `addons/quimibond_intelligence/models/sync_pull.py:82-131`
+- Modify: `addons/quimibond_intelligence/models/sync_push.py:249-255` (`_push_metodos`)
 - Modify: `addons/quimibond_intelligence/models/senales/direccion.py` (función `obligacion_legado`)
 - Modify: `addons/quimibond_intelligence/data/cleanup_2026_09_18.xml`
 - Test: `addons/quimibond_intelligence/tests/test_pull_commands.py` (nuevo; agregar a `tests/__init__.py` y a `collect_ignore_glob` de `tests/conftest.py`)
@@ -1396,9 +1352,24 @@ class TestPullCommands(TransactionCase):
 
 - [ ] **Step 2: Cambios en `sync_pull.py`:** en `_process_commands`, leer `payload = cmd.get('payload') or None` (pedir la columna: el `fetch` sin `select` trae todas) y llamar `self._execute_command(command, payload)`; en el `except`, `'status': 'failed'`. Firma nueva: `def _execute_command(self, command: str, payload=None) -> str:` (los comandos viejos ignoran `payload`). Actualiza el docstring del módulo: "comandos: force_push, force_push_full, sync_contacts; `crear_actividad` lo agrega qb_situacion".
 
-- [ ] **Step 3: `obligacion_legado`:** hoy devuelve `None` si `qb.obligation` no está instalado (= "no aplica", no manda lote, las señales quedan `sin_datos`). Cambiar a `return []` en ese caso, con comentario: "plan B paso 6: al desinstalar qb_obligation el siguiente push manda lote vacío y resuelve todo lo abierto (spec: último lote vacío antes de desinstalar)". Ajustar el test `test_obligacion_legado_solo_abiertas` (o el que cubra el caso "no instalado") a `[]`.
+- [ ] **Step 3: `_push_metodos` en `sync_push.py`:** sacar la lista `methods` de `push_to_supabase` a un método que `qb_situacion` pueda extender (Tarea 5.6) sin copiar `push_to_supabase`:
 
-- [ ] **Step 4: `cleanup_2026_09_18.xml`:** después del `<function model="ir.cron" name="write">` que enciende los crons, agregar otro bloque que fije el intervalo del push (el registro de producción es `noupdate` y hoy corre cada día, no cada hora):
+```python
+    def _push_metodos(self):
+        """[(etiqueta, método)] en orden de ejecución. Los módulos que agregan un push
+        (qb_situacion: actividades_delegadas) lo extienden aquí."""
+        return [
+            ('contacts', self._push_contacts),
+            ('users', self._push_users),
+            ('senales', self._push_senales),
+        ]
+```
+
+  y en `push_to_supabase`: `methods = self._push_metodos()` (borrar la lista inline). En `tests/test_push_senales.py::test_push_to_supabase_incluye_senales` agregar `self.assertEqual([l for l, _ in self.sync._push_metodos()], ['contacts', 'users', 'senales'])`. Sin modelo nuevo ni bump.
+
+- [ ] **Step 4: `obligacion_legado`:** hoy devuelve `None` si `qb.obligation` no está instalado (= "no aplica", no manda lote, las señales quedan `sin_datos`). Cambiar a `return []` en ese caso, con comentario: "plan B paso 6: al desinstalar qb_obligation el siguiente push manda lote vacío y resuelve todo lo abierto (spec: último lote vacío antes de desinstalar)". Ajustar el test `test_obligacion_legado_solo_abiertas` (o el que cubra el caso "no instalado") a `[]`.
+
+- [ ] **Step 5: `cleanup_2026_09_18.xml`:** después del `<function model="ir.cron" name="write">` que enciende los crons, agregar otro bloque que fije el intervalo del push (el registro de producción es `noupdate` y hoy corre cada día, no cada hora):
 
 ```xml
     <!-- 2026-09-23: en producción el push corría UNA vez al día (04:48 UTC): el registro es
@@ -1415,9 +1386,9 @@ class TestPullCommands(TransactionCase):
 
   **Ojo:** `ir.cron.write` sobre un cron que está corriendo en ese instante aborta el update ("This cron task is currently being executed"); el push dura < 60 s y el `odoo-update` se corre a mano, así que el riesgo es bajo; si pasa, repetir el `odoo-update`.
 
-- [ ] **Step 5: Verificación local:** `flake8 addons/ && python3 -m pytest addons/quimibond_intelligence/tests -q` (los 9 de pytest siguen), `python3 tools/check_addons.py --base-ref origin/main` (WARN por archivos sin bump, 0 errores: no hay modelo nuevo aquí). XML: `python3 -c "import xml.dom.minidom as m; m.parse('addons/quimibond_intelligence/data/cleanup_2026_09_18.xml')"`.
+- [ ] **Step 6: Verificación local:** `flake8 addons/ && python3 -m pytest addons/quimibond_intelligence/tests -q` (los 9 de pytest siguen), `python3 tools/check_addons.py --base-ref origin/main` (WARN por archivos sin bump, 0 errores: no hay modelo nuevo aquí). XML: `python3 -c "import xml.dom.minidom as m; m.parse('addons/quimibond_intelligence/data/cleanup_2026_09_18.xml')"`.
 
-- [ ] **Step 6: Commit** — "quimibond_intelligence: pull con payload y failed, obligacion_legado vacía sin módulo, intervalo del push fijo".
+- [ ] **Step 7: Commit** — "quimibond_intelligence: pull con payload y failed, _push_metodos, obligacion_legado vacía sin módulo, intervalo del push fijo".
 
 ### Task 5.4: Módulo `qb_situacion` (esqueleto, modelo de eventos y hooks de `mail.activity`)
 
@@ -1681,13 +1652,13 @@ class TestPullDelegar(TransactionCase):
         self.assertEqual((fn, params['p_situacion_id'], params['p_mail_activity_id'], params['p_estado']), ('situacion_delegacion_confirmar', 501, act.id, 'creada'))
         self.assertIn(str(act.id), r)
 
-    def test_documento_inexistente_cae_al_contacto_y_sin_contacto_al_usuario(self):
+    def test_documento_inexistente_cae_al_contacto_y_sin_contacto_al_del_usuario(self):
         self.Pull._execute_command('crear_actividad', self._payload(situacion_id=502, modelo='account.move', res_id=999999999, partner_id=self.partner.id))
         act = self.env['mail.activity'].search([('situacion_id', '=', 502)])
         self.assertEqual((act.res_model, act.res_id), ('res.partner', self.partner.id))
         self.Pull._execute_command('crear_actividad', self._payload(situacion_id=503, modelo=None, res_id=None))
         act = self.env['mail.activity'].search([('situacion_id', '=', 503)])
-        self.assertEqual((act.res_model, act.res_id), ('res.users', self.user.id))
+        self.assertEqual((act.res_model, act.res_id), ('res.partner', self.user.partner_id.id))
 
     def test_usuario_invalido_confirma_error(self):
         try:
@@ -1751,7 +1722,8 @@ class QuimibondSyncPullSituacion(models.TransientModel):
             partner = self.env['res.partner'].sudo().browse(int(partner_id)).exists()
             if partner:
                 return partner
-        return self.env['res.users'].sudo().browse(int(payload['user_id']))
+        # res.users no lleva mail.activity.mixin en Odoo 19: el último recurso es el contacto del propio usuario.
+        return self.env['res.users'].sudo().browse(int(payload['user_id'])).partner_id
 
     def _crear_actividad_delegada(self, payload):
         client = self._qb_situacion_client()
@@ -1787,7 +1759,7 @@ class QuimibondSyncPullSituacion(models.TransientModel):
         return 'Actividad %s creada en %s,%s para %s' % (act.id, act.res_model, act.res_id, user.name)
 ```
 
-  **Notas:** `activity_schedule` sobre `res.users` funciona porque `res.users` hereda `mail.activity.mixin`? En Odoo 19 **no**: `res.users` no lleva el mixin. Si el test `sin contacto al usuario` falla por eso, cambia el último recurso a `self.env['res.partner'].sudo().browse(user.partner_id.id)` (la actividad va al contacto del usuario) y ajusta el assert a `('res.partner', self.user.partner_id.id)`. Deja el comportamiento elegido documentado en el README.
+  **Nota:** el último recurso es el contacto del propio usuario (`res.users` no lleva `mail.activity.mixin` en Odoo 19). Documentarlo en el README.
 
 - [ ] **Step 3: `tests/__init__.py` += `test_pull_delegar`. flake8, compileall, push, leer `odoo-tests`.** Commit — "qb_situacion: comando crear_actividad (delegación → mail.activity) y confirmación a Supabase".
 
@@ -1875,9 +1847,11 @@ class TestPushDelegadas(TransactionCase):
             pass
         self.assertFalse(self.env['qb.delegacion.evento'].search([('situacion_id', '=', 601)]).enviado)
 
-    def test_push_to_supabase_lo_incluye(self):
+    def test_push_to_supabase_lo_incluye_antes_de_senales(self):
         self.assertIn('actividades_delegadas', self.Sync.PUSH_MODELS)
         self.assertIn('actividades_delegadas', self.Sync.FULL_PUSH_METHODS)
+        etiquetas = [l for l, _ in self.Sync._push_metodos()]
+        self.assertEqual(etiquetas, ['contacts', 'users', 'actividades_delegadas', 'senales'])
 ```
 
 - [ ] **Step 2: `models/sync_push.py`:**
@@ -1902,12 +1876,18 @@ _logger = logging.getLogger(__name__)
 class QuimibondSyncSituacion(models.TransientModel):
     _inherit = 'quimibond.sync'
 
-    PUSH_MODELS = ('contacts', 'users', 'senales', 'actividades_delegadas')
-    PUSH_MODELS_DEFAULT = 'contacts,users,senales,actividades_delegadas'
+    PUSH_MODELS = ('contacts', 'users', 'actividades_delegadas', 'senales')
+    PUSH_MODELS_DEFAULT = 'contacts,users,actividades_delegadas,senales'
     FULL_PUSH_METHODS = frozenset(['users', 'senales', 'actividades_delegadas'])
 
     def _push_metodos(self):
-        return super()._push_metodos() + [('actividades_delegadas', self._push_actividades_delegadas)]
+        """ANTES de senales: _push_senales termina con senales_push_terminado, que dispara el bot
+        (situacion_ciclo → situacion_delegaciones_aplicar). Si el lote de delegaciones llegara
+        después, hecha/cancelada se aplicarían hasta la corrida siguiente (una hora)."""
+        metodos = super()._push_metodos()
+        i = next((k for k, (etiqueta, _fn) in enumerate(metodos) if etiqueta == 'senales'), len(metodos))
+        metodos.insert(i, ('actividades_delegadas', self._push_actividades_delegadas))
+        return metodos
 
     def _push_actividades_delegadas(self, client, last_sync=None) -> int:
         abiertas = client.rpc_strict('situacion_delegaciones_abiertas', {})
@@ -1950,7 +1930,7 @@ class QuimibondSyncSituacion(models.TransientModel):
         return len(filas)
 ```
 
-  **Requisito en `quimibond_intelligence.sync_push`** (Tarea 5.3, agrégalo ahí): la lista `methods` de `push_to_supabase` se saca a un método `_push_metodos(self)` que devuelve `[('contacts', self._push_contacts), ('users', self._push_users), ('senales', self._push_senales)]`, para que `qb_situacion` lo extienda sin copiar `push_to_supabase`. Sin modelo nuevo ni bump. Cubre con un assert en `test_push_senales.test_push_to_supabase_incluye_senales`: `self.assertEqual([l for l, _ in self.sync._push_metodos()], ['contacts', 'users', 'senales'])`.
+  **Depende de `_push_metodos`** (Tarea 5.3, Step 3): sin él este mixin no se engancha al push.
 
 - [ ] **Step 3: `tests/__init__.py` += `test_push_delegadas`. flake8, compileall, push, leer `odoo-tests`.** Commit — "qb_situacion: push de actividades delegadas como señal delegacion_estado".
 
