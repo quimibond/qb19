@@ -76,9 +76,14 @@
                             <field name="nc_on_red"/>
                         </group>
                     </group>
+                    <div class="alert alert-warning mb-2" role="alert" invisible="not spec_missing">
+                        <b>Le falta para publicar el proceso:</b> <field name="spec_missing" nolabel="1" readonly="1"/>
+                    </div>
                     <group string="Cómo se calcula">
                         <field name="formula" placeholder="Qué se divide entre qué, en palabras"/>
                         <field name="source" placeholder="De qué registros o documentos sale"/>
+                        <field name="baseline_value"/>
+                        <field name="target_date"/>
                     </group>
                     <field name="source_type" invisible="1"/>
                     <div class="alert alert-success mb-0" role="alert"

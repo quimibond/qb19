@@ -22,6 +22,7 @@
                 <field name="relative_role" invisible="target_type != 'relative'"
                        required="target_type == 'relative'"/>
                 <field name="condition" optional="show"/>
+                <field name="after_days" optional="show" invisible="role != 'escala'"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
         </field>
@@ -117,8 +118,12 @@
                     <group string="Cuándo queda entregado (mide a quien lo entrega)">
                         <group>
                             <field name="odoo_model_id" options="{'no_create': True}"/>
+                            <field name="odoo_model_name" invisible="1"/>
                             <field name="measure_domain" invisible="not odoo_model_id"
-                                   placeholder="[('state', '=', 'sale')]"/>
+                                   widget="domain" options="{'model': 'odoo_model_name'}"/>
+                            <field name="complete_domain" invisible="not odoo_model_id"
+                                   widget="domain" options="{'model': 'odoo_model_name'}"/>
+                            <field name="complete_criteria" placeholder="Completo significa…"/>
                         </group>
                         <group>
                             <field name="measure_date_field" invisible="not odoo_model_id"

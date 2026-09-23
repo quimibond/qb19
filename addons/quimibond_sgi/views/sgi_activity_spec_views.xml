@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====== Faltantes de especificación: qué le falta a cada actividad ====== -->
+    <record id="sgi_activity_spec_gap_view_list" model="ir.ui.view">
+        <field name="name">sgi.activity.spec.gap.list</field>
+        <field name="model">sgi.activity.spec.gap</field>
+        <field name="arch" type="xml">
+            <list string="Faltantes de especificación" create="0" edit="0" delete="0"
+                  decoration-danger="severity == 'error'" decoration-warning="severity == 'warning'">
+                <field name="process_id"/>
+                <field name="activity_id"/>
+                <field name="severity" widget="badge"/>
+                <field name="code"/>
+                <field name="message"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_spec_gap_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.activity.spec.gap.pivot</field>
+        <field name="model">sgi.activity.spec.gap</field>
+        <field name="arch" type="xml">
+            <pivot string="Faltantes de especificación" sample="1">
+                <field name="process_id" type="row"/>
+                <field name="code" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_activity_spec_gap_view_search" model="ir.ui.view">
+        <field name="name">sgi.activity.spec.gap.search</field>
+        <field name="model">sgi.activity.spec.gap</field>
+        <field name="arch" type="xml">
+            <search string="Faltantes de especificación">
+                <field name="activity_id"/>
+                <field name="process_id"/>
+                <field name="code"/>
+                <filter name="errors" string="Bloquean publicar" domain="[('severity', '=', 'error')]"/>
+                <filter name="warnings" string="Advertencias" domain="[('severity', '=', 'warning')]"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_code" string="Faltante" context="{'group_by': 'code'}"/>
+                    <filter name="group_severity" string="Severidad" context="{'group_by': 'severity'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_spec_gap_action" model="ir.actions.act_window">
+        <field name="name">Faltantes de especificación</field>
+        <field name="res_model">sgi.activity.spec.gap</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_activity_spec_gap_view_search"/>
+        <field name="context">{'search_default_errors': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todas las actividades contestan las siete preguntas</p>
+            <p>Qué, quién, dónde, cómo, cuándo, cuándo está terminada y qué hacer si falla. Lo que falte aparece aquí; los faltantes en rojo impiden publicar el proceso.</p>
+        </field>
+    </record>
+
+    <!-- ====== Cumplimiento semanal: aplicables, completas, a tiempo, vencidas ====== -->
+    <record id="sgi_activity_week_stat_view_list" model="ir.ui.view">
+        <field name="name">sgi.activity.week.stat.list</field>
+        <field name="model">sgi.activity.week.stat</field>
+        <field name="arch" type="xml">
+            <list string="Cumplimiento semanal" create="0" edit="0" delete="0"
+                  decoration-danger="late_open_count &gt; 0">
+                <field name="period_start"/>
+                <field name="process_id"/>
+                <field name="activity_id"/>
+                <field name="exec_channel" optional="hide"/>
+                <field name="applicable_count" sum="Total"/>
+                <field name="done_count" sum="Total"/>
+                <field name="complete_count" sum="Total"/>
+                <field name="timed_count" optional="hide" sum="Total"/>
+                <field name="on_time_count" sum="Total"/>
+                <field name="late_open_count" sum="Total"/>
+                <field name="completeness_rate" widget="progressbar"/>
+                <field name="on_time_rate" widget="progressbar"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_week_stat_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.activity.week.stat.pivot</field>
+        <field name="model">sgi.activity.week.stat</field>
+        <field name="arch" type="xml">
+            <pivot string="Cumplimiento semanal" sample="1">
+                <field name="process_id" type="row"/>
+                <field name="period_start" interval="week" type="col"/>
+                <field name="done_count" type="measure"/>
+                <field name="complete_count" type="measure"/>
+                <field name="on_time_count" type="measure"/>
+                <field name="late_open_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_activity_week_stat_view_search" model="ir.ui.view">
+        <field name="name">sgi.activity.week.stat.search</field>
+        <field name="model">sgi.activity.week.stat</field>
+        <field name="arch" type="xml">
+            <search string="Cumplimiento semanal">
+                <field name="activity_id"/>
+                <field name="process_id"/>
+                <filter name="late" string="Con vencidas abiertas" domain="[('late_open_count', '&gt;', 0)]"/>
+                <filter name="incomplete" string="Con salidas incompletas"
+                        domain="[('done_count', '&gt;', 0), ('completeness_rate', '&lt;', 100)]"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_channel" string="Canal" context="{'group_by': 'exec_channel'}"/>
+                    <filter name="group_week" string="Semana" context="{'group_by': 'period_start:week'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_week_stat_action" model="ir.actions.act_window">
+        <field name="name">Cumplimiento semanal</field>
+        <field name="res_model">sgi.activity.week.stat</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="sgi_activity_week_stat_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Completo y a tiempo, no solo «hubo algo»</p>
+            <p>Por actividad y semana: cuántas entradas aplicaban, cuántas salidas llegaron, cuántas completas, cuántas a tiempo y cuántas siguen abiertas con el plazo vencido. Lo calcula el cron diario de medición.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_sgi_spec_gaps" name="Faltantes de especificación"
+              parent="menu_sgi_analysis" action="sgi_activity_spec_gap_action" sequence="118"/>
+    <menuitem id="menu_sgi_week_stats" name="Cumplimiento semanal"
+              parent="menu_sgi_analysis" action="sgi_activity_week_stat_action" sequence="119"/>
+</odoo>

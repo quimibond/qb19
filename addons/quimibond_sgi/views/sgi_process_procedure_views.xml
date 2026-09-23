@@ -12,7 +12,7 @@
                 <header>
                     <button name="action_open_odoo" type="object"
                             string="Abrir en Odoo" icon="fa-external-link"
-                            invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
+                            invisible="not odoo_action_id and not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                     <button name="action_view_measure_records" type="object"
                             string="Ver evidencia" icon="fa-check-square-o"
                             invisible="not measure_model_id"/>
@@ -27,6 +27,12 @@
                             invisible="active"/>
                     <field name="active" invisible="1"/>
                     <field name="next_activity_ids" invisible="1"/>
+                    <field name="spec_complete" invisible="1"/>
+                    <div class="alert alert-warning mb-3" role="alert"
+                         invisible="spec_complete or not spec_gap_summary">
+                        <b>Le falta a la especificación:</b>
+                        <field name="spec_gap_summary" nolabel="1" readonly="1"/>
+                    </div>
                     <div class="alert alert-warning mb-3" role="alert"
                          invisible="not measure_warning">
                         <field name="measure_warning" nolabel="1" readonly="1"/>
@@ -71,7 +77,10 @@
                                            invisible="target_type != 'relative'"
                                            required="target_type == 'relative'"/>
                                     <field name="condition" placeholder="Siempre"
-                                           readonly="role not in ('aprueba', 'informa') and not condition"/>
+                                           readonly="role not in ('aprueba', 'informa', 'escala') and not condition"/>
+                                    <field name="after_days"
+                                           invisible="role != 'escala'"
+                                           required="role == 'escala'"/>
                                 </list>
                             </field>
                             <separator string="Recibe"/>
@@ -81,6 +90,9 @@
                                     <field name="deliverable_id"
                                            context="{'default_company_id': parent.company_id}"/>
                                     <field name="max_days"/>
+                                    <field name="applies_note" optional="show"/>
+                                    <field name="applies_domain" optional="hide"/>
+                                    <field name="match_path" optional="hide"/>
                                 </list>
                             </field>
                             <group>
@@ -115,6 +127,46 @@
                                 <field name="description" readonly="1"
                                        invisible="not description"/>
                             </group>
+                        </page>
+                        <page string="Especificación" name="especificacion">
+                            <group>
+                                <group string="Dónde">
+                                    <field name="exec_channel"/>
+                                    <field name="odoo_menu_id" options="{'no_create': True}"
+                                           invisible="exec_channel != 'odoo'"
+                                           required="exec_channel == 'odoo'"/>
+                                    <field name="odoo_action_id" options="{'no_create': True}"
+                                           invisible="exec_channel != 'odoo'"/>
+                                    <field name="external_system"
+                                           invisible="exec_channel not in ('sistema_externo', 'portal_cliente', 'edi')"
+                                           required="exec_channel in ('sistema_externo', 'portal_cliente', 'edi')"/>
+                                    <field name="location_id" options="{'no_create': True}"/>
+                                    <field name="workcenter_id" options="{'no_create': True}"/>
+                                    <field name="place_note" placeholder="Andén, laboratorio…"/>
+                                </group>
+                                <group string="Terminado y plazo">
+                                    <field name="check_against" placeholder="Contra qué se compara"/>
+                                    <field name="done_criteria"
+                                           placeholder="Una frase que se contesta con sí o no"/>
+                                    <field name="on_fail" placeholder="Qué hacer si no se puede cumplir"/>
+                                    <field name="measure_cadence"/>
+                                    <field name="due_weekday" invisible="measure_cadence != 'semanal'"/>
+                                    <field name="due_business_day" invisible="measure_cadence != 'mensual'"/>
+                                </group>
+                            </group>
+                            <group string="Cómo">
+                                <field name="how_steps"
+                                       placeholder="Abrir el pedido → actualizar cantidad y fecha → confirmar"/>
+                            </group>
+                            <separator string="Faltantes"/>
+                            <field name="spec_gap_ids" nolabel="1" readonly="1">
+                                <list decoration-danger="severity == 'error'"
+                                      decoration-warning="severity == 'warning'">
+                                    <field name="severity" widget="badge"/>
+                                    <field name="code"/>
+                                    <field name="message"/>
+                                </list>
+                            </field>
                         </page>
                         <page string="Cómo se mide" name="medicion">
                             <group>
@@ -252,6 +304,9 @@
                 <field name="number"/>
                 <field name="section" optional="hide"/>
                 <field name="name"/>
+                <field name="exec_channel" optional="show"/>
+                <field name="spec_complete" widget="boolean" optional="show"
+                       decoration-danger="not spec_complete"/>
                 <field name="executor_role_ids" widget="many2many_tags" optional="show"/>
                 <field name="approver_role_ids" widget="many2many_tags" optional="show"/>
                 <field name="informed_role_ids" widget="many2many_tags" optional="hide"/>
@@ -292,6 +347,8 @@
             <kanban sample="1" default_order="process_id, sequence, number">
                 <field name="measure_state"/>
                 <field name="measure_warning"/>
+                <field name="exec_channel"/>
+                <field name="spec_complete"/>
                 <progressbar field="measure_state"
                              colors='{"verde": "success", "rojo": "danger", "pendiente": "muted", "no_aplica": "muted"}'/>
                 <templates>
@@ -309,6 +366,24 @@
                                    decoration-danger="measure_state == 'rojo'"/>
                             <span t-if="record.measure_warning.raw_value" class="text-warning fa fa-exclamation-triangle"
                                   title="Tiene avisos de medición"/>
+                            <span t-if="record.exec_channel.raw_value == 'odoo'" class="fa fa-desktop text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="record.exec_channel.raw_value == 'correo'" class="fa fa-envelope-o text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="record.exec_channel.raw_value == 'papel'" class="fa fa-file-text-o text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="record.exec_channel.raw_value == 'fisico'" class="fa fa-industry text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="record.exec_channel.raw_value == 'telefono'" class="fa fa-phone text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="record.exec_channel.raw_value == 'edi'" class="fa fa-exchange text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="record.exec_channel.raw_value == 'portal_cliente'" class="fa fa-globe text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="record.exec_channel.raw_value == 'sistema_externo'" class="fa fa-plug text-muted"
+                                  t-att-title="record.exec_channel.value"/>
+                            <span t-if="!record.spec_complete.raw_value" class="text-danger fa fa-pencil-square-o"
+                                  title="Especificación incompleta"/>
                         </footer>
                     </t>
                 </templates>
@@ -360,7 +435,16 @@
                         domain="[('measure_warning', 'ilike', 'Parece automática')]"/>
                 <filter name="por_evento" string="Por evento"
                         domain="[('measure_cadence', '=', 'evento')]"/>
+                <separator/>
+                <filter name="spec_incomplete" string="Especificación incompleta"
+                        domain="[('spec_complete', '=', False)]"/>
+                <filter name="channel_odoo" string="Se hace en Odoo"
+                        domain="[('exec_channel', '=', 'odoo')]"/>
+                <filter name="channel_manual" string="En papel, correo o teléfono"
+                        domain="[('exec_channel', 'in', ('papel', 'correo', 'telefono'))]"/>
                 <group>
+                    <filter name="group_channel" string="Dónde se hace"
+                            context="{'group_by': 'exec_channel'}"/>
                     <filter name="group_process" string="Proceso"
                             context="{'group_by': 'process_id'}"/>
                     <filter name="group_block" string="Bloque"
@@ -521,12 +605,10 @@
         <field name="model">sgi.process</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form/sheet" position="before">
-                <header>
+            <xpath expr="//form/header" position="inside">
                     <button name="action_print_procedure" type="object"
                             string="Imprimir procedimiento" icon="fa-print"
                             invisible="activity_count == 0"/>
-                </header>
             </xpath>
             <xpath expr="//page[@name='entradas_salidas']" position="before">
                 <page string="Actividades" name="procedimiento">
