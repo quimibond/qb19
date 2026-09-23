@@ -9,6 +9,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_calendar import sgi_add_business_days
+from .common_calendar import sgi_test_calendar
 
 
 @tagged('post_install', '-at_install')
@@ -24,6 +25,7 @@ class TestSpec(TransactionCase):
         cls.Deliverable = cls.env['sgi.deliverable']
         cls.process = cls.Process.create({'code': 'XS', 'name': 'Spec X'})
         cls.partner_model = cls.env['ir.model']._get_id('res.partner')
+        sgi_test_calendar(cls.env)
 
     def _act(self, name, **vals):
         return self.Activity.create(dict({

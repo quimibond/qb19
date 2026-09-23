@@ -2,7 +2,8 @@
 from datetime import date
 
 from odoo.tests import TransactionCase, tagged
-from odoo.exceptions import UserError
+
+from .common_users import assert_locked, sgi_test_user
 
 
 @tagged('post_install', '-at_install')
@@ -13,6 +14,7 @@ class TestFmea(TransactionCase):
         super().setUpClass()
         cls.Fmea = cls.env['sgi.fmea']
         cls.Line = cls.env['sgi.fmea.line']
+        cls.sgi_user = sgi_test_user(cls.env)
 
     def test_01_npr_computed(self):
         fmea = self.Fmea.create({'name': 'PFMEA extrusión'})
@@ -43,8 +45,7 @@ class TestFmea(TransactionCase):
             'severity': '9', 'occurrence': '6', 'detection': '3',
         })
         self.assertTrue(line.requires_action)
-        with self.assertRaises(UserError):
-            fmea.action_set_vigente()
+        assert_locked(self, fmea.with_user(self.sgi_user).action_set_vigente)
 
         # Una acción registrada pero SIN terminar tampoco basta (IATF).
         action = self.env['sgi.action.line'].create({
@@ -53,20 +54,17 @@ class TestFmea(TransactionCase):
             'responsible_id': self.env.user.id,
             'date_commit': date.today(),
         })
-        with self.assertRaises(UserError):
-            fmea.action_set_vigente()
+        assert_locked(self, fmea.with_user(self.sgi_user).action_set_vigente)
 
         # Acción TERMINADA pero SIN re-evaluación (S/O/D post) -> bloqueado.
         action.write({'date_done': date.today()})
-        with self.assertRaises(UserError):
-            fmea.action_set_vigente()
+        assert_locked(self, fmea.with_user(self.sgi_user).action_set_vigente)
 
         # Re-evaluación capturada pero el NPR post NO baja (162 = inicial)
         # y sin justificación -> bloqueado.
         line.write({'severity_post': '9', 'occurrence_post': '6',
                     'detection_post': '3'})
-        with self.assertRaises(UserError):
-            fmea.action_set_vigente()
+        assert_locked(self, fmea.with_user(self.sgi_user).action_set_vigente)
 
         # Con el NPR post a la baja (9*2*3 = 54 < 162), sí pasa a vigente.
         line.write({'occurrence_post': '2'})
@@ -90,8 +88,7 @@ class TestFmea(TransactionCase):
         # NPR post igual al inicial: solo pasa con justificación escrita.
         line.write({'severity_post': '10', 'occurrence_post': '5',
                     'detection_post': '2'})
-        with self.assertRaises(UserError):
-            fmea.action_set_vigente()
+        assert_locked(self, fmea.with_user(self.sgi_user).action_set_vigente)
         line.post_note = "La severidad no baja por diseño; se refuerza detección aguas abajo."
         fmea.action_set_vigente()
         self.assertEqual(fmea.state, 'vigente')

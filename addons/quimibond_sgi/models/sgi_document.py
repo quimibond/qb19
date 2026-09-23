@@ -349,14 +349,24 @@ class DocumentsDocument(models.Model):
         Los tipos sin clave propia (externos, formularios de Odoo) no se
         revisan. Si el tipo exige proceso, un documento con la nomenclatura
         nueva debe tenerlo."""
+        Type = self.env['sgi.document.type'].sudo()
         for doc in self:
             dtype = doc.sgi_doc_type_id
+            if not dtype and doc.sgi_doc_type:
+                # Al crear, la restricción corre antes del inverso que liga el
+                # tipo a partir de la selección heredada: se resuelve aquí.
+                company = doc.company_id or self.env.company
+                dtype = Type.search([('code', '=', doc.sgi_doc_type),
+                                     ('company_id', 'in', [company.id, False])],
+                                    order='company_id', limit=1)
             if not doc.sgi_is_controlled or (dtype and not dtype.code_required):
                 continue
             code = (doc.sgi_code or '').strip()
             if not dtype:
-                # Sin tipo: basta con que alguna nomenclatura la acepte.
-                if code and self.env['sgi.document.type'].sudo()._sgi_any_match(code):
+                # Sin tipo ni clave ('' cuenta como sin clave) no hay
+                # nomenclatura contra la cual revisar. Sin tipo pero con clave:
+                # basta con que alguna nomenclatura la acepte.
+                if not code or Type._sgi_any_match(code):
                     continue
                 raise ValidationError(
                     "La clave SGI '%s' no corresponde a ningún tipo de "

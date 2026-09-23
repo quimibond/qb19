@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Días hábiles con el calendario de la compañía (resource.calendar), con sus
-días festivos. Sin calendario, lunes a viernes.
+"""Días hábiles del SGI, con sus días festivos.
+
+El calendario sale del parámetro ``quimibond_sgi.business_calendar_id`` (en
+producción, el de lunes a viernes). Sin parámetro, el de la compañía; sin
+ninguno, lunes a viernes. El parámetro existe porque el calendario de la
+compañía no siempre es el de la oficina (hay turnos de lunes a jueves y sábado).
 
 Funciones puras sobre un env: las usan el eslabón atorado, la medición
 semanal (a tiempo / vencido) y el escalamiento.
@@ -10,7 +14,15 @@ from datetime import datetime, time, timedelta
 import pytz
 
 
+BUSINESS_CALENDAR_PARAM = 'quimibond_sgi.business_calendar_id'
+
+
 def _calendar(env, company=None):
+    raw = env['ir.config_parameter'].sudo().get_param(BUSINESS_CALENDAR_PARAM)
+    if raw and str(raw).strip().isdigit():
+        calendar = env['resource.calendar'].sudo().browse(int(raw)).exists()
+        if calendar:
+            return calendar
     company = company or env.company
     return company.resource_calendar_id
 

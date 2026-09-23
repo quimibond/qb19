@@ -136,9 +136,18 @@ class QualityAlert(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         alerts = super().create(vals_list)
+        Stage = self.env['quality.alert.stage'].sudo()
         for alert in alerts:
             if not alert.sgi_folio and alert.team_id.sgi_sequence_id:
                 alert.sgi_folio = alert.team_id.sgi_sequence_id.next_by_id()
+            # La etapa por defecto de quality no mira el equipo: en producción
+            # las NC del SGI nacían sin etapa (fuera del kanban). Primera etapa
+            # del equipo.
+            if alert.sgi_folio and not alert.stage_id:
+                first = Stage.search([('team_ids', 'in', alert.team_id.ids)],
+                                     order='sequence, id', limit=1)
+                if first:
+                    alert.stage_id = first
         # Una NC MAYOR del SGI avisa por correo además de la actividad:
         # Dirección no vive dentro de Odoo.
         Cron = self.env['sgi.cron']
@@ -169,6 +178,7 @@ class QualityAlert(models.Model):
                 ('sgi_folio', '!=', False),
                 ('sgi_process_id', '=', alert.sgi_process_id.id),
                 ('create_date', '>=', since),
+                '|', ('stage_id', '=', False),
                 ('stage_id.sgi_is_cancel_stage', '=', False),
             ])
             count = 0
