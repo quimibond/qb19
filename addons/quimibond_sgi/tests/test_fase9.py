@@ -23,6 +23,12 @@ class TestFase9Forms(TransactionCase):
         # el botón la localiza por la clave en el título.
         audit = self.env['sgi.audit'].create({})
         from odoo.exceptions import UserError as UE
+        # En una copia de producción la encuesta ya existe: se esconde dentro
+        # de la prueba (la transacción se deshace al final).
+        existing = self.env['survey.survey'].search(
+            [('title', 'like', 'F-IT-P-G03-01-01')])
+        for survey in existing:
+            survey.title = survey.title.replace('F-IT-P-G03-01-01', 'F-OCULTA')
         with self.assertRaises(UE):
             audit.action_evaluate_auditors()  # sin encuesta -> error claro
         self.env['survey.survey'].create({

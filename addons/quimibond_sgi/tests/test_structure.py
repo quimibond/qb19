@@ -8,6 +8,8 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
+from .common_calendar import sgi_test_calendar
+
 
 @tagged('post_install', '-at_install')
 class TestStructure(TransactionCase):
@@ -26,6 +28,7 @@ class TestStructure(TransactionCase):
         cls.Deliverable = cls.env['sgi.deliverable']
         cls.p_ven = cls.Process.create({'code': 'XV', 'name': 'Ventas X'})
         cls.p_pla = cls.Process.create({'code': 'XP', 'name': 'Planeación X'})
+        sgi_test_calendar(cls.env)
 
     def _act(self, process, name, job=None, **vals):
         return self.Activity.create(dict({
@@ -150,13 +153,14 @@ class TestStructure(TransactionCase):
         b = self._act(self.p_pla, 'Recibe', job=self.job_b,
                       input_ids=[(0, 0, {'deliverable_id': d.id, 'max_days': 2})])
         link = a.out_link_ids
-        a.measure_last_date = datetime(2026, 9, 14, 10, 0)    # lunes
+        # Semana sin festivos en México (la del 14-sep trae el 16).
+        a.measure_last_date = datetime(2026, 10, 5, 10, 0)    # lunes
         b.measure_last_date = datetime(2026, 9, 1, 10, 0)
-        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 9, 16, 12, 0)), ('fluye', 2.0))
-        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 9, 21, 12, 0)), ('atorado', 5.0),
+        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 10, 7, 12, 0)), ('fluye', 2.0))
+        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 10, 12, 12, 0)), ('atorado', 5.0),
                          "Fin de semana no cuenta: 5 días hábiles > 2.")
-        b.measure_last_date = datetime(2026, 9, 15, 10, 0)
-        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 9, 21, 12, 0)), ('fluye', 0.0))
+        b.measure_last_date = datetime(2026, 10, 6, 10, 0)
+        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 10, 12, 12, 0)), ('fluye', 0.0))
         self.assertIn('Con plazo (2 días hábiles)', b._sgi_sentence())
 
     def test_08_sentence_and_responsibilities(self):

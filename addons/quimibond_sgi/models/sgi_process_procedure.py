@@ -1147,9 +1147,11 @@ class SgiProcessActivity(models.Model):
             return {}
         since = start if Model._fields[date_field].type == 'date' \
             else datetime.combine(start, datetime.min.time())
+        # Por día y no por «:week»: la semana de read_group depende del idioma
+        # (es_MX y en_US empiezan en domingo). La semana del SGI es ISO: lunes.
         groups = Model._read_group(
             domain + [(date_field, '>=', since)],
-            [user_field, '%s:week' % date_field], ['__count'])
+            [user_field, '%s:day' % date_field], ['__count'])
         expected = self._sgi_executor_jobs()
         generic_ids = self._sgi_generic_user_ids()
         system_ids = {SUPERUSER_ID}
@@ -1176,6 +1178,7 @@ class SgiProcessActivity(models.Model):
             else:
                 klass = 'otro_puesto'
             week = week.date() if isinstance(week, datetime) else week
+            week = week - timedelta(days=week.weekday())   # lunes de su semana ISO
             row_key = (week, user.id or False, klass)
             if row_key in merged:
                 merged[row_key]['count'] += count
