@@ -856,3 +856,30 @@ de tipo de documento y siguiente clave; revisión única y creciente; clave no
 reutilizable en otra familia; clave anterior encontrada; dueño inválido = rojo.
 **No se han corrido todavía**: el SGI depende de Enterprise y no entra al CI;
 correrlas en la base de pruebas de Odoo.sh con el comando de arriba.
+
+## COA ligado a la entrega y al pedido (fase 1, 19.0.32.0.0)
+
+- **Cliente** (`res.partner`, pestaña Ventas y compras): «Requiere COA en cada
+  embarque» (`sgi_requires_coa`, por compañía) y «Reciben el COA»
+  (`sgi_coa_recipient_ids`; vacío = el contacto de la entrega). Lo editan SGI y
+  Calidad. Se evalúa sobre la empresa comercial: las plantas heredan.
+- **Salida** (`stock.picking`, solo salidas): `sgi_coa_status`
+  `no_aplica` / `pendiente` / `adjunto` / `enviado`, los PDF
+  (`sgi_coa_attachment_ids`), quién y cuándo (`sgi_coa_date`, `sgi_coa_uid`) y
+  cuándo se mandó (`sgi_coa_sent_date`). Botón «Adjuntar COA»: sube los PDF
+  (con el nombre que ya usa el laboratorio), precarga destinatarios y, si se
+  envía, manda la plantilla «COA <cliente> – <entrega> – <pedido>».
+- **Validar sin COA** solo avisa. Con `quimibond_sgi.coa_block_validation =
+  True` se bloquea, y solo el puesto `quimibond_sgi.coa_exception_job_id`
+  (Jefe de Calidad, 204) valida dejando el motivo en el chatter.
+- **Pedido**: `sgi_coa_status` = el peor estado de sus salidas; botón «COA»
+  con los archivos; filtro «COA pendiente».
+- **Buzón `coa@`** (SGI > Calidad preventiva > COA recibidos): cada PDF
+  `<producto> <factura>.pdf` se liga solo (factura → `invoice_origin` → salida
+  hecha con ese producto, la más cercana a la factura) y queda `enviado`. Lo
+  que no se liga queda en «COA sin ligar» para asignarlo a mano.
+- Carga inicial (migración 19.0.32.0.0): los 12 clientes que lo requieren en la
+  compañía principal; las salidas ya validadas no se marcan.
+- Medición en el SGI (C2.24): entregable sobre `stock.picking` con
+  `complete_domain` `[("sgi_coa_status", "=", "enviado")]` y
+  `applies_domain` `[("sgi_requires_coa", "=", True)]`, al recargar el JSON de C2.
