@@ -27,7 +27,7 @@
 
 | Archivo | Responsabilidad |
 |---|---|
-| `supabase/migrations/20260924a_situacion_cambios.sql` | RPC `situacion_cambios(p_desde)`; `situacion_guardar` conserva `delegada`; `situacion_mapa` expone la delegación; tabla `situacion_digests` |
+| `supabase/migrations/20260924a_situacion_cambios.sql` | `senales_config.en_mapa`; RPC `situacion_cambios(p_desde)`; `situacion_guardar` conserva `delegada`; `situacion_mapa` expone la delegación; tabla `situacion_digests` |
 | `supabase/tests/situacion/05_cambios.sql` | Prueba en seco de `situacion_cambios` |
 | `supabase/functions/_shared/email-html.ts` | Helpers HTML compartidos (`esc`, `inlineMd`, `mdToHtml`, `layout`) sacados de `digest-email-html.ts` |
 | `supabase/functions/_shared/situacion-digest-html.ts` | Render puro del correo de situación a partir del JSON de `situacion_cambios` + narrativa |
@@ -36,9 +36,10 @@
 | `supabase/functions/situacion-digest/index.ts` | Edge Function: `situacion_cambios` → Opus (narrativa) → HTML → correo → `situacion_digests` |
 | `supabase/migrations/20260924b_situacion_digest_cron.sql` | Job `situacion_digest` 12:30 UTC; desprograma `memoria_email_digest` |
 | `supabase/functions/health/index.ts` | Vigila `situacion_digest` (diario) |
-| `supabase/migrations/20260925a_situacion_decidir.sql` | `sync_commands.payload`, `senales_config.en_mapa`, `situacion_decidir`, `situacion_delegacion_confirmar`, `situacion_delegaciones_abiertas`, `situacion_delegaciones_aplicar` (en `situacion_ciclo`), `situacion_redactar` respeta reglas fijas y `no_fusionar`, `situacion_guardar` marca delegaciones pendientes en error a los 15 min |
+| `supabase/migrations/20260925a_situacion_decidir.sql` | `sync_commands.payload`, `situacion_decidir`, `situacion_delegacion_confirmar`, `situacion_delegaciones_abiertas`, `situacion_delegaciones_aplicar` (en `situacion_ciclo`), `situacion_redactar` respeta reglas fijas y `no_fusionar`, `situacion_guardar` marca delegaciones pendientes en error a los 15 min |
 | `supabase/tests/situacion/06_decidir.sql` | Prueba en seco de decidir / confirmar / aplicar |
-| `supabase/migrations/20260926a_retiro_email_digest.sql` | Desprograma y borra lo del digest viejo (RPCs `get_unanswered_client_threads`, `get_silent_customers`); `obligacion_legado` inactiva cuando el CEO desinstale `qb_obligation` |
+| `supabase/migrations/20260926a_retiro_email_digest.sql` | Desprograma y borra lo del digest viejo (RPCs `get_unanswered_client_threads`, `get_silent_customers`) |
+| `supabase/migrations/20260926b_obligacion_legado_inactiva.sql` | `obligacion_legado` inactiva, cuando el CEO ya desinstaló `qb_obligation` (Tarea 6.5) |
 | `CLAUDE.md` | Sección "Situación de la empresa": correo, decisiones, delegación; jobs; deuda |
 
 ### qb19 (Odoo)
@@ -157,7 +158,7 @@ BEGIN
 END $t$;
 ```
 
-- [ ] **Step 2: Correrla y ver que falla** con `execute_sql` (contenido del archivo). Esperado: error `function situacion_cambios(timestamp with time zone) does not exist` (o el ASSERT de `delegacion_estado`), no `PRUEBA_OK`.
+- [ ] **Step 2: Correrla y ver que falla** con `execute_sql` (contenido del archivo). Esperado: falla antes de `PRUEBA_OK`. El primer error es el de `situacion_mapa` sin la columna `delegacion_estado` (la prueba la lee antes de llamar a `situacion_cambios`); si comentas esa parte, el siguiente es `function situacion_cambios(timestamp with time zone) does not exist`.
 
 - [ ] **Step 3: Escribir la migración** `supabase/migrations/20260924a_situacion_cambios.sql`:
 
@@ -458,7 +459,8 @@ describe("situacion-digest-html", () => {
     const txt = renderSituacionDigestText({ dateLabel: "lunes", narrativaMd: "", cambios, esLunes: true });
     expect(txt).toContain("Cartera vencida · ACME 1");
     expect(txt).toContain("Rezago");
-    expect(txt).not.toContain("<");
+    expect(txt).toContain("Cobrar F/1 <hoy>");   // texto plano: sin escapar
+    expect(txt).not.toContain("&lt;");
   });
   it("un día sin cambios lo dice en una línea", () => {
     const vacio: Cambios = { ...cambios, areas: [], rezago: [], totales: { nuevas: 0, empeoradas: 0, mejoradas: 0, resueltas: 0, delegadas: 0, graves: 0, abiertas: 43, rezago: 0 } };
@@ -593,7 +595,7 @@ const sevColor = (s: number) => (s >= 5 ? C.dangerInk : s === 4 ? C.warnInk : C.
 const sinCambios = (c: Cambios) => ["nuevas", "empeoradas", "mejoradas", "resueltas", "delegadas", "graves"].every((k) => !(c.totales?.[k] ?? 0));
 
 function linea(x: CambiosItem): string {
-  const meta = [x.contraparte, `${x.dias_abierta} d`, x.delegada_a ? `delegada a ${x.delegada_a}${x.delegacion_estado && x.delegacion_estado !== "creada" ? ` (${x.delegacion_estado})` : ""}` : x.responsable ? `→ ${x.responsable}` : null]
+  const meta = [x.contraparte, `${x.dias_abierta} días`, x.delegada_a ? `delegada a ${x.delegada_a}${x.delegacion_estado && x.delegacion_estado !== "creada" ? ` (${x.delegacion_estado})` : ""}` : x.responsable ? `→ ${x.responsable}` : null]
     .filter(Boolean).map((s) => esc(String(s))).join(" · ");
   const rec = x.redactada ? (x.recomendacion ? `<div style="color:${C.body};margin-top:2px">${esc(x.recomendacion)}</div>` : "")
     : `<div style="color:${C.faint};margin-top:2px"><em>sin redactar aún</em>${x.valor_texto ? ` · ${esc(x.valor_texto)}` : ""}</div>`;
@@ -647,7 +649,7 @@ export function renderSituacionDigestText(input: DigestInput): string {
   const t = c.totales ?? {};
   const out: string[] = [`SITUACIÓN — ${input.dateLabel}`, `${t.empeoradas ?? 0} empeoraron · ${t.nuevas ?? 0} nuevas · ${t.graves ?? 0} graves abiertas · ${t.delegadas ?? 0} delegadas · ${t.resueltas ?? 0} resueltas · ${t.abiertas ?? 0} abiertas`, ""];
   if (input.narrativaMd?.trim()) out.push(input.narrativaMd.trim(), "");
-  const fila = (x: CambiosItem) => `  [${x.severidad}] ${x.titulo} — ${[x.contraparte, `${x.dias_abierta} d`, x.delegada_a ? `delegada a ${x.delegada_a}` : x.responsable ? `→ ${x.responsable}` : null].filter(Boolean).join(" · ")}` +
+  const fila = (x: CambiosItem) => `  [${x.severidad}] ${x.titulo} — ${[x.contraparte, `${x.dias_abierta} días`, x.delegada_a ? `delegada a ${x.delegada_a}` : x.responsable ? `→ ${x.responsable}` : null].filter(Boolean).join(" · ")}` +
     (x.redactada ? (x.recomendacion ? `\n      ${x.recomendacion}` : "") : `\n      (sin redactar aún${x.valor_texto ? `: ${x.valor_texto}` : ""})`);
   if (sinCambios(c)) out.push(`Sin cambios en las últimas 24 horas. ${t.abiertas ?? 0} situaciones siguen abiertas.`);
   for (const a of c.areas) {
@@ -1005,7 +1007,7 @@ END $t$;
 BEGIN;
 
 ALTER TABLE public.sync_commands ADD COLUMN IF NOT EXISTS payload jsonb;
-COMMENT ON COLUMN public.sync_commands.payload IS 'Datos del comando (crear_actividad: situacion_id, user_id, texto, vence, modelo, res_id, titulo). Los comandos viejos no lo usan.';
+COMMENT ON COLUMN public.sync_commands.payload IS 'Datos del comando (crear_actividad: situacion_id, user_id, texto, vence, modelo, res_id, partner_id, titulo). Los comandos viejos no lo usan.';
 
 -- Nombre de usuario de Odoo (para historia y textos).
 CREATE OR REPLACE FUNCTION public.situacion_nombre_usuario(p_uid integer)
@@ -1037,7 +1039,8 @@ BEGIN
     END IF;
     INSERT INTO sync_commands (command, status, requested_by, payload)
     VALUES ('crear_actividad', 'pending', coalesce(p->>'creada_por', 'ceo'),
-            jsonb_build_object('situacion_id', p_id, 'user_id', v_user, 'texto', v_texto, 'vence', v_vence, 'modelo', v_modelo, 'res_id', v_res_id, 'titulo', s.titulo))
+            jsonb_build_object('situacion_id', p_id, 'user_id', v_user, 'texto', v_texto, 'vence', v_vence, 'modelo', v_modelo, 'res_id', v_res_id,
+                               'partner_id', s.odoo_partner_id, 'titulo', s.titulo))   -- partner_id: respaldo de Odoo si el documento ya no existe
     RETURNING id INTO v_cmd;
     UPDATE situaciones SET
       estado = 'delegada',
@@ -1365,7 +1368,15 @@ class TestPullCommands(TransactionCase):
         ]
 ```
 
-  y en `push_to_supabase`: `methods = self._push_metodos()` (borrar la lista inline). En `tests/test_push_senales.py::test_push_to_supabase_incluye_senales` agregar `self.assertEqual([l for l, _ in self.sync._push_metodos()], ['contacts', 'users', 'senales'])`. Sin modelo nuevo ni bump.
+  y en `push_to_supabase`: `methods = self._push_metodos()` (borrar la lista inline). En `tests/test_push_senales.py::test_push_to_supabase_incluye_senales` agregar:
+
+```python
+        etiquetas = [l for l, _ in self.sync._push_metodos()]
+        self.assertEqual(etiquetas[:2], ['contacts', 'users'])
+        self.assertEqual(etiquetas[-1], 'senales')   # senales siempre al final: el bot se dispara al terminar
+```
+
+  **No** afirmes la lista exacta aquí: el CI instala `qb_situacion` en la misma base (`-i …,qb_situacion`, tests `post_install`) y la Tarea 5.6 inserta `actividades_delegadas` en esa lista; la afirmación exacta vive solo en `qb_situacion/tests/test_push_delegadas.py`. Sin modelo nuevo ni bump.
 
 - [ ] **Step 4: `obligacion_legado`:** hoy devuelve `None` si `qb.obligation` no está instalado (= "no aplica", no manda lote, las señales quedan `sin_datos`). Cambiar a `return []` en ese caso, con comentario: "plan B paso 6: al desinstalar qb_obligation el siguiente push manda lote vacío y resuelve todo lo abierto (spec: último lote vacío antes de desinstalar)". Ajustar el test `test_obligacion_legado_solo_abiertas` (o el que cubra el caso "no instalado") a `[]`.
 
@@ -1464,6 +1475,9 @@ access_qb_delegacion_evento_system,qb.delegacion.evento system,model_qb_delegaci
             <field name="chaining_type">suggest</field>
             <field name="delay_count">0</field>
             <field name="summary">Situación</field>
+            <!-- Odoo 17+: _action_done ARCHIVA solo las actividades cuyo tipo tiene keep_done; las demás las BORRA.
+                 Sin esto, test_hecha_deja_evento_y_no_cancelada falla y el push nunca ve la actividad archivada. -->
+            <field name="keep_done" eval="True"/>
         </record>
     </data>
 </odoo>
@@ -1566,7 +1580,7 @@ class TestHooks(TransactionCase):
         self.assertEqual(ev.feedback, 'Ya pagó')
         self.assertEqual(ev.user_id, self.env.user)
         self.assertFalse(ev.enviado)
-        # archivada, no borrada (Odoo 19); borrarla después no genera 'cancelada'
+        # archivada, no borrada (keep_done=True en el tipo); borrarla después no genera 'cancelada'
         self.assertTrue(act.exists() and not act.active)
         act.unlink()
         self.assertEqual([e.evento for e in self._eventos()], ['hecha'])
@@ -1576,12 +1590,12 @@ class TestHooks(TransactionCase):
         act.unlink()
         self.assertEqual([e.evento for e in self._eventos(102)], ['cancelada'])
 
-    def test_hecha_con_documento_borrado_no_duplica(self):
+    def test_documento_borrado_cancela(self):
+        # Borrar el documento ancla borra sus actividades (mail.activity.mixin.unlink) → evento 'cancelada':
+        # la situación se reabre en Supabase y, si la señal ya no viene de Odoo, el siguiente push la resuelve.
         act = self._actividad(103)
-        act.res_id and self.env['res.partner'].browse(act.res_id).unlink()  # el documento desaparece → _action_done borra la actividad
-        if act.exists():
-            act.action_feedback(feedback='x')
-        self.assertLessEqual(len(self._eventos(103)), 1)
+        self.env['res.partner'].browse(act.res_id).unlink()
+        self.assertEqual([e.evento for e in self._eventos(103)], ['cancelada'])
 
     def test_sin_situacion_no_hay_evento(self):
         partner = self.env['res.partner'].create({'name': 'Otro'})
@@ -1594,7 +1608,7 @@ class TestHooks(TransactionCase):
 
 - [ ] **Step 6: CI:** en `.github/workflows/ci.yml` línea 132 agregar `,qb_situacion` a la lista de `-i`; línea 133 agregar `,/qb_situacion` a `--test-tags`.
 
-- [ ] **Step 7: Verificación local:** `flake8 addons/qb_situacion && python -m compileall -q addons/qb_situacion && python3 tools/check_addons.py --base-ref origin/main` (módulo nuevo con versión: 0 errores) y los XML parseados. Commit — "qb_situacion 19.0.1.0.0: eventos de actividades delegadas y hooks de mail.activity". Push y leer el job `odoo-tests` (borra un `res.partner` con actividad: si Odoo se queja del cascade en `test_hecha_con_documento_borrado_no_duplica`, sustituye el caso por `act.sudo().write({'res_id': 0})` no; mejor quita ese test y anótalo: la guardia queda cubierta por el código).
+- [ ] **Step 7: Verificación local:** `flake8 addons/qb_situacion && python -m compileall -q addons/qb_situacion && python3 tools/check_addons.py --base-ref origin/main` (módulo nuevo con versión: 0 errores) y los XML parseados. Commit — "qb_situacion 19.0.1.0.0: eventos de actividades delegadas y hooks de mail.activity". Push y leer el job `odoo-tests`. Decisión tomada: borrar el documento ancla cuenta como **cancelada** (`test_documento_borrado_cancela`); va en el README del módulo.
 
 ### Task 5.5: Comando `crear_actividad` en el pull
 
@@ -1936,9 +1950,9 @@ class QuimibondSyncSituacion(models.TransientModel):
 
 ### Task 5.7: Docs, PR de qb19, despliegue y aceptación del paso 5
 
-- [ ] **Step 1: `addons/qb_situacion/README.md`:** qué hace (delegación ida y vuelta), estados, dónde se ve cada cosa (Historial de Sync, `pipeline_logs`, `situacion_salud`), cómo probar a mano (`select situacion_decidir(<id>,'delegar',…)` y esperar 5 min), decisiones (módulo aparte por el manifest congelado; último recurso al usuario/contacto).
+- [ ] **Step 1: `addons/qb_situacion/README.md`:** qué hace (delegación ida y vuelta), estados (incluido: si se borra el documento ancla, la actividad se borra con él y cuenta como cancelada), dónde se ve cada cosa (Historial de Sync, `pipeline_logs`, `situacion_salud`), cómo probar a mano (`select situacion_decidir(<id>,'delegar',…)` y esperar 5 min), decisiones (módulo aparte por el manifest congelado; último recurso al usuario/contacto).
 - [ ] **Step 2: `CLAUDE.md` (qb19):** estructura (+`qb_situacion`), "Otros módulos" (+`qb_situacion`), "Modelos sincronizados" (+`_push_actividades_delegadas` → `senales` vía `delegacion_estado`), Crons (push incluye `actividades_delegadas`; pull entiende `crear_actividad`; nota del intervalo fijado por código). `docs/RUNBOOK_DESPLIEGUE.md`: sección "Delegar una situación" con la verificación (`select situacion_delegaciones_abiertas()`, actividad en Odoo, `select delegacion from situaciones where id = …`).
-- [ ] **Step 3: PR** "Situación plan B, paso 5: qb_situacion (delegación ida y vuelta) y pull con payload" (borrador → CI `check` + `odoo-tests` → ready → squash-merge → rama) y PR "Merge main into quimibond" (merge commit). Cuerpo con la plantilla del repo. Luego el CEO: `odoo-update quimibond_intelligence,qb_situacion && odoosh-restart http && odoosh-restart cron` — **`qb_situacion` es módulo nuevo: primero instalarlo desde Apps** (o `odoo-update` no lo instala; alternativa: `odoo-bin -i qb_situacion` en la shell).
+- [ ] **Step 3: PR** "Situación plan B, paso 5: qb_situacion (delegación ida y vuelta) y pull con payload" (borrador → CI `check` + `odoo-tests` → ready → squash-merge → rama) y PR "Merge main into quimibond" (merge commit). Cuerpo con la plantilla del repo. Luego el CEO: `odoo-update quimibond_intelligence,qb_situacion && odoosh-restart http && odoosh-restart cron` — **`qb_situacion` es módulo nuevo: primero instalarlo desde Apps** (o `odoo-update` no lo instala; alternativa: `odoo-bin -i qb_situacion` en la shell). Después, por MCP de Odoo: `search_records ir.config_parameter [('key','=','quimibond_intelligence.push_models')]`; si existe con un valor explícito (`contacts,users,senales`), borrarlo o dejarlo en `all`: si no, `actividades_delegadas` se omite en silencio y la aceptación del Step 4 falla sin error.
 - [ ] **Step 4: Aceptación (spec §8 paso 5), con el CEO:** `select situacion_decidir(<id real, p.ej. una cartera vencida>, 'delegar', '{"user_id": <odoo_user_id>, "texto": "…", "vence": "2026-10-01"}');` → en ≤ 5 min la actividad aparece en Odoo sobre la factura/contacto (`select delegacion from situaciones where id = <id>` → `estado: creada`, `mail_activity_id`). Marcarla hecha en Odoo → tras el siguiente push horario, `estado: hecha`, situación `resuelta`, historia "cerrada por …". Repetir con cancelar → `abierta`. Anota ids y tiempos en el PR. Comprueba `select * from situacion_salud()` → señal `delegacion_estado` con lote ok.
 
 
@@ -1963,9 +1977,10 @@ from unittest.mock import patch
 
 from odoo.tests import TransactionCase, tagged
 
+# responsable_user_id de la primera fila lo pone el test (base.user_admin): la base del CI es fresca.
 MAPA = [
     {'id': 1295, 'area': 'finanzas', 'tipo': 'credito', 'senal': 'cartera_vencida', 'titulo': 'Cartera vencida · FXI INC', 'severidad': 5, 'estado': 'abierta', 'calidad': 'viva',
-     'contraparte': 'FXI INC', 'responsable': 'Jessica', 'responsable_user_id': 22, 'dias_abierta': 3, 'dias_sin_cambio': 0, 'ultimo_cambio': 'creada', 'n_documentos': 14,
+     'contraparte': 'FXI INC', 'responsable': 'Jessica', 'responsable_user_id': None, 'dias_abierta': 3, 'dias_sin_cambio': 0, 'ultimo_cambio': 'creada', 'n_documentos': 14,
      'valor': 1350828, 'valor_texto': '14 facturas', 'vence': None, 'redactada': True, 'recomendacion': 'Cobrar', 'delegada_a': None, 'delegacion_estado': None},
     {'id': 766, 'area': 'comercial', 'tipo': 'obligacion', 'senal': 'cliente_sin_respuesta', 'titulo': 'Cliente sin respuesta · Daños Broker', 'severidad': 4, 'estado': 'delegada', 'calidad': 'viva',
      'contraparte': 'Daños Broker', 'responsable': 'Irma', 'responsable_user_id': 68, 'dias_abierta': 60, 'dias_sin_cambio': 1, 'ultimo_cambio': 'delegada a Irma', 'n_documentos': 1,
@@ -2013,12 +2028,14 @@ class TestApp(TransactionCase):
         return rpc
 
     def test_cargar_mapa_crea_filas_y_abre_la_lista(self):
-        rpc = self._con({'situacion_mapa': MAPA})
+        admin = self.env.ref('base.user_admin')   # la base del CI es fresca: no hay usuario 22
+        mapa = [dict(MAPA[0], responsable_user_id=admin.id), MAPA[1]]
+        rpc = self._con({'situacion_mapa': mapa})
         action = self.env['qb.situacion'].action_cargar_mapa()
         self.assertEqual(rpc.calls[0][0], 'situacion_mapa')
         filas = self.env['qb.situacion'].search([('create_uid', '=', self.env.uid)], order='severidad desc')
         self.assertEqual([f.supabase_id for f in filas], [1295, 766])
-        self.assertEqual((filas[0].area, filas[0].titulo, filas[0].severidad, filas[0].responsable_user_id.id), ('finanzas', 'Cartera vencida · FXI INC', 5, 22))
+        self.assertEqual((filas[0].area, filas[0].titulo, filas[0].severidad, filas[0].responsable_user_id), ('finanzas', 'Cartera vencida · FXI INC', 5, admin))
         self.assertEqual((filas[1].estado, filas[1].delegada_a, filas[1].delegacion_estado), ('delegada', 'Irma Luna', 'creada'))
         self.assertEqual(action['res_model'], 'qb.situacion')
         # segunda carga: reemplaza, no duplica
@@ -2418,7 +2435,7 @@ VALUES ('info', 'migration', 'Retiro de email-digest: RPCs get_unanswered_client
 ## Riesgos de este plan y cómo se mitigan
 
 - **Delegar sin el pull vivo:** `situacion_delegaciones_aplicar` marca `error` a los 15 min y el correo de la mañana lo dice en el primer bullet (`salud`). El watchdog ya vigila el push; el pull se ve en el Historial de Sync.
-- **Odoo 19 archiva, no borra, la actividad hecha:** el hook de `_action_done` deja el evento antes de archivar; el push además lee la actividad archivada como respaldo (`hecha en Odoo (sin evento)`). Cancelar = `unlink` = evento `cancelada`.
+- **Odoo 19 archiva la actividad hecha solo si su tipo tiene `keep_done=True`** (el nuestro lo tiene; sin eso la borra): el hook de `_action_done` deja el evento antes de archivar; el push además lee la actividad archivada como respaldo (`hecha en Odoo (sin evento)`). Cancelar = `unlink` = evento `cancelada`.
 - **`qb_situacion` nuevo en producción:** `odoo-update` no instala módulos nuevos; el CEO lo instala desde Apps la primera vez. El módulo no toca `quimibond_intelligence` más que por herencia.
 - **Un lote vacío de `delegacion_estado` cerraría delegaciones:** por eso el push aborta sin lote si `situacion_delegaciones_abiertas` falla, y `senales_ingestar` solo resuelve señales de ESA señal (las delegaciones viven en `situaciones.delegacion`, no en `senales`): un lote vacío por error deja las delegaciones intactas.
 - **El correo llega y no gusta:** el render es puro y con test; cambiar formato no toca la RPC. La narrativa se apaga con `sin_ia`.
