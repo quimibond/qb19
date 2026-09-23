@@ -75,6 +75,10 @@
                 <field name="name"/>
                 <field name="from_process_id"/>
                 <field name="to_process_id"/>
+                <filter name="vigentes" string="Mapa vigente"
+                        domain="[('deliverable_id', '!=', False), ('from_process_id.active', '=', True), ('to_process_id.active', '=', True)]"
+                        help="Solo los flujos calculados de entregables entre procesos activos."/>
+                <separator/>
                 <filter name="con_modelo" string="Viven en Odoo"
                         domain="[('odoo_model_id', '!=', False)]"/>
                 <filter name="documentales" string="Documentales (sin modelo)"
@@ -99,7 +103,7 @@
         <field name="res_model">sgi.process.flow</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_process_flow_view_search"/>
-        <field name="context">{'search_default_group_from': 1}</field>
+        <field name="context">{'search_default_group_from': 1, 'search_default_vigentes': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Cada flecha del mapa de procesos es una entrega real</p>
             <p>Un flujo dice <b>qué</b> entrega un proceso a otro, <b>con qué formato</b> y <b>cuándo se acepta</b>. Si el entregable vive en Odoo (pedido, OF, remisión, inspección…), el botón <i>Ver registros</i> abre las entregas reales; los flujos sin modelo son entregables documentales. No se capturan: salen solos de lo que cada actividad recibe y entrega (catálogo de entregables).</p>

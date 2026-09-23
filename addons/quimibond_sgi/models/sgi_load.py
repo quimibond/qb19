@@ -1011,9 +1011,12 @@ class _SgiLoader:
         return process
 
     def _load_replaces(self):
-        """«replaces»: el proceso nuevo archiva a los que sustituye y a sus
-        actividades (una sola vez; con dry_run solo se reporta) y lo deja
-        dicho en su chatter. Las actividades archivadas conservan su texto."""
+        """«replaces»: el proceso nuevo archiva a los que sustituye junto con
+        sus actividades, sus ligas y sus flujos, y adopta sus indicadores y
+        riesgos activos (una sola vez; con dry_run solo se reporta). Todo
+        queda en el reporte y en el chatter del proceso archivado. Nada se
+        borra: lo archivado conserva su texto. Los documentos del proceso
+        viejo NO se vuelven obsoletos aquí: eso pasa al publicar el nuevo."""
         for code, olds in self.replaces:
             new = self.processes.get(code)
             if not new:
@@ -1037,6 +1040,30 @@ class _SgiLoader:
                             old_code, act.legacy_number or act.number), 'archived')
                     if acts:
                         acts.write({'active': False})
+                    reason = "Proceso %s sustituido por %s." % (old_code, code)
+                    ends = ['|', ('from_process_id', '=', old.id),
+                            ('to_process_id', '=', old.id)]
+                    # Ligas y flujos que tocan al proceso viejo: se archivan con
+                    # su motivo (las calculadas lo exigen).
+                    for model, kind in (('sgi.activity.link', 'link'),
+                                        ('sgi.process.flow', 'flow')):
+                        conns = self.env[model].with_context(sgi_connection_sync=True).search(
+                            [('active', '=', True)] + ends)
+                        for conn in conns:
+                            self.report.change(kind, "%s/%s" % (old_code, conn.name), 'archived')
+                        if conns:
+                            conns.write({'active': False, 'inactive_reason': reason})
+                    # Indicadores y riesgos activos: pasan al proceso nuevo
+                    # (un indicador que el payload asigna a otro proceso se
+                    # reubica después, en «indicators»).
+                    for model, kind, label in (('sgi.indicator', 'indicator', 'code'),
+                                               ('sgi.risk', 'risk', 'folio')):
+                        recs = self.env[model].search([('process_id', '=', old.id)])
+                        for rec in recs:
+                            self.report.change(kind, "%s → %s: %s" % (
+                                old_code, code, rec[label] or rec.name), 'moved')
+                        if recs:
+                            recs.write({'process_id': new.id})
                     old.write({'active': False})
                     if not self.report.dry_run:
                         old.message_post(body="Sustituido por %s — %s." % (

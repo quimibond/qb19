@@ -631,8 +631,25 @@ Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
   ese nivel. Si hay una, no se carga nada. Los indicadores van al nivel
   principal con `process`, no dentro del proceso.
 - **`replaces`** (proceso): códigos de procesos que el nuevo sustituye. En la
-  carga real se archivan, **con sus actividades** (que conservan su texto), y
-  su chatter dice «Sustituido por C2»; con `dry_run` solo se reportan. Un código que no existe es error.
+  carga real se archivan **con sus actividades** (que conservan su texto),
+  **sus ligas y sus flujos** (con el motivo «Proceso X sustituido por C2»), y
+  el proceso nuevo **adopta sus indicadores y riesgos activos**. Su chatter
+  dice «Sustituido por C2» y el reporte lista cada cosa archivada o movida;
+  con `dry_run` solo se reporta. Un código que no existe es error. Los
+  documentos del proceso viejo siguen vigentes: se vuelven obsoletos solo al
+  publicar el proceso nuevo (`replaced_documents` + `publish`).
+
+**Estructura vigente.** El SGI muestra por defecto solo lo de procesos
+activos: indicadores y riesgos con el filtro «De procesos vigentes», la
+cadena de actividades con «Estructura vigente» y los flujos con «Mapa
+vigente» (solo los calculados de entregables entre procesos activos; los
+flujos no se capturan a mano). Los indicadores y riesgos sin proceso o con su
+proceso archivado siguen activos y midiéndose, y se ven con el filtro
+«Pendientes de proceso nuevo». Los crons ignoran lo archivado: la cadena solo
+evalúa ligas entre actividades activas, el resumen semanal solo cuenta
+indicadores y riesgos de procesos vigentes, la NC automática de un indicador
+de proceso archivado nace sin proceso y la revisión de un riesgo así va al
+Jefe MAST.
 - **Indicadores**: `formula` y `source` (texto; salen en la ficha y en el
   procedimiento impreso), `frequency` `monthly`/`weekly`, y el responsable
   como `responsible_employee_id` (su usuario) o `responsible` (id o login).

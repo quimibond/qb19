@@ -61,6 +61,12 @@ class SgiIndicator(models.Model):
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True)
     process_id = fields.Many2one('sgi.process', string="Proceso")
+    # Estructura vigente = proceso activo. Guardado para poder filtrar los
+    # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
+    sgi_process_active = fields.Boolean(
+        related='process_id.active', store=True, string="Proceso vigente",
+        help="El proceso al que pertenece está activo. Sin proceso o con el "
+             "proceso archivado, queda pendiente de proceso nuevo.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
     responsible_id = fields.Many2one('res.users', string="Responsable")
     objective_id = fields.Many2one('sgi.objective', string="Objetivo integral")
@@ -1427,7 +1433,9 @@ class SgiIndicatorMeasure(models.Model):
             vals = {
                 'title': "Indicador incumplido: %s" % indicator.code,
                 'sgi_origin_type': 'indicador',
-                'sgi_process_id': indicator.process_id.id,
+                # Sin proceso si el suyo está archivado (pendiente de proceso
+                # nuevo): la NC no se cuelga de un proceso sustituido.
+                'sgi_process_id': indicator.process_id.id if indicator.sgi_process_active else False,
                 'sgi_deviation': deviation,
                 'sgi_indicator_measure_id': measure.id,
             }
