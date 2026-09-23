@@ -7,6 +7,8 @@ from psycopg2 import IntegrityError
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestOla2Policy(TransactionCase):
@@ -132,6 +134,7 @@ class TestOla2DocFamily(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         cls.Doc = cls.env['documents.document']
 
     def _doc(self, code, doc_type):
