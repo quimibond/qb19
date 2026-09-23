@@ -42,3 +42,4 @@ from . import sgi_msa
 from . import sgi_settings
 from . import sgi_sign_elearning
 from . import sgi_cron
+from . import sgi_activity_spec

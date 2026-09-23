@@ -72,6 +72,10 @@ class SgiConfig(models.AbstractModel):
     # Parámetros operativos: default de arranque. Solo se crean si NO existen;
     # lo editado en Ajustes > Técnico > Parámetros del sistema nunca se pisa.
     _SGI_DEFAULT_PARAMS = {
+        # Verbos que revisa la especificación de actividades (sgi_activity_spec).
+        'quimibond_sgi.vague_verbs': ('dar seguimiento,gestionar,coordinar,apoyar,asegurar,'
+                                      'atender,ver,checar,manejar,controlar'),
+        'quimibond_sgi.compare_verbs': 'verificar,comparar,revisar,validar,conciliar,inspeccionar',
         'quimibond_sgi.nc_escalation_days': '5',
         # Días por omisión de una prueba piloto documental.
         'quimibond_sgi.pilot_days': '60',

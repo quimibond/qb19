@@ -203,6 +203,17 @@
         <field name="model">sgi.process</field>
         <field name="arch" type="xml">
             <form string="Proceso">
+                <header>
+                    <button name="action_sgi_set_pilot" type="object" string="Pasar a piloto"
+                            invisible="state != 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_sgi_publish" type="object" string="Publicar"
+                            class="btn-primary" invisible="state == 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?"/>
+                    <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
+                            invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_activities" type="object" class="oe_stat_button"
@@ -242,6 +253,16 @@
                                    decoration-danger="health == 'rojo'"/>
                             <field name="measure_real_pct" widget="progressbar"/>
                             <field name="measure_adherence_avg"/>
+                            <label for="spec_error_count" string="Especificación"/>
+                            <div class="o_row">
+                                <button name="action_view_spec_gaps" type="object" class="btn-link p-0">
+                                    <field name="spec_error_count" class="text-danger"/> que bloquean ·
+                                    <field name="spec_warning_count"/> advertencias
+                                </button>
+                            </div>
+                            <field name="channel_odoo_pct" widget="progressbar"/>
+                            <field name="channel_manual_pct" widget="progressbar"/>
+                            <field name="odoo_measured_pct" widget="progressbar"/>
                         </group>
                     </group>
                     <notebook>
