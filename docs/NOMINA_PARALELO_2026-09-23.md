@@ -8,17 +8,22 @@ centavos en el neto.
 
 | Corrida Odoo | Periodo | Recibos Odoo | XML de NOI encontrados | Comparados | Gravado | ISR | IMSS | Neto |
 |---|---|---|---|---|---|---|---|---|
-| 117 Semana 38 | 7 al 13 sep | 87 | 87 | 85 | 85/85 | 85/85 | 85/85 | 85/85 |
-| 118 Quincena 18 Toluca | 1 al 15 sep | 49 | 25 (+12 de CDMX) | 25 | 24/25 | 23/25 | 25/25 | 24/25 |
-| 119 Semana 39 | 14 al 20 sep | 89 | 82 | 83 | 83/83 | 83/83 | 83/83 | 83/83 |
+| 117 Semana 38 | 7 al 13 sep | 87 | 88 | 86 | 86/86 | 86/86 | 86/86 | 86/86 |
+| 118 Quincena 18 Toluca | 1 al 15 sep | 49 | 26 (+12 de CDMX) | 26 | 25/26 | 24/26 | 26/26 | 25/26 |
+| 119 Semana 39 | 14 al 20 sep | 89 | 86 | 87 | 87/87 | 87/87 | 87/87 | 87/87 |
 
 Sumas de los recibos comparados (Odoo vs NOI):
 
 | Corrida | ISR Odoo | ISR NOI | Neto Odoo | Neto NOI |
 |---|---|---|---|---|
-| Semana 38 | 23,413.51 | 23,413.67 | 295,987.13 | 295,987.30 |
-| Quincena 18 Toluca | 39,639.05 | 39,639.83 | 237,059.19 | 237,060.60 |
-| Semana 39 | 36,358.00 | 36,358.69 | 271,114.04 | 271,113.68 |
+| Semana 38 | 23,634.85 | 23,635.00 | 298,785.65 | 298,785.85 |
+| Quincena 18 Toluca | 40,285.28 | 40,286.08 | 242,836.20 | 242,837.61 |
+| Semana 39 | 37,714.47 | 37,715.19 | 283,316.63 | 283,316.27 |
+
+Segunda pasada (misma tarde): la memoria tenía 6 XML más que la primera
+lectura no había tomado (UUID en minúsculas): Escandón (Q18), Pliego
+Cabrera (S38), Mejía Morales, Nava Hernández, Agustín Crescencio y Modesto
+Medina (S39). Los 6 coinciden al centavo; ya están en las cifras de arriba.
 
 ## Cómo se comparó
 
@@ -29,33 +34,35 @@ Sumas de los recibos comparados (Odoo vs NOI):
 - **ISR:** NOI reporta el ISR ya neto de subsidio al empleo. En Odoo son dos
   líneas (`ISR` y `SUBSIDY`); se compara `ISR − SUBSIDY`. 38 recibos llevan
   subsidio (123.34 semanal, 267.82 quincenal) y coinciden al centavo.
-- **IMSS:** `IMSS_EMPLOYEE_TOTAL` contra la deducción IMSS del XML. 193/193.
+- **IMSS:** `IMSS_EMPLOYEE_TOTAL` contra la deducción IMSS del XML. 199/199.
 - **Neto:** `net_wage` contra el neto del XML.
 
-## Diferencias reales (2 de 193)
+## Diferencias reales (2 de 199)
 
 | Recibo | Empleado | Diferencia | Causa |
 |---|---|---|---|
-| 4454, quincena 18 | Jessica Francisco Sánchez (244) | Neto −1.59 | `INFONAVIT` Odoo 914.98 vs NOI 913.33 (+1.65); ISR −0.08 de redondeo. Revisar cómo está capturado el crédito (porcentaje, VSM o cuota fija) contra el aviso del INFONAVIT |
+| 4454, quincena 18 | Jessica Francisco Sánchez (244) | Neto −1.59 | `INFONAVIT` Odoo 914.98 vs NOI 913.33 (+1.65); ISR −0.08 de redondeo. El crédito está capturado en el contrato como cuota fija de 3,659.92 (Odoo la reparte entre 4 quincenas: 914.98). NOI descuenta 913.33, que corresponde a una cuota de 3,653.32: 6.60 pesos menos. Cotejar el importe contra el aviso de retención del INFONAVIT y corregir el que esté mal |
 | 4452, quincena 18 | Manuel Antonio Juárez Matías (99) | Gravado −0.06, ISR −0.11, neto +0.06 | Redondeo de horas extra (Odoo 1,504.29 vs NOI 1,504.30) |
 
 Todo lo demás está a ±5 centavos de redondeo.
 
 ## Lo que NO se pudo comparar
 
-- **24 recibos de la quincena 18 de Toluca** no tienen XML en la memoria de
-  Supabase (Escandón, Manríquez ×2, Huerta, Cárdenas, Martínez Aguilar,
-  Romero Martínez, Villordo, Jiménez Bartolo, Martínez González, Tablas,
-  Esquivel Isidro, Domínguez Castillo, González Domínguez, Zavala,
-  Velázquez Flores, Bernal Quintana, Álvarez Cruz, Valdés Ocampo, González
-  Pérez, Vargas Figueroa, Rodríguez Puerta, Terrón, González Ruiz). El
-  buzón de RH sólo mandó 37 de los 61 XML de ese periodo; pedirle a RH la
-  carpeta completa de la quincena 18 o volver a correr la extracción.
+- **23 recibos de la quincena 18 de Toluca** no tienen XML en la memoria de
+  Supabase (Manríquez ×2, Huerta, Cárdenas, Martínez Aguilar, Romero
+  Martínez, Villordo, Jiménez Bartolo, Martínez González, Tablas, Esquivel
+  Isidro, Domínguez Castillo, González Domínguez, Zavala, Velázquez Flores,
+  Bernal Quintana, Álvarez Cruz, Valdés Ocampo, González Pérez, Vargas
+  Figueroa, Rodríguez Puerta, Terrón, González Ruiz). Los XML llegan a la
+  memoria porque NOI manda desde `rhmexico@` un correo por trabajador a su
+  correo personal ("Envío del Comprobante Fiscal Digital: NOM_NOMINA…") y
+  el buzón guarda el enviado; a estos 23 no se les mandó (sin correo en
+  NOI, probablemente). Pedirle a RH que exporte los XML de la quincena 18
+  desde NOI, no que reenvíe correos.
 - **Quincena 18 de CDMX** (12 XML en NOI): no hay corrida piloto en Odoo.
   La corrida 118 es sólo Toluca; falta armar la de CDMX (ver
   `HANDOFF_NOMINA_QUINCENA_CDMX_2026-09-18.md`).
-- **7 recibos semanales sin XML:** Pliego Cabrera (S38), Carmona Medina
-  (S38 y S39), Nava Hernández, Mejía Morales, Agustín Crescencio, Fuentes
+- **4 recibos semanales sin XML:** Carmona Medina (S38 y S39), Fuentes
   Fernández y Ramírez López (S39, estos dos en cero en Odoo). Faltan en la
   memoria, no necesariamente en NOI.
 - **2 XML sin recibo en Odoo:** Uriel Martínez López (S38, finiquito, baja)
@@ -63,7 +70,7 @@ Todo lo demás está a ±5 centavos de redondeo.
 
 ## Conclusión
 
-El cálculo de Odoo reproduce a NOI en los 193 recibos comparados: ISR,
+El cálculo de Odoo reproduce a NOI en los 199 recibos comparados: ISR,
 IMSS, subsidio, fondo de ahorro, cuotas sindicales, FONACOT e INFONAVIT
 salen iguales, con una sola diferencia real de 1.65 pesos en un crédito
 INFONAVIT. Lo que sigue para timbrar es lo que no depende del cálculo:
