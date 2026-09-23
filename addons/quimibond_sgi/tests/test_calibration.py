@@ -22,6 +22,7 @@ class TestCalibration(TransactionCase):
     def test_01_out_of_tolerance_locks_equipment(self):
         cal = self.Calibration.create({
             'equipment_id': self.equipment.id,
+            'certificate_ref': 'CERT-PRUEBA',  # externa exige certificado
             'date': date.today(),
             'result': 'fuera_tolerancia',
         })
@@ -36,6 +37,7 @@ class TestCalibration(TransactionCase):
         lab_date = date(2027, 3, 15)
         self.Calibration.create({
             'equipment_id': self.equipment.id,
+            'certificate_ref': 'CERT-PRUEBA',  # externa exige certificado
             'date': date(2026, 1, 10),
             'result': 'conforme',
             'next_date': lab_date,
@@ -48,6 +50,7 @@ class TestCalibration(TransactionCase):
     def test_02_conforme_clears_lock(self):
         self.Calibration.create({
             'equipment_id': self.equipment.id,
+            'certificate_ref': 'CERT-PRUEBA',  # externa exige certificado
             'date': date.today(),
             'result': 'fuera_tolerancia',
         })
@@ -55,6 +58,7 @@ class TestCalibration(TransactionCase):
         # Una calibración conforme posterior libera el candado.
         self.Calibration.create({
             'equipment_id': self.equipment.id,
+            'certificate_ref': 'CERT-PRUEBA',  # externa exige certificado
             'date': date.today(),
             'result': 'conforme',
         })

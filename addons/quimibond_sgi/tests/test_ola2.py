@@ -7,6 +7,8 @@ from psycopg2 import IntegrityError
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestOla2Policy(TransactionCase):
@@ -66,8 +68,15 @@ class TestOla2Health(TransactionCase):
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         # Proceso limpio y aislado para no arrastrar datos de demo.
+        # Con dueño que recibe avisos: un proceso sin dueño con usuario es
+        # rojo por sí solo (owner_valid).
+        owner_user = cls.env['res.users'].create(
+            {'name': 'Dueño salud', 'login': 'sgi_health_owner'})
+        owner = cls.env['hr.employee'].create(
+            {'name': 'Dueño salud', 'user_id': owner_user.id})
         cls.proc = cls.env['sgi.process'].create(
-            {'code': 'HLTH-01', 'name': 'Proceso salud', 'process_type': 'soporte'})
+            {'code': 'HLTH-01', 'name': 'Proceso salud', 'process_type': 'soporte',
+             'owner_id': owner.id})
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
 
     def _red_kpi(self):
@@ -132,6 +141,7 @@ class TestOla2DocFamily(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         cls.Doc = cls.env['documents.document']
 
     def _doc(self, code, doc_type):

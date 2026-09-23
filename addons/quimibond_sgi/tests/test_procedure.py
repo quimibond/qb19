@@ -5,6 +5,8 @@ from datetime import date
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestProcedureModel(TransactionCase):
@@ -13,6 +15,7 @@ class TestProcedureModel(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
         # roles se prueba en test_catalog_fase1).
         cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
@@ -69,6 +72,7 @@ class TestProcedureReport(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
         # roles se prueba en test_catalog_fase1).
         cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
@@ -156,6 +160,7 @@ class TestProcedureVentasSeed(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
         # roles se prueba en test_catalog_fase1).
         cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
@@ -243,6 +248,7 @@ class TestProcedureOdooMenu(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
         # roles se prueba en test_catalog_fase1).
         cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
@@ -293,6 +299,7 @@ class TestProcedureActivityMenu(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
         # roles se prueba en test_catalog_fase1).
         cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))

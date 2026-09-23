@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 from odoo.tests import TransactionCase, tagged
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestFlows48(TransactionCase):
     """Mini-fase 4.8: mapa de entradas/salidas completo por proceso."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        sgi_hide_real_documents(cls.env)
 
     def _flow(self, xmlid):
         return self.env.ref('quimibond_sgi.%s' % xmlid)

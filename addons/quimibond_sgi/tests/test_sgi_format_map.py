@@ -3,6 +3,8 @@ from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import ValidationError
 from odoo.tools import mute_logger
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestSgiFormatMap(TransactionCase):
@@ -10,6 +12,7 @@ class TestSgiFormatMap(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         cls.Map = cls.env['sgi.format.map']
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente Formato'})
         cls.product = cls.env['product.product'].create({
