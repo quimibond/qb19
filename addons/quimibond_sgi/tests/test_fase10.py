@@ -198,9 +198,12 @@ class TestActivityMeasurement(TransactionCase):
         my_proc_doc = self.env['documents.document'].create({
             'name': 'P-TST-REF PROCEDIMIENTO', 'type': 'binary',
             'sgi_doc_type': 'procedimiento', 'sgi_process_id': mine.id})
+        # Controlado y con clave válida (F-{proceso}-NN): «Formatos
+        # referenciados» solo admite documentos controlados.
         my_format = self.env['documents.document'].create({
             'name': 'F-P-TST-REF-01', 'type': 'binary',
-            'sgi_doc_type': 'formato', 'sgi_process_id': mine.id})
+            'sgi_doc_type': 'formato', 'sgi_process_id': mine.id,
+            'sgi_is_controlled': True, 'sgi_code': 'F-P-TST-REF-01'})
         citing = self.env['sgi.process.activity'].create({
             'process_id': self.process.id, 'name': 'Cita procedimiento ajeno',
             'related_procedure_id': my_proc_doc.id})
