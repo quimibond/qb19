@@ -98,6 +98,11 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.supplier_otd_tolerance_days': '1',
         'quimibond_sgi.pesaje_tolerance_kg': '3.0',
         'quimibond_sgi.waste_subproduct_category': 'SubProducto',
+        # COA (sgi_coa): el bloqueo al validar una salida sin COA se enciende
+        # cuando el cambio se implemente formalmente; la excepción es del
+        # puesto Jefe de Calidad.
+        'quimibond_sgi.coa_block_validation': 'False',
+        'quimibond_sgi.coa_exception_job_id': '204',
         'quimibond_sgi.monthly_sales_budget': '0',
         'quimibond_sgi.rh_user_id': '0',
         'quimibond_sgi.purchase_approval_category_id': '0',

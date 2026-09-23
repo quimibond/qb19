@@ -247,4 +247,8 @@
     <!-- Recuelga los menús de calidad del raíz de la app Calidad, con
          tolerancia si el xmlid Enterprise no existe (ver ir.ui.menu). -->
     <function model="ir.ui.menu" name="_sgi_attach_quality_menus"/>
+    <!-- COA recibidos por correo (buzón «coa@»): los que no se ligaron solos. -->
+    <menuitem id="menu_sgi_coa_inbox" name="COA recibidos"
+              parent="menu_sgi_automotive" action="sgi_coa_inbox_action" sequence="60"
+              groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
 </odoo>
