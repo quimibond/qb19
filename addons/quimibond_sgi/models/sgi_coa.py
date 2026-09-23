@@ -61,7 +61,16 @@ class ResPartner(models.Model):
         string="Reciben el COA",
         help="Contactos a quienes se manda el COA. Vacío: el contacto de la entrega.")
 
+    _SGI_COA_FIELDS = ('sgi_requires_coa', 'sgi_coa_recipient_ids')
+
     def write(self, vals):
+        # Solo SGI o Calidad deciden qué cliente requiere COA (la vista lo
+        # muestra de solo lectura a los demás; esta es la regla real).
+        if (set(vals) & set(self._SGI_COA_FIELDS) and not self.env.su
+                and not (self.env.user.has_group('quimibond_sgi.group_sgi_user')
+                         or self.env.user.has_group('quality.group_quality_user'))):
+            raise UserError("Solo SGI o Calidad pueden cambiar el requisito de COA "
+                            "de un cliente.")
         res = super().write(vals)
         if 'sgi_requires_coa' in vals:
             # Las salidas abiertas del cliente toman el requisito nuevo; las ya
