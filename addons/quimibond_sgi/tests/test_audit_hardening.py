@@ -40,13 +40,16 @@ class TestAuditHardening(TransactionCase):
         plain = self.env['res.users'].create({
             'name': 'Empleado sin SGI', 'login': 'sgi_audit_plain',
             'group_ids': [(6, 0, [self.env.ref('base.group_user').id])]})
-        request = self.env['maintenance.request'].with_user(plain).create(
-            {'name': 'Falla de prueba C1'})
-        activity = request.activity_schedule(
+        # Sobre su propio contacto: un documento que cualquier interno puede
+        # leer en cualquier base (antes era una solicitud de mantenimiento, y
+        # en la copia de producción las reglas de mantenimiento la bloqueaban
+        # antes de llegar al SGI).
+        record = plain.partner_id
+        activity = record.activity_schedule(
             'mail.mail_activity_data_todo', summary="Atender", user_id=plain.id)
         # Antes del fix: AccessError en la search de sgi.action.line.
         activity.with_user(plain).action_feedback(feedback="Listo.")
-        self.assertFalse(request.activity_ids.filtered(
+        self.assertFalse(record.activity_ids.filtered(
             lambda a: a.summary == "Atender"))
 
     def test_c1_mirror_line_still_closes(self):
