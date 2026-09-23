@@ -321,6 +321,52 @@ class TestStructure(TransactionCase):
         missing = {'processes': [{'code': 'XN', 'name': 'Nuevo', 'replaces': ['NO-EXISTE']}]}
         self.assertFalse(self.Process.load_payload(missing, dry_run=True)['ok'])
 
+    def test_15b_replaces_archives_flows_and_adopts_kpis_and_risks(self):
+        old = self.Process.create({'code': 'X-VIEJO2', 'name': 'Ventas viejo 2'})
+        self._act(old, 'Actividad vieja 2')
+        flow = self.env['sgi.process.flow'].create({
+            'name': 'Pedido confirmado', 'from_process_id': old.id,
+            'to_process_id': self.p_pla.id})
+        kpi = self.env['sgi.indicator'].create({
+            'code': 'XV-VIEJO', 'name': 'KPI viejo', 'calc_mode': 'manual',
+            'process_id': old.id})
+        risk = self.env['sgi.risk'].create({
+            'name': 'Riesgo viejo', 'instrument': 'ryo', 'process_id': old.id,
+            'eval_probability': '2', 'eval_impact': '2'})
+        self.assertTrue(kpi.sgi_process_active)
+        payload = {'processes': [{'code': 'XN2', 'name': 'Nuevo 2',
+                                  'replaces': ['X-VIEJO2']}]}
+        dry = self.Process.load_payload(payload, dry_run=True)
+        self.assertTrue(dry['ok'], dry['errors'])
+        self.assertEqual(dry['summary']['archived'].get('flow'), 1)
+        self.assertEqual(dry['summary']['moved'].get('indicator'), 1)
+        self.assertEqual(dry['summary']['moved'].get('risk'), 1)
+        self.assertTrue(flow.active, "Con dry_run solo se reporta.")
+        self.assertEqual(kpi.process_id, old)
+        result = self.Process.load_payload(payload)
+        self.assertTrue(result['ok'], result['errors'])
+        new = self.Process.search([('code', '=', 'XN2')])
+        self.assertFalse(flow.active, "Sus flujos se archivan con él.")
+        self.assertIn('X-VIEJO2', flow.inactive_reason)
+        self.assertEqual(kpi.process_id, new, "Sus indicadores pasan al nuevo.")
+        self.assertEqual(risk.process_id, new, "Sus riesgos pasan al nuevo.")
+        self.assertTrue(kpi.sgi_process_active)
+
+    def test_15c_pending_new_process(self):
+        """Indicadores y riesgos de un proceso archivado siguen activos y
+        quedan «pendientes de proceso nuevo»."""
+        old = self.Process.create({'code': 'X-VIEJO3', 'name': 'Viejo 3'})
+        kpi = self.env['sgi.indicator'].create({
+            'code': 'XV-PEND', 'name': 'KPI pendiente', 'calc_mode': 'manual',
+            'process_id': old.id})
+        orphan = self.env['sgi.indicator'].create({
+            'code': 'XV-SINPROC', 'name': 'KPI sin proceso', 'calc_mode': 'manual'})
+        old.active = False
+        self.assertTrue(kpi.active, "El indicador no se archiva.")
+        pending = self.env['sgi.indicator'].search([('sgi_process_active', '=', False)])
+        self.assertIn(kpi, pending)
+        self.assertIn(orphan, pending)
+
     def test_16_commitment_date_stamp(self):
         partner = self.env['res.partner'].create({'name': 'Cliente X'})
         order = self.env['sale.order'].create({'partner_id': partner.id})

@@ -217,6 +217,12 @@
                 <field name="name"/>
                 <field name="process_id"/>
                 <field name="category_id"/>
+                <filter name="vigentes" string="De procesos vigentes"
+                        domain="[('sgi_process_active', '=', True)]"/>
+                <filter name="pendientes" string="Pendientes de proceso nuevo"
+                        domain="[('sgi_process_active', '=', False)]"
+                        help="Sin proceso, o su proceso está archivado: esperan al proceso nuevo que los adopte."/>
+                <separator/>
                 <filter name="ryo" string="R&amp;O" domain="[('instrument','=','ryo')]"/>
                 <filter name="iper" string="IPER" domain="[('instrument','=','iper')]"/>
                 <filter name="ambiental" string="Ambiental" domain="[('instrument','=','ambiental')]"/>
@@ -240,6 +246,7 @@
         <field name="res_model">sgi.risk</field>
         <field name="view_mode">kanban,list,pivot,form,activity</field>
         <field name="search_view_id" ref="sgi_risk_view_search"/>
+        <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Captura el primer riesgo u oportunidad</p>
             <p>Los 5 instrumentos en un solo lugar: RyO 5×5, IPER de SST, aspectos ambientales, patrimonial y FODA — con revisión programada.</p>

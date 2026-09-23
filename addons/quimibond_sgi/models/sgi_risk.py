@@ -64,6 +64,12 @@ class SgiRisk(models.Model):
         ('externo', "Externo"),
     ], string="Origen", default='interno')
     process_id = fields.Many2one('sgi.process', string="Proceso")
+    # Estructura vigente = proceso activo. Guardado para poder filtrar los
+    # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
+    sgi_process_active = fields.Boolean(
+        related='process_id.active', store=True, string="Proceso vigente",
+        help="El proceso al que pertenece está activo. Sin proceso o con el "
+             "proceso archivado, queda pendiente de proceso nuevo.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
     job_id = fields.Many2one('hr.job', string="Puesto")
     existing_controls = fields.Text(string="Controles existentes")
