@@ -19,7 +19,7 @@
 - **Pruebas SQL en seco:** archivo en `supabase/tests/situacion/`, bloque `DO $t$ … RAISE EXCEPTION 'PRUEBA_OK'; END $t$;`. Se corre con `execute_sql`; el error esperado es `PRUEBA_OK` y deshace todo. Los ids de partner de prueba empiezan en `990000001`; la señal de prueba se llama `_prueba` y se inserta en `senales_config` dentro del bloque.
 - **Odoo:** los tests de `TransactionCase` corren en el CI de qb19 (`--test-tags` por módulo, ver `.github/workflows/ci.yml`). No hay Odoo local: escribe el test, empuja, y lee el log del job `odoo-tests`. Trampas conocidas (plan A): `assertRaises` de Odoo envuelve el bloque en un savepoint y deshace lo escrito; un `write` pendiente del ORM se escribe encima de un `UPDATE` crudo si no haces `flush_recordset()` antes; `stock.move` ya no tiene `name`.
 - **Secretos:** nunca en el repo, PR ni chat. Service key en `ir.config_parameter` (`quimibond_intelligence.supabase_url` / `supabase_service_key`), `cron_secret` y `anthropic_api_key` en Vault.
-- **Hoy en producción (23-sep):** 18.7k señales, ~1,080 situaciones abiertas, bot a 40 por corrida con 4 llamadas paralelas, `situacion_respaldo` a `:20`, `memoria_email_digest` a las 12:45 UTC. **El push horario de Odoo corre una vez al día (04:48 UTC):** el registro `ir.cron` de producción es `noupdate` y conserva un intervalo viejo; la Tarea 5.9 lo corrige por código.
+- **Hoy en producción (23-sep):** 18.7k señales, ~1,080 situaciones abiertas, bot a 40 por corrida con 4 llamadas paralelas, `situacion_respaldo` a `:20`, `memoria_email_digest` a las 12:45 UTC. **El push horario de Odoo corre una vez al día (04:48 UTC):** el registro `ir.cron` de producción es `noupdate` y conserva un intervalo viejo; la Tarea 5.3 (Step 5) lo corrige por código.
 
 ## Mapa de archivos
 
@@ -64,8 +64,8 @@
 ## Orden y dependencias
 
 1. **Parte 1 (paso 4, Supabase):** Tareas 4.1–4.6. No depende de Odoo. Se acepta cuando el correo de la mañana siguiente coincide con `situacion_cambios`.
-2. **Parte 2 (paso 5):** Tareas 5.1–5.3 (Supabase) primero; 5.4–5.10 (qb19) después, porque el pull necesita `sync_commands.payload` y los RPCs. Se acepta cuando delegar crea la actividad en ≤ 5 min y marcarla hecha cierra la situación.
-3. **Parte 3 (paso 6, qb19 + retiro):** Tareas 6.1–6.6. La desinstalación de `qb_obligation` la hace el CEO en Apps; el borrado del código va en un PR posterior a esa desinstalación (una rama sin un módulo que producción SÍ tiene revienta el build).
+2. **Parte 2 (paso 5):** Tareas 5.1–5.3 (Supabase) primero; 5.4–5.7 (qb19) después, porque el pull necesita `sync_commands.payload` y los RPCs. Se acepta cuando delegar crea la actividad en ≤ 5 min y marcarla hecha cierra la situación.
+3. **Parte 3 (paso 6, qb19 + retiro):** Tareas 6.1–6.5. La desinstalación de `qb_obligation` la hace el CEO en Apps; el borrado del código va en un PR posterior a esa desinstalación (una rama sin un módulo que producción SÍ tiene revienta el build).
 
 **Cosas que hace el CEO** (no se automatizan): correr `odoo-update` tras cada merge a `quimibond`; leer el primer correo y dar el visto bueno; hacer la primera delegación real; desinstalar `qb_obligation` desde Apps; borrar del dashboard de Supabase las Edge Functions `email-digest`, `syntage-daily`, `syntage-webhook` y `query-intelligence`.
 
@@ -285,6 +285,12 @@ BEGIN
     AND NOT (s.senal = ANY (v_sin_datos))
     AND NOT EXISTS (SELECT 1 FROM _grupos gr WHERE gr.senal || '|' || gr.agrupador = s.clave);
   GET DIAGNOSTICS n_res = ROW_COUNT;
+  -- plan B: la marca del cierre humano caduca cuando la señal desaparece del todo. Si la clave vuelve después
+  -- (episodio nuevo: otra factura vencida meses más tarde) la situación reaparece como 'abierta', aunque sea más chica que al cerrar.
+  UPDATE situaciones s SET evidencia = s.evidencia - 'cerrada_manual', updated_at = now()
+  WHERE s.estado = 'resuelta' AND s.evidencia ? 'cerrada_manual'
+    AND NOT (s.senal = ANY (v_sin_datos))
+    AND NOT EXISTS (SELECT 1 FROM _grupos gr WHERE gr.senal || '|' || gr.agrupador = s.clave);
   DROP TABLE IF EXISTS _grupos;
 
   RETURN jsonb_build_object('nuevas', n_nuevas, 'actualizadas', n_act, 'resueltas', n_res, 'ignoradas', n_ign,
@@ -326,7 +332,7 @@ COMMENT ON FUNCTION public.situacion_mapa(text, text, integer, integer) IS 'El m
 --    VOLATILE a propósito: crea una tabla temporal (plpgsql no permite DROP/CREATE TABLE en funciones STABLE).
 CREATE OR REPLACE FUNCTION public.situacion_cambios(p_desde timestamptz DEFAULT now() - interval '24 hours')
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE out jsonb; v_hasta timestamptz := now(); v_areas jsonb := '[]'; a record; v_area jsonb; l text;
+DECLARE v_out jsonb; v_hasta timestamptz := now(); v_areas jsonb := '[]'; a record; v_area jsonb; l text;
 BEGIN
   DROP TABLE IF EXISTS _cambios;
   CREATE TEMP TABLE _cambios AS
@@ -338,7 +344,8 @@ BEGIN
          CASE
            WHEN s.estado = 'resuelta' AND s.resuelta_en >= p_desde THEN 'resueltas'
            WHEN s.estado = 'delegada' AND (s.delegacion->>'fecha')::timestamptz >= p_desde THEN 'delegadas'
-           WHEN s.estado IN ('empeoro', 'delegada') AND s.ultimo_cambio_en >= p_desde AND s.ultimo_cambio LIKE 'empeor%' THEN 'empeoradas'
+           WHEN s.estado = 'empeoro' AND s.ultimo_cambio_en >= p_desde THEN 'empeoradas'
+           WHEN s.estado = 'delegada' AND s.ultimo_cambio_en >= p_desde AND s.ultimo_cambio LIKE 'empeor%' THEN 'empeoradas'
            WHEN s.estado IN ('mejoro', 'delegada') AND s.ultimo_cambio_en >= p_desde AND s.ultimo_cambio LIKE 'mejor%' THEN 'mejoradas'
            WHEN s.estado IN ('abierta', 'empeoro', 'mejoro', 'delegada') AND s.created_at >= p_desde THEN 'nuevas'
            WHEN s.estado IN ('abierta', 'empeoro', 'mejoro', 'delegada') AND s.severidad >= 4 AND s.calidad = 'viva' THEN 'graves'
@@ -386,9 +393,9 @@ BEGIN
       'abiertas', count(*) FILTER (WHERE estado NOT IN ('resuelta', 'descartada')),
       'rezago', count(*) FILTER (WHERE calidad = 'antigua' AND estado NOT IN ('resuelta', 'descartada')))
       FROM _cambios)
-  ) INTO out;
+  ) INTO v_out;
   DROP TABLE IF EXISTS _cambios;
-  RETURN out;
+  RETURN v_out;
 END $$;
 COMMENT ON FUNCTION public.situacion_cambios(timestamptz) IS 'Lo que cambió desde p_desde (spec §7.1): por área nuevas, empeoradas, mejoradas, resueltas, delegadas y lo grave (sev ≥ 4) que sigue abierto; rezago (antiguas); ignoradas, reglas vigentes, higiene, salud y totales. Única fuente del correo diario. Ejemplo MCP: select situacion_cambios(now() - interval ''1 day'').';
 
@@ -887,7 +894,7 @@ VALUES ('info', 'migration', 'Situación plan B paso 4: job situacion_digest 12:
 - `situacion_decidir(p_id, p_accion, p)`:
   - `delegar {user_id, texto?, vence?}`: valida el usuario en `odoo_users`, exige situación abierta y no delegada en curso; elige documento = primer `documentos[]` con `modelo <> 'thread'` e `id` numérico, si no `res.partner`/`odoo_partner_id`, si no nada (Odoo la pone sobre el usuario); inserta `sync_commands('crear_actividad', payload)`; `estado='delegada'`, `delegacion={user_id, fecha, texto, vence, estado:'pendiente', comando_id}`; historia.
   - `ignorar` / `no_es_problema {alcance?='situacion', clave_alcance?, motivo?, vigente_hasta?}`: inserta la regla en `situacion_reglas` y **descarta** esta situación y las abiertas que la regla cubra (`situacion_regla_aplica`). En el siguiente ciclo las señales quedan `ignorada` y `situacion_guardar` ya salta las descartadas.
-  - `resuelta {motivo?}`: `estado='resuelta'`, `resuelta_en`, historia "cerrada por el director". Si estaba delegada, la delegación queda `cerrada_por_director` (la actividad de Odoo sigue viva; el push la reporta y `situacion_delegaciones_aplicar` la ignora porque la situación ya no está delegada).
+  - `resuelta {motivo?}`: `estado='resuelta'`, `resuelta_en`, historia "cerrada por el director". Si estaba delegada, la delegación queda `cerrada_por_director`; la actividad de Odoo sigue viva y hay que cerrarla a mano (`situacion_delegaciones_abiertas()` solo lista `estado='delegada'`, así que el push ya no la reporta y su evento en Odoo se marca `enviado` como "ya no listada"). Decirlo en el README de `qb_situacion`.
   - `reabrir {motivo?}`: `estado='abierta'`, `resuelta_en=NULL`, `version+1`; vence las reglas `ignorar`/`no_es_problema` con `alcance='situacion'` de esa clave.
   - `separar {id?}`: la(s) absorbida(s) por `p_id` vuelven al mapa (`fusionada_en=NULL`) y sus ids se guardan en `evidencia.no_fusionar` de la madre; `situacion_redactar` no vuelve a fusionarlas.
   - `severidad {severidad, motivo?}`: regla `severidad_fija` (alcance situación) + escribe la severidad; `situacion_redactar` la respeta.
@@ -963,6 +970,22 @@ BEGIN
   ASSERT (SELECT estado FROM situaciones WHERE id = sid) = 'empeoro' AND NOT (SELECT evidencia ? 'cerrada_manual' FROM situaciones WHERE id = sid)
      AND (SELECT resuelta_en FROM situaciones WHERE id = sid) IS NULL, 'reabre como empeoro si la señal crece';
   ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements((SELECT historia FROM situaciones WHERE id = sid)) e WHERE e->>'detalle' LIKE 'reapareció tras cierre manual%'), 'historia del reapareció';
+  -- 2c. la marca caduca si la señal desaparece del todo: cerrada a mano con 2 documentos, desaparece, vuelve con 1 → abierta (episodio nuevo).
+  r := situacion_decidir(sid, 'resuelta', '{"motivo":"ya se arregló"}');
+  ASSERT (SELECT evidencia ? 'cerrada_manual' FROM situaciones WHERE id = sid), 'marca del director';
+  PERFORM senales_ingestar('_prueba', 'odoo', c, '[
+    {"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
+    {"clave":"_prueba:partner:990000003","odoo_partner_id":990000003,"valor":7,"documentos":[]}
+  ]'::jsonb);
+  PERFORM senales_actualizar(); PERFORM situacion_guardar(c);
+  ASSERT (SELECT estado FROM situaciones WHERE id = sid) = 'resuelta' AND NOT (SELECT evidencia ? 'cerrada_manual' FROM situaciones WHERE id = sid), 'la marca cae cuando la señal desaparece';
+  PERFORM senales_ingestar('_prueba', 'odoo', c, '[
+    {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":30,"documentos":[{"modelo":"thread","id":5,"nombre":"hilo"},{"modelo":"account.move","id":11,"nombre":"F/1"}]},
+    {"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
+    {"clave":"_prueba:partner:990000003","odoo_partner_id":990000003,"valor":7,"documentos":[]}
+  ]'::jsonb);
+  PERFORM senales_actualizar(); PERFORM situacion_guardar(c);
+  ASSERT (SELECT estado FROM situaciones WHERE id = sid) = 'abierta' AND (SELECT ultimo_cambio FROM situaciones WHERE id = sid) LIKE 'reapareció: %', 'episodio nuevo reabre aunque sea más chico';
 
   -- 3. cancelada reabre. (sid3: pendiente → creada → cancelada)
   PERFORM situacion_delegacion_confirmar(sid3, 778, 'creada', NULL);
@@ -2464,7 +2487,7 @@ INSERT INTO pipeline_logs (level, phase, message, details)
 VALUES ('info', 'migration', 'Retiro de email-digest: RPCs get_unanswered_client_threads y get_silent_customers borradas', jsonb_build_object('migration', '20260926a_retiro_email_digest'));
 ```
 
-  Antes de aplicar, confirma las firmas reales: `select proname, pg_get_function_identity_arguments(oid) from pg_proc where proname in ('get_unanswered_client_threads','get_silent_customers');` y que nadie más las use: `grep -rn "get_unanswered_client_threads\|get_silent_customers" supabase/ src/ --include=*.ts --include=*.sql`.
+  Antes de aplicar, confirma las firmas reales: `select proname, pg_get_function_identity_arguments(oid) from pg_proc where proname in ('get_unanswered_client_threads','get_silent_customers');` y que nadie más las use: `grep -rn "get_unanswered_client_threads\|get_silent_customers" supabase/ --include=*.ts --include=*.sql` (solo `supabase/`: en `src/` hay referencias en el frontend retirado, que no cuentan y no se tocan, regla de CLAUDE.md).
 
 - [ ] **Step 2:** borrar `supabase/functions/email-digest/` y `_shared/digest-email-html.ts`; `npx tsc --noEmit && npm test`; `CLAUDE.md` (RPCs, "Cómo desplegar" lista de `_shared`, deuda: agregar `email-digest` a la lista de funciones que el CEO borra del dashboard). Commit — "Retiro de email-digest (sustituido por situacion-digest)". PR → merge.
 
@@ -2479,7 +2502,8 @@ VALUES ('info', 'migration', 'Retiro de email-digest: RPCs get_unanswered_client
 ## Riesgos de este plan y cómo se mitigan
 
 - **Delegar sin el pull vivo:** `situacion_delegaciones_aplicar` marca `error` a los 15 min y el correo de la mañana lo dice en el primer bullet (`salud`). El watchdog ya vigila el push; el pull se ve en el Historial de Sync.
-- **Cierre humano y señal viva:** sin `evidencia.cerrada_manual`, cada "hecha" o "cerrada por el director" se reabriría en la siguiente corrida del bot (`situacion_guardar` la ve como "reapareció"). Con la marca, reabre solo si la señal crece. Si el CEO prefiere que reabra siempre, basta quitar el `IF sit.evidencia ? 'cerrada_manual'` de `situacion_guardar`.
+- **Evento de delegación que falla al aplicarse:** si `situacion_delegaciones_aplicar` truena con un evento (la excepción lo marca `aplicado=true` con `error`), la situación sigue `delegada/creada`, Odoo re-manda la fila cada hora y `senales_ingestar` funde el payload (el `aplicado` persiste), así que no se reintenta solo. Se ve en `situacion_salud()` y se destraba con `situacion_delegacion_confirmar` a mano. Deuda aceptada.
+- **Cierre humano y señal viva:** sin `evidencia.cerrada_manual`, cada "hecha" o "cerrada por el director" se reabriría en la siguiente corrida del bot (`situacion_guardar` la ve como "reapareció"). Con la marca, reabre solo si la señal crece; la marca cae cuando la señal desaparece del todo, para que un episodio nuevo (otra factura meses después) sí reaparezca aunque sea más chico. "Reapareció tras cierre manual" entra al correo como empeorada. Si el CEO prefiere que reabra siempre, basta quitar el `IF sit.evidencia ? 'cerrada_manual'` de `situacion_guardar`.
 - **Odoo 19 archiva la actividad hecha solo si su tipo tiene `keep_done=True`** (el nuestro lo tiene; sin eso la borra): el hook de `_action_done` deja el evento antes de archivar; el push además lee la actividad archivada como respaldo (`hecha en Odoo (sin evento)`). Cancelar = `unlink` = evento `cancelada`.
 - **`qb_situacion` nuevo en producción:** `odoo-update` no instala módulos nuevos; el CEO lo instala desde Apps la primera vez. El módulo no toca `quimibond_intelligence` más que por herencia.
 - **Un lote vacío de `delegacion_estado` cerraría delegaciones:** por eso el push aborta sin lote si `situacion_delegaciones_abiertas` falla, y `senales_ingestar` solo resuelve señales de ESA señal (las delegaciones viven en `situaciones.delegacion`, no en `senales`): un lote vacío por error deja las delegaciones intactas.
