@@ -200,7 +200,7 @@
                                     <td t-out="ind.name"/>
                                     <td t-out="ind.formula or ''"/>
                                     <td t-out="ind.source or ''"/>
-                                    <td t-field="ind.frequency"/>
+                                    <td><span t-field="ind.frequency"/></td>
                                 </tr>
                             </tbody>
                         </table>

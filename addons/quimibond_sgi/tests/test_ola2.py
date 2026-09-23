@@ -182,7 +182,7 @@ class TestOla2DocFamily(TransactionCase):
 
     def test_04_unmatched_stays_empty(self):
         # MIID no pertenece a una familia P-Xnn: queda sin padre.
-        miid = self._doc('MIID', 'procedimiento')
+        miid = self._doc('MIID', 'miid')
         self.env['sgi.config'].migrate_document_families()
         self.assertFalse(miid.sgi_parent_document_id)
 
