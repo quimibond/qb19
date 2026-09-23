@@ -73,6 +73,7 @@
 - §7.3 dice que los hooks de `mail.activity` y `_push_actividades_delegadas` viven en `quimibond_intelligence`. Van en **`qb_situacion`** (módulo nuevo con manifest propio) porque `quimibond_intelligence` no puede recibir modelos nuevos sin bump y su manifest está congelado. `quimibond_intelligence` solo cambia el pull (payload y `failed`) y `obligacion_legado`.
 - §3.1/§4: la señal `delegacion_estado` **no crea situaciones propias** (`senales_config.en_mapa = false`); su estado se muestra en la situación delegada (`delegacion` jsonb, columnas nuevas de `situacion_mapa`).
 - `situacion_decidir('separar')` deja `evidencia.no_fusionar` en la situación madre para que el bot no vuelva a fusionar lo que el CEO separó.
+- **Cierre humano pegajoso** (el spec solo dice "hecha ⇒ resuelta"): `situacion_guardar` reabre las `resuelta` cuya señal sigue viva ("reapareció"), así que una actividad hecha con las facturas aún vencidas volvería a `abierta` en la misma corrida. Decisión: `hecha` y `resuelta` por el director dejan `evidencia.cerrada_manual = {n, valor, fecha, por}`; mientras la señal no crezca (más señales o valor > 105 %) la situación sigue `resuelta`; si crece, reabre como `empeoro` con historia "reapareció tras cierre manual" y la marca se quita. `reabrir` también la quita. `descartada` sigue como en plan A (nunca reabre sola).
 
 ---
 
@@ -134,8 +135,9 @@ BEGIN
   ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements((SELECT historia FROM situaciones WHERE id = sid2)) e WHERE e->>'evento' = 'empeoro'), 'historia registra el empeoro de la delegada';
 
   -- mapa: la delegada muestra a quién y en qué estado.
-  ASSERT (SELECT delegacion_estado FROM situacion_mapa('finanzas') WHERE id = sid2) = 'creada', 'mapa expone delegacion_estado';
-  ASSERT (SELECT delegada_a FROM situacion_mapa('finanzas') WHERE id = sid2) IS NOT NULL, 'mapa expone delegada_a';
+  -- límite alto: en producción hay ~1,000 situaciones y el mapa ordena por severidad; con el default (100) la fila de prueba puede quedar fuera.
+  ASSERT (SELECT delegacion_estado FROM situacion_mapa('finanzas', 'viva', 1, 10000) WHERE id = sid2) = 'creada', 'mapa expone delegacion_estado';
+  ASSERT (SELECT delegada_a FROM situacion_mapa('finanzas', 'viva', 1, 10000) WHERE id = sid2) IS NOT NULL, 'mapa expone delegada_a';
 
   -- cambios de las últimas 24 h.
   r := situacion_cambios(now() - interval '1 day');
@@ -158,7 +160,7 @@ BEGIN
 END $t$;
 ```
 
-- [ ] **Step 2: Correrla y ver que falla** con `execute_sql` (contenido del archivo). Esperado: falla antes de `PRUEBA_OK`. El primer error es el de `situacion_mapa` sin la columna `delegacion_estado` (la prueba la lee antes de llamar a `situacion_cambios`); si comentas esa parte, el siguiente es `function situacion_cambios(timestamp with time zone) does not exist`.
+- [ ] **Step 2: Correrla y ver que falla** con `execute_sql` (contenido del archivo). Esperado: falla antes de `PRUEBA_OK`. Contra el `situacion_guardar` de hoy el primer error es el ASSERT `delegada pegajosa al empeorar` (hoy una delegada pasa a `empeoro`); si lo comentas, sigue `situacion_mapa` sin la columna `delegacion_estado`, y después `function situacion_cambios(timestamp with time zone) does not exist`. Los tres son lo que la migración arregla; la prueba no está mal.
 
 - [ ] **Step 3: Escribir la migración** `supabase/migrations/20260924a_situacion_cambios.sql`:
 
@@ -235,20 +237,35 @@ BEGIN
       v_estado := NULL; v_cambio := NULL;
       IF sit.estado IN ('resuelta', 'descartada') THEN
         IF sit.estado = 'descartada' THEN CONTINUE; END IF;
-        v_estado := 'abierta'; v_cambio := 'reapareció: ' || g.n || ' señal(es), valor ' || coalesce(g.valor::text, '-');
+        -- plan B: un cierre humano (hecha por el delegado, o resuelta por el director) es pegajoso mientras la señal
+        -- no crezca (evidencia.cerrada_manual guarda n y valor al cerrar). Si crece, reabre como 'empeoro' y la marca se quita.
+        IF sit.evidencia ? 'cerrada_manual' THEN
+          IF NOT (g.n > coalesce((sit.evidencia->'cerrada_manual'->>'n')::int, 0)
+                  OR (g.valor IS NOT NULL AND (sit.evidencia->'cerrada_manual'->>'valor') IS NOT NULL
+                      AND g.valor > (sit.evidencia->'cerrada_manual'->>'valor')::numeric * 1.05)) THEN
+            CONTINUE;
+          END IF;
+          v_estado := 'empeoro';
+          v_cambio := format('reapareció tras cierre manual: empeoró %s → %s documentos, valor %s → %s',
+                             sit.evidencia->'cerrada_manual'->>'n', g.n, coalesce(sit.evidencia->'cerrada_manual'->>'valor', '-'), coalesce(g.valor::text, '-'));
+        ELSE
+          v_estado := 'abierta'; v_cambio := 'reapareció: ' || g.n || ' señal(es), valor ' || coalesce(g.valor::text, '-');
+        END IF;
       ELSIF g.n > sit.n_senales OR (g.valor IS NOT NULL AND sit.valor IS NOT NULL AND g.valor > sit.valor * 1.05) THEN
         v_estado := 'empeoro'; v_cambio := format('empeoró: %s → %s documentos, valor %s → %s', sit.n_senales, g.n, coalesce(sit.valor::text, '-'), coalesce(g.valor::text, '-'));
       ELSIF g.n < sit.n_senales OR (g.valor IS NOT NULL AND sit.valor IS NOT NULL AND g.valor < sit.valor * 0.95) THEN
         v_estado := 'mejoro'; v_cambio := format('mejoró: %s → %s documentos, valor %s → %s', sit.n_senales, g.n, coalesce(sit.valor::text, '-'), coalesce(g.valor::text, '-'));
       END IF;
       UPDATE situaciones SET
-        documentos = g.documentos, evidencia = sit.evidencia || g.evidencia, calidad = g.calidad, n_senales = g.n, valor = g.valor,
+        documentos = g.documentos,
+        evidencia = CASE WHEN sit.estado = 'resuelta' THEN (sit.evidencia || g.evidencia) - 'cerrada_manual' ELSE sit.evidencia || g.evidencia END,
+        calidad = g.calidad, n_senales = g.n, valor = g.valor,
         valor_texto = left(g.valor_texto, 600), vence = g.vence, company_id = coalesce(g.company_id, sit.company_id),
         odoo_partner_id = coalesce(g.odoo_partner_id, sit.odoo_partner_id),
         responsable_sugerido_user_id = coalesce(sit.responsable_sugerido_user_id, g.responsable),
         -- plan B: delegada es pegajosa (la actividad vive en Odoo); el cambio se ve en historia y ultimo_cambio.
         estado = CASE WHEN sit.estado = 'delegada' AND v_estado IN ('empeoro', 'mejoro') THEN 'delegada' ELSE coalesce(v_estado, sit.estado) END,
-        resuelta_en = CASE WHEN v_estado = 'abierta' THEN NULL ELSE sit.resuelta_en END,
+        resuelta_en = CASE WHEN sit.estado = 'resuelta' THEN NULL ELSE sit.resuelta_en END,
         version = CASE WHEN v_estado IS NOT NULL THEN sit.version + 1 ELSE sit.version END,
         ultimo_cambio = coalesce(v_cambio, sit.ultimo_cambio),
         ultimo_cambio_en = CASE WHEN v_estado IS NOT NULL THEN now() ELSE sit.ultimo_cambio_en END,
@@ -393,7 +410,7 @@ CREATE INDEX IF NOT EXISTS situacion_digests_fecha_idx ON public.situacion_diges
 REVOKE ALL ON public.situacion_digests FROM public, anon, authenticated;
 
 INSERT INTO pipeline_logs (level, phase, message, details)
-VALUES ('info', 'migration', 'Situación plan B paso 4: situacion_cambios, delegada pegajosa, delegación en situacion_mapa, en_mapa, situacion_digests',
+VALUES ('info', 'migration', 'Situación plan B paso 4: situacion_cambios, delegada pegajosa, cierre humano pegajoso (evidencia.cerrada_manual), delegación en situacion_mapa, en_mapa, situacion_digests',
         jsonb_build_object('migration', '20260924a_situacion_cambios'));
 COMMIT;
 ```
@@ -927,6 +944,25 @@ BEGIN
   r := situacion_delegacion_confirmar(sid, 777, 'hecha', 'Ya pagó');
   ASSERT (SELECT estado FROM situaciones WHERE id = sid) = 'resuelta' AND (SELECT delegacion->>'estado' FROM situaciones WHERE id = sid) = 'hecha', 'hecha resuelve';
   ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements((SELECT historia FROM situaciones WHERE id = sid)) e WHERE e->>'evento' = 'resuelta' AND e->>'detalle' LIKE 'cerrada por%Ya pagó%'), 'historia de hecha';
+  -- 2b. el cierre humano es pegajoso: el mismo lote no la reabre; un lote mayor la reabre como 'empeoro' y quita la marca.
+  ASSERT (SELECT evidencia ? 'cerrada_manual' FROM situaciones WHERE id = sid), 'marca cerrada_manual';
+  PERFORM senales_ingestar('_prueba', 'odoo', c, '[
+    {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100,"documentos":[{"modelo":"thread","id":5,"nombre":"hilo"},{"modelo":"account.move","id":11,"nombre":"F/1"}]},
+    {"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
+    {"clave":"_prueba:partner:990000003","odoo_partner_id":990000003,"valor":7,"documentos":[]}
+  ]'::jsonb);
+  PERFORM senales_actualizar(); PERFORM situacion_guardar(c);
+  ASSERT (SELECT estado FROM situaciones WHERE id = sid) = 'resuelta', 'cierre humano pegajoso con la misma señal';
+  PERFORM senales_ingestar('_prueba', 'odoo', c, '[
+    {"clave":"_prueba:partner:990000001","odoo_partner_id":990000001,"valor":100,"documentos":[{"modelo":"thread","id":5,"nombre":"hilo"},{"modelo":"account.move","id":11,"nombre":"F/1"}]},
+    {"clave":"_prueba:partner:990000001b","odoo_partner_id":990000001,"valor":80,"documentos":[{"modelo":"account.move","id":14,"nombre":"F/4"}]},
+    {"clave":"_prueba:partner:990000002","odoo_partner_id":990000002,"valor":50,"documentos":[{"modelo":"account.move","id":12,"nombre":"F/2"}]},
+    {"clave":"_prueba:partner:990000003","odoo_partner_id":990000003,"valor":7,"documentos":[]}
+  ]'::jsonb);
+  PERFORM senales_actualizar(); PERFORM situacion_guardar(c);
+  ASSERT (SELECT estado FROM situaciones WHERE id = sid) = 'empeoro' AND NOT (SELECT evidencia ? 'cerrada_manual' FROM situaciones WHERE id = sid)
+     AND (SELECT resuelta_en FROM situaciones WHERE id = sid) IS NULL, 'reabre como empeoro si la señal crece';
+  ASSERT EXISTS (SELECT 1 FROM jsonb_array_elements((SELECT historia FROM situaciones WHERE id = sid)) e WHERE e->>'detalle' LIKE 'reapareció tras cierre manual%'), 'historia del reapareció';
 
   -- 3. cancelada reabre. (sid3: pendiente → creada → cancelada)
   PERFORM situacion_delegacion_confirmar(sid3, 778, 'creada', NULL);
@@ -1074,6 +1110,8 @@ BEGIN
   ELSIF p_accion = 'resuelta' THEN
     UPDATE situaciones SET
       estado = 'resuelta', resuelta_en = now(), version = version + 1, updated_at = now(),
+      -- cierre humano pegajoso (ver situacion_guardar): no reabre mientras la señal no crezca.
+      evidencia = coalesce(evidencia, '{}'::jsonb) || jsonb_build_object('cerrada_manual', jsonb_build_object('n', n_senales, 'valor', valor, 'fecha', now(), 'por', 'director')),
       ultimo_cambio = 'cerrada por el director' || coalesce(': ' || v_motivo, ''), ultimo_cambio_en = now(),
       delegacion = CASE WHEN delegacion IS NOT NULL AND delegacion->>'estado' IN ('pendiente', 'creada', 'error') THEN delegacion || jsonb_build_object('estado', 'cerrada_por_director', 'fecha_estado', now()) ELSE delegacion END,
       historia = historia || jsonb_build_object('fecha', now(), 'evento', 'resuelta', 'detalle', 'cerrada por el director' || coalesce(': ' || v_motivo, ''))
@@ -1082,6 +1120,7 @@ BEGIN
 
   ELSIF p_accion = 'reabrir' THEN
     UPDATE situaciones SET
+      evidencia = coalesce(evidencia, '{}'::jsonb) - 'cerrada_manual',   -- reabrir a mano quita la marca del cierre humano
       estado = 'abierta', resuelta_en = NULL, version = version + 1, updated_at = now(),
       ultimo_cambio = 'reabierta por el director' || coalesce(': ' || v_motivo, ''), ultimo_cambio_en = now(),
       historia = historia || jsonb_build_object('fecha', now(), 'evento', 'reabierta', 'detalle', coalesce(v_motivo, 'por el director'))
@@ -1148,6 +1187,10 @@ BEGIN
                    'feedback', CASE WHEN p_estado IN ('hecha', 'cancelada') THEN left(p_detalle, 500) ELSE delegacion->>'feedback' END),
     estado = CASE p_estado WHEN 'hecha' THEN 'resuelta' WHEN 'cancelada' THEN 'abierta' ELSE estado END,
     resuelta_en = CASE p_estado WHEN 'hecha' THEN now() WHEN 'cancelada' THEN NULL ELSE resuelta_en END,
+    -- cierre humano pegajoso: situacion_guardar no la reabre mientras la señal no crezca (n / valor de hoy).
+    evidencia = CASE WHEN p_estado = 'hecha'
+                     THEN coalesce(evidencia, '{}'::jsonb) || jsonb_build_object('cerrada_manual', jsonb_build_object('n', n_senales, 'valor', valor, 'fecha', now(), 'por', v_nombre))
+                     ELSE evidencia END,
     version = CASE WHEN p_estado IN ('hecha', 'cancelada') THEN version + 1 ELSE version END,
     ultimo_cambio = CASE p_estado WHEN 'hecha' THEN 'cerrada por ' || v_nombre || coalesce(': ' || left(p_detalle, 120), '')
                                   WHEN 'cancelada' THEN 'delegación cancelada por ' || v_nombre || coalesce(': ' || left(p_detalle, 120), '')
@@ -1950,10 +1993,10 @@ class QuimibondSyncSituacion(models.TransientModel):
 
 ### Task 5.7: Docs, PR de qb19, despliegue y aceptación del paso 5
 
-- [ ] **Step 1: `addons/qb_situacion/README.md`:** qué hace (delegación ida y vuelta), estados (incluido: si se borra el documento ancla, la actividad se borra con él y cuenta como cancelada), dónde se ve cada cosa (Historial de Sync, `pipeline_logs`, `situacion_salud`), cómo probar a mano (`select situacion_decidir(<id>,'delegar',…)` y esperar 5 min), decisiones (módulo aparte por el manifest congelado; último recurso al usuario/contacto).
+- [ ] **Step 1: `addons/qb_situacion/README.md`:** qué hace (delegación ida y vuelta), estados (incluido: si se borra el documento ancla, la actividad se borra con él y cuenta como cancelada; **hecha** o **cerrada por el director** es pegajoso: la situación no reabre mientras la señal no crezca, y si crece vuelve como "empeoró"), dónde se ve cada cosa (Historial de Sync, `pipeline_logs`, `situacion_salud`), cómo probar a mano (`select situacion_decidir(<id>,'delegar',…)` y esperar 5 min), decisiones (módulo aparte por el manifest congelado; último recurso al usuario/contacto).
 - [ ] **Step 2: `CLAUDE.md` (qb19):** estructura (+`qb_situacion`), "Otros módulos" (+`qb_situacion`), "Modelos sincronizados" (+`_push_actividades_delegadas` → `senales` vía `delegacion_estado`), Crons (push incluye `actividades_delegadas`; pull entiende `crear_actividad`; nota del intervalo fijado por código). `docs/RUNBOOK_DESPLIEGUE.md`: sección "Delegar una situación" con la verificación (`select situacion_delegaciones_abiertas()`, actividad en Odoo, `select delegacion from situaciones where id = …`).
 - [ ] **Step 3: PR** "Situación plan B, paso 5: qb_situacion (delegación ida y vuelta) y pull con payload" (borrador → CI `check` + `odoo-tests` → ready → squash-merge → rama) y PR "Merge main into quimibond" (merge commit). Cuerpo con la plantilla del repo. Luego el CEO: `odoo-update quimibond_intelligence,qb_situacion && odoosh-restart http && odoosh-restart cron` — **`qb_situacion` es módulo nuevo: primero instalarlo desde Apps** (o `odoo-update` no lo instala; alternativa: `odoo-bin -i qb_situacion` en la shell). Después, por MCP de Odoo: `search_records ir.config_parameter [('key','=','quimibond_intelligence.push_models')]`; si existe con un valor explícito (`contacts,users,senales`), borrarlo o dejarlo en `all`: si no, `actividades_delegadas` se omite en silencio y la aceptación del Step 4 falla sin error.
-- [ ] **Step 4: Aceptación (spec §8 paso 5), con el CEO:** `select situacion_decidir(<id real, p.ej. una cartera vencida>, 'delegar', '{"user_id": <odoo_user_id>, "texto": "…", "vence": "2026-10-01"}');` → en ≤ 5 min la actividad aparece en Odoo sobre la factura/contacto (`select delegacion from situaciones where id = <id>` → `estado: creada`, `mail_activity_id`). Marcarla hecha en Odoo → tras el siguiente push horario, `estado: hecha`, situación `resuelta`, historia "cerrada por …". Repetir con cancelar → `abierta`. Anota ids y tiempos en el PR. Comprueba `select * from situacion_salud()` → señal `delegacion_estado` con lote ok.
+- [ ] **Step 4: Aceptación (spec §8 paso 5), con el CEO:** `select situacion_decidir(<id real, p.ej. una cartera vencida>, 'delegar', '{"user_id": <odoo_user_id>, "texto": "…", "vence": "2026-10-01"}');` → en ≤ 5 min la actividad aparece en Odoo sobre la factura/contacto (`select delegacion from situaciones where id = <id>` → `estado: creada`, `mail_activity_id`). Marcarla hecha en Odoo → tras el siguiente push horario, `estado: hecha`, situación `resuelta`, historia "cerrada por …", y **sigue `resuelta` en el push siguiente aunque las facturas sigan vencidas** (`evidencia.cerrada_manual`; solo vuelve, como `empeoro`, si la señal crece). Repetir con cancelar → `abierta`. Anota ids y tiempos en el PR. Comprueba `select * from situacion_salud()` → señal `delegacion_estado` con lote ok.
 
 
 ---
@@ -1964,6 +2007,7 @@ class QuimibondSyncSituacion(models.TransientModel):
 
 **Files:**
 - Create: `addons/qb_situacion/models/situacion.py`
+- Create: `addons/qb_situacion/models/wizards.py`
 - Modify: `addons/qb_situacion/models/__init__.py` (+ `situacion`, `wizards`)
 - Test: `addons/qb_situacion/tests/test_app.py`
 
@@ -2324,7 +2368,7 @@ class QbSituacionIgnorar(models.TransientModel):
                 <header>
                     <button name="action_abrir_delegar" type="object" string="Delegar" class="btn-primary" invisible="estado == 'delegada'"/>
                     <button name="action_abrir_ignorar" type="object" string="Ignorar"/>
-                    <button name="action_cerrar" type="object" string="Cerrar" confirm="¿Cerrar esta situación? Vuelve a aparecer si la señal reaparece."/>
+                    <button name="action_cerrar" type="object" string="Cerrar" confirm="¿Cerrar esta situación? Queda cerrada aunque la señal siga igual; vuelve a aparecer solo si empeora."/>
                     <field name="estado" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -2435,6 +2479,7 @@ VALUES ('info', 'migration', 'Retiro de email-digest: RPCs get_unanswered_client
 ## Riesgos de este plan y cómo se mitigan
 
 - **Delegar sin el pull vivo:** `situacion_delegaciones_aplicar` marca `error` a los 15 min y el correo de la mañana lo dice en el primer bullet (`salud`). El watchdog ya vigila el push; el pull se ve en el Historial de Sync.
+- **Cierre humano y señal viva:** sin `evidencia.cerrada_manual`, cada "hecha" o "cerrada por el director" se reabriría en la siguiente corrida del bot (`situacion_guardar` la ve como "reapareció"). Con la marca, reabre solo si la señal crece. Si el CEO prefiere que reabra siempre, basta quitar el `IF sit.evidencia ? 'cerrada_manual'` de `situacion_guardar`.
 - **Odoo 19 archiva la actividad hecha solo si su tipo tiene `keep_done=True`** (el nuestro lo tiene; sin eso la borra): el hook de `_action_done` deja el evento antes de archivar; el push además lee la actividad archivada como respaldo (`hecha en Odoo (sin evento)`). Cancelar = `unlink` = evento `cancelada`.
 - **`qb_situacion` nuevo en producción:** `odoo-update` no instala módulos nuevos; el CEO lo instala desde Apps la primera vez. El módulo no toca `quimibond_intelligence` más que por herencia.
 - **Un lote vacío de `delegacion_estado` cerraría delegaciones:** por eso el push aborta sin lote si `situacion_delegaciones_abiertas` falla, y `senales_ingestar` solo resuelve señales de ESA señal (las delegaciones viven en `situaciones.delegacion`, no en `senales`): un lote vacío por error deja las delegaciones intactas.
