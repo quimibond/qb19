@@ -14,11 +14,12 @@ Menos texto, más piezas que se conectan:
   proceso se calculan solos (``_sgi_sync_connections``).
 """
 import re
-from datetime import timedelta
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
+
+from .sgi_calendar import sgi_business_days
 
 RE_STAGE = re.compile(r'^\s*([A-Za-z0-9]+(?:\.[0-9]+)*)[\.\)\-:]?\s+(.+?)\s*$')
 
@@ -413,7 +414,7 @@ class SgiProcessDeliverables(models.Model):
             for role in act.role_ids:
                 target = role._sgi_target_label()
                 by_target.setdefault(target, {}).setdefault(role.role, []).append(act)
-        order = ['ejecuta', 'aprueba', 'participa', 'informa']
+        order = ['ejecuta', 'aprueba', 'participa', 'informa', 'escala']
         return [
             (target, [(labels[r], roles[r]) for r in order if r in roles])
             for target, roles in sorted(by_target.items())
@@ -551,21 +552,8 @@ class SgiActivityLinkDeliverable(models.Model):
         taken = to.measure_last_date
         if taken and taken >= delivered:
             return ('fluye', 0.0)
-        waited = sgi_business_days(delivered, now)
+        waited = sgi_business_days(self.env, delivered, now, self.company_id)
         return ('atorado' if waited > self.max_days else 'fluye', float(waited))
-
-
-def sgi_business_days(start, end):
-    """Días hábiles (lunes a viernes) completos entre dos fechas."""
-    if not start or not end or end <= start:
-        return 0
-    day, last = start.date(), end.date()
-    count = 0
-    while day < last:
-        day += timedelta(days=1)
-        if day.weekday() < 5:
-            count += 1
-    return count
 
 
 class SgiActivityDeliverables(models.Model):
@@ -673,13 +661,16 @@ class SgiActivityDeliverables(models.Model):
             label = role._sgi_target_label()
             if role.condition:
                 label = "%s (%s)" % (label, role.condition)
+            if role.role == 'escala' and role.after_days:
+                label = "%s a los %d días hábiles" % (label, role.after_days)
             roles.setdefault(role.role, []).append(label)
         parts = []
         if roles.get('ejecuta'):
             parts.append("Ejecuta: %s." % ", ".join(roles['ejecuta']))
         elif self.automation_level_current == 'automatico':
             parts.append("Automática.")
-        for key, label in (('aprueba', "Aprueba"), ('participa', "Participa"), ('informa', "Se entera")):
+        for key, label in (('aprueba', "Aprueba"), ('participa', "Participa"), ('informa', "Se entera"),
+                           ('escala', "Si se atora, escala a")):
             if roles.get(key):
                 parts.append("%s: %s." % (label, ", ".join(roles[key])))
         if self.input_ids:

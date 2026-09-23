@@ -42,3 +42,4 @@ from . import test_sign_elearning
 from . import test_expansion_kpis
 from . import test_catalog_fase1
 from . import test_structure
+from . import test_spec

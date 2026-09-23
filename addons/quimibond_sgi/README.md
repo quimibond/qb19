@@ -672,6 +672,49 @@ Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
 
 Ejemplo por MCP: `call_model_method("sgi.process", "load_payload", [payload])`.
 
+### Actividades específicas (19.0.30.0.0)
+
+Cada actividad contesta siete preguntas; lo que falte queda en
+**Análisis → Faltantes de especificación** (pivot proceso × faltante) y en un
+aviso arriba de la ficha.
+
+| Pregunta | Campo | Llave de la carga |
+|---|---|---|
+| Qué | nombre + `check_against` | `name`, `check_against` |
+| Quién | rol `ejecuta` | `roles` |
+| Dónde | `exec_channel`, `odoo_menu_id`, `external_system`, `location_id`, `workcenter_id`, `place_note` | `where: {channel, menu (xml_id), external_system, location (nombre completo), workcenter (código), place}` |
+| Cómo | instructivo o `how_steps` | `instruction`, `how_steps` |
+| Cuándo | días en la entrada, o `due_weekday` / `due_business_day` | `inputs[].days`, `due: {weekday: 0-6}` o `{business_day: 1-23}` |
+| Terminado | `done_criteria` + `complete_domain` del entregable | `done_criteria`, `deliverables[].complete_domain` / `complete_criteria` |
+| Si falla | `on_fail` + rol `escala` con `after_days` | `on_fail`, `roles: [{role: "escala", relative: "dueno_proceso", after_days: 3}]` |
+
+- **Entrada condicionada:** `inputs[].applies_domain` (dominio sobre el
+  registro de entrada) y `applies_note`. Si no se cumple, la actividad no
+  aplica a ese registro: no vence ni cuenta como atrasada. `inputs[].match` es
+  el campo de la salida que apunta a la entrada cuando son modelos distintos
+  (ej. `sale_id`); con el mismo modelo no hace falta.
+- **Estado del proceso:** `state` (`borrador` o `piloto`) y `publish: true`.
+  Publicar (botón o carga) exige cero faltantes de tipo error en actividades
+  y que cada indicador tenga meta, fórmula, fuente, responsable y frecuencia.
+  En borrador y piloto todo se carga incompleto; la carga reporta los
+  faltantes como avisos, agrupados por código.
+- **Indicadores:** además `target` (meta), `unit`, `direction` (`up`/`down`),
+  `baseline_value`, `target_date`.
+- **Verbos:** `quimibond_sgi.vague_verbs` (error: «dar seguimiento»,
+  «gestionar»…) y `quimibond_sgi.compare_verbs` (piden `check_against`), en
+  Parámetros del sistema; cambiarlos recalcula los faltantes.
+- **Medición semanal** (**Análisis → Cumplimiento semanal**): por actividad y
+  semana, entradas aplicables, salidas hechas, completas, a tiempo (días
+  hábiles del calendario de la compañía, con festivos) y vencidas abiertas.
+  Va en su propio modelo (`sgi.activity.week.stat`), no en `exec.stat`, porque
+  aquel tiene un renglón por usuario y repetir los totales los multiplicaría.
+- **Por proceso:** % de actividades en Odoo, % en papel/correo/teléfono y %
+  de lo que se hace en Odoo que se mide solo.
+- Escalamiento automático (cron que crea actividades al vencer): fase 2. Los
+  campos y el rol `escala` ya existen.
+
+
+
 ### Limpiezas a mano (con reporte previo)
 
 - **Puestos duplicados y nombres con saltos de línea**:
