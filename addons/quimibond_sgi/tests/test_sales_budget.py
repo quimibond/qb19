@@ -1036,14 +1036,15 @@ class TestSalesBudgetNetDemand(TransactionCase):
         commit = datetime.combine(monday + timedelta(days=1), datetime.min.time())
         so = self.env['sale.order'].create({
             'partner_id': self.client.id, 'team_id': self.team.id,
-            # Pedido de dos semanas antes de la entrega: la precarga solo mira
-            # pedidos del año del pronóstico o el anterior (no de 2026).
-            'date_order': commit - timedelta(days=14),
             'commitment_date': commit,
             'order_line': [(0, 0, {
                 'product_id': self.product.id, 'product_uom_qty': qty,
                 'product_uom_id': (uom or self.uom_m).id, 'price_unit': 1.0})]})
         so.action_confirm()
+        # Pedido de dos semanas antes de la entrega: la precarga solo mira
+        # pedidos del año del pronóstico o el anterior. Se fija DESPUÉS de
+        # confirmar: action_confirm reescribe date_order con la fecha de hoy.
+        so.date_order = commit - timedelta(days=14)
         return so
 
     def test_01_net_demand_order_bigger(self):
