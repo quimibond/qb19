@@ -144,6 +144,12 @@ class TestActivityMeasurement(TransactionCase):
     def test_12_chain_flow_and_auto_nc(self):
         """El eslabón atorado avisa al dueño y, si persiste 7 días, levanta
         NC automática; al fluir, se limpia."""
+        # La fuente de NC «eslabón atorado» está apagada en producción (decisión
+        # de MAST): la prueba la enciende para probar el mecanismo, no el dato.
+        source = self.env.ref('quimibond_sgi.sgi_alert_source_chain_stuck')
+        previous = source.enabled
+        source.enabled = True
+        self.addCleanup(setattr, source, 'enabled', previous)
         marker = 'Evidencia fase3 cadena'
         self.env['res.partner'].create({'name': marker})
         frm = self._activity(
