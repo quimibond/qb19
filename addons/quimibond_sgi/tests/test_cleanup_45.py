@@ -59,10 +59,10 @@ class TestCleanup45(TransactionCase):
         old_b = self.Process.create({'code': 'XOLDB', 'name': 'Viejo B'})
         new_1 = self.Process.create({'code': 'XNEW1', 'name': 'Nuevo 1'})
         new_2 = self.Process.create({'code': 'XNEW2', 'name': 'Nuevo 2'})
-        proc_a = self._doc('P-XA', old_a)                       # sustituido por new_2
-        fmt_a = self._doc('F-P-XA-01', old_a, parent=proc_a, doc_type='formato')
+        proc_a = self._doc('P-A91', old_a)                       # sustituido por new_2
+        fmt_a = self._doc('F-P-A91-01', old_a, parent=proc_a, doc_type='formato')
         other_a = self._doc('DAT-XA', old_a, doc_type='dat')    # sigue el mapa → new_1
-        proc_b = self._doc('P-XB', old_b)                        # mapa → new_2
+        proc_b = self._doc('P-A92', old_b)                        # mapa → new_2
         # Una revisión vieja de DAT-XA colgada de otro proceso: viaja con su
         # clave (la restricción de familia no deja separarlas).
         old_rev = self.Document.create({
@@ -95,8 +95,8 @@ class TestCleanup45(TransactionCase):
     def test_04_process_vigente_obsoletes_replaced_documents(self):
         old = self.Process.create({'code': 'XOLDC', 'name': 'Viejo C'})
         new = self.Process.create({'code': 'XNEWC', 'name': 'Nuevo C'})
-        replaced = self._doc('P-XC', old)
-        fmt = self._doc('F-P-XC-01', old, parent=replaced, doc_type='formato')
+        replaced = self._doc('P-A93', old)
+        fmt = self._doc('F-P-A93-01', old, parent=replaced, doc_type='formato')
         new.replaced_document_ids = [(6, 0, replaced.ids)]
         new.write({'state': 'piloto'})
         self.assertEqual(replaced.sgi_state, 'vigente', "En piloto conviven.")
