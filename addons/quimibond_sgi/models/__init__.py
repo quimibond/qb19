@@ -50,3 +50,5 @@ from . import sgi_indicator_detail
 from . import sgi_indicator_i3
 from . import sgi_indicator_p21
 from . import sgi_indicator_formula
+from . import sgi_indicator_plan
+from . import sgi_indicator_trajectory
