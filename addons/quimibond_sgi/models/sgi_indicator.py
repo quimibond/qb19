@@ -167,9 +167,11 @@ class SgiIndicator(models.Model):
     monthly_budget = fields.Float(string="Presupuesto mensual",
                                   help="Meta mensual para el cálculo de presupuesto de ventas.")
     nc_on_red = fields.Boolean(
-        string="Generar NC en rojo", default=False,
-        help="Actívese indicador por indicador cuando el dato ya se validó contra "
-             "el Excel F-P-A10-03. Una medición roja validada creará una NC automática.")
+        string="NC automática", default=False,
+        help="Con el indicador oficial, abre una no conformidad por persistencia "
+             "(I-5): dos periodos seguidos en rojo, o uno solo si el indicador es "
+             "crítico. Nunca con muestra chica ni sin dato, y no duplica la NC "
+             "mientras la anterior siga abierta.")
     active = fields.Boolean(default=True)
 
     measure_ids = fields.One2many('sgi.indicator.measure', 'indicator_id', string="Mediciones")
