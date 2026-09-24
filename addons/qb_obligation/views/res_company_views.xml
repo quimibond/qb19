@@ -25,6 +25,7 @@
                             <field name="obligation_escalation_user_id"/>
                         </group>
                         <group string="Reglas">
+                            <field name="obligation_activity_mirror"/>
                             <field name="obligation_residual_tolerance"/>
                             <field name="obligation_escalate_days"/>
                             <field name="obligation_escalate_amount"/>

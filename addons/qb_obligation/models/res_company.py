@@ -30,3 +30,8 @@ class ResCompany(models.Model):
         string='Escalar si el saldo es mayor a', default=100000.0, currency_field='currency_id')
     obligation_escalate_overdue_days = fields.Integer(
         string='Escalar si lleva vencida más de (días)', default=30)
+    obligation_activity_mirror = fields.Boolean(
+        string='Reflejar en actividades de Odoo', default=False,
+        help='Apagado (default desde 3.2.0): las obligaciones no crean actividades en facturas, pedidos ni '
+             'contactos, y las que ya existían se quitan; la obligación sigue viva en la app Obligaciones. '
+             'Encendido: cada obligación abierta es una actividad nativa sobre su documento o contacto.')
