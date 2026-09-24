@@ -2,10 +2,12 @@
 """I-4, I-6, I-8 y P-40 (2026-09-24).
 
 - I-4 **Plan de acción en la medición roja**: causa, acciones (``sgi.action.line``
-  con origen ``measure_id``: responsable y fecha compromiso) y una actividad al
-  dueño del indicador que vence el día 10 del mes siguiente al periodo
-  (``quimibond_sgi.red_plan_due_day``). Si el día pasa sin causa ni acción, el
-  cron diario escala a Dirección. Las acciones vencidas ya escalan por
+  con origen ``measure_id``: responsable y fecha compromiso) y, solo en
+  indicadores **oficiales**, una actividad al dueño del indicador que vence el
+  día 10 del mes siguiente al periodo (``quimibond_sgi.red_plan_due_day``). Si
+  el día pasa sin causa ni acción, el cron diario escala a Dirección. En prueba
+  el rojo pide el plan en la ficha, sin actividad ni escalamiento. Nunca con
+  «sin dato» ni «muestra chica». Las acciones vencidas ya escalan por
   ``cron_overdue_actions``.
 - I-6 **Calendario de cálculo**: los crons de medición corren a diario y solo
   miden el tercer día hábil del mes (``quimibond_sgi.monthly_measure_business_day``)
@@ -137,9 +139,12 @@ class SgiIndicatorMeasurePlan(models.Model):
         el día 10 (idempotente)."""
         Cron = self.env['sgi.cron']
         for measure in self:
-            if not measure.plan_required or measure.plan_done:
-                continue
             indicator = measure.indicator_id
+            # Solo indicadores oficiales agendan y escalan; en prueba el rojo
+            # pide causa y acción en la ficha, sin actividad.
+            if (indicator.status != 'oficial' or not measure.plan_required
+                    or measure.plan_done):
+                continue
             user_id = indicator.responsible_id.id or Cron._sgi_manager_user_id()
             if not user_id:
                 continue
@@ -174,7 +179,7 @@ class SgiIndicatorMeasurePlan(models.Model):
         # Dirección el primer día.
         candidates = self.search([
             ('semaphore', '=', 'rojo'), ('state', 'in', ('capturado', 'validado')),
-            ('small_sample', '=', False),
+            ('small_sample', '=', False), ('indicator_id.status', '=', 'oficial'),
             ('period_date', '>=', today - relativedelta(months=3))])
         for measure in candidates.filtered(
                 lambda m: m.plan_required and not m.plan_done and m.plan_due and m.plan_due < today):

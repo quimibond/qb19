@@ -955,11 +955,12 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
 - **I-4, medición roja con plan.** Una medición en rojo con dato (no «sin
   dato» ni muestra chica) pide **causa** y al menos una **acción**
   (`sgi.action.line` con origen `measure_id`: descripción, responsable y fecha
-  compromiso). Al quedar roja agenda una actividad al dueño del indicador
-  (fallback Jefe MAST) que vence el **día 10 del mes siguiente** al periodo
-  (`quimibond_sgi.red_plan_due_day`); con causa y acción la actividad se da
-  por hecha. Si el día pasa sin plan, el cron diario escala a Dirección (una
-  actividad, idempotente). Las acciones cuelgan su actividad espejo del
+  compromiso). Si el indicador es **oficial**, al quedar roja agenda una
+  actividad al dueño del indicador (fallback Jefe MAST) que vence el **día 10
+  del mes siguiente** al periodo (`quimibond_sgi.red_plan_due_day`); con causa
+  y acción la actividad se da por hecha, y si el día pasa sin plan el cron
+  diario escala a Dirección (una actividad, idempotente). En prueba el rojo
+  pide el plan en la ficha, sin actividad ni escalamiento. Las acciones cuelgan su actividad espejo del
   indicador y las vencidas escalan por `cron_overdue_actions` como las demás.
 - **I-6, calendario de cálculo.** Los crons «Mediciones de indicadores» y
   «Mediciones semanales» corren **a diario** (migración 41.0.0) y miden solo

@@ -78,6 +78,18 @@ class TestIndicatorPlan(TransactionCase):
         self.assertEqual(line.origin_display, measure.display_name)
         self.assertTrue(line.activity_id, "La acción cuelga su actividad del indicador.")
 
+    def test_02b_en_prueba_pide_plan_sin_actividad(self):
+        indicator, measure = self._red('ZP-02B', status='prueba')
+        self.assertTrue(measure.plan_required, "La ficha sí pide causa y acción.")
+        self.assertFalse(self._plan_activities(indicator), "En prueba no hay actividad.")
+        self.Measure._sgi_escalate_red_plans(date(2047, 7, 1))
+        self.assertFalse(self.Activity.search([('res_model', '=', 'sgi.indicator'),
+                                               ('res_id', '=', indicator.id)]))
+        indicator.action_set_official()
+        measure.write({'value': 6.0})
+        self.assertEqual(len(self._plan_activities(indicator)), 1,
+                         "Al pasar a oficial, el siguiente dato rojo agenda.")
+
     def test_03_sin_plan_escala_a_direccion(self):
         director = new_test_user(self.env, login='plan_director',
                                  groups='base.group_user,quimibond_sgi.group_sgi_director')
