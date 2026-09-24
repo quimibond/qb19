@@ -148,6 +148,11 @@ class TestAuditHardening(TransactionCase):
     # A4 — el eslabón re-atorado con NC previa CERRADA genera NC nueva
     # ------------------------------------------------------------------
     def test_a4_chain_second_episode(self):
+        # La fuente está apagada en producción; aquí se prueba el mecanismo.
+        source = self.env.ref('quimibond_sgi.sgi_alert_source_chain_stuck')
+        previous = source.enabled
+        source.enabled = True
+        self.addCleanup(setattr, source, 'enabled', previous)
         Process = self.env['sgi.process']
         p_from = Process.create({'code': 'ZA4F', 'name': 'Origen A4'})
         p_to = Process.create({'code': 'ZA4T', 'name': 'Destino A4'})

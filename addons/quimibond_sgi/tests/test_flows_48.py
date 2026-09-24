@@ -51,15 +51,31 @@ class TestFlows48(TransactionCase):
                 proc.in_flow_ids or proc.out_flow_ids,
                 "El proceso %s quedó aislado en el mapa (sin flujos)" % proc.name)
 
+    def _chain(self):
+        """Tres procesos propios encadenados (tejido → tintorería → acabado):
+        los semilla P-* están archivados en producción y sus flujos viven en
+        los procesos nuevos, así que la prueba no depende de ellos."""
+        Process = self.env['sgi.process']
+        tej = Process.create({'code': 'XF48A', 'name': 'Tejido F48'})
+        tint = Process.create({'code': 'XF48B', 'name': 'Tintorería F48'})
+        aca = Process.create({'code': 'XF48C', 'name': 'Acabado F48'})
+        mo = self.env['ir.model']._get('mrp.production')
+        Flow = self.env['sgi.process.flow']
+        Flow.create({'name': 'Rollo crudo', 'from_process_id': tej.id,
+                     'to_process_id': tint.id, 'odoo_model_id': mo.id})
+        Flow.create({'name': 'Rollo teñido', 'from_process_id': tint.id,
+                     'to_process_id': aca.id, 'odoo_model_id': mo.id})
+        return tej, tint, aca
+
     def test_04_tintoreria_encadenada(self):
         """El caso que faltaba: tintorería con entrada (tejido) y salida (acabado)."""
-        tint = self.env.ref('quimibond_sgi.proc_tintoreria')
+        _tej, tint, _aca = self._chain()
         self.assertTrue(tint.in_flow_ids)
         self.assertTrue(tint.out_flow_ids)
 
     def test_05_ficha_de_proceso(self):
         """La ficha muestra lo ligado: documentos, indicadores, riesgos, modelos."""
-        proc = self.env.ref('quimibond_sgi.proc_ventas')
+        proc, _tint, _aca = self._chain()
         doc = self.env['documents.document'].create({
             'name': 'F-P-A28-12 COTIZACION.xlsx', 'type': 'binary',
             'sgi_is_controlled': True, 'sgi_doc_type': 'formato',
@@ -68,7 +84,7 @@ class TestFlows48(TransactionCase):
         })
         self.assertIn(doc, proc.linked_document_ids)
         self.assertGreaterEqual(proc.document_count, 1)
-        self.assertTrue(proc.odoo_model_ids, "Ventas debe mostrar módulos conectados")
+        self.assertTrue(proc.odoo_model_ids, "El proceso debe mostrar módulos conectados")
         action = proc.action_open_documents()
         self.assertEqual(action['res_model'], 'documents.document')
 

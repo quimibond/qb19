@@ -1060,7 +1060,14 @@ el build de `main`: al borrar un menú Odoo borra solo su xmlid y el log lo leí
   Procesos, Mejora, Dirección, Administración SGI; las dos de Calidad
   cuelgan de esa app), y `test_02` si vuelve cualquier xmlid retirado.
 
-Pruebas: `TestCleanup45` 01–04.
+Pruebas: `TestCleanup45` 01–04. La suite completa (561) corrida en la copia
+de producción destapó cuatro pruebas viejas que dependían de datos de la
+copia, no del código: `TestFlows48` 04 y 05 usaban los procesos semilla
+P-TIN y P-VEN (archivados, sus flujos viven en C4 y C2) y ahora arman su
+propia cadena; `TestActivityMeasurement.test_12` y
+`TestAuditHardening.test_a4` prueban la NC automática del eslabón atorado
+con la fuente `eslabon_atorado` apagada en producción y ahora la encienden
+dentro de la prueba (45.0.5).
 
 ## Estructura del SGI, pasos 3 y 4: ficha de proceso y ficha de actividad (19.0.44.1.0)
 
