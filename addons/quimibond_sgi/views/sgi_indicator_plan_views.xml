@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_measure_view_form_plan" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.form.plan</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_measure_view_form"/>
+        <field name="arch" type="xml">
+            <field name="value" position="after">
+                <field name="window_label"/>
+            </field>
+            <xpath expr="//group[@string='Nota']" position="before">
+                <field name="plan_required" invisible="1"/>
+                <field name="plan_done" invisible="1"/>
+                <group string="Plan de acción (medición roja)" invisible="not plan_required">
+                    <div class="alert alert-danger mb-2" role="alert" colspan="2"
+                         invisible="plan_done">
+                        <b>Falta el plan:</b> causa y al menos una acción con responsable y
+                        fecha, antes del <field name="plan_due" readonly="1" nolabel="1" class="oe_inline"/>.
+                        Después de esa fecha se escala a Dirección.
+                    </div>
+                    <field name="cause" placeholder="Por qué salió en rojo"/>
+                    <field name="action_line_ids" context="{'default_measure_id': id}" nolabel="1" colspan="2">
+                        <list editable="bottom"
+                              decoration-danger="state == 'vencida'"
+                              decoration-success="state == 'terminada'">
+                            <field name="name"/>
+                            <field name="responsible_id"/>
+                            <field name="date_commit"/>
+                            <field name="date_done"/>
+                            <field name="progress"/>
+                            <field name="state"/>
+                            <field name="action_type" column_invisible="1"/>
+                            <field name="measure_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_measure_view_list_plan" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.list.plan</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_measure_view_list"/>
+        <field name="arch" type="xml">
+            <field name="value" position="after">
+                <field name="window_label" optional="show"/>
+            </field>
+            <field name="semaphore" position="after">
+                <field name="plan_required" column_invisible="1"/>
+                <field name="plan_done" optional="show" string="Plan"
+                       invisible="not plan_required"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="sgi_indicator_view_form_window" model="ir.ui.view">
+        <field name="name">sgi.indicator.form.window</field>
+        <field name="model">sgi.indicator</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_indicator_view_form"/>
+        <field name="arch" type="xml">
+            <field name="calc_mode" position="after">
+                <field name="window_label"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="sgi_management_review_view_form_validate" model="ir.ui.view">
+        <field name="name">sgi.management.review.form.validate</field>
+        <field name="model">sgi.management.review</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_management_review_view_form"/>
+        <field name="arch" type="xml">
+            <button name="action_load_inputs" position="after">
+                <button name="action_validate_measures" type="object"
+                        string="Validar mediciones del periodo"
+                        invisible="state == 'cerrada'"
+                        groups="quimibond_sgi.group_sgi_manager"
+                        confirm="Valida todas las mediciones capturadas del periodo de esta revisión y abre los rojos que aún no tienen causa ni acción. ¿Continuar?"/>
+            </button>
+        </field>
+    </record>
+</odoo>

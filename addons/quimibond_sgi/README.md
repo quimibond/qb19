@@ -948,6 +948,37 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   siga abierta la medición nueva se liga a esa misma NC en vez de abrir otra.
   Sigue exigiendo indicador oficial y medición validada.
 
+## Plan de acción en rojo, calendario y ventana (I-4, I-6, I-8, P-40; 19.0.41.0.0)
+
+`models/sgi_indicator_plan.py`.
+
+- **I-4, medición roja con plan.** Una medición en rojo con dato (no «sin
+  dato» ni muestra chica) pide **causa** y al menos una **acción**
+  (`sgi.action.line` con origen `measure_id`: descripción, responsable y fecha
+  compromiso). Al quedar roja agenda una actividad al dueño del indicador
+  (fallback Jefe MAST) que vence el **día 10 del mes siguiente** al periodo
+  (`quimibond_sgi.red_plan_due_day`); con causa y acción la actividad se da
+  por hecha. Si el día pasa sin plan, el cron diario escala a Dirección (una
+  actividad, idempotente). Las acciones cuelgan su actividad espejo del
+  indicador y las vencidas escalan por `cron_overdue_actions` como las demás.
+- **I-6, calendario de cálculo.** Los crons «Mediciones de indicadores» y
+  «Mediciones semanales» corren **a diario** (migración 41.0.0) y miden solo
+  cuando toca: el tercer día hábil del mes
+  (`quimibond_sgi.monthly_measure_business_day`, calendario de la compañía)
+  y el lunes. Si ese día el cron no corrió, miden en la siguiente corrida
+  mientras el periodo anterior siga sin mediciones. A mano
+  (`cron_indicators()` sin `scheduled`) miden siempre, como antes.
+- **I-8, ventana visible.** `window_label` en el indicador (junto al modo) y
+  en la medición (junto al valor): «Mes», «Semana», «3 meses móviles», «12
+  meses móviles», «90 días al cierre», «Al cierre», o la ventana de cada
+  término en el modo configurable («Mes / Acumulado al cierre»).
+- **P-40, validación masiva.** Botón «Validar mediciones del periodo» en la
+  Revisión por la Dirección (Jefe MAST): valida las capturadas del periodo de
+  la revisión, deja el conteo en el chatter y abre la lista de rojos que aún
+  no tienen causa ni acción.
+
+Pruebas: `TestIndicatorPlan` 01–07.
+
 ## Fórmula configurable (19.0.40.0.0)
 
 Modo de cálculo `configurable` (`models/sgi_indicator_formula.py`): el

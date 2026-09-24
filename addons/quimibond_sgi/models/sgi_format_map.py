@@ -105,6 +105,10 @@ class SgiConfig(models.AbstractModel):
         # Re-proceso Tintorería (106) y Re-proceso Acabado (107); «Acabado
         # producto en proceso» (151) entra cuando producción lo confirme.
         'quimibond_sgi.rework_picking_type_ids': '106,107',
+        # I-6: día hábil del mes en que se miden los indicadores mensuales.
+        'quimibond_sgi.monthly_measure_business_day': '3',
+        # I-4: día del mes siguiente en que vence la causa y acción de un rojo.
+        'quimibond_sgi.red_plan_due_day': '10',
         # I-2: mínimo de casos para que una medición cuente para NC.
         'quimibond_sgi.indicator_min_sample': '5',
         # P-7: no surtir lotes sin liberar (models/sgi_release.py).
