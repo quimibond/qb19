@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Obligaciones',
-    'version': '19.0.3.1.1',
+    'version': '19.0.3.2.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Accounting',
     'summary': 'Obligaciones vivas: qué hay que hacer, de quién es, sobre qué documento, cómo se prueba y cuándo vence.',
@@ -30,6 +30,11 @@ Quién es el dueño: el buzón que recibió el correo si es usuario de Odoo; si
 no, el encargado que la memoria aprendió para ese contacto y área
 (qb_memoria); si no, el dueño del área configurado en la compañía.
 Escalación a Dirección tras N días abierta y recordatorio diario por dueño.
+
+Desde 3.2.0 el espejo en actividades está apagado por default (Ajustes →
+Compañías → Obligaciones → "Reflejar en actividades de Odoo"): las
+obligaciones viven solo en la app y no aparecen como actividades en
+contactos ni documentos.
     """,
     'author': 'Quimibond',
     'website': 'https://quimibond.com',

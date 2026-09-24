@@ -7,6 +7,14 @@ comercial, operaciones, compras, finanzas, SGI y RH: cambia la regla de
 cierre, no el sistema. El cierre por evidencia es una consulta, nunca el
 juicio de un modelo.
 
+> **Desde 3.2.0 el espejo en actividades está apagado** (decisión del CEO,
+> 2026-09-24): las obligaciones no crean actividades en contactos ni
+> documentos y las que había se quitaron en el update (migración). Viven solo
+> en la app Obligaciones. Se enciende por compañía en Ajustes → Compañías →
+> Obligaciones → *Reflejar en actividades de Odoo*; el cron horario crea o
+> quita las actividades según el interruptor. Lo que sigue describe el espejo
+> encendido.
+
 **No es una app aparte.** Cada obligación abierta es una actividad nativa de
 Odoo (`mail.activity`, tipo *Obligación*) sobre su documento ancla (pedido,
 compra, factura) o, si no tiene, sobre el contacto. Se ve en el reloj de

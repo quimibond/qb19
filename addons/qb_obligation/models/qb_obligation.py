@@ -354,9 +354,20 @@ class QbObligation(models.Model):
             except Exception:  # noqa: BLE001 — el espejo no puede romper la obligación
                 _logger.exception('qb.obligation %s: no se pudo sincronizar la actividad', rec.id)
 
+    def _activity_mirror_enabled(self):
+        self.ensure_one()
+        return bool((self.company_id or self.env.company).obligation_activity_mirror)
+
     def _activity_sync_one(self, act_type):
         self.ensure_one()
         activity = self.activity_id.exists() if self.activity_id else self.env['mail.activity']
+        if self.state in OPEN_STATES and not self._activity_mirror_enabled():
+            # Espejo apagado (compañía): la obligación sigue abierta en la app, sin actividad.
+            # El unlink lleva qb_obligation_skip_activity en el contexto: no descarta la obligación.
+            if activity:
+                activity.sudo().unlink()
+                super(QbObligation, self).write({'activity_id': False})
+            return
         if self.state not in OPEN_STATES:
             if activity:
                 if self.state == 'done':
@@ -716,7 +727,8 @@ class QbObligation(models.Model):
             _logger.exception('qb.obligation: no se pudieron traer los pendientes del correo')
         self._close_by_evidence()
         self._escalate()
-        self.search([('state', 'in', OPEN_STATES), ('activity_id', '=', False)])._activity_sync()
+        # Con el espejo encendido crea las actividades que falten; apagado, quita las que sobren.
+        self.search([('state', 'in', OPEN_STATES)])._activity_sync()
         return True
 
     # El cron de producción (noupdate) sigue llamando al nombre del piloto.
