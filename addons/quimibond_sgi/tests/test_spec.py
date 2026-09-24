@@ -357,6 +357,7 @@ class TestSpec(TransactionCase):
                                      'measure_domain': "[]", 'measure_date_field': 'create_date'})
         payload = {'processes': [{'code': 'XL9', 'name': 'Carga P-4', 'activities': [{
             'number': 1, 'name': 'Cerrar la tarea programada',
+            'roles': [{'role': 'ejecuta', 'job': self.job.id}],
             'inputs': [{'code': 'XL9-IN', 'due_field': 'date_deadline', 'offset_days': -2}],
             'outputs': ['XL9-OUT']}]}]}
         result = self.Process.load_payload(payload)
