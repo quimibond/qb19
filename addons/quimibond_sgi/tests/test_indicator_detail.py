@@ -64,7 +64,8 @@ class TestIndicatorDetail(TransactionCase):
         self.assertEqual(measure.state, 'sin_dato')
         self.assertFalse(measure.semaphore, "Gris: sin semáforo.")
         self.assertFalse(ind.last_semaphore)
-        measure.state = 'validado'
+        measure.action_validate()
+        self.assertEqual(measure.state, 'sin_dato', "Sin dato no se valida.")
         measure._sgi_maybe_create_nc()
         self.assertFalse(measure.alert_id)
 
