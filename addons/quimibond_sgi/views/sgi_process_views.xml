@@ -98,18 +98,6 @@
         </field>
     </record>
 
-    <record id="sgi_process_flow_action" model="ir.actions.act_window">
-        <field name="name">Flujos entre procesos</field>
-        <field name="res_model">sgi.process.flow</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_process_flow_view_search"/>
-        <field name="context">{'search_default_group_from': 1, 'search_default_vigentes': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Cada flecha del mapa de procesos es una entrega real</p>
-            <p>Un flujo dice <b>qué</b> entrega un proceso a otro, <b>con qué formato</b> y <b>cuándo se acepta</b>. Si el entregable vive en Odoo (pedido, OF, remisión, inspección…), el botón <i>Ver registros</i> abre las entregas reales; los flujos sin modelo son entregables documentales. No se capturan: salen solos de lo que cada actividad recibe y entrega (catálogo de entregables).</p>
-        </field>
-    </record>
-
     <!-- ============ PROCESOS ============ -->
     <record id="sgi_process_view_kanban" model="ir.ui.view">
         <field name="name">sgi.process.kanban</field>
@@ -437,17 +425,4 @@
             <p>Edite fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
     </record>
 
-    <record id="sgi_process_action_panel" model="ir.actions.act_window">
-        <field name="name">Panel de procesos</field>
-        <field name="res_model">sgi.process</field>
-        <field name="view_mode">kanban,form</field>
-        <field name="domain">[('parent_id', '!=', False)]</field>
-        <field name="context">{'search_default_group_parent': 1}</field>
-        <field name="search_view_id" ref="sgi_process_view_search"/>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Panel de salud de procesos</p>
-            <p>Los procesos agrupados por macroproceso. El semáforo se calcula solo:
-            <b>rojo</b> = riesgo alto abierto, o NC abiertas con KPI en rojo;
-            <b>amarillo</b> = alguna NC, acción vencida o KPI en rojo;
-            <b>verde</b> = nada abierto. La tarjeta muestra el porqué del color.</p></field>
-    </record>
 </odoo>

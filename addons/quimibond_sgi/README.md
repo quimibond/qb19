@@ -1016,6 +1016,51 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## Limpieza antes de producción (19.0.45.0.0)
+
+Regla del CEO (2026-09-24): **menús, acciones y vistas sin uso se borran;
+registros con datos se archivan o se religan.** `models/sgi_cleanup.py`,
+`migrations/19.0.45.0.0/post-migrate.py`, `tests/test_cleanup_45.py`.
+
+- **Menús retirados (13):** «Datos técnicos» y sus 8 hijos (actividades,
+  roles, entregables, cadena, flujos y los tres «Mis…» en lista), «Mediciones
+  que me tocan», «Mis acuses de lectura», «Tendencia de ejecuciones» y
+  «Concentrado de NC» (ahora es el filtro **Concentrado (F-P-G05-02)** de la
+  lista de No conformidades). **Mejoras** y **Lecciones aprendidas** pasan
+  al menú Mejora: son registros, no análisis. Diagnóstico conserva
+  Diagnóstico del SGI, Cobertura de medición, Cumplimiento de
+  procedimientos, Faltantes de especificación y Cumplimiento semanal.
+- **Acciones y vistas retiradas (16):** las que solo colgaban de esos menús
+  más tres huérfanas (`sgi_process_action_panel`, `sgi_audit_finding_action`,
+  `sgi_sales_budget_line_action`) y las dos vistas que solo ellas usaban.
+  Las acciones con botón en «Acciones» y los reportes se quedan. La lista
+  completa es `SGI_REMOVED_XMLIDS`; la migración los borra por xmlid para
+  que producción quede igual que `main`.
+- **Studio:** la migración borra los dos menús «Tipo de Documento» creados
+  desde Studio bajo el raíz del SGI (y su acción), lista en el log las
+  vistas de Studio sobre modelos `sgi.*` (no las borra sin verlas) y borra
+  los dos campos «Máquina» de `approval.request` solo si siguen vacíos. Los
+  campos «Máquina» de Compras, Inventario y Aprobaciones con datos, y los de
+  Mantenimiento («requiere paro de máquina», insumo de MT-01), se quedan.
+- **Religado, no archivo:** los 488 documentos, 24 riesgos y el indicador
+  TR-03 de los procesos P-*/MP-* archivados pasan al proceso nuevo
+  (`_sgi_relink_from_archived`, mapa `SGI_RELINK_MAP`). Primera regla: un
+  documento que está en «Procedimientos que sustituye» de un proceso nuevo
+  va a ese proceso, con su familia, aunque el mapa diga otro. Segunda:
+  MP-ADM va a S3 por default y sus documentos se listan uno por uno en el
+  log (`grep "SGI 45: REVISAR"`) para revisarlos.
+- **Retiro por ola:** cuando un proceso pasa a **vigente**, sus documentos
+  sustituidos pasan solos a **obsoleto** (`_sgi_obsolete_replaced_documents`,
+  con nota en el chatter de ambos). Así los 50 procedimientos P-* se retiran
+  proceso por proceso y nunca conviven dos «vigentes» para la misma gente.
+  En piloto conviven a propósito.
+- **Prueba de guardia:** `TestCleanup45.test_01` falla si aparece bajo el
+  raíz del SGI un menú que no descienda de las cinco entradas (Inicio,
+  Procesos, Mejora, Dirección, Administración SGI; las dos de Calidad
+  cuelgan de esa app), y `test_02` si vuelve cualquier xmlid retirado.
+
+Pruebas: `TestCleanup45` 01–04.
+
 ## Estructura del SGI, pasos 3 y 4: ficha de proceso y ficha de actividad (19.0.44.1.0)
 
 `models/sgi_structure.py`, `views/sgi_structure_views.xml`. Solo presentación

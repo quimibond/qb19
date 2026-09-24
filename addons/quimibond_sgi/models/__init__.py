@@ -55,3 +55,4 @@ from . import sgi_indicator_trajectory
 from . import sgi_my_procedure
 from . import sgi_my_procedure_screen
 from . import sgi_structure
+from . import sgi_cleanup

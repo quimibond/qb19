@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Navegación SGI: SEIS entradas, máximo tres niveles (22-sep-2026).
+    <!-- Navegación SGI: CINCO entradas, máximo tres niveles (24-sep-2026).
 
-         Inicio · Procesos · Mejora · Documentos · Análisis · Configuración
+         Inicio · Procesos · Mejora · Dirección · Administración SGI
 
          Antes eran 14 entradas con tres tableros y las actividades en tres
          lugares. Lo que se opera a diario vive en su app (evaluación de
@@ -48,6 +48,10 @@
     <menuitem id="menu_sgi_internal_complaints" name="Quejas y sugerencias"
               parent="menu_sgi_improvement_group" action="sgi_internal_complaint_action"
               sequence="25"/>
+    <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_improvement_group"
+              action="sgi_improvement_action" sequence="26"/>
+    <menuitem id="menu_sgi_lessons" name="Lecciones aprendidas"
+              parent="menu_sgi_improvement_group" action="sgi_nc_lessons_action" sequence="27"/>
     <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_improvement_group"
               sequence="30"/>
     <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
@@ -104,10 +108,10 @@
               action="sgi_indicator_action" sequence="10"/>
     <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_admin_indicators"
               action="sgi_measure_action" sequence="20"/>
-    <menuitem id="menu_sgi_my_measures" name="Mediciones que me tocan" parent="menu_sgi_admin_indicators"
-              action="sgi_measure_action_mine" sequence="30"/>
 
-    <!-- 5.3 Diagnóstico: faltantes, cobertura, cumplimiento, tendencia -->
+    <!-- 5.3 Diagnóstico: diagnóstico, cobertura, cumplimiento, faltantes y
+         cumplimiento semanal (CEO 2026-09-24: Tendencia se retiró; el
+         Concentrado de NC es el filtro «Concentrado» de la lista de NC). -->
     <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_admin" sequence="30"/>
     <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_analysis"
               action="sgi_diagnostic_action" sequence="10"/>
@@ -116,23 +120,13 @@
     <menuitem id="menu_sgi_compliance" name="Cumplimiento de procedimientos"
               parent="menu_sgi_analysis" action="sgi_activity_compliance_action"
               sequence="30"/>
-    <menuitem id="menu_sgi_analysis_trend" name="Tendencia de ejecuciones"
-              parent="menu_sgi_analysis" action="sgi_activity_exec_stat_action_trend"
-              sequence="40"/>
-    <menuitem id="menu_sgi_nc_concentrado" name="Concentrado de NC"
-              parent="menu_sgi_analysis" action="sgi_nc_action_concentrado"
-              sequence="50"/>
-    <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_analysis"
-              action="sgi_improvement_action" sequence="60"/>
-    <menuitem id="menu_sgi_lessons" name="Lecciones aprendidas"
-              parent="menu_sgi_analysis" action="sgi_nc_lessons_action" sequence="70"/>
+    <!-- Faltantes de especificación y Cumplimiento semanal se declaran en
+         views/sgi_activity_spec_views.xml (secuencias 80 y 90). -->
 
     <!-- 5.4 Firmas de lectura -->
     <menuitem id="menu_sgi_admin_signatures" name="Firmas de lectura" parent="menu_sgi_admin" sequence="40"/>
     <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_admin_signatures"
               action="sgi_document_ack_action" sequence="10"/>
-    <menuitem id="menu_sgi_my_acks" name="Mis acuses de lectura" parent="menu_sgi_admin_signatures"
-              action="sgi_document_ack_action_mine" sequence="20"/>
 
     <!-- 5.5 Configuración -->
     <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_admin" sequence="50"/>
@@ -159,25 +153,11 @@
     <menuitem id="menu_sgi_config_alert_sources" name="Fuentes de NC automáticas" parent="menu_sgi_config"
               action="sgi_alert_source_action" sequence="80"/>
 
-    <!-- 5.6 Datos técnicos del procedimiento vivo (hasta la ficha de proceso) -->
-    <menuitem id="menu_sgi_admin_data" name="Datos técnicos" parent="menu_sgi_admin" sequence="60"/>
-    <menuitem id="menu_sgi_activities" name="Actividades" parent="menu_sgi_admin_data"
-              action="sgi_process_activity_action" sequence="10"/>
-    <menuitem id="menu_sgi_activity_roles" name="Roles por puesto"
-              parent="menu_sgi_admin_data" action="sgi_activity_role_action" sequence="15"/>
-    <menuitem id="menu_sgi_deliverables" name="Entregables" parent="menu_sgi_admin_data"
-              action="sgi_deliverable_action" sequence="17"/>
-    <menuitem id="menu_sgi_activity_chain" name="Cadena de actividades"
-              parent="menu_sgi_admin_data" action="sgi_activity_link_action" sequence="20"/>
-    <menuitem id="menu_sgi_flows" name="Flujos entre procesos" parent="menu_sgi_admin_data"
-              action="sgi_process_flow_action" sequence="25"/>
-    <menuitem id="menu_sgi_my_activities" name="Actividades de mi puesto (lista)"
-              parent="menu_sgi_admin_data" action="sgi_process_activity_action_mine"
-              sequence="30"/>
-    <menuitem id="menu_sgi_my_actions" name="Mis acciones (lista)" parent="menu_sgi_admin_data"
-              action="sgi_action_line_action_mine" sequence="35"/>
-    <menuitem id="menu_sgi_my_procedures" name="Mis procedimientos (lista)" parent="menu_sgi_admin_data"
-              action="sgi_document_action_my_procedures" sequence="40"/>
+    <!-- 5.6 (retirado en 19.0.45.0.0): «Datos técnicos» y sus listas de
+         actividades, roles, entregables, cadena y flujos viven en la ficha
+         del proceso; los «Mis…» los sustituye Mi procedimiento. Ver
+         models/sgi_cleanup.py (SGI_REMOVED_XMLIDS): la prueba falla si
+         reaparecen. -->
 
     <!-- ============================================================
          OPERACIÓN EN SU APP (criterio: el SGI planea, mide y mejora;

@@ -131,25 +131,6 @@
         </field>
     </record>
 
-    <!-- ============ CONCENTRADO (F-P-G05-02) ============ -->
-    <record id="sgi_nc_concentrado_view_list" model="ir.ui.view">
-        <field name="name">sgi.nc.concentrado.list</field>
-        <field name="model">quality.alert</field>
-        <field name="arch" type="xml">
-            <list string="Concentrado de No Conformidades"
-                  decoration-success="date_close != False">
-                <field name="create_date" string="Fecha"/>
-                <field name="sgi_folio" string="Folio"/>
-                <field name="sgi_deviation" string="Desviación"/>
-                <field name="sgi_classification"/>
-                <field name="sgi_responsible_ids" widget="many2many_tags" string="Responsables"/>
-                <field name="team_id"/>
-                <field name="stage_id"/>
-                <field name="date_close" string="Cierre"/>
-            </list>
-        </field>
-    </record>
-
     <record id="sgi_nc_view_search" model="ir.ui.view">
         <field name="name">sgi.nc.search</field>
         <field name="model">quality.alert</field>
@@ -168,6 +149,12 @@
                         domain="[('sgi_classification','=','mayor')]"/>
                 <filter name="sgi_recurrentes" string="Reincidentes"
                         domain="[('sgi_is_recurrent','=',True)]"/>
+                <separator/>
+                <!-- El concentrado F-P-G05-02 (antes un menú aparte) es esta
+                     agrupación: solo NC formales con folio, por etapa. -->
+                <filter name="sgi_concentrado" string="Concentrado (F-P-G05-02)"
+                        domain="[('sgi_folio','!=',False)]"
+                        context="{'group_by': 'stage_id'}"/>
                 <group>
                     <filter name="group_origin" string="Origen"
                             context="{'group_by': 'sgi_origin_type'}"/>
@@ -230,22 +217,6 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
                 <field name="create_date" interval="month"/>
                 <field name="sgi_classification"/>
             </graph>
-        </field>
-    </record>
-
-    <record id="sgi_nc_action_concentrado" model="ir.actions.act_window">
-        <field name="name">Concentrado de NC</field>
-        <field name="res_model">quality.alert</field>
-        <field name="view_mode">list,pivot,graph,form</field>
-        <field name="view_id" ref="sgi_nc_concentrado_view_list"/>
-        <field name="search_view_id" ref="sgi_nc_view_search"/>
-        <!-- El concentrado F-P-G05-02 es SOLO de NCs formales: sin este dominio
-             mezclaba las alertas de piso sin folio. -->
-        <field name="domain">[('sgi_folio', '!=', False)]</field>
-        <field name="context">{'search_default_group_stage': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">El concentrado se arma solo</p>
-            <p>Todas las NC del año con folio, hallazgo, responsables y estatus — la vista del F-P-G05-02, exportable para el auditor.</p>
         </field>
     </record>
 
