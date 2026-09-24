@@ -37,7 +37,7 @@
                         </group>
                         <group>
                             <div colspan="2" class="text-muted">
-                                <i class="fa fa-info-circle me-1"/><field name="ack_label" readonly="1" nolabel="1" class="d-inline"/>
+                                <i class="fa fa-info-circle me-1" title="Estado de la firma"/><field name="ack_label" readonly="1" nolabel="1" class="d-inline"/>
                             </div>
                         </group>
                     </group>
