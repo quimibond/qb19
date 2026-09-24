@@ -554,20 +554,29 @@ revisiones y descripción de puesto, automatización/tableros/seguridad).
   recalcula; si nada cambió no escribe); nadie lo edita. La adherencia y los
   contadores de la actividad salen de esas 4 semanas.
 
-### Pantallas (reorganizadas el 22-sep-2026)
+### Pantallas (reorganizadas el 22-sep-2026; 5 entradas por perfil desde el 24-sep-2026)
 
-El menú del SGI tiene **seis entradas y máximo tres niveles** (antes eran 14,
-con tres tableros y las actividades en tres lugares). Todo el árbol vive en
-`views/sgi_menus.xml`; los xmlids no cambiaron.
+El menú del SGI tiene **cinco entradas ordenadas por perfil y máximo tres
+niveles**: cada perfil ve su nivel y el de abajo, y lo técnico vive en una
+sola entrada que solo ve MAST. Todo el árbol vive en `views/sgi_menus.xml`;
+los xmlids no cambiaron.
 
-| Menú | Qué hay |
-|---|---|
-| **Inicio** | Tablero (hoja de cálculo «Salud del SGI», se arma con los pivotes de Análisis), Mis actividades, Mi procedimiento, Mis acciones, Mis mediciones, Mis procedimientos, Mis acuses |
-| **Procesos** | Mapa de procesos (kanban por tipo con barra de medición, dueño, % medido y adherencia), Actividades, Roles por puesto, Cadena de actividades, Flujos, Riesgos y oportunidades, Requisitos legales, Partes interesadas |
-| **Mejora** | No conformidades, Concentrado de NC, Acciones, Reclamaciones, Quejas y sugerencias, Incidentes SST, Mejoras, Lecciones aprendidas, Auditorías y su programa, Planes de emergencia, Simulacros |
-| **Documentos** | Documentos, Cambios documentales, Migración de formatos |
-| **Análisis** | Política → Objetivos → Indicadores → Mediciones, Satisfacción del cliente, Quién hace qué, Tendencia de ejecuciones, Cobertura de medición, Cumplimiento de procedimientos, Diagnóstico, Revisión por la Dirección |
-| **Configuración** | Cargar catálogo (solo Administrador SGI), Familias de puesto, Tipos de documento, Ajustes, Áreas, Normas… (solo MAST) |
+| Menú | Quién lo ve | Qué hay |
+|---|---|---|
+| **Inicio** | Todos | Mi procedimiento (la pantalla de la persona) · Mi equipo (jefes, dueños de proceso, MAST, Dirección) |
+| **Procesos** | Todos | Mapa de procesos (entrada única) · Quién hace qué |
+| **Mejora** | Todos | No conformidades · Reclamaciones de cliente · Acciones · Quejas y sugerencias · Auditorías (auditorías y programa) · Seguridad y ambiente (incidentes, planes de emergencia, simulacros) |
+| **Dirección** | Dirección y MAST | Tablero de dirección · Revisión por la Dirección · Política integral · Objetivos integrales · Riesgos y oportunidades · Requisitos legales · Partes interesadas · Satisfacción del cliente |
+| **Administración SGI** | Solo MAST | Documentos (documentos, cambios, migración, tipos) · Indicadores (indicadores y fórmulas, mediciones, mediciones que me tocan) · Diagnóstico (diagnóstico, cobertura, cumplimiento, tendencia, concentrado de NC, mejoras, lecciones, faltantes de especificación, cumplimiento semanal) · Firmas de lectura (acuses, mis acuses) · Configuración · Datos técnicos (actividades, roles, entregables, cadena, flujos y las listas «mías» de antes) |
+
+Reordenado el 2026-09-24 según «Estructura del SGI en Odoo» (paso 2: 5
+entradas por perfil, solo reparentar y grupos; los xmlids no cambian). Lo
+que estaba en Inicio (Tablero, Mis actividades, Mis acciones, Mis
+mediciones, Mis procedimientos, Mis acuses) ahora son bloques de Mi
+procedimiento: las mediciones por capturar o validar entran a «Mis
+pendientes». Reclamaciones de cliente sigue como lista aparte de las NC
+porque son modelos distintos; unirlas con un filtro por tipo es trabajo de
+vistas, no de menú.
 
 Calidad preventiva (AMEF, PPAP, planes de control, metrología) y el Pareto de
 alertas viven en la app **Calidad**; evaluación de proveedores en Compras,

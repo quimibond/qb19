@@ -432,7 +432,15 @@ class SgiMyProcedure(models.TransientModel):
             if 'qb.obligation' in env else []
         indicators = env['sgi.indicator'].sudo().search(
             [('responsible_id', '=', user.id), ('status', '=', 'oficial')], order='code')
+        # Mediciones por capturar o validar de sus indicadores (antes «Mis
+        # mediciones» en Inicio): también son pendientes con fecha.
+        measures = env['sgi.indicator.measure'].sudo().search(
+            [('indicator_id.responsible_id', '=', user.id), ('state', 'in', ('pendiente', 'capturado')),
+             ('period_date', '<=', today)], order='period_date', limit=20)
         return {
+            'measures': [{'code': m.indicator_id.code, 'name': m.indicator_id.name,
+                          'period': m.period_date, 'state': m.state,
+                          'url': '/odoo/sgi.indicator.measure/%d' % m.id} for m in measures],
             'actions': [{'name': a.name, 'origin': a.origin_display, 'date': a.date_commit,
                          'late': a.state == 'vencida' or (a.date_commit and a.date_commit < today),
                          'url': '/odoo/sgi.action.line/%d' % a.id} for a in actions],
@@ -455,7 +463,7 @@ class SgiMyProcedure(models.TransientModel):
         html = self._sgi_mp_section_title("Mis pendientes")
         if not total:
             return html + Markup('<div class="text-muted" style="font-size:13px;">Sin acciones, '
-                                 'no conformidades, obligaciones ni indicadores oficiales a tu cargo.</div>')
+                                 'no conformidades, obligaciones, mediciones ni indicadores oficiales a tu cargo.</div>')
         html += Markup('<ul style="font-size:13px;">')
         for a in pending['actions']:
             html += Markup('<li>%s<b>Acción:</b> <a href="%s" target="_self">%s</a>'
@@ -470,6 +478,10 @@ class SgiMyProcedure(models.TransientModel):
                            '<span class="text-muted"> · vence %s</span></li>') % (
                 self._sgi_mp_badge("Vencida", '#b02a37', '#fdecee') if o['late'] else Markup(''),
                 o['url'], o['name'], o['date'] or '')
+        for m in pending['measures']:
+            html += Markup('<li><b>Medición por %s:</b> <a href="%s" target="_self">%s %s</a>'
+                           '<span class="text-muted"> · periodo %s</span></li>') % (
+                "capturar" if m['state'] == 'pendiente' else "validar", m['url'], m['code'], m['name'], m['period'] or '')
         for i in pending['indicators']:
             sem = {'verde': ('#1e7e34', '#e6f4ea'), 'amarillo': ('#8a6d00', '#fff4e5'),
                    'rojo': ('#b02a37', '#fdecee')}.get(i['semaphore'])
