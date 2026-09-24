@@ -1020,7 +1020,8 @@ Pruebas: `TestIndicatorPlan` 01–07.
 
 Regla del CEO (2026-09-24): **menús, acciones y vistas sin uso se borran;
 registros con datos se archivan o se religan.** `models/sgi_cleanup.py`,
-`migrations/19.0.45.0.0/post-migrate.py`, `tests/test_cleanup_45.py`.
+`migrations/19.0.45.0.1/post-migrate.py`, `tests/test_cleanup_45.py`. (La 45.0.0 falló en
+el build de `main`: al borrar un menú Odoo borra solo su xmlid y el log lo leía después.)
 
 - **Menús retirados (13):** «Datos técnicos» y sus 8 hijos (actividades,
   roles, entregables, cadena, flujos y los tres «Mis…» en lista), «Mediciones

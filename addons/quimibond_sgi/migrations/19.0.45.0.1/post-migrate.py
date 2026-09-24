@@ -34,11 +34,14 @@ def _remove_xmlids(env):
         data = Data.search([('module', '=', module), ('name', '=', name)], limit=1)
         if not data:
             continue
-        record = env[data.model].sudo().browse(data.res_id).exists()
+        model = data.model
+        record = env[model].sudo().browse(data.res_id).exists()
         if record:
+            # unlink() borra también su ir.model.data: leer todo antes.
             record.unlink()
-        data.unlink()
-        _logger.info("SGI 45: borrado %s (%s).", xmlid, data.model)
+        if data.exists():
+            data.unlink()
+        _logger.info("SGI 45: borrado %s (%s).", xmlid, model)
 
 
 def _remove_studio_menus(env):
@@ -95,7 +98,13 @@ def _remove_empty_studio_fields(env):
             _logger.warning("SGI 45: %s.%s tiene %d registro(s) con dato; NO se borra.",
                             model_name, field_name, used)
             continue
-        field.unlink()
+        try:
+            with env.cr.savepoint():
+                field.unlink()
+        except Exception as exc:  # una vista de Studio que lo use lo impide
+            _logger.warning("SGI 45: %s.%s no se pudo borrar (%s); se queda.",
+                            model_name, field_name, exc)
+            continue
         _logger.info("SGI 45: borrado campo Studio vacío %s.%s.", model_name, field_name)
 
 
