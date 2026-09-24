@@ -8,10 +8,13 @@ que devolvían None pasan a medirse desde Odoo con detalle.
   Re-proceso Acabado 107) ÷ kg de hilo y fibra consumidos en el periodo (la
   misma base que MA-05). Solo líneas en kg: una orden de reproceso en metros
   no entra hasta que se defina su equivalencia.
-- AL-01 ``inventario_diferencia``: |valor de los ajustes de inventario del
-  periodo| ÷ valor del inventario al cierre del periodo, ambos desde las
-  capas de valuación (``stock.valuation.layer``), en moneda de la compañía.
-  Mensual. Sin ``stock_account`` devuelve None.
+- AL-01 ``inventario_diferencia``: valor de los ajustes de inventario del
+  periodo (``stock.move.value``, que en Odoo 19 es positivo tanto en
+  entradas como en salidas) ÷ valor actual de las existencias en
+  ubicaciones internas (``stock.quant.value``), en moneda de la compañía.
+  Odoo 19 ya no tiene capas de valuación (``stock.valuation.layer``), así
+  que no hay valor «al cierre»: el denominador es la foto del día en que se
+  calcula. Mensual. Sin ``stock_account`` devuelve None.
 - TR-03 ``consumo_energia``: facturado del periodo por el proveedor de energía
   (facturas menos notas de crédito, sin impuestos) ÷ toneladas de hilo y
   fibra consumidas en órdenes. Pesos por tonelada procesada; antes era el
@@ -69,33 +72,34 @@ class SgiIndicatorP21(models.Model):
         return ''
 
     # ---- AL-01 -----------------------------------------------------------
+    def _sgi_has_valuation(self):
+        return 'value' in self.env['stock.move']._fields and 'value' in self.env['stock.quant']._fields
+
     def _detail_inventario_diferencia(self, date_from, date_to):
         env = self.env
-        if 'stock.valuation.layer' not in env:
+        if not self._sgi_has_valuation():
             return {'value': None}
         company = self._sgi_kpi_company()
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        Layer = env['stock.valuation.layer'].sudo()
-        layers = Layer.search([
-            ('company_id', '=', company.id),
-            ('stock_move_id.is_inventory', '=', True),
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
-        adjusted = sum(abs(layer.value) for layer in layers)
-        groups = Layer._read_group([
-            ('company_id', '=', company.id),
-            ('create_date', '<', dt_to)], [], ['value:sum'])
-        stock_value = (groups[0][0] if groups else 0.0) or 0.0
+        moves = env['stock.move'].sudo().search([
+            ('state', '=', 'done'), ('company_id', '=', company.id),
+            ('is_inventory', '=', True),
+            ('date', '>=', dt_from), ('date', '<', dt_to)])
+        adjusted = sum(abs(v) for v in moves.mapped('value'))
+        quants = env['stock.quant'].sudo().search([
+            ('company_id', '=', company.id), ('location_id.usage', '=', 'internal')])
+        stock_value = sum(quants.mapped('value'))
         return {
             'value': round(adjusted / stock_value * 100.0, 2) if stock_value > 0 else None,
             'numerator': adjusted, 'denominator': stock_value,
-            'model': 'stock.move', 'ids': layers.stock_move_id.ids,
+            'model': 'stock.move', 'ids': moves.ids,
         }
 
     def _calc_inventario_diferencia(self, date_from, date_to):
         return self._detail_inventario_diferencia(date_from, date_to)['value']
 
     def _note_inventario_diferencia(self, date_from, date_to):
-        if 'stock.valuation.layer' not in self.env:
+        if not self._sgi_has_valuation():
             return "Requiere la valuación de inventario (stock_account)."
         return ''
 

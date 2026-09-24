@@ -118,7 +118,7 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
 | `disponibilidad_mantto` | Requiere paros de centros de trabajo | Devuelve None → captura manual (MT-01 en manual desde 2026-09-24) |
 | `plantilla_rh` | Requiere plantilla presupuestada por puesto | Devuelve None → captura manual (RH-01 en manual desde 2026-09-24) |
 | `reproceso` | kg de órdenes de los tipos de reproceso ÷ kg de hilo y fibra consumidos | Implementado (P-21, 19.0.39.0.0) |
-| `inventario_diferencia` | \|valor de ajustes\| ÷ valor del inventario (capas de valuación) | Implementado (19.0.39.0.0) |
+| `inventario_diferencia` | valor de ajustes (`stock.move.value`) ÷ valor actual de existencias | Implementado (19.0.39.0.0; 40.0.1 sin capas) |
 
 Los que devuelven None caen a captura manual sin bloquear el cron.
 
@@ -930,9 +930,10 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   sembrado 106 Re-proceso Tintorería y 107 Re-proceso Acabado, ÷ kg de hilo y
   fibra consumidos; solo líneas en kg, así que una orden de reproceso en metros
   no entra; «Acabado producto en proceso» se agrega al parámetro cuando
-  producción lo confirme), `inventario_diferencia` (AL-01: |valor de los ajustes
-  de inventario del mes| ÷ valor del inventario al cierre, desde las capas de
-  valuación) y `consumo_energia` (TR-03: facturado por el proveedor de energía ÷
+  producción lo confirme), `inventario_diferencia` (AL-01: valor de los ajustes
+  de inventario del mes, `stock.move.value`, ÷ valor actual de las existencias
+  en ubicaciones internas; Odoo 19 ya no tiene capas de valuación, así que el
+  denominador es la foto del día del cálculo, no el cierre) y `consumo_energia` (TR-03: facturado por el proveedor de energía ÷
   toneladas de hilo y fibra consumidas; pesos por tonelada, antes total en
   pesos). El denominador en kg es uno solo (`_sgi_kg_consumed`, el de MA-05):
   cada kg cuenta una vez aunque pase por tejido y tintorería. MT-01, MT-02,
@@ -977,8 +978,10 @@ unidad del indicador lleva `%`.
   `configurable` solo después de un mes con el mismo número.
 - **Sembradas** (`data/sgi_indicator_formula_data.xml`, noupdate, con ids de
   producción en los dominios): MA-05 desperdicio, MA-04 reproceso (solo
-  Re-proceso Tintorería), AL-01 diferencia de inventario, TR-03 energía por
-  tonelada y EX-02 compras de materia prima. Diferencias conocidas con el
+  Re-proceso Tintorería), AL-01 diferencia de inventario (denominador
+  `stock.quant.value` sin campo de fecha: la ventana «acumulado al cierre»
+  admite término sin fecha y entonces toma todo lo que hay hoy), TR-03 energía
+  por tonelada y EX-02 compras de materia prima. Diferencias conocidas con el
   modo de código: MA-04 por fórmula no excluye subproductos de la orden de
   reproceso; EX-02 por fórmula usa la fecha contable de la línea en vez de
   la fecha de factura. EX-01 (EBITDA) no cabe: son tres términos.

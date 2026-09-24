@@ -57,10 +57,13 @@ class TestIndicatorFormula(TransactionCase):
     def test_02_ventanas(self):
         ind = self.Indicator.create({'code': 'ZF-02', 'name': 'Ventanas', 'calc_mode': 'configurable'})
         num = self._term(ind, 'numerator', aggregation='sum', field_name='value')
-        self._term(ind, 'denominator', aggregation='count', window='to_date')
+        den = self._term(ind, 'denominator', aggregation='count', window='to_date')
         detail = ind._detail_configurable(*self.period)
         self.assertEqual(detail['numerator'], -20.0, "Solo marzo.")
         self.assertEqual(detail['denominator'], 4.0, "Acumulado al cierre: las cuatro.")
+        den.date_field = False
+        self.assertEqual(ind._detail_configurable(*self.period)['denominator'], 4.0,
+                         "Sin fecha: todo lo que hay.")
         num.window = '3m'
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 80.0, "Enero–marzo.")
         num.window = '12m'
@@ -78,6 +81,9 @@ class TestIndicatorFormula(TransactionCase):
             self._term(ind, 'numerator', aggregation='sum', field_name='note')
         with self.assertRaises(ValidationError):
             self._term(ind, 'numerator', factor=0.0)
+        with self.assertRaises(ValidationError):
+            self._term(ind, 'numerator', date_field=False, window='period')
+        self._term(ind, 'denominator', date_field=False, window='to_date')
         self._term(ind, 'numerator')
         with self.assertRaises(Exception):
             self._term(ind, 'numerator')  # un solo numerador por indicador
