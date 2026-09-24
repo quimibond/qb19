@@ -890,6 +890,15 @@ producción y a Calidad. Parámetros: `quimibond_sgi.release_block_enabled`,
 (324,44,36,246,45); se siembran al actualizar y se ajustan en Parámetros del
 sistema. Código: `models/sgi_release.py`, pruebas `tests/test_release.py`.
 
+**EX-07 Días de cartera (P-11).** La medición de agosto marcaba 134 porque
+se calculó antes del filtro por compañía (sumaba la cartera del grupo). Al
+recalcular daba 35, también mal: la cartera se tomaba como el saldo pendiente
+*hoy* de las facturas de entonces (lo cobrado en septiembre ya no contaba) y
+llevaba IVA mientras las ventas no. Ahora la cartera es el saldo contable de
+las cuentas de clientes al cierre del periodo y las ventas de 90 días van con
+IVA: agosto 2026 ≈ 51 días. Las facturas viejas sin cobrar (2018–2020, ~3.3 M)
+pesan ~6 días; sacarlas es decisión de Finanzas, no del cálculo.
+
 **Traslado Embarcar → su entrega.** `stock.picking.sgi_delivery_picking_id`
 («Entrega que surte») liga cada traslado interno con pedido a la orden de
 entrega del mismo pedido (la abierta más próxima; la última si todas están
