@@ -605,8 +605,9 @@ class SgiCronMyProcedure(models.AbstractModel):
     def cron_my_procedure_stale(self):
         """Semanal: avisa al Jefe MAST qué puestos con personas tienen «Mi
         procedimiento» sin publicar o desactualizado. Una sola actividad,
-        sobre la revisión más reciente publicada (documents.document lleva
-        actividades); si nadie ha publicado nada, solo queda en el log."""
+        sobre la revisión vigente del primer puesto desactualizado
+        (documents.document lleva actividades); si nadie ha publicado nada,
+        solo queda en el log."""
         Job = self.env['hr.job']
         stale = Job._sgi_my_procedure_stale_jobs()
         if not stale:
@@ -615,9 +616,18 @@ class SgiCronMyProcedure(models.AbstractModel):
         note = "Puestos con personas cuya revisión no existe o ya no coincide con sus " \
                "actividades: %s. Publícalos desde SGI → Inicio → Mi procedimiento " \
                "(«Publicar todos los puestos»)." % ", ".join(stale.mapped('name'))
-        anchor = self.env['documents.document'].sudo().search(
-            [('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
-            order='sgi_issue_date desc, id desc', limit=1)
+        # La actividad cuelga de la revisión vigente del primer puesto
+        # desactualizado (ahí va a trabajar MAST); si ninguno tiene revisión,
+        # de la más reciente publicada.
+        anchor = self.env['documents.document'].sudo()
+        for job in stale:
+            anchor = job._sgi_my_procedure_current_doc()
+            if anchor:
+                break
+        if not anchor:
+            anchor = self.env['documents.document'].sudo().search(
+                [('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
+                order='sgi_issue_date desc, id desc', limit=1)
         if anchor:
             self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id())
         _logger.info("SGI Mi procedimiento: %s", note)
