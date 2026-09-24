@@ -11,7 +11,8 @@ archivado (camino A).
 
 Quién ve a quién: cada quien su puesto; los jefes (responsable directo o del
 departamento) y los dueños de proceso eligen un empleado o puesto de su
-equipo; el Jefe MAST y el administrador del SGI, cualquiera.
+equipo; el Jefe MAST, el administrador del SGI y la Dirección de Operaciones,
+cualquiera.
 
 Es un modelo transitorio con el contenido como HTML calculado en el servidor
 (sin JS propio): las tarjetas son ``<details>`` nativos y los botones son
@@ -85,11 +86,18 @@ class SgiMyProcedure(models.TransientModel):
     content = fields.Html(string="Contenido", compute='_compute_content', sanitize=False)
 
     # ------------------------------------------------------------------
+    # Ven a cualquiera: Jefe MAST, administrador del SGI y Dirección de
+    # Operaciones (grupo quimibond_sgi.group_sgi_director).
+    _SGI_MP_SEE_ALL_GROUPS = (
+        'quimibond_sgi.group_sgi_manager',
+        'quimibond_sgi.group_sgi_admin',
+        'quimibond_sgi.group_sgi_director',
+    )
+
     @api.model
     def _sgi_mp_is_admin(self):
         user = self.env.user
-        return user.has_group('quimibond_sgi.group_sgi_manager') \
-            or user.has_group('quimibond_sgi.group_sgi_admin')
+        return any(user.has_group(group) for group in self._SGI_MP_SEE_ALL_GROUPS)
 
     @api.model
     def _sgi_mp_my_employee(self):

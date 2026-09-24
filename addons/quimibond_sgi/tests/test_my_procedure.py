@@ -256,6 +256,17 @@ class TestMyProcedure(TransactionCase):
         self.p_b.owner_id = owner
         team = owner._sgi_mp_team_employees()
         self.assertIn(self.emp2, team, "Emp Dos ocupa un puesto con rol en Proceso B.")
+        # Dirección de Operaciones: cualquiera (sin publicar).
+        director = new_test_user(self.env, login='mp_director',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_director')
+        wiz_d = self.env['sgi.my.procedure'].with_user(director).create({'employee_id': self.emp2.id})
+        self.assertTrue(wiz_d.can_pick)
+        self.assertIn(self.emp1.id, wiz_d.allowed_employee_ids.ids)
+        # Administrador del SGI: cualquiera.
+        admin = new_test_user(self.env, login='mp_admin',
+                              groups='base.group_user,quimibond_sgi.group_sgi_admin')
+        self.assertTrue(self.env['sgi.my.procedure'].with_user(admin).create(
+            {'employee_id': self.emp1.id}).can_pick)
         # Jefe MAST: cualquiera.
         wiz_m = self.env['sgi.my.procedure'].with_user(self.manager).create({'employee_id': self.emp2.id})
         self.assertTrue(wiz_m.can_pick)

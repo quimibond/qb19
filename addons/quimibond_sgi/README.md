@@ -1074,8 +1074,9 @@ de estado dice sin revisión publicada / pendiente / leído.
 **Quién ve a quién** (`hr.employee._sgi_mp_team_employees`): cada quien su
 puesto; un jefe (responsable directo o indirecto, o responsable de
 departamento) y un dueño de proceso (puestos con rol en sus procesos) eligen
-un empleado o puesto de su equipo; el Jefe MAST y el administrador del SGI,
-cualquiera y además pueden publicar e imprimir desde ahí.
+un empleado o puesto de su equipo; el Jefe MAST, el administrador del SGI y
+la Dirección de Operaciones (`group_sgi_director`), cualquiera; el Jefe MAST
+además publica desde ahí.
 
 Además: en el puesto (pestaña SGI): imprimir, publicar, ver revisión vigente;
 en la ficha del empleado: botón «Mi procedimiento» con el estado de su acuse.
