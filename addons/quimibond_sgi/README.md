@@ -1108,7 +1108,19 @@ responsable con su semáforo. Pendientes para después: EPP, competencias y
 capacitación, riesgos IPER. Descartado: firma con Sign (basta el clic y el
 papel).
 
-Pruebas: `TestMyProcedure` 01–12.
+**Estructura del SGI (doc del CEO 2026-09-24, nivel 4; 19.0.43.3.0):** la
+pantalla sigue el orden de la estructura: arriba quién soy, mi puesto, mi
+jefe y el estado en una línea (atrasadas, al día, firmas pendientes); en
+medio **Mis pendientes** primero (lo atrasado arriba), luego **mis
+actividades por cadencia** como tarjetas y al final **Mis documentos**.
+**Mi equipo** (Inicio → Mi equipo, `sgi.my.team`): para jefes directos, de
+departamento y dueños de proceso (Jefe MAST, administrador y Dirección ven a
+todos): cuántas personas, cuántas con atrasos o firmas pendientes, y una
+fila por persona con atrasadas, firmas pendientes, brechas de capacitación
+(`sgi_skill_gap_count`) y el botón «Abrir su procedimiento». Los datos del
+puesto se arman una vez por puesto, no por persona.
+
+Pruebas: `TestMyProcedure` 01–13.
 
 ## PDF del procedimiento: etiquetas en negritas (19.0.42.1.0)
 

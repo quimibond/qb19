@@ -284,7 +284,7 @@ class TestMyProcedure(TransactionCase):
         Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
         html = wiz.content
-        self.assertIn('Jefe inmediato: Jefe Directo MP', html, "El jefe directo del empleado, no el del departamento.")
+        self.assertIn('Mi jefe: Jefe Directo MP', html, "El jefe directo del empleado, no el del departamento.")
         self.assertIn('Sin medición automática', html)
         self.assertNotIn('Sin medir', html)
         acts = self.a_weekly_fri | self.a_quarterly | self.a_monthly
@@ -312,7 +312,7 @@ class TestMyProcedure(TransactionCase):
         Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
         html = wiz.content
-        self.assertIn('Documentos de tu puesto', html)
+        self.assertIn('Mis documentos', html)
         self.assertIn('IT-P-C11-77', html)
         self.assertIn('Acuse pendiente', html)
         self.assertIn('Mis pendientes', html)
@@ -358,3 +358,28 @@ class TestMyProcedure(TransactionCase):
         result = self.env['sgi.my.procedure.check'].with_user(self.manager).create({}).result
         self.assertIn('Puestos duplicados', result)
         self.assertIn('Solo MP', result)
+
+    def test_13_mi_equipo(self):
+        Team = self.env['sgi.my.team']
+        # Sin equipo: mensaje, no error.
+        wiz = Team.with_user(self.user_emp).browse(Team.with_user(self.user_emp).action_open_mine()['res_id'])
+        self.assertIn('No tienes personas a tu cargo', wiz.content)
+        # Jefe directo: ve a su gente con atrasos, firmas y capacitación.
+        boss_user = new_test_user(self.env, login='mp_team_boss',
+                                  groups='base.group_user,quimibond_sgi.group_sgi_user')
+        boss = self.env['hr.employee'].create({
+            'name': 'Jefe Equipo MP', 'job_id': self.job_boss.id, 'user_id': boss_user.id})
+        self.emp1.parent_id = boss
+        self.a_quarterly.measure_state = 'rojo'
+        self.job.with_user(self.manager).action_sgi_publish_my_procedure()
+        wiz = Team.with_user(boss_user).browse(Team.with_user(boss_user).action_open_mine()['res_id'])
+        html = wiz.content
+        self.assertIn('Emp MP Uno', html)
+        self.assertNotIn('Emp MP Dos', html, "No le reporta.")
+        self.assertIn('Con atrasos: 1', html)
+        self.assertIn('Con firmas pendientes: 1', html)
+        self.assertIn('Abrir su procedimiento', html)
+        self.assertIn('/odoo/sgi.my.procedure/', html)
+        # Jefe MAST: todos.
+        wiz_m = Team.with_user(self.manager).browse(Team.with_user(self.manager).action_open_mine()['res_id'])
+        self.assertIn('Emp MP Dos', wiz_m.content)

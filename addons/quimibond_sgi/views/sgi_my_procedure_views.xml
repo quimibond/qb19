@@ -152,7 +152,22 @@
         </field>
     </record>
 
+    <record id="sgi_my_team_view_form" model="ir.ui.view">
+        <field name="name">sgi.my.team.form</field>
+        <field name="model">sgi.my.team</field>
+        <field name="arch" type="xml">
+            <form string="Mi equipo" create="0" delete="0">
+                <sheet>
+                    <field name="content" nolabel="1" readonly="1" options="{'safe': True}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
               parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_procedure_action_mine"
               sequence="15"/>
+    <menuitem id="menu_sgi_my_team" name="Mi equipo"
+              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_team_action_mine"
+              sequence="16"/>
 </odoo>
