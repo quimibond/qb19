@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Modo «fórmula configurable»: términos en la ficha del indicador -->
+    <record id="sgi_indicator_term_view_list" model="ir.ui.view">
+        <field name="name">sgi.indicator.term.list</field>
+        <field name="model">sgi.indicator.term</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="role"/>
+                <field name="model_id" options="{'no_create': True}"/>
+                <field name="domain"/>
+                <field name="date_field"/>
+                <field name="window"/>
+                <field name="aggregation"/>
+                <field name="field_name"
+                       required="aggregation != 'count'"
+                       readonly="aggregation == 'count'"/>
+                <field name="factor"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_indicator_view_form_formula" model="ir.ui.view">
+        <field name="name">sgi.indicator.form.formula</field>
+        <field name="model">sgi.indicator</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_indicator_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[1]" position="before">
+                <page string="Fórmula" name="formula">
+                    <div class="alert alert-info mb-2" role="alert">
+                        Numerador y denominador salen de los registros de Odoo que
+                        indique cada término. Solo el administrador del SGI puede
+                        editarlos; cualquier cambio regresa el indicador a «prueba»
+                        y queda en el chatter. Mientras el modo de cálculo no sea
+                        «Fórmula configurable», la fórmula corre en paralelo y su
+                        valor se guarda en cada medición para compararlo.
+                    </div>
+                    <field name="has_formula" invisible="1"/>
+                    <field name="can_edit_formula" invisible="1"/>
+                    <field name="term_ids" context="{'default_indicator_id': id}"
+                           readonly="not can_edit_formula"/>
+                    <field name="formula_text" readonly="1" nolabel="1" invisible="not term_ids"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_measure_view_form_formula" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.form.formula</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_measure_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@string='Nota']" position="before">
+                <group string="Fórmula en paralelo" invisible="not parallel_denominator">
+                    <field name="parallel_value"/>
+                    <field name="parallel_numerator"/>
+                    <field name="parallel_denominator"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -947,6 +947,47 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   siga abierta la medición nueva se liga a esa misma NC en vez de abrir otra.
   Sigue exigiendo indicador oficial y medición validada.
 
+## Fórmula configurable (19.0.40.0.0)
+
+Modo de cálculo `configurable` (`models/sgi_indicator_formula.py`): el
+indicador se calcula con dos **términos** capturados en la pestaña Fórmula
+(`sgi.indicator.term`), numerador y denominador. Cada término dice de qué
+modelo sale, con qué filtro (dominio de Odoo), sobre qué campo de fecha se
+recorta la ventana, cómo se agrega (contar, sumar un campo o sumar su valor
+absoluto), por qué factor se multiplica (−1 invierte el signo, 0.001 pasa kg
+a toneladas) y qué ventana usa (el periodo, 3 o 12 meses móviles, o acumulado
+hasta el cierre). Si el modelo tiene `company_id`, se filtra solo a la
+compañía del KPI. La medición guarda numerador, denominador y los registros
+del numerador, igual que los modos con detalle; el valor va ×100 cuando la
+unidad del indicador lleva `%`.
+
+- **Validación:** el dominio pasa por `safe_eval` (nunca `eval`) y por una
+  búsqueda de prueba al guardar; los campos de fecha y de suma tienen que
+  existir en el modelo con el tipo correcto; el factor no puede ser cero. Un
+  indicador tiene un solo numerador y un solo denominador.
+- **Quién edita:** solo el grupo Administrador del SGI (`group_sgi_admin`);
+  los demás la ven. La pestaña queda de solo lectura para quien no puede.
+- **Trazabilidad:** todo cambio de un término (crear, modificar, quitar) queda
+  en el chatter del indicador con el antes y el después, y **regresa el
+  indicador a «prueba»**: hay que volver a revisar la lista de registros.
+- **En paralelo:** un indicador que sigue en un modo de código pero ya tiene
+  términos corre la fórmula en cada medición nueva y guarda su resultado en
+  `parallel_value` / `parallel_numerator` / `parallel_denominator`
+  («Fórmula en paralelo» en la medición). La regla es migrar un indicador a
+  `configurable` solo después de un mes con el mismo número.
+- **Sembradas** (`data/sgi_indicator_formula_data.xml`, noupdate, con ids de
+  producción en los dominios): MA-05 desperdicio, MA-04 reproceso (solo
+  Re-proceso Tintorería), AL-01 diferencia de inventario, TR-03 energía por
+  tonelada y EX-02 compras de materia prima. Diferencias conocidas con el
+  modo de código: MA-04 por fórmula no excluye subproductos de la orden de
+  reproceso; EX-02 por fórmula usa la fecha contable de la línea en vez de
+  la fecha de factura. EX-01 (EBITDA) no cabe: son tres términos.
+- Fuera del modo: los ids de ubicaciones, categorías, tipos de operación y
+  proveedor viven en el texto del dominio, no en parámetros; en una copia con
+  ids distintos la fórmula apunta a otra cosa.
+
+Pruebas: `TestIndicatorFormula` 01–07.
+
 ## No surtir lotes sin liberar (P-7, 19.0.35.0.0)
 
 Las requisiciones de producción (Requisición MP y Requisición PP y PT) no se
