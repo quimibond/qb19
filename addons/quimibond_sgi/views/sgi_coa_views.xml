@@ -43,6 +43,9 @@
                 </div>
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
+                <field name="sale_id" invisible="1"/>
+                <field name="sgi_delivery_picking_id"
+                       invisible="picking_type_code != 'internal' or not sale_id"/>
                 <field name="sgi_requires_coa" invisible="1"/>
                 <field name="sgi_coa_status" widget="badge"
                        invisible="not sgi_requires_coa"

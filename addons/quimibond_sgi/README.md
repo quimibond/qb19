@@ -878,6 +878,34 @@ reutilizable en otra familia; clave anterior encontrada; dueño inválido = rojo
 **No se han corrido todavía**: el SGI depende de Enterprise y no entra al CI;
 correrlas en la base de pruebas de Odoo.sh con el comando de arriba.
 
+## No surtir lotes sin liberar (P-7, 19.0.35.0.0)
+
+Las requisiciones de producción (Requisición MP y Requisición PP y PT) no se
+validan con un lote que Calidad no ha liberado (C6.10). «Sin liberar» es un
+lote que sigue en una ubicación de espera (6 Entrada MP, cuarentenas,
+Inspección, Liberación) o cuyo último control de calidad falló. El bloqueo es
+duro y avisa qué lotes y por qué; lo que sigue es avisar a Control de
+producción y a Calidad. Parámetros: `quimibond_sgi.release_block_enabled`,
+`release_block_picking_type_ids` (113,210) y `unreleased_location_ids`
+(324,44,36,246,45); se siembran al actualizar y se ajustan en Parámetros del
+sistema. Código: `models/sgi_release.py`, pruebas `tests/test_release.py`.
+
+**EX-07 Días de cartera (P-11).** La medición de agosto marcaba 134 porque
+se calculó antes del filtro por compañía (sumaba la cartera del grupo). Al
+recalcular daba 35, también mal: la cartera se tomaba como el saldo pendiente
+*hoy* de las facturas de entonces (lo cobrado en septiembre ya no contaba) y
+llevaba IVA mientras las ventas no. Ahora la cartera es el saldo contable de
+las cuentas de clientes al cierre del periodo y las ventas de 90 días van con
+IVA: agosto 2026 ≈ 51 días. Las facturas viejas sin cobrar (2018–2020, ~3.3 M)
+pesan ~6 días; sacarlas es decisión de Finanzas, no del cálculo.
+
+**Traslado Embarcar → su entrega.** `stock.picking.sgi_delivery_picking_id`
+(«Entrega que surte») liga cada traslado interno con pedido a la orden de
+entrega del mismo pedido (la abierta más próxima; la última si todas están
+hechas; editable). Con él C2.21 y C2.26 se miden contra la fecha programada
+de la entrega (`"match": "sgi_delivery_picking_id"` + `due_field`). La
+migración liga los traslados de 2026.
+
 ## COA ligado a la entrega y al pedido (fase 1, 19.0.32.0.0)
 
 - **Cliente** (`res.partner`, pestaña Ventas y compras): «Requiere COA en cada

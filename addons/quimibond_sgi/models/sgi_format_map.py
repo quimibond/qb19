@@ -97,6 +97,10 @@ class SgiConfig(models.AbstractModel):
         # Días de gracia del OTD de proveedores (comparación por día calendario).
         'quimibond_sgi.supplier_otd_tolerance_days': '1',
         'quimibond_sgi.pesaje_tolerance_kg': '3.0',
+        # P-7: no surtir lotes sin liberar (models/sgi_release.py).
+        'quimibond_sgi.release_block_enabled': 'True',
+        'quimibond_sgi.release_block_picking_type_ids': '113,210',
+        'quimibond_sgi.unreleased_location_ids': '324,44,36,246,45',
         'quimibond_sgi.waste_subproduct_category': 'SubProducto',
         # COA (sgi_coa): el bloqueo al validar una salida sin COA se enciende
         # cuando el cambio se implemente formalmente; la excepción es del

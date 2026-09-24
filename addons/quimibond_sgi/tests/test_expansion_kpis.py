@@ -113,13 +113,12 @@ class TestExpansionKpis(TransactionCase):
                 "Modo %s debe quedar pendiente sin datos." % mode)
 
     def test_06_dso_cartera(self):
-        # 300 pendientes de cobro con 900 netos facturados en 90 días → 30 días.
-        # La cartera abierta no se acota al periodo: se suma la línea base
-        # preexistente de la BD (copia de producción), como en test_07.
+        # 300 pendientes de cobro con 900 facturados en 90 días → 30 días.
+        # La cartera es el saldo contable de clientes al cierre: se suma la
+        # línea base preexistente de la BD (copia de producción), como en
+        # test_07. Lo cobrado DESPUÉS del cierre sigue contando en el periodo.
         ind = self._indicator('dso_cartera')
-        base0 = sum(ind._sgi_open_moves(
-            ('out_invoice', 'out_refund'), self.period_end
-        ).mapped('amount_residual_signed'))
+        base0 = ind._sgi_receivable_balance(self.period_end)
         self._invoice('out_invoice', self.customer_a, 600.0, self.period)
         self._invoice('out_invoice', self.customer_b, 300.0, self.period)
         moves = self.env['account.move'].search([
@@ -131,6 +130,15 @@ class TestExpansionKpis(TransactionCase):
             {'payment_date': self.period}).action_create_payments()
         value = ind._calc_dso_cartera(self.period, self.period_end)
         self.assertEqual(value, round((base0 + 300.0) / 900.0 * 90.0, 1))
+        # Un cobro del mes siguiente no cambia la foto del cierre.
+        late = self.env['account.move'].search([
+            ('move_type', '=', 'out_invoice'),
+            ('partner_id', '=', self.customer_b.id),
+            ('invoice_date', '=', self.period)])
+        self.env['account.payment.register'].with_context(
+            active_model='account.move', active_ids=late.ids).create(
+            {'payment_date': date(2041, 7, 15)}).action_create_payments()
+        self.assertEqual(ind._calc_dso_cartera(self.period, self.period_end), value)
 
     def test_07_cartera_vencida(self):
         # La cartera abierta NO es acotada al periodo: el esperado se calcula
