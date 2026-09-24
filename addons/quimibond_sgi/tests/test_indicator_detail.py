@@ -80,7 +80,7 @@ class TestIndicatorDetail(TransactionCase):
 
     def test_04_only_official_opens_nc(self):
         self._partners(0, 6)
-        trial = self._indicator('X-D4A', nc_on_red=True)
+        trial = self._indicator('X-D4A', nc_on_red=True, critical=True)
         self.assertEqual(trial.status, 'prueba', "Nace en prueba.")
         measure = self._measure(trial)
         measure.action_validate()
@@ -134,3 +134,42 @@ class TestIndicatorDetail(TransactionCase):
         self.assertTrue(result['ok'], result['errors'])
         ind = self.Indicator.search([('code', '=', 'X-D8')])
         self.assertEqual((ind.status, ind.measure_from), ('oficial', date(2026, 9, 1)))
+
+    # I-5
+    def _official(self, code, frequency='monthly', **vals):
+        ind = self.Indicator.create(dict({
+            'code': code, 'name': 'Persistencia %s' % code, 'calc_mode': 'manual',
+            'direction': 'higher_better', 'target_objective': 90, 'target_acceptable': 80,
+            'frequency': frequency, 'status': 'oficial', 'nc_on_red': True}, **vals))
+        return ind
+
+    def _red(self, ind, period):
+        measure = self.Measure.create({'indicator_id': ind.id, 'period_date': period,
+                                       'value': 10.0, 'state': 'capturado'})
+        measure.action_validate()
+        return measure
+
+    def test_09_nc_needs_two_consecutive_reds(self):
+        ind = self._official('X-P9')
+        first = self._red(ind, date(2040, 3, 1))
+        self.assertFalse(first.alert_id, "Un solo rojo no abre NC.")
+        second = self._red(ind, date(2040, 4, 1))
+        self.assertTrue(second.alert_id, "Dos meses seguidos en rojo: NC.")
+        third = self._red(ind, date(2040, 5, 1))
+        self.assertEqual(third.alert_id, second.alert_id,
+                         "Mientras la NC siga abierta, el tercer rojo se liga a ella.")
+        self.assertEqual(self.env['quality.alert'].search_count(
+            [('sgi_indicator_measure_id', 'in', (first | second | third).ids)]), 1)
+
+    def test_10_gap_breaks_persistence_and_weekly_step(self):
+        ind = self._official('X-P10', frequency='weekly')
+        self._red(ind, date(2040, 1, 1))
+        skipped = self._red(ind, date(2040, 1, 15))
+        self.assertFalse(skipped.alert_id, "Sin la semana intermedia no hay persistencia.")
+        following = self._red(ind, date(2040, 1, 22))
+        self.assertTrue(following.alert_id, "Semana seguida de otra roja: NC.")
+
+    def test_11_critical_opens_on_first_red(self):
+        ind = self._official('X-P11', critical=True)
+        first = self._red(ind, date(2040, 6, 1))
+        self.assertTrue(first.alert_id, "Crítico: un rojo basta.")

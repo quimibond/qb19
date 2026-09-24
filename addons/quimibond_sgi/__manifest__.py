@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.36.0.0',
+    'version': '19.0.42.0.4',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -42,6 +42,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'sale_stock',  # salidas del pedido (COA por entrega, OTIF)
         'account_budget',  # presupuesto de gastos ligado al de ventas (P-3)
         'maintenance',
+        'stock_account',  # stock.move.value / stock.quant.value (AL-01)
         'survey',
         'hr_skills',
         'web_grid',
@@ -63,6 +64,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
+        'data/sgi_indicator_formula_data.xml',
         'data/sgi_expansion_data.xml',
         'data/sgi_risk_data.xml',
         'data/sgi_audit_data.xml',
@@ -103,6 +105,9 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_policy_views.xml',
         'views/sgi_objective_views.xml',
         'views/sgi_indicator_views.xml',
+        'views/sgi_indicator_formula_views.xml',
+        'views/sgi_indicator_plan_views.xml',
+        'views/sgi_indicator_trajectory_views.xml',
         'views/sgi_audit_views.xml',
         'views/sgi_risk_views.xml',
         'views/sgi_legal_views.xml',

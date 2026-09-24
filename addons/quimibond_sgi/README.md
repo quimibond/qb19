@@ -71,8 +71,10 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
   `calc_mode`. Cron mensual (día 1) que crea la medición del mes anterior
   (idempotente): los KPIs automáticos se calculan y quedan "capturados"; los
   manuales quedan "pendientes" con actividad al responsable (límite día 5).
-  Una medición **roja validada** de un indicador con `nc_on_red=True` genera
-  **una** NC pre-llenada (equipo NC Internas, origen "indicador") y la liga.
+  Una medición **roja validada** de un indicador oficial con `nc_on_red=True`
+  genera **una** NC pre-llenada (equipo NC Internas, origen "indicador") y la
+  liga; desde 19.0.37.0.0 por persistencia (dos rojos seguidos, o uno si es
+  crítico), ver «Lógica de indicadores».
 - **Auditorías** (`sgi.audit.program`, `sgi.audit`, `sgi.audit.finding`, P-G03):
   programa anual → auditoría con folio `AUD-AAAA-NN`, checklist en `survey`
   (plantilla ISO 9001 secciones 4-10 incluida), hallazgos con disposición y botón
@@ -113,10 +115,10 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
 | `presupuesto_ventas` | Facturado (out_invoice posted) vs `monthly_budget` | Implementado |
 | `preventivo_cumplido` | `maintenance.request` preventivas en etapa "done" | Implementado (aprox.) |
 | `rotacion_rh` | Bajas (`departure_date`) / plantilla activa | Implementado (aprox.) |
-| `disponibilidad_mantto` | Requiere paros de centros de trabajo | Devuelve None → captura manual |
-| `plantilla_rh` | Requiere plantilla presupuestada por puesto | Devuelve None → captura manual |
-| `reproceso` | Sin fuente confiable aún | Devuelve None → captura manual |
-| `inventario_diferencia` | Requiere conteos físicos registrados | Devuelve None → captura manual |
+| `disponibilidad_mantto` | Requiere paros de centros de trabajo | Devuelve None → captura manual (MT-01 en manual desde 2026-09-24) |
+| `plantilla_rh` | Requiere plantilla presupuestada por puesto | Devuelve None → captura manual (RH-01 en manual desde 2026-09-24) |
+| `reproceso` | kg de órdenes de los tipos de reproceso ÷ kg de hilo y fibra consumidos | Implementado (P-21, 19.0.39.0.0) |
+| `inventario_diferencia` | valor de ajustes (`stock.move.value`) ÷ valor actual de existencias | Implementado (19.0.39.0.0; 40.0.1 sin capas) |
 
 Los que devuelven None caen a captura manual sin bloquear el cron.
 
@@ -906,6 +908,147 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   Los 93 indicadores existentes quedan en prueba al actualizar: es el freno
   a las 20 NC de golpe que pedía la spec, sin tocar `nc_on_red`.
 - Carga JSON: llaves `status` y `measure_from` en `indicators`.
+- **I-3, fórmulas corregidas (19.0.38.0.0).** Tres modos nuevos con detalle
+  (`models/sgi_indicator_i3.py`), y la migración cambia MA-05, EX-01 y EX-02
+  a ellos si seguían en el modo viejo:
+  `desperdicio_kg` (kg que entran a las ubicaciones de desperdicio, órdenes y
+  ajustes, ÷ kg de hilo y fibra consumidos en órdenes, 3 meses móviles; solo
+  líneas en kg; parámetros `waste_location_ids` 39,43 y
+  `waste_input_categ_ids` 350,356), `margen_ebitda` ((ingresos − costo de
+  ventas − gastos de operación) ÷ ingresos por tipo de cuenta, 12 meses
+  móviles; fuera depreciación, otros ingresos y financieros 701) y
+  `compras_mp_vs_ventas` (facturas de proveedor de la categoría Materia Prima
+  menos notas de crédito ÷ ingresos, 3 meses móviles; parámetro
+  `raw_material_categ_id` 318). Las metas y el objetivo integral las ajusta
+  MAST: MA-05 arranca ≈ 16 % contra una meta de 0.8 %, EX-02 ≈ 35 % contra 78 %.
+  El margen sobre pedidos (`margen_ventas`) sigue disponible para un indicador
+  nuevo de C1/C2.
+- **P-21 y automáticos sin dato (19.0.39.0.0).** Diagnóstico del 24-sep-2026
+  de los 9 automáticos que siempre salían sin dato. Tres se miden desde Odoo
+  (`models/sgi_indicator_p21.py`): `reproceso` (MA-04: kg producidos por las
+  órdenes cuyo tipo de operación está en `quimibond_sgi.rework_picking_type_ids`,
+  sembrado 106 Re-proceso Tintorería y 107 Re-proceso Acabado, ÷ kg de hilo y
+  fibra consumidos; solo líneas en kg, así que una orden de reproceso en metros
+  no entra; «Acabado producto en proceso» se agrega al parámetro cuando
+  producción lo confirme), `inventario_diferencia` (AL-01: valor de los ajustes
+  de inventario del mes, `stock.move.value`, ÷ valor actual de las existencias
+  en ubicaciones internas; Odoo 19 ya no tiene capas de valuación, así que el
+  denominador es la foto del día del cálculo, no el cierre) y `consumo_energia` (TR-03: facturado por el proveedor de energía ÷
+  toneladas de hilo y fibra consumidas; pesos por tonelada, antes total en
+  pesos). El denominador en kg es uno solo (`_sgi_kg_consumed`, el de MA-05):
+  cada kg cuenta una vez aunque pase por tejido y tintorería. MT-01, MT-02,
+  RH-01 y RH-02 pasaron a manual en producción sin retirarse (nadie captura
+  paros, preventivos, plantilla autorizada ni habilidades por puesto); MA-02
+  sigue sin capacidad configurada y VE-02 sin presupuesto aprobado.
+- **I-5, NC por persistencia (19.0.37.0.0).** «NC automática» (`nc_on_red`)
+  ya no abre una NC por un solo rojo: hacen falta **dos periodos seguidos en
+  rojo** (semana o mes, según la frecuencia), o **uno** si el indicador está
+  marcado como **crítico** (`critical`; llave `critical` en el JSON). Nunca
+  con «sin dato» ni «muestra chica», y mientras la NC del periodo anterior
+  siga abierta la medición nueva se liga a esa misma NC en vez de abrir otra.
+  Sigue exigiendo indicador oficial y medición validada.
+
+## Meta con trayectoria y sentido «dentro de un rango» (I-7; 19.0.42.0.0)
+
+`models/sgi_indicator_trajectory.py`.
+
+- **Trayectoria.** Arranque (`baseline_value` desde `baseline_date`) y meta
+  final (`target_objective` el `target_date`, con su `target_acceptable`) se
+  interpolan linealmente en **escalones trimestrales** (`sgi.indicator.step`,
+  pestaña Trayectoria, botón «Generar trayectoria» del Jefe MAST): el
+  objetivo de cada trimestre es el valor de la recta al cierre del trimestre y
+  su aceptable guarda la misma distancia que el aceptable de la meta final.
+  Regenerar es idempotente.
+- **Corrección a mano.** Cambiar objetivo o aceptable de un escalón exige un
+  motivo; el escalón queda marcado «corregido a mano», el antes/después y el
+  motivo van al chatter del indicador, y «Generar trayectoria» lo respeta.
+- **Metas por periodo.** Objetivo y aceptable de la medición (`target_objective`
+  / `target_acceptable`, ahora calculados) son los del escalón cuyo trimestre
+  contiene el periodo; sin escalones, los del indicador; después del último
+  escalón, la meta final. El semáforo se evalúa contra esas metas.
+- **Dentro de un rango.** `direction = 'range'` con `range_min`, `range_max` y
+  `range_tolerance`: verde dentro del rango, amarillo fuera pero dentro de la
+  tolerancia, rojo más allá. La trayectoria no aplica a este sentido; «Le
+  falta» pide rango en vez de meta.
+- Carga JSON: llaves `baseline_date`, `range_min`, `range_max`,
+  `range_tolerance` y `direction: range`.
+
+Pruebas: `TestIndicatorTrajectory` 01–05.
+
+## Plan de acción en rojo, calendario y ventana (I-4, I-6, I-8, P-40; 19.0.41.0.0)
+
+`models/sgi_indicator_plan.py`.
+
+- **I-4, medición roja con plan.** Una medición en rojo con dato (no «sin
+  dato» ni muestra chica) pide **causa** y al menos una **acción**
+  (`sgi.action.line` con origen `measure_id`: descripción, responsable y fecha
+  compromiso). Si el indicador es **oficial**, al quedar roja agenda una
+  actividad al dueño del indicador (fallback Jefe MAST) que vence el **día 10
+  del mes siguiente** al periodo (`quimibond_sgi.red_plan_due_day`); con causa
+  y acción la actividad se da por hecha, y si el día pasa sin plan el cron
+  diario escala a Dirección (una actividad, idempotente). En prueba el rojo
+  pide el plan en la ficha, sin actividad ni escalamiento. Las acciones cuelgan su actividad espejo del
+  indicador y las vencidas escalan por `cron_overdue_actions` como las demás.
+- **I-6, calendario de cálculo.** Los crons «Mediciones de indicadores» y
+  «Mediciones semanales» corren **a diario** (migración 41.0.0) y miden solo
+  cuando toca: el tercer día hábil del mes
+  (`quimibond_sgi.monthly_measure_business_day`, calendario de la compañía)
+  y el lunes. Si ese día el cron no corrió, miden en la siguiente corrida
+  mientras el periodo anterior siga sin mediciones. A mano
+  (`cron_indicators()` sin `scheduled`) miden siempre, como antes.
+- **I-8, ventana visible.** `window_label` en el indicador (junto al modo) y
+  en la medición (junto al valor): «Mes», «Semana», «3 meses móviles», «12
+  meses móviles», «90 días al cierre», «Al cierre», o la ventana de cada
+  término en el modo configurable («Mes / Acumulado al cierre»).
+- **P-40, validación masiva.** Botón «Validar mediciones del periodo» en la
+  Revisión por la Dirección (Jefe MAST): valida las capturadas del periodo de
+  la revisión, deja el conteo en el chatter y abre la lista de rojos que aún
+  no tienen causa ni acción.
+
+Pruebas: `TestIndicatorPlan` 01–07.
+
+## Fórmula configurable (19.0.40.0.0)
+
+Modo de cálculo `configurable` (`models/sgi_indicator_formula.py`): el
+indicador se calcula con dos **términos** capturados en la pestaña Fórmula
+(`sgi.indicator.term`), numerador y denominador. Cada término dice de qué
+modelo sale, con qué filtro (dominio de Odoo), sobre qué campo de fecha se
+recorta la ventana, cómo se agrega (contar, sumar un campo o sumar su valor
+absoluto), por qué factor se multiplica (−1 invierte el signo, 0.001 pasa kg
+a toneladas) y qué ventana usa (el periodo, 3 o 12 meses móviles, o acumulado
+hasta el cierre). Si el modelo tiene `company_id`, se filtra solo a la
+compañía del KPI. La medición guarda numerador, denominador y los registros
+del numerador, igual que los modos con detalle; el valor va ×100 cuando la
+unidad del indicador lleva `%`.
+
+- **Validación:** el dominio pasa por `safe_eval` (nunca `eval`) y por una
+  búsqueda de prueba al guardar; los campos de fecha y de suma tienen que
+  existir en el modelo con el tipo correcto; el factor no puede ser cero. Un
+  indicador tiene un solo numerador y un solo denominador.
+- **Quién edita:** solo el grupo Administrador del SGI (`group_sgi_admin`);
+  los demás la ven. La pestaña queda de solo lectura para quien no puede.
+- **Trazabilidad:** todo cambio de un término (crear, modificar, quitar) queda
+  en el chatter del indicador con el antes y el después, y **regresa el
+  indicador a «prueba»**: hay que volver a revisar la lista de registros.
+- **En paralelo:** un indicador que sigue en un modo de código pero ya tiene
+  términos corre la fórmula en cada medición nueva y guarda su resultado en
+  `parallel_value` / `parallel_numerator` / `parallel_denominator`
+  («Fórmula en paralelo» en la medición). La regla es migrar un indicador a
+  `configurable` solo después de un mes con el mismo número.
+- **Sembradas** (`data/sgi_indicator_formula_data.xml`, noupdate, con ids de
+  producción en los dominios): MA-05 desperdicio, MA-04 reproceso (solo
+  Re-proceso Tintorería), AL-01 diferencia de inventario (denominador
+  `stock.quant.value` sin campo de fecha: la ventana «acumulado al cierre»
+  admite término sin fecha y entonces toma todo lo que hay hoy), TR-03 energía
+  por tonelada y EX-02 compras de materia prima. Diferencias conocidas con el
+  modo de código: MA-04 por fórmula no excluye subproductos de la orden de
+  reproceso; EX-02 por fórmula usa la fecha contable de la línea en vez de
+  la fecha de factura. EX-01 (EBITDA) no cabe: son tres términos.
+- Fuera del modo: los ids de ubicaciones, categorías, tipos de operación y
+  proveedor viven en el texto del dominio, no en parámetros; en una copia con
+  ids distintos la fórmula apunta a otra cosa.
+
+Pruebas: `TestIndicatorFormula` 01–07.
 
 ## No surtir lotes sin liberar (P-7, 19.0.35.0.0)
 

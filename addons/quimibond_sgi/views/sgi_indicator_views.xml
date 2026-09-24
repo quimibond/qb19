@@ -31,6 +31,7 @@
                 <field name="source_info" optional="show"/>
                 <field name="calc_mode" optional="hide"/>
                 <field name="nc_on_red" widget="boolean_toggle"/>
+                <field name="critical" widget="boolean_toggle" optional="hide"/>
             </list>
         </field>
     </record>
@@ -91,6 +92,7 @@
                             <field name="deliverable_id"
                                    invisible="calc_mode != 'entregable_completo'"/>
                             <field name="nc_on_red"/>
+                            <field name="critical" invisible="not nc_on_red"/>
                         </group>
                     </group>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not spec_missing">
@@ -305,7 +307,7 @@
                             <field name="alert_id" readonly="1"/>
                         </group>
                     </group>
-                    <group string="Nota">
+                    <group string="Nota" name="note">
                         <field name="note" nolabel="1"/>
                     </group>
                 </sheet>

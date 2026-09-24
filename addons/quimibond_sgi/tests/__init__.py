@@ -46,3 +46,8 @@ from . import test_spec
 from . import test_coa
 from . import test_release
 from . import test_indicator_detail
+from . import test_indicator_i3
+from . import test_indicator_p21
+from . import test_indicator_formula
+from . import test_indicator_plan
+from . import test_indicator_trajectory
