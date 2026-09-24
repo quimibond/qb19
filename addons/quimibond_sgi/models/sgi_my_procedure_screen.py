@@ -61,13 +61,16 @@ class SgiMyProcedure(models.TransientModel):
     _name = 'sgi.my.procedure'
     _description = "Mi procedimiento (pantalla)"
 
-    employee_id = fields.Many2one('hr.employee', string="Empleado")
+    # hr.employee.public: mismo id que hr.employee y legible por cualquier
+    # usuario interno (hr.employee no lo es en Odoo 19). Las lecturas de
+    # fondo van con sudo sobre hr.employee.
+    employee_id = fields.Many2one('hr.employee.public', string="Empleado")
     job_id = fields.Many2one(
         'hr.job', string="Puesto", compute='_compute_job_id', store=True, readonly=False)
     can_pick = fields.Boolean(compute='_compute_scope')
     can_publish = fields.Boolean(compute='_compute_scope')
     allowed_employee_ids = fields.Many2many(
-        'hr.employee', compute='_compute_scope', string="Empleados visibles")
+        'hr.employee.public', compute='_compute_scope', string="Empleados visibles")
     allowed_job_ids = fields.Many2many(
         'hr.job', compute='_compute_scope', string="Puestos visibles")
     is_me = fields.Boolean(compute='_compute_ack')
@@ -90,7 +93,13 @@ class SgiMyProcedure(models.TransientModel):
 
     @api.model
     def _sgi_mp_my_employee(self):
-        return self.env.user.employee_id
+        return self.env.user.employee_id.sudo()
+
+    def _sgi_mp_employee(self):
+        """El empleado elegido como hr.employee (sudo)."""
+        self.ensure_one()
+        return self.env['hr.employee'].sudo().browse(self.employee_id.id) \
+            if self.employee_id else self.env['hr.employee'].sudo()
 
     @api.depends('employee_id')
     def _compute_job_id(self):
@@ -108,12 +117,12 @@ class SgiMyProcedure(models.TransientModel):
             wiz.can_publish = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
             if admin:
                 wiz.can_pick = True
-                wiz.allowed_employee_ids = Employee.search([])
-                wiz.allowed_job_ids = Job.search([])
+                wiz.allowed_employee_ids = Employee.search([]).ids
+                wiz.allowed_job_ids = Job.search([]).ids
                 continue
             team = me._sgi_mp_team_employees() if me else Employee
-            wiz.allowed_employee_ids = team
-            wiz.allowed_job_ids = team.job_id
+            wiz.allowed_employee_ids = team.ids
+            wiz.allowed_job_ids = team.job_id.ids
             wiz.can_pick = len(team) > 1
 
     @api.depends('employee_id', 'job_id')
@@ -122,15 +131,15 @@ class SgiMyProcedure(models.TransientModel):
         Ack = self.env['sgi.document.ack'].sudo()
         me = self._sgi_mp_my_employee()
         for wiz in self:
-            job = wiz.job_id
+            job = wiz.job_id.sudo()
             doc = job._sgi_my_procedure_current_doc() if job else False
             wiz.doc_id = doc or False
-            wiz.is_me = bool(me and wiz.employee_id == me)
+            wiz.is_me = bool(me and wiz.employee_id.id == me.id)
             if not doc:
                 wiz.ack_state = 'sin_publicar'
                 wiz.ack_label = "Aún no hay revisión publicada de este puesto: la firma se habilita cuando MAST la publique."
                 continue
-            emp = wiz.employee_id
+            emp = wiz._sgi_mp_employee()
             if not emp or emp.job_id != job:
                 wiz.ack_state = 'no_aplica'
                 wiz.ack_label = "Revisión %s vigente desde %s." % (
@@ -156,8 +165,9 @@ class SgiMyProcedure(models.TransientModel):
                     "<div class='alert alert-warning'>Sin puesto asignado: pide a RH que lo "
                     "capture en tu ficha de empleado.</div>")
                 continue
-            data = wiz.job_id._sgi_my_procedure_data()
-            wiz.content = self._sgi_mp_render(wiz.job_id, wiz.employee_id, data)
+            job = wiz.job_id.sudo()
+            data = job._sgi_my_procedure_data()
+            wiz.content = self._sgi_mp_render(job, wiz._sgi_mp_employee(), data)
 
     # ------------------------------------------------------------------
     # Render
@@ -326,12 +336,12 @@ class SgiMyProcedure(models.TransientModel):
         vigente. El candado de identidad vive en sgi.document.ack.write()."""
         self.ensure_one()
         me = self._sgi_mp_my_employee()
-        if not me or self.employee_id != me:
+        if not me or self.employee_id.id != me.id:
             raise UserError("Solo puedes firmar tu propio «Mi procedimiento».")
-        doc = self.job_id._sgi_my_procedure_current_doc() if self.job_id else False
+        doc = self.job_id.sudo()._sgi_my_procedure_current_doc() if self.job_id else False
         if not doc:
             raise UserError("Aún no hay una revisión publicada de este puesto para firmar.")
-        if me.job_id != self.job_id:
+        if me.job_id.id != self.job_id.id:
             raise UserError("Tu puesto ya no es %s: no hay acuse que firmar." % self.job_id.name)
         Ack = self.env['sgi.document.ack']
         ack = Ack.sudo().search([('document_id', '=', doc.id), ('employee_id', '=', me.id)], limit=1)
@@ -344,7 +354,7 @@ class SgiMyProcedure(models.TransientModel):
         self.ensure_one()
         if not self.job_id:
             raise UserError("Elige un puesto.")
-        return self.job_id.with_context(
+        return self.job_id.sudo().with_context(
             sgi_mp_employee_id=self.employee_id.id).action_sgi_print_my_procedure()
 
     def action_publish(self):

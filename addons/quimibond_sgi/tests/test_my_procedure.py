@@ -200,7 +200,7 @@ class TestMyProcedure(TransactionCase):
         Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
         action = Wiz.action_open_mine()
         wiz = Wiz.browse(action['res_id'])
-        self.assertEqual((wiz.employee_id, wiz.job_id), (self.emp1, self.job))
+        self.assertEqual((wiz.employee_id.id, wiz.job_id), (self.emp1.id, self.job))
         self.assertFalse(wiz.can_pick, "Sin equipo ni permisos: solo su puesto.")
         self.assertEqual(wiz.ack_state, 'sin_publicar')
         html = wiz.content
@@ -246,8 +246,8 @@ class TestMyProcedure(TransactionCase):
         Wiz = self.env['sgi.my.procedure'].with_user(boss_user)
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
         self.assertTrue(wiz.can_pick, "Un jefe elige entre su equipo.")
-        self.assertIn(self.emp1, wiz.allowed_employee_ids)
-        self.assertNotIn(self.emp2, wiz.allowed_employee_ids, "Emp Dos no le reporta.")
+        self.assertIn(self.emp1.id, wiz.allowed_employee_ids.ids)
+        self.assertNotIn(self.emp2.id, wiz.allowed_employee_ids.ids, "Emp Dos no le reporta.")
         self.assertIn(self.job, wiz.allowed_job_ids)
         # Dueño de proceso: ve a los puestos con rol en su proceso.
         owner_user = new_test_user(self.env, login='mp_owner',
