@@ -87,6 +87,20 @@ class SgiProcessStructure(models.Model):
             'context': context,
         }
 
+    def action_sgi_register_finding(self):
+        """«Registrar hallazgo» (auditor, nivel 2): una NC nueva ya ligada al
+        proceso. Los permisos sobre quality.alert son los de la app Calidad."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Registrar hallazgo — %s" % self.display_name,
+            'res_model': 'quality.alert',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {'default_sgi_process_id': self.id,
+                        'default_name': "Hallazgo en %s %s" % (self.code or '', self.name or '')},
+        }
+
     def action_sgi_view_diagram(self):
         """«Ver en diagrama»: las flechas del mapa que entran y salen de este
         proceso, agrupadas por quién entrega."""
@@ -110,6 +124,14 @@ class SgiProcessActivityStructure(models.Model):
         if not self.instruction_id:
             raise UserError("Esta actividad no tiene instructivo ligado.")
         return self.instruction_id.action_sgi_view_file()
+
+    def action_sgi_register_finding(self):
+        """«Registrar hallazgo» desde la actividad: NC ligada al proceso con la
+        actividad en el título."""
+        self.ensure_one()
+        action = self.process_id.action_sgi_register_finding()
+        action['context']['default_name'] = "Hallazgo en %s" % self.display_name
+        return action
 
     def action_view_recent_records(self):
         """«Ver registros recientes»: la evidencia real, la más nueva primero."""

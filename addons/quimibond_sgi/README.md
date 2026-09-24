@@ -1033,7 +1033,14 @@ y navegación; el modelo de datos no cambia.
 - **Ficha de actividad (nivel 3):** «Ir a hacerlo» (antes «Abrir en Odoo»),
   «Ver instructivo» (archivo o enlace del IT) y «Ver registros recientes».
 
-Pruebas: `TestStructureSgi` 01–03.
+- **Paso 6, auditor:** el grupo Auditor SGI ya existía con lectura sobre
+  todo el SGI. Se agrega **«Registrar hallazgo»** en la ficha del proceso y en
+  la de la actividad (auditor y MAST): abre una NC ya ligada al proceso, con
+  la actividad en el título. Los permisos de crear NC son los de la app
+  Calidad. Paso 5 (tablero de dirección, I-9) queda en pausa por decisión
+  del CEO hasta que haya indicadores oficiales.
+
+Pruebas: `TestStructureSgi` 01–04.
 
 ## «Mi procedimiento» por puesto (19.0.43.0.0)
 

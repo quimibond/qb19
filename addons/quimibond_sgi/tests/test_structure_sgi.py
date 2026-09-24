@@ -61,3 +61,11 @@ class TestStructureSgi(TransactionCase):
         self.activity.instruction_id = it
         action = self.activity.action_open_instruction()
         self.assertEqual(action['url'], 'https://example.com/it')
+
+    def test_04_registrar_hallazgo(self):
+        action = self.process.action_sgi_register_finding()
+        self.assertEqual(action['res_model'], 'quality.alert')
+        self.assertEqual(action['context']['default_sgi_process_id'], self.process.id)
+        action = self.activity.action_sgi_register_finding()
+        self.assertIn('Paso con instructivo', action['context']['default_name'])
+        self.assertEqual(action['context']['default_sgi_process_id'], self.process.id)

@@ -12,6 +12,9 @@
                         string="Pedir un cambio" icon="fa-pencil-square-o"/>
                 <button name="action_sgi_view_diagram" type="object"
                         string="Ver en diagrama" icon="fa-sitemap"/>
+                <button name="action_sgi_register_finding" type="object"
+                        string="Registrar hallazgo" icon="fa-flag"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
             </xpath>
             <!-- El estado siempre en la misma forma y lugar: una línea arriba -->
             <xpath expr="//div[hasclass('oe_title')]" position="after">
@@ -101,6 +104,9 @@
                 <button name="action_open_instruction" type="object"
                         string="Ver instructivo" icon="fa-book"
                         invisible="not instruction_id"/>
+                <button name="action_sgi_register_finding" type="object"
+                        string="Registrar hallazgo" icon="fa-flag"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
             </xpath>
         </field>
     </record>
