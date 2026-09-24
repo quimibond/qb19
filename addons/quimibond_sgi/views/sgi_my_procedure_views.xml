@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====== Vista «Mi procedimiento»: roles del puesto agrupados por cadencia ====== -->
+    <record id="sgi_activity_role_view_list_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.my.procedure</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="arch" type="xml">
+            <list string="Mi procedimiento" create="0" edit="0" delete="0"
+                  default_order="cadence, role, process_id, activity_id">
+                <field name="cadence"/>
+                <field name="role" widget="badge"
+                       decoration-success="role == 'ejecuta'"
+                       decoration-warning="role == 'aprueba'"
+                       decoration-info="role == 'participa'"/>
+                <field name="process_id"/>
+                <field name="activity_id"/>
+                <field name="activity_when" string="Cuándo"/>
+                <field name="activity_menu_id" string="Dónde en Odoo" optional="show"/>
+                <field name="condition" optional="hide"/>
+                <button name="action_open_activity" type="object" string="Ver actividad"
+                        icon="fa-external-link" class="btn-link"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- hr.job: pestaña SGI → botones de «Mi procedimiento» -->
+    <record id="sgi_hr_job_view_form_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.hr.job.form.my.procedure</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_job_view_form_roles"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sgi_roles']//button[@name='action_sgi_view_roles']" position="before">
+                <div class="mb-2">
+                    <button name="action_sgi_print_my_procedure" type="object"
+                            string="Imprimir «Mi procedimiento»" icon="fa-print"
+                            class="btn-secondary me-1"/>
+                    <button name="action_sgi_publish_my_procedure" type="object"
+                            string="Publicar revisión (archiva el PDF y pide acuses)"
+                            icon="fa-upload" class="btn-primary me-1"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
+                    <button name="action_sgi_open_my_procedure_doc" type="object"
+                            string="Ver revisión vigente" icon="fa-file-pdf-o"
+                            class="btn-link" invisible="not sgi_my_procedure_doc_id"/>
+                    <field name="sgi_my_procedure_doc_id" invisible="1"/>
+                    <field name="sgi_my_procedure_stale" invisible="1"/>
+                    <span class="text-warning ms-2" invisible="not sgi_my_procedure_stale or not sgi_my_procedure_doc_id">
+                        <i class="fa fa-exclamation-triangle"/> Las actividades cambiaron desde la última revisión publicada.
+                    </span>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- hr.employee: botón «Mi procedimiento» (imprime el de su puesto) -->
+    <record id="sgi_hr_employee_view_form_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.hr.employee.form.my.procedure</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_print_my_procedure" type="object" class="oe_stat_button"
+                        icon="fa-print" invisible="not job_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Mi procedimiento</span>
+                        <field name="sgi_my_procedure_ack_state" class="o_stat_text"/>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- «Mis actividades» de Inicio: todos los roles del puesto (y de su
+         familia), no solo «ejecuta». -->
+    <record id="sgi_process_activity_view_search_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.process.activity.search.my.procedure</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_activity_view_search"/>
+        <field name="arch" type="xml">
+            <filter name="my_activities" position="attributes">
+                <attribute name="domain">['|', '|', ('responsible_job_ids.employee_ids.user_id', '=', uid), ('role_ids.job_id.employee_ids.user_id', '=', uid), ('role_ids.family_id.job_ids.employee_ids.user_id', '=', uid)]</attribute>
+            </filter>
+        </field>
+    </record>
+
+    <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
+              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_procedure_action_mine"
+              sequence="15"/>
+</odoo>
