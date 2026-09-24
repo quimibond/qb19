@@ -82,7 +82,7 @@ class TestIndicatorP21(TransactionCase):
 
     def test_02_inventario_diferencia_valor(self):
         env = self.env
-        if 'stock.valuation.layer' not in env:
+        if 'value' not in env['stock.move']._fields:
             self.skipTest('stock_account no instalado')
         today = date.today()
         first = today.replace(day=1)
@@ -99,9 +99,9 @@ class TestIndicatorP21(TransactionCase):
         quant.action_apply_inventory()
         detail = ind._detail_inventario_diferencia(first, today)
         self.assertAlmostEqual(detail['numerator'] - base['numerator'], 400.0, places=2,
-                               msg="|+300| + |−100| en valor.")
+                               msg="|+300| + |−100| en valor (stock.move.value).")
         self.assertAlmostEqual(detail['denominator'] - base['denominator'], 200.0, places=2,
-                               msg="Valor del inventario al cierre: 20 kg × 10.")
+                               msg="Existencias actuales: 20 kg × 10.")
         self.assertEqual(detail['model'], 'stock.move')
         self.assertEqual(len(detail['ids']) - len(base['ids']), 2)
 

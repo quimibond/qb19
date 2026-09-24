@@ -53,9 +53,11 @@ class SgiIndicatorTerm(models.Model):
     model_name = fields.Char(related='model_id.model', string="Modelo técnico")
     domain = fields.Text(string="Filtro", default='[]', required=True,
                          help="Dominio de Odoo, p. ej. [('state', '=', 'done')].")
-    date_field = fields.Char(string="Campo de fecha", required=True, default='create_date',
+    date_field = fields.Char(string="Campo de fecha", default='create_date',
                              help="Campo de fecha o fecha-hora del modelo sobre el que se "
-                                  "recorta la ventana.")
+                                  "recorta la ventana. Vacío solo con ventana «Acumulado al "
+                                  "cierre»: entonces cuenta todo lo que hay hoy (p. ej. las "
+                                  "existencias).")
     aggregation = fields.Selection(AGGREGATIONS, string="Agregación", required=True, default='count')
     field_name = fields.Char(string="Campo a sumar")
     factor = fields.Float(string="Factor", default=1.0, digits=(16, 6),
@@ -87,8 +89,11 @@ class SgiIndicatorTerm(models.Model):
             except Exception as exc:  # noqa: BLE001 - el mensaje va al usuario
                 raise ValidationError("%s: filtro inválido para %s: %s" % (
                     term.indicator_id.code, model_name, exc))
-            date_field = Model._fields.get(term.date_field)
-            if not date_field or date_field.type not in ('date', 'datetime'):
+            if not term.date_field and term.window != 'to_date':
+                raise ValidationError("%s: sin campo de fecha la ventana tiene que ser "
+                                      "«Acumulado al cierre»." % term.indicator_id.code)
+            date_field = Model._fields.get(term.date_field or '')
+            if term.date_field and (not date_field or date_field.type not in ('date', 'datetime')):
                 raise ValidationError("%s: «%s» no es un campo de fecha de %s." % (
                     term.indicator_id.code, term.date_field, model_name))
             if term.aggregation != 'count':
@@ -117,7 +122,9 @@ class SgiIndicatorTerm(models.Model):
         Model = self.env[self.model_id.model].sudo()
         start, end = self._sgi_window(date_from, date_to)
         domain = self._sgi_domain()
-        if Model._fields[self.date_field].type == 'datetime':
+        if not self.date_field:
+            pass  # acumulado sin fecha: todo lo que hay hoy
+        elif Model._fields[self.date_field].type == 'datetime':
             dt_from, dt_to = self.indicator_id._sgi_dt_bounds(start or date_to, end)
             domain += [(self.date_field, '<', dt_to)]
             if start:
@@ -149,7 +156,7 @@ class SgiIndicatorTerm(models.Model):
             what += " «%s»" % (self.field_name or '')
         text = "%s: %s de %s con filtro %s por «%s», ventana %s" % (
             dict(self._fields['role'].selection)[self.role], what, self.model_id.model,
-            self.domain or '[]', self.date_field, dict(WINDOWS)[self.window])
+            self.domain or '[]', self.date_field or 'sin fecha', dict(WINDOWS)[self.window])
         if self.factor != 1.0:
             text += ", factor %s" % self.factor
         return text

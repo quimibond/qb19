@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.40.0.0',
+    'version': '19.0.40.0.1',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -42,7 +42,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'sale_stock',  # salidas del pedido (COA por entrega, OTIF)
         'account_budget',  # presupuesto de gastos ligado al de ventas (P-3)
         'maintenance',
-        'stock_account',  # capas de valuación (AL-01, fórmula configurable)
+        'stock_account',  # stock.move.value / stock.quant.value (AL-01)
         'survey',
         'hr_skills',
         'web_grid',

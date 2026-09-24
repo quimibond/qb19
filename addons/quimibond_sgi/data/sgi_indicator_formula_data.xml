@@ -53,13 +53,15 @@
         <field name="window">period</field>
     </record>
 
-    <!-- AL-01 diferencia de inventario: |valor de ajustes| ÷ valor del inventario al cierre -->
+    <!-- AL-01 diferencia de inventario: valor de ajustes del mes ÷ valor actual
+         de existencias (Odoo 19 no tiene capas de valuación; stock.move.value es
+         positivo en entradas y salidas) -->
     <record id="sgi_term_inventario_num" model="sgi.indicator.term">
         <field name="indicator_id" ref="sgi_ind_diferencia_inventario"/>
         <field name="role">numerator</field>
-        <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
-        <field name="domain">[('stock_move_id.is_inventory', '=', True)]</field>
-        <field name="date_field">create_date</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain">[('state', '=', 'done'), ('is_inventory', '=', True)]</field>
+        <field name="date_field">date</field>
         <field name="aggregation">sum_abs</field>
         <field name="field_name">value</field>
         <field name="window">period</field>
@@ -67,9 +69,9 @@
     <record id="sgi_term_inventario_den" model="sgi.indicator.term">
         <field name="indicator_id" ref="sgi_ind_diferencia_inventario"/>
         <field name="role">denominator</field>
-        <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
-        <field name="domain">[]</field>
-        <field name="date_field">create_date</field>
+        <field name="model_id" ref="stock.model_stock_quant"/>
+        <field name="domain">[('location_id.usage', '=', 'internal')]</field>
+        <field name="date_field" eval="False"/>
         <field name="aggregation">sum</field>
         <field name="field_name">value</field>
         <field name="window">to_date</field>
