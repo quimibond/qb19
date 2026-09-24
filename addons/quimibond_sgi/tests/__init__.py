@@ -50,3 +50,4 @@ from . import test_indicator_i3
 from . import test_indicator_p21
 from . import test_indicator_formula
 from . import test_indicator_plan
+from . import test_indicator_trajectory

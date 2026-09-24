@@ -948,6 +948,33 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   siga abierta la medición nueva se liga a esa misma NC en vez de abrir otra.
   Sigue exigiendo indicador oficial y medición validada.
 
+## Meta con trayectoria y sentido «dentro de un rango» (I-7; 19.0.42.0.0)
+
+`models/sgi_indicator_trajectory.py`.
+
+- **Trayectoria.** Arranque (`baseline_value` desde `baseline_date`) y meta
+  final (`target_objective` el `target_date`, con su `target_acceptable`) se
+  interpolan linealmente en **escalones trimestrales** (`sgi.indicator.step`,
+  pestaña Trayectoria, botón «Generar trayectoria» del Jefe MAST): el
+  objetivo de cada trimestre es el valor de la recta al cierre del trimestre y
+  su aceptable guarda la misma distancia que el aceptable de la meta final.
+  Regenerar es idempotente.
+- **Corrección a mano.** Cambiar objetivo o aceptable de un escalón exige un
+  motivo; el escalón queda marcado «corregido a mano», el antes/después y el
+  motivo van al chatter del indicador, y «Generar trayectoria» lo respeta.
+- **Metas por periodo.** Objetivo y aceptable de la medición (`target_objective`
+  / `target_acceptable`, ahora calculados) son los del escalón cuyo trimestre
+  contiene el periodo; sin escalones, los del indicador; después del último
+  escalón, la meta final. El semáforo se evalúa contra esas metas.
+- **Dentro de un rango.** `direction = 'range'` con `range_min`, `range_max` y
+  `range_tolerance`: verde dentro del rango, amarillo fuera pero dentro de la
+  tolerancia, rojo más allá. La trayectoria no aplica a este sentido; «Le
+  falta» pide rango en vez de meta.
+- Carga JSON: llaves `baseline_date`, `range_min`, `range_max`,
+  `range_tolerance` y `direction: range`.
+
+Pruebas: `TestIndicatorTrajectory` 01–05.
+
 ## Plan de acción en rojo, calendario y ventana (I-4, I-6, I-8, P-40; 19.0.41.0.0)
 
 `models/sgi_indicator_plan.py`.
