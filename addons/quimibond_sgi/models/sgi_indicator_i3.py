@@ -24,7 +24,7 @@ Parámetros: ``quimibond_sgi.waste_location_ids`` (39,43),
 """
 from dateutil.relativedelta import relativedelta
 
-from odoo import models
+from odoo import api, models
 
 WASTE_LOCATIONS_PARAM = 'quimibond_sgi.waste_location_ids'
 WASTE_INPUT_CATEGS_PARAM = 'quimibond_sgi.waste_input_categ_ids'
@@ -97,12 +97,24 @@ class SgiIndicatorI3(models.Model):
     def _sgi_balance_by_type(self, date_from, date_to, account_types):
         """Saldo (debe − haber) de las cuentas de esos tipos en el rango, de
         la compañía del KPI, asientos publicados."""
-        groups = self.env['account.move.line']._read_group([
+        domain = [
             ('company_id', '=', self._sgi_kpi_company().id),
             ('parent_state', '=', 'posted'),
             ('account_id.account_type', 'in', list(account_types)),
-            ('date', '>=', date_from), ('date', '<=', date_to)], [], ['balance:sum'])
+            ('date', '>=', date_from), ('date', '<=', date_to),
+        ] + self.env['sgi.indicator']._sgi_closing_move_domain('move_id')
+        groups = self.env['account.move.line']._read_group(domain, [], ['balance:sum'])
         return groups[0][0] if groups else 0.0
+
+    @api.model
+    def _sgi_closing_move_domain(self, prefix=''):
+        """Excluye las pólizas de cierre anual (mes 13, `l10n_mx_closing_move`):
+        en una ventana móvil que cruza diciembre cancelan los ingresos y gastos
+        del año y dejan el saldo al revés (EX-01 salía «sin dato», 2026-09-24)."""
+        if 'l10n_mx_closing_move' not in self.env['account.move']._fields:
+            return []
+        field = prefix + '.l10n_mx_closing_move' if prefix else 'l10n_mx_closing_move'
+        return [(field, '=', False)]
 
     def _detail_margen_ebitda(self, date_from, date_to):
         start = date_to - relativedelta(months=12) + relativedelta(days=1)
