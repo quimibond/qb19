@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Estructura del SGI, pasos 3 y 4: ficha de proceso y ficha de actividad."""
+import base64
+
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -37,16 +39,20 @@ class TestStructureSgi(TransactionCase):
         ctx = action['context']
         self.assertEqual(action['res_model'], 'approval.request')
         self.assertEqual(ctx['default_sgi_change_kind'], 'alta', "Sin procedimiento vigente: alta.")
-        doc = self.env['documents.document'].create({
-            'name': 'PR-XS', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'procedimiento', 'sgi_code': 'PR-XS', 'sgi_state': 'vigente',
-            'sgi_process_id': self.process.id})
-        self.process.invalidate_recordset()
-        if doc in self.process.procedure_ids:
-            ctx = self.process.action_sgi_request_change()['context']
-            self.assertEqual(ctx['default_sgi_change_kind'], 'modificacion')
-            self.assertEqual(ctx['default_sgi_document_id'], doc.id)
         self.assertEqual(ctx['default_sgi_affected_process_ids'], [(6, 0, self.process.ids)])
+        # Con procedimiento vigente: modificación apuntando a ese documento.
+        # (Un proceso aparte sin actividades: el candado de medición impide
+        # poner vigente el de XS, cuya actividad no tiene método.)
+        other = self.env['sgi.process'].create({'code': 'XS2', 'name': 'Proceso estructura 2'})
+        doc = self.env['documents.document'].create({
+            'name': 'PR-XS2', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'PR-XS2', 'sgi_state': 'vigente',
+            'sgi_process_id': other.id})
+        other.invalidate_recordset()
+        self.assertEqual(other._sgi_procedure_document(), doc)
+        ctx = other.action_sgi_request_change()['context']
+        self.assertEqual(ctx['default_sgi_change_kind'], 'modificacion')
+        self.assertEqual(ctx['default_sgi_document_id'], doc.id)
 
     def test_03_diagrama_e_instructivo(self):
         action = self.process.action_sgi_view_diagram()
@@ -55,12 +61,14 @@ class TestStructureSgi(TransactionCase):
         with self.assertRaises(UserError):
             self.activity.action_open_instruction()
         it = self.env['documents.document'].create({
-            'name': 'IT estructura', 'type': 'url', 'url': 'https://example.com/it',
-            'sgi_is_controlled': True, 'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-XS-01',
-            'sgi_state': 'vigente'})
+            'name': 'IT estructura.pdf', 'type': 'binary', 'datas': base64.b64encode(b'%PDF-1.4'),
+            'mimetype': 'application/pdf', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-XS-01', 'sgi_state': 'vigente',
+            'sgi_process_id': self.process.id})
         self.activity.instruction_id = it
         action = self.activity.action_open_instruction()
-        self.assertEqual(action['url'], 'https://example.com/it')
+        self.assertEqual(action['type'], 'ir.actions.act_url')
+        self.assertIn('/web/content/%d' % it.attachment_id.id, action['url'])
 
     def test_04_registrar_hallazgo(self):
         action = self.process.action_sgi_register_finding()
