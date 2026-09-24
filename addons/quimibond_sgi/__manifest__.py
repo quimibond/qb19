@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.33.0.0',
+    'version': '19.0.34.0.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -40,6 +40,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'hr_timesheet',  # allow_timesheets en data/sgi_dyd_data.xml (project.project)
         'sale_management',
         'sale_stock',  # salidas del pedido (COA por entrega, OTIF)
+        'account_budget',  # presupuesto de gastos ligado al de ventas (P-3)
         'maintenance',
         'survey',
         'hr_skills',
@@ -124,6 +125,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_alert_source_views.xml',
         'views/sgi_action_line_views.xml',
         'views/sgi_sales_budget_views.xml',
+        'views/sgi_budget_analytic_views.xml',
         'views/sgi_settings_views.xml',
         'views/sgi_sign_elearning_views.xml',
         'views/sgi_catalog_views.xml',

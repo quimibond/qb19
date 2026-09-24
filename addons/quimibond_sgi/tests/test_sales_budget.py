@@ -2449,3 +2449,18 @@ class TestSalesBudgetMultiCompany(TransactionCase):
         self.assertFalse(
             budget.line_ids.filtered(lambda l: l.product_id == self.product),
             "La precarga omite el producto de otra compañía (mal configurado).")
+
+
+@tagged('post_install', '-at_install')
+class TestBudgetAnalyticLink(TransactionCase):
+    """P-3: el presupuesto de gastos (app Presupuestos) apunta al de ventas."""
+
+    def test_01_expense_budget_links_sales_budget(self):
+        team = self.env['crm.team'].create({'name': 'Mercado P-3'})
+        sales = self.env['sgi.sales.budget'].create({'year': 2041, 'team_id': team.id})
+        expense = self.env['budget.analytic'].create({
+            'name': 'Gastos 2041', 'date_from': date(2041, 1, 1), 'date_to': date(2041, 12, 31),
+            'budget_type': 'expense', 'sgi_sales_budget_id': sales.id})
+        self.assertEqual(expense.sgi_sales_budget_id, sales)
+        arch = self.env['budget.analytic'].get_view(view_type='form')['arch']
+        self.assertIn('sgi_sales_budget_id', arch, "El campo sale en el formulario.")

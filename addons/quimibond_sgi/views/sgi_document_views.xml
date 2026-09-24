@@ -55,6 +55,7 @@
                             <field name="sgi_doc_type" invisible="1"/>
                             <field name="sgi_area_id"/>
                             <field name="sgi_process_id"/>
+                            <field name="sgi_doc_change_id" invisible="not sgi_doc_change_id"/>
                             <field name="sgi_previous_code" readonly="1"
                                    invisible="not sgi_previous_code"/>
                             <field name="sgi_previous_code_date" readonly="1"

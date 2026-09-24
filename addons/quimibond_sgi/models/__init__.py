@@ -44,3 +44,4 @@ from . import sgi_sign_elearning
 from . import sgi_cron
 from . import sgi_activity_spec
 from . import sgi_coa
+from . import sgi_budget_analytic

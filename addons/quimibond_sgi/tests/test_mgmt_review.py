@@ -33,6 +33,20 @@ class TestManagementReview(TransactionCase):
         self.assertTrue(review.audit_summary)
         self.assertTrue(review.doc_changes_summary)
 
+    def test_02b_load_inputs_links_period_audits(self):
+        process = self.env['sgi.process'].create({'code': 'XRD', 'name': 'Revisión X'})
+        inside = self.env['sgi.audit'].create({
+            'audit_type': 'interna', 'process_ids': [(6, 0, process.ids)],
+            'date_start': date(2026, 3, 10), 'date_end': date(2026, 3, 11)})
+        self.env['sgi.audit'].create({
+            'audit_type': 'interna', 'process_ids': [(6, 0, process.ids)],
+            'date_start': date(2026, 9, 1), 'date_end': date(2026, 9, 2)})
+        review = self._review()
+        review.action_load_inputs()
+        self.assertIn(inside, review.audit_ids, "La auditoría del periodo queda ligada (P-3).")
+        self.assertTrue(all(date(2026, 1, 1) <= a.date_start <= date(2026, 6, 30)
+                            for a in review.audit_ids))
+
     def test_03_done_blocked_without_agreements(self):
         review = self._review()
         with self.assertRaises(UserError):
