@@ -1007,6 +1007,17 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## Pólizas de cierre anual fuera de las ventanas móviles (19.0.42.0.5)
+
+Las pólizas de cierre anual (mes 13, `account.move.l10n_mx_closing_move`)
+cancelan los ingresos y gastos del año el 31 de diciembre. En una ventana
+móvil que cruza diciembre (EX-01 a 12 meses, EX-02 a 3 meses en dic–feb) el
+saldo queda al revés y el indicador sale «sin dato» (visto en producción el
+2026-09-24: EX-01 con ingresos de −17 M). `_sgi_closing_move_domain` las
+excluye en `_sgi_balance_by_type` (EX-01, EX-02) y en todo término de fórmula
+configurable sobre `account.move` o `account.move.line`. Si `l10n_mx` no
+está instalado no hace nada. Prueba: `TestIndicatorI3.test_02`.
+
 ## Fórmula configurable (19.0.40.0.0)
 
 Modo de cálculo `configurable` (`models/sgi_indicator_formula.py`): el
