@@ -45,3 +45,4 @@ from . import test_structure
 from . import test_spec
 from . import test_coa
 from . import test_release
+from . import test_indicator_detail

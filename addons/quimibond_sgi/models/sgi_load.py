@@ -63,7 +63,7 @@ _ACTIVITY_TEXT_FIELDS = (
 _INDICATOR_FIELDS = (
     'name', 'uom', 'direction', 'target_objective', 'target_acceptable',
     'frequency', 'calc_mode', 'monthly_budget', 'nc_on_red', 'formula', 'source',
-    'baseline_value', 'target_date')
+    'baseline_value', 'target_date', 'status', 'measure_from')
 _DIRECTIONS = {'up': 'higher_better', 'down': 'lower_better',
                'higher_better': 'higher_better', 'lower_better': 'lower_better'}
 

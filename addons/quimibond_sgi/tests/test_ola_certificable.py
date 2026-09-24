@@ -103,7 +103,7 @@ class TestOlaCertificable(TransactionCase):
             measure.action_recompute_value()  # manual: nada que recalcular
         indicator.calc_mode = 'reproceso'  # devuelve None (sin fuente)
         measure.action_recompute_value()
-        self.assertEqual(measure.state, 'pendiente')
+        self.assertEqual(measure.state, 'sin_dato')
 
     # ------------------------------------------------------------------
     # D.28: acuses de la política
