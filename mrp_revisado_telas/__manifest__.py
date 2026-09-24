@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Mrp Revisado Telas (Botones Directos)',
-    'version': '19.0.1.3',
+    'version': '19.0.1.4',
     'summary': 'Control de pesaje y revisión desde el tablero de centros de trabajo',
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Ruiz Arizmendi',

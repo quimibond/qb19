@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
+from odoo import fields
 from odoo.tests import tagged
 
 from .common import RFC_CLIENTE, RFC_QUIMIBOND, SatCommon, syntage_invoice
@@ -138,6 +141,21 @@ class TestSatCfdi(SatCommon):
         self.env['sat.cfdi']._cron_match_unmatched()
         self.assertEqual(cfdi.move_id, move)
         self.assertEqual(cfdi.issue, 'ok')
+
+    def test_hourly_match_only_recent_nightly_all(self):
+        self._require_mx_edi()
+        cfdi = self._upsert(syntage_invoice(UUID_A))
+        # Emitido y dado de alta hace más de la ventana: el cruce de cada hora
+        # no lo toca, el de la noche sí.
+        old = fields.Datetime.now() - timedelta(days=self.env['sat.cfdi'].MATCH_RECENT_DAYS + 10)
+        self.env.cr.execute("UPDATE sat_cfdi SET fecha_emision = %s, create_date = %s WHERE id = %s",
+                            (old, old, cfdi.id))
+        cfdi.invalidate_recordset()
+        move = self._invoice(self.proveedor, 3287.86, uuid=UUID_A)
+        self.env['sat.cfdi']._cron_match_unmatched()
+        self.assertFalse(cfdi.move_id)
+        self.env['sat.cfdi']._cron_match_unmatched(full=True)
+        self.assertEqual(cfdi.move_id, move)
 
     def test_duplicate_capture_prefers_posted_latest(self):
         self._require_mx_edi()
