@@ -1016,6 +1016,25 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## Estructura del SGI, pasos 3 y 4: ficha de proceso y ficha de actividad (19.0.44.1.0)
+
+`models/sgi_structure.py`, `views/sgi_structure_views.xml`. Solo presentación
+y navegación; el modelo de datos no cambia.
+
+- **Ficha de proceso (nivel 2):** arriba el semáforo y una línea de estado
+  (`structure_status`: dueño, estado, semáforo, actividades atrasadas,
+  indicadores en rojo, NC abiertas, acciones vencidas) y el propósito.
+  Pestañas: Ficha · Actividades · **Indicadores** · **Riesgos** · Con quién se
+  conecta · Documentos · **No conformidades** (`nc_open_ids`, las abiertas).
+  Botones en verbo: Imprimir procedimiento · **Pedir un cambio** (abre una
+  solicitud de cambio documental F-P-G01-06 apuntando al procedimiento
+  vigente del proceso, o alta si no hay) · **Ver en diagrama** (las flechas
+  del mapa que entran y salen del proceso).
+- **Ficha de actividad (nivel 3):** «Ir a hacerlo» (antes «Abrir en Odoo»),
+  «Ver instructivo» (archivo o enlace del IT) y «Ver registros recientes».
+
+Pruebas: `TestStructureSgi` 01–03.
+
 ## «Mi procedimiento» por puesto (19.0.43.0.0)
 
 Un solo documento por puesto (y por empleado, vía su puesto) con **todas sus
