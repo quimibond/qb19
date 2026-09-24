@@ -562,7 +562,7 @@ con tres tableros y las actividades en tres lugares). Todo el árbol vive en
 
 | Menú | Qué hay |
 |---|---|
-| **Inicio** | Tablero (hoja de cálculo «Salud del SGI», se arma con los pivotes de Análisis), Mis actividades, Mis acciones, Mis mediciones, Mis procedimientos, Mis acuses |
+| **Inicio** | Tablero (hoja de cálculo «Salud del SGI», se arma con los pivotes de Análisis), Mis actividades, Mi procedimiento, Mis acciones, Mis mediciones, Mis procedimientos, Mis acuses |
 | **Procesos** | Mapa de procesos (kanban por tipo con barra de medición, dueño, % medido y adherencia), Actividades, Roles por puesto, Cadena de actividades, Flujos, Riesgos y oportunidades, Requisitos legales, Partes interesadas |
 | **Mejora** | No conformidades, Concentrado de NC, Acciones, Reclamaciones, Quejas y sugerencias, Incidentes SST, Mejoras, Lecciones aprendidas, Auditorías y su programa, Planes de emergencia, Simulacros |
 | **Documentos** | Documentos, Cambios documentales, Migración de formatos |
@@ -1006,6 +1006,55 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
   no tienen causa ni acción.
 
 Pruebas: `TestIndicatorPlan` 01–07.
+
+## «Mi procedimiento» por puesto (19.0.43.0.0)
+
+Un solo documento por puesto (y por empleado, vía su puesto) con **todas sus
+actividades de todos los procesos**, tomadas de `hr.job.sgi_all_role_ids`
+(roles propios más los de su familia de puestos). `models/sgi_my_procedure.py`,
+`report/report_my_procedure.xml`, `views/sgi_my_procedure_views.xml`.
+
+- **Secciones por cadencia real**, sin agrupar y solo las que tengan
+  actividades, en este orden: Diario, Semanal, Quincenal, Mensual, Trimestral,
+  Semestral, Anual, Cuando ocurre (evento).
+- **Ejecuta y aprueba, completo:** cuándo (día de la semana o día hábil del
+  mes), rol, proceso y numeral, y todas las piezas de la frase del
+  procedimiento con la etiqueta en negritas (dónde, cómo, contra qué, criterio
+  de terminado, si no se puede, entradas, salidas, instructivo, conforme a) y
+  a quién escala si se atora. Dentro de cada sección: por cuándo, luego por
+  proceso y numeral.
+- **Participa y se entera:** lista corta al final (rol, proceso, numeral,
+  nombre), sin detalle.
+- **Escalamientos que recibe:** actividades de otros puestos que le escalan a
+  este puesto, con quién las ejecuta y a los cuántos días hábiles.
+- **Portada:** puesto y familia, área, jefe inmediato (responsable del
+  departamento), personas en el puesto, procesos donde participa y conteo por
+  rol. Tamaño carta (`paperformat_sgi_carta`), 11 px, caja de control en
+  cada página con clave, revisión y fecha de emisión.
+- **Leído y entendido al pie:** una línea por persona del puesto (o solo la
+  del empleado cuando se imprime desde su ficha) con el estado de su acuse.
+
+**Publicación (camino A, decisión CEO 2026-09-24):** «Publicar revisión» en la
+pestaña SGI del puesto (solo Jefe MAST) archiva el PDF como **documento
+controlado del puesto**, tipo «Mi procedimiento (MP)» (`sgi_doc_type_mi_procedimiento`,
+clave `MP-<id del puesto>`), estado vigente, `sgi_job_ids` = el puesto.
+Revisión nueva **solo cuando cambia el contenido**: `sgi_content_hash` es la
+huella de las piezas que la persona lee (roles, cuándo, numeral, nombre,
+frase, escalamientos), no del PDF. Cada revisión nueva obsoleta la anterior
+(mecánica de siempre de `documents.document`) y deja **pendiente el acuse de
+todos los empleados del puesto** con `action_generate_acks`: la firma queda
+contra la versión exacta que leyó. `hr.job.sgi_my_procedure_stale` avisa en
+el puesto cuando las actividades cambiaron después de la última revisión; al
+imprimir a mano en ese estado el encabezado dice «BORRADOR».
+
+**En Odoo:** Inicio → **Mi procedimiento** (roles del puesto del usuario
+agrupados por cadencia y rol, con «Cuándo», «Dónde en Odoo» y el botón a la
+actividad); en el puesto: imprimir, publicar, ver revisión vigente; en la
+ficha del empleado: botón «Mi procedimiento» con el estado de su acuse
+(sin publicar / pendiente / leído). **«Mis actividades»** ahora trae todos
+los roles del puesto y de su familia, no solo «ejecuta».
+
+Pruebas: `TestMyProcedure` 01–06.
 
 ## PDF del procedimiento: etiquetas en negritas (19.0.42.1.0)
 
