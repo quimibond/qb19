@@ -67,13 +67,21 @@ class StockPicking(models.Model):
         clean_search = re.sub(r'[^a-zA-Z0-9]', '', barcode)
         lot = self.env['stock.lot'].search([('name', '=', barcode)], limit=1)
         
-        if not lot:
-            product_ids = self.move_ids.product_id.ids
-            all_lots = self.env['stock.lot'].search([('product_id', 'in', product_ids)])
-            for l in all_lots:
-                if re.sub(r'[^a-zA-Z0-9]', '', l.name or '') == clean_search:
-                    lot = l
-                    break
+        if not lot and clean_search and self.move_ids.product_id:
+            # Misma comparación que antes (nombre sin guiones ni símbolos), pero
+            # en SQL: cargar y recorrer en Python todos los lotes del producto
+            # (hasta ~5,000 por producto) congelaba el worker en cada escaneo.
+            self.env['stock.lot'].flush_model(['name', 'product_id'])
+            self.env.cr.execute("""
+                SELECT id FROM stock_lot
+                 WHERE product_id IN %s
+                   AND regexp_replace(name, '[^a-zA-Z0-9]', '', 'g') = %s
+            """, (tuple(self.move_ids.product_id.ids), clean_search))
+            ids = [row[0] for row in self.env.cr.fetchall()]
+            if ids:
+                # Por el ORM para respetar las reglas de acceso (multicompañía)
+                # y el mismo orden que la búsqueda anterior.
+                lot = self.env['stock.lot'].search([('id', 'in', ids)], limit=1)
 
         if not lot:
             raise UserError(_("Lote no encontrado: %s") % barcode)
