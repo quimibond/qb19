@@ -67,8 +67,9 @@ class TestIndicators(TransactionCase):
         # El validador debe ser manager o responsable; damos manager al usuario de test.
         self.env.user.group_ids = [(4, self.env.ref('quimibond_sgi.group_sgi_manager').id)]
         # I-2: solo un indicador oficial abre NC (nace en prueba).
+        # I-5: NC por persistencia; crítico = un solo rojo basta.
         ind = self._indicator('higher_better', 90.0, 80.0, code='NC-1', nc_on_red=True,
-                              status='oficial')
+                              status='oficial', critical=True)
         measure = self.Measure.create({
             'indicator_id': ind.id, 'period_date': date(2026, 4, 1),
             'value': 50.0, 'state': 'capturado'})

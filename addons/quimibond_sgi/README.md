@@ -71,8 +71,10 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
   `calc_mode`. Cron mensual (día 1) que crea la medición del mes anterior
   (idempotente): los KPIs automáticos se calculan y quedan "capturados"; los
   manuales quedan "pendientes" con actividad al responsable (límite día 5).
-  Una medición **roja validada** de un indicador con `nc_on_red=True` genera
-  **una** NC pre-llenada (equipo NC Internas, origen "indicador") y la liga.
+  Una medición **roja validada** de un indicador oficial con `nc_on_red=True`
+  genera **una** NC pre-llenada (equipo NC Internas, origen "indicador") y la
+  liga; desde 19.0.37.0.0 por persistencia (dos rojos seguidos, o uno si es
+  crítico), ver «Lógica de indicadores».
 - **Auditorías** (`sgi.audit.program`, `sgi.audit`, `sgi.audit.finding`, P-G03):
   programa anual → auditoría con folio `AUD-AAAA-NN`, checklist en `survey`
   (plantilla ISO 9001 secciones 4-10 incluida), hallazgos con disposición y botón
@@ -906,6 +908,13 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   Los 93 indicadores existentes quedan en prueba al actualizar: es el freno
   a las 20 NC de golpe que pedía la spec, sin tocar `nc_on_red`.
 - Carga JSON: llaves `status` y `measure_from` en `indicators`.
+- **I-5, NC por persistencia (19.0.37.0.0).** «NC automática» (`nc_on_red`)
+  ya no abre una NC por un solo rojo: hacen falta **dos periodos seguidos en
+  rojo** (semana o mes, según la frecuencia), o **uno** si el indicador está
+  marcado como **crítico** (`critical`; llave `critical` en el JSON). Nunca
+  con «sin dato» ni «muestra chica», y mientras la NC del periodo anterior
+  siga abierta la medición nueva se liga a esa misma NC en vez de abrir otra.
+  Sigue exigiendo indicador oficial y medición validada.
 
 ## No surtir lotes sin liberar (P-7, 19.0.35.0.0)
 

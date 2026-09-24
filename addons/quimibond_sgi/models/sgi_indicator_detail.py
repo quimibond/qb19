@@ -47,6 +47,11 @@ class SgiIndicatorDetail(models.Model):
         help="Fecha desde la que hay dato confiable (el proceso entra a piloto "
              "o existe el campo que lo alimenta). Antes de ella no se crea medición.")
 
+    critical = fields.Boolean(
+        string="Crítico", default=False, tracking=True,
+        help="Un solo periodo en rojo abre la NC (I-5). Sin marcar, hacen falta "
+             "dos periodos seguidos en rojo.")
+
     def action_set_official(self):
         self.write({'status': 'oficial'})
 
@@ -259,7 +264,8 @@ class SgiIndicatorMeasureDetail(models.Model):
     detail_ids = fields.Text(string="Ids de los registros")
     detail_count = fields.Integer(string="Registros", compute='_compute_detail_count')
     value_is_pct = fields.Boolean(compute='_compute_value_is_pct')
-    indicator_status = fields.Selection(related='indicator_id.status', string="Indicador")
+    indicator_status = fields.Selection(related='indicator_id.status',
+                                        string="Estado del indicador")
 
     @api.depends('sample_size', 'state', 'detail_ids')
     def _compute_small_sample(self):
@@ -335,9 +341,41 @@ class SgiIndicatorMeasureDetail(models.Model):
         without = self.filtered(lambda m: m.state == 'sin_dato')
         return super(SgiIndicatorMeasureDetail, self - without).action_validate()
 
+    def _sgi_previous_measure(self):
+        """La medición del periodo inmediato anterior (semana o mes)."""
+        self.ensure_one()
+        indicator = self.indicator_id
+        step = relativedelta(days=7) if indicator.frequency == 'weekly' \
+            else relativedelta(months=1)
+        return self.search([
+            ('indicator_id', '=', indicator.id),
+            ('period_date', '=', self.period_date - step)], limit=1)
+
+    def _sgi_red_with_data(self):
+        self.ensure_one()
+        return bool(self.semaphore == 'rojo' and self.state in ('capturado', 'validado')
+                    and not self.small_sample)
+
     def _sgi_maybe_create_nc(self):
-        """Solo un indicador oficial, con dato y con muestra suficiente abre NC."""
-        eligible = self.filtered(
-            lambda m: m.indicator_id.status == 'oficial' and m.state != 'sin_dato'
-            and not m.small_sample)
+        """NC por persistencia (I-5): solo un indicador oficial, con dato y con
+        muestra suficiente, y solo con dos periodos seguidos en rojo (uno si
+        es crítico). Si la NC del periodo anterior sigue abierta, esta
+        medición se liga a ella en vez de abrir otra."""
+        eligible = self.browse()
+        for measure in self:
+            indicator = measure.indicator_id
+            if (indicator.status != 'oficial' or measure.state == 'sin_dato'
+                    or measure.small_sample or measure.alert_id):
+                continue
+            if measure.semaphore == 'rojo' and not indicator.critical:
+                previous = measure._sgi_previous_measure()
+                if not previous or not previous._sgi_red_with_data():
+                    continue
+                alert = previous.alert_id
+                if alert and not (alert.stage_id.sgi_is_closing_stage
+                                  or alert.stage_id.sgi_is_cancel_stage):
+                    if measure.state == 'validado':
+                        measure.alert_id = alert
+                    continue
+            eligible |= measure
         return super(SgiIndicatorMeasureDetail, eligible)._sgi_maybe_create_nc()
