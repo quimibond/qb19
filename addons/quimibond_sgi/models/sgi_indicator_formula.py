@@ -192,7 +192,7 @@ class SgiIndicatorTerm(models.Model):
 class SgiIndicatorFormula(models.Model):
     _inherit = 'sgi.indicator'
 
-    term_ids = fields.One2many('sgi.indicator.term', 'indicator_id', string="Fórmula")
+    term_ids = fields.One2many('sgi.indicator.term', 'indicator_id', string="Términos de la fórmula")
     has_formula = fields.Boolean(compute='_compute_has_formula')
     formula_text = fields.Text(string="Fórmula configurada", compute='_compute_has_formula')
     can_edit_formula = fields.Boolean(compute='_compute_can_edit_formula')
