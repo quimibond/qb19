@@ -72,10 +72,14 @@ class SgiIndicatorI3(models.Model):
         if not kg or not locations or not categs:
             return {'value': None}
         company = self._sgi_kpi_company()
+        # Ubicaciones de desperdicio con sus hijas: entra lo que llega a ellas
+        # desde fuera (un traspaso entre dos de desperdicio no es desperdicio
+        # nuevo). El ORM no acepta «not child_of», así que se listan las hijas.
+        waste_locs = env['stock.location'].search([('id', 'child_of', locations.ids)])
         lines = env['stock.move.line'].search([
             ('state', '=', 'done'), ('company_id', '=', company.id),
-            ('location_dest_id', 'child_of', locations.ids),
-            ('location_id', 'not child_of', locations.ids),
+            ('location_dest_id', 'in', waste_locs.ids),
+            ('location_id', 'not in', waste_locs.ids),
             ('product_uom_id', '=', kg.id),
             ('date', '>=', dt_from), ('date', '<', dt_to)])
         waste = sum(lines.mapped('quantity'))

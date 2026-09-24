@@ -65,12 +65,19 @@ class TestKpiFase4(TransactionCase):
         mo = self.env['mrp.production'].create({'product_id': main.id, 'product_qty': 5.0})
         lot = self.env['stock.lot'].create({'name': 'ROLLO-PQ-1', 'product_id': main.id})
         Log = self.env['mrp.revision.log']
+        today = datetime.date.today()
+        base = self.Indicator.new({'calc_mode': 'calidad_pq'})._detail_calidad_pq(
+            today - datetime.timedelta(days=1), today + datetime.timedelta(days=1))
         # 3 rollos sin defecto, 1 con defecto → 75% sin defecto.
         for _ in range(3):
             Log.create({'production_id': mo.id, 'lot_id': lot.id})
         Log.create({'production_id': mo.id, 'lot_id': lot.id, 'causa_id': tag.id})
         indicator = self.Indicator.new({'calc_mode': 'calidad_pq'})
-        today = datetime.date.today()
-        value = indicator._calc_calidad_pq(
-            today - datetime.timedelta(days=1), today + datetime.timedelta(days=1))
-        self.assertEqual(value, 75.0, "3 de 4 rollos sin defecto = 75%.")
+        window = (today - datetime.timedelta(days=1), today + datetime.timedelta(days=1))
+        # create_date no se puede fijar: la ventana incluye hoy, y en una copia
+        # de producción hoy ya hay rollos revisados. Se compara contra la base.
+        detail = indicator._detail_calidad_pq(*window)
+        self.assertEqual(detail['denominator'] - base['denominator'], 4)
+        self.assertEqual(detail['numerator'] - base['numerator'], 3,
+                         "3 de 4 rollos sin defecto.")
+        self.assertEqual(indicator._calc_calidad_pq(*window), detail['value'])
