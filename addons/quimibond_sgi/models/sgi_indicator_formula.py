@@ -195,7 +195,9 @@ class SgiIndicatorFormula(models.Model):
     term_ids = fields.One2many('sgi.indicator.term', 'indicator_id', string="Términos de la fórmula")
     has_formula = fields.Boolean(compute='_compute_has_formula')
     formula_text = fields.Text(string="Fórmula configurada", compute='_compute_has_formula')
-    can_edit_formula = fields.Boolean(compute='_compute_can_edit_formula')
+    # depends_context uid: la caché es una por transacción; sin esto el valor
+    # calculado para un usuario se reutiliza para otro (with_user).
+    can_edit_formula = fields.Boolean(compute='_compute_can_edit_formula', depends_context=('uid',))
 
     def _compute_can_edit_formula(self):
         allowed = self.env.user.has_group('quimibond_sgi.group_sgi_admin')
