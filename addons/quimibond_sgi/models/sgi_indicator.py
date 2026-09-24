@@ -49,6 +49,10 @@ CALC_MODES = [
     ('pedidos_cancelados', "Pedidos de venta cancelados"),
     ('entregas_completas', "Entregas completas a la primera (sin backorder)"),
     ('dpo_pagos', "Días de pago a proveedores (DPO)"),
+    # I-3 (2026-09-24): definiciones aprobadas en «Lógica de indicadores».
+    ('desperdicio_kg', "Desperdicio: kg a desperdicio ÷ hilo y fibra consumidos (3 meses)"),
+    ('margen_ebitda', "Margen EBITDA contable (12 meses móviles)"),
+    ('compras_mp_vs_ventas', "Compras de materia prima vs ingresos (3 meses móviles)"),
     # Genéricos (P-1): sirven a cualquier actividad o entregable del SGI.
     ('actividad_a_tiempo', "Actividad del SGI: % a tiempo"),
     ('entregable_completo', "Entregable del SGI: % completo"),
@@ -156,6 +160,9 @@ class SgiIndicator(models.Model):
         'pedidos_cancelados': "Ventas → pedidos cancelados del periodo vs pedidos confirmados más cancelados.",
         'entregas_completas': "Inventario → entregas a clientes del periodo que NO generaron backorder (completas a la primera).",
         'dpo_pagos': "Contabilidad → saldo pendiente a proveedores al medir vs compras netas de los últimos 90 días, por 90 (aproximación: estado de pago actual).",
+        'desperdicio_kg': "Inventario → kg que entran a las ubicaciones de desperdicio (órdenes y ajustes) ÷ kg de hilo y fibra consumidos en órdenes, en los últimos 3 meses.",
+        'margen_ebitda': "Contabilidad → (ingresos − costo de ventas − gastos de operación) ÷ ingresos, últimos 12 meses; sin depreciación, sin otros ingresos ni gastos financieros.",
+        'compras_mp_vs_ventas': "Contabilidad → facturas de proveedor de materia prima (menos notas de crédito) ÷ ingresos (cuentas de ingreso), últimos 3 meses.",
     }
 
     @api.depends('calc_mode')
@@ -1142,6 +1149,8 @@ class SgiIndicatorMeasure(models.Model):
         'notas_credito': ('account.move', [('move_type', '=', 'out_refund'), ('state', '=', 'posted')], 'invoice_date', False),
         'clientes_reactivados': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
         'pedidos_cancelados': ('sale.order', [('state', 'in', ('sale', 'cancel'))], 'date_order', True),
+        # desperdicio_kg, margen_ebitda y compras_mp_vs_ventas guardan sus
+        # registros en la medición (sgi_indicator_i3.py).
         # requisiciones, embarques_sin_error, consumo_energia,
         # compras_sin_devolucion y capacitacion no caben en un dominio de fecha
         # simple (categoría/proveedor dinámicos, relación de devolución, o foto de

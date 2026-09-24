@@ -97,6 +97,10 @@ class SgiConfig(models.AbstractModel):
         # Días de gracia del OTD de proveedores (comparación por día calendario).
         'quimibond_sgi.supplier_otd_tolerance_days': '1',
         'quimibond_sgi.pesaje_tolerance_kg': '3.0',
+        # I-3: desperdicio en kg y compras de materia prima (sgi_indicator_i3.py).
+        'quimibond_sgi.waste_location_ids': '39,43',
+        'quimibond_sgi.waste_input_categ_ids': '350,356',
+        'quimibond_sgi.raw_material_categ_id': '318',
         # I-2: mínimo de casos para que una medición cuente para NC.
         'quimibond_sgi.indicator_min_sample': '5',
         # P-7: no surtir lotes sin liberar (models/sgi_release.py).
