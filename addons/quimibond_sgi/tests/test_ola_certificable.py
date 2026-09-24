@@ -101,7 +101,10 @@ class TestOlaCertificable(TransactionCase):
             'value': 5.0, 'state': 'capturado'})
         with self.assertRaises(UserError):
             measure.action_recompute_value()  # manual: nada que recalcular
-        indicator.calc_mode = 'reproceso'  # devuelve None (sin fuente)
+        # plantilla_rh devuelve None (sin plantilla autorizada por puesto);
+        # reproceso ya se mide desde Odoo (P-21) y en una copia de producción
+        # trae dato.
+        indicator.calc_mode = 'plantilla_rh'
         measure.action_recompute_value()
         self.assertEqual(measure.state, 'sin_dato')
 
