@@ -17,11 +17,12 @@ class TestCleanup45(TransactionCase):
         cls.Process = cls.env['sgi.process']
         cls.Document = cls.env['documents.document']
 
-    def _doc(self, code, process, state='vigente', parent=None, doc_type='procedimiento'):
+    def _doc(self, code, process, state='vigente', parent=None, doc_type='procedimiento',
+             revision=0):
         vals = {
             'name': code, 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': doc_type, 'sgi_code': code, 'sgi_state': state,
-            'sgi_process_id': process.id}
+            'sgi_revision': revision, 'sgi_process_id': process.id}
         if parent:
             vals['sgi_parent_document_id'] = parent.id
         return self.Document.create(vals)
@@ -61,14 +62,12 @@ class TestCleanup45(TransactionCase):
         new_2 = self.Process.create({'code': 'XNEW2', 'name': 'Nuevo 2'})
         proc_a = self._doc('P-A91', old_a)                       # sustituido por new_2
         fmt_a = self._doc('F-P-A91-01', old_a, parent=proc_a, doc_type='formato')
-        other_a = self._doc('DAT-XA', old_a, doc_type='dat')    # sigue el mapa → new_1
+        # DAT-XA: una revisión vieja (0, obsoleta) y la vigente (1). Las dos
+        # viajan juntas: la restricción de familia no deja separarlas. La
+        # vieja se crea primero porque cada revisión nueva va por arriba.
+        old_rev = self._doc('DAT-XA', old_a, state='obsoleto', doc_type='dat', revision=0)
+        other_a = self._doc('DAT-XA', old_a, doc_type='dat', revision=1)  # mapa → new_1
         proc_b = self._doc('P-A92', old_b)                        # mapa → new_2
-        # Una revisión vieja de DAT-XA colgada de otro proceso: viaja con su
-        # clave (la restricción de familia no deja separarlas).
-        old_rev = self.Document.create({
-            'name': 'DAT-XA rev 0', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'dat', 'sgi_code': 'DAT-XA', 'sgi_state': 'obsoleto',
-            'sgi_revision': 0, 'sgi_process_id': old_a.id})
         risk = self.env['sgi.risk'].create({'name': 'Riesgo viejo', 'process_id': old_a.id})
         new_2.replaced_document_ids = [(6, 0, proc_a.ids)]
         (old_a | old_b).write({'active': False})
