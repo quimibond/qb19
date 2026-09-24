@@ -146,7 +146,7 @@ class SgiIndicatorTrajectory(models.Model):
                 if step and step.manual:
                     continue
                 if step:
-                    step.write(vals)
+                    step.with_context(sgi_trajectory=True).write(vals)
                 else:
                     Step.create(dict(vals, indicator_id=indicator.id, date_from=q))
             stale = indicator.step_ids.filtered(lambda s: s.date_from not in wanted and not s.manual)
@@ -178,8 +178,10 @@ class SgiIndicatorTrajectory(models.Model):
 class SgiIndicatorMeasureTrajectory(models.Model):
     _inherit = 'sgi.indicator.measure'
 
-    target_objective = fields.Float(string="Objetivo", compute='_compute_targets')
-    target_acceptable = fields.Float(string="Aceptable", compute='_compute_targets')
+    # Odoo hereda los atributos del campo base al redefinirlo: sin related=None
+    # el campo seguiría siendo el related al indicador y el compute no correría.
+    target_objective = fields.Float(string="Objetivo", compute='_compute_targets', related=None)
+    target_acceptable = fields.Float(string="Aceptable", compute='_compute_targets', related=None)
     range_min = fields.Float(related='indicator_id.range_min')
     range_max = fields.Float(related='indicator_id.range_max')
 

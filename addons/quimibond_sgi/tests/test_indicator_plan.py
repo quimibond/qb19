@@ -3,7 +3,7 @@
 validación masiva en la Revisión por la Dirección."""
 from datetime import date
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
@@ -23,6 +23,8 @@ class TestIndicatorPlan(TransactionCase):
         cls.Cron = env['sgi.cron']
         cls.owner = new_test_user(env, login='plan_owner',
                                   groups='base.group_user,quimibond_sgi.group_sgi_user')
+        cls.manager = new_test_user(env, login='plan_manager',
+                                    groups='base.group_user,quimibond_sgi.group_sgi_manager')
 
     def _red(self, code, period=date(2047, 5, 1), **vals):
         base = {'code': code, 'name': 'KPI %s' % code, 'direction': 'higher_better',
@@ -153,6 +155,9 @@ class TestIndicatorPlan(TransactionCase):
                                              'value': 2.0, 'state': 'capturado'})
         review = self.env['sgi.management.review'].create({
             'period_from': date(2047, 9, 1), 'period_to': date(2047, 9, 30)})
+        with self.assertRaises(UserError, msg="Solo el Jefe MAST valida desde la revisión."):
+            review.with_user(self.owner).action_validate_measures()
+        review = review.with_user(self.manager)
         action = review.action_validate_measures()
         self.assertEqual((measure.state, green_measure.state), ('validado', 'validado'))
         reds = self.Measure.search(action['domain'])

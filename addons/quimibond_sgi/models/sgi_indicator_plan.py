@@ -24,7 +24,7 @@ from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 from .sgi_calendar import sgi_nth_business_day
 
@@ -267,6 +267,8 @@ class SgiManagementReviewValidate(models.Model):
         """P-40: valida las mediciones capturadas del periodo y abre los rojos
         que aún no tienen causa ni acción."""
         self.ensure_one()
+        if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise UserError("Solo el Jefe MAST y SGI valida las mediciones desde la revisión.")
         Measure = self.env['sgi.indicator.measure']
         captured = Measure.search([
             ('state', '=', 'capturado'),
