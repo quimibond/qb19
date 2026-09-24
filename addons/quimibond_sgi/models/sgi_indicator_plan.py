@@ -213,7 +213,7 @@ class SgiIndicatorMeasurePlan(models.Model):
         }
 
 
-class SgiCronCalendar(models.Model):
+class SgiCronCalendar(models.AbstractModel):
     _inherit = 'sgi.cron'
 
     @api.model
