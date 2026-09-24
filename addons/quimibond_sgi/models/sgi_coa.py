@@ -95,9 +95,16 @@ class StockPicking(models.Model):
     sgi_requires_coa = fields.Boolean(
         string="Requiere COA", compute='_compute_sgi_requires_coa', store=True,
         help="Salida a un cliente que pide certificado de análisis en cada embarque.")
+    # bypass_search_access: sin él, leer el campo como usuario normal hace que
+    # ir.attachment._search cargue TODOS los adjuntos de la base y revise el
+    # acceso de cada uno ANTES de cruzar con la tabla de relación: 411
+    # consultas y 12-13 s por traslado (y por pedido, vía el contador),
+    # aunque el traslado no tenga COA (2026-09-24). Aquí solo hay los COA de
+    # esta salida y quien lee la salida puede verlos; abrir el archivo sigue
+    # revisando el acceso del adjunto.
     sgi_coa_attachment_ids = fields.Many2many(
         'ir.attachment', 'sgi_picking_coa_attachment_rel', 'picking_id', 'attachment_id',
-        string="COA", copy=False,
+        string="COA", copy=False, bypass_search_access=True,
         help="Certificados de análisis del embarque (uno por producto).")
     sgi_coa_date = fields.Datetime(string="COA adjuntado", copy=False, readonly=True)
     sgi_coa_uid = fields.Many2one('res.users', string="COA adjuntado por",
@@ -239,7 +246,7 @@ class SgiCoaAttachWizard(models.TransientModel):
     picking_id = fields.Many2one('stock.picking', string="Entrega", required=True)
     attachment_ids = fields.Many2many(
         'ir.attachment', 'sgi_coa_wizard_attachment_rel', 'wizard_id', 'attachment_id',
-        string="COA (PDF)", help="Uno por producto. Se acepta el nombre que ya usa el laboratorio.")
+        string="COA (PDF)", bypass_search_access=True, help="Uno por producto. Se acepta el nombre que ya usa el laboratorio.")
     recipient_ids = fields.Many2many(
         'res.partner', 'sgi_coa_wizard_recipient_rel', 'wizard_id', 'partner_id',
         string="Destinatarios")
