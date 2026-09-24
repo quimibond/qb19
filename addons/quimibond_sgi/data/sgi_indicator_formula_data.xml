@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ================================================================ -->
+    <!-- Fórmulas iniciales (2026-09-24). Corren EN PARALELO al modo de   -->
+    <!-- código de cada indicador; se migra un indicador a «configurable» -->
+    <!-- solo después de un mes con el mismo número. Ids de producción:   -->
+    <!-- ubicaciones 39/43 (desperdicio), categorías 350/356 (fibra e     -->
+    <!-- hilo) y 318 (materia prima), tipo de operación 106 (Re-proceso   -->
+    <!-- Tintorería), proveedor 10216 (CFE).                              -->
+    <!-- ================================================================ -->
+
+    <!-- MA-05 desperdicio: kg a desperdicio ÷ kg de hilo y fibra, 3 meses -->
+    <record id="sgi_term_desperdicio_num" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_desperdicio"/>
+        <field name="role">numerator</field>
+        <field name="model_id" ref="stock.model_stock_move_line"/>
+        <field name="domain" eval="&quot;[('state', '=', 'done'), ('location_dest_id', 'in', [39, 43]), ('location_id', 'not in', [39, 43]), ('product_uom_id', '=', %d)]&quot; % ref('uom.product_uom_kgm')"/>
+        <field name="date_field">date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">quantity</field>
+        <field name="window">3m</field>
+    </record>
+    <record id="sgi_term_desperdicio_den" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_desperdicio"/>
+        <field name="role">denominator</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain" eval="&quot;[('state', '=', 'done'), ('raw_material_production_id', '!=', False), ('product_id.categ_id', 'child_of', [350, 356]), ('product_uom', '=', %d)]&quot; % ref('uom.product_uom_kgm')"/>
+        <field name="date_field">date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">quantity</field>
+        <field name="window">3m</field>
+    </record>
+
+    <!-- MA-04 reproceso: kg de Re-proceso Tintorería ÷ kg de hilo y fibra, mes -->
+    <record id="sgi_term_reproceso_num" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_reproceso"/>
+        <field name="role">numerator</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain" eval="&quot;[('state', '=', 'done'), ('production_id', '!=', False), ('production_id.picking_type_id', 'in', [106]), ('product_uom', '=', %d)]&quot; % ref('uom.product_uom_kgm')"/>
+        <field name="date_field">date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">quantity</field>
+        <field name="window">period</field>
+    </record>
+    <record id="sgi_term_reproceso_den" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_reproceso"/>
+        <field name="role">denominator</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain" eval="&quot;[('state', '=', 'done'), ('raw_material_production_id', '!=', False), ('product_id.categ_id', 'child_of', [350, 356]), ('product_uom', '=', %d)]&quot; % ref('uom.product_uom_kgm')"/>
+        <field name="date_field">date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">quantity</field>
+        <field name="window">period</field>
+    </record>
+
+    <!-- AL-01 diferencia de inventario: |valor de ajustes| ÷ valor del inventario al cierre -->
+    <record id="sgi_term_inventario_num" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_diferencia_inventario"/>
+        <field name="role">numerator</field>
+        <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
+        <field name="domain">[('stock_move_id.is_inventory', '=', True)]</field>
+        <field name="date_field">create_date</field>
+        <field name="aggregation">sum_abs</field>
+        <field name="field_name">value</field>
+        <field name="window">period</field>
+    </record>
+    <record id="sgi_term_inventario_den" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_diferencia_inventario"/>
+        <field name="role">denominator</field>
+        <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
+        <field name="domain">[]</field>
+        <field name="date_field">create_date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">value</field>
+        <field name="window">to_date</field>
+    </record>
+
+    <!-- TR-03 energía: facturado por CFE (sin IVA) ÷ toneladas de hilo y fibra -->
+    <record id="sgi_term_energia_num" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_consumo_energia"/>
+        <field name="role">numerator</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="domain">[('move_type', 'in', ('in_invoice', 'in_refund')), ('state', '=', 'posted'), ('partner_id', 'child_of', [10216])]</field>
+        <field name="date_field">invoice_date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">amount_untaxed_signed</field>
+        <field name="factor">-1</field>
+        <field name="window">period</field>
+    </record>
+    <record id="sgi_term_energia_den" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_consumo_energia"/>
+        <field name="role">denominator</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain" eval="&quot;[('state', '=', 'done'), ('raw_material_production_id', '!=', False), ('product_id.categ_id', 'child_of', [350, 356]), ('product_uom', '=', %d)]&quot; % ref('uom.product_uom_kgm')"/>
+        <field name="date_field">date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">quantity</field>
+        <field name="factor">0.001</field>
+        <field name="window">period</field>
+    </record>
+
+    <!-- EX-02 compras de materia prima ÷ ingresos, 3 meses -->
+    <record id="sgi_term_compras_mp_num" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_ex_compras_ventas"/>
+        <field name="role">numerator</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="domain">[('parent_state', '=', 'posted'), ('move_id.move_type', 'in', ('in_invoice', 'in_refund')), ('display_type', '=', 'product'), ('product_id.categ_id', 'child_of', [318])]</field>
+        <field name="date_field">date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">balance</field>
+        <field name="window">3m</field>
+    </record>
+    <record id="sgi_term_compras_mp_den" model="sgi.indicator.term">
+        <field name="indicator_id" ref="sgi_ind_ex_compras_ventas"/>
+        <field name="role">denominator</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="domain">[('parent_state', '=', 'posted'), ('account_id.account_type', '=', 'income')]</field>
+        <field name="date_field">date</field>
+        <field name="aggregation">sum</field>
+        <field name="field_name">balance</field>
+        <field name="factor">-1</field>
+        <field name="window">3m</field>
+    </record>
+</odoo>

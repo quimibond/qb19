@@ -32,6 +32,7 @@ CALC_MODES = [
     ('compras_sin_devolucion', "Compras sin devolución a proveedor (proxy de errores en OC)"),
     ('capacitacion', "Capacitación (competencias vigentes vs requeridas)"),
     ('satisfaccion_cliente', "Satisfacción del cliente (encuesta)"),
+    ('configurable', "Fórmula configurable (numerador y denominador en la ficha)"),
     # Plan de expansión comercial (indicadores EX-*)
     ('margen_ventas', "Margen sobre órdenes de venta"),
     ('compras_vs_ventas', "Compras vs ventas facturadas"),
@@ -143,6 +144,7 @@ class SgiIndicator(models.Model):
         'consumo_energia': "Contabilidad → facturado del periodo por el proveedor de energía (Ajustes) ÷ toneladas de hilo y fibra consumidas en órdenes (misma base que MA-05). Pesos por tonelada.",
         'compras_sin_devolucion': "PROXY (a validar por MAST): órdenes de compra confirmadas del periodo sin devolución a proveedor vs total. No mide directamente los 'errores en OC'; MAST debe validar la definición antes de fiarse del dato.",
         'capacitacion': "Empleados → competencias del puesto vigentes (certificación al día) vs requeridas.",
+        'configurable': "Fórmula de la pestaña Fórmula: numerador ÷ denominador, cada uno con modelo, filtro, campo de fecha, agregación, factor y ventana.",
         'satisfaccion_cliente': "Encuestas → respuestas de la Encuesta de Satisfacción del Cliente (promedio 1-5 → %).",
         'margen_ventas': "Ventas → margen de las órdenes confirmadas del periodo vs su subtotal (moneda de la compañía). Depende de la calidad de los costos capturados: úsese como tendencia.",
         'compras_vs_ventas': "Contabilidad → facturas de proveedor netas del periodo vs facturación neta de clientes (sin impuestos, moneda de la compañía).",
