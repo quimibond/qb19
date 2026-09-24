@@ -554,20 +554,29 @@ revisiones y descripción de puesto, automatización/tableros/seguridad).
   recalcula; si nada cambió no escribe); nadie lo edita. La adherencia y los
   contadores de la actividad salen de esas 4 semanas.
 
-### Pantallas (reorganizadas el 22-sep-2026)
+### Pantallas (reorganizadas el 22-sep-2026; 5 entradas por perfil desde el 24-sep-2026)
 
-El menú del SGI tiene **seis entradas y máximo tres niveles** (antes eran 14,
-con tres tableros y las actividades en tres lugares). Todo el árbol vive en
-`views/sgi_menus.xml`; los xmlids no cambiaron.
+El menú del SGI tiene **cinco entradas ordenadas por perfil y máximo tres
+niveles**: cada perfil ve su nivel y el de abajo, y lo técnico vive en una
+sola entrada que solo ve MAST. Todo el árbol vive en `views/sgi_menus.xml`;
+los xmlids no cambiaron.
 
-| Menú | Qué hay |
-|---|---|
-| **Inicio** | Tablero (hoja de cálculo «Salud del SGI», se arma con los pivotes de Análisis), Mis actividades, Mi procedimiento, Mis acciones, Mis mediciones, Mis procedimientos, Mis acuses |
-| **Procesos** | Mapa de procesos (kanban por tipo con barra de medición, dueño, % medido y adherencia), Actividades, Roles por puesto, Cadena de actividades, Flujos, Riesgos y oportunidades, Requisitos legales, Partes interesadas |
-| **Mejora** | No conformidades, Concentrado de NC, Acciones, Reclamaciones, Quejas y sugerencias, Incidentes SST, Mejoras, Lecciones aprendidas, Auditorías y su programa, Planes de emergencia, Simulacros |
-| **Documentos** | Documentos, Cambios documentales, Migración de formatos |
-| **Análisis** | Política → Objetivos → Indicadores → Mediciones, Satisfacción del cliente, Quién hace qué, Tendencia de ejecuciones, Cobertura de medición, Cumplimiento de procedimientos, Diagnóstico, Revisión por la Dirección |
-| **Configuración** | Cargar catálogo (solo Administrador SGI), Familias de puesto, Tipos de documento, Ajustes, Áreas, Normas… (solo MAST) |
+| Menú | Quién lo ve | Qué hay |
+|---|---|---|
+| **Inicio** | Todos | Mi procedimiento (la pantalla de la persona) · Mi equipo (jefes, dueños de proceso, MAST, Dirección) |
+| **Procesos** | Todos | Mapa de procesos (entrada única) · Quién hace qué |
+| **Mejora** | Todos | No conformidades · Reclamaciones de cliente · Acciones · Quejas y sugerencias · Auditorías (auditorías y programa) · Seguridad y ambiente (incidentes, planes de emergencia, simulacros) |
+| **Dirección** | Dirección y MAST | Tablero de dirección · Revisión por la Dirección · Política integral · Objetivos integrales · Riesgos y oportunidades · Requisitos legales · Partes interesadas · Satisfacción del cliente |
+| **Administración SGI** | Solo MAST | Documentos (documentos, cambios, migración, tipos) · Indicadores (indicadores y fórmulas, mediciones, mediciones que me tocan) · Diagnóstico (diagnóstico, cobertura, cumplimiento, tendencia, concentrado de NC, mejoras, lecciones, faltantes de especificación, cumplimiento semanal) · Firmas de lectura (acuses, mis acuses) · Configuración · Datos técnicos (actividades, roles, entregables, cadena, flujos y las listas «mías» de antes) |
+
+Reordenado el 2026-09-24 según «Estructura del SGI en Odoo» (paso 2: 5
+entradas por perfil, solo reparentar y grupos; los xmlids no cambian). Lo
+que estaba en Inicio (Tablero, Mis actividades, Mis acciones, Mis
+mediciones, Mis procedimientos, Mis acuses) ahora son bloques de Mi
+procedimiento: las mediciones por capturar o validar entran a «Mis
+pendientes». Reclamaciones de cliente sigue como lista aparte de las NC
+porque son modelos distintos; unirlas con un filtro por tipo es trabajo de
+vistas, no de menú.
 
 Calidad preventiva (AMEF, PPAP, planes de control, metrología) y el Pareto de
 alertas viven en la app **Calidad**; evaluación de proveedores en Compras,
@@ -1007,6 +1016,32 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## Estructura del SGI, pasos 3 y 4: ficha de proceso y ficha de actividad (19.0.44.1.0)
+
+`models/sgi_structure.py`, `views/sgi_structure_views.xml`. Solo presentación
+y navegación; el modelo de datos no cambia.
+
+- **Ficha de proceso (nivel 2):** arriba el semáforo y una línea de estado
+  (`structure_status`: dueño, estado, semáforo, actividades atrasadas,
+  indicadores en rojo, NC abiertas, acciones vencidas) y el propósito.
+  Pestañas: Ficha · Actividades · **Indicadores** · **Riesgos** · Con quién se
+  conecta · Documentos · **No conformidades** (`nc_open_ids`, las abiertas).
+  Botones en verbo: Imprimir procedimiento · **Pedir un cambio** (abre una
+  solicitud de cambio documental F-P-G01-06 apuntando al procedimiento
+  vigente del proceso, o alta si no hay) · **Ver en diagrama** (las flechas
+  del mapa que entran y salen del proceso).
+- **Ficha de actividad (nivel 3):** «Ir a hacerlo» (antes «Abrir en Odoo»),
+  «Ver instructivo» (archivo o enlace del IT) y «Ver registros recientes».
+
+- **Paso 6, auditor:** el grupo Auditor SGI ya existía con lectura sobre
+  todo el SGI. Se agrega **«Registrar hallazgo»** en la ficha del proceso y en
+  la de la actividad (auditor y MAST): abre una NC ya ligada al proceso, con
+  la actividad en el título. Los permisos de crear NC son los de la app
+  Calidad. Paso 5 (tablero de dirección, I-9) queda en pausa por decisión
+  del CEO hasta que haya indicadores oficiales.
+
+Pruebas: `TestStructureSgi` 01–04.
+
 ## «Mi procedimiento» por puesto (19.0.43.0.0)
 
 Un solo documento por puesto (y por empleado, vía su puesto) con **todas sus
@@ -1108,7 +1143,19 @@ responsable con su semáforo. Pendientes para después: EPP, competencias y
 capacitación, riesgos IPER. Descartado: firma con Sign (basta el clic y el
 papel).
 
-Pruebas: `TestMyProcedure` 01–12.
+**Estructura del SGI (doc del CEO 2026-09-24, nivel 4; 19.0.43.3.0):** la
+pantalla sigue el orden de la estructura: arriba quién soy, mi puesto, mi
+jefe y el estado en una línea (atrasadas, al día, firmas pendientes); en
+medio **Mis pendientes** primero (lo atrasado arriba), luego **mis
+actividades por cadencia** como tarjetas y al final **Mis documentos**.
+**Mi equipo** (Inicio → Mi equipo, `sgi.my.team`): para jefes directos, de
+departamento y dueños de proceso (Jefe MAST, administrador y Dirección ven a
+todos): cuántas personas, cuántas con atrasos o firmas pendientes, y una
+fila por persona con atrasadas, firmas pendientes, brechas de capacitación
+(`sgi_skill_gap_count`) y el botón «Abrir su procedimiento». Los datos del
+puesto se arman una vez por puesto, no por persona.
+
+Pruebas: `TestMyProcedure` 01–13.
 
 ## PDF del procedimiento: etiquetas en negritas (19.0.42.1.0)
 

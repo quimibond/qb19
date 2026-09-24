@@ -22,6 +22,13 @@
         <field name="code">action = env['sgi.my.procedure'].action_open_mine()</field>
     </record>
 
+    <record id="sgi_my_team_action_mine" model="ir.actions.server">
+        <field name="name">Mi equipo</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_team"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.team'].action_open_mine()</field>
+    </record>
+
     <record id="sgi_cron_my_procedure_stale" model="ir.cron">
         <field name="name">SGI: Mi procedimiento por publicar (aviso semanal a MAST)</field>
         <field name="model_id" ref="quimibond_sgi.model_sgi_cron"/>

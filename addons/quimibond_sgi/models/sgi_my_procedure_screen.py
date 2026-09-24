@@ -260,42 +260,56 @@ class SgiMyProcedure(models.TransientModel):
 
     @api.model
     def _sgi_mp_render(self, job, employee, data):
+        """Orden de la estructura del SGI (nivel 4): arriba quién soy, mi puesto,
+        mi jefe y el estado (atrasadas, al día, firmas pendientes); en medio
+        Mis pendientes, Mis actividades por cadencia y Mis documentos."""
         cover = data['cover']
         html = Markup('<div style="font-size:14px;">')
-        # Encabezado
-        html += Markup('<div style="margin-bottom:10px;"><span style="font-size:18px; font-weight:700;">%s</span>') % job.name
+        # Quién soy
+        title = employee.name if employee else job.name
+        html += Markup('<div style="margin-bottom:4px;"><span style="font-size:18px; font-weight:700;">%s</span>') % title
+        if employee:
+            html += Markup(' <span class="text-muted">· %s</span>') % job.name
         if cover['family']:
             html += Markup(' <span class="text-muted">· familia %s</span>') % cover['family'].name
         html += Markup('</div>')
         meta = []
-        if cover['department']:
-            meta.append("Área: %s" % (cover['department'].complete_name or cover['department'].name))
         boss = employee.parent_id if employee and employee.parent_id else cover['manager']
         if boss:
-            meta.append("Jefe inmediato: %s" % boss.name)
-        if cover['employees']:
+            meta.append("Mi jefe: %s" % boss.name)
+        if cover['department']:
+            meta.append("Área: %s" % (cover['department'].complete_name or cover['department'].name))
+        if not employee and cover['employees']:
             meta.append("Personas en el puesto: %s" % ", ".join(cover['employees'].mapped('name')))
         if cover['processes']:
             meta.append("Procesos: %s" % ", ".join(
                 "%s %s" % (p.code, p.name) for p in cover['processes']))
-        if cover['counts']:
-            meta.append(" · ".join("%s %d" % (label, n) for label, n in cover['counts']))
-        html += Markup('<div class="text-muted" style="font-size:12px; margin-bottom:12px;">%s</div>') % Markup('<br/>').join(escape(m) for m in meta)
+        html += Markup('<div class="text-muted" style="font-size:12px; margin-bottom:8px;">%s</div>') % Markup(' · ').join(escape(m) for m in meta)
 
+        # Estado en una línea
         counts = {'al_dia': 0, 'atrasada': 0, 'sin_medir': 0}
         for section in data['sections']:
             for entry in section['entries']:
                 counts[entry['status']] += 1
+        pending_acks = self.env['sgi.document.ack'].sudo().search_count(
+            [('employee_id', '=', employee.id), ('state', '=', 'pendiente')]) if employee else 0
         summary = Markup('')
-        for code, label in (('atrasada', "Atrasadas"), ('al_dia', "Al día")):
-            if counts[code]:
-                color, background = _STATUS_STYLE[code]
-                summary += self._sgi_mp_badge("%s: %d" % (label, counts[code]), color, background)
+        if counts['atrasada']:
+            summary += self._sgi_mp_badge("Atrasadas: %d" % counts['atrasada'], *_STATUS_STYLE['atrasada'])
+        if counts['al_dia']:
+            summary += self._sgi_mp_badge("Al día: %d" % counts['al_dia'], *_STATUS_STYLE['al_dia'])
+        if pending_acks:
+            summary += self._sgi_mp_badge("Firmas pendientes: %d" % pending_acks, '#8a6d00', '#fff4e5')
         if counts['sin_medir']:
             summary += Markup('<span class="text-muted" style="font-size:12px;">Sin medición automática: %d</span>') % counts['sin_medir']
-        if summary:
-            html += Markup('<div style="margin-bottom:10px;">%s</div>') % summary
+        if not summary:
+            summary = Markup('<span class="text-muted" style="font-size:12px;">Sin atrasos ni firmas pendientes.</span>')
+        html += Markup('<div style="margin-bottom:12px;">%s</div>') % summary
 
+        # Mis pendientes (lo atrasado arriba)
+        html += self._sgi_mp_render_pending(employee)
+
+        # Mis actividades por cadencia
         if not data['sections']:
             html += Markup('<div class="alert alert-info">Este puesto no ejecuta ni aprueba '
                            'actividades en ningún procedimiento.</div>')
@@ -307,7 +321,7 @@ class SgiMyProcedure(models.TransientModel):
                 html += self._sgi_mp_card(entry)
 
         if data['received']:
-            html += Markup('<h4 style="margin:16px 0 4px 0; padding:4px 8px; background:#e9ecef; border-radius:4px;">Escalamientos que recibe</h4>')
+            html += self._sgi_mp_section_title("Escalamientos que recibe")
             html += Markup('<ul style="font-size:13px;">')
             for rc in data['received']:
                 html += Markup('<li><b>%s %s</b> %s — la ejecuta %s; escala %s</li>') % (
@@ -316,7 +330,7 @@ class SgiMyProcedure(models.TransientModel):
             html += Markup('</ul>')
 
         if data['short']:
-            html += Markup('<h4 style="margin:16px 0 4px 0; padding:4px 8px; background:#e9ecef; border-radius:4px;">Participa o se entera</h4>')
+            html += self._sgi_mp_section_title("Participa o se entera")
             html += Markup('<ul style="font-size:13px;">')
             for sh in data['short']:
                 html += Markup('<li><span class="text-muted">%s</span> · <b>%s %s</b> %s '
@@ -324,8 +338,9 @@ class SgiMyProcedure(models.TransientModel):
                     ", ".join(sh['roles']), sh['process'].code or '', sh['number'], sh['name'],
                     sh['activity'].id)
             html += Markup('</ul>')
+
+        # Mis documentos
         html += self._sgi_mp_render_documents(job, employee)
-        html += self._sgi_mp_render_pending(employee)
         html += Markup('</div>')
         return html
 
@@ -373,7 +388,7 @@ class SgiMyProcedure(models.TransientModel):
         rows = self._sgi_mp_documents(job, employee)
         if not rows:
             return Markup('')
-        html = self._sgi_mp_section_title("Documentos de tu puesto")
+        html = self._sgi_mp_section_title("Mis documentos")
         html += Markup('<table class="table table-sm" style="font-size:13px;"><thead><tr>'
                        '<th>Clave</th><th>Documento</th><th>Rev.</th><th>Acuse</th><th></th></tr></thead><tbody>')
         for row in rows:
@@ -417,7 +432,15 @@ class SgiMyProcedure(models.TransientModel):
             if 'qb.obligation' in env else []
         indicators = env['sgi.indicator'].sudo().search(
             [('responsible_id', '=', user.id), ('status', '=', 'oficial')], order='code')
+        # Mediciones por capturar o validar de sus indicadores (antes «Mis
+        # mediciones» en Inicio): también son pendientes con fecha.
+        measures = env['sgi.indicator.measure'].sudo().search(
+            [('indicator_id.responsible_id', '=', user.id), ('state', 'in', ('pendiente', 'capturado')),
+             ('period_date', '<=', today)], order='period_date', limit=20)
         return {
+            'measures': [{'code': m.indicator_id.code, 'name': m.indicator_id.name,
+                          'period': m.period_date, 'state': m.state,
+                          'url': '/odoo/sgi.indicator.measure/%d' % m.id} for m in measures],
             'actions': [{'name': a.name, 'origin': a.origin_display, 'date': a.date_commit,
                          'late': a.state == 'vencida' or (a.date_commit and a.date_commit < today),
                          'url': '/odoo/sgi.action.line/%d' % a.id} for a in actions],
@@ -440,7 +463,7 @@ class SgiMyProcedure(models.TransientModel):
         html = self._sgi_mp_section_title("Mis pendientes")
         if not total:
             return html + Markup('<div class="text-muted" style="font-size:13px;">Sin acciones, '
-                                 'no conformidades, obligaciones ni indicadores oficiales a tu cargo.</div>')
+                                 'no conformidades, obligaciones, mediciones ni indicadores oficiales a tu cargo.</div>')
         html += Markup('<ul style="font-size:13px;">')
         for a in pending['actions']:
             html += Markup('<li>%s<b>Acción:</b> <a href="%s" target="_self">%s</a>'
@@ -455,6 +478,10 @@ class SgiMyProcedure(models.TransientModel):
                            '<span class="text-muted"> · vence %s</span></li>') % (
                 self._sgi_mp_badge("Vencida", '#b02a37', '#fdecee') if o['late'] else Markup(''),
                 o['url'], o['name'], o['date'] or '')
+        for m in pending['measures']:
+            html += Markup('<li><b>Medición por %s:</b> <a href="%s" target="_self">%s %s</a>'
+                           '<span class="text-muted"> · periodo %s</span></li>') % (
+                "capturar" if m['state'] == 'pendiente' else "validar", m['url'], m['code'], m['name'], m['period'] or '')
         for i in pending['indicators']:
             sem = {'verde': ('#1e7e34', '#e6f4ea'), 'amarillo': ('#8a6d00', '#fff4e5'),
                    'rojo': ('#b02a37', '#fdecee')}.get(i['semaphore'])
@@ -593,3 +620,102 @@ class SgiMyProcedureCheck(models.TransientModel):
                 html += Markup('<p class="text-muted">Ninguno.</p>')
             html += Markup('</div>')
             wiz.result = html
+
+
+class SgiMyTeam(models.TransientModel):
+    """Inicio → Mi equipo (nivel 4, jefes): una fila por persona del equipo con
+    sus atrasos, firmas pendientes y brechas de capacitación, y el botón para
+    abrir su procedimiento."""
+    _name = 'sgi.my.team'
+    _description = "Mi equipo (pantalla)"
+
+    content = fields.Html(string="Contenido", compute='_compute_content', sanitize=False)
+
+    @api.model
+    def _sgi_team(self):
+        Wiz = self.env['sgi.my.procedure']
+        me = Wiz._sgi_mp_my_employee()
+        if Wiz._sgi_mp_is_admin():
+            return self.env['hr.employee'].sudo().search([('job_id', '!=', False)], order='name')
+        if not me:
+            return self.env['hr.employee'].sudo()
+        return (me._sgi_mp_team_employees() - me).sorted('name')
+
+    @api.model
+    def _sgi_team_rows(self, team):
+        """Una fila por persona; los datos del puesto se arman una vez por
+        puesto, no por persona."""
+        Ack = self.env['sgi.document.ack'].sudo()
+        pending = {}
+        if team:
+            for emp, count in Ack._read_group(
+                    [('employee_id', 'in', team.ids), ('state', '=', 'pendiente')],
+                    ['employee_id'], ['__count']):
+                pending[emp.id] = count
+        by_job = {}
+        rows = []
+        for emp in team:
+            job = emp.job_id.sudo()
+            if job not in by_job:
+                data = job._sgi_my_procedure_data() if job else None
+                late = sum(1 for sct in data['sections'] for e in sct['entries']
+                           if e['status'] == 'atrasada') if data else 0
+                total = sum(len(sct['entries']) for sct in data['sections']) if data else 0
+                by_job[job] = (late, total)
+            late, total = by_job[job]
+            rows.append({
+                'employee': emp, 'job': job, 'late': late, 'total': total,
+                'acks': pending.get(emp.id, 0),
+                'gaps': emp.sgi_skill_gap_count if 'sgi_skill_gap_count' in emp._fields else 0,
+            })
+        rows.sort(key=lambda r: (-r['late'], -r['acks'], r['employee'].name or ''))
+        return rows
+
+    def _compute_content(self):
+        Wiz = self.env['sgi.my.procedure']
+        for wiz in self:
+            team = self._sgi_team()
+            if not team:
+                wiz.content = Markup('<div class="alert alert-info">No tienes personas a tu cargo '
+                                     'en Odoo (reportes directos, tu departamento o los puestos de '
+                                     'tus procesos).</div>')
+                continue
+            rows = self._sgi_team_rows(team)
+            with_late = sum(1 for r in rows if r['late'])
+            with_acks = sum(1 for r in rows if r['acks'])
+            html = Markup('<div style="font-size:14px;">')
+            html += Markup('<div style="margin-bottom:10px;"><span style="font-size:18px; font-weight:700;">Mi equipo</span>'
+                           ' <span class="text-muted">· %d personas</span></div>') % len(rows)
+            summary = Markup('')
+            if with_late:
+                summary += Wiz._sgi_mp_badge("Con atrasos: %d" % with_late, *_STATUS_STYLE['atrasada'])
+            if with_acks:
+                summary += Wiz._sgi_mp_badge("Con firmas pendientes: %d" % with_acks, '#8a6d00', '#fff4e5')
+            if not summary:
+                summary = Markup('<span class="text-muted" style="font-size:12px;">Sin atrasos ni firmas pendientes.</span>')
+            html += Markup('<div style="margin-bottom:12px;">%s</div>') % summary
+            html += Markup('<table class="table table-sm" style="font-size:13px;"><thead><tr>'
+                           '<th>Persona</th><th>Puesto</th><th>Atrasadas</th><th>Firmas pendientes</th>'
+                           '<th>Brechas de capacitación</th><th></th></tr></thead><tbody>')
+            for r in rows:
+                person_wiz = Wiz.create({'employee_id': r['employee'].id})
+                late_html = Wiz._sgi_mp_badge(str(r['late']), *_STATUS_STYLE['atrasada']) if r['late'] \
+                    else Markup('<span class="text-muted">0 de %d</span>') % r['total']
+                acks_html = Wiz._sgi_mp_badge(str(r['acks']), '#8a6d00', '#fff4e5') if r['acks'] \
+                    else Markup('<span class="text-muted">0</span>')
+                gaps_html = Markup('<span class="text-muted">%d</span>') % r['gaps']
+                html += Markup('<tr><td><b>%s</b></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>'
+                               '<td><a class="btn btn-sm btn-secondary" href="/odoo/sgi.my.procedure/%d" '
+                               'target="_self">Abrir su procedimiento</a></td></tr>') % (
+                    r['employee'].name, r['job'].name or '—', late_html, acks_html, gaps_html, person_wiz.id)
+            html += Markup('</tbody></table></div>')
+            wiz.content = html
+
+    @api.model
+    def action_open_mine(self):
+        wiz = self.create({})
+        return {
+            'type': 'ir.actions.act_window', 'name': "Mi equipo",
+            'res_model': 'sgi.my.team', 'res_id': wiz.id,
+            'view_mode': 'form', 'target': 'current',
+        }
