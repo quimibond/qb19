@@ -81,8 +81,11 @@ class ResPartner(models.Model):
                 ('state', 'not in', ('done', 'cancel')),
             ])
             if pickings:
-                # Se recalcula al siguiente acceso o flush.
-                self.env.add_to_compute(pickings._fields['sgi_requires_coa'], pickings)
+                # add_to_compute marca SOLO ese campo, no lo que depende de
+                # él: el estado hay que marcarlo aparte o se queda «no
+                # aplica» con «Requiere COA» en sí (pasó en producción).
+                for name in ('sgi_requires_coa', 'sgi_coa_status'):
+                    self.env.add_to_compute(pickings._fields[name], pickings)
         return res
 
 

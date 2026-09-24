@@ -107,6 +107,8 @@ class TestCoa(TransactionCase):
         self.assertFalse(picking.sgi_requires_coa)
         other.sgi_requires_coa = True
         self.assertTrue(picking.sgi_requires_coa, "La salida abierta toma el requisito.")
+        self.assertEqual(picking.sgi_coa_status, 'pendiente',
+                         "Y su estado se recalcula con él.")
 
     def test_05_bloqueo_y_excepcion_jefe_calidad(self):
         self.Param.set_param('quimibond_sgi.coa_block_validation', 'True')

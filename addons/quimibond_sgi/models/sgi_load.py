@@ -100,7 +100,7 @@ _KEYS_DELIVERABLE = ({'code', 'name', 'document', 'model', 'domain', 'date_field
                       'user_field', 'acceptance_criteria', 'complete_domain',
                       'complete_criteria'}, {})
 _KEYS_INDICATOR = ({'code', 'process', 'responsible', 'responsible_employee_id',
-                    'target', 'unit', *_INDICATOR_FIELDS}, {})
+                    'target', 'unit', 'activity', 'deliverable', *_INDICATOR_FIELDS}, {})
 _KEYS_PAYLOAD = ({
     'dry_run', 'company_id', 'archive_missing', 'families', 'deliverables',
     'processes', 'activities', 'indicators',
@@ -1124,6 +1124,19 @@ class _SgiLoader:
                 if 'process' in item:
                     vals['process_id'] = self._find_process(item['process']).id \
                         if item['process'] else False
+                # Modos genéricos: la actividad («C2.17» o «PROC:NUM») y el
+                # entregable (por código) que mide el indicador.
+                if 'activity' in item:
+                    vals['activity_id'] = self._find_activity(
+                        item['activity'], item.get('process')).id if item['activity'] else False
+                if 'deliverable' in item:
+                    deliverable = self.env['sgi.deliverable'].search([
+                        ('code', '=', item['deliverable']),
+                        ('company_id', '=', self.company.id)], limit=1) \
+                        if item['deliverable'] else self.env['sgi.deliverable']
+                    if item['deliverable'] and not deliverable:
+                        raise ValidationError("Entregable «%s» no existe." % item['deliverable'])
+                    vals['deliverable_id'] = deliverable.id
                 if item.get('responsible_employee_id') and item.get('responsible'):
                     raise ValidationError("Indica «responsible» o «responsible_employee_id», "
                                           "no los dos.")
