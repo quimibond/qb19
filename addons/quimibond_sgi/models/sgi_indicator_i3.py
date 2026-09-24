@@ -39,6 +39,28 @@ def _param_ids(env, key):
 class SgiIndicatorI3(models.Model):
     _inherit = 'sgi.indicator'
 
+    # ---- Base común: kg procesados --------------------------------------
+    def _sgi_kg_consumed(self, dt_from, dt_to, company=None):
+        """kg de hilo y fibra (categorías de ``waste_input_categ_ids``)
+        consumidos en órdenes de producción en el rango. Es el denominador de
+        MA-05 y, desde P-21, también el de MA-04 y TR-03: cada kg cuenta una
+        vez (los kg de tejido vuelven a pasar por tintorería, así que sumar la
+        salida de cada etapa los contaría dos veces). 0.0 si falta la unidad kg
+        o el parámetro."""
+        env = self.env
+        kg = env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+        categs = env['product.category'].browse(_param_ids(env, WASTE_INPUT_CATEGS_PARAM)).exists()
+        if not kg or not categs:
+            return 0.0
+        company = company or self._sgi_kpi_company()
+        groups = env['stock.move']._read_group([
+            ('state', '=', 'done'), ('company_id', '=', company.id),
+            ('raw_material_production_id', '!=', False),
+            ('product_id.categ_id', 'child_of', categs.ids),
+            ('product_uom', '=', kg.id),
+            ('date', '>=', dt_from), ('date', '<', dt_to)], [], ['quantity:sum'])
+        return (groups[0][0] if groups else 0.0) or 0.0
+
     # ---- MA-05 -----------------------------------------------------------
     def _detail_desperdicio_kg(self, date_from, date_to):
         env = self.env
@@ -57,13 +79,7 @@ class SgiIndicatorI3(models.Model):
             ('product_uom_id', '=', kg.id),
             ('date', '>=', dt_from), ('date', '<', dt_to)])
         waste = sum(lines.mapped('quantity'))
-        consumed = env['stock.move']._read_group([
-            ('state', '=', 'done'), ('company_id', '=', company.id),
-            ('raw_material_production_id', '!=', False),
-            ('product_id.categ_id', 'child_of', categs.ids),
-            ('product_uom', '=', kg.id),
-            ('date', '>=', dt_from), ('date', '<', dt_to)], [], ['quantity:sum'])
-        consumed = consumed[0][0] if consumed else 0.0
+        consumed = self._sgi_kg_consumed(dt_from, dt_to, company)
         return {
             'value': round(waste / consumed * 100.0, 2) if consumed else None,
             'numerator': waste, 'denominator': consumed,

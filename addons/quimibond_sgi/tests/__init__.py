@@ -47,3 +47,4 @@ from . import test_coa
 from . import test_release
 from . import test_indicator_detail
 from . import test_indicator_i3
+from . import test_indicator_p21

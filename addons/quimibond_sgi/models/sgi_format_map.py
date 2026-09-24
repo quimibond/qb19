@@ -101,6 +101,10 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.waste_location_ids': '39,43',
         'quimibond_sgi.waste_input_categ_ids': '350,356',
         'quimibond_sgi.raw_material_categ_id': '318',
+        # P-21: tipos de operación que cuentan como reproceso (MA-04).
+        # Re-proceso Tintorería (106) y Re-proceso Acabado (107); «Acabado
+        # producto en proceso» (151) entra cuando producción lo confirme.
+        'quimibond_sgi.rework_picking_type_ids': '106,107',
         # I-2: mínimo de casos para que una medición cuente para NC.
         'quimibond_sgi.indicator_min_sample': '5',
         # P-7: no surtir lotes sin liberar (models/sgi_release.py).
