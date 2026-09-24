@@ -1007,6 +1007,17 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PDF del procedimiento: etiquetas en negritas (19.0.42.1.0)
+
+En el F-P-G01-02 cada actividad se imprime como una frase armada de sus
+piezas. Desde esta versión las etiquetas («Ejecuta», «Aprueba», «Participa»,
+«Se entera», «Si se atora, escala a», «Recibe», «Entrega», «Conforme a»,
+«Instructivo», «Dónde», «Contra», «Cómo», «Terminada cuando», «Si no se
+puede») van en **negritas**. `_sgi_sentence_parts()` devuelve la lista de
+(etiqueta, texto); `_sgi_sentence()` sigue dando el texto plano (vistas,
+pruebas) y `_sgi_sentence_html()` la versión con `<b>` que usa el reporte.
+Prueba: `TestStructure.test_08`.
+
 ## Pólizas de cierre anual fuera de las ventanas móviles (19.0.42.0.5)
 
 Las pólizas de cierre anual (mes 13, `account.move.l10n_mx_closing_move`)
