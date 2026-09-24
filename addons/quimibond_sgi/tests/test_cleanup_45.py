@@ -63,6 +63,12 @@ class TestCleanup45(TransactionCase):
         fmt_a = self._doc('F-P-XA-01', old_a, parent=proc_a, doc_type='formato')
         other_a = self._doc('DAT-XA', old_a, doc_type='dat')    # sigue el mapa → new_1
         proc_b = self._doc('P-XB', old_b)                        # mapa → new_2
+        # Una revisión vieja de DAT-XA colgada de otro proceso: viaja con su
+        # clave (la restricción de familia no deja separarlas).
+        old_rev = self.Document.create({
+            'name': 'DAT-XA rev 0', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'dat', 'sgi_code': 'DAT-XA', 'sgi_state': 'obsoleto',
+            'sgi_revision': 0, 'sgi_process_id': old_a.id})
         risk = self.env['sgi.risk'].create({'name': 'Riesgo viejo', 'process_id': old_a.id})
         new_2.replaced_document_ids = [(6, 0, proc_a.ids)]
         (old_a | old_b).write({'active': False})
@@ -74,8 +80,9 @@ class TestCleanup45(TransactionCase):
         self.assertEqual(fmt_a.sgi_process_id, new_2, "…con su familia.")
         self.assertEqual(other_a.sgi_process_id, new_1, "El resto sigue el mapa.")
         self.assertEqual(proc_b.sgi_process_id, new_2)
+        self.assertEqual(old_rev.sgi_process_id, new_1, "La revisión vieja viaja con su clave.")
         self.assertEqual(risk.process_id, new_1)
-        self.assertEqual(summary['documentos'], 4)
+        self.assertEqual(summary['documentos'], 5)
         self.assertEqual(summary['documentos_regla_sustituidos'], 2)
         self.assertEqual(summary['riesgos'], 1)
         for doc in (proc_a, fmt_a, other_a, proc_b):
