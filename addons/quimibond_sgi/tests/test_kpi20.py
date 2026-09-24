@@ -342,7 +342,7 @@ class TestKpi20Step2(TransactionCase):
             date(2040, 7, 5), '06/2040')
         measure = self.Measure.search(
             [('indicator_id', '=', ind.id), ('period_date', '=', date(2040, 6, 1))])
-        self.assertEqual(measure.state, 'pendiente')
+        self.assertEqual(measure.state, 'sin_dato', "Automático sin dato: gris, no pendiente de captura.")
         self.assertFalse(measure.semaphore)
         self.assertIn('proveedor de energía', measure.note or '')
 

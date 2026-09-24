@@ -97,6 +97,8 @@ class SgiConfig(models.AbstractModel):
         # Días de gracia del OTD de proveedores (comparación por día calendario).
         'quimibond_sgi.supplier_otd_tolerance_days': '1',
         'quimibond_sgi.pesaje_tolerance_kg': '3.0',
+        # I-2: mínimo de casos para que una medición cuente para NC.
+        'quimibond_sgi.indicator_min_sample': '5',
         # P-7: no surtir lotes sin liberar (models/sgi_release.py).
         'quimibond_sgi.release_block_enabled': 'True',
         'quimibond_sgi.release_block_picking_type_ids': '113,210',
@@ -223,13 +225,9 @@ class SgiConfig(models.AbstractModel):
         for measure in measures:
             indicator = measure.indicator_id
             date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
-            value = indicator._sgi_compute_value(date_from, date_to)
-            if value is None:
+            vals = indicator._sgi_measure_vals(date_from, date_to)
+            if vals.get('state') != 'capturado':
                 continue
-            vals = {'value': value, 'state': 'capturado'}
-            note = indicator._sgi_compute_note(date_from, date_to)
-            if note:
-                vals['note'] = note
             measure.write(vals)
         return True
 
