@@ -52,6 +52,16 @@
                                 <field name="participation_summary"/>
                                 <field name="resources_note"/>
                             </group>
+                            <separator string="4. Auditorías del periodo"/>
+                            <field name="audit_ids">
+                                <list>
+                                    <field name="folio"/>
+                                    <field name="audit_type"/>
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
                             <separator string="5. Indicadores en rojo"/>
                             <field name="kpi_red_measure_ids">
                                 <list>

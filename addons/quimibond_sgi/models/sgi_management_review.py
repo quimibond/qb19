@@ -37,6 +37,12 @@ class SgiManagementReview(models.Model):
     nc_summary = fields.Text(string="2. No conformidades", readonly=True)
     complaints_summary = fields.Text(string="3. Reclamaciones de clientes", readonly=True)
     audit_summary = fields.Text(string="4. Auditorías", readonly=True)
+    # P-3: las auditorías que cubre la revisión, como registros y no solo
+    # como texto. «Cargar entradas» las toma del periodo; se pueden ajustar a
+    # mano. Es la liga con la que E2.14 se mide (match: audit_ids).
+    audit_ids = fields.Many2many(
+        'sgi.audit', 'sgi_review_audit_rel', 'review_id', 'audit_id',
+        string="Auditorías del periodo")
     kpi_red_measure_ids = fields.Many2many('sgi.indicator.measure', 'sgi_review_kpi_rel',
                                            'review_id', 'measure_id',
                                            string="5. Indicadores en rojo", readonly=True)
@@ -84,6 +90,7 @@ class SgiManagementReview(models.Model):
                 'nc_summary': review._sgi_load_nc(),
                 'complaints_summary': review._sgi_load_complaints(),
                 'audit_summary': review._sgi_load_audits(),
+                'audit_ids': [(6, 0, review._sgi_period_audits().ids)],
                 'kpi_red_measure_ids': [(6, 0, review._sgi_load_red_measures().ids)],
                 'supplier_summary': review._sgi_load_suppliers(),
                 'risk_high_ids': [(6, 0, review._sgi_load_high_risks().ids)],
@@ -215,12 +222,16 @@ class SgiManagementReview(models.Model):
         pct = round(sla_ok / total * 100.0, 1) if total else 0.0
         return "%d reclamaciones en el periodo. Cumplimiento SLA aprox.: %s%%." % (total, pct)
 
-    def _sgi_load_audits(self):
+    def _sgi_period_audits(self):
         self.ensure_one()
-        audits = self.env['sgi.audit'].search([
+        return self.env['sgi.audit'].search([
             ('date_start', '>=', self.period_from),
             ('date_start', '<=', self.period_to),
         ])
+
+    def _sgi_load_audits(self):
+        self.ensure_one()
+        audits = self._sgi_period_audits()
         if not audits:
             return "Sin auditorías en el periodo."
         findings = audits.mapped('finding_ids')

@@ -93,6 +93,8 @@
                                     <field name="applies_note" optional="show"/>
                                     <field name="applies_domain" optional="hide"/>
                                     <field name="match_path" optional="hide"/>
+                                    <field name="due_field" optional="hide"/>
+                                    <field name="offset_days" optional="hide"/>
                                 </list>
                             </field>
                             <group>

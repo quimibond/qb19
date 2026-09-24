@@ -674,6 +674,20 @@ Jefe MAST.
   `{"code": "C2-PEDIDO", "days": 2}`. `days` es el **plazo en días hábiles**
   (lunes a viernes) para que llegue a esta actividad; pasado el plazo sin que
   ella ejecute, el eslabón está atorado. `0` o sin `days` = sin plazo.
+  **Vencimiento por campo (P-4):** `{"code": "C2-PROGRAMA", "due_field":
+  "scheduled_date", "offset_days": -2}` vence contra esa fecha del registro
+  de la entrada más el margen en días hábiles (negativo = antes), en lugar
+  de días desde que llegó; el campo debe existir y ser de fecha en el modelo
+  del entregable (si no, error). Con `match` cuando la salida es otro modelo.
+- **Relaciones para ligar entradas (P-3):** `budget.analytic` (app
+  Presupuestos) tiene `sgi_sales_budget_id` → presupuesto de ventas del SGI
+  (E1.02, `"match": "sgi_sales_budget_id"`); `documents.document` tiene
+  `sgi_doc_change_id` → última solicitud de cambio documental aprobada que
+  lo dejó así, la pone el propio cambio al aplicarse (E2.02, `"match":
+  "sgi_doc_change_id"`); `sgi.management.review` tiene `audit_ids` →
+  auditorías del periodo, las llena «Cargar entradas» y se ajustan a mano
+  (E2.14, `"match": "audit_ids"`). Cuando la salida apunta a varias entradas
+  manda la última: la salida no podía hacerse antes.
 - **`outputs`**: códigos de lo que la actividad entrega.
 - **Las ligas y los flujos no se cargan**: salen solos de `inputs`/`outputs`
   (una liga por quien entrega × quien recibe; un flujo si cruzan proceso) y no

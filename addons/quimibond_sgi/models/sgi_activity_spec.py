@@ -239,7 +239,7 @@ class SgiActivitySpec(models.Model):
             add('no_done', "Falta el criterio de terminado (una frase de sí o no).")
         if not (self.on_fail or '').strip() and not escala:
             add('no_on_fail', "Falta qué hacer si no se puede cumplir, o un rol «Escala».")
-        timed_input = any(line.max_days for line in self.input_ids)
+        timed_input = any(line.max_days or line.due_field for line in self.input_ids)
         periodic = bool(self.due_weekday or self.due_business_day)
         external_start = self.block == 'inicial' and self.input_ids and not any(
             line.deliverable_id.producer_activity_ids for line in self.input_ids)
@@ -288,7 +288,7 @@ class SgiActivitySpec(models.Model):
                                  "actividades para medir cada una.")
         output = self._sgi_output_deliverable()
         if output and output.odoo_model_id:
-            for line in self.input_ids.filtered('max_days'):
+            for line in self.input_ids.filtered(lambda l: l.max_days or l.due_field):
                 model = line.deliverable_id.odoo_model_id
                 if model and model != output.odoo_model_id and not line.match_path:
                     add('no_match', "«%s» (%s) no se liga con la salida (%s): falta "
@@ -415,6 +415,53 @@ class SgiActivityInputSpec(models.Model):
         help="Campo de la salida que apunta al registro de esta entrada, cuando son "
              "modelos distintos (ej. «sale_id» si la salida es un stock.picking y la "
              "entrada un sale.order). Mismo modelo: no hace falta.")
+    # P-4: el vencimiento sale de una fecha del propio registro (la fecha
+    # programada de la entrega) y no de «días después de que llegó».
+    due_field = fields.Char(
+        string="Vence según el campo",
+        help="Campo de fecha del registro de esta entrada contra el que vence la "
+             "actividad (ej. «scheduled_date» de la entrega). Con esto el plazo "
+             "no son días desde que llegó sino esa fecha más el margen.")
+    offset_days = fields.Integer(
+        string="Margen (días hábiles)",
+        help="Días hábiles que se suman a «Vence según el campo». Negativo = antes: "
+             "-2 vence dos días hábiles antes de la fecha programada.")
+
+    @api.constrains('due_field', 'deliverable_id')
+    def _check_due_field(self):
+        for line in self.filtered('due_field'):
+            model = line.deliverable_id.odoo_model_id.model
+            if not model or model not in self.env:
+                raise ValidationError(
+                    "«Vence según el campo» de %s necesita que el entregable «%s» "
+                    "tenga modelo de Odoo." % (line.activity_id.display_name,
+                                                line.deliverable_id.name))
+            field = self.env[model]._fields.get(line.due_field.strip())
+            if field is None or field.type not in ('date', 'datetime'):
+                raise ValidationError(
+                    "«Vence según el campo» de %s: «%s» no es un campo de fecha de %s." % (
+                        line.activity_id.display_name, line.due_field, model))
+
+    def _sgi_has_deadline(self):
+        self.ensure_one()
+        return bool(self.max_days or self.due_field)
+
+    def _sgi_due(self, record, in_date):
+        """Fecha (date) en que vence la actividad para ``record`` (un registro
+        de la entrada): la fecha del campo «vence según» más el margen, o la
+        fecha de llegada (``in_date``) más los días hábiles del plazo. None si
+        el registro no trae la fecha."""
+        self.ensure_one()
+        company = self.activity_id.company_id
+        if self.due_field:
+            base = record[self.due_field.strip()]
+            if not base:
+                return None
+            return sgi_add_business_days(self.env, base, self.offset_days, company)
+        base = record[in_date]
+        if not base:
+            return None
+        return sgi_add_business_days(self.env, base, self.max_days, company)
 
     @api.constrains('applies_domain', 'deliverable_id')
     def _check_applies_domain(self):
@@ -820,7 +867,7 @@ class SgiActivityWeekCounts(models.Model):
             base = line._sgi_applicable_domain()
             counts['applicable_count'] += In.search_count(
                 base + [(in_date, '>=', week_start), (in_date, '<', week_end)])
-            if not line.max_days or Out is None:
+            if not line._sgi_has_deadline() or Out is None:
                 continue
             same = In._name == Out._name
             if not same and not line.match_path:
@@ -831,8 +878,8 @@ class SgiActivityWeekCounts(models.Model):
                 (in_date, '>=', week_end - timedelta(days=self.env['sgi.activity.week.stat']._LOOKBACK_DAYS)),
                 (in_date, '<', week_end)])
             for rec in candidates:
-                due = sgi_add_business_days(env, rec[in_date], line.max_days, self.company_id)
-                if due >= week_end.date():
+                due = line._sgi_due(rec, in_date)
+                if due is None or due >= week_end.date():
                     continue
                 if same:
                     delivered = Out.search_count(out_domain + [
@@ -842,13 +889,21 @@ class SgiActivityWeekCounts(models.Model):
                         (line.match_path, '=', rec.id), (out_date, '<', week_end)], limit=1)
                 if not delivered:
                     counts['late_open_count'] += 1
-            # A tiempo: salidas de la semana contra su entrada.
+            # A tiempo: salidas de la semana contra su entrada. Si la salida
+            # apunta a varias entradas (la revisión por la dirección y sus
+            # auditorías), manda la última: la salida no podía hacerse antes.
             for rec in done:
-                source = rec if same else rec.mapped(line.match_path)[:1]
+                if same:
+                    source = rec
+                else:
+                    sources = rec.mapped(line.match_path).filtered(in_date)
+                    source = sources.sorted(in_date)[-1:] if sources else sources
                 if not source or not source[in_date]:
                     continue
+                due = line._sgi_due(source, in_date)
+                if due is None:
+                    continue
                 counts['timed_count'] += 1
-                due = sgi_add_business_days(env, source[in_date], line.max_days, self.company_id)
                 if rec[out_date] and fields.Datetime.to_datetime(rec[out_date]).date() <= due:
                     counts['on_time_count'] += 1
             break   # la primera entrada con plazo que se liga es la que manda
