@@ -19,6 +19,7 @@ archivan o se religan. Aquí vive lo que la migración y las pruebas comparten:
 import logging
 
 from odoo import models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -159,33 +160,29 @@ class SgiProcessCleanup(models.Model):
         """Religa documentos, riesgos e indicadores de los procesos archivados
         al proceso nuevo. Devuelve un resumen {clave: conteo} y escribe en el
         log qué se movió; los documentos de `review_codes` se listan uno por
-        uno para revisión manual. No archiva nada."""
+        uno para revisión manual. No archiva nada.
+
+        Se arma primero el plan completo y se escribe por destino: una clave
+        (todas sus revisiones) va a UN solo proceso, porque la restricción
+        `_check_sgi_code_family` no permite que una clave viva en dos
+        procesos, ni siquiera un instante durante la migración."""
         mapping = SGI_RELINK_MAP if mapping is None else mapping
         review_codes = SGI_RELINK_REVIEW if review_codes is None else review_codes
         Process = self.sudo().with_context(active_test=False)
-        Document = self.env['documents.document'].sudo()
+        Document = self.env['documents.document'].sudo().with_context(active_test=False)
         Risk = self.env['sgi.risk'].sudo().with_context(active_test=False)
         Indicator = self.env['sgi.indicator'].sudo().with_context(active_test=False)
-        summary = {'documentos': 0, 'documentos_regla_sustituidos': 0, 'riesgos': 0,
-                   'indicadores': 0, 'sin_destino': 0}
+        summary = {'documentos': 0, 'documentos_regla_sustituidos': 0,
+                   'documentos_por_familia': 0, 'riesgos': 0, 'indicadores': 0,
+                   'sin_destino': 0, 'no_movidos': 0}
 
         new_by_code = {p.code: p for p in Process.search([('active', '=', True)])}
-        old_processes = Process.search([('active', '=', False), ('code', 'in', list(mapping))])
-        old_by_code = {p.code: p for p in old_processes}
+        old_by_code = {p.code: p for p in Process.search(
+            [('active', '=', False), ('code', 'in', list(mapping))])}
 
-        # Primera regla: los documentos sustituidos (y su familia) van al
-        # proceso que los sustituye, diga lo que diga el mapa.
-        forced = {}  # document id → proceso nuevo
-        for process in new_by_code.values():
-            replaced = process.replaced_document_ids
-            if not replaced:
-                continue
-            family = replaced | Document.with_context(active_test=False).search(
-                [('sgi_parent_document_id', 'in', replaced.ids)])
-            for doc in family:
-                forced.setdefault(doc.id, process)
-
-        moved_by_target = {}
+        # 1. Plan por mapa: documento → proceso nuevo.
+        plan = {}
+        origin = {}  # doc id → clave del proceso viejo (para el log)
         for old_code, new_code in mapping.items():
             old = old_by_code.get(old_code)
             target = new_by_code.get(new_code)
@@ -196,18 +193,9 @@ class SgiProcessCleanup(models.Model):
                                 new_code, old_code)
                 summary['sin_destino'] += 1
                 continue
-            docs = Document.with_context(active_test=False).search(
-                [('sgi_process_id', '=', old.id)])
-            for doc in docs:
-                dest = forced.get(doc.id, target)
-                if dest != target:
-                    summary['documentos_regla_sustituidos'] += 1
-                doc.write({'sgi_process_id': dest.id})
-                summary['documentos'] += 1
-                moved_by_target.setdefault(dest, []).append(doc)
-                if old_code in review_codes:
-                    _logger.info("SGI 45: REVISAR %s → %s: %s [%s] %s", old_code, dest.code,
-                                 doc.sgi_code or '-', doc.sgi_state or '-', doc.name)
+            for doc in Document.search([('sgi_process_id', '=', old.id)]):
+                plan[doc.id] = target
+                origin[doc.id] = old_code
             risks = Risk.search([('process_id', '=', old.id)])
             if risks:
                 risks.write({'process_id': target.id})
@@ -217,20 +205,129 @@ class SgiProcessCleanup(models.Model):
                 indicators.write({'process_id': target.id})
                 summary['indicadores'] += len(indicators)
             _logger.info("SGI 45: %s → %s: %d documento(s), %d riesgo(s), %d indicador(es).",
-                         old_code, new_code, len(docs), len(risks), len(indicators))
+                         old_code, new_code, len([d for d in origin if origin[d] == old_code]),
+                         len(risks), len(indicators))
 
-        # Documentos sustituidos que colgaban de un proceso fuera del mapa (o
-        # de ninguno): también van a quien los sustituye.
+        # 2. Primera regla: lo sustituido (y su familia) va a quien lo
+        #    sustituye, diga lo que diga el mapa.
+        forced = {}
+        for process in new_by_code.values():
+            replaced = process.replaced_document_ids
+            if not replaced:
+                continue
+            family = replaced | Document.search(
+                [('sgi_parent_document_id', 'in', replaced.ids)])
+            for doc in family:
+                forced.setdefault(doc.id, process)
         for doc_id, dest in forced.items():
-            doc = Document.with_context(active_test=False).browse(doc_id)
-            if doc.exists() and doc.sgi_process_id != dest:
-                doc.write({'sgi_process_id': dest.id})
-                summary['documentos'] += 1
+            current = plan.get(doc_id) or Document.browse(doc_id).sgi_process_id
+            if current != dest:
                 summary['documentos_regla_sustituidos'] += 1
-                moved_by_target.setdefault(dest, []).append(doc)
+            plan[doc_id] = dest
 
-        for target, docs in moved_by_target.items():
-            target.message_post(body=(
-                "Limpieza 19.0.45.0.0: se religaron %d documento(s) de los procesos "
-                "anteriores a este proceso." % len(docs)))
+        # 3. Una clave, un destino: todas las revisiones de una clave viajan
+        #    juntas. Gana la regla de sustituidos; si no, un proceso nuevo
+        #    donde ya viva alguna revisión; si no, el destino de la vigente;
+        #    si no, el primero del plan.
+        docs = Document.browse(list(plan))
+        seen_codes = set()
+        for doc in docs.filtered(lambda d: d.sgi_is_controlled and d.sgi_code):
+            key = (doc.sgi_code, doc.company_id.id)
+            if key in seen_codes:
+                continue
+            seen_codes.add(key)
+            siblings = doc | doc._sgi_same_code_docs().filtered('sgi_is_controlled')
+            dest = None
+            for sib in siblings:
+                if sib.id in forced:
+                    dest = forced[sib.id]
+                    break
+            if dest is None:
+                for sib in siblings:
+                    if sib.id not in plan and sib.sgi_process_id.active:
+                        dest = sib.sgi_process_id
+                        break
+            if dest is None:
+                for sib in siblings:
+                    if sib.id in plan and sib.sgi_state == 'vigente':
+                        dest = plan[sib.id]
+                        break
+            if dest is None:
+                dest = next(plan[sib.id] for sib in siblings if sib.id in plan)
+            for sib in siblings:
+                if plan.get(sib.id) != dest:
+                    if sib.id in plan:
+                        _logger.info("SGI 45: %s [%s] sigue a su familia: → %s en vez de %s.",
+                                     sib.sgi_code, sib.sgi_revision_label or '-', dest.code,
+                                     plan[sib.id].code)
+                    else:
+                        _logger.info("SGI 45: %s [%s] (en %s) sigue a su familia → %s.",
+                                     sib.sgi_code, sib.sgi_revision_label or '-',
+                                     sib.sgi_process_id.display_name or 'sin proceso', dest.code)
+                    summary['documentos_por_familia'] += 1
+                    plan[sib.id] = dest
+
+        # 4. Lo que no cumpliría la nomenclatura de su tipo con el proceso
+        #    nuevo se queda (con toda su clave) y se avisa: se corrige a mano.
+        blocked = set()
+        for doc in Document.browse(list(plan)):
+            dtype = doc.sgi_doc_type_id
+            if not doc.sgi_is_controlled or not doc.sgi_code or not dtype or not dtype.code_required:
+                continue
+            if not dtype._sgi_code_ok(doc.sgi_code, plan[doc.id]):
+                blocked.add((doc.sgi_code, doc.company_id.id))
+                _logger.warning("SGI 45: NO MOVIDO %s [%s] %s: la clave no cumple la nomenclatura "
+                                "del tipo «%s» con el proceso %s.", doc.sgi_code,
+                                doc.sgi_state or '-', doc.name, dtype.name, plan[doc.id].code)
+        for doc_id in list(plan):
+            doc = Document.browse(doc_id)
+            if (doc.sgi_code, doc.company_id.id) in blocked:
+                del plan[doc_id]
+                summary['no_movidos'] += 1
+
+        # 5. Escribir por destino, de una vez. Si una restricción previa de la
+        #    base (una clave repartida en dos tipos, por ejemplo) rechaza el
+        #    grupo, se intenta documento por documento y lo que no pasa se
+        #    queda y se avisa; el build nunca se cae por datos viejos.
+        by_dest = {}
+        for doc_id, dest in plan.items():
+            by_dest.setdefault(dest, []).append(doc_id)
+        for dest, ids in by_dest.items():
+            group = Document.browse(ids).filtered(lambda d, dest=dest: d.sgi_process_id != dest)
+            if not group:
+                continue
+            for doc in group:
+                if origin.get(doc.id) in review_codes:
+                    _logger.info("SGI 45: REVISAR %s → %s: %s [%s] %s", origin[doc.id],
+                                 dest.code, doc.sgi_code or '-', doc.sgi_state or '-', doc.name)
+            moved = self._sgi_relink_write(group, dest, summary)
+            if moved:
+                dest.message_post(body=(
+                    "Limpieza 19.0.45.0.0: se religaron %d documento(s) de los procesos "
+                    "anteriores a este proceso." % moved))
         return summary
+
+    def _sgi_relink_write(self, group, dest, summary):
+        """Escribe el grupo en un savepoint; si falla, uno por uno."""
+        try:
+            with self.env.cr.savepoint():
+                group.write({'sgi_process_id': dest.id})
+        except ValidationError as exc:
+            _logger.warning("SGI 45: el grupo de %d documento(s) hacia %s no pasó completo (%s); "
+                            "se intenta uno por uno.", len(group), dest.code,
+                            str(exc).splitlines()[0])
+            moved = 0
+            for doc in group:
+                try:
+                    with self.env.cr.savepoint():
+                        doc.write({'sgi_process_id': dest.id})
+                    moved += 1
+                except ValidationError as exc2:
+                    summary['no_movidos'] += 1
+                    _logger.warning("SGI 45: NO MOVIDO %s [%s] %s → %s: %s", doc.sgi_code or '-',
+                                    doc.sgi_state or '-', doc.name, dest.code,
+                                    str(exc2).splitlines()[0])
+            summary['documentos'] += moved
+            return moved
+        summary['documentos'] += len(group)
+        return len(group)
