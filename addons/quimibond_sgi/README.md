@@ -878,6 +878,35 @@ reutilizable en otra familia; clave anterior encontrada; dueño inválido = rojo
 **No se han corrido todavía**: el SGI depende de Enterprise y no entra al CI;
 correrlas en la base de pruebas de Odoo.sh con el comando de arriba.
 
+## Lógica de indicadores: detalle y confiabilidad (I-1, I-2, 19.0.36.0.0)
+
+Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
+`models/sgi_indicator_detail.py`, pruebas en `tests/test_indicator_detail.py`.
+
+- **I-1, cada medición guarda su detalle.** `numerator`, `denominator`,
+  `sample_size` y los registros que la forman (`detail_model` + `detail_ids`);
+  «Ver registros» abre esa lista guardada, no una consulta nueva. Un modo lo
+  aporta con `_detail_<modo>(date_from, date_to)` → `{value, numerator,
+  denominator, model, ids}`; primera tanda: a tiempo, completo, OTIF, OTD,
+  entregas completas, embarques sin error, pedidos cancelados, cierre de NC,
+  calidad PQ, preventivo, DSO y cartera vencida. Los demás modos conservan su
+  `_calc_` y guardan al menos modelo, ids y casos cuando la tabla de
+  evidencia conoce su universo. `sgi.indicator._sgi_aggregate(mediciones)`
+  da el valor de varios periodos como suma de numeradores entre suma de
+  denominadores (nunca promedio de porcentajes); el pivote trae ambos.
+- **I-2, el cero no es «sin dato».** La medición automática sin registros
+  queda en `sin_dato` (gris, sin semáforo, no pide captura). Con menos casos
+  que `quimibond_sgi.indicator_min_sample` (5) se marca «muestra chica».
+  El indicador nace **en prueba** (`status`) y el Jefe MAST lo pasa a
+  **oficial** tras revisar una vez la lista de registros; solo un indicador
+  oficial, con dato y con muestra suficiente abre NC (el interruptor
+  `nc_on_red` sigue siendo necesario). «Medir desde» (`measure_from`) evita
+  crear mediciones de periodos anteriores al dato confiable. El último
+  valor y semáforo del indicador salen de la última medición **con dato**.
+  Los 93 indicadores existentes quedan en prueba al actualizar: es el freno
+  a las 20 NC de golpe que pedía la spec, sin tocar `nc_on_red`.
+- Carga JSON: llaves `status` y `measure_from` en `indicators`.
+
 ## No surtir lotes sin liberar (P-7, 19.0.35.0.0)
 
 Las requisiciones de producción (Requisición MP y Requisición PP y PT) no se

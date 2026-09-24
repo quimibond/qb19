@@ -570,19 +570,11 @@ class SgiCron(models.AbstractModel):
                 ('period_date', '=', period_date),
             ], limit=1)
             if not measure:
-                vals = {'indicator_id': indicator.id, 'period_date': period_date}
-                value = indicator._sgi_compute_value(date_from, date_to)
-                if indicator.calc_mode != 'manual' and value is not None:
-                    vals['value'] = value
-                    vals['state'] = 'capturado'
-                    note = indicator._sgi_compute_note(date_from, date_to)
-                    if note:
-                        vals['note'] = note
-                else:
-                    vals['state'] = 'pendiente'
-                    note = indicator._sgi_compute_note(date_from, date_to)
-                    if note:
-                        vals['note'] = note
+                # Antes de «medir desde» no hay dato confiable: no se crea.
+                if not indicator._sgi_measurable_on(date_to):
+                    return
+                vals = dict(indicator._sgi_measure_vals(date_from, date_to),
+                            indicator_id=indicator.id, period_date=period_date)
                 measure = Measure.create(vals)
                 if measure.state == 'pendiente':
                     user_id = indicator.responsible_id.id or manager_id
