@@ -908,6 +908,21 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   Los 93 indicadores existentes quedan en prueba al actualizar: es el freno
   a las 20 NC de golpe que pedía la spec, sin tocar `nc_on_red`.
 - Carga JSON: llaves `status` y `measure_from` en `indicators`.
+- **I-3, fórmulas corregidas (19.0.38.0.0).** Tres modos nuevos con detalle
+  (`models/sgi_indicator_i3.py`), y la migración cambia MA-05, EX-01 y EX-02
+  a ellos si seguían en el modo viejo:
+  `desperdicio_kg` (kg que entran a las ubicaciones de desperdicio, órdenes y
+  ajustes, ÷ kg de hilo y fibra consumidos en órdenes, 3 meses móviles; solo
+  líneas en kg; parámetros `waste_location_ids` 39,43 y
+  `waste_input_categ_ids` 350,356), `margen_ebitda` ((ingresos − costo de
+  ventas − gastos de operación) ÷ ingresos por tipo de cuenta, 12 meses
+  móviles; fuera depreciación, otros ingresos y financieros 701) y
+  `compras_mp_vs_ventas` (facturas de proveedor de la categoría Materia Prima
+  menos notas de crédito ÷ ingresos, 3 meses móviles; parámetro
+  `raw_material_categ_id` 318). Las metas y el objetivo integral las ajusta
+  MAST: MA-05 arranca ≈ 16 % contra una meta de 0.8 %, EX-02 ≈ 35 % contra 78 %.
+  El margen sobre pedidos (`margen_ventas`) sigue disponible para un indicador
+  nuevo de C1/C2.
 - **I-5, NC por persistencia (19.0.37.0.0).** «NC automática» (`nc_on_red`)
   ya no abre una NC por un solo rojo: hacen falta **dos periodos seguidos en
   rojo** (semana o mes, según la frecuencia), o **uno** si el indicador está

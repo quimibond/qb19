@@ -47,3 +47,4 @@ from . import sgi_coa
 from . import sgi_budget_analytic
 from . import sgi_release
 from . import sgi_indicator_detail
+from . import sgi_indicator_i3
