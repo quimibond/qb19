@@ -1,6 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ====== Vista «Mi procedimiento»: roles del puesto agrupados por cadencia ====== -->
+    <!-- ====== Pantalla «Mi procedimiento» (transitorio con HTML calculado) ====== -->
+    <record id="sgi_my_procedure_view_form" model="ir.ui.view">
+        <field name="name">sgi.my.procedure.form</field>
+        <field name="model">sgi.my.procedure</field>
+        <field name="arch" type="xml">
+            <form string="Mi procedimiento" create="0" delete="0">
+                <header>
+                    <button name="action_sign" type="object" string="Firmar leído y entendido"
+                            class="btn-primary" icon="fa-pencil"
+                            invisible="not is_me or ack_state != 'pendiente'"
+                            confirm="Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora."/>
+                    <button name="action_print" type="object" string="Imprimir PDF" icon="fa-print"
+                            invisible="not job_id"/>
+                    <button name="action_open_doc" type="object" string="Ver revisión vigente" icon="fa-file-pdf-o"
+                            invisible="not doc_id"/>
+                    <button name="action_publish" type="object" string="Publicar revisión" icon="fa-upload"
+                            invisible="not can_publish or not job_id"
+                            confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
+                    <field name="ack_state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id" readonly="not can_pick"
+                                   domain="[('id', 'in', allowed_employee_ids)]"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="job_id" readonly="not can_pick"
+                                   domain="[('id', 'in', allowed_job_ids)]"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                        <group>
+                            <div colspan="2" class="text-muted">
+                                <i class="fa fa-info-circle me-1"/><field name="ack_label" readonly="1" nolabel="1" class="d-inline"/>
+                            </div>
+                        </group>
+                    </group>
+                    <field name="can_pick" invisible="1"/>
+                    <field name="can_publish" invisible="1"/>
+                    <field name="is_me" invisible="1"/>
+                    <field name="doc_id" invisible="1"/>
+                    <field name="allowed_employee_ids" invisible="1"/>
+                    <field name="allowed_job_ids" invisible="1"/>
+                    <field name="content" nolabel="1" readonly="1" options="{'safe': True}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ====== Lista de roles del puesto agrupados por cadencia (vista secundaria) ====== -->
     <record id="sgi_activity_role_view_list_my_procedure" model="ir.ui.view">
         <field name="name">sgi.activity.role.list.my.procedure</field>
         <field name="model">sgi.activity.role</field>

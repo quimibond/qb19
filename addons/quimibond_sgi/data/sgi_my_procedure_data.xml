@@ -14,17 +14,11 @@
         </record>
     </data>
 
-    <!-- Menú Inicio → «Mi procedimiento»: la vista por empleado (vía su puesto). -->
+    <!-- Menú Inicio → «Mi procedimiento»: la pantalla del puesto del usuario. -->
     <record id="sgi_my_procedure_action_mine" model="ir.actions.server">
         <field name="name">Mi procedimiento</field>
-        <field name="model_id" ref="quimibond_sgi.model_sgi_activity_role"/>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_procedure"/>
         <field name="state">code</field>
-        <field name="code">
-employee = env.user.employee_id
-if employee and employee.job_id:
-    action = employee.action_sgi_my_procedure_view()
-else:
-    raise UserError("Tu usuario no tiene empleado con puesto asignado. Pide a RH que lo capture en tu ficha.")
-        </field>
+        <field name="code">action = env['sgi.my.procedure'].action_open_mine()</field>
     </record>
 </odoo>
