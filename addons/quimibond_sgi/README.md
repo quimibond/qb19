@@ -653,6 +653,13 @@ Jefe MAST.
 - **Indicadores**: `formula` y `source` (texto; salen en la ficha y en el
   procedimiento impreso), `frequency` `monthly`/`weekly`, y el responsable
   como `responsible_employee_id` (su usuario) o `responsible` (id o login).
+  **Modos genéricos (P-1):** `calc_mode` `actividad_a_tiempo` con
+  `activity` (`"C2.17"` o `"PROC:NUM"`) toma el % a tiempo del cumplimiento
+  semanal de esa actividad; `entregable_completo` con `deliverable` (código)
+  toma el % de lo entregado en el periodo que cumple `complete_domain` (sin
+  `deliverable`, usa el entregable con el que se mide `activity`). Sin
+  entregas o sin plazo medible en el periodo la medición queda pendiente. El
+  reporte avisa si falta la actividad, el entregable o su «completo».
 - **`number`**: `"C2.03"` (clave del proceso + paso) o el paso como entero
   (`3`). Es un número, no texto: el numeral que se imprime se calcula y se
   renumera solo si cambia la clave del proceso. Otro formato es error.

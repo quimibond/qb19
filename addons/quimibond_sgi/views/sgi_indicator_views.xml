@@ -73,6 +73,11 @@
                             <field name="calc_mode"/>
                             <field name="monthly_budget"
                                    invisible="calc_mode != 'presupuesto_ventas'"/>
+                            <field name="activity_id"
+                                   invisible="calc_mode not in ('actividad_a_tiempo', 'entregable_completo')"
+                                   required="calc_mode == 'actividad_a_tiempo'"/>
+                            <field name="deliverable_id"
+                                   invisible="calc_mode != 'entregable_completo'"/>
                             <field name="nc_on_red"/>
                         </group>
                     </group>

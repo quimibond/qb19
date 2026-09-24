@@ -236,3 +236,69 @@ class TestSpec(TransactionCase):
             self._act('Registrar paso %d' % n, exec_channel='odoo' if n < 20 else 'papel')
         self.assertEqual(self.process.channel_odoo_pct, 77)
         self.assertEqual(self.process.channel_manual_pct, 23)
+
+    # P-1: modos genéricos del indicador
+    def test_15_indicator_entregable_completo(self):
+        act = self._partner_deliverables('T15', complete="[('email', '!=', False)]")
+        self.env['res.partner'].create([
+            {'name': 'A', 'ref': 'X-T15', 'comment': 'listo'},
+            {'name': 'B', 'ref': 'X-T15', 'comment': 'listo', 'email': 'b@x.com'},
+            {'name': 'C', 'ref': 'X-T15', 'comment': 'listo', 'email': 'c@x.com'},
+            {'name': 'D', 'ref': 'X-T15', 'comment': 'listo', 'email': 'd@x.com'}])
+        ind = self.env['sgi.indicator'].create({
+            'code': 'XS-COMPLETO', 'name': 'Completos', 'calc_mode': 'entregable_completo',
+            'activity_id': act.id, 'process_id': self.process.id})
+        today = fields.Date.context_today(self.env['res.partner'])
+        self.assertEqual(ind._sgi_compute_value(today, today), 75.0,
+                         "3 completos de 4 entregados; el entregable sale de la actividad.")
+        self.assertIsNone(ind._sgi_compute_value(today - timedelta(days=30),
+                                                 today - timedelta(days=20)),
+                          "Sin entregas en el periodo queda pendiente, no 0.")
+        # Faltantes: sin actividad ni entregable, o un entregable sin «completo».
+        bare = self.env['sgi.indicator'].create({
+            'code': 'XS-SIN', 'name': 'Sin entregable', 'calc_mode': 'entregable_completo'})
+        self.assertTrue(any('sin entregable' in p for p in bare._sgi_spec_problems()))
+        self.assertFalse(any('completo' in p and 'sin' in p for p in ind._sgi_spec_problems()
+                             if 'entregable' in p))
+
+    def test_16_indicator_actividad_a_tiempo(self):
+        act = self._partner_deliverables('T16')
+        ind = self.env['sgi.indicator'].create({
+            'code': 'XS-TIEMPO', 'name': 'A tiempo', 'calc_mode': 'actividad_a_tiempo',
+            'activity_id': act.id, 'process_id': self.process.id})
+        today = fields.Date.context_today(self.env['res.partner'])
+        monday = today - timedelta(days=today.weekday())
+        # Sin nada medible en la semana: pendiente.
+        self.assertIsNone(ind._sgi_compute_value(monday, monday + timedelta(days=6)))
+        # Con las filas del cron: 3 a tiempo de 4 medibles en dos semanas.
+        Stat = self.env['sgi.activity.week.stat']
+        Stat.create([
+            {'activity_id': act.id, 'period_start': monday, 'timed_count': 2, 'on_time_count': 2},
+            {'activity_id': act.id, 'period_start': monday - timedelta(days=7),
+             'timed_count': 2, 'on_time_count': 1}])
+        self.assertEqual(ind._sgi_compute_value(monday - timedelta(days=7),
+                                                monday + timedelta(days=6)), 75.0)
+        self.assertEqual(ind._sgi_compute_value(monday, monday + timedelta(days=6)), 100.0)
+        bare = self.env['sgi.indicator'].create({
+            'code': 'XS-TIEMPO-SIN', 'name': 'Sin actividad', 'calc_mode': 'actividad_a_tiempo'})
+        self.assertIn("«% a tiempo» sin actividad medida", bare._sgi_spec_problems())
+
+    def test_17_load_indicator_with_activity_and_deliverable(self):
+        act = self._partner_deliverables('T17', complete="[('email', '!=', False)]")
+        out = act.output_deliverable_ids[:1]
+        result = self.Process.load_payload({'indicators': [
+            {'code': 'XS-L1', 'name': 'A tiempo cargado', 'process': 'XS',
+             'calc_mode': 'actividad_a_tiempo', 'activity': act.number,
+             'target': 90, 'unit': '%', 'formula': 'f', 'source': 's', 'frequency': 'weekly'},
+            {'code': 'XS-L2', 'name': 'Completo cargado', 'process': 'XS',
+             'calc_mode': 'entregable_completo', 'deliverable': out.code,
+             'target': 95, 'unit': '%', 'formula': 'f', 'source': 's', 'frequency': 'monthly'},
+        ]})
+        self.assertTrue(result['ok'], result['errors'])
+        Indicator = self.env['sgi.indicator']
+        self.assertEqual(Indicator.search([('code', '=', 'XS-L1')]).activity_id, act)
+        self.assertEqual(Indicator.search([('code', '=', 'XS-L2')]).deliverable_id, out)
+        bad = self.Process.load_payload({'indicators': [
+            {'code': 'XS-L3', 'name': 'x', 'process': 'XS', 'calc_mode': 'entregable_completo',
+             'deliverable': 'NO-EXISTE'}]}, dry_run=True)
+        self.assertFalse(bad['ok'])
