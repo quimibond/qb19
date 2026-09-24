@@ -18,6 +18,11 @@
                     <button name="action_publish" type="object" string="Publicar revisión" icon="fa-upload"
                             invisible="not can_publish or not job_id"
                             confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
+                    <button name="action_precheck" type="object" string="Revisión previa" icon="fa-stethoscope"
+                            invisible="not can_publish"/>
+                    <button name="action_publish_all" type="object" string="Publicar todos los puestos" icon="fa-users"
+                            invisible="not can_publish"
+                            confirm="Se publica «Mi procedimiento» de TODOS los puestos con roles y personas: revisión nueva solo donde cambió el contenido, y cada revisión nueva deja pendiente el acuse de sus empleados. ¿Continuar?"/>
                     <field name="ack_state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -44,6 +49,22 @@
                     <field name="allowed_job_ids" invisible="1"/>
                     <field name="content" nolabel="1" readonly="1" options="{'safe': True}"/>
                 </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_my_procedure_check_view_form" model="ir.ui.view">
+        <field name="name">sgi.my.procedure.check.form</field>
+        <field name="model">sgi.my.procedure.check</field>
+        <field name="arch" type="xml">
+            <form string="Revisión previa a publicar">
+                <sheet>
+                    <p class="text-muted">Lo que conviene limpiar antes de publicar «Mi procedimiento» para toda la planta. Un empleado en un puesto duplicado sin roles abre su procedimiento y lo ve vacío.</p>
+                    <field name="result" nolabel="1" readonly="1"/>
+                </sheet>
+                <footer>
+                    <button special="cancel" string="Cerrar" class="btn-secondary"/>
+                </footer>
             </form>
         </field>
     </record>

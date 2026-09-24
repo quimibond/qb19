@@ -274,3 +274,87 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual(wiz_m.job_id, self.job)
         self.assertEqual(wiz_m.ack_state, 'sin_publicar')
         self.assertFalse(wiz_m.is_me)
+
+    # ------------------------------------------------------------------
+    # Correcciones CEO 2026-09-24 y bloques 1 y 2+6
+    # ------------------------------------------------------------------
+    def test_10_jefe_directo_estado_neutro_y_una_consulta(self):
+        boss = self.env['hr.employee'].create({'name': 'Jefe Directo MP', 'job_id': self.job_boss.id})
+        self.emp1.parent_id = boss
+        Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        html = wiz.content
+        self.assertIn('Jefe inmediato: Jefe Directo MP', html, "El jefe directo del empleado, no el del departamento.")
+        self.assertIn('Sin medición automática', html)
+        self.assertNotIn('Sin medir', html)
+        acts = self.a_weekly_fri | self.a_quarterly | self.a_monthly
+        self.a_weekly_fri.measure_state = 'verde'
+        self.env['sgi.activity.week.stat'].create({
+            'activity_id': self.a_quarterly.id, 'period_start': '2026-09-21', 'late_open_count': 2})
+        status = self.env['hr.job']._sgi_mp_status_map(acts)
+        self.assertEqual(status[self.a_weekly_fri][0], 'al_dia')
+        self.assertEqual(status[self.a_quarterly][:2], ('atrasada', "Atrasada"))
+        self.assertEqual(status[self.a_monthly][0], 'sin_medir')
+
+    def test_11_documentos_aplicables_y_mis_pendientes(self):
+        doc = self.env['documents.document'].create({
+            'name': 'IT de prueba MP', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-P-C11-77', 'sgi_state': 'vigente',
+            'sgi_job_ids': [(6, 0, [self.job.id])]})
+        doc.action_generate_acks()
+        action = self.env['sgi.action.line'].create({
+            'name': 'Acción pendiente MP', 'responsible_id': self.user_emp.id,
+            'date_commit': '2020-01-10', 'objective_id': self.env['sgi.objective'].create(
+                {'name': 'Objetivo MP'}).id})
+        indicator = self.env['sgi.indicator'].create({
+            'code': 'ZMP-01', 'name': 'Indicador oficial MP', 'status': 'oficial',
+            'responsible_id': self.user_emp.id, 'target_objective': 1.0, 'target_acceptable': 0.5})
+        Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        html = wiz.content
+        self.assertIn('Documentos de tu puesto', html)
+        self.assertIn('IT-P-C11-77', html)
+        self.assertIn('Acuse pendiente', html)
+        self.assertIn('Mis pendientes', html)
+        self.assertIn('Acción pendiente MP', html)
+        self.assertIn('Vencida', html)
+        self.assertIn('ZMP-01', html)
+        self.assertIn('/odoo/sgi.indicator/%d' % indicator.id, html)
+        self.assertIn('/odoo/sgi.action.line/%d' % action.id, html)
+        # Sin usuario no hay pendientes que mostrar.
+        wiz2 = self.env['sgi.my.procedure'].with_user(self.manager).create({'employee_id': self.emp2.id})
+        self.assertNotIn('Mis pendientes', wiz2.content)
+        self.assertIn('IT-P-C11-77', wiz2.content, "Los documentos del puesto sí se ven sin usuario.")
+
+    def test_12_publicar_todos_revision_previa_y_cron(self):
+        Job = self.env['hr.job'].with_user(self.manager)
+        dup = self.env['hr.job'].create({'name': 'planeador  prueba mp'})
+        bare_job = self.env['hr.job'].create({'name': 'PUESTO SIN ROLES MP'})
+        loner = self.env['hr.employee'].create({'name': 'Solo MP', 'job_id': bare_job.id})
+        empty_job = self.env['hr.job'].create({'name': 'PUESTO VACIO MP',
+                                               'sgi_family_ids': [(4, self.family.id)]})
+        check = self.env['hr.job']._sgi_my_procedure_precheck()
+        self.assertTrue(any(self.job in g and dup in g for g in check['duplicates']),
+                        "Mismo nombre normalizado = duplicado.")
+        self.assertIn(loner, check['job_without_roles'])
+        self.assertIn(empty_job, check['roles_without_people'])
+        self.assertIn(self.job, self.env['hr.job']._sgi_my_procedure_jobs())
+        self.assertNotIn(empty_job, self.env['hr.job']._sgi_my_procedure_jobs())
+        with self.assertRaises(UserError):
+            self.env['hr.job'].with_user(self.user_emp).action_sgi_publish_all_my_procedures()
+        self.assertIn(self.job, self.env['hr.job']._sgi_my_procedure_stale_jobs())
+        Job.action_sgi_publish_all_my_procedures()
+        self.assertTrue(self.job._sgi_my_procedure_current_doc())
+        self.assertNotIn(self.job, self.env['hr.job']._sgi_my_procedure_stale_jobs())
+        # Cron semanal: sin puestos desactualizados no hace nada; con uno, agenda al Jefe MAST.
+        self.env['sgi.cron'].cron_my_procedure_stale()
+        self.a_weekly_fri.on_fail = 'Cambio para desactualizar'
+        self.env['sgi.cron'].cron_my_procedure_stale()
+        doc = self.job._sgi_my_procedure_current_doc()
+        activities = self.env['mail.activity'].search([
+            ('res_model', '=', 'documents.document'), ('summary', 'ilike', 'Mi procedimiento')])
+        self.assertTrue(activities, "Aviso semanal a MAST sobre la revisión más reciente.")
+        self.assertIn(doc.id, activities.mapped('res_id'))
+        result = self.env['sgi.my.procedure.check'].with_user(self.manager).create({}).result
+        self.assertIn('Puestos duplicados', result)
+        self.assertIn('Solo MP', result)
