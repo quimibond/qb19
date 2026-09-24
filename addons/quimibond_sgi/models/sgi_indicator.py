@@ -49,6 +49,9 @@ CALC_MODES = [
     ('pedidos_cancelados', "Pedidos de venta cancelados"),
     ('entregas_completas', "Entregas completas a la primera (sin backorder)"),
     ('dpo_pagos', "Días de pago a proveedores (DPO)"),
+    # Genéricos (P-1): sirven a cualquier actividad o entregable del SGI.
+    ('actividad_a_tiempo', "Actividad del SGI: % a tiempo"),
+    ('entregable_completo', "Entregable del SGI: % completo"),
 ]
 
 

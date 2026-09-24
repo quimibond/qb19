@@ -594,10 +594,82 @@ class SgiIndicatorSpec(models.Model):
         help="Opcional: sin fecha, la meta es permanente.")
     spec_missing = fields.Char(string="Le falta", compute='_compute_spec_missing')
 
+    # --- Modos genéricos (P-1): el indicador se calcula solo de lo que ya
+    # mide el SGI, sin una fórmula fija por indicador.
+    activity_id = fields.Many2one(
+        'sgi.process.activity', string="Actividad medida", ondelete='set null',
+        help="Para «% a tiempo»: la actividad cuyo cumplimiento semanal se toma.")
+    deliverable_id = fields.Many2one(
+        'sgi.deliverable', string="Entregable medido", ondelete='set null',
+        help="Para «% completo»: el entregable cuyo filtro «ya está completo» "
+             "se compara contra lo entregado. Vacío: el entregable con el que "
+             "se mide la actividad.")
+
+    def _sgi_measured_deliverable(self):
+        self.ensure_one()
+        if self.deliverable_id:
+            return self.deliverable_id
+        return self.activity_id._sgi_output_deliverable() if self.activity_id \
+            else self.env['sgi.deliverable']
+
+    def _calc_actividad_a_tiempo(self, date_from, date_to):
+        """% a tiempo de la actividad en las semanas del periodo. Toma las
+        filas que ya calculó el cron (sgi.activity.week.stat) y, para las
+        semanas que no tenga, las cuenta en el momento."""
+        if not self.activity_id:
+            return None
+        monday = date_from - timedelta(days=date_from.weekday())
+        weeks = []
+        while monday <= date_to:
+            weeks.append(monday)
+            monday += timedelta(days=7)
+        stats = {s.period_start: s for s in self.env['sgi.activity.week.stat'].search([
+            ('activity_id', '=', self.activity_id.id), ('period_start', 'in', weeks)])}
+        timed = on_time = 0
+        for start in weeks:
+            stat = stats.get(start)
+            counts = ({'timed_count': stat.timed_count, 'on_time_count': stat.on_time_count}
+                      if stat else self.activity_id._sgi_week_counts(start))
+            timed += counts['timed_count']
+            on_time += counts['on_time_count']
+        if not timed:
+            return None
+        return round(on_time * 100.0 / timed, 2)
+
+    def _calc_entregable_completo(self, date_from, date_to):
+        """% de lo entregado en el periodo que cumple el filtro «ya está
+        completo» del entregable."""
+        deliverable = self._sgi_measured_deliverable()
+        model = deliverable.odoo_model_id.model
+        if not model or model not in self.env:
+            return None
+        Model = self.env[model].sudo()
+        date_field = deliverable.measure_date_field or 'create_date'
+        if date_field not in Model._fields:
+            date_field = 'create_date'
+        start = datetime.combine(date_from, time.min)
+        end = datetime.combine(date_to, time.min) + timedelta(days=1)
+        done = Model.search(sgi_safe_domain(deliverable.measure_domain)
+                            + [(date_field, '>=', start), (date_field, '<', end)])
+        if not done:
+            return None
+        complete_domain = sgi_safe_domain(deliverable.complete_domain)
+        complete = Model.search_count([('id', 'in', done.ids)] + complete_domain) \
+            if complete_domain else len(done)
+        return round(complete * 100.0 / len(done), 2)
+
     def _sgi_spec_problems(self):
         """SMART: meta, fórmula, fuente, responsable y frecuencia."""
         self.ensure_one()
         problems = []
+        if self.calc_mode == 'actividad_a_tiempo' and not self.activity_id:
+            problems.append("«% a tiempo» sin actividad medida")
+        if self.calc_mode == 'entregable_completo':
+            deliverable = self._sgi_measured_deliverable()
+            if not deliverable.odoo_model_id:
+                problems.append("«% completo» sin entregable con modelo de Odoo")
+            elif not (deliverable.complete_domain or '').strip():
+                problems.append("el entregable %s no dice cuándo está completo" % deliverable.name)
         if not self.target_objective:
             problems.append("sin meta")
         if not (self.formula or '').strip():
