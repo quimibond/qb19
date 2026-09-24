@@ -1074,8 +1074,9 @@ de estado dice sin revisión publicada / pendiente / leído.
 **Quién ve a quién** (`hr.employee._sgi_mp_team_employees`): cada quien su
 puesto; un jefe (responsable directo o indirecto, o responsable de
 departamento) y un dueño de proceso (puestos con rol en sus procesos) eligen
-un empleado o puesto de su equipo; el Jefe MAST y el administrador del SGI,
-cualquiera y además pueden publicar e imprimir desde ahí.
+un empleado o puesto de su equipo; el Jefe MAST, el administrador del SGI y
+la Dirección de Operaciones (`group_sgi_director`), cualquiera; el Jefe MAST
+además publica desde ahí.
 
 Además: en el puesto (pestaña SGI): imprimir, publicar, ver revisión vigente;
 en la ficha del empleado: botón «Mi procedimiento» con el estado de su acuse.
@@ -1083,7 +1084,31 @@ en la ficha del empleado: botón «Mi procedimiento» con el estado de su acuse.
 no solo «ejecuta». El PDF (`report_my_procedure.xml`) queda como versión
 para imprimir y firmar y para el personal sin usuario.
 
-Pruebas: `TestMyProcedure` 01–09.
+**Correcciones del CEO (2026-09-24, 19.0.43.2.0):** en la vista por persona el
+jefe es el **jefe directo del empleado** (`parent_id`); el del departamento
+solo cuando se ve por puesto. «Sin medición automática» se muestra en estilo
+neutro, no como alarma, y no cuenta como atraso. El estado por actividad sale
+de **una sola consulta por puesto** (`_sgi_mp_status_map`). **Publicar todos
+los puestos** (botón para Jefe MAST en la pantalla; `hr.job.action_sgi_publish_all_my_procedures`)
+recorre los puestos con roles y personas y publica solo donde cambió el
+contenido; el **cron semanal** `cron_my_procedure_stale` agenda al Jefe MAST
+una actividad con los puestos sin publicar o desactualizados. **Revisión
+previa** (`sgi.my.procedure.check`): puestos duplicados por nombre
+normalizado, empleados sin puesto o en un puesto sin roles, y puestos con
+roles sin personas; eso se limpia antes de publicar.
+
+**Bloque 1, documentos del puesto:** documentos vigentes ligados al puesto
+(`sgi_job_ids`, sin el propio MP) con clave, revisión, estado del acuse del
+empleado (leído / pendiente con enlace para firmar / sin acuse) y enlace al
+archivo. **Bloque 2+6, «Mis pendientes»** (solo si el empleado tiene usuario):
+acciones abiertas o vencidas a su cargo con fecha compromiso, NC donde es
+responsable de contestar, obligaciones confirmadas de `qb_obligation` (si
+está instalado) con vencimiento, e indicadores **oficiales** donde es
+responsable con su semáforo. Pendientes para después: EPP, competencias y
+capacitación, riesgos IPER. Descartado: firma con Sign (basta el clic y el
+papel).
+
+Pruebas: `TestMyProcedure` 01–12.
 
 ## PDF del procedimiento: etiquetas en negritas (19.0.42.1.0)
 

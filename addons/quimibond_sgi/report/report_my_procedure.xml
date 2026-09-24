@@ -110,6 +110,8 @@
                 <t t-set="header" t-value="doc._sgi_my_procedure_header()"/>
                 <t t-set="cover" t-value="data['cover']"/>
                 <t t-set="employee_id" t-value="doc.env.context.get('sgi_mp_employee_id')"/>
+                <t t-set="mp_employee" t-value="doc.env['hr.employee'].sudo().browse(employee_id) if employee_id else False"/>
+                <t t-set="boss" t-value="(mp_employee and mp_employee.parent_id) or cover['manager']"/>
 
                 <t t-call="quimibond_sgi.report_my_procedure_header"/>
                 <t t-call="quimibond_sgi.report_my_procedure_footer"/>
@@ -133,7 +135,7 @@
                         <tr>
                             <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Jefe inmediato</strong></td>
                             <td style="padding:5px; border:1px solid #000;">
-                                <t t-if="cover['manager']"><t t-out="cover['manager'].name"/><span class="text-muted" t-if="cover['manager'].job_id"> — <t t-out="cover['manager'].job_id.name"/></span></t>
+                                <t t-if="boss"><t t-out="boss.name"/><span class="text-muted" t-if="boss.job_id"> — <t t-out="boss.job_id.name"/></span></t>
                                 <t t-else="">—</t>
                             </td>
                         </tr>

@@ -34,7 +34,7 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_catalog import SGI_ROLE_SELECTION
+from .sgi_catalog import SGI_ROLE_SELECTION, sgi_normalize_name
 
 _logger = logging.getLogger(__name__)
 
@@ -162,6 +162,8 @@ class HrJobMyProcedure(models.Model):
             by_activity.setdefault(role.activity_id, set()).add(role.role)
 
         detailed, short = [], []
+        status_map = self._sgi_mp_status_map(
+            self.env['sgi.process.activity'].sudo().browse([a.id for a in by_activity]))
         for activity, role_codes in by_activity.items():
             mine = sorted(role_codes & set(_DETAIL_ROLES),
                           key=lambda r: _DETAIL_ROLES.index(r))
@@ -185,7 +187,7 @@ class HrJobMyProcedure(models.Model):
                     'name': activity.name,
                     'parts': parts,
                     'escalates_to': escalates,
-                }, **self._sgi_mp_entry_extra(activity)))
+                }, **self._sgi_mp_entry_extra(activity, status_map.get(activity.sudo()))))
             else:
                 only = sorted(role_codes & set(_SHORT_ROLES),
                               key=lambda r: _SHORT_ROLES.index(r))
@@ -253,31 +255,45 @@ class HrJobMyProcedure(models.Model):
         return data
 
     @api.model
-    def _sgi_mp_status(self, activity):
-        """(código, etiqueta, detalle) del estado de ejecución: al día /
-        atrasada / sin medir, desde el cumplimiento que escribe el cron
-        (`measure_state`) y las entradas vencidas abiertas de la última semana
-        medida (`sgi.activity.week.stat.late_open_count`)."""
-        stat = self.env['sgi.activity.week.stat'].sudo().search(
-            [('activity_id', '=', activity.id)], order='period_start desc', limit=1)
-        late_open = stat.late_open_count if stat else 0
-        last = activity.measure_last_date
-        last_txt = fields.Date.to_string(fields.Datetime.context_timestamp(
-            self, last).date()) if last else ''
-        if late_open:
-            return ('atrasada', "Atrasada",
-                    "%d entrada(s) con plazo vencido sin salida" % late_open)
-        if activity.measure_state == 'rojo':
-            return ('atrasada', "Atrasada", "Sin evidencia en su periodo")
-        if activity.measure_state == 'verde':
-            return ('al_dia', "Al día", "Última ejecución %s" % last_txt if last_txt else "")
-        return ('sin_medir', "Sin medir", "Sin conector o registro que la mida")
+    def _sgi_mp_status_map(self, activities):
+        """Estado de ejecución de varias actividades en UNA consulta: la última
+        semana medida de cada una (`sgi.activity.week.stat`, entradas con plazo
+        vencido sin salida) más el cumplimiento que escribe el cron
+        (`measure_state`). Devuelve {actividad: (código, etiqueta, detalle)}."""
+        late_open = {}
+        if activities:
+            for stat in self.env['sgi.activity.week.stat'].sudo().search(
+                    [('activity_id', 'in', activities.ids)], order='period_start desc'):
+                late_open.setdefault(stat.activity_id.id, stat.late_open_count)
+        result = {}
+        for activity in activities:
+            late = late_open.get(activity.id, 0)
+            last = activity.measure_last_date
+            last_txt = fields.Date.to_string(fields.Datetime.context_timestamp(
+                self, last).date()) if last else ''
+            if late:
+                result[activity] = ('atrasada', "Atrasada",
+                                    "%d entrada(s) con plazo vencido sin salida" % late)
+            elif activity.measure_state == 'rojo':
+                result[activity] = ('atrasada', "Atrasada", "Sin evidencia en su periodo")
+            elif activity.measure_state == 'verde':
+                result[activity] = ('al_dia', "Al día",
+                                    "Última ejecución %s" % last_txt if last_txt else "")
+            else:
+                # Neutro: muchas actividades no tienen medición automática y
+                # eso no es una falla de quien las hace.
+                result[activity] = ('sin_medir', "Sin medición automática", "")
+        return result
 
     @api.model
-    def _sgi_mp_entry_extra(self, activity):
+    def _sgi_mp_status(self, activity):
+        return self._sgi_mp_status_map(activity)[activity]
+
+    @api.model
+    def _sgi_mp_entry_extra(self, activity, status=None):
         """Piezas sueltas para la pantalla (la frase armada es para el PDF):
         estado, dónde ir a hacerlo, instructivo, entradas con plazo y salidas."""
-        status, status_label, status_detail = self._sgi_mp_status(activity)
+        status, status_label, status_detail = status or self._sgi_mp_status(activity)
         action = activity.odoo_action_id
         action_url = '/odoo/action-%d' % action.id if action else ''
         instruction = activity.instruction_id
@@ -437,6 +453,85 @@ class HrJobMyProcedure(models.Model):
                        'message': "Mi procedimiento: %s." % "; ".join(parts)},
         }
 
+    @api.model
+    def _sgi_my_procedure_jobs(self):
+        """Puestos que tienen «Mi procedimiento» que publicar: con roles
+        (propios o de su familia) y con personas."""
+        Role = self.env['sgi.activity.role'].sudo()
+        jobs = self.env['hr.job'].sudo().search([])
+        families = jobs.sgi_family_id
+        roles = Role.search(['|', ('job_id', 'in', jobs.ids), ('family_id', 'in', families.ids)])
+        roles = roles.filtered(lambda r: r.activity_id.active)
+        with_roles = roles.job_id | roles.family_id.job_ids
+        staffed = self.env['hr.employee'].sudo().search([('job_id', 'in', with_roles.ids)]).job_id
+        return with_roles & staffed
+
+    @api.model
+    def action_sgi_publish_all_my_procedures(self):
+        """Publica (o deja igual) «Mi procedimiento» de todos los puestos con
+        roles y personas. Una revisión nueva solo donde cambió el contenido."""
+        if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise UserError("Solo el Jefe MAST publica «Mi procedimiento».")
+        jobs = self._sgi_my_procedure_jobs()
+        published = unchanged = 0
+        for job in jobs:
+            before = job._sgi_my_procedure_current_doc()
+            job.action_sgi_publish_my_procedure()
+            after = job._sgi_my_procedure_current_doc()
+            if after and after != before:
+                published += 1
+            else:
+                unchanged += 1
+        _logger.info("SGI Mi procedimiento: publicación masiva, %d nuevas, %d sin cambio.",
+                     published, unchanged)
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {'type': 'success', 'sticky': True,
+                       'message': "Mi procedimiento: %d puesto(s) con revisión nueva, %d sin "
+                                  "cambios, de %d con roles y personas." % (
+                                      published, unchanged, len(jobs))},
+        }
+
+    @api.model
+    def _sgi_my_procedure_stale_jobs(self):
+        """Puestos con personas y roles cuya revisión publicada no existe o ya
+        no coincide con sus actividades."""
+        return self._sgi_my_procedure_jobs().filtered(
+            lambda j: not j._sgi_my_procedure_current_doc()
+            or j._sgi_my_procedure_current_doc().sgi_content_hash != j._sgi_my_procedure_data()['hash'])
+
+    @api.model
+    def _sgi_my_procedure_precheck(self):
+        """Lo que hay que limpiar ANTES de publicar para toda la planta:
+        puestos duplicados (mismo nombre normalizado), empleados sin puesto o
+        en un puesto sin roles, y puestos con roles pero sin personas."""
+        Job = self.env['hr.job'].sudo()
+        Employee = self.env['hr.employee'].sudo()
+        Role = self.env['sgi.activity.role'].sudo()
+        jobs = Job.search([])
+        roles = Role.search([('activity_id.active', '=', True)])
+        with_roles = roles.job_id | roles.family_id.job_ids
+        staffed_jobs = Employee.search([('job_id', '!=', False)]).job_id
+
+        by_name = {}
+        for job in jobs:
+            by_name.setdefault((job.company_id.id, sgi_normalize_name(job.name)), Job)
+            by_name[(job.company_id.id, sgi_normalize_name(job.name))] |= job
+        duplicates = [group for group in by_name.values() if len(group) > 1]
+        duplicates.sort(key=lambda g: sgi_normalize_name(g[0].name))
+
+        no_job = Employee.search([('job_id', '=', False)], order='name')
+        job_without_roles = Employee.search(
+            [('job_id', '!=', False), ('job_id', 'not in', with_roles.ids)], order='job_id, name')
+        roles_without_people = (with_roles - staffed_jobs).sorted('name')
+        return {
+            'duplicates': duplicates,
+            'no_job': no_job,
+            'job_without_roles': job_without_roles,
+            'roles_without_people': roles_without_people,
+            'ready': len(with_roles & staffed_jobs),
+        }
+
     def action_sgi_open_my_procedure_doc(self):
         self.ensure_one()
         doc = self._sgi_my_procedure_current_doc()
@@ -501,3 +596,29 @@ class HrEmployeeMyProcedure(models.Model):
 
     def action_sgi_my_procedure_view(self):
         return self._sgi_require_job()._sgi_my_procedure_view_action()
+
+
+class SgiCronMyProcedure(models.AbstractModel):
+    _inherit = 'sgi.cron'
+
+    @api.model
+    def cron_my_procedure_stale(self):
+        """Semanal: avisa al Jefe MAST qué puestos con personas tienen «Mi
+        procedimiento» sin publicar o desactualizado. Una sola actividad,
+        sobre la revisión más reciente publicada (documents.document lleva
+        actividades); si nadie ha publicado nada, solo queda en el log."""
+        Job = self.env['hr.job']
+        stale = Job._sgi_my_procedure_stale_jobs()
+        if not stale:
+            return True
+        summary = "Mi procedimiento: %d puesto(s) por publicar" % len(stale)
+        note = "Puestos con personas cuya revisión no existe o ya no coincide con sus " \
+               "actividades: %s. Publícalos desde SGI → Inicio → Mi procedimiento " \
+               "(«Publicar todos los puestos»)." % ", ".join(stale.mapped('name'))
+        anchor = self.env['documents.document'].sudo().search(
+            [('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
+            order='sgi_issue_date desc, id desc', limit=1)
+        if anchor:
+            self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id())
+        _logger.info("SGI Mi procedimiento: %s", note)
+        return True
