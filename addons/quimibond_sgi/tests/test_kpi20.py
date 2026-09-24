@@ -318,8 +318,13 @@ class TestKpi20Step2(TransactionCase):
         self._post_bill(partner, 5000.0, date(2040, 6, 10))
         self._post_bill(partner, 500.0, date(2040, 6, 20), refund=True)
         ind = self._indicator('consumo_energia', direction='lower_better')
+        # Desde P-21 el valor es pesos por tonelada procesada: sin kg de hilo y
+        # fibra consumidos en el periodo no hay valor (TestIndicatorP21 cubre
+        # el cociente); el facturado neto queda en el numerador.
         value = ind._calc_consumo_energia(date(2040, 6, 1), date(2040, 6, 30))
-        self.assertEqual(value, 4500.0)
+        self.assertIsNone(value)
+        detail = ind._detail_consumo_energia(date(2040, 6, 1), date(2040, 6, 30))
+        self.assertEqual(detail['numerator'], 4500.0)
         # Evidencia: las facturas del proveedor en el periodo.
         measure = self._measure(ind, date(2040, 6, 1))
         action = measure.action_view_evidence()

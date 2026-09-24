@@ -115,10 +115,10 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
 | `presupuesto_ventas` | Facturado (out_invoice posted) vs `monthly_budget` | Implementado |
 | `preventivo_cumplido` | `maintenance.request` preventivas en etapa "done" | Implementado (aprox.) |
 | `rotacion_rh` | Bajas (`departure_date`) / plantilla activa | Implementado (aprox.) |
-| `disponibilidad_mantto` | Requiere paros de centros de trabajo | Devuelve None → captura manual |
-| `plantilla_rh` | Requiere plantilla presupuestada por puesto | Devuelve None → captura manual |
-| `reproceso` | Sin fuente confiable aún | Devuelve None → captura manual |
-| `inventario_diferencia` | Requiere conteos físicos registrados | Devuelve None → captura manual |
+| `disponibilidad_mantto` | Requiere paros de centros de trabajo | Devuelve None → captura manual (MT-01 en manual desde 2026-09-24) |
+| `plantilla_rh` | Requiere plantilla presupuestada por puesto | Devuelve None → captura manual (RH-01 en manual desde 2026-09-24) |
+| `reproceso` | kg de órdenes de los tipos de reproceso ÷ kg de hilo y fibra consumidos | Implementado (P-21, 19.0.39.0.0) |
+| `inventario_diferencia` | \|valor de ajustes\| ÷ valor del inventario (capas de valuación) | Implementado (19.0.39.0.0) |
 
 Los que devuelven None caen a captura manual sin bloquear el cron.
 
@@ -923,6 +923,22 @@ Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
   MAST: MA-05 arranca ≈ 16 % contra una meta de 0.8 %, EX-02 ≈ 35 % contra 78 %.
   El margen sobre pedidos (`margen_ventas`) sigue disponible para un indicador
   nuevo de C1/C2.
+- **P-21 y automáticos sin dato (19.0.39.0.0).** Diagnóstico del 24-sep-2026
+  de los 9 automáticos que siempre salían sin dato. Tres se miden desde Odoo
+  (`models/sgi_indicator_p21.py`): `reproceso` (MA-04: kg producidos por las
+  órdenes cuyo tipo de operación está en `quimibond_sgi.rework_picking_type_ids`,
+  sembrado 106 Re-proceso Tintorería y 107 Re-proceso Acabado, ÷ kg de hilo y
+  fibra consumidos; solo líneas en kg, así que una orden de reproceso en metros
+  no entra; «Acabado producto en proceso» se agrega al parámetro cuando
+  producción lo confirme), `inventario_diferencia` (AL-01: |valor de los ajustes
+  de inventario del mes| ÷ valor del inventario al cierre, desde las capas de
+  valuación) y `consumo_energia` (TR-03: facturado por el proveedor de energía ÷
+  toneladas de hilo y fibra consumidas; pesos por tonelada, antes total en
+  pesos). El denominador en kg es uno solo (`_sgi_kg_consumed`, el de MA-05):
+  cada kg cuenta una vez aunque pase por tejido y tintorería. MT-01, MT-02,
+  RH-01 y RH-02 pasaron a manual en producción sin retirarse (nadie captura
+  paros, preventivos, plantilla autorizada ni habilidades por puesto); MA-02
+  sigue sin capacidad configurada y VE-02 sin presupuesto aprobado.
 - **I-5, NC por persistencia (19.0.37.0.0).** «NC automática» (`nc_on_red`)
   ya no abre una NC por un solo rojo: hacen falta **dos periodos seguidos en
   rojo** (semana o mes, según la frecuencia), o **uno** si el indicador está
