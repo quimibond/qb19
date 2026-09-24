@@ -108,7 +108,7 @@ class SgiIndicatorDetail(models.Model):
         vals.update({
             'numerator': detail.get('numerator'),
             'denominator': detail.get('denominator'),
-            'sample_size': len(ids),
+            'sample_size': detail.get('sample_size', len(ids)),
             'detail_model': detail.get('model') or False,
             'detail_ids': ",".join(str(i) for i in ids) if ids else False,
         })
@@ -328,6 +328,12 @@ class SgiIndicatorMeasureDetail(models.Model):
                 body="Medición de %s recalculada con el modo «%s» — %s." % (
                     measure.period_date, indicator.calc_mode, label))
         return True
+
+    def action_validate(self):
+        """Una medición sin dato no se valida: no hay nada que confirmar y
+        validarla la convertiría en un cero rojo."""
+        without = self.filtered(lambda m: m.state == 'sin_dato')
+        return super(SgiIndicatorMeasureDetail, self - without).action_validate()
 
     def _sgi_maybe_create_nc(self):
         """Solo un indicador oficial, con dato y con muestra suficiente abre NC."""

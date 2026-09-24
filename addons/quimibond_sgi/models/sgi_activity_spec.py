@@ -659,12 +659,14 @@ class SgiIndicatorSpec(models.Model):
         return self.activity_id._sgi_output_deliverable() if self.activity_id \
             else self.env['sgi.deliverable']
 
-    def _calc_actividad_a_tiempo(self, date_from, date_to):
+    def _detail_actividad_a_tiempo(self, date_from, date_to):
         """% a tiempo de la actividad en las semanas del periodo. Toma las
         filas que ya calculó el cron (sgi.activity.week.stat) y, para las
-        semanas que no tenga, las cuenta en el momento."""
+        semanas que no tenga, las cuenta en el momento. Detalle (I-1): a
+        tiempo ÷ con plazo, los casos son los «con plazo» y los registros las
+        filas semanales que se usaron."""
         if not self.activity_id:
-            return None
+            return {'value': None}
         monday = date_from - timedelta(days=date_from.weekday())
         weeks = []
         while monday <= date_to:
@@ -679,17 +681,23 @@ class SgiIndicatorSpec(models.Model):
                       if stat else self.activity_id._sgi_week_counts(start))
             timed += counts['timed_count']
             on_time += counts['on_time_count']
-        if not timed:
-            return None
-        return round(on_time * 100.0 / timed, 2)
+        return {
+            'value': round(on_time * 100.0 / timed, 2) if timed else None,
+            'numerator': on_time, 'denominator': timed, 'sample_size': timed,
+            'model': 'sgi.activity.week.stat', 'ids': [s.id for s in stats.values()],
+        }
 
-    def _calc_entregable_completo(self, date_from, date_to):
+    def _calc_actividad_a_tiempo(self, date_from, date_to):
+        return self._detail_actividad_a_tiempo(date_from, date_to)['value']
+
+    def _detail_entregable_completo(self, date_from, date_to):
         """% de lo entregado en el periodo que cumple el filtro «ya está
-        completo» del entregable."""
+        completo» del entregable. Detalle (I-1): completos ÷ entregados, con
+        los registros entregados."""
         deliverable = self._sgi_measured_deliverable()
         model = deliverable.odoo_model_id.model
         if not model or model not in self.env:
-            return None
+            return {'value': None}
         Model = self.env[model].sudo()
         date_field = deliverable.measure_date_field or 'create_date'
         if date_field not in Model._fields:
@@ -698,12 +706,17 @@ class SgiIndicatorSpec(models.Model):
         end = datetime.combine(date_to, time.min) + timedelta(days=1)
         done = Model.search(sgi_safe_domain(deliverable.measure_domain)
                             + [(date_field, '>=', start), (date_field, '<', end)])
-        if not done:
-            return None
         complete_domain = sgi_safe_domain(deliverable.complete_domain)
         complete = Model.search_count([('id', 'in', done.ids)] + complete_domain) \
-            if complete_domain else len(done)
-        return round(complete * 100.0 / len(done), 2)
+            if (done and complete_domain) else len(done)
+        return {
+            'value': round(complete * 100.0 / len(done), 2) if done else None,
+            'numerator': complete, 'denominator': len(done),
+            'model': model, 'ids': done.ids,
+        }
+
+    def _calc_entregable_completo(self, date_from, date_to):
+        return self._detail_entregable_completo(date_from, date_to)['value']
 
     def _sgi_spec_problems(self):
         """SMART: meta, fórmula, fuente, responsable y frecuencia."""
