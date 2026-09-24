@@ -8,7 +8,7 @@
             <field name="value" position="after">
                 <field name="window_label"/>
             </field>
-            <xpath expr="//group[@string='Nota']" position="before">
+            <xpath expr="//group[@name='note']" position="before">
                 <field name="plan_required" invisible="1"/>
                 <field name="plan_done" invisible="1"/>
                 <group string="Plan de acción (medición roja)" invisible="not plan_required">

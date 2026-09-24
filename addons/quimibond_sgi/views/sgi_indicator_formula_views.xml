@@ -50,7 +50,7 @@
         <field name="model">sgi.indicator.measure</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_measure_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[@string='Nota']" position="before">
+            <xpath expr="//group[@name='note']" position="before">
                 <group string="Fórmula en paralelo" invisible="not parallel_denominator">
                     <field name="parallel_value"/>
                     <field name="parallel_numerator"/>
