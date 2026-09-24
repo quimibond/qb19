@@ -458,17 +458,34 @@ class SgiIndicator(models.Model):
                     "presupuesto configurado en Ajustes.")
         return ''
 
-    def _sgi_net_invoiced(self, date_from, date_to):
+    def _sgi_net_invoiced(self, date_from, date_to, taxed=False):
         """Facturación neta timbrada del periodo: ventas timbradas (out_invoice)
-        menos notas de crédito (out_refund), sin impuestos. amount_untaxed_signed
-        ya trae las notas de crédito en negativo, así que la suma es neta."""
+        menos notas de crédito (out_refund), sin impuestos (``taxed=True``: con
+        impuestos, para compararla con la cartera, que sí los lleva).
+        amount_*_signed ya trae las notas de crédito en negativo, así que la
+        suma es neta."""
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('out_invoice', 'out_refund')),
             ('state', '=', 'posted'),
             ('company_id', '=', self._sgi_kpi_company().id),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
-        return sum(moves.mapped('amount_untaxed_signed'))
+        return sum(moves.mapped('amount_total_signed' if taxed else 'amount_untaxed_signed'))
+
+    def _sgi_receivable_balance(self, date_to):
+        """Saldo de las cuentas de clientes (asset_receivable) al cierre del
+        periodo: la foto contable real de la cartera a esa fecha, con IVA,
+        incluidas las facturas que se cobraron después. Antes se sumaba el
+        saldo pendiente HOY de las facturas de entonces, y medido semanas
+        después ya no traía lo cobrado en el mes siguiente (EX-07 daba 35
+        días en agosto contra 51 reales)."""
+        groups = self.env['account.move.line']._read_group([
+            ('account_id.account_type', '=', 'asset_receivable'),
+            ('company_id', '=', self._sgi_kpi_company().id),
+            ('parent_state', '=', 'posted'),
+            ('date', '<=', date_to),
+        ], [], ['balance:sum'])
+        return groups[0][0] if groups else 0.0
 
     def _calc_crecimiento_ventas(self, date_from, date_to):
         """Variación % de la facturación neta del periodo contra el mismo periodo
@@ -855,15 +872,14 @@ class SgiIndicator(models.Model):
         return round(credit / gross * 100.0, 2)
 
     def _calc_dso_cartera(self, date_from, date_to):
-        """DSO por countback simple: cartera de clientes pendiente sobre la
-        facturación neta de los últimos 90 días, por 90. Aproximación: usa el
-        estado de pago AL MOMENTO de medir (Odoo no guarda la foto histórica);
-        medido por el cron pocos días después del cierre, el sesgo es pequeño."""
-        # Solo la compañía del KPI (antes sumaba la cartera de todo el grupo).
-        receivable = sum(self._sgi_open_moves(
-            ('out_invoice', 'out_refund'), date_to).mapped('amount_residual_signed'))
+        """DSO por countback simple: saldo contable de clientes al cierre del
+        periodo (con IVA) sobre la facturación neta con IVA de los últimos 90
+        días, por 90. Ambos lados con impuestos: antes la cartera los traía y
+        las ventas no, y eso inflaba el resultado un 16 %. Solo la compañía
+        del KPI (antes sumaba la cartera de todo el grupo: 134 días)."""
+        receivable = self._sgi_receivable_balance(date_to)
         sales_90 = self._sgi_net_invoiced(
-            date_to - relativedelta(days=89), date_to)
+            date_to - relativedelta(days=89), date_to, taxed=True)
         if sales_90 <= 0:
             return None
         return round(receivable / sales_90 * 90.0, 1)
