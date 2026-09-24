@@ -15,6 +15,8 @@ Menos texto, más piezas que se conectan:
 """
 import re
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
@@ -652,9 +654,10 @@ class SgiActivityDeliverables(models.Model):
         deliverables.exists()._sgi_sync_connections()
         return res
 
-    def _sgi_sentence(self):
-        """La actividad como una frase del procedimiento, armada de sus piezas
-        (en vez de un párrafo redactado a mano)."""
+    def _sgi_sentence_parts(self):
+        """Piezas de la frase del procedimiento: lista de (etiqueta, texto).
+        La etiqueta («Ejecuta», «Aprueba», «Recibe»…) va en negritas en el PDF;
+        sin etiqueta (None) el texto se imprime tal cual («Automática.»)."""
         self.ensure_one()
         roles = {}
         for role in self.role_ids:
@@ -666,22 +669,35 @@ class SgiActivityDeliverables(models.Model):
             roles.setdefault(role.role, []).append(label)
         parts = []
         if roles.get('ejecuta'):
-            parts.append("Ejecuta: %s." % ", ".join(roles['ejecuta']))
+            parts.append(("Ejecuta", ", ".join(roles['ejecuta'])))
         elif self.automation_level_current == 'automatico':
-            parts.append("Automática.")
+            parts.append((None, "Automática"))
         for key, label in (('aprueba', "Aprueba"), ('participa', "Participa"), ('informa', "Se entera"),
                            ('escala', "Si se atora, escala a")):
             if roles.get(key):
-                parts.append("%s: %s." % (label, ", ".join(roles[key])))
+                parts.append((label, ", ".join(roles[key])))
         if self.input_ids:
-            parts.append("Recibe: %s." % ", ".join(
+            parts.append(("Recibe", ", ".join(
                 "%s (%d días hábiles)" % (line.deliverable_id.name, line.max_days)
                 if line.max_days else line.deliverable_id.name
-                for line in self.input_ids))
+                for line in self.input_ids)))
         if self.output_deliverable_ids:
-            parts.append("Entrega: %s." % ", ".join(self.output_deliverable_ids.mapped('name')))
+            parts.append(("Entrega", ", ".join(self.output_deliverable_ids.mapped('name'))))
         if self.related_procedure_id:
-            parts.append("Conforme a %s." % (self.related_procedure_id.sgi_code or self.related_procedure_id.name))
+            parts.append(("Conforme a", self.related_procedure_id.sgi_code or self.related_procedure_id.name))
         if self.instruction_id:
-            parts.append("Instructivo %s." % (self.instruction_id.sgi_code or self.instruction_id.name))
-        return " ".join(parts)
+            parts.append(("Instructivo", self.instruction_id.sgi_code or self.instruction_id.name))
+        return parts
+
+    def _sgi_sentence(self):
+        """La actividad como una frase del procedimiento, armada de sus piezas
+        (en vez de un párrafo redactado a mano). Texto plano."""
+        return " ".join(
+            "%s: %s." % (label, text) if label else "%s." % text
+            for label, text in self._sgi_sentence_parts())
+
+    def _sgi_sentence_html(self):
+        """La misma frase para el PDF: cada etiqueta en negritas."""
+        return Markup(" ").join(
+            Markup("<b>%s:</b> %s.") % (label, text) if label else Markup("%s.") % text
+            for label, text in self._sgi_sentence_parts())

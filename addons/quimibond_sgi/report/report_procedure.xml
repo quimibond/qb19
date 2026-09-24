@@ -156,7 +156,7 @@
                                      su numeral de texto para no diverger del PDF vigente. -->
                                 <strong t-out="act.legacy_number if (act.legacy_number and not act.role_ids) else act.number"/>
                                 <strong t-out="act.name"/>
-                                <t t-set="sentence" t-value="act._sgi_sentence()"/>
+                                <t t-set="sentence" t-value="act._sgi_sentence_html()"/>
                                 <div t-if="act.role_ids" style="margin-left:12px;" t-out="sentence"/>
                                 <div t-else="" style="margin-left:12px;">
                                     <t t-if="act.responsible_role">[<t t-out="act.responsible_role"/>] </t>

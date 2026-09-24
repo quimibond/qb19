@@ -323,11 +323,10 @@ class SgiActivitySpec(models.Model):
             self._sgi_refresh_spec_gaps()
         return res
 
-    def _sgi_sentence(self):
-        """La frase del procedimiento, con dónde, cómo, cuándo está terminada
+    def _sgi_sentence_parts(self):
+        """Las piezas del procedimiento más dónde, cómo, cuándo está terminada
         y qué hacer si falla."""
-        text = super()._sgi_sentence()
-        parts = [text] if text else []
+        parts = super()._sgi_sentence_parts()
         where = []
         if self.exec_channel:
             where.append(dict(SGI_EXEC_CHANNELS)[self.exec_channel])
@@ -342,20 +341,20 @@ class SgiActivitySpec(models.Model):
         if self.place_note:
             where.append(self.place_note)
         if where:
-            parts.append("Dónde: %s." % " — ".join(where))
+            parts.append(("Dónde", " — ".join(where)))
         if self.check_against:
-            parts.append("Contra: %s." % self.check_against)
+            parts.append(("Contra", self.check_against))
         if self.how_steps:
-            parts.append("Cómo: %s." % " ".join(self.how_steps.split()).rstrip('.'))
+            parts.append(("Cómo", " ".join(self.how_steps.split()).rstrip('.')))
         if self.done_criteria:
-            parts.append("Terminada cuando: %s." % self.done_criteria.strip().rstrip('.'))
+            parts.append(("Terminada cuando", self.done_criteria.strip().rstrip('.')))
         if self.due_weekday and self.measure_cadence == 'semanal':
-            parts.append("Vence cada %s." % dict(SGI_WEEKDAYS)[self.due_weekday].lower())
+            parts.append((None, "Vence cada %s" % dict(SGI_WEEKDAYS)[self.due_weekday].lower()))
         if self.due_business_day and self.measure_cadence == 'mensual':
-            parts.append("Vence el día hábil %d del mes." % self.due_business_day)
+            parts.append((None, "Vence el día hábil %d del mes" % self.due_business_day))
         if self.on_fail:
-            parts.append("Si no se puede: %s." % self.on_fail.strip().rstrip('.'))
-        return " ".join(parts)
+            parts.append(("Si no se puede", self.on_fail.strip().rstrip('.')))
+        return parts
 
     # ------------------------------------------------------------------
     # Medición: aplicables, hechas, completas, a tiempo, vencidas abiertas
