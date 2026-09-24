@@ -75,6 +75,14 @@ class DocumentsDocument(models.Model):
              "El botón «Abrir en Odoo» salta directo a él.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
     sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI")
+    # P-3: el documento apunta al cambio documental que lo dejó así (alta,
+    # modificación o baja aprobada). Es la liga con la que E2.02 «Publicar el
+    # documento vigente» se mide contra su entrada (match: sgi_doc_change_id).
+    sgi_doc_change_id = fields.Many2one(
+        'approval.request', string="Último cambio documental", copy=False,
+        readonly=True, index=True, ondelete='set null',
+        help="Solicitud de cambio documental aprobada que produjo esta versión "
+             "(la de alta, o la última modificación o baja aplicada).")
     # Revisión como número: se compara, se ordena y no se captura «A» ni
     # «00» por omisión. La etiqueta de dos dígitos es para imprimir.
     sgi_revision = fields.Integer(string="Revisión", tracking=True)
@@ -572,6 +580,7 @@ class DocumentsDocument(models.Model):
             if request and not request.sgi_document_id:
                 doc = docs[0]
                 request.sudo().write({'sgi_document_id': doc.id})
+                doc.sudo().write({'sgi_doc_change_id': request.id})
                 doc.message_post(
                     body="Documento creado desde la solicitud de alta aprobada "
                          "<b>%s</b>." % (request.name or ''))

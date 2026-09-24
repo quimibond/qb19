@@ -66,6 +66,8 @@ class TestDocChange(TransactionCase):
         self.assertTrue(req.sgi_applied)
         self.assertEqual(self.doc.sgi_revision, 1)
         self.assertEqual(self.doc.sgi_state, 'vigente')
+        self.assertEqual(self.doc.sgi_doc_change_id, req,
+                         "El documento apunta al cambio que lo dejó así (P-3).")
 
 
 @tagged('post_install', '-at_install')

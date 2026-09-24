@@ -91,6 +91,7 @@ class ApprovalRequest(models.Model):
             vals = {
                 'sgi_issue_date': today,
                 'sgi_next_review_date': today + relativedelta(years=2),
+                'sgi_doc_change_id': self.id,
             }
             if self.sgi_new_revision:
                 vals['sgi_revision'] = self.sgi_new_revision
@@ -106,7 +107,7 @@ class ApprovalRequest(models.Model):
                     vals['sgi_state']))
             doc.action_generate_acks()
         elif self.sgi_change_kind == 'baja' and doc:
-            doc.write({'sgi_state': 'obsoleto'})
+            doc.write({'sgi_state': 'obsoleto', 'sgi_doc_change_id': self.id})
             doc.message_post(body="Documento dado de baja por solicitud aprobada %s." % self.name)
         elif self.sgi_change_kind == 'alta':
             manager = self.env.ref('quimibond_sgi.group_sgi_manager', raise_if_not_found=False)

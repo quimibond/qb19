@@ -71,7 +71,8 @@ _DIRECTIONS = {'up': 'higher_better', 'down': 'lower_better',
 # una llave que se ignora en silencio es como se perdieron los indicadores de
 # C2 (venían dentro del proceso). (llaves, {llave: (tipo, sub-esquema)}).
 _KEYS_ROLE = ({'role', 'job', 'job_id', 'family', 'relative', 'condition', 'after_days'}, {})
-_KEYS_INPUT = ({'code', 'days', 'applies_domain', 'applies_note', 'match'}, {})
+_KEYS_INPUT = ({'code', 'days', 'applies_domain', 'applies_note', 'match',
+                'due_field', 'offset_days'}, {})
 _KEYS_WHERE = ({'channel', 'menu', 'external_system', 'location', 'workcenter', 'place'}, {})
 _KEYS_DUE = ({'weekday', 'business_day'}, {})
 _KEYS_MEASURE = ({'method', 'proxy', 'deliverable', 'justification', 'sample_cadence',
@@ -507,9 +508,10 @@ class _SgiLoader:
 
     def _resolve_inputs(self, items):
         """«inputs»: ["C2-PEDIDO"] o [{"code": "C2-PEDIDO", "days": 2,
-        "applies_domain": "[...]", "applies_note": "...", "match": "sale_id"}].
+        "applies_domain": "[...]", "applies_note": "...", "match": "sale_id",
+        "due_field": "scheduled_date", "offset_days": -2}].
         Devuelve [(entregable id, {max_days, applies_domain, applies_note,
-        match_path})] en orden."""
+        match_path, due_field, offset_days})] en orden."""
         out, seen = [], set()
         for item in items or []:
             code, days = (item.get('code'), item.get('days') or 0) if isinstance(item, dict) \
@@ -518,6 +520,10 @@ class _SgiLoader:
             if isinstance(days, bool) or not isinstance(days, int) or days < 0:
                 raise ValidationError("Recibe %s: «days» debe ser un entero de días "
                                       "hábiles (0 = sin plazo)." % code)
+            offset = extra.get('offset_days') or 0
+            if isinstance(offset, bool) or not isinstance(offset, int):
+                raise ValidationError("Recibe %s: «offset_days» debe ser un entero de "
+                                      "días hábiles (negativo = antes)." % code)
             deliverable = self._resolve_deliverable(code, "Recibe")
             if deliverable.id in seen:
                 raise ValidationError("Recibe %s dos veces." % code)
@@ -527,6 +533,8 @@ class _SgiLoader:
                 'applies_domain': extra.get('applies_domain') or False,
                 'applies_note': extra.get('applies_note') or False,
                 'match_path': extra.get('match') or False,
+                'due_field': extra.get('due_field') or False,
+                'offset_days': offset,
             }))
         return out
 
@@ -932,7 +940,8 @@ class _SgiLoader:
         plazo); vacío si ya están así."""
         wanted = self._resolve_inputs(item['inputs'])
         current = activity.input_ids if activity else self.env['sgi.activity.input']
-        keys = ('max_days', 'applies_domain', 'applies_note', 'match_path')
+        keys = ('max_days', 'applies_domain', 'applies_note', 'match_path',
+                'due_field', 'offset_days')
         if [(line.deliverable_id.id, {k: line[k] for k in keys}) for line in current] == wanted:
             return []
         by_deliverable = {line.deliverable_id.id: line for line in current}

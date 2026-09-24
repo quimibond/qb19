@@ -302,3 +302,68 @@ class TestSpec(TransactionCase):
             {'code': 'XS-L3', 'name': 'x', 'process': 'XS', 'calc_mode': 'entregable_completo',
              'deliverable': 'NO-EXISTE'}]}, dry_run=True)
         self.assertFalse(bad['ok'])
+
+    # 18 (P-4)
+    def _task_deliverables(self, tag, due_field=None, offset_days=0):
+        """Entrada y salida sobre project.task: la salida vence contra la
+        fecha límite de la tarea (due_field) y no contra días desde que llegó."""
+        model = self.env['ir.model']._get_id('project.task')
+        entry = self.Deliverable.create({
+            'code': 'X-%s-IN' % tag, 'name': 'Entrada %s' % tag, 'odoo_model_id': model,
+            'measure_domain': "[('name', 'ilike', 'X-%s')]" % tag,
+            'measure_date_field': 'create_date'})
+        out = self.Deliverable.create({
+            'code': 'X-%s-OUT' % tag, 'name': 'Salida %s' % tag, 'odoo_model_id': model,
+            'measure_domain': "[('name', 'ilike', 'X-%s')]" % tag,
+            'measure_date_field': 'create_date'})
+        return self._complete_act('Cerrar %s' % tag, exec_channel='odoo',
+                                  odoo_menu_id=self.env.ref('base.menu_administration').id,
+                                  input_ids=[(0, 0, {'deliverable_id': entry.id, 'max_days': 0,
+                                                     'due_field': due_field or False,
+                                                     'offset_days': offset_days})],
+                                  output_deliverable_ids=[(6, 0, out.ids)],
+                                  measure_method='entregable')
+
+    def test_18_due_field_and_offset_days(self):
+        act = self._task_deliverables('T18', due_field='date_deadline', offset_days=-1)
+        self.assertNotIn('no_timing', self._codes(act), "Vencer por campo ya es un plazo.")
+        env = self.env
+        today = fields.Date.context_today(env['project.task'])
+        project = env['project.project'].create({'name': 'X-T18'})
+        later = sgi_add_business_days(env, today, 3)
+        env['project.task'].create([
+            {'name': 'X-T18 a tiempo', 'project_id': project.id,
+             'date_deadline': datetime.combine(later, datetime.min.time())},
+            {'name': 'X-T18 tarde', 'project_id': project.id,
+             'date_deadline': datetime.combine(today - timedelta(days=10), datetime.min.time())},
+            {'name': 'X-T18 sin fecha', 'project_id': project.id}])
+        counts = act._sgi_week_counts(today - timedelta(days=today.weekday()))
+        self.assertEqual(counts['done_count'], 3)
+        self.assertEqual((counts['timed_count'], counts['on_time_count']), (2, 1),
+                         "Solo cuentan las que traen la fecha; la de ayer vence antes.")
+        with self.assertRaises(ValidationError):
+            act.input_ids.due_field = 'no_existe'
+        with self.assertRaises(ValidationError):
+            act.input_ids.due_field = 'name'
+        # Hacia atrás en días hábiles: el margen -1 desde un lunes es el viernes.
+        monday = today - timedelta(days=today.weekday())
+        self.assertEqual(sgi_add_business_days(env, monday, -1), monday - timedelta(days=3))
+
+    # 19 (P-4)
+    def test_19_load_due_field_and_offset(self):
+        model = self.env['ir.model']._get_id('project.task')
+        for code in ('XL9-IN', 'XL9-OUT'):
+            self.Deliverable.create({'code': code, 'name': code, 'odoo_model_id': model,
+                                     'measure_domain': "[]", 'measure_date_field': 'create_date'})
+        payload = {'processes': [{'code': 'XL9', 'name': 'Carga P-4', 'activities': [{
+            'number': 1, 'name': 'Cerrar la tarea programada',
+            'inputs': [{'code': 'XL9-IN', 'due_field': 'date_deadline', 'offset_days': -2}],
+            'outputs': ['XL9-OUT']}]}]}
+        result = self.Process.load_payload(payload)
+        self.assertTrue(result['ok'], result['errors'])
+        line = self.Activity.search([('process_id.code', '=', 'XL9')]).input_ids
+        self.assertEqual((line.due_field, line.offset_days, line.max_days),
+                         ('date_deadline', -2, 0))
+        self.assertFalse(self.Process.load_payload(payload)['changes'], "Idempotente.")
+        payload['processes'][0]['activities'][0]['inputs'][0]['offset_days'] = 'dos'
+        self.assertFalse(self.Process.load_payload(payload, dry_run=True)['ok'])
