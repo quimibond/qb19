@@ -133,3 +133,4 @@ access_sgi_indicator_term_user,sgi.indicator.term.user,model_sgi_indicator_term,
 access_sgi_indicator_term_admin,sgi.indicator.term.admin,model_sgi_indicator_term,group_sgi_admin,1,1,1,1
 access_sgi_indicator_step_user,sgi.indicator.step.user,model_sgi_indicator_step,group_sgi_user,1,0,0,0
 access_sgi_indicator_step_manager,sgi.indicator.step.manager,model_sgi_indicator_step,group_sgi_manager,1,1,1,1
+access_sgi_my_procedure_user,sgi.my.procedure.user,model_sgi_my_procedure,group_sgi_user,1,1,1,1

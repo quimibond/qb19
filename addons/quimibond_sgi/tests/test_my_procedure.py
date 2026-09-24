@@ -186,3 +186,80 @@ class TestMyProcedure(TransactionCase):
         self.assertIn(self.a_monthly, mine, "Aprueba: ahora sí aparece en «Mis actividades».")
         self.assertIn(self.a_event, mine, "Participa también.")
         self.assertIn(self.a_weekly_mon, mine, "Y lo que llega por la familia.")
+
+    # ------------------------------------------------------------------
+    # Pantalla (Inicio → Mi procedimiento)
+    # ------------------------------------------------------------------
+    def test_07_pantalla_secciones_tarjetas_y_botones(self):
+        menu = self.env['ir.ui.menu'].search(
+            [('action', 'like', 'ir.actions.act_window,')], limit=1)
+        self.a_weekly_fri.write({'odoo_menu_id': menu.id, 'how_steps': 'Abrir → publicar',
+                                 'check_against': 'Pedidos confirmados'})
+        self.a_weekly_fri.measure_state = 'verde'
+        self.a_quarterly.measure_state = 'rojo'
+        Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
+        action = Wiz.action_open_mine()
+        wiz = Wiz.browse(action['res_id'])
+        self.assertEqual((wiz.employee_id, wiz.job_id), (self.emp1, self.job))
+        self.assertFalse(wiz.can_pick, "Sin equipo ni permisos: solo su puesto.")
+        self.assertEqual(wiz.ack_state, 'sin_publicar')
+        html = wiz.content
+        for text in ('Semanal', 'Mensual', 'Trimestral', 'Programa semanal', 'Cada viernes',
+                     'Día hábil 3 del mes', '<details', 'Ir a hacerlo', '/odoo/action-%d' % menu.action.id,
+                     'Abrir → publicar', 'Pedidos confirmados', 'El programa está publicado',
+                     'Avisar a Ventas', 'GERENTE PRUEBA MP (a los 2 días hábiles)',
+                     'Participa o se entera', 'Atender reclamación', 'Escalamientos que recibe',
+                     'Embarcar', 'Al día', 'Atrasada', 'Ver actividad'):
+            self.assertIn(text, html, text)
+        self.assertNotIn('Diario <span', html,
+                         "Sin actividades diarias del puesto no hay sección Diario.")
+
+    def test_08_pantalla_firma_contra_revision_vigente(self):
+        Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        with self.assertRaises(UserError, msg="Sin revisión publicada no hay qué firmar."):
+            wiz.action_sign()
+        self.job.with_user(self.manager).action_sgi_publish_my_procedure()
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        self.assertEqual(wiz.ack_state, 'pendiente')
+        self.assertTrue(wiz.is_me)
+        wiz.action_sign()
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        self.assertEqual(wiz.ack_state, 'leido')
+        doc = self.job._sgi_my_procedure_current_doc()
+        ack = doc.sgi_ack_ids.filtered(lambda a: a.employee_id == self.emp1)
+        self.assertEqual(ack.state, 'leido')
+        # Otro no puede firmar por él.
+        other_user = new_test_user(self.env, login='mp_other',
+                                   groups='base.group_user,quimibond_sgi.group_sgi_user')
+        self.emp2.user_id = other_user
+        wiz2 = self.env['sgi.my.procedure'].with_user(other_user).create({'employee_id': self.emp1.id})
+        with self.assertRaises(UserError):
+            wiz2.action_sign()
+
+    def test_09_pantalla_quien_ve_a_quien(self):
+        boss_user = new_test_user(self.env, login='mp_boss',
+                                  groups='base.group_user,quimibond_sgi.group_sgi_user')
+        boss = self.env['hr.employee'].create({
+            'name': 'Jefe MP', 'job_id': self.job_boss.id, 'user_id': boss_user.id})
+        self.emp1.parent_id = boss
+        Wiz = self.env['sgi.my.procedure'].with_user(boss_user)
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        self.assertTrue(wiz.can_pick, "Un jefe elige entre su equipo.")
+        self.assertIn(self.emp1, wiz.allowed_employee_ids)
+        self.assertNotIn(self.emp2, wiz.allowed_employee_ids, "Emp Dos no le reporta.")
+        self.assertIn(self.job, wiz.allowed_job_ids)
+        # Dueño de proceso: ve a los puestos con rol en su proceso.
+        owner_user = new_test_user(self.env, login='mp_owner',
+                                   groups='base.group_user,quimibond_sgi.group_sgi_user')
+        owner = self.env['hr.employee'].create({'name': 'Dueño MP', 'user_id': owner_user.id})
+        self.p_b.owner_id = owner
+        team = owner._sgi_mp_team_employees()
+        self.assertIn(self.emp2, team, "Emp Dos ocupa un puesto con rol en Proceso B.")
+        # Jefe MAST: cualquiera.
+        wiz_m = self.env['sgi.my.procedure'].with_user(self.manager).create({'employee_id': self.emp2.id})
+        self.assertTrue(wiz_m.can_pick)
+        self.assertTrue(wiz_m.can_publish)
+        self.assertEqual(wiz_m.job_id, self.job)
+        self.assertEqual(wiz_m.ack_state, 'sin_publicar')
+        self.assertFalse(wiz_m.is_me)

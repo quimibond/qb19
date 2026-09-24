@@ -173,7 +173,7 @@ class HrJobMyProcedure(models.Model):
                     "%s%s" % (r._sgi_target_label(),
                               " (a los %d días hábiles)" % r.after_days if r.after_days else "")
                     for r in activity.role_ids.filtered(lambda r: r.role == 'escala')]
-                detailed.append({
+                detailed.append(dict({
                     'activity': activity,
                     'cadence': activity.measure_cadence or 'evento',
                     'roles': [role_labels[r] for r in mine],
@@ -185,7 +185,7 @@ class HrJobMyProcedure(models.Model):
                     'name': activity.name,
                     'parts': parts,
                     'escalates_to': escalates,
-                })
+                }, **self._sgi_mp_entry_extra(activity)))
             else:
                 only = sorted(role_codes & set(_SHORT_ROLES),
                               key=lambda r: _SHORT_ROLES.index(r))
@@ -251,6 +251,73 @@ class HrJobMyProcedure(models.Model):
         }
         data['hash'] = self._sgi_my_procedure_hash(data)
         return data
+
+    @api.model
+    def _sgi_mp_status(self, activity):
+        """(código, etiqueta, detalle) del estado de ejecución: al día /
+        atrasada / sin medir, desde el cumplimiento que escribe el cron
+        (`measure_state`) y las entradas vencidas abiertas de la última semana
+        medida (`sgi.activity.week.stat.late_open_count`)."""
+        stat = self.env['sgi.activity.week.stat'].sudo().search(
+            [('activity_id', '=', activity.id)], order='period_start desc', limit=1)
+        late_open = stat.late_open_count if stat else 0
+        last = activity.measure_last_date
+        last_txt = fields.Date.to_string(fields.Datetime.context_timestamp(
+            self, last).date()) if last else ''
+        if late_open:
+            return ('atrasada', "Atrasada",
+                    "%d entrada(s) con plazo vencido sin salida" % late_open)
+        if activity.measure_state == 'rojo':
+            return ('atrasada', "Atrasada", "Sin evidencia en su periodo")
+        if activity.measure_state == 'verde':
+            return ('al_dia', "Al día", "Última ejecución %s" % last_txt if last_txt else "")
+        return ('sin_medir', "Sin medir", "Sin conector o registro que la mida")
+
+    @api.model
+    def _sgi_mp_entry_extra(self, activity):
+        """Piezas sueltas para la pantalla (la frase armada es para el PDF):
+        estado, dónde ir a hacerlo, instructivo, entradas con plazo y salidas."""
+        status, status_label, status_detail = self._sgi_mp_status(activity)
+        action = activity.odoo_action_id
+        action_url = '/odoo/action-%d' % action.id if action else ''
+        instruction = activity.instruction_id
+        instruction_url = ''
+        if instruction:
+            if instruction.attachment_id:
+                instruction_url = '/web/content/%d?filename=%s' % (
+                    instruction.attachment_id.id, instruction.name or '')
+            elif instruction.url:
+                instruction_url = instruction.url
+        where = []
+        if activity.exec_channel:
+            where.append(dict(activity._fields['exec_channel'].selection)[activity.exec_channel])
+        if activity.odoo_menu_id:
+            where.append(activity.odoo_menu_id.complete_name)
+        if activity.external_system:
+            where.append(activity.external_system)
+        if activity.location_id:
+            where.append(activity.location_id.complete_name)
+        if activity.workcenter_id:
+            where.append(activity.workcenter_id.display_name)
+        if activity.place_note:
+            where.append(activity.place_note)
+        return {
+            'status': status, 'status_label': status_label, 'status_detail': status_detail,
+            'action_url': action_url,
+            'external': activity.external_system or '',
+            'activity_url': '/odoo/sgi.process.activity/%d' % activity.id,
+            'instruction': instruction.sgi_code or instruction.name if instruction else '',
+            'instruction_url': instruction_url,
+            'where': " — ".join(where),
+            'how': " ".join((activity.how_steps or '').split()),
+            'check_against': activity.check_against or '',
+            'done': (activity.done_criteria or '').strip(),
+            'on_fail': (activity.on_fail or '').strip(),
+            'inputs': [(line.deliverable_id.name, line.max_days) for line in activity.input_ids],
+            'outputs': activity.output_deliverable_ids.mapped('name'),
+            'related': (activity.related_procedure_id.sgi_code
+                        or activity.related_procedure_id.name) if activity.related_procedure_id else '',
+        }
 
     @api.model
     def _sgi_my_procedure_hash(self, data):

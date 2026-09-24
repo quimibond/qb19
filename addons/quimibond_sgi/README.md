@@ -1047,14 +1047,43 @@ contra la versión exacta que leyó. `hr.job.sgi_my_procedure_stale` avisa en
 el puesto cuando las actividades cambiaron después de la última revisión; al
 imprimir a mano en ese estado el encabezado dice «BORRADOR».
 
-**En Odoo:** Inicio → **Mi procedimiento** (roles del puesto del usuario
-agrupados por cadencia y rol, con «Cuándo», «Dónde en Odoo» y el botón a la
-actividad); en el puesto: imprimir, publicar, ver revisión vigente; en la
-ficha del empleado: botón «Mi procedimiento» con el estado de su acuse
-(sin publicar / pendiente / leído). **«Mis actividades»** ahora trae todos
-los roles del puesto y de su familia, no solo «ejecuta».
+**La pantalla (lo principal; 19.0.43.1.0):** Inicio → **Mi procedimiento**
+abre `sgi.my.procedure` (`models/sgi_my_procedure_screen.py`), un
+transitorio con el contenido como HTML calculado en el servidor, sin JS
+propio. Una sola pantalla: secciones por cadencia real; cada actividad es una
+**tarjeta expandible** (`<details>` nativo). Cerrada: estado, cuándo, nombre,
+rol, proceso y numeral. Abierta: cómo, dónde, contra qué se revisa, criterio
+de terminado, si no se puede, entradas con plazo, salidas, conforme a, a
+quién escala; botones **«Ir a hacerlo»** (`/odoo/action-<id>` de la acción del
+menú ligado; sin menú y con sistema externo, lo dice), **«Ver instructivo»**
+(archivo o URL del IT) y «Ver actividad». Arriba, el conteo de atrasadas /
+al día / sin medir. Al final, escalamientos que recibe y la lista corta de
+participa y se entera.
 
-Pruebas: `TestMyProcedure` 01–06.
+**Estado por actividad** (`_sgi_mp_status`): *Atrasada* si la última semana
+medida trae entradas con plazo vencido sin salida (`sgi.activity.week.stat.late_open_count`)
+o el cumplimiento está en rojo (`measure_state`); *Al día* si está en verde
+(con la fecha de la última ejecución); *Sin medir* si no hay conector ni
+registro que la mida.
+
+**Firma:** botón «Firmar leído y entendido» solo para el propio empleado y
+solo cuando hay revisión publicada pendiente; sella el acuse de
+`sgi.document.ack` contra la revisión vigente del PDF (camino A). La barra
+de estado dice sin revisión publicada / pendiente / leído.
+
+**Quién ve a quién** (`hr.employee._sgi_mp_team_employees`): cada quien su
+puesto; un jefe (responsable directo o indirecto, o responsable de
+departamento) y un dueño de proceso (puestos con rol en sus procesos) eligen
+un empleado o puesto de su equipo; el Jefe MAST y el administrador del SGI,
+cualquiera y además pueden publicar e imprimir desde ahí.
+
+Además: en el puesto (pestaña SGI): imprimir, publicar, ver revisión vigente;
+en la ficha del empleado: botón «Mi procedimiento» con el estado de su acuse.
+**«Mis actividades»** ahora trae todos los roles del puesto y de su familia,
+no solo «ejecuta». El PDF (`report_my_procedure.xml`) queda como versión
+para imprimir y firmar y para el personal sin usuario.
+
+Pruebas: `TestMyProcedure` 01–09.
 
 ## PDF del procedimiento: etiquetas en negritas (19.0.42.1.0)
 
