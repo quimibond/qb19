@@ -1704,6 +1704,17 @@ entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»
 acción cliente con `sgi_diagram_kind`. La vista nativa `hierarchy` (53.2.0)
 sigue disponible en «Mapa de procesos» y en las actividades.
 
+## Ficha del proceso: dos pestañas (54.1.0)
+
+Las actividades ya no se capturan en una pestaña: el botón **Actividades**
+abre la lista editable del proceso con kanban, diagrama y organigrama
+(`action_view_activities`, contexto `default_process_id`). Conexiones y
+ligas entre actividades también son botones (`action_open_flows`,
+`action_view_chain`). Quedan dos pestañas: **Ficha** (propósito, recibe /
+entrega, puestos, dónde se opera en Odoo, texto de la versión anterior,
+subprocesos) y **Procedimiento** (etapas, alcance, aspectos ambientales,
+normas, responsabilidades y firmas: lo que arma el PDF).
+
 ## Pantalla «Mi procedimiento» rediseñada (54.1.0)
 
 Se lee como la ficha de una persona: arriba el empleado (con avatar) y el
