@@ -4,6 +4,8 @@ compra, la entrega, el lote, el producto o el traslado, «Firmar» crea la
 solicitud de firma con `reference_doc` apuntando al registro; las firmas
 dejan de estar sueltas y un entregable puede exigir «firmado».
 """
+from collections.abc import Iterable
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -43,8 +45,8 @@ class SgiSignRecordMixin(models.AbstractModel):
         signed = self.env['sign.request'].sudo().search(
             [('state', '=', 'signed'), ('reference_doc', 'like', '%s,%%' % self._name)])
         ids = [r.reference_doc.id for r in signed if r.reference_doc and r.reference_doc._name == self._name]
-        # Odoo 19 normaliza '=' a 'in' con lista antes de llamar aquí.
-        values = set(value) if isinstance(value, (list, tuple, set)) else {value}
+        # Odoo 19 normaliza '=' a 'in' y manda un OrderedSet (no es set).
+        values = list(value) if isinstance(value, Iterable) and not isinstance(value, str) else [value]
         wants_signed = (operator in ('=', 'in')) == any(values)
         return [('id', 'in' if wants_signed else 'not in', ids)]
 

@@ -665,7 +665,7 @@ class DocumentsDocument(models.Model):
         for doc in self:
             if not doc.sgi_job_ids:
                 continue
-            employees = self.env['hr.employee'].search([('job_id', 'in', doc.sgi_job_ids.ids)])
+            employees = self.env['hr.employee'].sudo().search([('job_id', 'in', doc.sgi_job_ids.ids)])
             existing = doc.sgi_ack_ids.mapped('employee_id')
             to_create = [{
                 'document_id': doc.id,
