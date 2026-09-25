@@ -260,6 +260,19 @@ class SgiProcess(models.Model):
             process.indicator_count = ind_counts.get(process.id, 0)
             process.risk_count = risk_counts.get(process.id, 0)
 
+    def action_print_master_list(self):
+        """DOC-3 (51.0.0): lista maestra de documentos del proceso en PDF."""
+        return self.env.ref('quimibond_sgi.action_report_master_list').report_action(self)
+
+    def _sgi_master_list_documents(self):
+        """Documentos controlados del proceso para la lista maestra: vigentes
+        y en piloto, por tipo y clave."""
+        self.ensure_one()
+        return self.env['documents.document'].sudo().search(
+            [('sgi_is_controlled', '=', True), ('sgi_process_id', '=', self.id),
+             ('sgi_state', 'in', ('vigente', 'piloto'))],
+            order='sgi_doc_type, sgi_code, name')
+
     def action_open_documents(self):
         self.ensure_one()
         list_view = self.env.ref('quimibond_sgi.sgi_document_view_list',

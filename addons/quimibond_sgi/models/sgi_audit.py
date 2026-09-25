@@ -7,8 +7,6 @@ from markupsafe import Markup
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
-from .sgi_activity_spec import sgi_safe_domain
-
 _logger = logging.getLogger(__name__)
 
 # AU-1: respuesta del checklist → tipo de hallazgo.
@@ -598,6 +596,10 @@ class SgiAuditChecklistLine(models.Model):
         deliverable = activity.output_deliverable_ids.filtered('odoo_model_id')[:1]
         if not deliverable:
             raise UserError("La actividad no tiene entregable ligado a un modelo de Odoo.")
+        # Import local: importar sgi_activity_spec al cargar este módulo lo
+        # registraba antes que sgi_catalog («Model sgi.activity.role does not
+        # exist in registry», build de main 50.0.0).
+        from .sgi_activity_spec import sgi_safe_domain
         return {
             'type': 'ir.actions.act_window',
             'name': "%s — registros de «%s»" % (activity.display_name, deliverable.name),

@@ -19,7 +19,43 @@
                 <field name="compliance_state" widget="badge"
                        decoration-success="compliance_state == 'cumple'"
                        decoration-warning="compliance_state in ('parcial', 'pendiente')"
-                       decoration-danger="compliance_state == 'no_cumple'"/>
+                       decoration-danger="compliance_state == 'no_cumple'"
+                       decoration-muted="compliance_state == 'no_aplica'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- DIR-1: asistente de evaluación -->
+    <record id="sgi_legal_evaluate_view_form" model="ir.ui.view">
+        <field name="name">sgi.legal.evaluate.form</field>
+        <field name="model">sgi.legal.evaluate</field>
+        <field name="arch" type="xml">
+            <form string="Registrar evaluación de cumplimiento">
+                <field name="requirement_id" invisible="1"/>
+                <group>
+                    <field name="result"/>
+                    <field name="evidence" placeholder="Qué se revisó (bitácora, dictamen, constancia…) y qué se encontró"/>
+                    <field name="next_date"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Registrar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_legal_evaluation_view_list" model="ir.ui.view">
+        <field name="name">sgi.legal.evaluation.list</field>
+        <field name="model">sgi.legal.evaluation</field>
+        <field name="arch" type="xml">
+            <list string="Evaluaciones de cumplimiento" create="0">
+                <field name="date"/>
+                <field name="requirement_id"/>
+                <field name="result" widget="badge"/>
+                <field name="evidence"/>
+                <field name="next_date"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
             </list>
         </field>
     </record>
@@ -30,6 +66,8 @@
         <field name="arch" type="xml">
             <form string="Requisito legal">
                 <header>
+                    <button name="action_evaluate" type="object" string="Registrar evaluación"
+                            class="btn-primary" icon="fa-check-square-o"/>
                     <button name="action_mark_cumple" type="object" string="Cumple"
                             class="btn-success"/>
                     <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
@@ -38,6 +76,7 @@
                     <button name="action_mark_no_cumple" type="object" string="No cumple"
                             class="btn-danger"
                             confirm="Un incumplimiento levanta una No Conformidad mayor. ¿Registrar la evaluación?"/>
+                    <button name="action_mark_no_aplica" type="object" string="No aplica"/>
                     <field name="compliance_state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -45,6 +84,10 @@
                         <button name="action_view_alert" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-triangle" invisible="not alert_id">
                             <div class="o_stat_info"><span class="o_stat_text">NC de<br/>incumplimiento</span></div>
+                        </button>
+                        <button name="action_view_evaluations" type="object" class="oe_stat_button"
+                                icon="fa-history">
+                            <field name="evaluation_count" widget="statinfo" string="Evaluaciones"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -59,7 +102,7 @@
                             <field name="expiry_date"/>
                         </group>
                         <group string="Evaluación del cumplimiento (9.1.2)">
-                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="responsible_id" widget="many2one_avatar_user" required="1"/>
                             <field name="eval_frequency_months"/>
                             <field name="last_eval_date" readonly="1"/>
                             <field name="next_eval_date"/>
@@ -80,6 +123,22 @@
                             <field name="document_ids" widget="many2many_tags"/>
                         </group>
                     </group>
+                    <notebook>
+                        <page string="Evaluaciones" name="evaluations">
+                            <field name="evaluation_ids" readonly="1">
+                                <list create="0" delete="0"
+                                      decoration-success="result == 'cumple'"
+                                      decoration-danger="result == 'no_cumple'"
+                                      decoration-warning="result == 'parcial'">
+                                    <field name="date"/>
+                                    <field name="result" widget="badge"/>
+                                    <field name="evidence"/>
+                                    <field name="next_date"/>
+                                    <field name="user_id" widget="many2one_avatar_user"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
                 <chatter/>
             </form>

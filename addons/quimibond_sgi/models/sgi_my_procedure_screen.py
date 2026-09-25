@@ -315,6 +315,8 @@ class SgiMyProcedure(models.TransientModel):
     official_indicator_ids = fields.Many2many(
         'sgi.indicator', string="Indicadores oficiales a mi cargo", compute='_compute_lists')
     has_obligations = fields.Boolean(compute='_compute_lists')
+    pending_legal_ids = fields.Many2many(
+        'sgi.legal.requirement', string="Requisitos legales por evaluar", compute='_compute_lists')
 
     # Mis documentos
     ack_ids = fields.Many2many(
@@ -482,6 +484,7 @@ class SgiMyProcedure(models.TransientModel):
                 wiz.pending_measure_ids = False
                 wiz.official_indicator_ids = False
                 wiz.has_obligations = False
+                wiz.pending_legal_ids = False
                 continue
             wiz.pending_action_ids = env['sgi.action.line'].sudo().search(
                 [('responsible_id', '=', user.id), ('state', 'in', ('abierta', 'vencida'))],
@@ -499,6 +502,12 @@ class SgiMyProcedure(models.TransientModel):
                 [('responsible_id', '=', user.id), ('status', '=', 'oficial')], order='code').ids
             wiz.has_obligations = bool('qb.obligation' in env and env['qb.obligation'].sudo().search_count(
                 [('user_id', '=', user.id), ('state', '=', 'confirmed')]))
+            # DIR-1: requisitos legales del usuario que vencen en 60 días o ya vencieron.
+            soon = fields.Date.add(today, days=60)
+            wiz.pending_legal_ids = env['sgi.legal.requirement'].sudo().search(
+                [('responsible_id', '=', user.id),
+                 '|', ('next_eval_date', '<=', soon), ('expiry_date', '<=', soon)],
+                order='next_eval_date, id').ids
 
     # ------------------------------------------------------------------
     # Acciones

@@ -1016,6 +1016,38 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 4 del plan: documentos y matriz legal (19.0.51.0.0)
+
+- **DOC-1 · Publicación en un paso.** Al aprobarse un cambio documental de
+  modificación: si la solicitud trae el **archivo nuevo** adjunto, la revisión
+  nueva se publica como documento nuevo (misma clave, revisión de la
+  solicitud, metadatos del anterior: tipo, proceso, puestos, dueño, carpeta)
+  y la anterior queda **obsoleta**; si no trae archivo, se revisa en el mismo
+  registro y los acuses ya firmados **vuelven a pendiente**. En ambos casos
+  quedan pendientes los acuses de quienes deben leerla y el dueño del proceso
+  recibe la actividad «Revisión publicada: difundir». Si el documento no tenía
+  puestos, toma los que ejecutan o aprueban actividades de su proceso (queda
+  en el chatter). `approval.request.sgi_new_document_id` liga la revisión
+  publicada. DOC-2 ya estaba desde 45.0.0.
+- **DOC-3 · Lista maestra en PDF.** Botón «Lista maestra (PDF)» en la ficha
+  del proceso (y en Imprimir): clave, título, tipo, revisión, estado, vigente
+  desde, próxima revisión y dueño de los documentos vigentes o en piloto del
+  proceso (`sgi.process._sgi_master_list_documents`).
+- **DIR-1 · Requisitos legales con evaluación y vencimiento.** Responsable
+  **obligatorio** (por omisión quien captura; la migración 51.0.0 asigna al
+  Jefe MAST los que estaban vacíos y los deja en el log). Cada evaluación es
+  un registro `sgi.legal.evaluation` (fecha, resultado Cumple / Parcial / No
+  cumple / **No aplica**, evidencia, próxima fecha, quién evaluó) creado por
+  el asistente «Registrar evaluación» (evidencia y próxima fecha
+  obligatorias) o por los botones rápidos. Parcial y No cumple siguen
+  abriendo NC. El cron avisa **60 días antes** de la próxima evaluación al
+  responsable (además de las vencidas y los permisos por vencer) y esos
+  requisitos aparecen en **Mis pendientes** de Mi procedimiento con botón
+  «Registrar evaluación». PDF «Matriz de requisitos legales» desde la lista
+  (Imprimir).
+
+Pruebas: `TestPr4DocsLegal` 01–05.
+
 ## PR 3 del plan: auditoría lista para octubre (19.0.50.0.0)
 
 - **AU-1 · Checklist generado del proceso.** Al pasar la auditoría a

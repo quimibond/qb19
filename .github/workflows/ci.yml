@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install httpx flake8
+        run: pip install httpx flake8 lxml
 
       - name: Lint
         # La configuración vive en `.flake8` (raíz del repo) para que
@@ -37,6 +37,13 @@ jobs:
         run: |
           find . -name '__manifest__.py' -not -path './.git/*' -printf '%h\n' \
             | sort -u | xargs python -m compileall -q
+
+      - name: Vistas contra los RNG de Odoo 19 e imports de modelos
+        # Lo que el update de Odoo.sh valida y aquí no se ve porque el SGI
+        # depende de Enterprise: search/graph/pivot/calendar/activity contra
+        # los RNG oficiales (tools/odoo_rng) y el orden de import de modelos.
+        # Tres builds de main rotos el 2026-09-25 por esto.
+        run: python3 tools/check_odoo_views.py
 
       - name: Checks estáticos de addons
         env:

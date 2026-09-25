@@ -60,9 +60,9 @@ su lista.
 
 | ID | Qué | Cómo | Listo cuando | Prio | Estado |
 |---|---|---|---|---|---|
-| DOC-1 | Publicación en un paso | Al aprobarse el cambio documental: publicar la revisión nueva, marcar la anterior obsoleta, avisar a los puestos del proceso y dejar pendiente el acuse de quienes deben leerlo | Aprobar un cambio deja la nueva revisión vigente y los acuses pendientes, sin tocar nada más | 1 | Pendiente |
+| DOC-1 | Publicación en un paso | Al aprobarse el cambio documental: publicar la revisión nueva, marcar la anterior obsoleta, avisar a los puestos del proceso y dejar pendiente el acuse de quienes deben leerlo | Aprobar un cambio deja la nueva revisión vigente y los acuses pendientes, sin tocar nada más | 1 | **Hecho en 51.0.0** |
 | DOC-2 | Obsoletos al pasar un proceso a vigente | Al cambiar el estado del proceso a «vigente», sus documentos sustituidos pasan a obsoletos con fecha y motivo. Verificar si ya entró con la limpieza; si no, programarlo | Pasar C2 a vigente vuelve obsoletos P-A28, P-A16 y P-C07 | 1 | **Hecho en 45.0.0** (`sgi.process.write` → `_sgi_obsolete_replaced_documents`, prueba `TestCleanup45.test_04`); falta verificar fecha y motivo en el chatter del documento |
-| DOC-3 | Lista maestra en PDF | Reporte por proceso: clave, título, tipo, revisión, fecha de vigencia, próxima revisión, dueño | Se imprime la lista maestra de C2 desde la ficha del proceso | 1 | Pendiente |
+| DOC-3 | Lista maestra en PDF | Reporte por proceso: clave, título, tipo, revisión, fecha de vigencia, próxima revisión, dueño | Se imprime la lista maestra de C2 desde la ficha del proceso | 1 | **Hecho en 51.0.0** |
 | DOC-4 | Aviso de próxima revisión | Actividad al dueño 60 días antes de la fecha de próxima revisión de cada documento | Un documento que vence en 60 días aparece en Mis pendientes del dueño | 2 | Pendiente |
 | DOC-5 | Instructivos en Knowledge | El instructivo de una actividad puede ser un artículo de Knowledge. Al publicarlo se congela como revisión del documento controlado, con su clave IT | Se escribe un IT en Knowledge, con fotos, y aparece en la tarjeta de la actividad | 2 | Pendiente |
 
@@ -70,7 +70,7 @@ su lista.
 
 | ID | Qué | Cómo | Listo cuando | Prio | Estado |
 |---|---|---|---|---|---|
-| DIR-1 | Requisitos legales con evaluación y vencimiento | Responsable obligatorio por requisito; cada evaluación registra resultado (cumple, no cumple, no aplica), evidencia y fecha de la siguiente; aviso 60 días antes; «no cumple» abre NC. PDF de la matriz legal | Los requisitos de STPS que vencen el 30 de noviembre aparecen en Mis pendientes de su responsable | 1 | Pendiente |
+| DIR-1 | Requisitos legales con evaluación y vencimiento | Responsable obligatorio por requisito; cada evaluación registra resultado (cumple, no cumple, no aplica), evidencia y fecha de la siguiente; aviso 60 días antes; «no cumple» abre NC. PDF de la matriz legal | Los requisitos de STPS que vencen el 30 de noviembre aparecen en Mis pendientes de su responsable | 1 | **Hecho en 51.0.0** |
 | DIR-2 | Riesgos con evaluación periódica | Probabilidad × impacto con semáforo; reevaluación en enero y julio con actividad al dueño del proceso; riesgo alto sin acción abierta queda marcado. PDF de la matriz por proceso | La ficha de cada proceso muestra sus riesgos con color y fecha de evaluación | 2 | Pendiente |
 | DIR-3 | Informe de revisión por la dirección | PDF con todas las entradas de ISO 9.3 tomadas solas de Odoo: acuerdos anteriores, indicadores y objetivos, auditorías, NC, riesgos, requisitos legales, satisfacción, proveedores, quejas. Los acuerdos son acciones con responsable y fecha (miden E1-02) | La revisión de diciembre sale de Odoo sin armar nada a mano | 2 | Pendiente |
 | DIR-4 | Tablero de dirección (I-9) | Nivel del indicador (dirección, proceso, actividad); tablero con objetivos integrales y sus indicadores oficiales, últimos 6 periodos, rojos sin plan, acuerdos vencidos y procesos con más atrasos | Dirección ve 10 a 12 indicadores y no 90 | 2 | Pendiente |
