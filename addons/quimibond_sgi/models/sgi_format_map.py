@@ -80,6 +80,16 @@ class SgiConfig(models.AbstractModel):
         # Días por omisión de una prueba piloto documental.
         'quimibond_sgi.pilot_days': '60',
         'quimibond_sgi.nc_escalation_days_external': '3',
+        # NC-1/NC-3 (49.0.0): plazos por etapa en días hábiles desde que se
+        # abre la NC, días de gracia antes de escalar a MAST y días para la
+        # verificación de eficacia tras la última acción correctiva.
+        'quimibond_sgi.nc_days_containment': '1',
+        'quimibond_sgi.nc_days_root_cause': '10',
+        'quimibond_sgi.nc_days_plan': '15',
+        'quimibond_sgi.nc_escalation_mast_days': '3',
+        'quimibond_sgi.nc_effectiveness_days': '90',
+        # NC-6: días hábiles que tiene el proveedor para contestar por el portal.
+        'quimibond_sgi.nc_days_supplier_response': '5',
         'quimibond_sgi.nc_recurrence_months': '12',
         'quimibond_sgi.action_escalation_manager_days': '7',
         'quimibond_sgi.action_escalation_director_days': '15',

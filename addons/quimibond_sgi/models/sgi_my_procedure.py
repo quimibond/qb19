@@ -246,18 +246,34 @@ class HrJobMyProcedure(models.Model):
 
         # Documentos vigentes que aplican al puesto (mismos que la pantalla,
         # sin acuse: el PDF es un documento controlado, no un estado).
-        documents = self.env['sgi.my.procedure']._sgi_mp_documents(self, False) if self.id else []
+        documents = self._sgi_mp_documents() if self.id else []
 
         data = {
             'sections': sections,
             'short': short,
             'received': received,
             'documents': documents,
+            # EPP que exige el puesto (S03-01): mismo texto que la pantalla.
+            'epp': [line.strip() for line in (self.sgi_epp_required or '').splitlines() if line.strip()],
             'cover': cover,
             'total': len(detailed) + len(short),
         }
         data['hash'] = self._sgi_my_procedure_hash(data)
         return data
+
+    def _sgi_mp_documents(self):
+        """Documentos vigentes que aplican al puesto (para el PDF y la huella;
+        la pantalla los muestra con una lista nativa)."""
+        self.ensure_one()
+        docs = self.env['documents.document'].sudo().search(
+            [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.ids),
+             ('sgi_doc_type', '!=', 'mi_procedimiento')],
+            order='sgi_doc_type, sgi_code, name')
+        return [{
+            'doc': doc, 'code': doc.sgi_code or '', 'name': doc.name or '',
+            'type': dict(doc._fields['sgi_doc_type'].selection).get(doc.sgi_doc_type, ''),
+            'revision': doc.sgi_revision_label,
+        } for doc in docs]
 
     @api.model
     def _sgi_mp_status_map(self, activities):
@@ -357,6 +373,8 @@ class HrJobMyProcedure(models.Model):
             # Los documentos que aplican al puesto (clave y revisión) también
             # son contenido: si cambian, la persona debe volver a leer.
             'documents': [[d['code'], d['revision']] for d in data.get('documents', [])],
+            # El EPP también: si cambia lo que debe usar, vuelve a leer y firmar.
+            'epp': data.get('epp', []),
         }
         raw = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()

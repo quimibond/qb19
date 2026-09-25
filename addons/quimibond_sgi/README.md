@@ -1016,6 +1016,289 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 7 del plan: sustituir un proceso sin dejar nada colgado (19.0.53.1.0)
+
+**PR-1.** La carga por API con `replaces` ya archivaba el proceso viejo y le
+pasaba al nuevo sus indicadores y riesgos. Ahora también le pasa sus
+**documentos controlados** (clave por clave, con todas sus revisiones; lo
+que no pueda moverse queda como advertencia del reporte, nunca a medias) y
+deja escrito el sucesor en `sgi.process.replaced_by_id`. Al final de **cada
+carga** corre `_relink_dangling`: lo que siga apuntando a un proceso
+archivado (indicadores, riesgos abiertos, documentos vigentes o en piloto)
+se mueve al sucesor y aparece en el reporte como «movido (colgado)»; un
+proceso archivado sin sucesor con cosas colgadas sale como advertencia.
+Pruebas: `TestPr7Replaces` 01–02.
+
+## PR 6 del plan: proveedores, clientes y firmas (19.0.53.0.0)
+
+- **NC-6 · NC a proveedor por el portal.** `quality.alert` hereda
+  `portal.mixin`. «Enviar al proveedor» fija el proveedor, el plazo
+  (`nc_days_supplier_response`, 5 días hábiles) y manda el correo con el
+  enlace `/my/nc/<id>` (token del portal). El proveedor ve folio, producto,
+  lote, desviación y plazo, y contesta **causa y acción** en un formulario
+  (`sgi_supplier_answer`); la respuesta queda en la pestaña «Proveedor» y en
+  el chatter, cierra el aviso y agenda al comprador la revisión. El cron de
+  NC avisa el día que vence la respuesta y escala a MAST después. La NC
+  cuenta en la evaluación del proveedor por su `partner_id` (S1.08).
+- **NC-7 · Reporte 8D**: ya existía (`report_8d.xml`, D1–D8 con el NCR del
+  cliente en `sgi_external_ref`); sin cambios.
+- **AU-4 · Auditorías de cliente y a proveedor.** Tipos `cliente` y
+  `proveedor` en el programa y la auditoría, con `partner_id` (obligatorio)
+  y `external_report_ref` (número de reporte del cliente). Los hallazgos de
+  una auditoría de cliente generan NC externa con el cliente y su NCR; los de
+  una auditoría a proveedor nacen como **NC a proveedor** (NC-6).
+- **AU-5 · Programa anual sugerido.** Botón «Programa sugerido» en el
+  programa (borrador): una línea por subproceso vigente o en piloto, repartidos
+  por trimestre; los procesos con NC abiertas o indicadores en rojo, dos
+  veces al año. Idempotente; se ajusta a mano.
+- **DOC-4 · Aviso de próxima revisión**: el cron documental ya avisaba 60
+  días antes al dueño; ahora esos documentos también salen en **Mis
+  pendientes** (`pending_doc_review_ids`).
+- **DOC-5 · Instructivos en Knowledge.** `sgi.process.activity.instruction_article_id`
+  (artículo de Knowledge, dependencia nueva `knowledge`). «Publicar como
+  instructivo» (asistente `sgi.instruction.publish`, solo Jefe MAST): PDF del
+  artículo (`report_knowledge_instruction`) archivado como documento
+  controlado tipo instructivo con la clave IT, revisión siguiente, huella del
+  contenido, acuses para los puestos y `instruction_id` de la actividad
+  apuntando a él (la tarjeta de Mi procedimiento lo muestra). Si el artículo
+  cambia, `instruction_article_stale` lo marca; publicar sin cambios avisa.
+- **REG-1 · Firmas de Sign ligadas a su registro.** Mixin
+  `sgi.sign.record.mixin` en orden de compra, traslado/entrega, lote y
+  producto: botón «Firmar» (asistente con plantilla y firmante) que crea la
+  `sign.request` con `reference_doc` al registro, contador de firmas y campo
+  buscable `sgi_signed`. El entregable puede exigir «firmado»
+  (`require_signed`): en «entregable completo» solo cuentan los registros con
+  una firma ligada.
+- **REG-2 · Encuesta como entregable.** `sgi.deliverable.survey_id`: al
+  elegir la encuesta, el entregable apunta a `survey.user_input` terminadas
+  de esa encuesta (fecha `end_datetime`), así E2.12 se mide sola.
+
+Dependencias nuevas: `portal`, `knowledge`. Pruebas: `TestPr6External` 01–07.
+
+## PR 5 del plan: revisión por la dirección de diciembre (19.0.52.0.0)
+
+- **DIR-2 · Riesgos con evaluación periódica.** Semáforo (`semaphore`) a
+  partir del nivel de atención; botón «Registrar evaluación» que sella
+  `last_eval_date` y programa la siguiente al **1 de enero o 1 de julio**;
+  el cron de riesgos avisa al dueño del proceso al vencer y, además, marca y
+  avisa cada **riesgo alto sin acción abierta** (`high_without_action`,
+  almacenado, filtra y colorea la lista). La ficha del proceso muestra sus
+  riesgos con color, puntaje y fechas; botón «Matriz de riesgos (PDF)». La
+  migración 52.0.0 sella la fecha de los riesgos ya evaluados y les pone su
+  semestre.
+- **DIR-3 · Informe de revisión por la dirección.** Dos entradas nuevas
+  tomadas de Odoo: **13. Objetivos e indicadores** (objetivos integrales con
+  sus indicadores oficiales, último valor y semáforo, rojos sin plan) y **14.
+  Satisfacción del cliente** (CA-02 del periodo + reclamaciones). Los
+  **acuerdos son acciones** (`sgi.action.line.review_id`) con responsable y
+  compromiso: actividad nativa al responsable, escalamiento del cron de
+  acciones vencidas y estado en la lista y en el acta; la revisión siguiente
+  lee «acuerdos previos» desde ellas. Las tareas de proyecto de revisiones
+  anteriores se conservan. Modo de cálculo `acuerdos_rxd` para **E1-02**
+  (% de acuerdos con compromiso en el periodo terminados a tiempo).
+- **DIR-4 · Tablero de dirección (I-9).** `sgi.indicator.level`
+  (Dirección / Proceso / Actividad) y `last_six` (últimos 6 periodos con
+  valor y semáforo). El menú Dirección → Tablero de dirección abre un
+  formulario nativo (`sgi.direction.board`): indicadores oficiales de nivel
+  dirección (si no hay ninguno marcado, todos los oficiales), objetivos
+  integrales, rojos sin causa ni plan, acuerdos de la RxD vencidos y los 10
+  procesos con más actividades en rojo. La hoja de cálculo sigue en su botón.
+- **PER-3 · Matriz de competencias.** Reporte PDF por área (Imprimir en el
+  departamento): persona, puesto, estado de Mi procedimiento, instructivos
+  leídos de los asignados, cursos de eLearning terminados y competencias con
+  nivel (`hr.department._sgi_competence_matrix`).
+
+Pruebas: `TestPr5Direction` 01–04; `TestMgmtReview.test_04` pasa a acciones.
+
+## PR 4 del plan: documentos y matriz legal (19.0.51.0.0)
+
+- **DOC-1 · Publicación en un paso.** Al aprobarse un cambio documental de
+  modificación: si la solicitud trae el **archivo nuevo** adjunto, la revisión
+  nueva se publica como documento nuevo (misma clave, revisión de la
+  solicitud, metadatos del anterior: tipo, proceso, puestos, dueño, carpeta)
+  y la anterior queda **obsoleta**; si no trae archivo, se revisa en el mismo
+  registro y los acuses ya firmados **vuelven a pendiente**. En ambos casos
+  quedan pendientes los acuses de quienes deben leerla y el dueño del proceso
+  recibe la actividad «Revisión publicada: difundir». Si el documento no tenía
+  puestos, toma los que ejecutan o aprueban actividades de su proceso (queda
+  en el chatter). `approval.request.sgi_new_document_id` liga la revisión
+  publicada. DOC-2 ya estaba desde 45.0.0.
+- **DOC-3 · Lista maestra en PDF.** Botón «Lista maestra (PDF)» en la ficha
+  del proceso (y en Imprimir): clave, título, tipo, revisión, estado, vigente
+  desde, próxima revisión y dueño de los documentos vigentes o en piloto del
+  proceso (`sgi.process._sgi_master_list_documents`).
+- **DIR-1 · Requisitos legales con evaluación y vencimiento.** Responsable
+  **obligatorio** (por omisión quien captura; la migración 51.0.0 asigna al
+  Jefe MAST los que estaban vacíos y los deja en el log). Cada evaluación es
+  un registro `sgi.legal.evaluation` (fecha, resultado Cumple / Parcial / No
+  cumple / **No aplica**, evidencia, próxima fecha, quién evaluó) creado por
+  el asistente «Registrar evaluación» (evidencia y próxima fecha
+  obligatorias) o por los botones rápidos. Parcial y No cumple siguen
+  abriendo NC. El cron avisa **60 días antes** de la próxima evaluación al
+  responsable (además de las vencidas y los permisos por vencer) y esos
+  requisitos aparecen en **Mis pendientes** de Mi procedimiento con botón
+  «Registrar evaluación». PDF «Matriz de requisitos legales» desde la lista
+  (Imprimir).
+
+Pruebas: `TestPr4DocsLegal` 01–05.
+
+## PR 3 del plan: auditoría lista para octubre (19.0.50.0.0)
+
+- **AU-1 · Checklist generado del proceso.** Al pasar la auditoría a
+  «Planificada» (o con «Regenerar checklist») se crea una línea de
+  `sgi.audit.checklist.line` por actividad viva de cada proceso auditado:
+  pregunta «¿Se cumple C2.17 Nombre en plazo y con evidencia?», quién la
+  ejecuta, su entregable y el botón **«Ver registros»** (la medición de la
+  actividad o el modelo del entregable). Respuesta Conforme / Observación /
+  NC menor / NC mayor con evidencia; cada respuesta no conforme **crea y
+  mantiene su hallazgo** (`finding_id`, tipo según la respuesta); Conforme
+  lo retira si aún no tiene NC. No usa Encuestas: la encuesta anterior queda
+  en una pestaña «Encuesta (legado)» solo para auditorías ya contestadas.
+- **AU-2 · Independencia del auditor.** Además del dueño del proceso, nadie
+  del equipo auditor (líder o equipo) puede tener, por su puesto o la familia
+  de su puesto, un rol **ejecuta** o **aprueba** en una actividad del proceso
+  auditado. El mensaje dice quién, qué puesto y qué actividad.
+- **AU-3 · Informe F-P-G03-07.** El informe PDF trae alcance, equipo,
+  fechas, procesos, minutas de apertura y cierre, checklist con respuestas,
+  hallazgos por tipo con cláusula y evidencia, conclusión y firmas. Al pasar
+  a «Cerrada» se genera y se **archiva en Documentos** ligado a la auditoría
+  (`report_document_id`, botón «Ver informe») y al chatter; si wkhtmltopdf
+  falla, la auditoría cierra igual y avisa.
+
+Pruebas: `TestAuditPr3` 01–04.
+
+## PR 2 del plan: no conformidades que sí se cierran (19.0.49.0.0)
+
+Había 20 NC, ninguna cerrada y cero acciones: le faltaba que el tiempo
+corriera. Plan: `docs/SGI_PENDIENTES_PROGRAMACION.md` (NC-1 a NC-5).
+
+- **NC-1 · Plazos por etapa.** Al abrir una NC con folio se fijan tres fechas
+  en días hábiles desde su creación: contención (1), causa raíz (10) y plan
+  de acción (15); parámetros `quimibond_sgi.nc_days_*` en Ajustes. Cada plazo
+  se cumple con un **hecho**, no con una fecha capturada: contención =
+  acción de tipo Contención registrada; causa raíz = campo capturado; plan =
+  acción correctiva o preventiva con responsable y compromiso. El cron diario
+  de NC avisa el día que vence cada plazo al responsable a contestar (si no,
+  al responsable de la alerta, si no a MAST); vencido, escala al dueño del
+  proceso y, pasados `nc_escalation_mast_days` (3), a MAST. Idempotente por
+  resumen. Las NC abiertas de antes reciben sus plazos en la migración.
+- **NC-2 · Contención.** Tipo de acción «Contención» (antes: corrección,
+  correctiva, preventiva; la contención se registra antes de la causa raíz).
+  Una NC de reclamación de cliente **no sale de Abierta** sin al menos una
+  contención.
+- **NC-3 · Eficacia programada.** Al terminar la última acción correctiva se
+  fija `sgi_effectiveness_due` (+90 días, `nc_effectiveness_days`) y se
+  agenda «Verificar eficacia» al Jefe MAST con esa fecha límite. El candado de
+  cierre ya exigía nota y fecha de eficacia.
+- **NC-4 · Cancelar con motivo y aprobación.** Arrastrar a Cancelada ya no
+  se permite (ni al Jefe MAST). Botón «Cancelar NC» → asistente
+  `sgi.nc.cancel`: un usuario **solicita** (motivo al chatter, actividad al
+  Jefe MAST) y el Jefe MAST **aprueba** con el mismo asistente; el motivo queda
+  en la NC y en el historial.
+- **NC-5 · Solo las etapas del SGI.** Una NC con folio no se puede mover a
+  una etapa de otro equipo. La migración 49.0.0 mueve las NC con folio que
+  estuvieran en Nuevo / Confirmado / Acción propuesta / Resuelto a Abierta /
+  Abierta / Seguimiento / Cerrada y desliga esas etapas de los equipos del
+  SGI. Esas cuatro etapas **no se borran ni archivan**: `quality.alert.stage`
+  no tiene `active` y las usan los equipos de calidad de piso; en producción
+  (2026-09-25) ninguna NC con folio estaba en ellas.
+
+Pruebas: `TestNcDeadlines` 01–06.
+
+## «Mi procedimiento» dentro de la ficha del empleado y del puesto (19.0.48.1.0)
+
+CEO (2026-09-25): el procedimiento de la persona se ve donde vive la
+persona, con vistas nativas de Odoo. Pestaña **«Mi procedimiento»** en la
+ficha del empleado (`hr.employee`, app Empleados), en la ficha pública
+(`hr.employee.public`, la que abre cualquier usuario interno y las filas de
+Mi equipo) y en el puesto (`hr.job`), con lo mismo que la pantalla de
+Inicio: procesos donde participa, kanban de actividades (ejecuta / aprueba),
+escalamientos que recibe, participa o se entera, documentos que aplican,
+acuses de lectura (con «Marcar leído y entendido»), EPP del puesto y
+responsivas (con «Firmar: recibí el EPP»). Botones «Firmar leído y
+entendido» (solo el propio empleado, contra la revisión publicada), «Abrir
+en pantalla completa» e «Imprimir PDF».
+
+Cómo está hecho: mixin `sgi.my.procedure.mixin` (campos `sgi_mp_*`
+calculados) heredado por los tres modelos; `hr.job._sgi_mp_role_lists()`
+es la única fuente de las tres listas (la pantalla de Inicio también la usa);
+el kanban y las dos listas de `sgi.activity.role` son **vistas propias**
+(`sgi_activity_role_view_kanban_mp`, `…_list_mp_received`, `…_list_mp_short`)
+referidas con `kanban_view_ref` / `list_view_ref`, así que un cambio en la
+tarjeta se ve igual en los cuatro lugares. Prueba: `TestMyProcedure` 15.
+
+## PR 1 del plan de auditoría: auditor de solo lectura y EPP con responsiva (19.0.48.0.0)
+
+Plan completo (29 puntos, 7 PRs): `docs/SGI_PENDIENTES_PROGRAMACION.md`.
+Este PR cierra PERM-1, PERM-2 (aplicado en producción por MCP el
+2026-09-25: Jefe MAST solo Blanca Areli, Dirección de Operaciones Jorge
+Ortiz, los demás a Usuario SGI), PER-1 (ya en 46.1.0) y PER-2.
+
+**PERM-1 · Auditor SGI de solo lectura.** El grupo ya no implica Usuario
+SGI: implica solo `base.group_user` y lleva su propia línea de acceso de
+lectura sobre **todos** los modelos `sgi.*` no transitorios y sobre los
+registros de los procesos auditados (`quality.alert`, `quality.check`,
+`quality.point`, `documents.document`, `helpdesk.ticket/team`,
+`approval.request`, `project.task/project`, `maintenance.request/equipment`,
+`purchase.order(.line)`, `stock.picking/move/lot`, `mrp.production/workorder`,
+`sale.order(.line)`, `survey.user_input`, `sign.request`). Escribe solo
+hallazgos (`sgi.audit.finding`) y la auditoría misma (programa, minutas,
+checklist), que ya tenía. Jefe MAST implica ahora Usuario SGI y Auditor de
+forma explícita. El auditor ve el menú raíz del SGI y la entrada Dirección.
+Un auditor interno que además opera su puesto lleva los dos grupos: lo que
+escribe lo escribe como usuario. Prueba: `TestPermAuditor` 01–04.
+
+**PER-2 · EPP del puesto con responsiva.** `sgi.epp.delivery` (folio
+`EPP-AAAA-0001`): una responsiva por entrega, ligada al empleado, con el
+puesto al entregar, la fecha, quién entregó y el EPP entregado (se propone el
+`sgi_epp_required` del puesto). Estados Entregada → Firmada; **solo el propio
+empleado** (o el Jefe MAST) firma, con candado en `write()` como el acuse de
+lectura; una responsiva firmada no se edita (entrega nueva). En la ficha del
+empleado: pestaña «EPP (SGI)» con el EPP del puesto en solo lectura, botón
+«Entregar EPP» y sus responsivas; botón inteligente «Responsivas EPP». En
+**Mi procedimiento**: pestaña «Mi EPP» (EPP del puesto y responsivas con
+«Firmar: recibí el EPP») y una línea en Estado cuando hay responsiva por
+firmar. En el **PDF**: bloque «Equipo de protección personal (EPP)» con la
+lista del puesto y, al imprimir por empleado, su responsiva firmada; el EPP
+entra en la huella del contenido (cambiarlo obliga a releer y firmar).
+Lista general en Administración SGI → Firmas de lectura → Responsivas de
+EPP. Pruebas: `TestEpp` 01–03.
+
+## Diagnóstico del SGI como lista nativa (19.0.47.1.0)
+
+Cierra el inventario de 47.0.0: el Diagnóstico ya no es un wizard con un
+HTML armado a mano. Cada hallazgo es una fila de `sgi.diagnostic.line`
+(sección, nivel Falla / Aviso / Bien, hallazgo, dónde se arregla) colgada de
+la corrida (`sgi.diagnostic`: fecha, conteos y un `summary` en texto plano
+con lo mismo). El menú Administración SGI → Diagnóstico → Diagnóstico del SGI
+es una acción de servidor (`action_run`) que corre las verificaciones y abre
+la **lista** acotada a esa corrida, agrupada por sección, con búsqueda por
+texto y filtros Fallas / Avisos / En orden; volver a entrar por el menú es
+«Actualizar». Las verificaciones no cambian (`_sgi_build_report` devuelve
+dicts en vez de `Markup`). La acción de ventana y el formulario viejos se
+retiran en la migración 47.1.0 (y quedan en `SGI_REMOVED_XMLIDS`). Pruebas:
+`TestDiagnostic` 01 (corrida, acción del menú, actualizar), 02 y 02b sobre
+`summary` y filas.
+
+## Solo vistas nativas de Odoo (19.0.47.0.0)
+
+Regla del CEO (2026-09-25): **nada de HTML servido ni enlaces armados a
+mano**; todo con campos, vistas y acciones de Odoo, para que la actualización
+a la siguiente versión no rompa nada y la navegación (migas de pan, regresar)
+funcione sola. Inventario y resultado:
+
+| Pieza | Antes | Ahora |
+|---|---|---|
+| Mi procedimiento (`sgi.my.procedure`) | `content` Html con tarjetas `<details>` y enlaces `/odoo/…` (al dar «Ir a hacerlo» se perdían las migas) | Formulario con **kanban** de `sgi.activity.role` (piezas como campos: estado, cuándo, cómo, dónde, contra qué, terminada cuando, si no se puede, recibe, entrega, conforme a, escala) y botones de objeto «Ir a hacerlo», «Ver instructivo», «Ver actividad»; listas nativas para escalamientos, participa/se entera, Mis pendientes (acciones, NC, mediciones, indicadores; obligaciones con botón) y Mis documentos (acuses con «Marcar leído», documentos con «Ver archivo») |
+| Revisión previa (`sgi.my.procedure.check`) | `result` Html | Contador y cuatro listas (duplicados, sin puesto, en puesto sin roles, con roles sin personas); se abre en la misma pila de navegación |
+| Mi equipo | HTML (46.0.x) | Lista nativa (46.1.0) |
+| Tablero de dirección | Hoja de cálculo nativa | Sin cambio |
+| Avisos (`display_notification`) y chatter con `Markup` | Nativos | Sin cambio |
+| Diagnóstico del SGI (`sgi.diagnostic.result`) | Html generado por el análisis | Lista nativa de hallazgos (47.1.0, abajo) |
+
+`hr.job._sgi_mp_documents()` alimenta el PDF y la huella. Pruebas:
+`TestMyProcedure` 07, 10, 11, 12 reescritas sobre campos.
+
 ## PDF de «Mi procedimiento» alineado con la pantalla (19.0.46.0.0)
 
 Para la gente de planta sin usuario de Odoo el PDF **es** su procedimiento,

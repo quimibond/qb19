@@ -21,6 +21,24 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.nc_escalation_days_external',
         help="Las NC de auditoría externa y reclamaciones de cliente escalan más "
              "rápido que las internas.")
+    sgi_nc_days_containment = fields.Integer(
+        string="Plazo de contención de una NC (días hábiles)",
+        config_parameter='quimibond_sgi.nc_days_containment')
+    sgi_nc_days_root_cause = fields.Integer(
+        string="Plazo de causa raíz de una NC (días hábiles)",
+        config_parameter='quimibond_sgi.nc_days_root_cause')
+    sgi_nc_days_plan = fields.Integer(
+        string="Plazo del plan de acción de una NC (días hábiles)",
+        config_parameter='quimibond_sgi.nc_days_plan')
+    sgi_nc_escalation_mast_days = fields.Integer(
+        string="Días vencido un plazo de NC antes de escalar a MAST",
+        config_parameter='quimibond_sgi.nc_escalation_mast_days')
+    sgi_nc_days_supplier_response = fields.Integer(
+        string="Días hábiles para que el proveedor conteste una NC (portal)",
+        config_parameter='quimibond_sgi.nc_days_supplier_response')
+    sgi_nc_effectiveness_days = fields.Integer(
+        string="Días para verificar la eficacia tras la última correctiva",
+        config_parameter='quimibond_sgi.nc_effectiveness_days')
     sgi_doc_review_notice_days = fields.Integer(
         string="Primer aviso de revisión documental (días)",
         config_parameter='quimibond_sgi.doc_review_notice_days')

@@ -61,42 +61,96 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <h2 class="text-center">Informe de Auditoría</h2>
-                        <table class="table table-sm table-bordered mt-3">
+                        <h2 class="text-center">Informe de Auditoría — F-P-G03-07</h2>
+                        <h4>1. Alcance</h4>
+                        <table class="table table-sm table-bordered">
                             <tr>
                                 <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
                                 <td><strong>Tipo:</strong> <span t-field="doc.audit_type"/></td>
-                                <td><strong>Auditor líder:</strong> <span t-field="doc.lead_auditor_id"/></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Inicio:</strong> <span t-field="doc.date_start"/></td>
-                                <td><strong>Fin:</strong> <span t-field="doc.date_end"/></td>
                                 <td><strong>Estado:</strong> <span t-field="doc.state"/></td>
                             </tr>
+                            <tr>
+                                <td><strong>Normas:</strong> <span t-out="', '.join(doc.norm_ids.mapped('code'))"/></td>
+                                <td colspan="2"><strong>Procesos auditados:</strong>
+                                    <span t-out="', '.join('%s %s' % (p.code or '', p.name or '') for p in doc.process_ids)"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Planificada:</strong> <span t-field="doc.date_planned"/></td>
+                                <td><strong>Inicio:</strong> <span t-field="doc.date_start"/></td>
+                                <td><strong>Fin:</strong> <span t-field="doc.date_end"/></td>
+                            </tr>
                         </table>
-
-                        <h4>Hallazgos</h4>
+                        <h4>2. Equipo</h4>
                         <table class="table table-sm table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Tipo</th><th>Cláusula</th><th>Proceso</th>
-                                    <th>Descripción</th><th>Disposición</th><th>NC</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="doc.finding_ids" t-as="finding">
-                                    <td><span t-field="finding.finding_type"/></td>
-                                    <td><span t-field="finding.norm_clause_id"/></td>
-                                    <td><span t-field="finding.process_id"/></td>
-                                    <td><span t-field="finding.description"/></td>
-                                    <td><span t-field="finding.disposition"/></td>
-                                    <td><span t-field="finding.alert_id.sgi_folio"/></td>
-                                </tr>
-                            </tbody>
+                            <tr>
+                                <td><strong>Auditor líder:</strong> <span t-field="doc.lead_auditor_id"/></td>
+                                <td><strong>Equipo auditor:</strong> <span t-out="', '.join(doc.auditor_ids.mapped('name'))"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Auditados:</strong> <span t-out="', '.join(doc.auditee_ids.mapped('name'))"/></td>
+                                <td><strong>Dueños de proceso:</strong>
+                                    <span t-out="', '.join(doc.process_ids.mapped('owner_id.name'))"/></td>
+                            </tr>
                         </table>
-
-                        <h4>Conclusión</h4>
+                        <h4>3. Reuniones</h4>
+                        <p><strong>Apertura (F-P-G03-05):</strong> <span t-field="doc.opening_minutes"/></p>
+                        <p><strong>Cierre (F-P-G03-06):</strong> <span t-field="doc.closing_minutes"/></p>
+                        <h4>4. Checklist por actividad</h4>
+                        <p t-if="not doc.checklist_line_ids" class="text-muted">Sin checklist generado.</p>
+                        <t t-if="doc.checklist_line_ids">
+                            <p>
+                                <span t-out="doc.checklist_answered_count"/> de <span t-out="doc.checklist_count"/> preguntas contestadas;
+                                <span t-out="doc.checklist_nonconforming_count"/> no conforme(s).
+                            </p>
+                            <table class="table table-sm table-bordered" style="font-size:10px;">
+                                <thead>
+                                    <tr><th>Proceso</th><th>Pregunta</th><th>Respuesta</th><th>Evidencia</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="doc.checklist_line_ids" t-as="line">
+                                        <td><span t-field="line.process_id.code"/></td>
+                                        <td><span t-field="line.question"/></td>
+                                        <td><span t-field="line.answer"/></td>
+                                        <td><span t-field="line.evidence"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                        <h4>5. Hallazgos</h4>
+                        <t t-set="types" t-value="[('nc_mayor', 'No conformidades mayores'), ('nc_menor', 'No conformidades menores'), ('observacion', 'Observaciones'), ('oportunidad', 'Oportunidades de mejora'), ('conformidad', 'Conformidades destacadas')]"/>
+                        <t t-foreach="types" t-as="ftype">
+                            <t t-set="findings" t-value="doc.finding_ids.filtered(lambda f: f.finding_type == ftype[0])"/>
+                            <t t-if="findings">
+                                <h5><span t-out="ftype[1]"/> (<span t-out="len(findings)"/>)</h5>
+                                <table class="table table-sm table-bordered" style="font-size:10px;">
+                                    <thead>
+                                        <tr><th>Cláusula</th><th>Proceso</th><th>Descripción</th><th>Evidencia</th><th>Disposición</th><th>NC</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="findings" t-as="finding">
+                                            <td><span t-field="finding.norm_clause_id"/></td>
+                                            <td><span t-field="finding.process_id.code"/></td>
+                                            <td><span t-field="finding.description"/></td>
+                                            <td><span t-field="finding.evidence"/></td>
+                                            <td><span t-field="finding.disposition"/></td>
+                                            <td><span t-field="finding.alert_id.sgi_folio"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                        </t>
+                        <p t-if="not doc.finding_ids" class="text-muted">Sin hallazgos.</p>
+                        <h4>6. Conclusión</h4>
                         <p t-field="doc.conclusion"/>
+                        <h4>7. Firmas</h4>
+                        <table class="table table-sm table-bordered" style="margin-top:24px;">
+                            <tr style="height:48px;">
+                                <td style="width:33%; vertical-align:bottom;">Auditor líder<br/><span t-field="doc.lead_auditor_id"/></td>
+                                <td style="width:33%; vertical-align:bottom;">Dueño(s) del proceso<br/>
+                                    <span t-out="', '.join(doc.process_ids.mapped('owner_id.name'))"/></td>
+                                <td style="width:34%; vertical-align:bottom;">Jefe MAST y SGI</td>
+                            </tr>
+                        </table>
                     </div>
                 </t>
             </t>

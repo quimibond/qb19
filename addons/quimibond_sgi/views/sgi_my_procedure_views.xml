@@ -1,6 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ====== Pantalla «Mi procedimiento» (transitorio con HTML calculado) ====== -->
+    <!-- ====== Pantalla «Mi procedimiento»: solo vistas nativas ======
+         Kanban y listas dentro del formulario; los botones son acciones de
+         objeto, así que las migas de pan regresan solas. -->
+    <!-- ====== Vistas compartidas de sgi.activity.role para «Mi procedimiento» ======
+         Las usan la pantalla de Inicio y las pestañas de la ficha del empleado,
+         del empleado público y del puesto (kanban_view_ref / list_view_ref). -->
+    <record id="sgi_activity_role_view_kanban_mp" model="ir.ui.view">
+        <field name="name">sgi.activity.role.kanban.mp</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <kanban create="0" delete="0" quick_create="0">
+                                    <field name="mp_status"/>
+                                    <field name="mp_can_go"/>
+                                    <field name="mp_instruction_id"/>
+                                    <field name="mp_external"/>
+                                    <templates>
+                                        <t t-name="card" class="flex-column p-2">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <field name="cadence" widget="badge"/>
+                                                <field name="mp_status" widget="badge"
+                                                       decoration-success="mp_status == 'al_dia'"
+                                                       decoration-danger="mp_status == 'atrasada'"
+                                                       decoration-muted="mp_status == 'sin_medir'"/>
+                                                <field name="role" widget="badge"
+                                                       decoration-success="role == 'ejecuta'"
+                                                       decoration-warning="role == 'aprueba'"/>
+                                                <strong><field name="activity_when"/></strong>
+                                            </div>
+                                            <div class="fs-5 fw-bold">
+                                                <field name="mp_name"/>
+                                            </div>
+                                            <div class="text-muted small mb-1">
+                                                <field name="process_id"/> · <field name="mp_number"/>
+                                                <t t-if="record.mp_status_detail.raw_value"> · <field name="mp_status_detail"/></t>
+                                            </div>
+                                            <div t-if="record.mp_how.raw_value"><b>Cómo:</b> <field name="mp_how"/></div>
+                                            <div t-if="record.mp_where.raw_value"><b>Dónde:</b> <field name="mp_where"/></div>
+                                            <div t-if="record.mp_check_against.raw_value"><b>Contra qué se revisa:</b> <field name="mp_check_against"/></div>
+                                            <div t-if="record.mp_done.raw_value"><b>Terminada cuando:</b> <field name="mp_done"/></div>
+                                            <div t-if="record.mp_on_fail.raw_value"><b>Si no se puede:</b> <field name="mp_on_fail"/></div>
+                                            <div t-if="record.mp_inputs.raw_value"><b>Recibe:</b> <field name="mp_inputs"/></div>
+                                            <div t-if="record.mp_outputs.raw_value"><b>Entrega:</b> <field name="mp_outputs"/></div>
+                                            <div t-if="record.mp_related.raw_value"><b>Conforme a:</b> <field name="mp_related"/></div>
+                                            <div t-if="record.mp_escalates.raw_value"><b>Si se atora, escala a:</b> <field name="mp_escalates"/></div>
+                                            <div class="mt-2 d-flex gap-2 flex-wrap">
+                                                <button t-if="record.mp_can_go.raw_value" type="object" name="action_mp_go"
+                                                        class="btn btn-primary btn-sm">
+                                                    <i class="fa fa-play me-1" title="Ir a hacerlo"/>Ir a hacerlo
+                                                </button>
+                                                <span t-elif="record.mp_external.raw_value" class="btn btn-outline-secondary btn-sm disabled">
+                                                    <i class="fa fa-external-link me-1" title="Sistema externo"/>Se hace en <field name="mp_external"/>
+                                                </span>
+                                                <button t-if="record.mp_instruction_id.raw_value" type="object" name="action_mp_instruction"
+                                                        class="btn btn-secondary btn-sm">
+                                                    <i class="fa fa-book me-1" title="Instructivo"/>Ver instructivo <field name="mp_instruction_id"/>
+                                                </button>
+                                                <button type="object" name="action_open_activity" class="btn btn-secondary btn-sm">
+                                                    <i class="fa fa-file-text-o me-1" title="Actividad"/>Ver actividad
+                                                </button>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_list_mp_received" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.mp.received</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0">
+                <field name="process_id"/>
+                <field name="mp_number" string="Numeral"/>
+                <field name="mp_name" string="Actividad"/>
+                <field name="after_days" string="Escala a los (días hábiles)"/>
+                <button name="action_open_activity" type="object" string="Ver actividad" icon="fa-file-text-o"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_list_mp_short" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.mp.short</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0">
+                <field name="role" widget="badge"/>
+                <field name="process_id"/>
+                <field name="mp_number" string="Numeral"/>
+                <field name="mp_name" string="Actividad"/>
+                <field name="condition" optional="show"/>
+                <button name="action_open_activity" type="object" string="Ver actividad" icon="fa-file-text-o"/>
+            </list>
+        </field>
+    </record>
+
     <record id="sgi_my_procedure_view_form" model="ir.ui.view">
         <field name="name">sgi.my.procedure.form</field>
         <field name="model">sgi.my.procedure</field>
@@ -27,30 +124,170 @@
                 </header>
                 <sheet>
                     <group>
-                        <group>
+                        <group string="Quién">
                             <!-- «Ver como»: administrador, MAST y Dirección eligen a
                                  cualquiera; un jefe, solo a su equipo; los demás lo ven
                                  fijo en su propio puesto. -->
-                            <field name="employee_id" string="Ver como: empleado" readonly="not can_pick"
+                            <field name="employee_id" readonly="not can_pick"
                                    domain="[('id', 'in', allowed_employee_ids)]"
                                    options="{'no_create': True, 'no_open': True}"/>
-                            <field name="job_id" string="Ver como: puesto" readonly="not can_pick"
+                            <field name="job_id" readonly="not can_pick"
                                    domain="[('id', 'in', allowed_job_ids)]"
                                    options="{'no_create': True, 'no_open': True}"/>
+                            <field name="boss_id" options="{'no_open': True}"/>
+                            <field name="department_id" options="{'no_open': True}"/>
+                            <field name="family_id" options="{'no_open': True}" invisible="not family_id"/>
+                            <field name="process_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="job_employee_ids" widget="many2many_tags" options="{'no_create': True}"
+                                   invisible="employee_id"/>
                         </group>
-                        <group>
-                            <div colspan="2" class="text-muted">
-                                <i class="fa fa-info-circle me-1" title="Estado de la firma"/><field name="ack_label" readonly="1" nolabel="1" class="d-inline"/>
-                            </div>
+                        <group string="Estado">
+                            <field name="late_count" decoration-danger="late_count > 0"/>
+                            <field name="ok_count" decoration-success="ok_count > 0"/>
+                            <field name="unmeasured_count" decoration-muted="1"/>
+                            <field name="pending_ack_count" decoration-warning="pending_ack_count > 0"/>
+                            <field name="epp_pending_sign" invisible="1"/>
+                            <field name="epp_label" invisible="not epp_label" readonly="1"
+                                   decoration-warning="epp_pending_sign"/>
+                            <field name="ack_label" string="Firma" readonly="1"/>
                         </group>
                     </group>
                     <field name="can_pick" invisible="1"/>
                     <field name="can_publish" invisible="1"/>
                     <field name="is_me" invisible="1"/>
                     <field name="doc_id" invisible="1"/>
+                    <field name="has_user" invisible="1"/>
+                    <field name="has_obligations" invisible="1"/>
                     <field name="allowed_employee_ids" invisible="1"/>
                     <field name="allowed_job_ids" invisible="1"/>
-                    <field name="content" nolabel="1" readonly="1" options="{'safe': True}"/>
+                    <notebook>
+                        <page string="Mis actividades" name="actividades">
+                            <field name="role_ids" mode="kanban" nolabel="1" readonly="1"
+                                   context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                            <group string="Escalamientos que recibe" invisible="not received_role_ids">
+                                <field name="received_role_ids" nolabel="1" readonly="1"
+                                       context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>
+                            </group>
+                            <group string="Participa o se entera" invisible="not short_role_ids">
+                                <field name="short_role_ids" nolabel="1" readonly="1"
+                                       context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_short'}"/>
+                            </group>
+                        </page>
+                        <page string="Mis pendientes" name="pendientes" invisible="not has_user">
+                            <group string="Acciones abiertas o vencidas" invisible="not pending_action_ids">
+                                <field name="pending_action_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0" decoration-danger="state == 'vencida'">
+                                        <field name="name"/>
+                                        <field name="origin_display" string="Origen" optional="show"/>
+                                        <field name="date_commit"/>
+                                        <field name="state" widget="badge"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="NC a contestar" invisible="not pending_nc_ids">
+                                <field name="pending_nc_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0">
+                                        <field name="sgi_folio" optional="show"/>
+                                        <field name="name"/>
+                                        <field name="stage_id" widget="badge"/>
+                                        <field name="create_date" optional="show"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Mediciones por capturar o validar" invisible="not pending_measure_ids">
+                                <field name="pending_measure_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0">
+                                        <field name="indicator_id"/>
+                                        <field name="period_date"/>
+                                        <field name="state" widget="badge"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Indicadores oficiales a mi cargo" invisible="not official_indicator_ids">
+                                <field name="official_indicator_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0">
+                                        <field name="code"/>
+                                        <field name="name"/>
+                                        <field name="last_value"/>
+                                        <field name="last_semaphore" widget="badge"
+                                               decoration-success="last_semaphore == 'verde'"
+                                               decoration-warning="last_semaphore == 'amarillo'"
+                                               decoration-danger="last_semaphore == 'rojo'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Requisitos legales por evaluar (60 días)" invisible="not pending_legal_ids">
+                                <field name="pending_legal_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0">
+                                        <field name="reference" optional="show"/>
+                                        <field name="name"/>
+                                        <field name="next_eval_date"/>
+                                        <field name="expiry_date" optional="show"/>
+                                        <field name="compliance_state" widget="badge"/>
+                                        <button name="action_evaluate" type="object" string="Registrar evaluación" icon="fa-check-square-o"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <div invisible="not has_obligations">
+                                <button name="action_open_obligations" type="object" string="Ver mis obligaciones"
+                                        icon="fa-list-ul" class="btn-secondary"/>
+                            </div>
+                            <p class="text-muted" invisible="pending_action_ids or pending_nc_ids or pending_measure_ids or official_indicator_ids or has_obligations or pending_legal_ids">
+                                Sin pendientes.
+                            </p>
+                        </page>
+                        <page string="Mis documentos" name="documentos">
+                            <group string="Mis acuses de lectura" invisible="not ack_ids">
+                                <field name="ack_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0" decoration-warning="state == 'pendiente'">
+                                        <field name="sgi_code" string="Clave"/>
+                                        <field name="document_id"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state == 'leido'"
+                                               decoration-warning="state == 'pendiente'"/>
+                                        <field name="ack_date" optional="show"/>
+                                        <button name="action_mark_read" type="object" string="Marcar leído y entendido"
+                                                icon="fa-check" invisible="state != 'pendiente'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Documentos que aplican al puesto" invisible="not document_ids">
+                                <field name="document_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0">
+                                        <field name="sgi_code" string="Clave"/>
+                                        <field name="name"/>
+                                        <field name="sgi_doc_type" string="Tipo"/>
+                                        <field name="sgi_revision_label" string="Rev."/>
+                                        <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <p class="text-muted" invisible="ack_ids or document_ids">Sin documentos ligados al puesto.</p>
+                        </page>
+                        <page string="Mi EPP" name="epp" invisible="not epp_required and not epp_delivery_ids">
+                            <group string="EPP requerido por el puesto (S03-01)" invisible="not epp_required">
+                                <field name="epp_required" nolabel="1" readonly="1"/>
+                            </group>
+                            <group string="Responsivas de entrega (S03-02)" invisible="not epp_delivery_ids">
+                                <field name="epp_delivery_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0" decoration-warning="state == 'entregada'">
+                                        <field name="name"/>
+                                        <field name="date"/>
+                                        <field name="items"/>
+                                        <field name="delivered_by_id" optional="show"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state == 'firmada'"
+                                               decoration-warning="state == 'entregada'"/>
+                                        <field name="signed_date" optional="show"/>
+                                        <field name="can_sign" column_invisible="1"/>
+                                        <button name="action_sign" type="object" string="Firmar: recibí el EPP"
+                                                icon="fa-pencil" invisible="not can_sign"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <p class="text-muted" invisible="epp_delivery_ids">Sin responsivas de entrega registradas; RH o SST las capturan con «Entregar EPP» en la ficha del empleado.</p>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -60,14 +297,51 @@
         <field name="name">sgi.my.procedure.check.form</field>
         <field name="model">sgi.my.procedure.check</field>
         <field name="arch" type="xml">
-            <form string="Revisión previa a publicar">
+            <form string="Revisión previa a publicar" create="0" delete="0">
                 <sheet>
                     <p class="text-muted">Lo que conviene limpiar antes de publicar «Mi procedimiento» para toda la planta. Un empleado en un puesto duplicado sin roles abre su procedimiento y lo ve vacío.</p>
-                    <field name="result" nolabel="1" readonly="1"/>
+                    <group>
+                        <field name="ready_count"/>
+                    </group>
+                    <notebook>
+                        <page string="Puestos duplicados" name="duplicados">
+                            <field name="duplicate_job_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" default_order="name">
+                                    <field name="name"/>
+                                    <field name="no_of_employee" string="Personas"/>
+                                    <field name="sgi_role_count" string="Roles"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Empleados sin puesto" name="sin_puesto">
+                            <field name="no_job_employee_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="department_id"/>
+                                    <field name="parent_id" string="Jefe"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Empleados en un puesto sin roles" name="sin_roles">
+                            <field name="job_without_roles_employee_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" default_order="job_id, name">
+                                    <field name="name"/>
+                                    <field name="job_id"/>
+                                    <field name="department_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Puestos con roles pero sin personas" name="sin_personas">
+                            <field name="roles_without_people_job_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" default_order="name">
+                                    <field name="name"/>
+                                    <field name="sgi_role_count" string="Roles"/>
+                                    <field name="sgi_family_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
-                <footer>
-                    <button special="cancel" string="Cerrar" class="btn-secondary"/>
-                </footer>
             </form>
         </field>
     </record>

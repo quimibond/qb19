@@ -86,6 +86,33 @@
                                  help="Auditoría externa y reclamaciones de cliente escalan más rápido que las internas.">
                             <field name="sgi_nc_escalation_days_external"/>
                         </setting>
+                        <setting string="Plazos por etapa de una NC (días hábiles)"
+                                 help="Desde que se abre la NC: contención, causa raíz y plan de acción. El cron avisa el día que vence cada uno y escala al dueño del proceso y luego a MAST.">
+                            <div class="row">
+                                <label for="sgi_nc_days_containment" class="col-lg-6 o_light_label">Contención</label>
+                                <field name="sgi_nc_days_containment"/>
+                            </div>
+                            <div class="row">
+                                <label for="sgi_nc_days_root_cause" class="col-lg-6 o_light_label">Causa raíz</label>
+                                <field name="sgi_nc_days_root_cause"/>
+                            </div>
+                            <div class="row">
+                                <label for="sgi_nc_days_plan" class="col-lg-6 o_light_label">Plan de acción</label>
+                                <field name="sgi_nc_days_plan"/>
+                            </div>
+                            <div class="row">
+                                <label for="sgi_nc_escalation_mast_days" class="col-lg-6 o_light_label">Días vencido antes de escalar a MAST</label>
+                                <field name="sgi_nc_escalation_mast_days"/>
+                            </div>
+                        </setting>
+                        <setting string="Días hábiles para que el proveedor conteste una NC"
+                                 help="NC a proveedor por el portal (NC-6): plazo de respuesta; vencido, aviso al comprador y escalamiento a MAST.">
+                            <field name="sgi_nc_days_supplier_response"/>
+                        </setting>
+                        <setting string="Días para verificar la eficacia de una NC"
+                                 help="Al terminar la última acción correctiva se agenda la verificación de eficacia al Jefe MAST a estos días. Sin eficacia registrada la NC no cierra.">
+                            <field name="sgi_nc_effectiveness_days"/>
+                        </setting>
                         <setting string="Ventana de reincidencia de NC (meses)"
                                  help="Una NC reincide si en estos meses hubo otra del mismo proceso (misma cláusula pesa doble). Al cerrarla se exige acción correctiva.">
                             <field name="sgi_nc_recurrence_months"/>

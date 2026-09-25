@@ -55,6 +55,15 @@ class SgiProcess(models.Model):
         help="Documentos vigentes que este proceso reemplaza. Al poner en "
              "vigor el procedimiento del proceso se ofrece marcarlos "
              "obsoletos.")
+    # PR-1 (53.1.0): quién sustituyó a este proceso al archivarlo por «replaces».
+    # Una carga futura mueve al sucesor lo que se quede colgado aquí.
+    replaced_by_id = fields.Many2one(
+        'sgi.process', string="Sustituido por", copy=False, index=True,
+        domain="[('id', '!=', id), ('active', '=', True)]",
+        help="Proceso que tomó el lugar de este al archivarlo. La carga lo "
+             "llena con «replaces»; en un proceso archivado sin sucesor se "
+             "captura a mano y la siguiente carga mueve al sucesor lo que "
+             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).")
     owner_valid = fields.Boolean(
         string="Dueño válido", compute='_compute_owner_valid',
         help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
@@ -259,6 +268,23 @@ class SgiProcess(models.Model):
             process.document_count = doc_counts.get(process.id, 0)
             process.indicator_count = ind_counts.get(process.id, 0)
             process.risk_count = risk_counts.get(process.id, 0)
+
+    def action_print_risk_matrix(self):
+        """DIR-2 (52.0.0): matriz de riesgos del proceso en PDF."""
+        return self.env.ref('quimibond_sgi.action_report_risk_matrix').report_action(self)
+
+    def action_print_master_list(self):
+        """DOC-3 (51.0.0): lista maestra de documentos del proceso en PDF."""
+        return self.env.ref('quimibond_sgi.action_report_master_list').report_action(self)
+
+    def _sgi_master_list_documents(self):
+        """Documentos controlados del proceso para la lista maestra: vigentes
+        y en piloto, por tipo y clave."""
+        self.ensure_one()
+        return self.env['documents.document'].sudo().search(
+            [('sgi_is_controlled', '=', True), ('sgi_process_id', '=', self.id),
+             ('sgi_state', 'in', ('vigente', 'piloto'))],
+            order='sgi_doc_type, sgi_code, name')
 
     def action_open_documents(self):
         self.ensure_one()

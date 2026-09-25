@@ -28,6 +28,10 @@
         <field name="arch" type="xml">
             <form string="Riesgo / Oportunidad">
                 <header>
+                    <button name="action_evaluate" type="object"
+                            string="Registrar evaluación" icon="fa-check-square-o"
+                            invisible="state == 'cerrado'"
+                            help="Sella la evaluación de hoy (probabilidad × impacto) y programa la siguiente en enero o julio."/>
                     <button name="action_set_en_tratamiento" type="object"
                             string="Iniciar tratamiento" class="btn-primary"
                             invisible="state != 'identificado'"/>
@@ -108,6 +112,13 @@
                     </div>
                     <group string="Evaluación" invisible="instrument == 'foda'">
                         <group string="Inicial">
+                            <field name="last_eval_date"/>
+                            <field name="semaphore" widget="badge"
+                                   decoration-success="semaphore == 'verde'"
+                                   decoration-warning="semaphore == 'amarillo'"
+                                   decoration-danger="semaphore == 'rojo'"/>
+                            <field name="high_without_action" invisible="not high_without_action"
+                                   decoration-danger="high_without_action"/>
                             <field name="eval_probability"/>
                             <field name="eval_impact"/>
                             <field name="score"/>

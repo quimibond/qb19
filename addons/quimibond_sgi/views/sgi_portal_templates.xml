@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- NC-6: página del portal donde el proveedor ve la NC y contesta. -->
+    <template id="portal_nc_page" name="NC a proveedor (portal)">
+        <t t-call="portal.portal_layout">
+            <t t-set="no_breadcrumbs" t-value="True"/>
+            <div class="container my-4">
+                <h2>No conformidad <span t-out="nc.sgi_folio"/></h2>
+                <p class="text-muted"><span t-out="nc.title or nc.name"/></p>
+                <div t-if="saved" class="alert alert-success" role="status">Gracias: su respuesta quedó registrada.</div>
+                <div t-if="error" class="alert alert-danger" role="alert"><t t-out="error"/></div>
+                <table class="table table-sm">
+                    <tr><th>Proveedor</th><td><span t-out="nc.sgi_supplier_id.display_name or nc.partner_id.display_name"/></td></tr>
+                    <tr><th>Producto</th><td><span t-out="nc.product_id.display_name or nc.product_tmpl_id.display_name or '—'"/></td></tr>
+                    <tr><th>Lote(s)</th><td><span t-out="', '.join(nc.lot_ids.mapped('name')) or '—'"/></td></tr>
+                    <tr><th>Desviación detectada</th><td><span t-out="nc.sgi_deviation or nc.description or '—'"/></td></tr>
+                    <tr><th>Respuesta antes del</th><td><span t-out="nc.sgi_supplier_due_date"/></td></tr>
+                </table>
+                <t t-if="nc.sgi_supplier_state == 'contestada'">
+                    <h4>Su respuesta</h4>
+                    <p><b>Causa:</b> <span t-out="nc.sgi_supplier_cause"/></p>
+                    <p><b>Acción:</b> <span t-out="nc.sgi_supplier_action"/></p>
+                </t>
+                <form t-else="" method="post" t-attf-action="/my/nc/#{nc.id}/answer">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="access_token" t-att-value="access_token"/>
+                    <div class="mb-3">
+                        <label class="form-label" for="cause">Causa del problema</label>
+                        <textarea class="form-control" id="cause" name="cause" rows="4" required="required"/>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="action">Acción correctiva y fecha</label>
+                        <textarea class="form-control" id="action" name="action" rows="4" required="required"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enviar respuesta</button>
+                </form>
+            </div>
+        </t>
+    </template>
+</odoo>

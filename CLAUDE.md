@@ -96,6 +96,17 @@ Por eso la regla practica no es "el bump garantiza el update", sino: **sube la v
 
 El CI lo revisa (`tools/check_addons.py`): cambiar archivos sin bump es **advertencia**; agregar un **modelo nuevo** sin bump es error, porque ahi si hay evidencia directa de tablas sin crear.
 
+## Lo que el CI no ve y Odoo.sh sí (reglas para no romper el build)
+
+El SGI depende de Enterprise, asi que el CI no lo instala; lo que Odoo valida al cargar el modulo solo se veia en el build de Odoo.sh. Tres builds de `main` se rompieron el 2026-09-25 por eso. Ahora `tools/check_odoo_views.py` (corre en CI y en local: `python3 tools/check_odoo_views.py`) reproduce dos de esas validaciones:
+
+- **Vistas `search`, `graph`, `pivot`, `calendar`, `activity`** se validan contra los RNG oficiales de Odoo 19 (`tools/odoo_rng/`, copia de `odoo/addons/base/rng/`). En un `<search>`, el `<group>` va **sin atributos** (ni `expand` ni `string`). Copia la forma de una vista que ya exista en el modulo.
+- **Imports entre modulos de `models/`**: un `from .otro import x` a nivel de modulo carga `otro` en ese momento; si `otro` hereda un modelo que se define despues en `models/__init__.py`, el registro revienta (`Model 'x' does not exist in registry`). Import local dentro de la funcion, o reordenar `__init__`.
+
+- **Registro de tests**: Odoo solo corre los `tests/test_*.py` que `tests/__init__.py` importa. Ocho archivos del SGI (PR 1 a PR 7) pasaron semanas sin correr por eso. Cada test nuevo va en `tests/__init__.py`; el checker lo exige.
+
+Lo que sigue sin red local: vistas `form`/`list`/`kanban` (Odoo 19 las valida en Python), campos inexistentes en vistas heredadas y xmlids de otros modulos. Ahi: copiar patrones ya usados en el modulo y verificar el `update.log` del build.
+
 ## Odoo.sh config
 
 ```

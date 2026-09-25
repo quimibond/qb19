@@ -97,6 +97,7 @@ access_sgi_msa_study_user,sgi.msa.study.user,model_sgi_msa_study,group_sgi_user,
 access_sgi_msa_study_quality,sgi.msa.study.quality,model_sgi_msa_study,quality.group_quality_user,1,1,1,0
 access_sgi_msa_study_manager,sgi.msa.study.manager,model_sgi_msa_study,group_sgi_manager,1,1,1,1
 access_sgi_diagnostic_manager,sgi.diagnostic.manager,model_sgi_diagnostic,group_sgi_manager,1,1,1,1
+access_sgi_diagnostic_line_manager,sgi.diagnostic.line.manager,model_sgi_diagnostic_line,group_sgi_manager,1,1,1,1
 access_sgi_legal_requirement_user,sgi.legal.requirement.user,model_sgi_legal_requirement,group_sgi_user,1,1,0,0
 access_sgi_legal_requirement_manager,sgi.legal.requirement.manager,model_sgi_legal_requirement,group_sgi_manager,1,1,1,1
 access_sgi_interested_party_user,sgi.interested.party.user,model_sgi_interested_party,group_sgi_user,1,0,0,0
@@ -135,3 +136,91 @@ access_sgi_indicator_step_user,sgi.indicator.step.user,model_sgi_indicator_step,
 access_sgi_indicator_step_manager,sgi.indicator.step.manager,model_sgi_indicator_step,group_sgi_manager,1,1,1,1
 access_sgi_my_procedure_user,sgi.my.procedure.user,model_sgi_my_procedure,group_sgi_user,1,1,1,1
 access_sgi_my_procedure_check_manager,sgi.my.procedure.check.manager,model_sgi_my_procedure_check,group_sgi_manager,1,1,1,1
+access_sgi_area_auditor,sgi.area.auditor,model_sgi_area,group_sgi_auditor,1,0,0,0
+access_sgi_norm_auditor,sgi.norm.auditor,model_sgi_norm,group_sgi_auditor,1,0,0,0
+access_sgi_norm_clause_auditor,sgi.norm.clause.auditor,model_sgi_norm_clause,group_sgi_auditor,1,0,0,0
+access_sgi_process_auditor,sgi.process.auditor,model_sgi_process,group_sgi_auditor,1,0,0,0
+access_sgi_process_flow_auditor,sgi.process.flow.auditor,model_sgi_process_flow,group_sgi_auditor,1,0,0,0
+access_sgi_process_responsibility_auditor,sgi.process.responsibility.auditor,model_sgi_process_responsibility,group_sgi_auditor,1,0,0,0
+access_sgi_process_activity_auditor,sgi.process.activity.auditor,model_sgi_process_activity,group_sgi_auditor,1,0,0,0
+access_sgi_activity_link_auditor,sgi.activity.link.auditor,model_sgi_activity_link,group_sgi_auditor,1,0,0,0
+access_sgi_document_ack_auditor,sgi.document.ack.auditor,model_sgi_document_ack,group_sgi_auditor,1,0,0,0
+access_sgi_action_line_auditor,sgi.action.line.auditor,model_sgi_action_line,group_sgi_auditor,1,0,0,0
+access_sgi_objective_auditor,sgi.objective.auditor,model_sgi_objective,group_sgi_auditor,1,0,0,0
+access_sgi_policy_auditor,sgi.policy.auditor,model_sgi_policy,group_sgi_auditor,1,0,0,0
+access_sgi_indicator_auditor,sgi.indicator.auditor,model_sgi_indicator,group_sgi_auditor,1,0,0,0
+access_sgi_indicator_measure_auditor,sgi.indicator.measure.auditor,model_sgi_indicator_measure,group_sgi_auditor,1,0,0,0
+access_sgi_risk_category_auditor,sgi.risk.category.auditor,model_sgi_risk_category,group_sgi_auditor,1,0,0,0
+access_sgi_risk_auditor,sgi.risk.auditor,model_sgi_risk,group_sgi_auditor,1,0,0,0
+access_sgi_supplier_eval_auditor,sgi.supplier.eval.auditor,model_sgi_supplier_eval,group_sgi_auditor,1,0,0,0
+access_sgi_management_review_auditor,sgi.management.review.auditor,model_sgi_management_review,group_sgi_auditor,1,0,0,0
+access_sgi_management_review_agreement_auditor,sgi.management.review.agreement.auditor,model_sgi_management_review_agreement,group_sgi_auditor,1,0,0,0
+access_sgi_control_plan_auditor,sgi.control.plan.auditor,model_sgi_control_plan,group_sgi_auditor,1,0,0,0
+access_sgi_calibration_auditor,sgi.calibration.auditor,model_sgi_calibration,group_sgi_auditor,1,0,0,0
+access_sgi_fmea_auditor,sgi.fmea.auditor,model_sgi_fmea,group_sgi_auditor,1,0,0,0
+access_sgi_fmea_line_auditor,sgi.fmea.line.auditor,model_sgi_fmea_line,group_sgi_auditor,1,0,0,0
+access_sgi_ppap_auditor,sgi.ppap.auditor,model_sgi_ppap,group_sgi_auditor,1,0,0,0
+access_sgi_ppap_element_auditor,sgi.ppap.element.auditor,model_sgi_ppap_element,group_sgi_auditor,1,0,0,0
+access_sgi_ppap_element_template_auditor,sgi.ppap.element.template.auditor,model_sgi_ppap_element_template,group_sgi_auditor,1,0,0,0
+access_sgi_incident_auditor,sgi.incident.auditor,model_sgi_incident,group_sgi_auditor,1,0,0,0
+access_sgi_competence_gap_auditor,sgi.competence.gap.auditor,model_sgi_competence_gap,group_sgi_auditor,1,0,0,0
+access_sgi_format_map_auditor,sgi.format.map.auditor,model_sgi_format_map,group_sgi_auditor,1,0,0,0
+access_sgi_sales_budget_auditor,sgi.sales.budget.auditor,model_sgi_sales_budget,group_sgi_auditor,1,0,0,0
+access_sgi_sales_budget_line_auditor,sgi.sales.budget.line.auditor,model_sgi_sales_budget_line,group_sgi_auditor,1,0,0,0
+access_sgi_alert_source_auditor,sgi.alert.source.auditor,model_sgi_alert_source,group_sgi_auditor,1,0,0,0
+access_sgi_emergency_plan_auditor,sgi.emergency.plan.auditor,model_sgi_emergency_plan,group_sgi_auditor,1,0,0,0
+access_sgi_emergency_drill_auditor,sgi.emergency.drill.auditor,model_sgi_emergency_drill,group_sgi_auditor,1,0,0,0
+access_sgi_msa_study_auditor,sgi.msa.study.auditor,model_sgi_msa_study,group_sgi_auditor,1,0,0,0
+access_sgi_legal_requirement_auditor,sgi.legal.requirement.auditor,model_sgi_legal_requirement,group_sgi_auditor,1,0,0,0
+access_sgi_interested_party_auditor,sgi.interested.party.auditor,model_sgi_interested_party,group_sgi_auditor,1,0,0,0
+access_sgi_activity_role_auditor,sgi.activity.role.auditor,model_sgi_activity_role,group_sgi_auditor,1,0,0,0
+access_sgi_document_type_auditor,sgi.document.type.auditor,model_sgi_document_type,group_sgi_auditor,1,0,0,0
+access_sgi_job_family_auditor,sgi.job.family.auditor,model_sgi_job_family,group_sgi_auditor,1,0,0,0
+access_sgi_activity_exec_stat_auditor,sgi.activity.exec.stat.auditor,model_sgi_activity_exec_stat,group_sgi_auditor,1,0,0,0
+access_sgi_deliverable_auditor,sgi.deliverable.auditor,model_sgi_deliverable,group_sgi_auditor,1,0,0,0
+access_sgi_process_stage_auditor,sgi.process.stage.auditor,model_sgi_process_stage,group_sgi_auditor,1,0,0,0
+access_sgi_activity_input_auditor,sgi.activity.input.auditor,model_sgi_activity_input,group_sgi_auditor,1,0,0,0
+access_sgi_activity_spec_gap_auditor,sgi.activity.spec.gap.auditor,model_sgi_activity_spec_gap,group_sgi_auditor,1,0,0,0
+access_sgi_activity_week_stat_auditor,sgi.activity.week.stat.auditor,model_sgi_activity_week_stat,group_sgi_auditor,1,0,0,0
+access_sgi_coa_inbox_auditor,sgi.coa.inbox.auditor,model_sgi_coa_inbox,group_sgi_auditor,1,0,0,0
+access_sgi_indicator_term_auditor,sgi.indicator.term.auditor,model_sgi_indicator_term,group_sgi_auditor,1,0,0,0
+access_sgi_indicator_step_auditor,sgi.indicator.step.auditor,model_sgi_indicator_step,group_sgi_auditor,1,0,0,0
+access_quality_alert_sgi_auditor,quality.alert sgi auditor,quality.model_quality_alert,group_sgi_auditor,1,0,0,0
+access_quality_check_sgi_auditor,quality.check sgi auditor,quality.model_quality_check,group_sgi_auditor,1,0,0,0
+access_quality_point_sgi_auditor,quality.point sgi auditor,quality.model_quality_point,group_sgi_auditor,1,0,0,0
+access_documents_document_sgi_auditor,documents.document sgi auditor,documents.model_documents_document,group_sgi_auditor,1,0,0,0
+access_helpdesk_ticket_sgi_auditor,helpdesk.ticket sgi auditor,helpdesk.model_helpdesk_ticket,group_sgi_auditor,1,0,0,0
+access_helpdesk_team_sgi_auditor,helpdesk.team sgi auditor,helpdesk.model_helpdesk_team,group_sgi_auditor,1,0,0,0
+access_approval_request_sgi_auditor,approval.request sgi auditor,approvals.model_approval_request,group_sgi_auditor,1,0,0,0
+access_project_task_sgi_auditor,project.task sgi auditor,project.model_project_task,group_sgi_auditor,1,0,0,0
+access_project_project_sgi_auditor,project.project sgi auditor,project.model_project_project,group_sgi_auditor,1,0,0,0
+access_maintenance_request_sgi_auditor,maintenance.request sgi auditor,maintenance.model_maintenance_request,group_sgi_auditor,1,0,0,0
+access_maintenance_equipment_sgi_auditor,maintenance.equipment sgi auditor,maintenance.model_maintenance_equipment,group_sgi_auditor,1,0,0,0
+access_purchase_order_sgi_auditor,purchase.order sgi auditor,purchase.model_purchase_order,group_sgi_auditor,1,0,0,0
+access_purchase_order_line_sgi_auditor,purchase.order.line sgi auditor,purchase.model_purchase_order_line,group_sgi_auditor,1,0,0,0
+access_stock_picking_sgi_auditor,stock.picking sgi auditor,stock.model_stock_picking,group_sgi_auditor,1,0,0,0
+access_stock_move_sgi_auditor,stock.move sgi auditor,stock.model_stock_move,group_sgi_auditor,1,0,0,0
+access_stock_lot_sgi_auditor,stock.lot sgi auditor,stock.model_stock_lot,group_sgi_auditor,1,0,0,0
+access_mrp_production_sgi_auditor,mrp.production sgi auditor,mrp.model_mrp_production,group_sgi_auditor,1,0,0,0
+access_mrp_workorder_sgi_auditor,mrp.workorder sgi auditor,mrp.model_mrp_workorder,group_sgi_auditor,1,0,0,0
+access_sale_order_sgi_auditor,sale.order sgi auditor,sale.model_sale_order,group_sgi_auditor,1,0,0,0
+access_sale_order_line_sgi_auditor,sale.order.line sgi auditor,sale.model_sale_order_line,group_sgi_auditor,1,0,0,0
+access_survey_user_input_sgi_auditor,survey.user_input sgi auditor,survey.model_survey_user_input,group_sgi_auditor,1,0,0,0
+access_sign_request_sgi_auditor,sign.request sgi auditor,sign.model_sign_request,group_sgi_auditor,1,0,0,0
+access_sgi_epp_delivery_user,sgi.epp.delivery.user,model_sgi_epp_delivery,group_sgi_user,1,1,1,0
+access_sgi_epp_delivery_hr,sgi.epp.delivery.hr,model_sgi_epp_delivery,hr.group_hr_user,1,1,1,0
+access_sgi_epp_delivery_manager,sgi.epp.delivery.manager,model_sgi_epp_delivery,group_sgi_manager,1,1,1,1
+access_sgi_epp_delivery_auditor,sgi.epp.delivery.auditor,model_sgi_epp_delivery,group_sgi_auditor,1,0,0,0
+access_sgi_nc_cancel_user,sgi.nc.cancel.user,model_sgi_nc_cancel,group_sgi_user,1,1,1,1
+access_sgi_audit_checklist_line_user,sgi.audit.checklist.line.user,model_sgi_audit_checklist_line,group_sgi_user,1,0,0,0
+access_sgi_audit_checklist_line_auditor,sgi.audit.checklist.line.auditor,model_sgi_audit_checklist_line,group_sgi_auditor,1,1,1,1
+access_sgi_audit_checklist_line_manager,sgi.audit.checklist.line.manager,model_sgi_audit_checklist_line,group_sgi_manager,1,1,1,1
+access_sgi_legal_evaluation_user,sgi.legal.evaluation.user,model_sgi_legal_evaluation,group_sgi_user,1,1,1,0
+access_sgi_legal_evaluation_auditor,sgi.legal.evaluation.auditor,model_sgi_legal_evaluation,group_sgi_auditor,1,0,0,0
+access_sgi_legal_evaluation_manager,sgi.legal.evaluation.manager,model_sgi_legal_evaluation,group_sgi_manager,1,1,1,1
+access_sgi_legal_evaluate_user,sgi.legal.evaluate.user,model_sgi_legal_evaluate,group_sgi_user,1,1,1,1
+access_sgi_direction_board_manager,sgi.direction.board.manager,model_sgi_direction_board,group_sgi_manager,1,1,1,1
+access_sgi_direction_board_director,sgi.direction.board.director,model_sgi_direction_board,group_sgi_director,1,1,1,1
+access_sgi_direction_board_auditor,sgi.direction.board.auditor,model_sgi_direction_board,group_sgi_auditor,1,1,1,1
+access_sgi_instruction_publish_manager,sgi.instruction.publish.manager,model_sgi_instruction_publish,group_sgi_manager,1,1,1,1
+access_sgi_sign_request_wizard_user,sgi.sign.request.wizard.user,model_sgi_sign_request_wizard,base.group_user,1,1,1,1

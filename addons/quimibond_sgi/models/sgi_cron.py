@@ -140,6 +140,13 @@ class SgiCron(models.AbstractModel):
         ])
 
         def _process(alert):
+            # NC-1 (49.0.0): plazos por etapa (contención / causa raíz / plan)
+            # con aviso el día que vencen y escalamiento al dueño del proceso
+            # y a MAST. Las NC viejas sin plazos los reciben aquí.
+            if not alert.sgi_due_plan:
+                alert._sgi_set_deadlines()
+            alert._sgi_deadline_escalation(today)
+            alert._sgi_supplier_escalation(today)  # NC-6
             days = external_days if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
             deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')
@@ -651,10 +658,24 @@ class SgiCron(models.AbstractModel):
             self._sgi_schedule(
                 risk,
                 "Revisar riesgo %s" % (risk.folio or risk.name),
-                "La revisión del riesgo/oportunidad venció el %s." % risk.next_review_date,
+                "Reevaluación periódica (enero / julio): la revisión del riesgo/oportunidad "
+                "venció el %s. Actualiza probabilidad e impacto y pulsa «Registrar "
+                "evaluación»." % risk.next_review_date,
                 user_id)
 
         self._sgi_for_each(risks, _process, "revisión de riesgos")
+        # DIR-2: riesgo alto sin acción abierta → actividad al dueño del proceso.
+        flagged = self.env['sgi.risk'].search([('high_without_action', '=', True)])
+
+        def _flagged(risk):
+            owner = risk.process_id.owner_id.user_id if risk.sgi_process_active else False
+            self._sgi_schedule(
+                risk, "Riesgo alto sin acción: %s" % (risk.folio or risk.name),
+                "El riesgo está en atención alta o inmediata y no tiene ninguna acción de "
+                "tratamiento abierta. Registra una acción con responsable y compromiso.",
+                owner.id if owner else manager_id)
+
+        self._sgi_for_each(flagged, _flagged, "riesgos altos sin acción")
         return True
 
     # ------------------------------------------------------------------
@@ -1030,6 +1051,22 @@ class SgiCron(models.AbstractModel):
                 req.responsible_id.id or manager_id)
 
         self._sgi_for_each(overdue, _overdue, "evaluaciones legales vencidas")
+
+        # DIR-1 (51.0.0): aviso 60 días antes de la próxima evaluación, al
+        # responsable del requisito (aparece en sus actividades y en Mis
+        # pendientes). Idempotente por resumen.
+        upcoming = Requirement.search([
+            ('next_eval_date', '>', today), ('next_eval_date', '<=', soon)])
+
+        def _upcoming(req):
+            self._sgi_schedule(
+                req,
+                "Evaluación de cumplimiento vence el %s: %s" % (req.next_eval_date, req.display_name),
+                "Evalúe el cumplimiento del requisito antes del %s y registre resultado, "
+                "evidencia y siguiente fecha («Registrar evaluación»)." % req.next_eval_date,
+                req.responsible_id.id or manager_id)
+
+        self._sgi_for_each(upcoming, _upcoming, "evaluaciones legales próximas")
 
         expiring = Requirement.search([
             ('expiry_date', '!=', False), ('expiry_date', '<=', soon),

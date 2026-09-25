@@ -204,6 +204,10 @@
                             confirm="Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?"/>
                     <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_print_master_list" type="object" string="Lista maestra (PDF)"
+                            icon="fa-print"/>
+                    <button name="action_print_risk_matrix" type="object" string="Matriz de riesgos (PDF)"
+                            icon="fa-print"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -236,6 +240,7 @@
                             <field name="process_type"/>
                             <field name="owner_id" string="Dueño" widget="many2one_avatar_employee"/>
                             <field name="parent_id"/>
+                            <field name="replaced_by_id" invisible="active" readonly="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
@@ -303,10 +308,17 @@
                             </field>
                             <separator string="Riesgos y oportunidades"/>
                             <field name="risk_ids" readonly="1">
-                                <list>
+                                <list decoration-danger="high_without_action">
                                     <field name="instrument"/>
                                     <field name="name"/>
+                                    <field name="score" optional="show"/>
+                                    <field name="semaphore" widget="badge"
+                                           decoration-success="semaphore == 'verde'"
+                                           decoration-warning="semaphore == 'amarillo'"
+                                           decoration-danger="semaphore == 'rojo'"/>
+                                    <field name="high_without_action" optional="show"/>
                                     <field name="state" widget="badge"/>
+                                    <field name="last_eval_date" optional="show"/>
                                     <field name="next_review_date" optional="show"/>
                                 </list>
                             </field>

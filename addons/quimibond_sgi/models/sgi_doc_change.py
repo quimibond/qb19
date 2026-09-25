@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
@@ -45,6 +47,10 @@ class ApprovalRequest(models.Model):
     sgi_changes = fields.Text(string="Descripción de cambios")
     sgi_affected_process_ids = fields.Many2many('sgi.process', string="Procesos afectados")
     sgi_applied = fields.Boolean(string="Cambio aplicado al documento", copy=False)
+    # DOC-1 (51.0.0): si el cambio traía el archivo nuevo, la revisión nueva
+    # es un documento nuevo (la anterior queda obsoleta) y se liga aquí.
+    sgi_new_document_id = fields.Many2one(
+        'documents.document', string="Revisión publicada", readonly=True, copy=False)
 
     @api.onchange('sgi_document_id', 'sgi_change_kind')
     def _onchange_sgi_suggest_revision(self):
@@ -82,8 +88,87 @@ class ApprovalRequest(models.Model):
                     raise ValidationError(
                         "El inicio del piloto no puede ser anterior a 15 días hábiles.")
 
+    _SGI_REVISION_FIELDS = (
+        'sgi_doc_type_id', 'sgi_doc_type', 'sgi_code', 'sgi_owner_id', 'sgi_job_ids',
+        'sgi_process_id', 'sgi_area_id', 'sgi_odoo_menu_id', 'sgi_retention_years',
+        'folder_id', 'company_id',
+    )
+
+    def _sgi_change_attachment(self):
+        """El archivo nuevo adjunto a la solicitud (el más reciente), si lo hay."""
+        self.ensure_one()
+        return self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', 'approval.request'), ('res_id', '=', self.id)],
+            order='create_date desc, id desc', limit=1)
+
+    def _sgi_publish_revision(self, doc, vals, attachment):
+        """DOC-1: publica la revisión nueva como documento nuevo con el archivo
+        adjunto; la anterior queda obsoleta (lo hace create() por la clave)."""
+        Doc = self.env['documents.document'].sudo()
+        new_vals = {}
+        for field in self._SGI_REVISION_FIELDS:
+            if field not in doc._fields:
+                continue
+            value = doc[field]
+            if doc._fields[field].type in ('many2one',):
+                new_vals[field] = value.id
+            elif doc._fields[field].type in ('many2many', 'one2many'):
+                new_vals[field] = [(6, 0, value.ids)]
+            else:
+                new_vals[field] = value
+        new_vals.update(vals)
+        new_vals.update({
+            'name': attachment.name or doc.name,
+            'type': 'binary',
+            'datas': attachment.datas,
+            'mimetype': attachment.mimetype,
+            'sgi_is_controlled': True,
+            'sgi_parent_document_id': doc.sgi_parent_document_id.id,
+            'sgi_content_hash': False if 'sgi_content_hash' in doc._fields else None,
+        })
+        new_vals = {k: v for k, v in new_vals.items() if v is not None}
+        new_doc = Doc.create(new_vals)
+        if doc.sgi_state != 'obsoleto':
+            doc.write({'sgi_state': 'obsoleto'})
+        doc.message_post(body=Markup(
+            "Sustituido por la revisión %02d (%s) al aprobarse el cambio documental %s.") % (
+            new_doc.sgi_revision or 0, new_doc.name, self.name or ''))
+        return new_doc
+
+    def _sgi_reset_acks(self, doc):
+        """Revisión nueva en el mismo registro: los acuses ya firmados vuelven a
+        pendiente (hay que releer) y se generan los que falten."""
+        acks = doc.sgi_ack_ids.sudo()
+        signed = acks.filtered(lambda a: a.state != 'pendiente')
+        if signed:
+            signed.write({'state': 'pendiente', 'ack_date': False})
+        doc.action_generate_acks()
+
+    def _sgi_notify_process(self, doc):
+        """Avisa a los puestos del proceso: si el documento no tiene puestos,
+        toma los que ejecutan o aprueban actividades de su proceso; y agenda al
+        dueño del proceso la difusión."""
+        if not doc.sgi_job_ids and doc.sgi_process_id:
+            jobs = doc.sgi_process_id.procedure_activity_ids.filtered('active').responsible_job_ids
+            if jobs:
+                doc.write({'sgi_job_ids': [(6, 0, jobs.ids)]})
+                doc.message_post(body="Puestos que aplican tomados del proceso %s: %s." % (
+                    doc.sgi_process_id.code or doc.sgi_process_id.name,
+                    ", ".join(jobs.mapped('name'))))
+        owner = doc.sgi_process_id.owner_id.user_id
+        if owner:
+            self.env['sgi.cron']._sgi_schedule(
+                doc, "Revisión %s publicada: difundir en el proceso" % (doc.sgi_revision_label,),
+                "Se aprobó el cambio documental %s. Los acuses de lectura de los puestos "
+                "que aplican quedaron pendientes." % (self.name or ''), owner.id)
+
     def _sgi_apply_doc_change(self):
-        """Aplica el efecto del cambio aprobado sobre el documento controlado."""
+        """Aplica el efecto del cambio aprobado sobre el documento controlado.
+
+        DOC-1 (51.0.0), en un paso: publica la revisión nueva (documento nuevo
+        si la solicitud trae el archivo; en el mismo registro si no), deja
+        obsoleta la anterior, avisa a los puestos del proceso y deja pendiente
+        el acuse de quienes deben leerlo."""
         self.ensure_one()
         doc = self.sgi_document_id
         today = fields.Date.context_today(self)
@@ -100,12 +185,23 @@ class ApprovalRequest(models.Model):
                 vals['sgi_pilot_end_date'] = self.sgi_pilot_end
             else:
                 vals['sgi_state'] = 'vigente'
-            doc.write(vals)
-            doc.message_post(
+            attachment = self._sgi_change_attachment()
+            if attachment and vals.get('sgi_revision', doc.sgi_revision) != doc.sgi_revision:
+                new_doc = self._sgi_publish_revision(doc, vals, attachment)
+                self.sgi_new_document_id = new_doc.id
+                target = new_doc
+            else:
+                doc.write(vals)
+                target = doc
+            target.message_post(
                 body="Cambio documental aprobado (%s): revisión %02d, estado %s." % (
-                    self.name, vals.get('sgi_revision', doc.sgi_revision) or 0,
+                    self.name, vals.get('sgi_revision', target.sgi_revision) or 0,
                     vals['sgi_state']))
-            doc.action_generate_acks()
+            self._sgi_notify_process(target)
+            if target == doc:
+                self._sgi_reset_acks(target)
+            else:
+                target.action_generate_acks()
         elif self.sgi_change_kind == 'baja' and doc:
             doc.write({'sgi_state': 'obsoleto', 'sgi_doc_change_id': self.id})
             doc.message_post(body="Documento dado de baja por solicitud aprobada %s." % self.name)
