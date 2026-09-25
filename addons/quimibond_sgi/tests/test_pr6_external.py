@@ -145,6 +145,7 @@ class TestPr6External(TransactionCase):
         article = self.env['knowledge.article'].create({
             'name': 'Cómo enhebrar la urdidora', 'body': '<p>Paso 1: apagar. Paso 2: enhebrar.</p>'})
         job = self.env['hr.job'].create({'name': 'URDIDOR PR6'})
+        self.env['hr.employee'].create({'name': 'Urdidor PR6', 'job_id': job.id})
         activity = self.env['sgi.process.activity'].create({
             'process_id': self.process.id, 'name': 'Enhebrar urdidora',
             'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job.id})],

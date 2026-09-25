@@ -18,6 +18,7 @@ Uso: `python3 tools/check_odoo_views.py [ruta/a/addons ...]` (sin argumentos
 revisa `addons/` y los módulos de la raíz). Sale con 1 si hay errores.
 """
 import glob
+import ast
 import os
 import re
 import sys
@@ -152,6 +153,64 @@ def check_test_imports(module_dir):
     return errors
 
 
+def _manifest_data_files(module_dir):
+    """Archivos de datos del manifest, en el orden en que Odoo los carga."""
+    path = os.path.join(module_dir, '__manifest__.py')
+    if not os.path.exists(path):
+        return []
+    try:
+        manifest = ast.literal_eval(open(path, encoding='utf-8').read())
+    except (SyntaxError, ValueError):
+        return []
+    return [f for f in manifest.get('data') or [] if f.endswith('.xml')]
+
+
+def check_view_inherit_order(module_dir):
+    """Una vista heredada se valida contra el padre TAL COMO ESTÁ en ese
+    momento de la carga. Si el archivo que define (o actualiza) al padre va
+    después en el manifest, en una base que salta varias versiones el padre
+    todavía es el viejo y el xpath no encuentra nada (2026-09-25: el build de
+    producción reventó con sgi_pr6_views.xml contra sgi_my_procedure_views.xml).
+    Regla: el archivo del padre va antes que el del hijo."""
+    errors = []
+    files = _manifest_data_files(module_dir)
+    module = os.path.basename(module_dir)
+    defined = {}
+    inherits = []
+    for index, rel in enumerate(files):
+        path = os.path.join(module_dir, rel)
+        if not os.path.exists(path):
+            continue
+        try:
+            tree = etree.parse(path)
+        except etree.XMLSyntaxError:
+            continue  # ya lo reporta check_views
+        for record in tree.iter('record'):
+            if record.get('model') != 'ir.ui.view' or not record.get('id'):
+                continue
+            xmlid = record.get('id')
+            if '.' not in xmlid:
+                xmlid = '%s.%s' % (module, xmlid)
+            defined.setdefault(xmlid, index)
+            for field in record.findall('field'):
+                if field.get('name') == 'inherit_id' and field.get('ref'):
+                    parent = field.get('ref')
+                    if '.' not in parent:
+                        parent = '%s.%s' % (module, parent)
+                    inherits.append((index, rel, record.get('id'), parent))
+    for index, rel, child, parent in inherits:
+        if not parent.startswith(module + '.'):
+            continue  # vista de otro módulo: siempre cargada antes
+        parent_index = defined.get(parent)
+        if parent_index is None or parent_index > index:
+            errors.append(
+                "%s: la vista %s hereda de %s, que se define en un archivo que el manifest carga "
+                "después (%s). Mueve el archivo del padre antes que el del hijo." % (
+                    os.path.relpath(os.path.join(module_dir, rel), ROOT), child, parent,
+                    files[parent_index] if parent_index is not None else 'no encontrado'))
+    return errors
+
+
 def main(argv):
     paths = argv[1:] or [os.path.join(ROOT, 'addons'), ROOT]
     validators = _validators()
@@ -166,9 +225,10 @@ def main(argv):
         errors += check_views(module_dir, validators)
         errors += check_model_imports(module_dir)
         errors += check_test_imports(module_dir)
+        errors += check_view_inherit_order(module_dir)
     for err in errors:
         print("ERROR:", err)
-    print("%d error(es) en vistas RNG, imports de modelos y registro de tests." % len(errors))
+    print("%d error(es) en vistas RNG, imports de modelos, registro de tests y orden de herencia de vistas." % len(errors))
     return 1 if errors else 0
 
 
