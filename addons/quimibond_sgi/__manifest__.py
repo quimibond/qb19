@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.53.1.3',
+    'version': '19.0.53.1.4',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -111,6 +111,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_objective_views.xml',
         'views/sgi_indicator_views.xml',
         'views/sgi_indicator_formula_views.xml',
+        'views/sgi_management_review_views.xml',
         'views/sgi_indicator_plan_views.xml',
         'views/sgi_indicator_trajectory_views.xml',
         'views/sgi_audit_views.xml',
@@ -119,7 +120,6 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_context_views.xml',
         'views/sgi_supplier_eval_views.xml',
         'views/sgi_res_partner_views.xml',
-        'views/sgi_management_review_views.xml',
         'views/sgi_control_plan_views.xml',
         'views/sgi_calibration_views.xml',
         'views/sgi_emergency_views.xml',
@@ -133,7 +133,6 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_epp_views.xml',
         'views/sgi_my_procedure_tab_views.xml',
         'views/sgi_direction_board_views.xml',
-        'views/sgi_pr6_views.xml',
         'views/sgi_portal_templates.xml',
         'views/sgi_map_hooks_views.xml',
         'views/sgi_format_map_views.xml',
@@ -147,6 +146,9 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_my_procedure_views.xml',
         'views/sgi_structure_views.xml',
         'views/sgi_coa_views.xml',
+        # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el
+        # padre debe cargarse antes; el build de producción reventó por esto).
+        'views/sgi_pr6_views.xml',
         # reports
         'report/report_nc.xml',
         'report/report_8d.xml',
