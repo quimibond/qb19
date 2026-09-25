@@ -317,6 +317,8 @@ class SgiMyProcedure(models.TransientModel):
     has_obligations = fields.Boolean(compute='_compute_lists')
     pending_legal_ids = fields.Many2many(
         'sgi.legal.requirement', string="Requisitos legales por evaluar", compute='_compute_lists')
+    pending_doc_review_ids = fields.Many2many(
+        'documents.document', string="Documentos por revisar (60 días)", compute='_compute_lists')
 
     # Mis documentos
     ack_ids = fields.Many2many(
@@ -485,6 +487,7 @@ class SgiMyProcedure(models.TransientModel):
                 wiz.official_indicator_ids = False
                 wiz.has_obligations = False
                 wiz.pending_legal_ids = False
+                wiz.pending_doc_review_ids = False
                 continue
             wiz.pending_action_ids = env['sgi.action.line'].sudo().search(
                 [('responsible_id', '=', user.id), ('state', 'in', ('abierta', 'vencida'))],
@@ -508,6 +511,12 @@ class SgiMyProcedure(models.TransientModel):
                 [('responsible_id', '=', user.id),
                  '|', ('next_eval_date', '<=', soon), ('expiry_date', '<=', soon)],
                 order='next_eval_date, id').ids
+            # DOC-4: documentos del usuario cuya próxima revisión vence en 60 días.
+            wiz.pending_doc_review_ids = Doc.search(
+                [('sgi_owner_id', '=', user.id), ('sgi_is_controlled', '=', True),
+                 ('sgi_state', 'in', ('vigente', 'piloto')),
+                 ('sgi_next_review_date', '!=', False), ('sgi_next_review_date', '<=', soon)],
+                order='sgi_next_review_date, sgi_code').ids
 
     # ------------------------------------------------------------------
     # Acciones

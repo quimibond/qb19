@@ -706,8 +706,13 @@ class SgiIndicatorSpec(models.Model):
         done = Model.search(sgi_safe_domain(deliverable.measure_domain)
                             + [(date_field, '>=', start), (date_field, '<', end)])
         complete_domain = sgi_safe_domain(deliverable.complete_domain)
-        complete = Model.search_count([('id', 'in', done.ids)] + complete_domain) \
-            if (done and complete_domain) else len(done)
+        complete_ids = Model.search([('id', 'in', done.ids)] + complete_domain).ids \
+            if (done and complete_domain) else done.ids
+        if deliverable.require_signed and complete_ids:
+            # REG-1: completo solo si el registro tiene una firma de Sign ligada.
+            signed = set(deliverable._sgi_signed_ids(model, complete_ids))
+            complete_ids = [i for i in complete_ids if i in signed]
+        complete = len(complete_ids)
         return {
             'value': round(complete * 100.0 / len(done), 2) if done else None,
             'numerator': complete, 'denominator': len(done),

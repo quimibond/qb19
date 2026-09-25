@@ -105,6 +105,10 @@
                                 <field name="sgi_nc_escalation_mast_days"/>
                             </div>
                         </setting>
+                        <setting string="Días hábiles para que el proveedor conteste una NC"
+                                 help="NC a proveedor por el portal (NC-6): plazo de respuesta; vencido, aviso al comprador y escalamiento a MAST.">
+                            <field name="sgi_nc_days_supplier_response"/>
+                        </setting>
                         <setting string="Días para verificar la eficacia de una NC"
                                  help="Al terminar la última acción correctiva se agenda la verificación de eficacia al Jefe MAST a estos días. Sin eficacia registrada la NC no cierra.">
                             <field name="sgi_nc_effectiveness_days"/>

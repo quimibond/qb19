@@ -88,6 +88,8 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.nc_days_plan': '15',
         'quimibond_sgi.nc_escalation_mast_days': '3',
         'quimibond_sgi.nc_effectiveness_days': '90',
+        # NC-6: días hábiles que tiene el proveedor para contestar por el portal.
+        'quimibond_sgi.nc_days_supplier_response': '5',
         'quimibond_sgi.nc_recurrence_months': '12',
         'quimibond_sgi.action_escalation_manager_days': '7',
         'quimibond_sgi.action_escalation_director_days': '15',

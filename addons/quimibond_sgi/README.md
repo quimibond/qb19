@@ -1016,6 +1016,52 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 6 del plan: proveedores, clientes y firmas (19.0.53.0.0)
+
+- **NC-6 · NC a proveedor por el portal.** `quality.alert` hereda
+  `portal.mixin`. «Enviar al proveedor» fija el proveedor, el plazo
+  (`nc_days_supplier_response`, 5 días hábiles) y manda el correo con el
+  enlace `/my/nc/<id>` (token del portal). El proveedor ve folio, producto,
+  lote, desviación y plazo, y contesta **causa y acción** en un formulario
+  (`sgi_supplier_answer`); la respuesta queda en la pestaña «Proveedor» y en
+  el chatter, cierra el aviso y agenda al comprador la revisión. El cron de
+  NC avisa el día que vence la respuesta y escala a MAST después. La NC
+  cuenta en la evaluación del proveedor por su `partner_id` (S1.08).
+- **NC-7 · Reporte 8D**: ya existía (`report_8d.xml`, D1–D8 con el NCR del
+  cliente en `sgi_external_ref`); sin cambios.
+- **AU-4 · Auditorías de cliente y a proveedor.** Tipos `cliente` y
+  `proveedor` en el programa y la auditoría, con `partner_id` (obligatorio)
+  y `external_report_ref` (número de reporte del cliente). Los hallazgos de
+  una auditoría de cliente generan NC externa con el cliente y su NCR; los de
+  una auditoría a proveedor nacen como **NC a proveedor** (NC-6).
+- **AU-5 · Programa anual sugerido.** Botón «Programa sugerido» en el
+  programa (borrador): una línea por subproceso vigente o en piloto, repartidos
+  por trimestre; los procesos con NC abiertas o indicadores en rojo, dos
+  veces al año. Idempotente; se ajusta a mano.
+- **DOC-4 · Aviso de próxima revisión**: el cron documental ya avisaba 60
+  días antes al dueño; ahora esos documentos también salen en **Mis
+  pendientes** (`pending_doc_review_ids`).
+- **DOC-5 · Instructivos en Knowledge.** `sgi.process.activity.instruction_article_id`
+  (artículo de Knowledge, dependencia nueva `knowledge`). «Publicar como
+  instructivo» (asistente `sgi.instruction.publish`, solo Jefe MAST): PDF del
+  artículo (`report_knowledge_instruction`) archivado como documento
+  controlado tipo instructivo con la clave IT, revisión siguiente, huella del
+  contenido, acuses para los puestos y `instruction_id` de la actividad
+  apuntando a él (la tarjeta de Mi procedimiento lo muestra). Si el artículo
+  cambia, `instruction_article_stale` lo marca; publicar sin cambios avisa.
+- **REG-1 · Firmas de Sign ligadas a su registro.** Mixin
+  `sgi.sign.record.mixin` en orden de compra, traslado/entrega, lote y
+  producto: botón «Firmar» (asistente con plantilla y firmante) que crea la
+  `sign.request` con `reference_doc` al registro, contador de firmas y campo
+  buscable `sgi_signed`. El entregable puede exigir «firmado»
+  (`require_signed`): en «entregable completo» solo cuentan los registros con
+  una firma ligada.
+- **REG-2 · Encuesta como entregable.** `sgi.deliverable.survey_id`: al
+  elegir la encuesta, el entregable apunta a `survey.user_input` terminadas
+  de esa encuesta (fecha `end_datetime`), así E2.12 se mide sola.
+
+Dependencias nuevas: `portal`, `knowledge`. Pruebas: `TestPr6External` 01–07.
+
 ## PR 5 del plan: revisión por la dirección de diciembre (19.0.52.0.0)
 
 - **DIR-2 · Riesgos con evaluación periódica.** Semáforo (`semaphore`) a
