@@ -58,8 +58,8 @@ class TestStructureSgi(TransactionCase):
         # 53.2.0: «Ver en diagrama» es la vista hierarchy de actividades; la
         # lista de flechas sigue en action_sgi_view_flows.
         action = self.process.action_sgi_view_diagram()
-        self.assertEqual(action['res_model'], 'sgi.process.activity')
-        self.assertEqual(action['views'][0][1], 'hierarchy')
+        self.assertEqual((action['type'], action['tag']), ('ir.actions.client', 'sgi_diagram'))
+        self.assertEqual(action['context']['sgi_diagram_kind'], 'process_flow')
         action = self.process.action_sgi_view_flows()
         self.assertEqual(action['res_model'], 'sgi.process.flow')
         self.assertIn(('from_process_id', '=', self.process.id), action['domain'])

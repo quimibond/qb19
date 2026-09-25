@@ -57,24 +57,40 @@ class SgiProcessHierarchy(models.Model):
         for process in self:
             process.child_count = len(process.child_ids)
 
-    def action_sgi_view_diagram(self):
-        """«Ver en diagrama»: las actividades del proceso encadenadas paso a
-        paso, con la vista nativa de organigrama."""
+    def _sgi_diagram_action(self, kind, name):
         self.ensure_one()
         return {
-            'type': 'ir.actions.act_window',
-            'name': "Diagrama — %s" % self.display_name,
-            'res_model': 'sgi.process.activity',
-            'view_mode': 'hierarchy,list,form',
-            'views': [(self.env.ref('quimibond_sgi.sgi_process_activity_view_hierarchy').id, 'hierarchy'),
-                      (False, 'list'), (False, 'form')],
-            'domain': [('process_id', '=', self.id)],
-            'context': {'default_process_id': self.id},
+            'type': 'ir.actions.client',
+            'tag': 'sgi_diagram',
+            'name': name,
+            'context': {'sgi_diagram_kind': kind, 'sgi_diagram_res_id': self.id},
         }
 
+    def action_sgi_view_diagram(self):
+        """«Ver en diagrama»: el flujo de actividades del proceso por etapa,
+        con los eslabones como flechas (componente sgi_diagram)."""
+        return self._sgi_diagram_action('process_flow', "Flujo del proceso")
+
     def action_sgi_view_process_map(self):
-        """«Ver en el mapa»: este proceso con su macroproceso y subprocesos."""
+        """«Ver en el mapa»: el mapa con conexiones, con este proceso
+        seleccionado (sus flechas de entrada y salida resaltadas)."""
         self.ensure_one()
-        action = self.env['ir.actions.actions']._for_xml_id('quimibond_sgi.sgi_process_hierarchy_action')
-        action['context'] = {'hierarchy_res_id': self.id}
-        return action
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'sgi_diagram',
+            'name': "Mapa de procesos",
+            'context': {'sgi_diagram_kind': 'process_map', 'sgi_diagram_res_id': self.id,
+                        'sgi_diagram_selected': 'sgi.process,%d' % self.id},
+        }
+
+    def action_sgi_view_sipoc(self):
+        return self._sgi_diagram_action('sipoc', "Tortuga (SIPOC)")
+
+    def action_sgi_view_doc_tree(self):
+        return self._sgi_diagram_action('doc_tree', "Árbol documental")
+
+    @api.model
+    def sgi_map_data(self):
+        """Compatibilidad 53.3.x: los datos del mapa viven en sgi.diagram."""
+        data = self.env['sgi.diagram'].data('process_map')
+        return {'bands': data['lanes'], 'flows': data['edges']}
