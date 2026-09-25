@@ -1034,6 +1034,12 @@ vivo, no documento controlado):
 
 Pruebas: `TestMyProcedure.test_14`.
 
+**46.0.1:** al desplegar, Inicio abría con «El registro no existe»: apuntaba
+al «Panel de procesos» retirado en 45.0.0 y Odoo no vacía `action` de un menú
+cuando el menuitem deja de traerla. Se vacía explícito en `sgi_menus.xml`, la
+migración limpia cualquier menú del SGI con acción borrada
+(`_sgi_menu_dangling_actions`) y `TestCleanup45.test_05` lo vigila.
+
 ## Limpieza antes de producción (19.0.45.0.0)
 
 Regla del CEO (2026-09-24): **menús, acciones y vistas sin uso se borran;

@@ -23,6 +23,13 @@
     <!-- 1. Inicio (todos): la persona y su equipo. Mi procedimiento y
          Mi equipo se declaran en views/sgi_my_procedure_views.xml. -->
     <menuitem id="menu_sgi_panel" name="Inicio" parent="menu_sgi_root" sequence="10"/>
+    <!-- Inicio es solo agrupador. Antes apuntaba al «Panel de procesos»
+         (retirado en 45.0.0) y Odoo NO vacía el campo action de un menú
+         cuando el menuitem deja de traerlo: en producción quedó apuntando a
+         una acción borrada («El registro no existe»). Se vacía explícito. -->
+    <record id="menu_sgi_panel" model="ir.ui.menu">
+        <field name="action" eval="False"/>
+    </record>
 
     <!-- 2. Procesos (todos leen; los dueños editan): el mapa es la entrada
          única; lo técnico (actividades, roles, entregables, cadena, flujos)

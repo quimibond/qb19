@@ -41,6 +41,14 @@ class TestCleanup45(TransactionCase):
         stray = Menu.create({'name': 'Suelto de prueba', 'parent_id': root.id})
         self.assertIn(stray, Menu._sgi_menu_tree_offenders())
 
+    def test_05_no_menu_points_to_a_deleted_action(self):
+        """Inicio quedó apuntando al Panel de procesos borrado (producción,
+        46.0.0). Ningún menú del SGI puede abrir una acción que no existe."""
+        Menu = self.env['ir.ui.menu']
+        self.assertFalse(Menu._sgi_menu_dangling_actions().mapped('complete_name'))
+        self.assertFalse(self.env.ref('quimibond_sgi.menu_sgi_panel').action,
+                         "Inicio es agrupador: sin acción.")
+
     def test_02_removed_xmlids_do_not_come_back(self):
         for xmlid in SGI_REMOVED_XMLIDS:
             self.assertFalse(
