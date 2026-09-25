@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 56.0.0: responsiva de EPP en PDF (F-P-S03-02). Con este PDF MAST arma
+         la plantilla de Sign (un campo de firma para el empleado). -->
+    <record id="action_report_epp_delivery" model="ir.actions.report">
+        <field name="name">Responsiva de EPP</field>
+        <field name="model">sgi.epp.delivery</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_epp_delivery_document</field>
+        <field name="report_file">quimibond_sgi.report_epp_delivery_document</field>
+        <field name="print_report_name">'Responsiva EPP - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_sgi_epp_delivery"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_epp_delivery_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Responsiva de entrega y/o cambio de EPP y uniforme</h2>
+                        <p class="text-center text-muted"><span t-out="doc.name"/> · <span t-field="doc.date"/></p>
+                        <p style="font-size:11px;">
+                            Quedo en el entendido de que el uniforme y/o equipo de protección personal que recibo es
+                            responsabilidad mía: lo usaré y cuidaré durante mis actividades y, en caso de extravío o mal
+                            uso, repondré su costo. Me comprometo a reportar cualquier daño para su cambio.
+                        </p>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:30%"><strong>Nombre del trabajador</strong></td><td><span t-out="doc.sudo().employee_id.name"/></td></tr>
+                            <tr><td><strong>Puesto</strong></td><td><span t-out="doc.job_id.name or ''"/></td></tr>
+                            <tr><td><strong>Área</strong></td><td><span t-out="doc.sudo().employee_id.department_id.name or ''"/></td></tr>
+                            <tr><td><strong>Entregó</strong></td><td><span t-out="doc.delivered_by_id.name"/></td></tr>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Cantidad (pz, par)</th><th>Artículo</th><th>Talla</th><th>Observaciones</th></tr></thead>
+                            <tbody>
+                                <t t-if="doc.line_ids">
+                                    <tr t-foreach="doc.line_ids" t-as="l">
+                                        <td><span t-out="'%g %s' % (l.quantity, l.uom)"/></td>
+                                        <td><span t-out="l.name"/></td>
+                                        <td><span t-out="l.size or ''"/></td>
+                                        <td><span t-out="l.note or ''"/></td>
+                                    </tr>
+                                </t>
+                                <t t-else="">
+                                    <tr t-foreach="(doc.items or '').splitlines()" t-as="item">
+                                        <td></td><td><span t-out="item"/></td><td></td><td></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                        <p t-if="doc.note" style="font-size:10px;"><strong>Observaciones:</strong> <span t-out="doc.note"/></p>
+                        <table class="table table-sm mt-5" style="font-size:10px; width:60%;">
+                            <tr><td class="text-center" style="border-top:1px solid #000; height:14mm;">Firma del trabajador<br/><span t-out="doc.sudo().employee_id.name"/>
+                                    <t t-if="doc.state == 'firmada'"><br/><span class="text-muted">Firmada el <span t-field="doc.signed_date"/></span></t></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Entregó<br/><span t-out="doc.delivered_by_id.name"/></td></tr>
+                        </table>
+                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
+                            Formato controlado del SGI: <span class="fw-bold" t-out="doc.sgi_format_info()"/> · PNTQ
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

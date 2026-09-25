@@ -1168,6 +1168,9 @@ class SgiCron(models.AbstractModel):
         self._sgi_step(
             "competencias por cursos eLearning",
             lambda: self.env['slide.channel']._sgi_sync_completions())
+        self._sgi_step(
+            "responsivas de EPP firmadas vía Sign",
+            lambda: self.env['sgi.epp.delivery']._sgi_sync_from_sign())
         return True
 
     # ------------------------------------------------------------------

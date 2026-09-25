@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 56.0.0: solicitud de desarrollo (F-P-D01-02/18/26/27) desde el proyecto FT. -->
+    <record id="action_report_dev_request" model="ir.actions.report">
+        <field name="name">Solicitud de desarrollo</field>
+        <field name="model">project.project</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_request_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_request_document</field>
+        <field name="print_report_name">'Solicitud de desarrollo - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="project.model_project_project"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dev_request_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Solicitud de desarrollo</h2>
+                        <h4 class="text-center"><span t-out="dict(doc._fields['sgi_dev_type'].selection).get(doc.sgi_dev_type or 'general')"/></h4>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:25%"><strong>Proyecto</strong></td><td><span t-out="doc.name"/></td>
+                                <td style="width:20%"><strong>Fecha</strong></td><td><span t-field="doc.sgi_dev_date"/></td></tr>
+                            <tr><td><strong>Solicitante</strong></td><td><span t-out="doc.sgi_dev_requester or ''"/></td>
+                                <td><strong>Cliente</strong></td><td><span t-out="doc.partner_id.display_name or ''"/></td></tr>
+                            <tr><td><strong>Correo</strong></td><td><span t-out="doc.partner_id.email or ''"/></td>
+                                <td><strong>Teléfono</strong></td><td><span t-out="doc.partner_id.phone or ''"/></td></tr>
+                            <tr><td><strong>Dirección</strong></td><td colspan="3"><span t-out="doc.partner_id.contact_address or ''"/></td></tr>
+                        </table>
+                        <h5>Descripción y uso del producto</h5>
+                        <p style="white-space:pre-wrap; font-size:11px;"><span t-out="doc.sgi_dev_use or '—'"/></p>
+                        <h5>Especificación del cliente</h5>
+                        <p style="white-space:pre-wrap; font-size:11px;"><span t-out="doc.sgi_dev_spec or '—'"/></p>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td><strong>Muestra</strong></td><td><span t-out="'%g m / %g kg' % (doc.sgi_dev_sample_m, doc.sgi_dev_sample_kg)"/></td>
+                                <td><strong>Volumen estimado</strong></td><td><span t-out="'%g %s' % (doc.sgi_dev_volume, dict(doc._fields['sgi_dev_volume_uom'].selection).get(doc.sgi_dev_volume_uom) or '')"/></td></tr>
+                            <tr><td><strong>Precio objetivo</strong></td><td><span t-field="doc.sgi_dev_target_price"/></td>
+                                <td><strong>Norma(s) a cumplir</strong></td><td><span t-out="doc.sgi_dev_norms or ''"/></td></tr>
+                            <tr><td><strong>Propiedad del cliente</strong></td><td><span t-out="dict(doc._fields['sgi_dev_customer_property'].selection).get(doc.sgi_dev_customer_property) or '—'"/></td>
+                                <td><strong>Tamaño de rollos / empaque</strong></td><td><span t-out="doc.sgi_dev_packaging or ''"/></td></tr>
+                        </table>
+                        <h5>Características del producto</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Característica</th><th>Dirección</th><th>Unidad</th><th>Valor pedido</th><th>Tolerancia</th><th>Método / norma</th><th>Observaciones</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.sgi_dev_line_ids" t-as="l">
+                                    <td><span t-out="l.name"/></td>
+                                    <td><span t-out="dict(l._fields['direction'].selection).get(l.direction)"/></td>
+                                    <td><span t-out="l.unit or ''"/></td>
+                                    <td><span t-out="l.value or ''"/></td>
+                                    <td><span t-out="l.tolerance or ''"/></td>
+                                    <td><span t-out="l.method or ''"/></td>
+                                    <td><span t-out="l.note or ''"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="doc.sgi_dev_other" style="font-size:11px;"><strong>Otras características:</strong> <span t-out="doc.sgi_dev_other"/></p>
+                        <table class="table table-sm mt-4" style="font-size:10px; width:70%;">
+                            <tr><td class="text-center" style="border-top:1px solid #000;">Elaboró · Diseño y Desarrollo<br/><span t-out="doc.sgi_dev_prepared_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Aprobó · Dirección de Operaciones<br/><span t-out="doc.sgi_dev_approved_by_id.name or ''"/></td></tr>
+                        </table>
+                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
+                            Formato controlado del SGI: <span class="fw-bold" t-out="doc.sgi_dev_format_info()"/> · PNTQ
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
