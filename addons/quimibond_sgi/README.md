@@ -1016,6 +1016,28 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## «Mi procedimiento» dentro de la ficha del empleado y del puesto (19.0.48.1.0)
+
+CEO (2026-09-25): el procedimiento de la persona se ve donde vive la
+persona, con vistas nativas de Odoo. Pestaña **«Mi procedimiento»** en la
+ficha del empleado (`hr.employee`, app Empleados), en la ficha pública
+(`hr.employee.public`, la que abre cualquier usuario interno y las filas de
+Mi equipo) y en el puesto (`hr.job`), con lo mismo que la pantalla de
+Inicio: procesos donde participa, kanban de actividades (ejecuta / aprueba),
+escalamientos que recibe, participa o se entera, documentos que aplican,
+acuses de lectura (con «Marcar leído y entendido»), EPP del puesto y
+responsivas (con «Firmar: recibí el EPP»). Botones «Firmar leído y
+entendido» (solo el propio empleado, contra la revisión publicada), «Abrir
+en pantalla completa» e «Imprimir PDF».
+
+Cómo está hecho: mixin `sgi.my.procedure.mixin` (campos `sgi_mp_*`
+calculados) heredado por los tres modelos; `hr.job._sgi_mp_role_lists()`
+es la única fuente de las tres listas (la pantalla de Inicio también la usa);
+el kanban y las dos listas de `sgi.activity.role` son **vistas propias**
+(`sgi_activity_role_view_kanban_mp`, `…_list_mp_received`, `…_list_mp_short`)
+referidas con `kanban_view_ref` / `list_view_ref`, así que un cambio en la
+tarjeta se ve igual en los cuatro lugares. Prueba: `TestMyProcedure` 15.
+
 ## PR 1 del plan de auditoría: auditor de solo lectura y EPP con responsiva (19.0.48.0.0)
 
 Plan completo (29 puntos, 7 PRs): `docs/SGI_PENDIENTES_PROGRAMACION.md`.

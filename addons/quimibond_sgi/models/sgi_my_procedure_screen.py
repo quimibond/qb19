@@ -53,6 +53,139 @@ class HrEmployeeTeamScope(models.Model):
         return team
 
 
+class HrJobMyProcedureLists(models.Model):
+    _inherit = 'hr.job'
+
+    def _sgi_mp_role_lists(self):
+        """Las tres listas de «Mi procedimiento» del puesto, ya ordenadas:
+        ``detail`` (ejecuta / aprueba, por cadencia y fecha), ``received``
+        (escalamientos que recibe) y ``short`` (participa o se entera). Las
+        usan la pantalla de Inicio, la ficha del empleado y la del puesto."""
+        self.ensure_one()
+        Role = self.env['sgi.activity.role'].sudo()
+        roles = Role.search(self._sgi_roles_domain()).filtered(lambda r: r.activity_id.active)
+        detail = roles.filtered(lambda r: r.role in _DETAIL_ROLES)
+        short = roles.filtered(lambda r: r.role in _SHORT_ROLES) - detail.filtered(
+            lambda r: r.activity_id in detail.activity_id)
+        received = roles.filtered(lambda r: r.role == 'escala')
+        Job = self.env['hr.job']
+
+        def sort_key(role):
+            when_key, _when = Job._sgi_mp_when(role.activity_id)
+            return (_CADENCE_RANK.get(role.activity_id.measure_cadence or 'evento', 99),
+                    when_key, role.activity_id.process_id.code or '',
+                    role.activity_id.number or '', role.activity_id.name or '')
+
+        def by_process(role):
+            return (role.activity_id.process_id.code or '', role.activity_id.number or '')
+
+        return {
+            'detail': detail.sorted(key=sort_key),
+            'received': received.sorted(key=by_process),
+            'short': short.sorted(key=by_process),
+        }
+
+
+class SgiMyProcedureMixin(models.AbstractModel):
+    """«Mi procedimiento» dentro de la ficha (empleado, empleado público y
+    puesto): las mismas listas que la pantalla de Inicio, como campos
+    calculados, para que el procedimiento se vea donde vive la persona
+    (app Empleados) sin pantalla aparte. CEO, 2026-09-25."""
+    _name = 'sgi.my.procedure.mixin'
+    _description = "Mi procedimiento en la ficha"
+
+    sgi_mp_role_ids = fields.Many2many(
+        'sgi.activity.role', string="Mis actividades", compute='_compute_sgi_mp_lists')
+    sgi_mp_received_role_ids = fields.Many2many(
+        'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_sgi_mp_lists')
+    sgi_mp_short_role_ids = fields.Many2many(
+        'sgi.activity.role', string="Participa o se entera", compute='_compute_sgi_mp_lists')
+    sgi_mp_ack_ids = fields.Many2many(
+        'sgi.document.ack', string="Acuses de lectura", compute='_compute_sgi_mp_lists')
+    sgi_mp_document_ids = fields.Many2many(
+        'documents.document', string="Documentos que aplican al puesto", compute='_compute_sgi_mp_lists')
+    sgi_mp_epp_ids = fields.Many2many(
+        'sgi.epp.delivery', string="Responsivas de EPP", compute='_compute_sgi_mp_lists')
+    sgi_mp_epp_text = fields.Text(string="EPP requerido por el puesto", compute='_compute_sgi_mp_lists')
+    sgi_mp_can_sign = fields.Boolean(string="Puede firmar", compute='_compute_sgi_mp_lists')
+    sgi_mp_process_ids = fields.Many2many(
+        'sgi.process', string="Procesos donde participa", compute='_compute_sgi_mp_lists')
+
+    def _sgi_mp_job(self):
+        """El puesto cuyo procedimiento se muestra (el del empleado; el
+        propio registro en hr.job)."""
+        return self.job_id.sudo()
+
+    def _sgi_mp_employee_rec(self):
+        """El empleado (sudo) detrás del registro; vacío en hr.job."""
+        return self.env['hr.employee'].sudo().browse(self.id) if self._name != 'hr.job' else \
+            self.env['hr.employee'].sudo()
+
+    # Sin @api.depends: no se almacena y hr.job no tiene job_id; se
+    # recalcula en cada lectura, como la pantalla de Inicio.
+    @api.depends_context('uid')
+    def _compute_sgi_mp_lists(self):
+        Role = self.env['sgi.activity.role'].sudo()
+        Ack = self.env['sgi.document.ack'].sudo()
+        Doc = self.env['documents.document'].sudo()
+        Epp = self.env['sgi.epp.delivery'].sudo()
+        me = self.env.user.employee_id.sudo()
+        for rec in self:
+            job = rec._sgi_mp_job()
+            emp = rec._sgi_mp_employee_rec().exists()
+            lists = job._sgi_mp_role_lists() if job else {'detail': Role, 'received': Role, 'short': Role}
+            rec.sgi_mp_role_ids = lists['detail'].ids
+            rec.sgi_mp_received_role_ids = lists['received'].ids
+            rec.sgi_mp_short_role_ids = lists['short'].ids
+            rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
+            rec.sgi_mp_document_ids = Doc.search(
+                [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
+                 ('sgi_doc_type', '!=', 'mi_procedimiento')],
+                order='sgi_doc_type, sgi_code, name').ids if job else False
+            rec.sgi_mp_epp_text = (job.sgi_epp_required or False) if job else False
+            if emp:
+                rec.sgi_mp_ack_ids = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code').ids
+                rec.sgi_mp_epp_ids = Epp.search([('employee_id', '=', emp.id)]).ids
+                doc = job._sgi_my_procedure_current_doc() if job else False
+                ack = Ack.search([('document_id', '=', doc.id), ('employee_id', '=', emp.id)], limit=1) \
+                    if doc else Ack
+                rec.sgi_mp_can_sign = bool(me and emp.id == me.id and doc and emp.job_id == job
+                                           and (not ack or ack.state == 'pendiente'))
+            else:
+                rec.sgi_mp_ack_ids = False
+                rec.sgi_mp_epp_ids = False
+                rec.sgi_mp_can_sign = False
+
+    def action_sgi_mp_sign(self):
+        """Firmar «leído y entendido» desde la ficha: mismo candado que la
+        pantalla (solo el propio empleado, contra la revisión vigente)."""
+        self.ensure_one()
+        emp = self._sgi_mp_employee_rec()
+        if not emp:
+            raise UserError("Un puesto no firma; firma cada empleado desde su ficha.")
+        wiz = self.env['sgi.my.procedure'].create({'employee_id': emp.id})
+        wiz.action_sign()
+        return True
+
+
+class HrEmployeeMyProcedureTab(models.Model):
+    _name = 'hr.employee'
+    _inherit = ['hr.employee', 'sgi.my.procedure.mixin']
+
+
+class HrEmployeePublicMyProcedureTab(models.Model):
+    _name = 'hr.employee.public'
+    _inherit = ['hr.employee.public', 'sgi.my.procedure.mixin']
+
+
+class HrJobMyProcedureTab(models.Model):
+    _name = 'hr.job'
+    _inherit = ['hr.job', 'sgi.my.procedure.mixin']
+
+    def _sgi_mp_job(self):
+        return self.sudo()
+
+
 class SgiActivityRoleMyProcedureScreen(models.Model):
     """Las piezas de una actividad como campos, para la tarjeta nativa."""
     _inherit = 'sgi.activity.role'
@@ -308,25 +441,12 @@ class SgiMyProcedure(models.TransientModel):
             emp = wiz._sgi_mp_employee()
             user = emp.user_id if emp else False
             # --- Actividades del puesto y de su familia, solo activas.
-            roles = Role.search(job._sgi_roles_domain()) if job else Role
-            roles = roles.filtered(lambda r: r.activity_id.active)
-            detail = roles.filtered(lambda r: r.role in _DETAIL_ROLES)
-            short = roles.filtered(lambda r: r.role in _SHORT_ROLES) - detail.filtered(
-                lambda r: r.activity_id in detail.activity_id)
-            received = roles.filtered(lambda r: r.role == 'escala')
-            Job = env['hr.job']
-
-            def sort_key(role):
-                when_key, _when = Job._sgi_mp_when(role.activity_id)
-                return (_CADENCE_RANK.get(role.activity_id.measure_cadence or 'evento', 99),
-                        when_key, role.activity_id.process_id.code or '',
-                        role.activity_id.number or '', role.activity_id.name or '')
-            detail = detail.sorted(key=sort_key)
+            lists = job._sgi_mp_role_lists() if job else {
+                'detail': Role, 'received': Role, 'short': Role}
+            detail = lists['detail']
             wiz.role_ids = detail.ids
-            wiz.received_role_ids = received.sorted(
-                key=lambda r: (r.activity_id.process_id.code or '', r.activity_id.number or '')).ids
-            wiz.short_role_ids = short.sorted(
-                key=lambda r: (r.activity_id.process_id.code or '', r.activity_id.number or '')).ids
+            wiz.received_role_ids = lists['received'].ids
+            wiz.short_role_ids = lists['short'].ids
             counts = {'al_dia': 0, 'atrasada': 0, 'sin_medir': 0}
             for role in detail:
                 counts[role.mp_status or 'sin_medir'] += 1
@@ -635,6 +755,11 @@ class HrEmployeePublicMyTeam(models.Model):
     def action_sgi_open_my_procedure(self):
         self.ensure_one()
         return self.env['sgi.my.procedure'].action_open_for(employee_id=self.id)
+
+    def action_sgi_print_my_procedure(self):
+        """Imprimir desde la ficha pública: el PDF del puesto para esta persona."""
+        self.ensure_one()
+        return self.env['hr.employee'].sudo().browse(self.id).action_sgi_print_my_procedure()
 
     @api.model
     def _sgi_team(self):

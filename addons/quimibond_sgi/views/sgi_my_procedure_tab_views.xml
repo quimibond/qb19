@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- «Mi procedimiento» como pestaña NATIVA dentro de la ficha (CEO,
+         2026-09-25): el procedimiento de la persona se ve donde vive la
+         persona, en la app Empleados (hr.employee para RH y administradores,
+         hr.employee.public para todos los demás) y en el puesto. Mismas
+         vistas compartidas de sgi.activity.role que la pantalla de Inicio. -->
+    <record id="sgi_hr_employee_view_form_mp_tab" model="ir.ui.view">
+        <field name="name">hr.employee.form.sgi.my.procedure.tab</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Mi procedimiento" name="sgi_my_procedure" invisible="not job_id">
+                    <div class="mb-2">
+                        <button name="action_sgi_mp_sign" type="object" string="Firmar leído y entendido"
+                                class="btn-primary me-1" icon="fa-pencil" invisible="not sgi_mp_can_sign"
+                                confirm="Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora."/>
+                        <button name="action_sgi_open_my_procedure" type="object" string="Abrir en pantalla completa"
+                                class="btn-secondary me-1" icon="fa-eye"/>
+                        <button name="action_sgi_print_my_procedure" type="object" string="Imprimir PDF"
+                                class="btn-secondary me-1" icon="fa-print"/>
+                        <field name="sgi_mp_can_sign" invisible="1"/>
+                    </div>
+                    <group>
+                        <field name="sgi_mp_process_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    </group>
+                    <field name="sgi_mp_role_ids" mode="kanban" nolabel="1" readonly="1"
+                           context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                    <group string="Escalamientos que recibe" invisible="not sgi_mp_received_role_ids">
+                        <field name="sgi_mp_received_role_ids" nolabel="1" readonly="1"
+                               context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>
+                    </group>
+                    <group string="Participa o se entera" invisible="not sgi_mp_short_role_ids">
+                        <field name="sgi_mp_short_role_ids" nolabel="1" readonly="1"
+                               context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_short'}"/>
+                    </group>
+                    <group string="Documentos que aplican al puesto" invisible="not sgi_mp_document_ids">
+                        <field name="sgi_mp_document_ids" nolabel="1" readonly="1">
+                            <list create="0" delete="0">
+                                <field name="sgi_code" string="Clave"/>
+                                <field name="name"/>
+                                <field name="sgi_doc_type" string="Tipo"/>
+                                <field name="sgi_revision_label" string="Rev."/>
+                                <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Acuses de lectura" invisible="not sgi_mp_ack_ids">
+                        <field name="sgi_mp_ack_ids" nolabel="1" readonly="1">
+                            <list create="0" delete="0" decoration-warning="state == 'pendiente'">
+                                <field name="sgi_code" string="Clave"/>
+                                <field name="document_id"/>
+                                <field name="state" widget="badge"
+                                       decoration-success="state == 'leido'"
+                                       decoration-warning="state == 'pendiente'"/>
+                                <field name="ack_date" optional="show"/>
+                                <button name="action_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                                <button name="action_mark_read" type="object" string="Marcar leído y entendido"
+                                        icon="fa-check" invisible="state != 'pendiente'"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="EPP (S03-01) y responsivas de entrega (S03-02)" invisible="not sgi_mp_epp_text and not sgi_mp_epp_ids">
+                        <field name="sgi_mp_epp_text" nolabel="1" readonly="1" invisible="not sgi_mp_epp_text"/>
+                        <field name="sgi_mp_epp_ids" nolabel="1" readonly="1" invisible="not sgi_mp_epp_ids">
+                            <list create="0" delete="0" decoration-warning="state == 'entregada'">
+                                <field name="name"/>
+                                <field name="date"/>
+                                <field name="items"/>
+                                <field name="state" widget="badge"
+                                       decoration-success="state == 'firmada'" decoration-warning="state == 'entregada'"/>
+                                <field name="can_sign" column_invisible="1"/>
+                                <button name="action_sign" type="object" string="Firmar: recibí el EPP" icon="fa-pencil" invisible="not can_sign"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_hr_employee_public_view_form_mp_tab" model="ir.ui.view">
+        <field name="name">hr.employee.public.form.sgi.my.procedure.tab</field>
+        <field name="model">hr.employee.public</field>
+        <field name="inherit_id" ref="hr.hr_employee_public_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Mi procedimiento" name="sgi_my_procedure" invisible="not job_id">
+                    <div class="mb-2">
+                        <button name="action_sgi_mp_sign" type="object" string="Firmar leído y entendido"
+                                class="btn-primary me-1" icon="fa-pencil" invisible="not sgi_mp_can_sign"
+                                confirm="Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora."/>
+                        <button name="action_sgi_open_my_procedure" type="object" string="Abrir en pantalla completa"
+                                class="btn-secondary me-1" icon="fa-eye"/>
+                        <button name="action_sgi_print_my_procedure" type="object" string="Imprimir PDF"
+                                class="btn-secondary me-1" icon="fa-print"/>
+                        <field name="sgi_mp_can_sign" invisible="1"/>
+                    </div>
+                    <group>
+                        <field name="sgi_mp_process_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    </group>
+                    <field name="sgi_mp_role_ids" mode="kanban" nolabel="1" readonly="1"
+                           context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                    <group string="Escalamientos que recibe" invisible="not sgi_mp_received_role_ids">
+                        <field name="sgi_mp_received_role_ids" nolabel="1" readonly="1"
+                               context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>
+                    </group>
+                    <group string="Participa o se entera" invisible="not sgi_mp_short_role_ids">
+                        <field name="sgi_mp_short_role_ids" nolabel="1" readonly="1"
+                               context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_short'}"/>
+                    </group>
+                    <group string="Documentos que aplican al puesto" invisible="not sgi_mp_document_ids">
+                        <field name="sgi_mp_document_ids" nolabel="1" readonly="1">
+                            <list create="0" delete="0">
+                                <field name="sgi_code" string="Clave"/>
+                                <field name="name"/>
+                                <field name="sgi_doc_type" string="Tipo"/>
+                                <field name="sgi_revision_label" string="Rev."/>
+                                <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Acuses de lectura" invisible="not sgi_mp_ack_ids">
+                        <field name="sgi_mp_ack_ids" nolabel="1" readonly="1">
+                            <list create="0" delete="0" decoration-warning="state == 'pendiente'">
+                                <field name="sgi_code" string="Clave"/>
+                                <field name="document_id"/>
+                                <field name="state" widget="badge"
+                                       decoration-success="state == 'leido'"
+                                       decoration-warning="state == 'pendiente'"/>
+                                <field name="ack_date" optional="show"/>
+                                <button name="action_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                                <button name="action_mark_read" type="object" string="Marcar leído y entendido"
+                                        icon="fa-check" invisible="state != 'pendiente'"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="EPP (S03-01) y responsivas de entrega (S03-02)" invisible="not sgi_mp_epp_text and not sgi_mp_epp_ids">
+                        <field name="sgi_mp_epp_text" nolabel="1" readonly="1" invisible="not sgi_mp_epp_text"/>
+                        <field name="sgi_mp_epp_ids" nolabel="1" readonly="1" invisible="not sgi_mp_epp_ids">
+                            <list create="0" delete="0" decoration-warning="state == 'entregada'">
+                                <field name="name"/>
+                                <field name="date"/>
+                                <field name="items"/>
+                                <field name="state" widget="badge"
+                                       decoration-success="state == 'firmada'" decoration-warning="state == 'entregada'"/>
+                                <field name="can_sign" column_invisible="1"/>
+                                <button name="action_sign" type="object" string="Firmar: recibí el EPP" icon="fa-pencil" invisible="not can_sign"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_hr_job_view_form_mp_tab" model="ir.ui.view">
+        <field name="name">hr.job.form.sgi.my.procedure.tab</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Mi procedimiento" name="sgi_my_procedure" >
+                    <div class="mb-2">
+                        <button name="action_sgi_open_my_procedure" type="object" string="Abrir en pantalla completa"
+                                class="btn-secondary me-1" icon="fa-eye"/>
+                        <button name="action_sgi_print_my_procedure" type="object" string="Imprimir PDF"
+                                class="btn-secondary me-1" icon="fa-print"/>
+                    </div>
+                    <group>
+                        <field name="sgi_mp_process_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    </group>
+                    <field name="sgi_mp_role_ids" mode="kanban" nolabel="1" readonly="1"
+                           context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                    <group string="Escalamientos que recibe" invisible="not sgi_mp_received_role_ids">
+                        <field name="sgi_mp_received_role_ids" nolabel="1" readonly="1"
+                               context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>
+                    </group>
+                    <group string="Participa o se entera" invisible="not sgi_mp_short_role_ids">
+                        <field name="sgi_mp_short_role_ids" nolabel="1" readonly="1"
+                               context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_short'}"/>
+                    </group>
+                    <group string="Documentos que aplican al puesto" invisible="not sgi_mp_document_ids">
+                        <field name="sgi_mp_document_ids" nolabel="1" readonly="1">
+                            <list create="0" delete="0">
+                                <field name="sgi_code" string="Clave"/>
+                                <field name="name"/>
+                                <field name="sgi_doc_type" string="Tipo"/>
+                                <field name="sgi_revision_label" string="Rev."/>
+                                <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="EPP requerido por el puesto (S03-01)" invisible="not sgi_mp_epp_text">
+                        <field name="sgi_mp_epp_text" nolabel="1" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
