@@ -26,9 +26,6 @@
             </xpath>
             <!-- 54.0.0: indicadores, riesgos y NC ya no son pestañas; son
                  botones inteligentes en la ficha base (sgi_process_views.xml). -->
-            <xpath expr="//page[@name='entradas_salidas']" position="attributes">
-                <attribute name="string">Conexiones</attribute>
-            </xpath>
         </field>
     </record>
 

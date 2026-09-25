@@ -74,6 +74,13 @@ class TestDiagramView(TransactionCase):
                        'action_open_documents', 'action_open_flows', 'action_open_ncs', 'action_view_spec_gaps'):
             self.assertIn('name="%s"' % button, arch, button)
         self.assertNotIn('page string="Indicadores"', arch)
+        self.assertNotIn('name="entradas_salidas"', arch, "Conexiones y ligas son botones (54.1.0).")
+        self.assertNotIn('name="procedure_activity_ids"', arch, "Las actividades se capturan desde el botón.")
+        self.assertIn('name="action_view_chain"', arch)
+        self.assertIn('name="stage_ids"', arch, "Las etapas siguen en la pestaña Procedimiento.")
+        activities = self.proc.action_view_activities()
+        self.assertIn('sgi_diagram', activities['view_mode'].split(','))
+        self.assertEqual(activities['context']['default_process_id'], self.proc.id)
         self.assertNotIn('action_print_master_list', arch, "El PDF sale del menú Imprimir, no del encabezado.")
         diagram = self.proc.action_sgi_view_diagram()
         self.assertEqual(diagram['context']['sgi_diagram_kind'], 'process_flow')

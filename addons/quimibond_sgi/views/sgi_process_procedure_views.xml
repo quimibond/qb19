@@ -587,8 +587,12 @@
         <field name="model">sgi.process</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='entradas_salidas']" position="before">
+            <xpath expr="//notebook" position="inside">
                 <page string="Procedimiento" name="procedimiento">
+                    <!-- 54.1.0: las actividades se capturan desde el botón
+                         «Actividades» (lista editable, kanban, diagrama,
+                         organigrama). Aquí queda lo que arma el PDF del
+                         procedimiento: etapas, texto, responsabilidades y firmas. -->
                     <div class="mb-2">
                         <span class="text-muted"><field name="measure_method_summary" class="d-inline"/></span>
                     </div>
@@ -598,33 +602,6 @@
                             <field name="code" string="Letra"/>
                             <field name="name"/>
                             <field name="activity_count"/>
-                        </list>
-                    </field>
-                    <field name="procedure_activity_ids" context="{'default_process_id': id}">
-                        <list string="Actividades" default_order="sequence, number"
-                              decoration-danger="measure_state == 'rojo'"
-                              decoration-muted="not measure_method">
-                            <field name="sequence" widget="handle"/>
-                            <field name="number"/>
-                            <field name="name"/>
-                            <field name="stage_id" optional="show"/>
-                            <field name="executor_role_ids" widget="many2many_tags"/>
-                            <field name="input_deliverable_ids" widget="many2many_tags" optional="hide"/>
-                            <field name="output_deliverable_ids" widget="many2many_tags" optional="show"/>
-                            <field name="approver_role_ids" widget="many2many_tags" optional="show"/>
-                            <field name="measure_method" optional="show"/>
-                            <field name="measure_state" widget="badge" optional="show"
-                                   decoration-success="measure_state == 'verde'"
-                                   decoration-danger="measure_state == 'rojo'"/>
-                            <field name="measure_adherence_pct" optional="show"/>
-                            <field name="instruction_id" optional="hide"/>
-                            <field name="format_document_ids" widget="many2many_tags" optional="hide"/>
-                            <field name="odoo_menu_id" column_invisible="1"/>
-                            <field name="odoo_ref" column_invisible="1"/>
-                            <field name="measure_model_id" column_invisible="1"/>
-                            <button name="action_open_odoo" type="object"
-                                    title="Abrir en Odoo" icon="fa-external-link"
-                                    invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                         </list>
                     </field>
                     <separator string="Texto del procedimiento (sale en el PDF)"/>

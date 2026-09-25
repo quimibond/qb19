@@ -186,10 +186,9 @@
         </field>
     </record>
 
-    <!-- Ficha del proceso: 3 botones y 4 pestañas (Ficha, Actividades,
-         Conexiones, Documentos). La pestaña Actividades la agrega
-         sgi_process_procedure_views.xml ANTES de «Conexiones»
-         (page name="entradas_salidas": no cambiar el nombre). -->
+    <!-- Ficha del proceso (54.1.0): botones inteligentes para todo lo que es
+         lista de otros registros y dos pestañas: Ficha (aquí) y
+         Procedimiento (la agrega sgi_process_procedure_views.xml). -->
     <record id="sgi_process_view_form" model="ir.ui.view">
         <field name="name">sgi.process.form</field>
         <field name="model">sgi.process</field>
@@ -210,11 +209,12 @@
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
-                    <!-- 54.0.0: lo que antes eran pestañas (indicadores, riesgos,
-                         documentos, NC, conexiones) son botones inteligentes con
-                         su conteo, como en cualquier ficha de Odoo. Las pestañas
-                         quedan para lo que se captura aquí: ficha, procedimiento
-                         y conexiones. -->
+                    <!-- 54.0.0 / 54.1.0: todo lo que es una lista de otros registros
+                         (actividades, indicadores, riesgos, documentos, NC,
+                         conexiones, ligas) es un botón inteligente con su conteo,
+                         como en cualquier ficha de Odoo. Las pestañas quedan para
+                         lo que se captura aquí: la ficha y el texto del
+                         procedimiento. -->
                     <div class="oe_button_box" name="button_box">
                         <button name="action_sgi_view_diagram" type="object" class="oe_stat_button"
                                 icon="fa-sitemap" invisible="not id">
@@ -253,6 +253,10 @@
                         <button name="action_open_flows" type="object" class="oe_stat_button"
                                 icon="fa-exchange">
                             <field name="flow_count" widget="statinfo" string="Conexiones"/>
+                        </button>
+                        <button name="action_view_chain" type="object" class="oe_stat_button"
+                                icon="fa-link" invisible="chain_link_count == 0">
+                            <field name="chain_link_count" widget="statinfo" string="Ligas"/>
                         </button>
                         <button name="action_open_ncs" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-triangle" invisible="nc_count == 0">
@@ -332,48 +336,6 @@
                                     <field name="code"/>
                                     <field name="name"/>
                                     <field name="owner_id"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="Conexiones" name="entradas_salidas">
-                            <separator string="Recibe de otros procesos"/>
-                            <field name="in_flow_ids" readonly="1">
-                                <list>
-                                    <field name="from_process_id" string="Lo entrega"/>
-                                    <field name="name" string="Entregable"/>
-                                    <field name="document_id" optional="hide"/>
-                                    <field name="acceptance_criteria" optional="show"/>
-                                    <field name="odoo_model_id" optional="hide"/>
-                                    <button name="action_view_records" type="object"
-                                            string="Ver registros" icon="fa-external-link"
-                                            invisible="not odoo_model_id"/>
-                                </list>
-                            </field>
-                            <separator string="Entrega a otros procesos"/>
-                            <field name="out_flow_ids" readonly="1">
-                                <list>
-                                    <field name="name" string="Entregable"/>
-                                    <field name="to_process_id" string="Lo recibe"/>
-                                    <field name="document_id" optional="hide"/>
-                                    <field name="acceptance_criteria" optional="show"/>
-                                    <field name="odoo_model_id" optional="hide"/>
-                                    <button name="action_view_records" type="object"
-                                            string="Ver registros" icon="fa-external-link"
-                                            invisible="not odoo_model_id"/>
-                                </list>
-                            </field>
-                            <separator string="Ligas entre actividades"/>
-                            <field name="chain_link_ids" readonly="1">
-                                <list decoration-danger="chain_state == 'atorado'"
-                                      decoration-info="is_cross_process">
-                                    <field name="from_activity_id"/>
-                                    <field name="name" string="Entregable"/>
-                                    <field name="to_activity_id"/>
-                                    <field name="is_cross_process" optional="hide"/>
-                                    <field name="chain_state" widget="badge"
-                                           decoration-success="chain_state == 'fluye'"
-                                           decoration-danger="chain_state == 'atorado'"/>
-                                    <field name="lag_days" optional="show"/>
                                 </list>
                             </field>
                         </page>
