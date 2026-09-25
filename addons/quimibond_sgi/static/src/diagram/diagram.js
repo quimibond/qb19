@@ -3,7 +3,9 @@
 // Empleados: un componente OWL que pide los datos al servidor
 // (sgi.diagram.data(kind, res_id, params)) y los dibuja. Tres trazados: «bands»
 // (filas horizontales, mapa de procesos), «columns» (carriles verticales,
-// flujo / tortuga / árboles) y «matrix» (tabla de calor). Una caja o celda
+// tortuga / árboles / tableros), «swimlanes» (filas por puesto con las cajas
+// en la columna de su orden: flujo funcional), «cycle» (cuatro cuadrantes:
+// PDCA) y «matrix» (tabla de calor). Una caja o celda
 // puede traer `action` (una lista filtrada) en lugar de modelo + id. Las
 // flechas van en un SVG encima de las cajas y se resaltan al pasar el mouse.
 //
@@ -212,6 +214,17 @@ export class SgiDiagram extends Component {
         return "o_sgi_dg_cell o_sgi_dg_cell_" + (cell.level >= 3 ? "exec" : cell.level === 2 ? "approve" : "part");
     }
 
+    bandStyle(index) {
+        // Pirámide: la banda de arriba es la más angosta.
+        const data = this.state.data;
+        if (!data || data.shape !== "pyramid" || !data.lanes.length) {
+            return "";
+        }
+        const n = data.lanes.length;
+        const pct = n > 1 ? 45 + (55 * index) / (n - 1) : 100;
+        return `max-width: ${pct}%;`;
+    }
+
     get columnsClass() {
         const lanes = (this.state.data && this.state.data.lanes) || [];
         return "d-flex align-items-start o_sgi_dg_columns" + (lanes.length > 8 ? " o_sgi_dg_columns_many" : "");
@@ -299,7 +312,8 @@ export class SgiDiagram extends Component {
         const cax = a.left + a.width / 2, cay = a.top + a.height / 2;
         const cbx = b.left + b.width / 2, cby = b.top + b.height / 2;
         const dx = cbx - cax, dy = cby - cay;
-        const horizontal = this.state.data.layout === "columns"
+        const layout = this.state.data.layout;
+        const horizontal = layout === "columns" || layout === "swimlanes"
             ? Math.abs(dx) > a.width * 0.6
             : Math.abs(dx) > Math.abs(dy) && Math.abs(dy) < a.height;
         if (!horizontal) {
@@ -364,7 +378,7 @@ export class SgiDiagram extends Component {
                 path.appendChild(title);
             }
             svg.appendChild(path);
-            if (edge.label && (active || all) && this.state.data.layout !== "bands") {
+            if (edge.label && (active || all || this.state.data.layout === "cycle") && this.state.data.layout !== "bands") {
                 const text = document.createElementNS(SVG_NS, "text");
                 text.setAttribute("x", (p.x1 + p.x2) / 2);
                 text.setAttribute("y", (p.y1 + p.y2) / 2 - 6);
