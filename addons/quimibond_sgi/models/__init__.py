@@ -66,3 +66,4 @@ from . import sgi_diagram
 from . import sgi_links
 from . import sgi_diagram_iso
 from . import sgi_diagram_view
+from . import sgi_kpi_fields

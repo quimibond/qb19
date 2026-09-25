@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 55.0.0: campos para los 28 indicadores por fórmula (models/sgi_kpi_fields.py).
+         Todas las herencias son sobre vistas de OTROS módulos. -->
+
+    <!-- C2-05 / C5-03: entrega de exportación y liberación -->
+    <record id="sgi_stock_picking_view_form_kpi" model="ir.ui.view">
+        <field name="name">stock.picking.form.sgi.kpi</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Exportación y liberación (SGI)" name="sgi_kpi">
+                    <group>
+                        <group string="Exportación (C2-05)">
+                            <field name="sgi_export_crossing_datetime"/>
+                            <field name="sgi_export_file_closed_date"/>
+                        </group>
+                        <group string="Liberación (C5-03)">
+                            <field name="sgi_quality_approved_at"/>
+                            <field name="sgi_release_hours"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- C5-01: metros reclamados -->
+    <record id="sgi_quality_alert_view_form_kpi" model="ir.ui.view">
+        <field name="name">quality.alert.form.sgi.kpi</field>
+        <field name="model">quality.alert</field>
+        <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Reclamación (SGI)" name="sgi_claim">
+                    <group>
+                        <field name="sgi_claimed_meters"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- S1-05: diferencia contra la orden de compra en la línea de factura -->
+    <record id="sgi_account_move_view_form_kpi" model="ir.ui.view">
+        <field name="name">account.move.form.sgi.kpi</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='price_subtotal']" position="after">
+                <field name="sgi_po_price_diff" optional="hide"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_date_due']" position="after">
+                <field name="sgi_payment_date" invisible="not sgi_payment_date"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- C1-04: primer pedido confirmado -->
+    <record id="sgi_product_template_view_form_kpi" model="ir.ui.view">
+        <field name="name">product.template.form.sgi.kpi</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='group_general']" position="inside">
+                <field name="sgi_first_sale_date"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- S3-01: bitácora de bloqueo -->
+    <record id="sgi_lock_date_log_view_list" model="ir.ui.view">
+        <field name="name">sgi.lock.date.log.list</field>
+        <field name="model">sgi.lock.date.log</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="moved_at"/>
+                <field name="company_id"/>
+                <field name="lock_field"/>
+                <field name="date_before"/>
+                <field name="date_after"/>
+                <field name="business_day"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+            </list>
+        </field>
+    </record>
+    <record id="sgi_lock_date_log_action" model="ir.actions.act_window">
+        <field name="name">Bitácora de bloqueo contable</field>
+        <field name="res_model">sgi.lock.date.log</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin movimientos de la fecha de bloqueo</p>
+            <p>Cada vez que se mueve una fecha de bloqueo de la compañía queda aquí, con el día hábil del mes (S3-01).</p></field>
+    </record>
+
+    <!-- S3-04: valor del inventario por mes -->
+    <record id="sgi_inventory_value_view_list" model="ir.ui.view">
+        <field name="name">sgi.inventory.value.list</field>
+        <field name="model">sgi.inventory.value</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="date"/>
+                <field name="company_id"/>
+                <field name="value"/>
+                <field name="quant_count"/>
+                <field name="taken_at"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+    <record id="sgi_inventory_value_action" model="ir.actions.act_window">
+        <field name="name">Valor del inventario por mes</field>
+        <field name="res_model">sgi.inventory.value</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin fotos del inventario</p>
+            <p>El cron mensual de indicadores guarda el valor de las existencias en ubicaciones internas (mismo cálculo de AL-01) para compararlo contra las cuentas 115 (S3-04).</p></field>
+    </record>
+
+    <!-- S4-04: obligaciones patronales -->
+    <record id="sgi_employer_obligation_view_list" model="ir.ui.view">
+        <field name="name">sgi.employer.obligation.list</field>
+        <field name="model">sgi.employer.obligation</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state == 'vencida'" decoration-warning="state == 'tarde'"
+                  decoration-success="state == 'presentada'">
+                <field name="name"/>
+                <field name="kind"/>
+                <field name="period_date"/>
+                <field name="due_date"/>
+                <field name="filed_date"/>
+                <field name="state" widget="badge"/>
+                <field name="responsible_id" widget="many2one_avatar_user"/>
+                <field name="amount" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="sgi_employer_obligation_view_form" model="ir.ui.view">
+        <field name="name">sgi.employer.obligation.form</field>
+        <field name="model">sgi.employer.obligation</field>
+        <field name="arch" type="xml">
+            <form string="Obligación patronal">
+                <header>
+                    <button name="action_mark_filed" type="object" string="Presentada hoy" class="btn-primary"
+                            invisible="filed_date"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="IMSS mensual septiembre"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="period_date"/>
+                            <field name="due_date"/>
+                            <field name="filed_date"/>
+                        </group>
+                        <group>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="amount"/>
+                            <field name="reference"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Notas…"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="sgi_employer_obligation_view_search" model="ir.ui.view">
+        <field name="name">sgi.employer.obligation.search</field>
+        <field name="model">sgi.employer.obligation</field>
+        <field name="arch" type="xml">
+            <search string="Obligaciones patronales">
+                <field name="name"/>
+                <field name="responsible_id"/>
+                <filter name="pending" string="Pendientes" domain="[('filed_date', '=', False)]"/>
+                <filter name="overdue" string="Vencidas" domain="[('state', '=', 'vencida')]"/>
+                <filter name="late" string="Presentadas tarde" domain="[('state', '=', 'tarde')]"/>
+                <group>
+                    <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
+                    <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="sgi_employer_obligation_action" model="ir.actions.act_window">
+        <field name="name">Obligaciones patronales</field>
+        <field name="res_model">sgi.employer.obligation</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_employer_obligation_view_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin obligaciones patronales</p>
+            <p>IMSS, INFONAVIT, ISR retenido, impuesto sobre nómina… con su vencimiento y la fecha en que se presentó (S4-04).</p></field>
+    </record>
+
+    <menuitem id="menu_sgi_employer_obligations" name="Obligaciones patronales" parent="menu_sgi_direction"
+              action="sgi_employer_obligation_action" sequence="31"/>
+    <menuitem id="menu_sgi_lock_date_log" name="Bitácora de bloqueo contable" parent="menu_sgi_admin_indicators"
+              action="sgi_lock_date_log_action" sequence="30"/>
+    <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes" parent="menu_sgi_admin_indicators"
+              action="sgi_inventory_value_action" sequence="31"/>
+</odoo>

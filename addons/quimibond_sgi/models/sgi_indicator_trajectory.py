@@ -109,6 +109,46 @@ class SgiIndicatorTrajectory(models.Model):
                 problems.append("sin rango")
         return problems
 
+    # ---- trayectoria automática (55.0.0) -----------------------------------
+    _TRAJECTORY_FIELDS = ('baseline_value', 'baseline_date', 'target_objective', 'target_date',
+                          'target_acceptable', 'direction')
+
+    def _sgi_trajectory_ready(self):
+        self.ensure_one()
+        return bool(self.baseline_date and self.target_date and self.direction != 'range'
+                    and self.target_date > self.baseline_date)
+
+    def _sgi_auto_trajectory(self):
+        """Genera los escalones en cuanto el indicador tiene arranque, fecha de
+        arranque y fecha de meta (antes había que pulsar el botón; EX-01 a
+        EX-16 y VE-01 llevaban semanas sin escalones). Silencioso si falta algo."""
+        for indicator in self.filtered(lambda i: i._sgi_trajectory_ready()):
+            try:
+                indicator.action_generate_trajectory()
+            except UserError:
+                continue
+        return True
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        indicators = super().create(vals_list)
+        indicators._sgi_auto_trajectory()
+        return indicators
+
+    def write(self, vals):
+        res = super().write(vals)
+        if set(vals) & set(self._TRAJECTORY_FIELDS):
+            self._sgi_auto_trajectory()
+        return res
+
+    @api.model
+    def cron_missing_trajectories(self):
+        """Paso del cron de indicadores: escalones para los que ya tienen fechas."""
+        pending = self.search([('baseline_date', '!=', False), ('target_date', '!=', False),
+                               ('direction', '!=', 'range'), ('step_ids', '=', False)])
+        pending._sgi_auto_trajectory()
+        return True
+
     # ---- trayectoria ------------------------------------------------------
     def _sgi_trajectory_value(self, day):
         """Valor de la recta arranque → meta final en ``day`` (recortado)."""

@@ -113,3 +113,18 @@ class TestIndicatorTrajectory(TransactionCase):
             ind.write({'range_min': 8.0})
         with self.assertRaises(UserError):
             ind.action_generate_trajectory()
+
+    def test_06_trayectoria_automatica(self):
+        """55.0.0: con arranque, fecha de arranque y fecha de meta los escalones
+        se generan solos (al guardar y en el cron)."""
+        ind = self.env['sgi.indicator'].create({
+            'code': 'ZT-AUTO', 'name': 'Auto', 'target_objective': 100.0, 'target_acceptable': 90.0,
+            'baseline_value': 40.0, 'baseline_date': date(2046, 1, 1), 'target_date': date(2046, 12, 31)})
+        self.assertEqual(len(ind.step_ids), 4, "Cuatro trimestres al crear.")
+        ind.step_ids.unlink()
+        self.env['sgi.indicator'].cron_missing_trajectories()
+        self.assertEqual(len(ind.step_ids), 4, "El cron repone los que falten.")
+        ind.write({'target_date': date(2046, 6, 30)})
+        self.assertEqual(len(ind.step_ids), 2, "Cambiar la meta regenera.")
+        ind.write({'direction': 'range', 'range_min': 1, 'range_max': 2})
+        self.assertEqual(len(ind.step_ids), 2, "Con rango no se toca (la trayectoria no aplica).")
