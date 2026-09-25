@@ -25,27 +25,27 @@ class StockPicking(models.Model):
         for rec in self:
             if rec.state in ['done', 'cancel']:
                 raise UserError("No se puede limpiar una operación finalizada.")
-            
+
             # 1. Soltamos lo que Odoo apartó automáticamente
             rec.do_unreserve()
-            
+
             # 2. Borramos las líneas de operación
             rec.move_line_ids.sudo().unlink()
-            
+
             # 3. Ponemos la demanda hecha a cero
             rec.move_ids.sudo().write({'quantity': 0})
-            
+
             # 4. Refrescamos la vista
             rec.flush_recordset()
             rec.invalidate_recordset(['move_line_ids'])
-            
+
         return {'type': 'ir.actions.client', 'tag': 'reload'}
-                
+
     @api.depends('picking_type_id', 'state')
     def _compute_show_barcode_scan(self):
         for rec in self:
             name = _normalize_text(rec.picking_type_id.name)
-            is_valid = any(kw in name for kw in ['REQUISICI', 'FORMACI', 'DESPERDICIO']) or 'DEVOLUCION PRODUCCION' in name
+            is_valid = any(kw in name for kw in ['REQUISICI', 'FORMACI', 'DESPERDICIO', 'EMBARCAR']) or 'DEVOLUCION PRODUCCION' in name
             rec.show_barcode_scan = is_valid and rec.state not in ['done', 'cancel']
 
     @api.onchange('barcode_scan_batch')
@@ -54,9 +54,9 @@ class StockPicking(models.Model):
             return
 
         barcode = self.barcode_scan_batch
-        self.barcode_scan_batch = False 
+        self.barcode_scan_batch = False
         op_name = _normalize_text(self.picking_type_id.name)
-        
+
         # Variables de control para el flujo
         qty_done = 0.0
         already_processed = False
@@ -66,7 +66,7 @@ class StockPicking(models.Model):
         # ---------------------------------------------------------
         clean_search = re.sub(r'[^a-zA-Z0-9]', '', barcode)
         lot = self.env['stock.lot'].search([('name', '=', barcode)], limit=1)
-        
+
         if not lot:
             product_ids = self.move_ids.product_id.ids
             all_lots = self.env['stock.lot'].search([('product_id', 'in', product_ids)])
@@ -92,18 +92,20 @@ class StockPicking(models.Model):
                 ('location_id', '=', self.location_id.id),
                 ('quantity', '>', 0)
             ], limit=1)
-            
+
             if not quant:
                 raise UserError(_("La caja %s no tiene existencias en %s.") % (lot.name, self.location_id.name))
-            
-            raw_quantity = quant.quantity 
+
+            raw_quantity = quant.quantity
             uom = lot.product_id.uom_id
             qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
-        # CASO D: DEVOLUCIÓN PRODUCCIÓN (traslado interno de hilo/material sobrante)
-        # Coincidencia exacta de frase para no activarse en otros tipos de devolución
-        # (ej. Devolución de Cliente, Devolución de Proveedor).
-        elif 'DEVOLUCION PRODUCCION' in op_name:
+        # CASO D: DEVOLUCIÓN PRODUCCIÓN / EMBARCAR (traslado interno de hilo/material,
+        # sin validar contra una Orden de Fabricación específica).
+        # 'DEVOLUCION PRODUCCION' usa coincidencia exacta de frase para no activarse en
+        # otros tipos de devolución (ej. Devolución de Cliente, Devolución de Proveedor).
+        # 'EMBARCAR' cubre la nueva operación "Toluca: Embarcar" (Materia Prima -> Hilo Tejido).
+        elif 'DEVOLUCION PRODUCCION' in op_name or 'EMBARCAR' in op_name:
             if self.move_line_ids.filtered(lambda x: x.lot_id.id == lot.id and x.quantity > 0):
                 raise UserError(_("El lote %s ya ha sido escaneado.") % lot.name)
 
@@ -125,12 +127,12 @@ class StockPicking(models.Model):
             # REGEX: Valida que contenga letras, números, guiones intermedios y termine estrictamente en -[dígitos]
             if not re.match(r'^[A-Z]?[\w-]+-\d+$', barcode):
                  raise UserError(_("Formato de tela inválido para Baños. Debe terminar en '-[Número de Rollo]' (Ej: 12974-002-0001)."))
-        
+
             # Corta desde el ÚLTIMO guion hacia la izquierda: '99999-001-0001' -> '99999-001'
             mo_part = barcode.rsplit('-', 1)[0]
             if mo_part not in (self.origin or ''):
                raise UserError(_("La tela %s no pertenece a la Orden de Fabricación %s.") % (barcode, self.origin))
-        
+
             # VALIDACIÓN DE PRECARGADOS
             existing_line = self.move_line_ids.filtered(lambda ml: ml.lot_id == lot)
             if existing_line:
@@ -147,7 +149,7 @@ class StockPicking(models.Model):
                         'next': {'type': 'ir.actions.client', 'tag': 'reload'},
                     }
                 }
-               
+
             else:
                 # SI NO ESTÁ PRECARGADO: Buscar stock real para dar de ALTA
                 quant = self.env['stock.quant'].search([
@@ -157,8 +159,8 @@ class StockPicking(models.Model):
                 ], limit=1)
                 if not quant:
                     raise UserError(_("La tela %s no tiene stock en %s.") % (lot.name, self.location_id.name))
-                
-                raw_quantity = quant.quantity 
+
+                raw_quantity = quant.quantity
                 uom = lot.product_id.uom_id
                 qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
@@ -167,7 +169,7 @@ class StockPicking(models.Model):
             # REGEX: Debe iniciar con SUB-, seguido de la estructura alfanumérica/guiones, y terminar con fecha
             if not barcode.startswith('SUB-') or not re.match(r'^SUB-[A-Z]?[\w-]+-\d{4}-\d{2}-\d{2}$', barcode):
                 raise UserError(_("Formato de subproducto inválido para Desperdicio. Debe ser: SUB-MO-AAAA-MM-DD."))
-        
+
             # Removemos el prefijo 'SUB-'
             clean_sub = barcode[4:]
             # Removemos los 3 bloques de la fecha de la derecha (AAAA, MM, DD) para aislar la MO con sus guiones
@@ -191,7 +193,7 @@ class StockPicking(models.Model):
                         'next': {'type': 'ir.actions.client', 'tag': 'reload'},
                     }
                 }
-                
+
             else:
                 # Si no está precargado, buscamos existencias reales en la ubicación
                 quant = self.env['stock.quant'].search([
@@ -201,18 +203,18 @@ class StockPicking(models.Model):
                 ], limit=1)
                 if not quant:
                     raise UserError(_("El lote %s no tiene existencias en la ubicación %s.") % (lot.name, self.location_id.name))
-                
-                raw_quantity = quant.quantity 
+
+                raw_quantity = quant.quantity
                 uom = lot.product_id.uom_id
                 qty_done = uom.round(raw_quantity) if uom else raw_quantity
 
         # ---------------------------------------------------------
         # 3. PROCESAMIENTO TÉCNICO Y PERSISTENCIA
         # ---------------------------------------------------------
-        if not already_processed and (qty_done > 0 or 'REQUISICI' in op_name or 'DEVOLUCION PRODUCCION' in op_name):
+        if not already_processed and (qty_done > 0 or 'REQUISICI' in op_name or 'DEVOLUCION PRODUCCION' in op_name or 'EMBARCAR' in op_name):
             picking_id = self._origin.id if self._origin else self.id
             move = self.move_ids.filtered(lambda m: m.product_id == lot.product_id and m.state not in ['done', 'cancel'])[:1]
-            
+
             if move:
                 # VALIDACIÓN DE DUPLICADOS
                 existing_line = self.env['stock.move.line'].sudo().search([
@@ -223,7 +225,7 @@ class StockPicking(models.Model):
 
                 if existing_line:
                     raise UserError(_("Este lote (%s) ya fue guardado físicamente en la base de datos.") % lot.name)
-               
+
                 self.env['stock.move.line'].sudo().create({
                     'picking_id': picking_id,
                     'move_id': move._origin.id if move._origin else move.id,
@@ -234,7 +236,7 @@ class StockPicking(models.Model):
                     'location_dest_id': self.location_dest_id.id,
                     'product_uom_id': lot.product_id.uom_id.id,
                 })
-              
+
                 return {'type': 'ir.actions.client', 'tag': 'reload'}
             else:
                 raise UserError(_("El producto %s no es requerido en este documento.") % lot.product_id.display_name)
@@ -243,11 +245,11 @@ class StockPicking(models.Model):
         """ Validación con tolerancia técnica para industria textil """
         for rec in self:
             op_name = _normalize_text(rec.picking_type_id.name)
-            if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO']) or 'DEVOLUCION PRODUCCION' in op_name:
-                
+            if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO', 'EMBARCAR']) or 'DEVOLUCION PRODUCCION' in op_name:
+
                 total_scanned = sum(rec.move_line_ids.mapped('quantity'))
                 total_demanded = sum(rec.move_ids.mapped('product_uom_qty'))
-                
+
                 uom = rec.move_ids[0].product_uom if rec.move_ids else False
                 rounding = uom.rounding if uom else 0.01
 
@@ -261,5 +263,5 @@ class StockPicking(models.Model):
                         "- Demandado total: %s\n\n"
                         "La suma de los lotes no coincide con la demanda dentro de la precisión permitida."
                     ) % (status, total_scanned, total_demanded))
-        
+
         return super(StockPicking, self).button_validate()

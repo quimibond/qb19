@@ -390,6 +390,7 @@ class MrpProduction(models.Model):
         # Ejecutamos el cierre estándar de Odoo sobre TODO el recordset original.
         # Como 'product_qty' ahora es igual a lo producido en cada MO afectada,
         # cerrará sin generar rollos fantasma, y sigue soportando cierres en lote.
+
         return super(MrpProduction, self).button_mark_done()
 
 class MrpWeighingLog(models.Model):
