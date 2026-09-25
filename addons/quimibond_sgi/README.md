@@ -1034,6 +1034,12 @@ vivo, no documento controlado):
 
 Pruebas: `TestMyProcedure.test_14`.
 
+**46.0.1:** al desplegar, Inicio abría con «El registro no existe»: apuntaba
+al «Panel de procesos» retirado en 45.0.0 y Odoo no vacía `action` de un menú
+cuando el menuitem deja de traerla. Se vacía explícito en `sgi_menus.xml`, la
+migración limpia cualquier menú del SGI con acción borrada
+(`_sgi_menu_dangling_actions`) y `TestCleanup45.test_05` lo vigila.
+
 ## Limpieza antes de producción (19.0.45.0.0)
 
 Regla del CEO (2026-09-24): **menús, acciones y vistas sin uso se borran;
@@ -1219,12 +1225,22 @@ pantalla sigue el orden de la estructura: arriba quién soy, mi puesto, mi
 jefe y el estado en una línea (atrasadas, al día, firmas pendientes); en
 medio **Mis pendientes** primero (lo atrasado arriba), luego **mis
 actividades por cadencia** como tarjetas y al final **Mis documentos**.
-**Mi equipo** (Inicio → Mi equipo, `sgi.my.team`): para jefes directos, de
-departamento y dueños de proceso (Jefe MAST, administrador y Dirección ven a
-todos): cuántas personas, cuántas con atrasos o firmas pendientes, y una
-fila por persona con atrasadas, firmas pendientes, brechas de capacitación
-(`sgi_skill_gap_count`) y el botón «Abrir su procedimiento». Los datos del
-puesto se arman una vez por puesto, no por persona.
+**Mi equipo** (Inicio → Mi equipo): desde 46.1.0 es una **lista nativa de
+Odoo** sobre `hr.employee.public` (buscar, filtrar, agrupar, exportar),
+acotada al equipo del usuario (reportes directos, departamentos que dirige y
+puestos de sus procesos; Jefe MAST, administrador y Dirección de Operaciones
+ven a todos). Columnas: persona, puesto, departamento, jefe, atrasadas, al
+día, sin medición, firmas pendientes, estado de Mi procedimiento; filtros
+«Con atrasadas», «Con firmas pendientes», «Mi procedimiento sin firmar / sin
+publicar», «Mi departamento»; agrupar por puesto, departamento o jefe. Las
+cifras se calculan por puesto una vez por lote y los filtros las buscan con
+métodos propios (`_search_sgi_mp_*`). Cada fila trae **«Ver su
+procedimiento»**; el mismo botón está en la ficha del empleado y en la del
+puesto (`action_sgi_open_my_procedure` → `sgi.my.procedure.action_open_for`,
+que respeta el alcance). En la pantalla de Mi procedimiento el selector se
+llama «Ver como: empleado / puesto» y solo lo pueden usar administrador,
+MAST, Dirección y jefes (estos, dentro de su equipo). El transitorio
+`sgi.my.team` (HTML servido) se retiró: no se podía buscar ni filtrar.
 
 Pruebas: `TestMyProcedure` 01–13.
 

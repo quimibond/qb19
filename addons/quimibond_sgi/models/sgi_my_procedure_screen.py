@@ -622,100 +622,169 @@ class SgiMyProcedureCheck(models.TransientModel):
             wiz.result = html
 
 
-class SgiMyTeam(models.TransientModel):
-    """Inicio → Mi equipo (nivel 4, jefes): una fila por persona del equipo con
-    sus atrasos, firmas pendientes y brechas de capacitación, y el botón para
-    abrir su procedimiento."""
-    _name = 'sgi.my.team'
-    _description = "Mi equipo (pantalla)"
+class SgiMyProcedureOpen(models.TransientModel):
+    _inherit = 'sgi.my.procedure'
 
-    content = fields.Html(string="Contenido", compute='_compute_content', sanitize=False)
+    @api.model
+    def action_open_for(self, employee_id=False, job_id=False):
+        """«Ver su procedimiento» desde la ficha del empleado, la del puesto o
+        una fila de Mi equipo. El alcance (quién puede ver a quién) lo aplican
+        los dominios de la pantalla: fuera del equipo, el selector no deja
+        elegirlo y la pantalla se abre vacía."""
+        wiz = self.create({'employee_id': employee_id or False, 'job_id': job_id or False})
+        if wiz.employee_id and wiz.employee_id.id not in wiz.allowed_employee_ids.ids:
+            raise UserError("Esa persona no está en tu equipo; solo ves a tu gente, tus "
+                            "departamentos y los puestos de tus procesos.")
+        if not wiz.employee_id and wiz.job_id and wiz.job_id.id not in wiz.allowed_job_ids.ids:
+            raise UserError("Ese puesto no está en tu equipo.")
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Mi procedimiento — %s" % (wiz.employee_id.name or wiz.job_id.name or ''),
+            'res_model': 'sgi.my.procedure',
+            'res_id': wiz.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+
+class HrEmployeeMyProcedureOpen(models.Model):
+    _inherit = 'hr.employee'
+
+    def action_sgi_open_my_procedure(self):
+        self.ensure_one()
+        return self.env['sgi.my.procedure'].action_open_for(employee_id=self.id)
+
+
+class HrJobMyProcedureOpen(models.Model):
+    _inherit = 'hr.job'
+
+    def action_sgi_open_my_procedure(self):
+        self.ensure_one()
+        return self.env['sgi.my.procedure'].action_open_for(job_id=self.id)
+
+
+class HrEmployeePublicMyTeam(models.Model):
+    """Inicio → Mi equipo: lista NATIVA de Odoo sobre hr.employee.public
+    (legible por cualquier usuario interno): buscar, filtrar, agrupar y
+    exportar. Las cifras de «Mi procedimiento» se calculan por puesto una
+    sola vez por lote y los filtros las buscan con métodos propios."""
+    _inherit = 'hr.employee.public'
+
+    sgi_mp_late = fields.Integer(
+        string="Atrasadas", compute='_compute_sgi_mp_stats', search='_search_sgi_mp_late',
+        help="Actividades del puesto (ejecuta o aprueba) que hoy están atrasadas.")
+    sgi_mp_ok = fields.Integer(string="Al día", compute='_compute_sgi_mp_stats')
+    sgi_mp_unmeasured = fields.Integer(string="Sin medición automática", compute='_compute_sgi_mp_stats')
+    sgi_mp_total = fields.Integer(string="Actividades", compute='_compute_sgi_mp_stats')
+    sgi_mp_acks_pending = fields.Integer(
+        string="Firmas pendientes", compute='_compute_sgi_mp_stats',
+        search='_search_sgi_mp_acks_pending',
+        help="Acuses de lectura pendientes de la persona (Mi procedimiento y demás documentos).")
+    sgi_mp_ack_state = fields.Selection([
+        ('sin_publicar', "Sin publicar"),
+        ('pendiente', "Acuse pendiente"),
+        ('leido', "Leído y entendido"),
+    ], string="Mi procedimiento", compute='_compute_sgi_mp_stats', search='_search_sgi_mp_ack_state')
+
+    @api.model
+    def _sgi_mp_job_stats(self, jobs):
+        """{puesto: (atrasadas, al día, sin medir, total)} una vez por puesto."""
+        stats = {}
+        for job in jobs.sudo():
+            if not job:
+                continue
+            data = job._sgi_my_procedure_data()
+            counts = {'atrasada': 0, 'al_dia': 0, 'sin_medir': 0}
+            for section in data['sections']:
+                for entry in section['entries']:
+                    counts[entry['status']] += 1
+            stats[job.id] = (counts['atrasada'], counts['al_dia'], counts['sin_medir'],
+                             sum(counts.values()))
+        return stats
+
+    def _compute_sgi_mp_stats(self):
+        Employee = self.env['hr.employee'].sudo()
+        employees = Employee.browse(self.ids)
+        stats = self._sgi_mp_job_stats(employees.job_id)
+        pending = {}
+        if employees:
+            for emp, count in self.env['sgi.document.ack'].sudo()._read_group(
+                    [('employee_id', 'in', employees.ids), ('state', '=', 'pendiente')],
+                    ['employee_id'], ['__count']):
+                pending[emp.id] = count
+        ack_state = {emp.id: emp.sgi_my_procedure_ack_state for emp in employees}
+        for rec in self:
+            late, ok, unmeasured, total = stats.get(rec.job_id.id, (0, 0, 0, 0))
+            rec.sgi_mp_late = late
+            rec.sgi_mp_ok = ok
+            rec.sgi_mp_unmeasured = unmeasured
+            rec.sgi_mp_total = total
+            rec.sgi_mp_acks_pending = pending.get(rec.id, 0)
+            rec.sgi_mp_ack_state = ack_state.get(rec.id, 'sin_publicar')
+
+    def _sgi_mp_ids_where(self, predicate):
+        """Ids de empleados activos con puesto que cumplen el predicado sobre
+        sus cifras (calculadas por lote)."""
+        records = self.sudo().search([('job_id', '!=', False)])
+        return [rec.id for rec in records if predicate(rec)]
+
+    @api.model
+    def _search_sgi_mp_late(self, operator, value):
+        if operator not in ('>', '>=', '=', '!=', '<', '<='):
+            raise UserError("Filtro no soportado sobre «Atrasadas».")
+        ops = {'>': lambda a: a > value, '>=': lambda a: a >= value, '=': lambda a: a == value,
+               '!=': lambda a: a != value, '<': lambda a: a < value, '<=': lambda a: a <= value}
+        return [('id', 'in', self._sgi_mp_ids_where(lambda r: ops[operator](r.sgi_mp_late)))]
+
+    @api.model
+    def _search_sgi_mp_acks_pending(self, operator, value):
+        if operator not in ('>', '>=', '=', '!=', '<', '<='):
+            raise UserError("Filtro no soportado sobre «Firmas pendientes».")
+        ops = {'>': lambda a: a > value, '>=': lambda a: a >= value, '=': lambda a: a == value,
+               '!=': lambda a: a != value, '<': lambda a: a < value, '<=': lambda a: a <= value}
+        return [('id', 'in', self._sgi_mp_ids_where(lambda r: ops[operator](r.sgi_mp_acks_pending)))]
+
+    @api.model
+    def _search_sgi_mp_ack_state(self, operator, value):
+        values = value if isinstance(value, (list, tuple)) else [value]
+        if operator in ('=', 'in'):
+            return [('id', 'in', self._sgi_mp_ids_where(lambda r: r.sgi_mp_ack_state in values))]
+        if operator in ('!=', 'not in'):
+            return [('id', 'in', self._sgi_mp_ids_where(lambda r: r.sgi_mp_ack_state not in values))]
+        raise UserError("Filtro no soportado sobre «Mi procedimiento».")
+
+    def action_sgi_open_my_procedure(self):
+        self.ensure_one()
+        return self.env['sgi.my.procedure'].action_open_for(employee_id=self.id)
 
     @api.model
     def _sgi_team(self):
+        """Las personas que el usuario puede ver: su gente, sus departamentos
+        y los puestos de sus procesos; MAST, administrador y Dirección de
+        Operaciones ven a todos los que tienen puesto."""
         Wiz = self.env['sgi.my.procedure']
         me = Wiz._sgi_mp_my_employee()
+        Employee = self.env['hr.employee'].sudo()
         if Wiz._sgi_mp_is_admin():
-            return self.env['hr.employee'].sudo().search([('job_id', '!=', False)], order='name')
+            return Employee.search([('job_id', '!=', False)])
         if not me:
-            return self.env['hr.employee'].sudo()
-        return (me._sgi_mp_team_employees() - me).sorted('name')
+            return Employee
+        return me._sgi_mp_team_employees() - me
 
     @api.model
-    def _sgi_team_rows(self, team):
-        """Una fila por persona; los datos del puesto se arman una vez por
-        puesto, no por persona."""
-        Ack = self.env['sgi.document.ack'].sudo()
-        pending = {}
-        if team:
-            for emp, count in Ack._read_group(
-                    [('employee_id', 'in', team.ids), ('state', '=', 'pendiente')],
-                    ['employee_id'], ['__count']):
-                pending[emp.id] = count
-        by_job = {}
-        rows = []
-        for emp in team:
-            job = emp.job_id.sudo()
-            if job not in by_job:
-                data = job._sgi_my_procedure_data() if job else None
-                late = sum(1 for sct in data['sections'] for e in sct['entries']
-                           if e['status'] == 'atrasada') if data else 0
-                total = sum(len(sct['entries']) for sct in data['sections']) if data else 0
-                by_job[job] = (late, total)
-            late, total = by_job[job]
-            rows.append({
-                'employee': emp, 'job': job, 'late': late, 'total': total,
-                'acks': pending.get(emp.id, 0),
-                'gaps': emp.sgi_skill_gap_count if 'sgi_skill_gap_count' in emp._fields else 0,
-            })
-        rows.sort(key=lambda r: (-r['late'], -r['acks'], r['employee'].name or ''))
-        return rows
-
-    def _compute_content(self):
-        Wiz = self.env['sgi.my.procedure']
-        for wiz in self:
-            team = self._sgi_team()
-            if not team:
-                wiz.content = Markup('<div class="alert alert-info">No tienes personas a tu cargo '
-                                     'en Odoo (reportes directos, tu departamento o los puestos de '
-                                     'tus procesos).</div>')
-                continue
-            rows = self._sgi_team_rows(team)
-            with_late = sum(1 for r in rows if r['late'])
-            with_acks = sum(1 for r in rows if r['acks'])
-            html = Markup('<div style="font-size:14px;">')
-            html += Markup('<div style="margin-bottom:10px;"><span style="font-size:18px; font-weight:700;">Mi equipo</span>'
-                           ' <span class="text-muted">· %d personas</span></div>') % len(rows)
-            summary = Markup('')
-            if with_late:
-                summary += Wiz._sgi_mp_badge("Con atrasos: %d" % with_late, *_STATUS_STYLE['atrasada'])
-            if with_acks:
-                summary += Wiz._sgi_mp_badge("Con firmas pendientes: %d" % with_acks, '#8a6d00', '#fff4e5')
-            if not summary:
-                summary = Markup('<span class="text-muted" style="font-size:12px;">Sin atrasos ni firmas pendientes.</span>')
-            html += Markup('<div style="margin-bottom:12px;">%s</div>') % summary
-            html += Markup('<table class="table table-sm" style="font-size:13px;"><thead><tr>'
-                           '<th>Persona</th><th>Puesto</th><th>Atrasadas</th><th>Firmas pendientes</th>'
-                           '<th>Brechas de capacitación</th><th></th></tr></thead><tbody>')
-            for r in rows:
-                person_wiz = Wiz.create({'employee_id': r['employee'].id})
-                late_html = Wiz._sgi_mp_badge(str(r['late']), *_STATUS_STYLE['atrasada']) if r['late'] \
-                    else Markup('<span class="text-muted">0 de %d</span>') % r['total']
-                acks_html = Wiz._sgi_mp_badge(str(r['acks']), '#8a6d00', '#fff4e5') if r['acks'] \
-                    else Markup('<span class="text-muted">0</span>')
-                gaps_html = Markup('<span class="text-muted">%d</span>') % r['gaps']
-                html += Markup('<tr><td><b>%s</b></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>'
-                               '<td><a class="btn btn-sm btn-secondary" href="/odoo/sgi.my.procedure/%d" '
-                               'target="_self">Abrir su procedimiento</a></td></tr>') % (
-                    r['employee'].name, r['job'].name or '—', late_html, acks_html, gaps_html, person_wiz.id)
-            html += Markup('</tbody></table></div>')
-            wiz.content = html
-
-    @api.model
-    def action_open_mine(self):
-        wiz = self.create({})
+    def action_open_my_team(self):
+        """Inicio → Mi equipo: la lista nativa acotada al equipo."""
+        team = self._sgi_team()
         return {
-            'type': 'ir.actions.act_window', 'name': "Mi equipo",
-            'res_model': 'sgi.my.team', 'res_id': wiz.id,
-            'view_mode': 'form', 'target': 'current',
+            'type': 'ir.actions.act_window',
+            'name': "Mi equipo",
+            'res_model': 'hr.employee.public',
+            'view_mode': 'list,kanban,form',
+            'views': [(self.env.ref('quimibond_sgi.sgi_my_team_view_list').id, 'list'),
+                      (False, 'kanban'), (False, 'form')],
+            'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_team_view_search').id, 'search'],
+            'domain': [('id', 'in', team.ids)],
+            'context': {'search_default_group_job': 1},
+            'help': "<p class='o_view_nocontent_smiling_face'>No tienes personas a tu cargo en Odoo</p>"
+                    "<p>Reportes directos, tu departamento o los puestos de tus procesos.</p>",
         }

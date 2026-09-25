@@ -386,11 +386,15 @@ class TestMyProcedure(TransactionCase):
         self.assertIn('Solo MP', result)
 
     def test_13_mi_equipo(self):
-        Team = self.env['sgi.my.team']
-        # Sin equipo: mensaje, no error.
-        wiz = Team.with_user(self.user_emp).browse(Team.with_user(self.user_emp).action_open_mine()['res_id'])
-        self.assertIn('No tienes personas a tu cargo', wiz.content)
-        # Jefe directo: ve a su gente con atrasos, firmas y capacitación.
+        """Mi equipo es una lista nativa (buscar, filtrar, agrupar) acotada al
+        equipo, con las cifras de Mi procedimiento por persona y el botón
+        «Ver su procedimiento»."""
+        Public = self.env['hr.employee.public']
+        # Sin equipo: la acción abre vacía, no truena.
+        action = Public.with_user(self.user_emp).action_open_my_team()
+        self.assertEqual(action['res_model'], 'hr.employee.public')
+        self.assertEqual(action['domain'], [('id', 'in', [])])
+        # Jefe directo: ve a su gente con atrasos y firmas.
         boss_user = new_test_user(self.env, login='mp_team_boss',
                                   groups='base.group_user,quimibond_sgi.group_sgi_user')
         boss = self.env['hr.employee'].create({
@@ -398,14 +402,30 @@ class TestMyProcedure(TransactionCase):
         self.emp1.parent_id = boss
         self.a_quarterly.measure_state = 'rojo'
         self.job.with_user(self.manager).action_sgi_publish_my_procedure()
-        wiz = Team.with_user(boss_user).browse(Team.with_user(boss_user).action_open_mine()['res_id'])
-        html = wiz.content
-        self.assertIn('Emp MP Uno', html)
-        self.assertNotIn('Emp MP Dos', html, "No le reporta.")
-        self.assertIn('Con atrasos: 1', html)
-        self.assertIn('Con firmas pendientes: 1', html)
-        self.assertIn('Abrir su procedimiento', html)
-        self.assertIn('/odoo/sgi.my.procedure/', html)
+        action = Public.with_user(boss_user).action_open_my_team()
+        team = Public.with_user(boss_user).search(action['domain'])
+        self.assertIn(self.emp1.id, team.ids)
+        self.assertNotIn(self.emp2.id, team.ids, "No le reporta.")
+        row = Public.with_user(boss_user).browse(self.emp1.id)
+        self.assertEqual((row.sgi_mp_late, row.sgi_mp_acks_pending, row.sgi_mp_ack_state),
+                         (1, 1, 'pendiente'))
+        # Los filtros buscan sobre las cifras calculadas.
+        self.assertIn(self.emp1.id, Public.with_user(boss_user).search(
+            action['domain'] + [('sgi_mp_late', '>', 0)]).ids)
+        self.assertIn(self.emp1.id, Public.with_user(boss_user).search(
+            [('sgi_mp_ack_state', '=', 'pendiente')]).ids)
+        # «Ver su procedimiento» abre la pantalla de esa persona; fuera del
+        # equipo, no.
+        opened = row.action_sgi_open_my_procedure()
+        wiz = self.env['sgi.my.procedure'].browse(opened['res_id'])
+        self.assertEqual(wiz.employee_id.id, self.emp1.id)
+        with self.assertRaises(UserError):
+            Public.with_user(boss_user).browse(self.emp2.id).action_sgi_open_my_procedure()
+        # Desde la ficha del empleado y la del puesto (MAST ve a cualquiera).
+        opened = self.emp2.with_user(self.manager).action_sgi_open_my_procedure()
+        self.assertEqual(self.env['sgi.my.procedure'].browse(opened['res_id']).employee_id.id, self.emp2.id)
+        opened = self.job.with_user(self.manager).action_sgi_open_my_procedure()
+        self.assertEqual(self.env['sgi.my.procedure'].browse(opened['res_id']).job_id, self.job)
         # Jefe MAST: todos.
-        wiz_m = Team.with_user(self.manager).browse(Team.with_user(self.manager).action_open_mine()['res_id'])
-        self.assertIn('Emp MP Dos', wiz_m.content)
+        action = Public.with_user(self.manager).action_open_my_team()
+        self.assertIn(self.emp2.id, Public.with_user(self.manager).search(action['domain']).ids)
