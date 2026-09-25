@@ -62,3 +62,4 @@ from . import test_pr4_docs_legal
 from . import test_pr5_direction
 from . import test_pr6_external
 from . import test_pr7_replaces
+from . import test_hierarchy

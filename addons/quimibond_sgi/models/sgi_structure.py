@@ -101,9 +101,10 @@ class SgiProcessStructure(models.Model):
                         'default_name': "Hallazgo en %s %s" % (self.code or '', self.name or '')},
         }
 
-    def action_sgi_view_diagram(self):
-        """«Ver en diagrama»: las flechas del mapa que entran y salen de este
-        proceso, agrupadas por quién entrega."""
+    def action_sgi_view_flows(self):
+        """«Con quién se conecta»: las flechas del mapa que entran y salen de
+        este proceso, agrupadas por quién entrega. (Hasta 53.1.x era «Ver en
+        diagrama»; el diagrama real vive en sgi_hierarchy.)"""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
