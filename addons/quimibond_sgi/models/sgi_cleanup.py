@@ -126,6 +126,17 @@ class SgiMenuCleanup(models.Model):
                 offenders |= menu
         return offenders
 
+    def _sgi_menu_dangling_actions(self):
+        """Menús bajo el raíz del SGI cuya acción ya no existe. Odoo no vacía
+        `action` cuando el menuitem deja de traerla y el menú abre con «El
+        registro no existe» (pasó con Inicio en 46.0.0)."""
+        root = self.env.ref('quimibond_sgi.menu_sgi_root', raise_if_not_found=False)
+        if not root:
+            return self.browse()
+        menus = self.sudo().with_context(active_test=False).search(
+            [('parent_id', 'child_of', root.id)])
+        return menus.filtered(lambda m: m.action and not m.action.exists())
+
 
 class SgiProcessCleanup(models.Model):
     _inherit = 'sgi.process'

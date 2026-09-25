@@ -28,10 +28,13 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name="employee_id" readonly="not can_pick"
+                            <!-- «Ver como»: administrador, MAST y Dirección eligen a
+                                 cualquiera; un jefe, solo a su equipo; los demás lo ven
+                                 fijo en su propio puesto. -->
+                            <field name="employee_id" string="Ver como: empleado" readonly="not can_pick"
                                    domain="[('id', 'in', allowed_employee_ids)]"
                                    options="{'no_create': True, 'no_open': True}"/>
-                            <field name="job_id" readonly="not can_pick"
+                            <field name="job_id" string="Ver como: puesto" readonly="not can_pick"
                                    domain="[('id', 'in', allowed_job_ids)]"
                                    options="{'no_create': True, 'no_open': True}"/>
                         </group>
@@ -100,6 +103,9 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='sgi_roles']//button[@name='action_sgi_view_roles']" position="before">
                 <div class="mb-2">
+                    <button name="action_sgi_open_my_procedure" type="object"
+                            string="Ver su procedimiento" icon="fa-eye"
+                            class="btn-primary me-1"/>
                     <button name="action_sgi_print_my_procedure" type="object"
                             string="Imprimir «Mi procedimiento»" icon="fa-print"
                             class="btn-secondary me-1"/>
@@ -128,11 +134,17 @@
         <field name="inherit_id" ref="quimibond_sgi.sgi_hr_employee_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_my_procedure" type="object" class="oe_stat_button"
+                        icon="fa-eye" invisible="not job_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Ver su procedimiento</span>
+                        <field name="sgi_my_procedure_ack_state" class="o_stat_text"/>
+                    </div>
+                </button>
                 <button name="action_sgi_print_my_procedure" type="object" class="oe_stat_button"
                         icon="fa-print" invisible="not job_id">
                     <div class="o_stat_info">
-                        <span class="o_stat_text">Mi procedimiento</span>
-                        <field name="sgi_my_procedure_ack_state" class="o_stat_text"/>
+                        <span class="o_stat_text">Imprimir PDF</span>
                     </div>
                 </button>
             </xpath>
@@ -152,15 +164,54 @@
         </field>
     </record>
 
-    <record id="sgi_my_team_view_form" model="ir.ui.view">
-        <field name="name">sgi.my.team.form</field>
-        <field name="model">sgi.my.team</field>
+    <!-- ====== Mi equipo: lista nativa sobre hr.employee.public ====== -->
+    <record id="sgi_my_team_view_list" model="ir.ui.view">
+        <field name="name">sgi.my.team.list</field>
+        <field name="model">hr.employee.public</field>
         <field name="arch" type="xml">
-            <form string="Mi equipo" create="0" delete="0">
-                <sheet>
-                    <field name="content" nolabel="1" readonly="1" options="{'safe': True}"/>
-                </sheet>
-            </form>
+            <list string="Mi equipo" create="0" delete="0" default_order="name"
+                  decoration-danger="sgi_mp_late > 0"
+                  decoration-warning="sgi_mp_late == 0 and sgi_mp_acks_pending > 0">
+                <field name="name"/>
+                <field name="job_id"/>
+                <field name="department_id" optional="show"/>
+                <field name="parent_id" string="Jefe" optional="show"/>
+                <field name="sgi_mp_late" sum="Atrasadas"/>
+                <field name="sgi_mp_ok" optional="show"/>
+                <field name="sgi_mp_unmeasured" optional="hide"/>
+                <field name="sgi_mp_total" optional="show"/>
+                <field name="sgi_mp_acks_pending" sum="Firmas pendientes"/>
+                <field name="sgi_mp_ack_state" widget="badge"
+                       decoration-success="sgi_mp_ack_state == 'leido'"
+                       decoration-warning="sgi_mp_ack_state == 'pendiente'"/>
+                <button name="action_sgi_open_my_procedure" type="object"
+                        string="Ver su procedimiento" icon="fa-eye"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_my_team_view_search" model="ir.ui.view">
+        <field name="name">sgi.my.team.search</field>
+        <field name="model">hr.employee.public</field>
+        <field name="arch" type="xml">
+            <search string="Mi equipo">
+                <field name="name"/>
+                <field name="job_id"/>
+                <field name="department_id"/>
+                <field name="parent_id" string="Jefe"/>
+                <filter name="with_late" string="Con atrasadas" domain="[('sgi_mp_late', '>', 0)]"/>
+                <filter name="with_acks" string="Con firmas pendientes" domain="[('sgi_mp_acks_pending', '>', 0)]"/>
+                <filter name="mp_pending" string="Mi procedimiento sin firmar" domain="[('sgi_mp_ack_state', '=', 'pendiente')]"/>
+                <filter name="mp_unpublished" string="Mi procedimiento sin publicar" domain="[('sgi_mp_ack_state', '=', 'sin_publicar')]"/>
+                <separator/>
+                <filter name="my_department" string="Mi departamento"
+                        domain="[('department_id.member_ids.user_id', '=', uid)]"/>
+                <group>
+                    <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_department" string="Departamento" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_parent" string="Jefe" context="{'group_by': 'parent_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
