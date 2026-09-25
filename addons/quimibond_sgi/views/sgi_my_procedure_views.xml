@@ -11,61 +11,76 @@
         <field name="model">sgi.activity.role</field>
         <field name="priority">50</field>
         <field name="arch" type="xml">
-            <kanban create="0" delete="0" quick_create="0">
-                                    <field name="mp_status"/>
-                                    <field name="mp_can_go"/>
-                                    <field name="mp_instruction_id"/>
-                                    <field name="mp_external"/>
-                                    <templates>
-                                        <t t-name="card" class="flex-column p-2">
-                                            <!-- flex-wrap: sin él, las etiquetas se quedan con su ancho y
-                                                 el «cuándo» se apila letra por letra (2026-09-25). -->
-                                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
-                                                <field name="cadence" widget="badge"/>
-                                                <field name="mp_status" widget="badge"
-                                                       decoration-success="mp_status == 'al_dia'"
-                                                       decoration-danger="mp_status == 'atrasada'"
-                                                       decoration-muted="mp_status == 'sin_medir'"/>
-                                                <field name="role" widget="badge"
-                                                       decoration-success="role == 'ejecuta'"
-                                                       decoration-warning="role == 'aprueba'"/>
-                                            </div>
-                                            <div class="mb-1"><strong><field name="activity_when"/></strong></div>
-                                            <div class="fs-5 fw-bold">
-                                                <field name="mp_name"/>
-                                            </div>
-                                            <div class="text-muted small mb-1">
-                                                <field name="process_id"/> · <field name="mp_number"/>
-                                                <t t-if="record.mp_status_detail.raw_value"> · <field name="mp_status_detail"/></t>
-                                            </div>
-                                            <div t-if="record.mp_how.raw_value"><b>Cómo:</b> <field name="mp_how"/></div>
-                                            <div t-if="record.mp_where.raw_value"><b>Dónde:</b> <field name="mp_where"/></div>
-                                            <div t-if="record.mp_check_against.raw_value"><b>Contra qué se revisa:</b> <field name="mp_check_against"/></div>
-                                            <div t-if="record.mp_done.raw_value"><b>Terminada cuando:</b> <field name="mp_done"/></div>
-                                            <div t-if="record.mp_on_fail.raw_value"><b>Si no se puede:</b> <field name="mp_on_fail"/></div>
-                                            <div t-if="record.mp_inputs.raw_value"><b>Recibe:</b> <field name="mp_inputs"/></div>
-                                            <div t-if="record.mp_outputs.raw_value"><b>Entrega:</b> <field name="mp_outputs"/></div>
-                                            <div t-if="record.mp_related.raw_value"><b>Conforme a:</b> <field name="mp_related"/></div>
-                                            <div t-if="record.mp_escalates.raw_value"><b>Si se atora, escala a:</b> <field name="mp_escalates"/></div>
-                                            <div class="mt-2 d-flex gap-2 flex-wrap">
-                                                <button t-if="record.mp_can_go.raw_value" type="object" name="action_mp_go"
-                                                        class="btn btn-primary btn-sm">
-                                                    <i class="fa fa-play me-1" title="Ir a hacerlo"/>Ir a hacerlo
-                                                </button>
-                                                <span t-elif="record.mp_external.raw_value" class="btn btn-outline-secondary btn-sm disabled">
-                                                    <i class="fa fa-external-link me-1" title="Sistema externo"/>Se hace en <field name="mp_external"/>
-                                                </span>
-                                                <button t-if="record.mp_instruction_id.raw_value" type="object" name="action_mp_instruction"
-                                                        class="btn btn-secondary btn-sm">
-                                                    <i class="fa fa-book me-1" title="Instructivo"/>Ver instructivo <field name="mp_instruction_id"/>
-                                                </button>
-                                                <button type="object" name="action_open_activity" class="btn btn-secondary btn-sm">
-                                                    <i class="fa fa-file-text-o me-1" title="Actividad"/>Ver actividad
-                                                </button>
-                                            </div>
-                                        </t>
-                                    </templates>
-                                </kanban>
+            <!-- 54.1.0: tarjeta compacta agrupada por cadencia. Arriba lo que
+                 se lee de un vistazo (estado, cuándo, qué, dónde en Odoo);
+                 el «cómo» siempre visible; el resto del procedimiento se
+                 despliega con «Más detalle» (Bootstrap collapse; el kanban
+                 no abre la tarjeta al hacer clic en un data-bs-toggle). -->
+            <kanban create="0" delete="0" quick_create="0" default_group_by="cadence" group_create="0"
+                    group_delete="0" group_edit="0" records_draggable="0" class="o_sgi_mp_kanban">
+                <field name="mp_status"/>
+                <field name="mp_can_go"/>
+                <field name="mp_instruction_id"/>
+                <field name="mp_external"/>
+                <field name="cadence"/>
+                <templates>
+                    <t t-name="card" class="flex-column p-2">
+                        <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                            <field name="mp_status" widget="badge"
+                                   decoration-success="mp_status == 'al_dia'"
+                                   decoration-danger="mp_status == 'atrasada'"
+                                   decoration-muted="mp_status == 'sin_medir'"/>
+                            <field name="role" widget="badge"
+                                   decoration-success="role == 'ejecuta'"
+                                   decoration-warning="role == 'aprueba'"/>
+                            <span class="ms-auto text-muted small"><field name="mp_number"/></span>
+                        </div>
+                        <div class="fw-bold lh-sm"><field name="mp_name"/></div>
+                        <div class="text-muted small mb-1">
+                            <field name="process_id"/>
+                            <t t-if="record.activity_when.raw_value"> · <field name="activity_when"/></t>
+                            <t t-if="record.mp_status_detail.raw_value"> · <field name="mp_status_detail"/></t>
+                        </div>
+                        <div t-if="record.mp_how.raw_value" class="small"><field name="mp_how"/></div>
+                        <div t-if="record.mp_where.raw_value" class="small text-muted mt-1">
+                            <i class="fa fa-map-marker me-1" title="Dónde"/><field name="mp_where"/>
+                        </div>
+                        <t t-set="more" t-value="record.mp_check_against.raw_value or record.mp_done.raw_value or record.mp_on_fail.raw_value or record.mp_inputs.raw_value or record.mp_outputs.raw_value or record.mp_related.raw_value or record.mp_escalates.raw_value"/>
+                        <div t-if="more" class="mt-1">
+                            <a role="button" class="small text-decoration-none" data-bs-toggle="collapse"
+                               t-attf-href="#o_sgi_mp_more_{{record.id.raw_value}}" aria-expanded="false">
+                                <i class="fa fa-caret-down me-1" title="Más detalle"/>Más detalle
+                            </a>
+                            <div class="collapse small mt-1 o_sgi_mp_more" t-attf-id="o_sgi_mp_more_{{record.id.raw_value}}">
+                                <div t-if="record.mp_check_against.raw_value"><b>Contra qué se revisa:</b> <field name="mp_check_against"/></div>
+                                <div t-if="record.mp_done.raw_value"><b>Terminada cuando:</b> <field name="mp_done"/></div>
+                                <div t-if="record.mp_on_fail.raw_value"><b>Si no se puede:</b> <field name="mp_on_fail"/></div>
+                                <div t-if="record.mp_inputs.raw_value"><b>Recibe:</b> <field name="mp_inputs"/></div>
+                                <div t-if="record.mp_outputs.raw_value"><b>Entrega:</b> <field name="mp_outputs"/></div>
+                                <div t-if="record.mp_related.raw_value"><b>Conforme a:</b> <field name="mp_related"/></div>
+                                <div t-if="record.mp_escalates.raw_value"><b>Si se atora, escala a:</b> <field name="mp_escalates"/></div>
+                            </div>
+                        </div>
+                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                            <button t-if="record.mp_can_go.raw_value" type="object" name="action_mp_go"
+                                    class="btn btn-primary btn-sm">
+                                <i class="fa fa-play me-1" title="Ir a hacerlo"/>Ir a hacerlo
+                            </button>
+                            <span t-elif="record.mp_external.raw_value" class="btn btn-outline-secondary btn-sm disabled">
+                                <i class="fa fa-external-link me-1" title="Sistema externo"/>Se hace en <field name="mp_external"/>
+                            </span>
+                            <button t-if="record.mp_instruction_id.raw_value" type="object" name="action_mp_instruction"
+                                    class="btn btn-outline-secondary btn-sm" title="Ver instructivo">
+                                <i class="fa fa-book me-1" title="Instructivo"/>Instructivo
+                            </button>
+                            <button type="object" name="action_open_activity" class="btn btn-link btn-sm text-muted"
+                                    title="Ver actividad">
+                                <i class="fa fa-file-text-o" title="Actividad"/>
+                            </button>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
         </field>
     </record>
 
@@ -110,10 +125,10 @@
                             class="btn-primary" icon="fa-pencil"
                             invisible="not is_me or ack_state != 'pendiente'"
                             confirm="Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora."/>
-                    <button name="action_print" type="object" string="Imprimir PDF" icon="fa-print"
-                            invisible="not job_id"/>
                     <button name="action_open_doc" type="object" string="Ver revisión vigente" icon="fa-file-pdf-o"
                             invisible="not doc_id"/>
+                    <button name="action_print" type="object" string="Imprimir PDF" icon="fa-print"
+                            invisible="not job_id"/>
                     <button name="action_publish" type="object" string="Publicar revisión" icon="fa-upload"
                             invisible="not can_publish or not job_id"
                             confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
@@ -125,43 +140,71 @@
                     <field name="ack_state" widget="statusbar"/>
                 </header>
                 <sheet>
-                    <group>
-                        <group string="Quién">
-                            <!-- «Ver como»: administrador, MAST y Dirección eligen a
-                                 cualquiera; un jefe, solo a su equipo; los demás lo ven
-                                 fijo en su propio puesto. -->
-                            <field name="employee_id" readonly="not can_pick"
-                                   domain="[('id', 'in', allowed_employee_ids)]"
-                                   options="{'no_create': True, 'no_open': True}"/>
-                            <field name="job_id" readonly="not can_pick"
-                                   domain="[('id', 'in', allowed_job_ids)]"
-                                   options="{'no_create': True, 'no_open': True}"/>
-                            <field name="boss_id" options="{'no_open': True}"/>
-                            <field name="department_id" options="{'no_open': True}"/>
-                            <field name="family_id" options="{'no_open': True}" invisible="not family_id"/>
-                            <field name="process_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                            <field name="job_employee_ids" widget="many2many_tags" options="{'no_create': True}"
-                                   invisible="employee_id"/>
-                        </group>
-                        <group string="Estado">
-                            <field name="late_count" decoration-danger="late_count > 0"/>
-                            <field name="ok_count" decoration-success="ok_count > 0"/>
-                            <field name="unmeasured_count" decoration-muted="1"/>
-                            <field name="pending_ack_count" decoration-warning="pending_ack_count > 0"/>
-                            <field name="epp_pending_sign" invisible="1"/>
-                            <field name="epp_label" invisible="not epp_label" readonly="1"
-                                   decoration-warning="epp_pending_sign"/>
-                            <field name="ack_label" string="Firma" readonly="1"/>
-                        </group>
-                    </group>
+                    <!-- 54.1.0: la pantalla se lee como una ficha de persona: quién
+                         es y qué puesto tiene arriba, los conteos como botones
+                         inteligentes (cada uno abre su lista) y el contenido en
+                         pestañas. «Ver como» solo aparece a quien puede elegir. -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_show_all" type="object" class="oe_stat_button" icon="fa-list-ol">
+                            <field name="activity_count" widget="statinfo" string="Actividades"/>
+                        </button>
+                        <button name="action_show_late" type="object" class="oe_stat_button text-danger"
+                                icon="fa-exclamation-circle" invisible="late_count == 0">
+                            <field name="late_count" widget="statinfo" string="Atrasadas"/>
+                        </button>
+                        <button name="action_show_ok" type="object" class="oe_stat_button text-success"
+                                icon="fa-check-circle" invisible="ok_count == 0">
+                            <field name="ok_count" widget="statinfo" string="Al día"/>
+                        </button>
+                        <button name="action_show_unmeasured" type="object" class="oe_stat_button"
+                                icon="fa-circle-o" invisible="unmeasured_count == 0">
+                            <field name="unmeasured_count" widget="statinfo" string="Sin medir"/>
+                        </button>
+                        <button name="action_show_acks" type="object" class="oe_stat_button text-warning"
+                                icon="fa-pencil-square-o" invisible="pending_ack_count == 0">
+                            <field name="pending_ack_count" widget="statinfo" string="Firmas pendientes"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-tasks" invisible="pending_count == 0"
+                                type="object" name="action_focus_pending">
+                            <field name="pending_count" widget="statinfo" string="Pendientes"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Firmado" bg_color="text-bg-success" invisible="ack_state != 'leido'"/>
+                    <widget name="web_ribbon" title="Por firmar" bg_color="text-bg-warning" invisible="ack_state != 'pendiente'"/>
                     <field name="can_pick" invisible="1"/>
                     <field name="can_publish" invisible="1"/>
                     <field name="is_me" invisible="1"/>
                     <field name="doc_id" invisible="1"/>
                     <field name="has_user" invisible="1"/>
                     <field name="has_obligations" invisible="1"/>
+                    <field name="epp_pending_sign" invisible="1"/>
                     <field name="allowed_employee_ids" invisible="1"/>
                     <field name="allowed_job_ids" invisible="1"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="employee_id" readonly="not can_pick" placeholder="Empleado"
+                                   domain="[('id', 'in', allowed_employee_ids)]"
+                                   widget="many2one_avatar_employee"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h1>
+                        <h3>
+                            <field name="job_id" readonly="not can_pick" placeholder="Puesto"
+                                   domain="[('id', 'in', allowed_job_ids)]"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h3>
+                    </div>
+                    <div class="d-flex flex-wrap gap-4 text-muted mb-2">
+                        <span invisible="not boss_id"><i class="fa fa-user-o me-1" title="Mi jefe"/>Jefe: <field name="boss_id" class="d-inline" options="{'no_open': True}"/></span>
+                        <span invisible="not department_id"><i class="fa fa-building-o me-1" title="Área"/><field name="department_id" class="d-inline" options="{'no_open': True}"/></span>
+                        <span invisible="not family_id"><i class="fa fa-users me-1" title="Familia de puestos"/><field name="family_id" class="d-inline" options="{'no_open': True}"/></span>
+                        <span invisible="not ack_label"><i class="fa fa-pencil me-1" title="Firma"/><field name="ack_label" class="d-inline"/></span>
+                        <span invisible="not epp_label" class="text-warning"><i class="fa fa-shield me-1" title="EPP"/><field name="epp_label" class="d-inline"/></span>
+                    </div>
+                    <group>
+                        <field name="process_ids" widget="many2many_tags" options="{'no_create': True}" string="Procesos"/>
+                        <field name="job_employee_ids" widget="many2many_tags" options="{'no_create': True}"
+                               invisible="employee_id" string="Personas en el puesto"/>
+                    </group>
                     <notebook>
                         <page string="Mis actividades" name="actividades">
                             <field name="role_ids" mode="kanban" nolabel="1" readonly="1"

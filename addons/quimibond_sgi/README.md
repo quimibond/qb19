@@ -1704,6 +1704,20 @@ entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»
 acción cliente con `sgi_diagram_kind`. La vista nativa `hierarchy` (53.2.0)
 sigue disponible en «Mapa de procesos» y en las actividades.
 
+## Pantalla «Mi procedimiento» rediseñada (54.1.0)
+
+Se lee como la ficha de una persona: arriba el empleado (con avatar) y el
+puesto; debajo jefe, área, familia, estado de la firma y del EPP en una
+línea; los conteos son **botones inteligentes** que abren su lista
+(Actividades, Atrasadas, Al día, Sin medir, Firmas pendientes, Pendientes;
+`action_show_*`, `action_focus_pending`) y una cinta «Firmado» / «Por
+firmar». Las tarjetas de actividad se agrupan por **cadencia** (diaria,
+semanal, mensual, por evento) y muestran de un vistazo estado, rol,
+numeral, qué, proceso, cuándo, cómo y dónde; el resto del procedimiento
+(contra qué se revisa, terminada cuando, si no se puede, recibe, entrega,
+conforme a, escala) se despliega con «Más detalle». «Ver como» solo lo ve
+quien puede elegir. Prueba: `tests/test_my_procedure_ui.py`.
+
 ## El diagrama como vista y la ficha del proceso con botones (54.0.0)
 
 **Un menú por objeto, sin submenú «Diagramas».** El tipo de vista

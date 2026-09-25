@@ -317,6 +317,9 @@ class SgiMyProcedure(models.TransientModel):
     ok_count = fields.Integer(string="Al día", compute='_compute_lists')
     unmeasured_count = fields.Integer(string="Sin medición automática", compute='_compute_lists')
     pending_ack_count = fields.Integer(string="Firmas pendientes", compute='_compute_lists')
+    pending_count = fields.Integer(string="Pendientes", compute='_compute_pending_count',
+                                   help="Acciones abiertas, NC por contestar, mediciones y requisitos legales por evaluar.")
+    activity_count = fields.Integer(string="Actividades", compute='_compute_pending_count')
 
     # Mis actividades (ejecuta / aprueba), escalamientos que recibe y lista corta
     role_ids = fields.Many2many(
@@ -539,6 +542,59 @@ class SgiMyProcedure(models.TransientModel):
                  ('sgi_state', 'in', ('vigente', 'piloto')),
                  ('sgi_next_review_date', '!=', False), ('sgi_next_review_date', '<=', soon)],
                 order='sgi_next_review_date, sgi_code'), wiz.env)
+
+    @api.depends('pending_action_ids', 'pending_nc_ids', 'pending_measure_ids', 'pending_legal_ids',
+                 'pending_doc_review_ids', 'role_ids')
+    def _compute_pending_count(self):
+        for wiz in self:
+            wiz.pending_count = (len(wiz.pending_action_ids) + len(wiz.pending_nc_ids)
+                                 + len(wiz.pending_measure_ids) + len(wiz.pending_legal_ids)
+                                 + len(wiz.pending_doc_review_ids))
+            wiz.activity_count = len(wiz.role_ids)
+
+    # ------------------------------------------------------------------
+    # Botones inteligentes (54.1.0): cada conteo abre su lista.
+    # ------------------------------------------------------------------
+    def _action_roles(self, name, roles):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': name, 'res_model': 'sgi.activity.role',
+            'view_mode': 'kanban,list', 'domain': [('id', 'in', roles.ids)],
+            'views': [(self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban'),
+                      (self.env.ref('quimibond_sgi.sgi_activity_role_view_list_my_procedure').id, 'list')],
+        }
+
+    def action_show_late(self):
+        return self._action_roles("Atrasadas", self.role_ids.filtered(lambda r: r.mp_status == 'atrasada'))
+
+    def action_show_ok(self):
+        return self._action_roles("Al día", self.role_ids.filtered(lambda r: r.mp_status == 'al_dia'))
+
+    def action_show_unmeasured(self):
+        return self._action_roles("Sin medición automática",
+                                  self.role_ids.filtered(lambda r: (r.mp_status or 'sin_medir') == 'sin_medir'))
+
+    def action_show_all(self):
+        return self._action_roles("Mis actividades", self.role_ids)
+
+    def action_focus_pending(self):
+        """Botón «Pendientes»: las acciones abiertas o vencidas del usuario; el
+        resto de pendientes (NC, mediciones, legales) sigue en la pestaña."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': "Mis acciones abiertas",
+            'res_model': 'sgi.action.line', 'view_mode': 'list,form',
+            'domain': [('id', 'in', self.pending_action_ids.ids)],
+        }
+
+    def action_show_acks(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': "Mis acuses de lectura",
+            'res_model': 'sgi.document.ack', 'view_mode': 'list,form',
+            'domain': [('id', 'in', self.ack_ids.ids)],
+            'context': {'search_default_pending': 1},
+        }
 
     # ------------------------------------------------------------------
     # Acciones
