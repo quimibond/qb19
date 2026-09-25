@@ -1,26 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="sgi_diagnostic_view_form" model="ir.ui.view">
-        <field name="name">sgi.diagnostic.form</field>
-        <field name="model">sgi.diagnostic</field>
+    <!-- Diagnóstico del SGI (19.0.47.1.0): cada hallazgo es una fila; el menú
+         corre el diagnóstico y abre esta lista (buscar, filtrar por nivel,
+         agrupar por sección). Antes era un HTML armado a mano en un wizard. -->
+    <record id="sgi_diagnostic_line_view_list" model="ir.ui.view">
+        <field name="name">sgi.diagnostic.line.list</field>
+        <field name="model">sgi.diagnostic.line</field>
         <field name="arch" type="xml">
-            <form string="Diagnóstico del SGI">
+            <list string="Diagnóstico del SGI" create="false" edit="false" delete="false"
+                  default_order="sequence, id">
+                <field name="sequence" column_invisible="1"/>
+                <field name="diagnostic_id" column_invisible="1"/>
+                <field name="section" optional="show"/>
+                <field name="level" widget="badge"
+                       decoration-danger="level == 'bad'"
+                       decoration-warning="level == 'warn'"
+                       decoration-success="level == 'ok'"/>
+                <field name="text"/>
+                <field name="fix" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_diagnostic_line_view_form" model="ir.ui.view">
+        <field name="name">sgi.diagnostic.line.form</field>
+        <field name="model">sgi.diagnostic.line</field>
+        <field name="arch" type="xml">
+            <form string="Hallazgo" create="false" edit="false" delete="false">
                 <sheet>
-                    <field name="result" nolabel="1" readonly="1"/>
+                    <group>
+                        <field name="section"/>
+                        <field name="level" widget="badge"
+                               decoration-danger="level == 'bad'"
+                               decoration-warning="level == 'warn'"
+                               decoration-success="level == 'ok'"/>
+                        <field name="text"/>
+                        <field name="fix"/>
+                        <field name="diagnostic_id"/>
+                    </group>
                 </sheet>
-                <footer>
-                    <button name="action_refresh" type="object" string="Actualizar"
-                            icon="fa-refresh" class="btn-primary"/>
-                    <button special="cancel" string="Cerrar" class="btn-secondary"/>
-                </footer>
             </form>
         </field>
     </record>
 
-    <record id="sgi_diagnostic_action" model="ir.actions.act_window">
+    <record id="sgi_diagnostic_line_view_search" model="ir.ui.view">
+        <field name="name">sgi.diagnostic.line.search</field>
+        <field name="model">sgi.diagnostic.line</field>
+        <field name="arch" type="xml">
+            <search string="Diagnóstico del SGI">
+                <field name="text"/>
+                <field name="section"/>
+                <field name="fix"/>
+                <filter name="bad" string="Fallas" domain="[('level', '=', 'bad')]"/>
+                <filter name="warn" string="Avisos" domain="[('level', '=', 'warn')]"/>
+                <filter name="ok" string="En orden" domain="[('level', '=', 'ok')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_section" string="Sección" context="{'group_by': 'section'}"/>
+                    <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_diagnostic_line_action" model="ir.actions.act_window">
         <field name="name">Diagnóstico del SGI</field>
-        <field name="res_model">sgi.diagnostic</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
+        <field name="res_model">sgi.diagnostic.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_diagnostic_line_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin hallazgos</p>
+            <p>Vuelva a entrar por el menú para correr el diagnóstico otra vez.</p>
+        </field>
+    </record>
+
+    <!-- El menú corre el diagnóstico y abre la lista de arriba. -->
+    <record id="sgi_diagnostic_run_action" model="ir.actions.server">
+        <field name="name">Diagnóstico del SGI</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_diagnostic"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.diagnostic'].action_run()</field>
     </record>
 </odoo>

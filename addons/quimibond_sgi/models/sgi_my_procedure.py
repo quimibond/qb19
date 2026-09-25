@@ -246,7 +246,7 @@ class HrJobMyProcedure(models.Model):
 
         # Documentos vigentes que aplican al puesto (mismos que la pantalla,
         # sin acuse: el PDF es un documento controlado, no un estado).
-        documents = self.env['sgi.my.procedure']._sgi_mp_documents(self, False) if self.id else []
+        documents = self._sgi_mp_documents() if self.id else []
 
         data = {
             'sections': sections,
@@ -258,6 +258,20 @@ class HrJobMyProcedure(models.Model):
         }
         data['hash'] = self._sgi_my_procedure_hash(data)
         return data
+
+    def _sgi_mp_documents(self):
+        """Documentos vigentes que aplican al puesto (para el PDF y la huella;
+        la pantalla los muestra con una lista nativa)."""
+        self.ensure_one()
+        docs = self.env['documents.document'].sudo().search(
+            [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.ids),
+             ('sgi_doc_type', '!=', 'mi_procedimiento')],
+            order='sgi_doc_type, sgi_code, name')
+        return [{
+            'doc': doc, 'code': doc.sgi_code or '', 'name': doc.name or '',
+            'type': dict(doc._fields['sgi_doc_type'].selection).get(doc.sgi_doc_type, ''),
+            'revision': doc.sgi_revision_label,
+        } for doc in docs]
 
     @api.model
     def _sgi_mp_status_map(self, activities):

@@ -76,6 +76,10 @@ SGI_REMOVED_XMLIDS = (
     # Vistas que solo usaban esas acciones
     'quimibond_sgi.sgi_nc_concentrado_view_list',
     'quimibond_sgi.sgi_activity_exec_stat_view_graph',
+    # 47.1.0: el Diagnóstico dejó de ser un wizard HTML; su acción y su
+    # formulario viejos se retiran (el menú abre la lista de hallazgos)
+    'quimibond_sgi.sgi_diagnostic_action',
+    'quimibond_sgi.sgi_diagnostic_view_form',
 )
 
 # Mapa de religado (CEO, 2026-09-24): proceso viejo → proceso nuevo. Aplica

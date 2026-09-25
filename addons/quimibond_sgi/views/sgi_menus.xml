@@ -121,7 +121,7 @@
          Concentrado de NC es el filtro «Concentrado» de la lista de NC). -->
     <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_admin" sequence="30"/>
     <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_analysis"
-              action="sgi_diagnostic_action" sequence="10"/>
+              action="sgi_diagnostic_run_action" sequence="10"/>
     <menuitem id="menu_sgi_activity_methods" name="Cobertura de medición"
               parent="menu_sgi_analysis" action="sgi_activity_method_action" sequence="20"/>
     <menuitem id="menu_sgi_compliance" name="Cumplimiento de procedimientos"
