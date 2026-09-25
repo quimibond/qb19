@@ -355,6 +355,12 @@ class SgiCron(models.AbstractModel):
         deadline = first_this + relativedelta(days=4)
         indicators = self.env['sgi.indicator'].search([('frequency', '=', 'monthly')])
         self._sgi_step(
+            "foto del valor del inventario (S3-04)",
+            lambda: self.env['sgi.inventory.value'].sgi_snapshot(last_prev))
+        self._sgi_step(
+            "trayectorias faltantes",
+            lambda: self.env['sgi.indicator'].cron_missing_trajectories())
+        self._sgi_step(
             "mediciones mensuales",
             lambda: self._sgi_generate_measures(
                 indicators, first_prev, first_prev, last_prev, deadline,
@@ -1162,6 +1168,9 @@ class SgiCron(models.AbstractModel):
         self._sgi_step(
             "competencias por cursos eLearning",
             lambda: self.env['slide.channel']._sgi_sync_completions())
+        self._sgi_step(
+            "responsivas de EPP firmadas vía Sign",
+            lambda: self.env['sgi.epp.delivery']._sgi_sync_from_sign())
         return True
 
     # ------------------------------------------------------------------

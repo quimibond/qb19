@@ -1728,6 +1728,89 @@ entrega, puestos, dónde se opera en Odoo, texto de la versión anterior,
 subprocesos) y **Procedimiento** (etapas, alcance, aspectos ambientales,
 normas, responsabilidades y firmas: lo que arma el PDF).
 
+## Fórmulas para 28 indicadores más (55.0.0)
+
+**Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa
+desde una acción sin proceso activo, la vista mandaba `resId: null` y
+`selected: null` al componente OWL y la validación de props reventaba
+(«'resId' is not a number or boolean»). Ahora lo que falta se manda como
+`false` (`static/src/diagram/diagram_view.js`).
+
+Tres mejoras al modo «fórmula configurable» (`models/sgi_indicator_formula.py`)
+y los campos que faltaban (`models/sgi_kpi_fields.py`), para que 28
+indicadores capturados a mano pasen a fórmula sin programar cada uno.
+
+**1. Fechas relativas en el filtro del término.** Dentro del dominio, entre
+comillas: `'{cierre}'` (fin del periodo medido), `'{inicio}'`, `'{hoy}'`,
+`'{bloqueo}'` (fecha de bloqueo contable de la compañía de los KPI: la mayor
+entre cierre fiscal y bloqueo duro; sin bloqueo, el cierre) y desplazamientos
+`{cierre-30d}` (días), `{cierre-2dh}` (días hábiles del calendario del SGI),
+`{cierre+48h}` (horas, da fecha-hora). Ejemplos: C3-04
+`[('state', 'not in', ('done', 'cancel')), ('create_date', '<', '{cierre-30d}')]`;
+S3-03 `[('is_reconciled', '=', False), ('date', '<=', '{bloqueo}')]`; E2-01
+`[('sgi_state', '=', 'vigente'), ('sgi_next_review_date', '<', '{cierre}')]`.
+
+**2. Comparar dos fechas del mismo registro.** Agregaciones «Contar donde
+B − A cumple» (`count_delta`: fecha A en «Campo a sumar / fecha A», fecha B
+en «Fecha B», unidad días / horas / días hábiles / «B a más tardar el día N
+del mes siguiente a A» / «B en el mismo mes que A», condición ≤ < ≥ > = y N) y
+«Promedio de B − A» (`avg_delta`, en días, horas o días hábiles). El registro
+sin alguna de las dos fechas no cuenta. Ejemplos: C4-01 `date_finished` →
+`date_done` ≤ 48 horas; S1-04 `invoice_date_due` → `sgi_payment_date` ≤ 0 días; E1-02 `deadline` → `done_date` ≤ 0 días;
+S2-01 `invoice_date` → fecha de timbre del complemento, día 5 del mes
+siguiente; E2-02 `date_planned` → `date_end` en el mismo mes; C1-01
+promedio de días de `date_start` del proyecto a la fecha de la tarea de
+aprobación.
+
+**3. Solo conteo.** Un indicador con numerador y sin denominador vale su
+numerador; sin registros vale 0 (estado «capturado»), no «sin dato». C6-01,
+S3-02 (factor 0.25 en el término), SST-01.
+
+**Varios términos con el mismo papel se suman**: EBITDA o S3-04 con un
+término de factor −1 que resta. El detalle de registros de la medición trae
+los del primer modelo del numerador.
+
+**Recalcular bajo demanda**: botón «Recalcular ahora» en la ficha (último
+periodo cerrado) o por MCP
+`call_model_method('sgi.indicator', 'sgi_recalculate', [ids], {'period_date': '2026-08-01', 'save': True})`;
+devuelve valor, numerador, denominador, estado, nota y detalle; con `save`
+escribe la medición (nunca una validada).
+
+**Trayectorias automáticas**: los escalones trimestrales se generan al
+guardar arranque, fecha de arranque y fecha de meta, y el cron mensual repone
+los que falten (`cron_missing_trajectories`).
+
+**Campos nuevos** (todos guardados; se filtran desde un término):
+
+| Indicador | Campo | Modelo |
+|---|---|---|
+| C1-04 | `sgi_first_sale_date` (se fija al confirmar el pedido) | product.template |
+| C2-05 | `sgi_export_crossing_datetime`, `sgi_export_file_closed_date` (captura Logística, pestaña «Exportación y liberación (SGI)») | stock.picking |
+| C5-01 | `sgi_claimed_meters` (pestaña «Reclamación (SGI)») | quality.alert |
+| C5-03 | `sgi_quality_approved_at`, `sgi_release_hours` (creación del traslado → última aprobación de Calidad) | stock.picking |
+| S1-04 | `sgi_payment_date` (último pago que dejó la factura pagada) | account.move |
+| E1-02 | `done_date` (la de su acción al terminarse, o a mano) | sgi.management.review.agreement |
+| S1-05 | `sgi_po_price_diff` = (precio facturado − precio OC) × cantidad | account.move.line |
+| S3-01 | `sgi.lock.date.log`: compañía, fecha movida, antes/después, quién, `business_day` (Administración → Indicadores → Bitácora) | modelo nuevo |
+| S3-04 | `sgi.inventory.value`: valor de existencias internas al cierre de mes (cálculo de AL-01), foto en el cron mensual; `sgi_snapshot(date)` a mano | modelo nuevo |
+| S4-01 | `sgi_departure_reason_id` (el de la versión o el del empleado), `sgi_departure_registered_at` | hr.version |
+| S4-02 | `sgi_trial_date_end` (fin de prueba del contrato vigente) | hr.employee |
+| S4-03 | `sgi_recalculated`, `sgi_complement_paid`, `sgi_incident_note` (módulo `quimibond_nomina` 1.6.0) | hr.payslip.run |
+| S4-04 | `sgi.employer.obligation`: tipo, periodo, vence, presentada el, `on_time`, estado (Dirección → Obligaciones patronales) | modelo nuevo |
+| S6-02 | `sgi_deactivated_date` (se fija al desactivar) | res.users |
+| MT-01 | sin campo: `mrp.workcenter.productivity` con `loss_id.name = 'Mantenimiento'`, sumar `duration` con factor 1/60 | — |
+
+E2-02 compara `date_planned` con `date_end` de la auditoría. Pruebas: `tests/test_indicator_formula.py`
+(08–12), `tests/test_indicator_trajectory.py` (06), `tests/test_kpi_fields.py`.
+
+## Mi equipo abre en organigrama (54.4.0)
+
+Inicio → Mi equipo usa la vista nativa `hierarchy` de `hr.employee.public`
+(`sgi_my_team_view_hierarchy`): quién reporta a quién, y en cada tarjeta el
+estado SGI de la persona (atrasadas o al día, firmas pendientes, Mi
+procedimiento sin firmar o sin publicar). Lista y kanban siguen en el
+selector de vistas.
+
 ## Pantalla «Mi procedimiento» rediseñada (54.1.0 / 54.2.0)
 
 Se lee como la ficha de una persona: arriba el empleado (con avatar) y el

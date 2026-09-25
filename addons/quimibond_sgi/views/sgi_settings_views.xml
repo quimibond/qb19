@@ -183,6 +183,12 @@
                             <field name="sgi_waste_categ_id"/>
                         </setting>
                     </block>
+                    <block title="EPP" name="sgi_epp">
+                        <setting string="Plantilla de Sign de la responsiva de EPP"
+                             help="Plantilla de la app Firma hecha con el PDF «Responsiva de EPP» y un solo campo de firma (el empleado). Habilita «Enviar a firmar (Sign)» en cada entrega.">
+                            <field name="sgi_epp_sign_template_id"/>
+                        </setting>
+                    </block>
                 </app>
             </xpath>
         </field>

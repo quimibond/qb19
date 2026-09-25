@@ -435,3 +435,23 @@ crons de Odoo.sh con miles de SKUs:
   gracia (capacidad desde turnos config, "sin datos" en vez de romper).
 - Multi-compañía: vistas SQL llevan `company_id`.
 - No cambia la versión del manifest de `quimibond_intelligence`.
+
+## Secciones de Diseño y Desarrollo en la ficha técnica (1.66.0)
+
+La ficha `qb.producto.ficha` sustituye cuatro Excel de D&D: **F-P-D01-24**
+(ficha general: dibujo, tacto, descripción, revisión, fechas, ruta de
+proceso), **F-P-D01-05** (acabado: rama, campos, velocidades, anchos, receta),
+**F-P-D01-33** (tintorería: relación de baño, bomba, acumulador, gradientes,
+auxiliares) y **F-P-D01-08** (especificaciones del producto con tolerancias,
+bilingüe, con instrucciones de cuidado y uso principal).
+
+- Los datos generales son campos de la ficha; tejido, teñido, acabado,
+  tintorería, presentación y especificaciones son renglones
+  (`qb.producto.ficha.spec`: característica, dirección, unidad, valor,
+  tolerancia, método, «aparece en el certificado»).
+- «Cargar renglones estándar» propone las filas de cada Excel sin pisar lo
+  capturado; se editan en las pestañas de la ficha.
+- Dos PDF nuevos en Imprimir: «Especificaciones del producto / Product specs»
+  (F-P-D01-08) y «Ficha técnica de D&D completa» (F-P-D01-24 con sus
+  secciones). El PDF corto para clientes de 1.x sigue igual.
+- Prueba: `tests/test_ficha_secciones.py`.

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond Capacidad & Costeo',
-    'version': '19.0.1.65.1',
+    'version': '19.0.1.66.0',
     'license': 'LGPL-3',
     'category': 'Manufacturing',
     'summary': 'Capacidad, costo real, ociosidad y cotizador — read-only sobre datos nativos de Odoo.',
@@ -52,6 +52,7 @@ tablas de configuración del módulo, editables desde la UI.
         # cotizador_orden_action, que se define ahí
         'views/sale_order_views.xml',
         'views/ficha_views.xml',
+        'views/ficha_secciones_views.xml',
         'data/mail_template.xml',
         'views/cliente_views.xml',
         'views/producto_reportes_views.xml',

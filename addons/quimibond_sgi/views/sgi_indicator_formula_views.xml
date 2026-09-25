@@ -15,6 +15,15 @@
                 <field name="field_name"
                        required="aggregation != 'count'"
                        readonly="aggregation == 'count'"/>
+                <field name="field_name_2" optional="show"
+                       required="aggregation in ('count_delta', 'avg_delta')"
+                       readonly="aggregation not in ('count_delta', 'avg_delta')"/>
+                <field name="delta_unit" optional="show"
+                       readonly="aggregation not in ('count_delta', 'avg_delta')"/>
+                <field name="delta_op" optional="show"
+                       readonly="aggregation != 'count_delta' or delta_unit in ('next_month_day', 'same_month')"/>
+                <field name="delta_value" optional="show"
+                       readonly="aggregation != 'count_delta' or delta_unit == 'same_month'"/>
                 <field name="factor"/>
             </list>
         </field>
@@ -29,11 +38,16 @@
                 <page string="Fórmula" name="formula">
                     <div class="alert alert-info mb-2" role="alert">
                         Numerador y denominador salen de los registros de Odoo que
-                        indique cada término. Solo el administrador del SGI puede
-                        editarlos; cualquier cambio regresa el indicador a «prueba»
-                        y queda en el chatter. Mientras el modo de cálculo no sea
-                        «Fórmula configurable», la fórmula corre en paralelo y su
-                        valor se guarda en cada medición para compararlo.
+                        indique cada término; varios términos con el mismo papel se
+                        suman (factor −1 resta) y sin denominador el indicador vale
+                        su numerador (sin registros = 0). En el filtro valen fechas
+                        relativas: '{cierre}', '{cierre-30d}', '{cierre-2dh}' (días
+                        hábiles), '{cierre-48h}', '{inicio}', '{hoy}' y '{bloqueo}'
+                        (bloqueo contable). «Contar donde B − A cumple» y «Promedio
+                        de B − A» comparan dos fechas del mismo registro. Solo el
+                        administrador del SGI edita los términos; cualquier cambio
+                        regresa el indicador a «prueba» y queda en el chatter.
+                        «Recalcular ahora» prueba la fórmula sin esperar al cron.
                     </div>
                     <field name="has_formula" invisible="1"/>
                     <field name="can_edit_formula" invisible="1"/>

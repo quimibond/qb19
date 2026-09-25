@@ -51,6 +51,11 @@
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_view_trend" type="object"
                             string="Tendencia" icon="fa-line-chart"/>
+                    <button name="action_recalculate_now" type="object"
+                            string="Recalcular ahora" icon="fa-refresh"
+                            invisible="calc_mode == 'manual'"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            help="Mide el último periodo cerrado con el modo actual, sin esperar al cron. No toca mediciones validadas."/>
                     <field name="status" widget="statusbar"/>
                 </header>
                 <sheet>

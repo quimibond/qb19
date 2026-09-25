@@ -35,3 +35,12 @@ class TestMyProcedureUi(TransactionCase):
             self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban')['arch']
         self.assertIn('default_group_by="cadence"', kanban)
         self.assertIn('data-bs-toggle="collapse"', kanban, "El detalle largo va plegado.")
+
+    def test_02_mi_equipo_abre_en_organigrama(self):
+        views = self.env['hr.employee.public'].get_views([(False, 'hierarchy')])
+        arch = views['views']['hierarchy']['arch']
+        self.assertIn('parent_field="parent_id"', arch)
+        self.assertIn('sgi_mp_late', arch)
+        action = self.env['sgi.my.procedure'].action_open_my_team()
+        self.assertEqual(action['view_mode'].split(',')[0], 'hierarchy')
+        self.assertEqual(action['views'][0][1], 'hierarchy')
