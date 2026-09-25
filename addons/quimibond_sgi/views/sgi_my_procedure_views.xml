@@ -216,11 +216,23 @@
                                     </list>
                                 </field>
                             </group>
+                            <group string="Requisitos legales por evaluar (60 días)" invisible="not pending_legal_ids">
+                                <field name="pending_legal_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0">
+                                        <field name="reference" optional="show"/>
+                                        <field name="name"/>
+                                        <field name="next_eval_date"/>
+                                        <field name="expiry_date" optional="show"/>
+                                        <field name="compliance_state" widget="badge"/>
+                                        <button name="action_evaluate" type="object" string="Registrar evaluación" icon="fa-check-square-o"/>
+                                    </list>
+                                </field>
+                            </group>
                             <div invisible="not has_obligations">
                                 <button name="action_open_obligations" type="object" string="Ver mis obligaciones"
                                         icon="fa-list-ul" class="btn-secondary"/>
                             </div>
-                            <p class="text-muted" invisible="pending_action_ids or pending_nc_ids or pending_measure_ids or official_indicator_ids or has_obligations">
+                            <p class="text-muted" invisible="pending_action_ids or pending_nc_ids or pending_measure_ids or official_indicator_ids or has_obligations or pending_legal_ids">
                                 Sin pendientes.
                             </p>
                         </page>

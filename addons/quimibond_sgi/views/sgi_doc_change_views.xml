@@ -22,6 +22,7 @@
                     </page>
                 </notebook>
                 <field name="sgi_applied" invisible="1"/>
+                <field name="sgi_new_document_id" invisible="not sgi_new_document_id" readonly="1"/>
                 <notebook invisible="not sgi_is_doc_change">
                     <page string="Cambio documental SGI">
                         <div class="mb-2"

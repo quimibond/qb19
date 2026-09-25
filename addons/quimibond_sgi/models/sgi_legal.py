@@ -64,8 +64,13 @@ class SgiLegalRequirement(models.Model):
     document_ids = fields.Many2many(
         'documents.document', string="Documentos de evidencia",
         domain=[('sgi_is_controlled', '=', True)])
+    # DIR-1 (51.0.0): responsable obligatorio; las evaluaciones son registros.
     responsible_id = fields.Many2one(
-        'res.users', string="Responsable de la evaluación", tracking=True)
+        'res.users', string="Responsable de la evaluación", tracking=True,
+        required=True, default=lambda self: self.env.user)
+    evaluation_ids = fields.One2many(
+        'sgi.legal.evaluation', 'requirement_id', string="Evaluaciones")
+    evaluation_count = fields.Integer(compute='_compute_evaluation_count')
     expiry_date = fields.Date(
         string="Vencimiento del permiso", tracking=True,
         help="Solo permisos/licencias con vigencia: fecha en que caduca el "
@@ -85,6 +90,7 @@ class SgiLegalRequirement(models.Model):
         ('cumple', "Cumple"),
         ('parcial', "Cumple parcialmente"),
         ('no_cumple', "No cumple"),
+        ('no_aplica', "No aplica"),
     ], string="Cumplimiento", default='pendiente', required=True, tracking=True)
     eval_note = fields.Text(
         string="Notas de la última evaluación",
@@ -104,6 +110,11 @@ class SgiLegalRequirement(models.Model):
                 # Sin evaluación previa: se debe evaluar ya (el cron lo vigila).
                 req.next_eval_date = req.next_eval_date or fields.Date.context_today(req)
 
+    @api.depends('evaluation_ids')
+    def _compute_evaluation_count(self):
+        for req in self:
+            req.evaluation_count = len(req.evaluation_ids)
+
     @api.depends('reference', 'name')
     def _compute_display_name(self):
         for req in self:
@@ -114,13 +125,48 @@ class SgiLegalRequirement(models.Model):
     # Evaluación: tres botones explícitos, con sello de fecha y NC en
     # incumplimiento (parcial o total).
     # ------------------------------------------------------------------
-    def _sgi_mark(self, state):
+    def _sgi_mark(self, state, evidence=None, next_date=None):
+        """Registra una evaluación: fila en el historial, estado y fechas en
+        el requisito. El asistente «Registrar evaluación» pasa evidencia y
+        próxima fecha; los botones rápidos usan la nota y la frecuencia."""
         today = fields.Date.context_today(self)
+        Evaluation = self.env['sgi.legal.evaluation']
         for req in self:
-            req.write({'compliance_state': state, 'last_eval_date': today})
+            vals = {'compliance_state': state, 'last_eval_date': today}
+            if evidence:
+                vals['eval_note'] = evidence
+            req.write(vals)
+            if next_date:
+                req.next_eval_date = next_date
+            Evaluation.create({
+                'requirement_id': req.id, 'date': today, 'result': state,
+                'evidence': evidence or req.eval_note or False,
+                'next_date': req.next_eval_date, 'user_id': self.env.user.id,
+            })
             req.message_post(body="Evaluación de cumplimiento registrada: <b>%s</b>." % dict(
                 self._fields['compliance_state'].selection)[state])
         return True
+
+    def action_mark_no_aplica(self):
+        return self._sgi_mark('no_aplica')
+
+    def action_evaluate(self):
+        """DIR-1: asistente con resultado, evidencia y próxima fecha."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': "Registrar evaluación de cumplimiento",
+            'res_model': 'sgi.legal.evaluate', 'view_mode': 'form', 'target': 'new',
+            'context': {'default_requirement_id': self.id},
+        }
+
+    def action_view_evaluations(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': "Evaluaciones — %s" % self.display_name,
+            'res_model': 'sgi.legal.evaluation', 'view_mode': 'list,form',
+            'domain': [('requirement_id', '=', self.id)],
+            'context': {'default_requirement_id': self.id},
+        }
 
     def action_mark_cumple(self):
         return self._sgi_mark('cumple')
@@ -179,3 +225,56 @@ class SgiLegalRequirement(models.Model):
             'res_id': self.alert_id.id,
             'view_mode': 'form',
         }
+
+
+class SgiLegalEvaluation(models.Model):
+    """DIR-1 (51.0.0): cada evaluación del cumplimiento es un registro con
+    resultado, evidencia y fecha de la siguiente (9.1.2: conservar evidencia)."""
+    _name = 'sgi.legal.evaluation'
+    _description = "Evaluación del cumplimiento de un requisito legal"
+    _order = 'date desc, id desc'
+
+    requirement_id = fields.Many2one(
+        'sgi.legal.requirement', string="Requisito", required=True, ondelete='cascade', index=True)
+    date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today)
+    result = fields.Selection([
+        ('cumple', "Cumple"),
+        ('parcial', "Cumple parcialmente"),
+        ('no_cumple', "No cumple"),
+        ('no_aplica', "No aplica"),
+    ], string="Resultado", required=True)
+    evidence = fields.Text(string="Evidencia revisada")
+    next_date = fields.Date(string="Próxima evaluación")
+    user_id = fields.Many2one('res.users', string="Evaluó", default=lambda self: self.env.user)
+    alert_id = fields.Many2one(related='requirement_id.alert_id', string="NC")
+
+
+class SgiLegalEvaluate(models.TransientModel):
+    _name = 'sgi.legal.evaluate'
+    _description = "Registrar evaluación de cumplimiento legal"
+
+    requirement_id = fields.Many2one('sgi.legal.requirement', required=True)
+    result = fields.Selection([
+        ('cumple', "Cumple"),
+        ('parcial', "Cumple parcialmente"),
+        ('no_cumple', "No cumple"),
+        ('no_aplica', "No aplica"),
+    ], string="Resultado", required=True, default='cumple')
+    evidence = fields.Text(string="Evidencia revisada", required=True)
+    next_date = fields.Date(string="Próxima evaluación", compute='_compute_next_date',
+                            store=True, readonly=False, required=True)
+
+    @api.depends('requirement_id', 'result')
+    def _compute_next_date(self):
+        today = fields.Date.context_today(self)
+        for wiz in self:
+            months = wiz.requirement_id.eval_frequency_months or 12
+            wiz.next_date = today + relativedelta(months=months)
+
+    def action_confirm(self):
+        self.ensure_one()
+        req = self.requirement_id
+        req._sgi_mark(self.result, evidence=self.evidence, next_date=self.next_date)
+        if self.result in ('parcial', 'no_cumple'):
+            req._sgi_create_alert()
+        return {'type': 'ir.actions.act_window_close'}

@@ -215,3 +215,7 @@ access_sgi_nc_cancel_user,sgi.nc.cancel.user,model_sgi_nc_cancel,group_sgi_user,
 access_sgi_audit_checklist_line_user,sgi.audit.checklist.line.user,model_sgi_audit_checklist_line,group_sgi_user,1,0,0,0
 access_sgi_audit_checklist_line_auditor,sgi.audit.checklist.line.auditor,model_sgi_audit_checklist_line,group_sgi_auditor,1,1,1,1
 access_sgi_audit_checklist_line_manager,sgi.audit.checklist.line.manager,model_sgi_audit_checklist_line,group_sgi_manager,1,1,1,1
+access_sgi_legal_evaluation_user,sgi.legal.evaluation.user,model_sgi_legal_evaluation,group_sgi_user,1,1,1,0
+access_sgi_legal_evaluation_auditor,sgi.legal.evaluation.auditor,model_sgi_legal_evaluation,group_sgi_auditor,1,0,0,0
+access_sgi_legal_evaluation_manager,sgi.legal.evaluation.manager,model_sgi_legal_evaluation,group_sgi_manager,1,1,1,1
+access_sgi_legal_evaluate_user,sgi.legal.evaluate.user,model_sgi_legal_evaluate,group_sgi_user,1,1,1,1

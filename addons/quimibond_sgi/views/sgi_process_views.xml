@@ -204,6 +204,8 @@
                             confirm="Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?"/>
                     <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_print_master_list" type="object" string="Lista maestra (PDF)"
+                            icon="fa-print"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>

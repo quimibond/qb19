@@ -1037,6 +1037,22 @@ class SgiCron(models.AbstractModel):
 
         self._sgi_for_each(overdue, _overdue, "evaluaciones legales vencidas")
 
+        # DIR-1 (51.0.0): aviso 60 días antes de la próxima evaluación, al
+        # responsable del requisito (aparece en sus actividades y en Mis
+        # pendientes). Idempotente por resumen.
+        upcoming = Requirement.search([
+            ('next_eval_date', '>', today), ('next_eval_date', '<=', soon)])
+
+        def _upcoming(req):
+            self._sgi_schedule(
+                req,
+                "Evaluación de cumplimiento vence el %s: %s" % (req.next_eval_date, req.display_name),
+                "Evalúe el cumplimiento del requisito antes del %s y registre resultado, "
+                "evidencia y siguiente fecha («Registrar evaluación»)." % req.next_eval_date,
+                req.responsible_id.id or manager_id)
+
+        self._sgi_for_each(upcoming, _upcoming, "evaluaciones legales próximas")
+
         expiring = Requirement.search([
             ('expiry_date', '!=', False), ('expiry_date', '<=', soon),
         ])
