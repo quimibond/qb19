@@ -1,33 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- ====== Paso 3: ficha de proceso (nivel 2) ====== -->
-    <record id="sgi_process_view_form_structure" model="ir.ui.view">
-        <field name="name">sgi.process.form.structure</field>
-        <field name="model">sgi.process</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form_procedure"/>
-        <field name="arch" type="xml">
-            <!-- Botones en verbo -->
-            <xpath expr="//form/header" position="inside">
-                <button name="action_sgi_request_change" type="object"
-                        string="Pedir un cambio" icon="fa-pencil-square-o"/>
-                <button name="action_sgi_register_finding" type="object"
-                        string="Registrar hallazgo" icon="fa-flag"
-                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
-            </xpath>
-            <!-- El estado siempre en la misma forma y lugar: una línea arriba -->
-            <xpath expr="//div[@class='oe_title']" position="after">
-                <div class="mb-2" invisible="not id">
-                    <field name="health" widget="badge" nolabel="1" class="d-inline me-2"
-                           decoration-success="health == 'verde'"
-                           decoration-warning="health == 'amarillo'"
-                           decoration-danger="health == 'rojo'"/>
-                    <field name="structure_status" nolabel="1" readonly="1" class="d-inline text-muted"/>
-                </div>
-            </xpath>
-            <!-- 54.0.0: indicadores, riesgos y NC ya no son pestañas; son
-                 botones inteligentes en la ficha base (sgi_process_views.xml). -->
-        </field>
-    </record>
 
     <!-- ====== Paso 4: ficha de actividad (nivel 3) ====== -->
     <record id="sgi_process_activity_view_form_structure" model="ir.ui.view">
