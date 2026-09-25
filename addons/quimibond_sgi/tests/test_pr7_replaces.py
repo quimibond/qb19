@@ -25,7 +25,7 @@ class TestPr7Replaces(TransactionCase):
         old = self.Process.create({'code': 'X-V7', 'name': 'Viejo 7'})
         old_rev = self._doc('P-A95', old, revision=0, state='obsoleto')
         doc = self._doc('P-A95', old, revision=1)
-        fmt = self._doc('F-P-A95-01', old)
+        fmt = self._doc('P-A96', old)
         kpi = self.env['sgi.indicator'].create({
             'code': 'XV7-KPI', 'name': 'KPI 7', 'calc_mode': 'manual', 'process_id': old.id})
         payload = {'processes': [{'code': 'XN7', 'name': 'Nuevo 7', 'replaces': ['X-V7']}]}

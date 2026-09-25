@@ -46,7 +46,7 @@ class SgiEppDelivery(models.Model):
     def _compute_job_id(self):
         for rec in self:
             if rec.employee_id and not rec.job_id:
-                rec.job_id = rec.employee_id.job_id
+                rec.job_id = rec.employee_id.sudo().job_id
 
     @api.depends('user_id', 'state')
     @api.depends_context('uid')
@@ -58,7 +58,7 @@ class SgiEppDelivery(models.Model):
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
         if self.employee_id and not self.items:
-            self.items = self.employee_id.job_id.sgi_epp_required or False
+            self.items = self.employee_id.sudo().job_id.sgi_epp_required or False
 
     def _sgi_check_can_sign(self):
         if self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
@@ -132,5 +132,5 @@ class HrEmployeeEpp(models.Model):
             'type': 'ir.actions.act_window', 'name': "Entregar EPP",
             'res_model': 'sgi.epp.delivery', 'view_mode': 'form', 'target': 'current',
             'context': {'default_employee_id': self.id,
-                        'default_items': self.job_id.sgi_epp_required or False},
+                        'default_items': self.sudo().job_id.sgi_epp_required or False},
         }

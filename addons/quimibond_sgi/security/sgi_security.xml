@@ -69,19 +69,6 @@
     </record>
     <!-- Multiempresa (fase 1): el grupo tiene 8 empresas en la misma base.
          Vacío = compartido. -->
-    <!-- 53.1.0: los documentos controlados en vigor los lee cualquier usuario
-         SGI (son lo que cada puesto debe leer y firmar). Sin esto, la pestaña
-         Mi procedimiento truena para quien no tiene la carpeta compartida. -->
-    <record id="rule_sgi_controlled_document_read" model="ir.rule">
-        <field name="name">SGI: Documentos controlados en vigor, lectura</field>
-        <field name="model_id" ref="documents.model_documents_document"/>
-        <field name="domain_force">[('sgi_is_controlled', '=', True), ('sgi_state', 'in', ('vigente', 'piloto'))]</field>
-        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
-        <field name="perm_read" eval="True"/>
-        <field name="perm_write" eval="False"/>
-        <field name="perm_create" eval="False"/>
-        <field name="perm_unlink" eval="False"/>
-    </record>
     <record id="rule_sgi_process_company" model="ir.rule">
         <field name="name">SGI: Procesos por empresa</field>
         <field name="model_id" ref="model_sgi_process"/>

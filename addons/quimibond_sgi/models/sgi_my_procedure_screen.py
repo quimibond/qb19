@@ -29,6 +29,17 @@ _MP_STATUS = [
 ]
 
 
+
+def _sgi_readable(records, env):
+    """Ids de `records` (sudo) que el usuario de `env` puede leer: una lista
+    calculada no puede apuntar a registros que el usuario no ve (Odoo revisa
+    el acceso al asignarla) y la pantalla no debe tronar por un documento
+    fuera de su alcance."""
+    if not records:
+        return []
+    return records.with_env(env)._filtered_access('read').ids
+
+
 class HrEmployeeTeamScope(models.Model):
     _inherit = 'hr.employee'
 
@@ -140,10 +151,10 @@ class SgiMyProcedureMixin(models.AbstractModel):
             rec.sgi_mp_received_role_ids = lists['received'].ids
             rec.sgi_mp_short_role_ids = lists['short'].ids
             rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
-            rec.sgi_mp_document_ids = Doc.search(
+            rec.sgi_mp_document_ids = _sgi_readable(Doc.search(
                 [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
                  ('sgi_doc_type', '!=', 'mi_procedimiento')],
-                order='sgi_doc_type, sgi_code, name').ids if job else False
+                order='sgi_doc_type, sgi_code, name'), rec.env) if job else False
             rec.sgi_mp_epp_text = (job.sgi_epp_required or False) if job else False
             if emp:
                 rec.sgi_mp_ack_ids = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code').ids
@@ -463,10 +474,10 @@ class SgiMyProcedure(models.TransientModel):
             acks = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code') if emp else Ack
             wiz.ack_ids = acks.ids
             wiz.pending_ack_count = len(acks.filtered(lambda a: a.state == 'pendiente'))
-            wiz.document_ids = Doc.search(
+            wiz.document_ids = _sgi_readable(Doc.search(
                 [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
                  ('sgi_doc_type', '!=', 'mi_procedimiento')],
-                order='sgi_doc_type, sgi_code, name').ids if job else False
+                order='sgi_doc_type, sgi_code, name'), wiz.env) if job else False
             # --- EPP del puesto y responsivas del empleado
             wiz.epp_required = job.sgi_epp_required or False
             deliveries = env['sgi.epp.delivery'].sudo().search(
@@ -514,11 +525,11 @@ class SgiMyProcedure(models.TransientModel):
                  '|', ('next_eval_date', '<=', soon), ('expiry_date', '<=', soon)],
                 order='next_eval_date, id').ids
             # DOC-4: documentos del usuario cuya próxima revisión vence en 60 días.
-            wiz.pending_doc_review_ids = Doc.search(
+            wiz.pending_doc_review_ids = _sgi_readable(Doc.search(
                 [('sgi_owner_id', '=', user.id), ('sgi_is_controlled', '=', True),
                  ('sgi_state', 'in', ('vigente', 'piloto')),
                  ('sgi_next_review_date', '!=', False), ('sgi_next_review_date', '<=', soon)],
-                order='sgi_next_review_date, sgi_code').ids
+                order='sgi_next_review_date, sgi_code'), wiz.env)
 
     # ------------------------------------------------------------------
     # Acciones
@@ -752,13 +763,18 @@ class HrEmployeePublicMyTeam(models.Model):
     def _sgi_mp_ids_where(self, predicate):
         """Ids de empleados activos con puesto que cumplen el predicado sobre
         sus cifras (dict, calculadas por lote sobre hr.employee)."""
-        employees = self.env['hr.employee'].sudo().search([('job_id', '!=', False)])
+        # Sin dominio sobre job_id: en Odoo 19 pasa por version_id y la búsqueda
+        # no encuentra a los empleados; se filtra en Python, en sudo.
+        employees = self.env['hr.employee'].sudo().search([]).filtered('job_id')
         values = self._sgi_mp_values(employees)
         return [emp_id for emp_id, vals in values.items() if predicate(vals)]
 
     _NUMERIC_OPS = {
         '>': lambda a, b: a > b, '>=': lambda a, b: a >= b, '=': lambda a, b: a == b,
         '!=': lambda a, b: a != b, '<': lambda a, b: a < b, '<=': lambda a, b: a <= b,
+        # Odoo 19 normaliza '=' a 'in' antes de llamar al método de búsqueda.
+        'in': lambda a, b: a in (b if isinstance(b, (list, tuple, set)) else [b]),
+        'not in': lambda a, b: a not in (b if isinstance(b, (list, tuple, set)) else [b]),
     }
 
     @api.model

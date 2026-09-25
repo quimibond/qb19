@@ -261,8 +261,10 @@ class SgiLegalEvaluate(models.TransientModel):
         ('no_aplica', "No aplica"),
     ], string="Resultado", required=True, default='cumple')
     evidence = fields.Text(string="Evidencia revisada", required=True)
+    # Sin required=True: en un transitorio el calculado se llena después del
+    # INSERT y la columna NOT NULL lo rechazaba. Se exige al confirmar.
     next_date = fields.Date(string="Próxima evaluación", compute='_compute_next_date',
-                            store=True, readonly=False, required=True)
+                            store=True, readonly=False)
 
     @api.depends('requirement_id', 'result')
     def _compute_next_date(self):
@@ -274,6 +276,8 @@ class SgiLegalEvaluate(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         req = self.requirement_id
+        if not self.next_date and self.result != 'no_aplica':
+            raise UserError("Indica la fecha de la próxima evaluación.")
         req._sgi_mark(self.result, evidence=self.evidence, next_date=self.next_date)
         if self.result in ('parcial', 'no_cumple'):
             req._sgi_create_alert()
