@@ -445,3 +445,36 @@ class TestMyProcedure(TransactionCase):
         # Jefe MAST: todos.
         action = Public.with_user(self.manager).action_open_my_team()
         self.assertIn(self.emp2.id, Public.with_user(self.manager).search(action['domain']).ids)
+
+    def test_15_pestana_en_la_ficha_del_empleado_y_del_puesto(self):
+        """El procedimiento se ve donde vive la persona: pestaña nativa en
+        hr.employee, hr.employee.public y hr.job con las mismas listas que la
+        pantalla de Inicio, y la firma desde la ficha."""
+        wiz = self.env['sgi.my.procedure'].with_user(self.user_emp).create(
+            {'employee_id': self.emp1.id})
+        emp = self.emp1.with_user(self.manager)
+        self.assertEqual(emp.sgi_mp_role_ids.ids, wiz.role_ids.ids)
+        self.assertEqual(emp.sgi_mp_received_role_ids.ids, wiz.received_role_ids.ids)
+        self.assertEqual(emp.sgi_mp_short_role_ids.ids, wiz.short_role_ids.ids)
+        self.assertEqual(set(emp.sgi_mp_process_ids.ids), set(wiz.process_ids.ids))
+        # Empleado público (lo que ve cualquier usuario interno): lo mismo.
+        public = self.env['hr.employee.public'].with_user(self.user_emp).browse(self.emp1.id)
+        self.assertEqual(public.sgi_mp_role_ids.ids, wiz.role_ids.ids)
+        self.assertEqual(public.action_sgi_print_my_procedure()['type'], 'ir.actions.report')
+        # Puesto: sus actividades, sin acuses ni responsivas.
+        job = self.job.with_user(self.manager)
+        self.assertEqual(job.sgi_mp_role_ids.ids, wiz.role_ids.ids)
+        self.assertFalse(job.sgi_mp_ack_ids)
+        self.assertFalse(job.sgi_mp_can_sign)
+        # Firma desde la ficha: solo el propio empleado, contra la revisión publicada.
+        self.assertFalse(public.sgi_mp_can_sign, "Sin revisión publicada no hay qué firmar.")
+        self.job.with_user(self.manager).action_sgi_publish_my_procedure()
+        public.invalidate_recordset()
+        self.assertTrue(public.sgi_mp_can_sign)
+        self.assertTrue(public.sgi_mp_ack_ids.filtered(lambda a: a.state == 'pendiente'))
+        with self.assertRaises(UserError):
+            self.env['hr.employee.public'].with_user(self.manager).browse(self.emp1.id).action_sgi_mp_sign()
+        public.action_sgi_mp_sign()
+        public.invalidate_recordset()
+        self.assertFalse(public.sgi_mp_can_sign)
+        self.assertEqual(self.emp1.sgi_my_procedure_ack_state, 'leido')
