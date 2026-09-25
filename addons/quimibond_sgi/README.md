@@ -1730,6 +1730,12 @@ normas, responsabilidades y firmas: lo que arma el PDF).
 
 ## Fórmulas para 28 indicadores más (55.0.0)
 
+**Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa
+desde una acción sin proceso activo, la vista mandaba `resId: null` y
+`selected: null` al componente OWL y la validación de props reventaba
+(«'resId' is not a number or boolean»). Ahora lo que falta se manda como
+`false` (`static/src/diagram/diagram_view.js`).
+
 Tres mejoras al modo «fórmula configurable» (`models/sgi_indicator_formula.py`)
 y los campos que faltaban (`models/sgi_kpi_fields.py`), para que 28
 indicadores capturados a mano pasen a fórmula sin programar cada uno.
