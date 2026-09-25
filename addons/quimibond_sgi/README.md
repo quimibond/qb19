@@ -1665,6 +1665,38 @@ organigrama de Empleados (`hr_org_chart`).
 | Árbol de indicadores | `kpi_tree` | Objetivo → indicador → proceso; color = último semáforo |
 | Quién hace qué | `who_does_what` | Matriz puestos × procesos; color = rol más fuerte; clic abre las actividades |
 
+### Catálogo ISO (53.6.0)
+
+`models/sgi_diagram_iso.py` agrega, sobre el mismo motor, un diagrama por
+cláusula de la norma (9001 / 14001 / 45001). Una caja o celda puede traer
+`action` (una lista filtrada) en vez de modelo + id; el componente la abre
+con doble clic o clic en la celda.
+
+| Cláusula | Diagrama | `kind` | Qué dibuja |
+|---|---|---|---|
+| 4.1 / 4.2 | Contexto y partes interesadas | `context_map` | Partes → procesos, riesgos y requisitos que tocan; rojo = revisión vencida |
+| 4.4 | Interacción de procesos | `interaction_matrix` | Matriz procesos × procesos; celda = entregables que cruzan (clic abre los flujos) |
+| 4.4 | PDCA del proceso | `pdca` | Planear (objetivos, riesgos) · Hacer (etapas, documentos) · Verificar (indicadores, auditorías, NC) · Actuar (acciones abiertas) |
+| 5.2 / 6.2 | Política → objetivos → indicadores | `kpi_tree` | El árbol de indicadores encabezado por la política vigente |
+| 5.3 | Roles y responsabilidades | `roles_map` | Dueño → proceso → puestos que ejecutan o aprueban |
+| 6.1 | Matriz de riesgos | `risk_matrix` | Probabilidad × impacto por instrumento (RyO 5×5, IPER 3×3, ambiental, patrimonial), global o por proceso |
+| 6.1.3 / 9.1 | Cumplimiento legal | `legal_matrix` | Sistema × estado de cumplimiento; clic abre los requisitos |
+| 7.1.5 | Calibración | `calibration_map` | Equipos de medición vencidos / por vencer / vigentes |
+| 7.2 | Competencias | `competence_matrix` | Puestos × tipo de competencia; celda = brechas (color = la mayor) |
+| 7.5 | Pirámide documental | `doc_pyramid` | Cuatro niveles (manual y política, procedimientos, instructivos, formatos) × proceso |
+| 45001 8.2 | Emergencias | `emergency_map` | Escenario → simulacros de 12 meses → acciones |
+| 9.2 | Programa de auditorías | `audit_program` | Una columna por mes del año elegido; color = estado de la línea |
+| 9.3 | Revisión por la dirección | `management_review` | Entradas de la norma → la revisión → acuerdos; selector de revisión |
+| 10.2 | No conformidades | `nc_flow` | Cada NC en la fase que le falta (contención, causa, plan, eficacia) + cerradas y canceladas de 90 días |
+
+Los diagramas que aceptan parámetro (`instrument`, `year`, `review`) declaran
+`param_options` y el componente pinta el selector. **Imprimir** abre una
+ventana con solo el diagrama (título, leyenda, fecha, todas las conexiones)
+escalado para caber a lo ancho de una hoja carta horizontal; desde ahí
+«Guardar como PDF». Los carriles reparten el ancho disponible y, con más de
+ocho (meses, fases), se angostan; las matrices llevan encabezados fijos al
+hacer scroll. Prueba: `tests/test_diagram_iso.py`.
+
 Los diagramas por proceso llevan selector de proceso y pestañas para saltar
 entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»,
 «Tortuga» y «Árbol documental». Para agregar un diagrama: un método

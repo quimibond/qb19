@@ -4,6 +4,13 @@
     .o_sgi_dg_select {
         max-width: 320px;
     }
+    .o_sgi_dg_heading {
+        min-width: 0;
+        max-width: 100%;
+        .fs-4 {
+            white-space: normal;
+        }
+    }
     .o_sgi_dg_svg {
         z-index: 1;
     }
@@ -32,19 +39,36 @@
             background: rgba($primary, .07);
         }
     }
+    // Los carriles reparten el ancho disponible (pocos carriles = cajas
+    // anchas) y, cuando no caben, mantienen un mínimo y el cuerpo hace scroll.
     .o_sgi_dg_columns {
         position: relative;
         z-index: 2;
-        min-width: max-content;
+        gap: 2rem;
+        min-width: 100%;
+        width: max-content;
     }
     .o_sgi_dg_column {
-        width: 250px;
-        flex: 0 0 auto;
+        flex: 1 1 220px;
+        min-width: 220px;
+        max-width: 320px;
         padding: 1rem;
         border-radius: 1rem;
         background: rgba($primary, .035);
         &.o_sgi_dg_column_process {
             background: rgba($primary, .09);
+        }
+    }
+    .o_sgi_dg_columns_many {
+        gap: 1rem;
+        .o_sgi_dg_column {
+            flex-basis: 180px;
+            min-width: 180px;
+            max-width: 240px;
+            padding: .75rem;
+        }
+        .o_sgi_dg_box {
+            min-height: 0;
         }
     }
     .o_sgi_dg_box {
@@ -88,6 +112,7 @@
             background: rgba($primary, .1);
             color: $primary;
             white-space: nowrap;
+            max-width: 75%;
         }
         .o_sgi_dg_name {
             display: -webkit-box;
@@ -135,12 +160,31 @@
     }
     .o_sgi_dg_matrix {
         background: $o-view-background-color;
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: $o-view-background-color;
+        }
         th.o_sgi_dg_matrix_col {
             min-width: 3rem;
+            max-width: 9rem;
             font-size: .8rem;
+            white-space: normal;
+            vertical-align: bottom;
         }
         th.o_sgi_dg_matrix_row {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: $o-view-background-color;
             font-size: .85rem;
+            max-width: 18rem;
+            white-space: normal !important;
+        }
+        th.o_sgi_dg_matrix_corner {
+            left: 0;
+            z-index: 4;
         }
         td.o_sgi_dg_cell {
             text-align: center;
@@ -153,7 +197,10 @@
     }
 }
 
+// Impresión: el botón abre una ventana solo con el diagrama (ver print() en
+// diagram.js); esto cubre Ctrl+P sobre la pantalla.
 @media print {
-    .o_sgi_diagram .o_sgi_dg_toolbar { display: none !important; }
+    .o_sgi_diagram .o_sgi_dg_toolbar .btn, .o_sgi_diagram .o_sgi_dg_toolbar select, .o_sgi_diagram .form-switch { display: none !important; }
     .o_sgi_diagram .o_sgi_dg_body { overflow: visible !important; }
+    .o_sgi_diagram .o_sgi_dg_box { break-inside: avoid; box-shadow: none !important; }
 }

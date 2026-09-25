@@ -27,8 +27,11 @@ DOC_GROUPS = [
 PROCESS_KINDS = [
     ('process_flow', "Flujo del proceso"),
     ('sipoc', "Tortuga (SIPOC)"),
+    ('pdca', "PDCA"),
     ('doc_tree', "Árbol documental"),
     ('kpi_tree', "Indicadores"),
+    ('risk_matrix', "Riesgos"),
+    ('nc_flow', "No conformidades"),
 ]
 
 SEMAPHORE_COLOR = {'verde': 'success', 'amarillo': 'warning', 'rojo': 'danger'}
@@ -44,10 +47,11 @@ class SgiDiagram(models.AbstractModel):
     _description = "Diagramas del SGI (datos para el componente sgi_diagram)"
 
     @api.model
-    def data(self, kind, res_id=None):
+    def data(self, kind, res_id=None, params=None):
         method = getattr(self, '_data_%s' % kind, None)
         if not method:
             raise ValueError("Diagrama desconocido: %s" % kind)
+        self = self.with_context(sgi_diagram_params=dict(params or {}))
         result = method(int(res_id) if res_id else None)
         result.setdefault('kind', kind)
         result.setdefault('edges', [])
@@ -55,6 +59,9 @@ class SgiDiagram(models.AbstractModel):
         result.setdefault('per_process', False)
         result.setdefault('nav', [])
         return result
+
+    def _param(self, name, default=None):
+        return self.env.context.get('sgi_diagram_params', {}).get(name, default) or default
 
     @api.model
     def processes(self):

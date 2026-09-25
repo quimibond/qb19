@@ -24,6 +24,7 @@ export class SgiDiagram extends Component {
         this.state = useState({
             kind: ctx.sgi_diagram_kind || "process_map",
             resId: ctx.sgi_diagram_res_id || null,
+            params: ctx.sgi_diagram_params || {},
             data: null,
             processes: [],
             selected: ctx.sgi_diagram_selected || null,
@@ -46,7 +47,7 @@ export class SgiDiagram extends Component {
 
     async load() {
         this.state.loading = true;
-        const data = await this.orm.call("sgi.diagram", "data", [this.state.kind, this.state.resId]);
+        const data = await this.orm.call("sgi.diagram", "data", [this.state.kind, this.state.resId, this.state.params]);
         this.state.data = data;
         if (data.process_id) {
             this.state.resId = data.process_id;
@@ -110,10 +111,20 @@ export class SgiDiagram extends Component {
         this.state.showAll = !this.state.showAll;
     }
 
-    async switchKind(kind) {
+    async switchKind(kind, params = null) {
         this.state.kind = kind;
+        if (params) {
+            this.state.params = params;
+        }
         this.state.selected = null;
         this.state.hover = null;
+        await this.load();
+    }
+
+    async switchParam(ev) {
+        // Selector de parámetro (p. ej. tipo de riesgo) que declara el diagrama.
+        const name = ev.target.dataset.param;
+        this.state.params = { ...this.state.params, [name]: ev.target.value };
         await this.load();
     }
 
@@ -125,6 +136,11 @@ export class SgiDiagram extends Component {
     }
 
     openRecord(item) {
+        // Caja con acción propia (una lista, un conteo) o registro de Odoo.
+        if (item.action) {
+            this.actionService.doAction(item.action);
+            return;
+        }
         if (!item.model || !item.res_id) {
             return;
         }
@@ -137,7 +153,17 @@ export class SgiDiagram extends Component {
         });
     }
 
-    openCell(row, col) {
+    openCell(row, col, cell) {
+        if (!cell) {
+            return;
+        }
+        if (cell.action) {
+            this.actionService.doAction(cell.action);
+            return;
+        }
+        if (row.model !== "hr.job" || col.model !== "sgi.process") {
+            return;
+        }
         // Matriz «quién hace qué»: las actividades del proceso donde el puesto tiene rol.
         this.actionService.doAction({
             type: "ir.actions.act_window",
@@ -159,8 +185,69 @@ export class SgiDiagram extends Component {
         return "o_sgi_dg_cell o_sgi_dg_cell_" + (cell.level >= 3 ? "exec" : cell.level === 2 ? "approve" : "part");
     }
 
+    get columnsClass() {
+        const lanes = (this.state.data && this.state.data.lanes) || [];
+        return "d-flex align-items-start o_sgi_dg_columns" + (lanes.length > 8 ? " o_sgi_dg_columns_many" : "");
+    }
+
+    // ---- impresión --------------------------------------------------
+    // Ventana aparte con solo el diagrama (título, leyenda, fecha), todas las
+    // conexiones dibujadas y escalado para que quepa a lo ancho de una hoja
+    // carta horizontal. Imprimir el cliente web completo cortaba el diagrama
+    // a una pantalla y arrastraba el menú.
     print() {
-        window.print();
+        const root = this.root.el;
+        const data = this.state.data;
+        if (!root || !data) {
+            return;
+        }
+        this.drawEdges(true);
+        const body = root.cloneNode(true);
+        this.drawEdges();
+        body.classList.remove("overflow-auto");
+        const esc = (t) => String(t || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+        const legend = (data.legend || []).map((l) =>
+            `<span class="me-3"><span class="o_sgi_dg_dot bg-${l.color === "muted" ? "secondary" : l.color}"></span> ${esc(l.label)}</span>`).join("");
+        const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((el) => el.outerHTML).join("\n");
+        const when = new Date().toLocaleString();
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>${esc(data.title)}</title>${styles}
+<style>
+  @page { size: landscape; margin: 10mm; }
+  html, body { background: #fff !important; margin: 0; }
+  .o_sgi_dg_print { padding: 8px; background: #fff !important; }
+  .o_sgi_dg_print_header { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: .5rem; padding-bottom: .5rem; border-bottom: 1px solid #ddd; }
+  .o_sgi_dg_print .o_sgi_dg_body { overflow: visible !important; padding: 0 !important; }
+  .o_sgi_dg_print .o_sgi_dg_box, .o_sgi_dg_print tr { break-inside: avoid; }
+  .o_sgi_dg_print .o_sgi_dg_box { box-shadow: none !important; transform: none !important; opacity: 1 !important; }
+  .o_sgi_dg_print .btn { display: none !important; }
+  .o_sgi_dg_print .o_sgi_dg_columns { min-width: max-content; }
+</style></head><body>
+<div class="o_sgi_diagram o_sgi_dg_print">
+  <div class="o_sgi_dg_print_header">
+    <div class="fs-4 fw-bold">${esc(data.title)}</div>
+    <div class="text-muted small">${esc(data.subtitle)}</div>
+    <div class="ms-auto small text-muted">${legend}<span>${esc(when)}</span></div>
+  </div>
+  <div class="o_sgi_dg_print_zoom">${body.outerHTML}</div>
+</div>
+<script>
+  window.addEventListener("load", function () {
+    // Carta horizontal con márgenes de 10 mm ≈ 979 px de ancho útil a 96 dpi.
+    var zoom = document.querySelector(".o_sgi_dg_print_zoom");
+    var width = Math.max(zoom.scrollWidth, zoom.querySelector(".o_sgi_dg_body").scrollWidth);
+    var scale = Math.min(1, 979 / (width || 1));
+    if (scale < 1) { zoom.style.zoom = scale; }
+    document.fonts && document.fonts.ready.then(function () { window.print(); }) || window.print();
+  });
+</script></body></html>`;
+        const win = window.open("", "_blank");
+        if (!win) {
+            window.print();
+            return;
+        }
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
     }
 
     // ---- flechas ----------------------------------------------------
@@ -202,7 +289,7 @@ export class SgiDiagram extends Component {
         return { x1, y1, x2, y2, c1x: x1 + (right ? bend : -bend), c1y: y1, c2x: x2 - (right ? bend : -bend), c2y: y2 };
     }
 
-    drawEdges() {
+    drawEdges(all = false) {
         const svg = this.svg.el, root = this.root.el;
         if (!svg || !root || !this.state.data) {
             return;
@@ -233,7 +320,7 @@ export class SgiDiagram extends Component {
         }
         svg.appendChild(defs);
         const focus = this.focusKey;
-        for (const edge of this.visibleEdges) {
+        for (const edge of all ? this.edges : this.visibleEdges) {
             const a = this._boxRect(edge.from), b = this._boxRect(edge.to);
             if (!a || !b) {
                 continue;
@@ -250,7 +337,7 @@ export class SgiDiagram extends Component {
                 path.appendChild(title);
             }
             svg.appendChild(path);
-            if (edge.label && active) {
+            if (edge.label && (active || all) && this.state.data.layout !== "bands") {
                 const text = document.createElementNS(SVG_NS, "text");
                 text.setAttribute("x", (p.x1 + p.x2) / 2);
                 text.setAttribute("y", (p.y1 + p.y2) / 2 - 6);

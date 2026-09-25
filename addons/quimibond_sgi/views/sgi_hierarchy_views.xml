@@ -79,19 +79,93 @@
         <field name="context">{'sgi_diagram_kind': 'who_does_what'}</field>
     </record>
 
+
+    <!-- Diagramas ISO (53.6.0, models/sgi_diagram_iso.py): uno por cláusula. -->
+    <record id="sgi_diagram_interaction_matrix_action" model="ir.actions.client">
+        <field name="name">Interacción de procesos (4.4)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'interaction_matrix'}</field>
+    </record>
+    <record id="sgi_diagram_context_map_action" model="ir.actions.client">
+        <field name="name">Contexto y partes interesadas (4.1/4.2)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'context_map'}</field>
+    </record>
+    <record id="sgi_diagram_roles_map_action" model="ir.actions.client">
+        <field name="name">Roles y responsabilidades (5.3)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'roles_map'}</field>
+    </record>
+    <record id="sgi_diagram_risk_matrix_action" model="ir.actions.client">
+        <field name="name">Matriz de riesgos (6.1)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'risk_matrix'}</field>
+    </record>
+    <record id="sgi_diagram_legal_matrix_action" model="ir.actions.client">
+        <field name="name">Cumplimiento legal (6.1.3)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'legal_matrix'}</field>
+    </record>
+    <record id="sgi_diagram_calibration_map_action" model="ir.actions.client">
+        <field name="name">Calibración (7.1.5)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'calibration_map'}</field>
+    </record>
+    <record id="sgi_diagram_competence_matrix_action" model="ir.actions.client">
+        <field name="name">Competencias (7.2)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'competence_matrix'}</field>
+    </record>
+    <record id="sgi_diagram_doc_pyramid_action" model="ir.actions.client">
+        <field name="name">Pirámide documental (7.5)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'doc_pyramid'}</field>
+    </record>
+    <record id="sgi_diagram_emergency_map_action" model="ir.actions.client">
+        <field name="name">Emergencias (45001 8.2)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'emergency_map'}</field>
+    </record>
+    <record id="sgi_diagram_audit_program_action" model="ir.actions.client">
+        <field name="name">Programa de auditorías (9.2)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'audit_program'}</field>
+    </record>
+    <record id="sgi_diagram_management_review_action" model="ir.actions.client">
+        <field name="name">Revisión por la dirección (9.3)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'management_review'}</field>
+    </record>
+    <record id="sgi_diagram_nc_flow_action" model="ir.actions.client">
+        <field name="name">No conformidades (10.2)</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'nc_flow'}</field>
+    </record>
+    <record id="sgi_diagram_pdca_action" model="ir.actions.client">
+        <field name="name">PDCA del proceso</field>
+        <field name="tag">sgi_diagram</field>
+        <field name="context">{'sgi_diagram_kind': 'pdca'}</field>
+    </record>
     <menuitem id="menu_sgi_diagrams" name="Diagramas" parent="menu_sgi_processes" sequence="6"/>
-    <menuitem id="menu_sgi_process_diagram" name="Mapa de procesos" parent="menu_sgi_diagrams"
-              action="sgi_process_map_action" sequence="1"/>
-    <menuitem id="menu_sgi_diagram_flow" name="Flujo del proceso" parent="menu_sgi_diagrams"
-              action="sgi_diagram_process_flow_action" sequence="2"/>
-    <menuitem id="menu_sgi_diagram_sipoc" name="Tortuga (SIPOC)" parent="menu_sgi_diagrams"
-              action="sgi_diagram_sipoc_action" sequence="3"/>
-    <menuitem id="menu_sgi_diagram_docs" name="Árbol documental" parent="menu_sgi_diagrams"
-              action="sgi_diagram_doc_tree_action" sequence="4"/>
-    <menuitem id="menu_sgi_diagram_kpis" name="Árbol de indicadores" parent="menu_sgi_diagrams"
-              action="sgi_diagram_kpi_tree_action" sequence="5"/>
-    <menuitem id="menu_sgi_diagram_who" name="Quién hace qué" parent="menu_sgi_diagrams"
-              action="sgi_diagram_who_action" sequence="6"/>
+    <menuitem id="menu_sgi_diagram_process_diagram" name="Mapa de procesos" parent="menu_sgi_diagrams" action="sgi_process_map_action" sequence="1"/>
+    <menuitem id="menu_sgi_diagram_interaction" name="Interacción de procesos (4.4)" parent="menu_sgi_diagrams" action="sgi_diagram_interaction_matrix_action" sequence="2"/>
+    <menuitem id="menu_sgi_diagram_flow" name="Flujo del proceso" parent="menu_sgi_diagrams" action="sgi_diagram_process_flow_action" sequence="3"/>
+    <menuitem id="menu_sgi_diagram_sipoc" name="Tortuga (SIPOC)" parent="menu_sgi_diagrams" action="sgi_diagram_sipoc_action" sequence="4"/>
+    <menuitem id="menu_sgi_diagram_pdca" name="PDCA del proceso" parent="menu_sgi_diagrams" action="sgi_diagram_pdca_action" sequence="5"/>
+    <menuitem id="menu_sgi_diagram_context" name="Contexto y partes interesadas (4.1/4.2)" parent="menu_sgi_diagrams" action="sgi_diagram_context_map_action" sequence="6"/>
+    <menuitem id="menu_sgi_diagram_roles" name="Roles y responsabilidades (5.3)" parent="menu_sgi_diagrams" action="sgi_diagram_roles_map_action" sequence="7"/>
+    <menuitem id="menu_sgi_diagram_who" name="Quién hace qué" parent="menu_sgi_diagrams" action="sgi_diagram_who_action" sequence="8"/>
+    <menuitem id="menu_sgi_diagram_kpis" name="Política, objetivos e indicadores (5.2/6.2)" parent="menu_sgi_diagrams" action="sgi_diagram_kpi_tree_action" sequence="9"/>
+    <menuitem id="menu_sgi_diagram_risk" name="Matriz de riesgos (6.1)" parent="menu_sgi_diagrams" action="sgi_diagram_risk_matrix_action" sequence="10"/>
+    <menuitem id="menu_sgi_diagram_legal" name="Cumplimiento legal (6.1.3)" parent="menu_sgi_diagrams" action="sgi_diagram_legal_matrix_action" sequence="11"/>
+    <menuitem id="menu_sgi_diagram_calibration" name="Calibración (7.1.5)" parent="menu_sgi_diagrams" action="sgi_diagram_calibration_map_action" sequence="12"/>
+    <menuitem id="menu_sgi_diagram_competence" name="Competencias (7.2)" parent="menu_sgi_diagrams" action="sgi_diagram_competence_matrix_action" sequence="13"/>
+    <menuitem id="menu_sgi_diagram_docs" name="Árbol documental (7.5)" parent="menu_sgi_diagrams" action="sgi_diagram_doc_tree_action" sequence="14"/>
+    <menuitem id="menu_sgi_diagram_pyramid" name="Pirámide documental (7.5)" parent="menu_sgi_diagrams" action="sgi_diagram_doc_pyramid_action" sequence="15"/>
+    <menuitem id="menu_sgi_diagram_emergency" name="Emergencias (45001 8.2)" parent="menu_sgi_diagrams" action="sgi_diagram_emergency_map_action" sequence="16"/>
+    <menuitem id="menu_sgi_diagram_audits" name="Programa de auditorías (9.2)" parent="menu_sgi_diagrams" action="sgi_diagram_audit_program_action" sequence="17"/>
+    <menuitem id="menu_sgi_diagram_review" name="Revisión por la dirección (9.3)" parent="menu_sgi_diagrams" action="sgi_diagram_management_review_action" sequence="18"/>
+    <menuitem id="menu_sgi_diagram_nc" name="No conformidades (10.2)" parent="menu_sgi_diagrams" action="sgi_diagram_nc_flow_action" sequence="19"/>
 
     <!-- ===== Actividades: el flujo paso a paso de un proceso ===== -->
     <record id="sgi_process_activity_view_hierarchy" model="ir.ui.view">
