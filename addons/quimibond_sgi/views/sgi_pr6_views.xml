@@ -215,24 +215,4 @@
     </record>
 
     <!-- DOC-4 en Mis pendientes: documentos del usuario por revisar. -->
-    <record id="sgi_my_procedure_view_form_pr6" model="ir.ui.view">
-        <field name="name">sgi.my.procedure.form.pr6</field>
-        <field name="model">sgi.my.procedure</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_my_procedure_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='pending_legal_ids']/.." position="after">
-                <group string="Documentos por revisar (60 días)" invisible="not pending_doc_review_ids">
-                    <field name="pending_doc_review_ids" nolabel="1" readonly="1">
-                        <list create="0" delete="0">
-                            <field name="sgi_code" string="Clave"/>
-                            <field name="name"/>
-                            <field name="sgi_revision_label" string="Rev."/>
-                            <field name="sgi_next_review_date"/>
-                            <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
-                        </list>
-                    </field>
-                </group>
-            </xpath>
-        </field>
-    </record>
 </odoo>
