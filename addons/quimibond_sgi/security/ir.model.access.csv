@@ -219,3 +219,6 @@ access_sgi_legal_evaluation_user,sgi.legal.evaluation.user,model_sgi_legal_evalu
 access_sgi_legal_evaluation_auditor,sgi.legal.evaluation.auditor,model_sgi_legal_evaluation,group_sgi_auditor,1,0,0,0
 access_sgi_legal_evaluation_manager,sgi.legal.evaluation.manager,model_sgi_legal_evaluation,group_sgi_manager,1,1,1,1
 access_sgi_legal_evaluate_user,sgi.legal.evaluate.user,model_sgi_legal_evaluate,group_sgi_user,1,1,1,1
+access_sgi_direction_board_manager,sgi.direction.board.manager,model_sgi_direction_board,group_sgi_manager,1,1,1,1
+access_sgi_direction_board_director,sgi.direction.board.director,model_sgi_direction_board,group_sgi_director,1,1,1,1
+access_sgi_direction_board_auditor,sgi.direction.board.auditor,model_sgi_direction_board,group_sgi_auditor,1,1,1,1

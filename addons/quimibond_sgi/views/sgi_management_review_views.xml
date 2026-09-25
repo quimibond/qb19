@@ -82,13 +82,27 @@
                                 </list>
                             </field>
                         </page>
+                        <page string="Objetivos y satisfacción (13-14)">
+                            <group>
+                                <field name="objectives_summary" nolabel="1" readonly="1"/>
+                                <field name="satisfaction_summary" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
                         <page string="Acuerdos (salidas)">
+                            <div class="text-muted mb-2">
+                                Cada acuerdo se vuelve una acción del SGI con responsable y compromiso al marcar
+                                la revisión como Realizada: actividad al responsable, escalamiento si vence y
+                                medición de E1-02.
+                            </div>
                             <field name="agreement_ids">
-                                <list editable="bottom">
+                                <list editable="bottom" decoration-danger="action_state == 'vencida'"
+                                      decoration-success="action_state == 'terminada'">
                                     <field name="name"/>
                                     <field name="responsible_id"/>
                                     <field name="deadline"/>
-                                    <field name="task_id" readonly="1"/>
+                                    <field name="action_state" string="Acción" widget="badge"/>
+                                    <field name="action_line_id" readonly="1" optional="hide"/>
+                                    <field name="task_id" readonly="1" optional="hide"/>
                                 </list>
                             </field>
                         </page>

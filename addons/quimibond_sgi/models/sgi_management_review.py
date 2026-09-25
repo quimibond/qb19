@@ -2,7 +2,7 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 from .sgi_risk import SGI_HIGH_ATTENTION
 
@@ -61,6 +61,18 @@ class SgiManagementReview(models.Model):
         string="12. Consulta y participación", readonly=True,
         help="45001 5.4/9.3: respuestas de la encuesta de consulta y "
              "participación y quejas del canal interno en el periodo.")
+    # DIR-3 (52.0.0): las entradas que faltaban de ISO 9.3.2 tomadas de Odoo.
+    objectives_summary = fields.Text(
+        string="13. Objetivos e indicadores", readonly=True,
+        help="Objetivos integrales con sus indicadores oficiales: último valor, "
+             "semáforo y rojos sin plan.")
+    satisfaction_summary = fields.Text(
+        string="14. Satisfacción del cliente", readonly=True,
+        help="Indicador CA-02 y reclamaciones del periodo.")
+    agreement_action_ids = fields.One2many(
+        'sgi.action.line', 'review_id', string="Acuerdos (acciones)",
+        help="Los acuerdos de la revisión son acciones con responsable y fecha; "
+             "miden E1-02 (acuerdos cumplidos a tiempo).")
 
     # Salidas
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',
@@ -98,8 +110,49 @@ class SgiManagementReview(models.Model):
                 'doc_changes_summary': review._sgi_load_doc_changes(),
                 'legal_summary': review._sgi_load_legal(),
                 'participation_summary': review._sgi_load_participation(),
+                'objectives_summary': review._sgi_load_objectives(),
+                'satisfaction_summary': review._sgi_load_satisfaction(),
             })
         return True
+
+    def _sgi_load_objectives(self):
+        """Entrada 13 (9.3.2 c): objetivos integrales e indicadores oficiales."""
+        self.ensure_one()
+        Indicator = self.env['sgi.indicator']
+        lines = []
+        for objective in self.env['sgi.objective'].search([]):
+            indicators = objective.indicator_ids.filtered(lambda i: i.status == 'oficial') \
+                if 'status' in Indicator._fields else objective.indicator_ids
+            lines.append("• %s (%s): %d indicador(es) oficial(es)." % (
+                objective.name, dict(objective._fields['health'].selection).get(objective.health, '-')
+                if 'health' in objective._fields else '-', len(indicators)))
+            for ind in indicators:
+                lines.append("    - %s %s: %s %s (%s)" % (
+                    ind.code, ind.name, ind.last_value, ind.uom or '',
+                    ind.last_semaphore or 'sin dato'))
+        reds = self._sgi_load_red_measures().filtered(lambda m: m.plan_required and not m.plan_done)
+        if reds:
+            lines.append("Rojos del periodo SIN causa ni plan: %s." % ", ".join(
+                sorted(set(reds.mapped('indicator_id.code')))))
+        return "\n".join(lines) or "Sin objetivos integrales registrados."
+
+    def _sgi_load_satisfaction(self):
+        """Entrada 14 (9.3.2 c1): satisfacción del cliente (CA-02) y reclamaciones."""
+        self.ensure_one()
+        parts = []
+        ca02 = self.env['sgi.indicator'].search([('code', '=', 'CA-02')], limit=1)
+        if ca02:
+            measures = ca02.measure_ids.filtered(
+                lambda m: self.period_from <= m.period_date <= self.period_to and m.state != 'pendiente')
+            if measures:
+                values = ", ".join("%s: %s" % (m.period_date, m.value) for m in measures.sorted('period_date'))
+                parts.append("CA-02 satisfacción del cliente en el periodo → %s." % values)
+            else:
+                parts.append("CA-02 sin mediciones en el periodo.")
+        else:
+            parts.append("No existe el indicador CA-02 (satisfacción del cliente).")
+        parts.append(self._sgi_load_complaints())
+        return "\n".join(parts)
 
     def _sgi_load_legal(self):
         """Entrada 11 (14001/45001 9.3): foto del cumplimiento legal."""
@@ -162,17 +215,15 @@ class SgiManagementReview(models.Model):
         ], order='date desc', limit=1)
         if not prev or not prev.agreement_ids:
             return "Sin acuerdos de la revisión anterior."
-        tasks = prev.agreement_ids.mapped('task_id')
         total = len(prev.agreement_ids)
-        closed = tasks.filtered(lambda t: t.stage_id.fold)
+        closed = prev.agreement_ids.filtered(lambda a: a.is_done)
         pct = round(len(closed) / total * 100.0, 1) if total else 0.0
         lines = ["Acuerdos de la revisión %s — %s%% cerrados (%d/%d):" % (
             prev.folio, pct, len(closed), total)]
         for agr in prev.agreement_ids:
-            status = "cerrado" if agr.task_id.stage_id.fold else "abierto"
             lines.append("• %s (resp. %s, límite %s) — %s" % (
                 agr.name, agr.responsible_id.name or '-',
-                agr.deadline or '-', status))
+                agr.deadline or '-', agr.status_label))
         return "\n".join(lines)
 
     def _sgi_load_nc(self):
@@ -317,21 +368,20 @@ class SgiManagementReview(models.Model):
                     "responsable y fecha límite (ISO 9.3.3: las salidas son "
                     "accionables). Completa: %s" % ", ".join(
                         incomplete.mapped('name')))
-            project = self.env.ref('quimibond_sgi.sgi_project_agreements',
-                                   raise_if_not_found=False)
+            # DIR-3 (52.0.0): cada acuerdo es una ACCIÓN del SGI (sgi.action.line)
+            # con responsable y compromiso: actividad nativa al responsable,
+            # escalamiento del cron de acciones vencidas y medición de E1-02.
+            Line = self.env['sgi.action.line']
             for agr in review.agreement_ids:
-                if agr.task_id:
+                if agr.action_line_id:
                     continue
-                task_vals = {
+                agr.action_line_id = Line.create({
+                    'review_id': review.id,
+                    'action_type': 'correctiva',
                     'name': agr.name,
-                    'date_deadline': agr.deadline,
-                    'description': "Acuerdo de la Revisión por la Dirección %s." % review.folio,
-                }
-                if project:
-                    task_vals['project_id'] = project.id
-                if agr.responsible_id:
-                    task_vals['user_ids'] = [(6, 0, agr.responsible_id.ids)]
-                agr.task_id = self.env['project.task'].create(task_vals).id
+                    'responsible_id': agr.responsible_id.id,
+                    'date_commit': agr.deadline,
+                }).id
             review.state = 'realizada'
         return True
 
@@ -352,4 +402,54 @@ class SgiManagementReviewAgreement(models.Model):
     name = fields.Char(string="Acuerdo", required=True)
     responsible_id = fields.Many2one('res.users', string="Responsable")
     deadline = fields.Date(string="Fecha límite")
-    task_id = fields.Many2one('project.task', string="Tarea", readonly=True)
+    task_id = fields.Many2one('project.task', string="Tarea (anterior a 52.0.0)", readonly=True)
+    action_line_id = fields.Many2one('sgi.action.line', string="Acción", readonly=True, copy=False)
+    action_state = fields.Selection(related='action_line_id.state', string="Estado de la acción")
+    is_done = fields.Boolean(compute='_compute_status')
+    status_label = fields.Char(compute='_compute_status')
+
+    @api.depends('action_line_id.state', 'action_line_id.date_done', 'task_id.stage_id.fold')
+    def _compute_status(self):
+        labels = dict(self.env['sgi.action.line']._fields['state'].selection)
+        for agr in self:
+            if agr.action_line_id:
+                agr.is_done = bool(agr.action_line_id.date_done)
+                agr.status_label = labels.get(agr.action_line_id.state, agr.action_line_id.state)
+            elif agr.task_id:
+                agr.is_done = bool(agr.task_id.stage_id.fold)
+                agr.status_label = "cerrado" if agr.is_done else "abierto"
+            else:
+                agr.is_done = False
+                agr.status_label = "sin acción"
+
+
+class SgiActionLineReview(models.Model):
+    """Origen «acuerdo de la Revisión por la Dirección» de una acción (DIR-3)."""
+    _inherit = 'sgi.action.line'
+
+    review_id = fields.Many2one('sgi.management.review', string="Revisión por la Dirección",
+                                ondelete='cascade', index=True)
+
+    @api.depends('review_id')
+    def _compute_origin_display(self):
+        with_review = self.filtered('review_id')
+        for line in with_review:
+            line.origin_display = line.review_id.display_name
+        super(SgiActionLineReview, self - with_review)._compute_origin_display()
+
+    def _sgi_origin(self):
+        self.ensure_one()
+        if self.review_id:
+            return self.review_id
+        return super()._sgi_origin()
+
+    @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id',
+                    'drill_id', 'objective_id', 'review_id', 'name')
+    def _check_parent_xor(self):
+        with_review = self.filtered('review_id')
+        for line in with_review:
+            others = [line.alert_id, line.risk_id, line.fmea_line_id,
+                      line.incident_id, line.drill_id, line.objective_id]
+            if any(others):
+                raise ValidationError("Un acuerdo de la Revisión por la Dirección no puede tener otro origen.")
+        return super(SgiActionLineReview, self - with_review)._check_parent_xor()

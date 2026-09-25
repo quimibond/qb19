@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- DIR-4: Tablero de dirección con vistas nativas. -->
+    <record id="sgi_direction_board_view_form" model="ir.ui.view">
+        <field name="name">sgi.direction.board.form</field>
+        <field name="model">sgi.direction.board</field>
+        <field name="arch" type="xml">
+            <form string="Tablero de dirección" create="0" delete="0">
+                <header>
+                    <button name="action_open_spreadsheet" type="object" string="Hoja de cálculo"
+                            icon="fa-table" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="indicator_count" string="Indicadores en el tablero"/>
+                        </group>
+                        <group>
+                            <field name="red_count" string="Rojos sin causa ni plan" decoration-danger="red_count > 0"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Indicadores de dirección" name="indicadores">
+                            <field name="indicator_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0"
+                                      decoration-danger="last_semaphore == 'rojo'"
+                                      decoration-warning="last_semaphore == 'amarillo'"
+                                      decoration-success="last_semaphore == 'verde'">
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="objective_id" optional="show"/>
+                                    <field name="process_id" optional="show"/>
+                                    <field name="responsible_id" optional="show" widget="many2one_avatar_user"/>
+                                    <field name="target_objective"/>
+                                    <field name="last_value"/>
+                                    <field name="last_semaphore" widget="badge"
+                                           decoration-danger="last_semaphore == 'rojo'"
+                                           decoration-warning="last_semaphore == 'amarillo'"
+                                           decoration-success="last_semaphore == 'verde'"/>
+                                    <field name="last_six"/>
+                                </list>
+                            </field>
+                            <group string="Objetivos integrales" invisible="not objective_ids">
+                                <field name="objective_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0">
+                                        <field name="name"/>
+                                        <field name="target_year" optional="show"/>
+                                        <field name="indicator_count"/>
+                                        <field name="health" widget="badge"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+                        <page string="Rojos sin plan" name="rojos">
+                            <field name="red_no_plan_measure_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="indicator_id"/>
+                                    <field name="period_date"/>
+                                    <field name="value"/>
+                                    <field name="target_objective"/>
+                                    <field name="plan_due"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="red_no_plan_measure_ids">Sin rojos pendientes de causa y plan.</p>
+                        </page>
+                        <page string="Acuerdos vencidos" name="acuerdos">
+                            <field name="overdue_agreement_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" decoration-danger="state == 'vencida'">
+                                    <field name="name"/>
+                                    <field name="origin_display" string="Revisión"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="date_commit"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="overdue_agreement_ids">Sin acuerdos vencidos.</p>
+                        </page>
+                        <page string="Procesos con más atrasos" name="procesos">
+                            <field name="delayed_process_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="owner_id"/>
+                                    <field name="activity_red_count" string="Actividades en rojo"/>
+                                    <field name="nc_count" string="NC abiertas"/>
+                                    <field name="open_high_risk_count" string="Riesgos altos"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="delayed_process_ids">Ningún proceso con actividades atrasadas.</p>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_direction_board_action_open" model="ir.actions.server">
+        <field name="name">Tablero de dirección</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_direction_board"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.direction.board'].action_open()</field>
+    </record>
+
+    <!-- Nivel del indicador en su ficha y lista. -->
+    <record id="sgi_indicator_view_form_level" model="ir.ui.view">
+        <field name="name">sgi.indicator.form.level</field>
+        <field name="model">sgi.indicator</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_indicator_view_form"/>
+        <field name="arch" type="xml">
+            <field name="responsible_id" position="after">
+                <field name="level"/>
+            </field>
+        </field>
+    </record>
+</odoo>

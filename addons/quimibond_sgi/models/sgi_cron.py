@@ -657,10 +657,24 @@ class SgiCron(models.AbstractModel):
             self._sgi_schedule(
                 risk,
                 "Revisar riesgo %s" % (risk.folio or risk.name),
-                "La revisión del riesgo/oportunidad venció el %s." % risk.next_review_date,
+                "Reevaluación periódica (enero / julio): la revisión del riesgo/oportunidad "
+                "venció el %s. Actualiza probabilidad e impacto y pulsa «Registrar "
+                "evaluación»." % risk.next_review_date,
                 user_id)
 
         self._sgi_for_each(risks, _process, "revisión de riesgos")
+        # DIR-2: riesgo alto sin acción abierta → actividad al dueño del proceso.
+        flagged = self.env['sgi.risk'].search([('high_without_action', '=', True)])
+
+        def _flagged(risk):
+            owner = risk.process_id.owner_id.user_id if risk.sgi_process_active else False
+            self._sgi_schedule(
+                risk, "Riesgo alto sin acción: %s" % (risk.folio or risk.name),
+                "El riesgo está en atención alta o inmediata y no tiene ninguna acción de "
+                "tratamiento abierta. Registra una acción con responsable y compromiso.",
+                owner.id if owner else manager_id)
+
+        self._sgi_for_each(flagged, _flagged, "riesgos altos sin acción")
         return True
 
     # ------------------------------------------------------------------

@@ -122,6 +122,17 @@ class SgiRisk(models.Model):
              "el riesgo residual no baja respecto al inicial.")
     has_finished_actions = fields.Boolean(string="Acciones terminadas",
                                           compute='_compute_has_finished_actions')
+    # DIR-2 (52.0.0): evaluación periódica. Cada evaluación sella la fecha y
+    # propone la siguiente (enero o julio); un riesgo alto sin acción abierta
+    # queda marcado para el dueño del proceso y para Dirección.
+    last_eval_date = fields.Date(string="Última evaluación", readonly=True, copy=False)
+    semaphore = fields.Selection([
+        ('verde', "Verde"), ('amarillo', "Amarillo"), ('rojo', "Rojo"),
+    ], string="Semáforo", compute='_compute_semaphore', store=True)
+    high_without_action = fields.Boolean(
+        string="Alto sin acción abierta", compute='_compute_high_without_action', store=True,
+        help="Riesgo de atención alta o inmediata, no cerrado, sin ninguna acción de "
+             "tratamiento pendiente.")
 
     # ------------------------------------------------------------------
     # Escalas por instrumento
@@ -194,6 +205,46 @@ class SgiRisk(models.Model):
                 continue
             risk.residual_score = int(risk.residual_probability) * int(risk.residual_impact)
             risk.residual_level = risk._sgi_level(risk.instrument, risk.residual_score)
+
+    @api.depends('attention_level', 'instrument')
+    def _compute_semaphore(self):
+        for risk in self:
+            if not risk.attention_level:
+                risk.semaphore = False
+            elif risk.attention_level in SGI_HIGH_ATTENTION:
+                risk.semaphore = 'rojo'
+            elif risk.attention_level in ('media', 'medio', 'intermedia'):
+                risk.semaphore = 'amarillo'
+            else:
+                risk.semaphore = 'verde'
+
+    @api.depends('attention_level', 'state', 'action_line_ids.date_done')
+    def _compute_high_without_action(self):
+        for risk in self:
+            risk.high_without_action = bool(
+                risk.attention_level in SGI_HIGH_ATTENTION and risk.state != 'cerrado'
+                and not risk.action_line_ids.filtered(lambda l: not l.date_done))
+
+    @api.model
+    def _sgi_next_semester(self, day):
+        """Siguiente 1 de enero o 1 de julio después de `day`."""
+        if day.month < 7:
+            return day.replace(month=7, day=1)
+        return day.replace(year=day.year + 1, month=1, day=1)
+
+    def action_evaluate(self):
+        """Sella la evaluación de hoy y programa la siguiente (enero / julio)."""
+        today = fields.Date.context_today(self)
+        for risk in self:
+            if risk.instrument != 'foda' and not (risk.eval_probability and risk.eval_impact):
+                raise UserError("Captura probabilidad e impacto antes de registrar la evaluación.")
+            risk.write({'last_eval_date': today,
+                        'next_review_date': self._sgi_next_semester(today)})
+            risk.message_post(body="Evaluación registrada: %s × %s = %d (%s). Siguiente: %s." % (
+                risk.eval_probability or '-', risk.eval_impact or '-', risk.score,
+                dict(self._fields['attention_level'].selection).get(risk.attention_level, '-'),
+                risk.next_review_date))
+        return True
 
     @api.depends('action_line_ids.date_done')
     def _compute_has_finished_actions(self):

@@ -1016,6 +1016,41 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 5 del plan: revisión por la dirección de diciembre (19.0.52.0.0)
+
+- **DIR-2 · Riesgos con evaluación periódica.** Semáforo (`semaphore`) a
+  partir del nivel de atención; botón «Registrar evaluación» que sella
+  `last_eval_date` y programa la siguiente al **1 de enero o 1 de julio**;
+  el cron de riesgos avisa al dueño del proceso al vencer y, además, marca y
+  avisa cada **riesgo alto sin acción abierta** (`high_without_action`,
+  almacenado, filtra y colorea la lista). La ficha del proceso muestra sus
+  riesgos con color, puntaje y fechas; botón «Matriz de riesgos (PDF)». La
+  migración 52.0.0 sella la fecha de los riesgos ya evaluados y les pone su
+  semestre.
+- **DIR-3 · Informe de revisión por la dirección.** Dos entradas nuevas
+  tomadas de Odoo: **13. Objetivos e indicadores** (objetivos integrales con
+  sus indicadores oficiales, último valor y semáforo, rojos sin plan) y **14.
+  Satisfacción del cliente** (CA-02 del periodo + reclamaciones). Los
+  **acuerdos son acciones** (`sgi.action.line.review_id`) con responsable y
+  compromiso: actividad nativa al responsable, escalamiento del cron de
+  acciones vencidas y estado en la lista y en el acta; la revisión siguiente
+  lee «acuerdos previos» desde ellas. Las tareas de proyecto de revisiones
+  anteriores se conservan. Modo de cálculo `acuerdos_rxd` para **E1-02**
+  (% de acuerdos con compromiso en el periodo terminados a tiempo).
+- **DIR-4 · Tablero de dirección (I-9).** `sgi.indicator.level`
+  (Dirección / Proceso / Actividad) y `last_six` (últimos 6 periodos con
+  valor y semáforo). El menú Dirección → Tablero de dirección abre un
+  formulario nativo (`sgi.direction.board`): indicadores oficiales de nivel
+  dirección (si no hay ninguno marcado, todos los oficiales), objetivos
+  integrales, rojos sin causa ni plan, acuerdos de la RxD vencidos y los 10
+  procesos con más actividades en rojo. La hoja de cálculo sigue en su botón.
+- **PER-3 · Matriz de competencias.** Reporte PDF por área (Imprimir en el
+  departamento): persona, puesto, estado de Mi procedimiento, instructivos
+  leídos de los asignados, cursos de eLearning terminados y competencias con
+  nivel (`hr.department._sgi_competence_matrix`).
+
+Pruebas: `TestPr5Direction` 01–04; `TestMgmtReview.test_04` pasa a acciones.
+
 ## PR 4 del plan: documentos y matriz legal (19.0.51.0.0)
 
 - **DOC-1 · Publicación en un paso.** Al aprobarse un cambio documental de

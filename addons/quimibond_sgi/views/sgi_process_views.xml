@@ -206,6 +206,8 @@
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_print_master_list" type="object" string="Lista maestra (PDF)"
                             icon="fa-print"/>
+                    <button name="action_print_risk_matrix" type="object" string="Matriz de riesgos (PDF)"
+                            icon="fa-print"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -305,10 +307,17 @@
                             </field>
                             <separator string="Riesgos y oportunidades"/>
                             <field name="risk_ids" readonly="1">
-                                <list>
+                                <list decoration-danger="high_without_action">
                                     <field name="instrument"/>
                                     <field name="name"/>
+                                    <field name="score" optional="show"/>
+                                    <field name="semaphore" widget="badge"
+                                           decoration-success="semaphore == 'verde'"
+                                           decoration-warning="semaphore == 'amarillo'"
+                                           decoration-danger="semaphore == 'rojo'"/>
+                                    <field name="high_without_action" optional="show"/>
                                     <field name="state" widget="badge"/>
+                                    <field name="last_eval_date" optional="show"/>
                                     <field name="next_review_date" optional="show"/>
                                 </list>
                             </field>

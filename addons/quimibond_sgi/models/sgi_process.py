@@ -260,6 +260,10 @@ class SgiProcess(models.Model):
             process.indicator_count = ind_counts.get(process.id, 0)
             process.risk_count = risk_counts.get(process.id, 0)
 
+    def action_print_risk_matrix(self):
+        """DIR-2 (52.0.0): matriz de riesgos del proceso en PDF."""
+        return self.env.ref('quimibond_sgi.action_report_risk_matrix').report_action(self)
+
     def action_print_master_list(self):
         """DOC-3 (51.0.0): lista maestra de documentos del proceso en PDF."""
         return self.env.ref('quimibond_sgi.action_report_master_list').report_action(self)
