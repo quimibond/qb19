@@ -25,11 +25,39 @@ DOC_GROUPS = [
 ]
 
 PROCESS_KINDS = [
+    ('process_map', "Mapa de procesos"),
     ('process_flow', "Flujo del proceso"),
     ('sipoc', "Tortuga (SIPOC)"),
+    ('pdca', "PDCA"),
     ('doc_tree', "Árbol documental"),
     ('kpi_tree', "Indicadores"),
+    ('risk_matrix', "Riesgos"),
+    ('nc_flow', "No conformidades"),
 ]
+
+# Etiqueta de cada diagrama (pestañas del componente y validación de la
+# vista sgi_diagram). Los de sgi_diagram_iso.py se agregan abajo.
+KIND_LABELS = {
+    'process_map': "Mapa de procesos",
+    'process_flow': "Flujo del proceso",
+    'sipoc': "Tortuga (SIPOC)",
+    'pdca': "PDCA",
+    'doc_tree': "Árbol documental",
+    'kpi_tree': "Indicadores",
+    'who_does_what': "Quién hace qué",
+    'interaction_matrix': "Interacción (4.4)",
+    'context_map': "Contexto (4.1 / 4.2)",
+    'roles_map': "Roles (5.3)",
+    'risk_matrix': "Riesgos (6.1)",
+    'legal_matrix': "Cumplimiento legal",
+    'calibration_map': "Calibración",
+    'competence_matrix': "Competencias",
+    'doc_pyramid': "Pirámide documental",
+    'emergency_map': "Emergencias",
+    'audit_program': "Programa de auditorías",
+    'management_review': "Revisión por la dirección",
+    'nc_flow': "No conformidades",
+}
 
 SEMAPHORE_COLOR = {'verde': 'success', 'amarillo': 'warning', 'rojo': 'danger'}
 STATE_COLOR = {'vigente': 'success', 'piloto': 'warning', 'borrador': 'muted', 'obsoleto': 'danger'}
@@ -44,10 +72,11 @@ class SgiDiagram(models.AbstractModel):
     _description = "Diagramas del SGI (datos para el componente sgi_diagram)"
 
     @api.model
-    def data(self, kind, res_id=None):
+    def data(self, kind, res_id=None, params=None):
         method = getattr(self, '_data_%s' % kind, None)
         if not method:
             raise ValueError("Diagrama desconocido: %s" % kind)
+        self = self.with_context(sgi_diagram_params=dict(params or {}))
         result = method(int(res_id) if res_id else None)
         result.setdefault('kind', kind)
         result.setdefault('edges', [])
@@ -55,6 +84,19 @@ class SgiDiagram(models.AbstractModel):
         result.setdefault('per_process', False)
         result.setdefault('nav', [])
         return result
+
+    @api.model
+    def _kinds(self):
+        """Diagramas disponibles: todo método `_data_<kind>`."""
+        return {name[6:] for name in dir(self) if name.startswith('_data_')}
+
+    @api.model
+    def catalog(self):
+        """Etiqueta de cada diagrama, para las pestañas del componente."""
+        return [{'kind': k, 'label': KIND_LABELS.get(k, k)} for k in sorted(self._kinds())]
+
+    def _param(self, name, default=None):
+        return self.env.context.get('sgi_diagram_params', {}).get(name, default) or default
 
     @api.model
     def processes(self):

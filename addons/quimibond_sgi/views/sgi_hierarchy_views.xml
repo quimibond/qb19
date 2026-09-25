@@ -43,55 +43,12 @@
     </record>
 
     <record id="sgi_process_action" model="ir.actions.act_window">
-        <field name="view_mode">kanban,hierarchy,list,form</field>
+        <field name="view_mode">sgi_diagram,kanban,list,hierarchy,form</field>
     </record>
 
-    <!-- Diagramas en HTML: componente sgi_diagram (static/src/diagram); los
-         datos salen de sgi.diagram.data(kind, res_id). -->
-    <record id="sgi_process_map_action" model="ir.actions.client">
-        <field name="name">Mapa de procesos</field>
-        <field name="tag">sgi_diagram</field>
-        <field name="context">{'sgi_diagram_kind': 'process_map'}</field>
-    </record>
-    <record id="sgi_diagram_process_flow_action" model="ir.actions.client">
-        <field name="name">Flujo del proceso</field>
-        <field name="tag">sgi_diagram</field>
-        <field name="context">{'sgi_diagram_kind': 'process_flow'}</field>
-    </record>
-    <record id="sgi_diagram_sipoc_action" model="ir.actions.client">
-        <field name="name">Tortuga (SIPOC)</field>
-        <field name="tag">sgi_diagram</field>
-        <field name="context">{'sgi_diagram_kind': 'sipoc'}</field>
-    </record>
-    <record id="sgi_diagram_doc_tree_action" model="ir.actions.client">
-        <field name="name">Árbol documental</field>
-        <field name="tag">sgi_diagram</field>
-        <field name="context">{'sgi_diagram_kind': 'doc_tree'}</field>
-    </record>
-    <record id="sgi_diagram_kpi_tree_action" model="ir.actions.client">
-        <field name="name">Árbol de indicadores</field>
-        <field name="tag">sgi_diagram</field>
-        <field name="context">{'sgi_diagram_kind': 'kpi_tree'}</field>
-    </record>
-    <record id="sgi_diagram_who_action" model="ir.actions.client">
-        <field name="name">Quién hace qué (mapa)</field>
-        <field name="tag">sgi_diagram</field>
-        <field name="context">{'sgi_diagram_kind': 'who_does_what'}</field>
-    </record>
-
-    <menuitem id="menu_sgi_diagrams" name="Diagramas" parent="menu_sgi_processes" sequence="6"/>
-    <menuitem id="menu_sgi_process_diagram" name="Mapa de procesos" parent="menu_sgi_diagrams"
-              action="sgi_process_map_action" sequence="1"/>
-    <menuitem id="menu_sgi_diagram_flow" name="Flujo del proceso" parent="menu_sgi_diagrams"
-              action="sgi_diagram_process_flow_action" sequence="2"/>
-    <menuitem id="menu_sgi_diagram_sipoc" name="Tortuga (SIPOC)" parent="menu_sgi_diagrams"
-              action="sgi_diagram_sipoc_action" sequence="3"/>
-    <menuitem id="menu_sgi_diagram_docs" name="Árbol documental" parent="menu_sgi_diagrams"
-              action="sgi_diagram_doc_tree_action" sequence="4"/>
-    <menuitem id="menu_sgi_diagram_kpis" name="Árbol de indicadores" parent="menu_sgi_diagrams"
-              action="sgi_diagram_kpi_tree_action" sequence="5"/>
-    <menuitem id="menu_sgi_diagram_who" name="Quién hace qué" parent="menu_sgi_diagrams"
-              action="sgi_diagram_who_action" sequence="6"/>
+    <!-- Diagramas en HTML: componente sgi_diagram (static/src/diagram). Desde
+         54.0.0 son el tipo de vista «sgi_diagram» dentro de cada acción
+         (views/sgi_diagram_views.xml); el submenú «Diagramas» se retiró. -->
 
     <!-- ===== Actividades: el flujo paso a paso de un proceso ===== -->
     <record id="sgi_process_activity_view_hierarchy" model="ir.ui.view">
@@ -127,23 +84,7 @@
     </record>
 
     <record id="sgi_process_activity_action" model="ir.actions.act_window">
-        <field name="view_mode">list,kanban,hierarchy,form</field>
+        <field name="view_mode">list,kanban,sgi_diagram,hierarchy,form</field>
     </record>
 
-    <!-- Botón «Ver en el mapa» junto a «Ver en diagrama» en la ficha del proceso. -->
-    <record id="sgi_process_view_form_hierarchy" model="ir.ui.view">
-        <field name="name">sgi.process.form.hierarchy</field>
-        <field name="model">sgi.process</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//form/header" position="inside">
-                <button name="action_sgi_view_process_map" type="object"
-                        string="Ver en el mapa" icon="fa-sitemap"/>
-                <button name="action_sgi_view_sipoc" type="object"
-                        string="Tortuga" icon="fa-refresh"/>
-                <button name="action_sgi_view_doc_tree" type="object"
-                        string="Árbol documental" icon="fa-folder-open-o"/>
-            </xpath>
-        </field>
-    </record>
 </odoo>

@@ -63,3 +63,6 @@ from . import sgi_instruction_knowledge
 from . import sgi_sign_record
 from . import sgi_hierarchy
 from . import sgi_diagram
+from . import sgi_links
+from . import sgi_diagram_iso
+from . import sgi_diagram_view

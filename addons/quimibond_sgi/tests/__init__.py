@@ -63,3 +63,6 @@ from . import test_pr5_direction
 from . import test_pr6_external
 from . import test_pr7_replaces
 from . import test_hierarchy
+from . import test_links
+from . import test_diagram_iso
+from . import test_diagram_view

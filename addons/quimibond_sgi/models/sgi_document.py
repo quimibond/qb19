@@ -98,7 +98,9 @@ class DocumentsDocument(models.Model):
         ('piloto', "Prueba piloto"),
         ('vigente', "Vigente"),
         ('obsoleto', "Obsoleto"),
-    ], string="Estado SGI", default='borrador', tracking=True)
+    ], string="Estado SGI", tracking=True,
+        help="Solo los documentos controlados del SGI llevan estado; los demás "
+             "archivos de Documentos quedan sin él (2026-09-25).")
     sgi_owner_id = fields.Many2one('res.users', string="Responsable SGI")
     sgi_job_ids = fields.Many2many('hr.job', 'sgi_document_job_rel', 'document_id', 'job_id',
                                    string="Puestos a los que aplica")
@@ -574,6 +576,8 @@ class DocumentsDocument(models.Model):
     def create(self, vals_list):
         # Obsoleta versiones previas ANTES de crear la nueva vigente (evita el candado de unicidad)
         for vals in vals_list:
+            if vals.get('sgi_is_controlled') and not vals.get('sgi_state'):
+                vals['sgi_state'] = 'borrador'
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
         docs = super().create(vals_list)
@@ -641,6 +645,11 @@ class DocumentsDocument(models.Model):
                     'sgi_previous_code_date': today,
                 })
         res = super().write(vals)
+        if vals.get('sgi_is_controlled') and 'sgi_state' not in vals:
+            # Al volverse controlado sin estado, arranca en borrador.
+            fresh = self.filtered(lambda d: not d.sgi_state)
+            if fresh:
+                super(DocumentsDocument, fresh).write({'sgi_state': 'borrador'})
         if 'sgi_state' in vals or 'sgi_is_controlled' in vals:
             self._sgi_share_controlled()
         if 'sgi_revision' in vals or 'sgi_code' in vals:

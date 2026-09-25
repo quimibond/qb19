@@ -1665,9 +1665,97 @@ organigrama de Empleados (`hr_org_chart`).
 | Árbol de indicadores | `kpi_tree` | Objetivo → indicador → proceso; color = último semáforo |
 | Quién hace qué | `who_does_what` | Matriz puestos × procesos; color = rol más fuerte; clic abre las actividades |
 
+### Catálogo ISO (53.6.0)
+
+`models/sgi_diagram_iso.py` agrega, sobre el mismo motor, un diagrama por
+cláusula de la norma (9001 / 14001 / 45001). Una caja o celda puede traer
+`action` (una lista filtrada) en vez de modelo + id; el componente la abre
+con doble clic o clic en la celda.
+
+| Cláusula | Diagrama | `kind` | Qué dibuja |
+|---|---|---|---|
+| 4.1 / 4.2 | Contexto y partes interesadas | `context_map` | Partes → procesos, riesgos y requisitos que tocan; rojo = revisión vencida |
+| 4.4 | Interacción de procesos | `interaction_matrix` | Matriz procesos × procesos; celda = entregables que cruzan (clic abre los flujos) |
+| 4.4 | PDCA del proceso | `pdca` | Planear (objetivos, riesgos) · Hacer (etapas, documentos) · Verificar (indicadores, auditorías, NC) · Actuar (acciones abiertas) |
+| 5.2 / 6.2 | Política → objetivos → indicadores | `kpi_tree` | El árbol de indicadores encabezado por la política vigente |
+| 5.3 | Roles y responsabilidades | `roles_map` | Dueño → proceso → puestos que ejecutan o aprueban |
+| 6.1 | Matriz de riesgos | `risk_matrix` | Probabilidad × impacto por instrumento (RyO 5×5, IPER 3×3, ambiental, patrimonial), global o por proceso |
+| 6.1.3 / 9.1 | Cumplimiento legal | `legal_matrix` | Sistema × estado de cumplimiento; clic abre los requisitos |
+| 7.1.5 | Calibración | `calibration_map` | Equipos de medición vencidos / por vencer / vigentes |
+| 7.2 | Competencias | `competence_matrix` | Puestos × tipo de competencia; celda = brechas (color = la mayor) |
+| 7.5 | Pirámide documental | `doc_pyramid` | Cuatro niveles (manual y política, procedimientos, instructivos, formatos) × proceso |
+| 45001 8.2 | Emergencias | `emergency_map` | Escenario → simulacros de 12 meses → acciones |
+| 9.2 | Programa de auditorías | `audit_program` | Una columna por mes del año elegido; color = estado de la línea |
+| 9.3 | Revisión por la dirección | `management_review` | Entradas de la norma → la revisión → acuerdos; selector de revisión |
+| 10.2 | No conformidades | `nc_flow` | Cada NC en la fase que le falta (contención, causa, plan, eficacia) + cerradas y canceladas de 90 días |
+
+Los diagramas que aceptan parámetro (`instrument`, `year`, `review`) declaran
+`param_options` y el componente pinta el selector. **Imprimir** abre una
+ventana con solo el diagrama (título, leyenda, fecha, todas las conexiones)
+escalado para caber a lo ancho de una hoja carta horizontal; desde ahí
+«Guardar como PDF». Los carriles reparten el ancho disponible y, con más de
+ocho (meses, fases), se angostan; las matrices llevan encabezados fijos al
+hacer scroll. Prueba: `tests/test_diagram_iso.py`.
+
 Los diagramas por proceso llevan selector de proceso y pestañas para saltar
 entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»,
 «Tortuga» y «Árbol documental». Para agregar un diagrama: un método
 `_data_<kind>` en `sgi.diagram` que devuelva carriles, cajas y flechas, y una
 acción cliente con `sgi_diagram_kind`. La vista nativa `hierarchy` (53.2.0)
 sigue disponible en «Mapa de procesos» y en las actividades.
+
+## El diagrama como vista y la ficha del proceso con botones (54.0.0)
+
+**Un menú por objeto, sin submenú «Diagramas».** El tipo de vista
+`sgi_diagram` (`models/sgi_diagram_view.py`, JS en
+`static/src/diagram/diagram_view.js`) entra al selector de vistas de la
+acción, junto a lista, kanban y formulario, como `hierarchy` en
+`web_hierarchy`. Arquitectura: `<sgi_diagram kind="risk_matrix"/>`; `kinds`
+(opcional) lista los diagramas que ofrece como pestañas. Dónde quedó cada
+uno (`views/sgi_diagram_views.xml`):
+
+| Menú | Vistas | Diagramas |
+|---|---|---|
+| Procesos → Mapa de procesos | **mapa** · kanban · lista · organigrama · ficha | mapa, interacción (4.4), roles (5.3), pirámide documental (7.5) |
+| Procesos → Actividades | lista · kanban · diagrama · organigrama · ficha | flujo del proceso, tortuga, PDCA |
+| Procesos → Quién hace qué | pivote · diagrama · lista · gráfica | quién hace qué |
+| Procesos → Puestos y procesos | diagrama · lista · ficha | roles, quién hace qué |
+| Dirección → Riesgos / Requisitos legales / Partes interesadas / Objetivos / Política / Revisión | lista · diagrama · ficha | matriz de riesgos, cumplimiento legal, contexto, política → objetivos → indicadores, revisión por la dirección |
+| Mejora → No conformidades / Auditorías → Programa / Seguridad → Planes de emergencia | kanban · lista · diagrama · ficha | NC por fase, programa anual, emergencias |
+| Calidad preventiva → Metrología → Equipos de medición | lista · diagrama · ficha | calibración |
+| Administración → Documentos / Indicadores | lista · diagrama · ficha | árbol y pirámide documental, indicadores |
+| Empleados → Competencias (SGI) → Brechas | pivote · diagrama · lista | competencias |
+
+Los diagramas por proceso toman el proceso del contexto (`default_process_id`,
+p. ej. al abrir las actividades desde la ficha del proceso) y, si no, el
+selector. Las etiquetas de las pestañas salen de `sgi.diagram.catalog()`.
+
+**Ficha del proceso.** Lo que eran pestañas (indicadores, riesgos,
+documentos, NC) son **botones inteligentes** con su conteo: Diagrama,
+Actividades, Sin evidencia, Indicadores, KPI en rojo, Riesgos, Riesgos
+altos, Documentos, Conexiones (`flow_count`), NC abiertas, Acciones
+vencidas, Faltantes. Quedan tres pestañas: Ficha, Procedimiento y
+Conexiones. El encabezado conserva el estado y los verbos (Pedir un cambio,
+Registrar hallazgo); los tres PDF (procedimiento, lista maestra, matriz de
+riesgos) viven en el menú **Imprimir** de la ficha. El botón «Diagrama» abre
+el flujo con pestañas para mapa, tortuga, PDCA, árbol documental,
+indicadores, riesgos y NC del proceso. Prueba: `tests/test_diagram_view.py`.
+
+## Ligas entrada ↔ salida (53.5.0)
+
+Una actividad se mide cuando su salida apunta a su entrada
+(`sgi.activity.input.match_path`, admite rutas con punto). Campos que
+faltaban (`models/sgi_links.py`): tarea del desarrollo (`sgi_dyd_task_id`)
+en AMEF, lista de materiales, orden de producción, plan de control y PPAP;
+`product.template.sgi_control_plan_id`; `quality.alert.sgi_maintenance_request_id`
+(lo llena «Levantar NC»); `purchase.order.sgi_approval_request_id` (lo llena
+la requisición al crear la orden); `account.move.sgi_picking_ids` (propuesto
+desde las líneas del pedido); `ir.attachment.sgi_picking_id` con el botón
+«Adjuntar acuse» de la entrega (nombre `ACUSE-…`); `stock.picking.sgi_production_id`
+(propuesto desde los movimientos o el origen). La migración 53.5.0 llena
+los `match_path` de C1.04, C1.09, C1.15, C1.16, C1.17, C2.34, C4.19, S1.09,
+S2.08 y S5.06, deja sin estado SGI los documentos que no son del SGI, borra
+los faltantes de procesos archivados y liga los acuses existentes. Reglas
+nuevas: objetivo sin indicador = «sin dato»; la evaluación trimestral solo
+toma proveedores críticos (contacto marcado o categorías de Ajustes →
+Categorías de proveedores críticos; vacío = materia prima + «maquila»).

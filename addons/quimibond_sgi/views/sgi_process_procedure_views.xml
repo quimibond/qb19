@@ -587,13 +587,8 @@
         <field name="model">sgi.process</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form/header" position="inside">
-                    <button name="action_print_procedure" type="object"
-                            string="Imprimir procedimiento" icon="fa-print"
-                            invisible="activity_count == 0"/>
-            </xpath>
             <xpath expr="//page[@name='entradas_salidas']" position="before">
-                <page string="Actividades" name="procedimiento">
+                <page string="Procedimiento" name="procedimiento">
                     <div class="mb-2">
                         <span class="text-muted"><field name="measure_method_summary" class="d-inline"/></span>
                     </div>
