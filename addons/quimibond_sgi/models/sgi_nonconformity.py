@@ -7,6 +7,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_base import sgi_bypass_allowed
+from .sgi_calendar import sgi_add_business_days
 
 _logger = logging.getLogger(__name__)
 
@@ -46,6 +47,13 @@ class QualityAlertTeam(models.Model):
 
     sgi_sequence_id = fields.Many2one('ir.sequence', string="Secuencia de folio SGI",
                                       help="Secuencia anual para el folio de las NC de este equipo.")
+
+
+_SGI_DEADLINE_STATES = [
+    ('pendiente', "Pendiente"),
+    ('vencida', "Vencida"),
+    ('hecha', "Hecha"),
+]
 
 
 class QualityAlert(models.Model):
@@ -114,6 +122,33 @@ class QualityAlert(models.Model):
 
     sgi_action_line_ids = fields.One2many('sgi.action.line', 'alert_id', string="Correcciones y acciones")
 
+    # --- NC-1 (49.0.0): plazos por etapa. Se calculan al abrir la NC (días
+    # hábiles desde la fecha de creación, parámetros ajustables) y quedan
+    # fijos; el cron avisa el día que vence cada uno y escala al dueño del
+    # proceso y luego a MAST. Cada plazo se da por cumplido con un hecho, no
+    # con una fecha capturada: contención = acción de contención registrada;
+    # causa raíz = campo capturado; plan = acción correctiva/preventiva con
+    # responsable y compromiso.
+    sgi_due_containment = fields.Date(string="Contención vence", readonly=True, copy=False)
+    sgi_due_root_cause = fields.Date(string="Causa raíz vence", readonly=True, copy=False)
+    sgi_due_plan = fields.Date(string="Plan de acción vence", readonly=True, copy=False)
+    sgi_containment_state = fields.Selection(
+        _SGI_DEADLINE_STATES, string="Contención", compute='_compute_sgi_deadline_states')
+    sgi_root_cause_state = fields.Selection(
+        _SGI_DEADLINE_STATES, string="Causa raíz", compute='_compute_sgi_deadline_states')
+    sgi_plan_state = fields.Selection(
+        _SGI_DEADLINE_STATES, string="Plan de acción", compute='_compute_sgi_deadline_states')
+    sgi_containment_done = fields.Boolean(compute='_compute_sgi_deadline_states')
+    # --- NC-3: eficacia programada a N días de la última acción correctiva.
+    sgi_effectiveness_due = fields.Date(
+        string="Verificar eficacia el", readonly=True, copy=False,
+        help="Se fija al terminar la última acción correctiva (90 días por "
+             "omisión) y agenda la verificación al Jefe MAST.")
+    # --- NC-4: cancelación con motivo aprobado por el Jefe MAST.
+    sgi_cancel_reason = fields.Text(string="Motivo de cancelación", readonly=True, copy=False)
+    sgi_cancel_requested_by = fields.Many2one(
+        'res.users', string="Cancelación solicitada por", readonly=True, copy=False)
+
     # Ligas reales del SGI (H7): trazabilidad NC <-> riesgo <-> AMEF <-> documento.
     sgi_risk_ids = fields.Many2many(
         'sgi.risk', 'sgi_alert_risk_rel', 'alert_id', 'risk_id',
@@ -148,6 +183,8 @@ class QualityAlert(models.Model):
                                      order='sequence, id', limit=1)
                 if first:
                     alert.stage_id = first
+            if alert.sgi_folio:
+                alert._sgi_set_deadlines()
         # Una NC MAYOR del SGI avisa por correo además de la actividad:
         # Dirección no vive dentro de Odoo.
         Cron = self.env['sgi.cron']
@@ -156,6 +193,198 @@ class QualityAlert(models.Model):
                 Cron._sgi_send_critical_mail(
                     'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
         return alerts
+
+    # ------------------------------------------------------------------
+    # NC-1: plazos por etapa
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_deadline_days(self):
+        Param = self.env['ir.config_parameter'].sudo()
+
+        def _int(key, default):
+            try:
+                return int(Param.get_param(key, default) or default)
+            except (TypeError, ValueError):
+                return default
+        return {
+            'containment': _int('quimibond_sgi.nc_days_containment', 1),
+            'root_cause': _int('quimibond_sgi.nc_days_root_cause', 10),
+            'plan': _int('quimibond_sgi.nc_days_plan', 15),
+        }
+
+    def _sgi_set_deadlines(self, force=False):
+        """Fija los tres plazos (días hábiles desde la creación). Solo donde
+        falten, salvo force."""
+        days = self._sgi_deadline_days()
+        for alert in self:
+            if alert.sgi_due_plan and not force:
+                continue
+            start = fields.Datetime.context_timestamp(
+                alert, alert.create_date or fields.Datetime.now()).date()
+            alert.write({
+                'sgi_due_containment': sgi_add_business_days(self.env, start, days['containment']),
+                'sgi_due_root_cause': sgi_add_business_days(self.env, start, days['root_cause']),
+                'sgi_due_plan': sgi_add_business_days(self.env, start, days['plan']),
+            })
+
+    @api.depends('sgi_action_line_ids.action_type', 'sgi_action_line_ids.responsible_id',
+                 'sgi_action_line_ids.date_commit', 'sgi_root_cause',
+                 'sgi_due_containment', 'sgi_due_root_cause', 'sgi_due_plan')
+    def _compute_sgi_deadline_states(self):
+        today = fields.Date.context_today(self)
+
+        def state(done, due):
+            if done:
+                return 'hecha'
+            return 'vencida' if due and today > due else 'pendiente'
+        for alert in self:
+            lines = alert.sgi_action_line_ids
+            containment = bool(lines.filtered(lambda l: l.action_type == 'contencion'))
+            plan = bool(lines.filtered(
+                lambda l: l.action_type in ('correctiva', 'preventiva')
+                and l.responsible_id and l.date_commit))
+            alert.sgi_containment_done = containment
+            alert.sgi_containment_state = state(containment, alert.sgi_due_containment)
+            alert.sgi_root_cause_state = state(bool(alert.sgi_root_cause), alert.sgi_due_root_cause)
+            alert.sgi_plan_state = state(plan, alert.sgi_due_plan)
+
+    def _sgi_deadline_owner_user_id(self):
+        """Quién responde el plazo: el primer responsable a contestar, si no
+        el responsable de la alerta, si no el Jefe MAST."""
+        self.ensure_one()
+        Cron = self.env['sgi.cron']
+        return (self.sgi_responsible_ids[:1].id or self.user_id.id
+                or Cron._sgi_manager_user_id())
+
+    def _sgi_deadline_escalation(self, today):
+        """Avisos y escalamientos de los tres plazos para una NC abierta.
+        Idempotente: cada aviso tiene un resumen propio y `_sgi_schedule` no
+        lo duplica. Devuelve los resúmenes agendados (para las pruebas)."""
+        self.ensure_one()
+        Cron = self.env['sgi.cron']
+        Param = self.env['ir.config_parameter'].sudo()
+        try:
+            mast_after = int(Param.get_param('quimibond_sgi.nc_escalation_mast_days', 3) or 3)
+        except (TypeError, ValueError):
+            mast_after = 3
+        owner_id = self._sgi_deadline_owner_user_id()
+        process_owner_id = self.sgi_process_id.owner_id.user_id.id
+        manager_id = Cron._sgi_manager_user_id()
+        folio = self.sgi_folio or self.name
+        labels = {
+            'containment': ("Contención", self.sgi_due_containment, self.sgi_containment_state,
+                            "registra al menos una acción de contención"),
+            'root_cause': ("Causa raíz", self.sgi_due_root_cause, self.sgi_root_cause_state,
+                           "captura la causa raíz (5 porqués / Ishikawa)"),
+            'plan': ("Plan de acción", self.sgi_due_plan, self.sgi_plan_state,
+                     "registra las acciones correctivas con responsable y compromiso"),
+        }
+        scheduled = []
+        for key, (label, due, state, what) in labels.items():
+            if not due or state == 'hecha':
+                continue
+            if today >= due:
+                summary = "NC %s: %s vence el %s" % (folio, label.lower(), due)
+                Cron._sgi_schedule(
+                    self, summary,
+                    "Plazo de %s de la NC %s: %s. Vence el %s." % (label.lower(), folio, what, due),
+                    owner_id)
+                scheduled.append(summary)
+            if today > due and process_owner_id and process_owner_id != owner_id:
+                summary = "NC %s: %s vencida, escalada al dueño del proceso" % (folio, label.lower())
+                Cron._sgi_schedule(
+                    self, summary,
+                    "El plazo de %s de la NC %s venció el %s y sigue pendiente (%s)." % (
+                        label.lower(), folio, due, what),
+                    process_owner_id)
+                scheduled.append(summary)
+            if (today - due).days > mast_after and manager_id:
+                summary = "NC %s: %s vencida hace más de %d días, escalada a MAST" % (
+                    folio, label.lower(), mast_after)
+                Cron._sgi_schedule(
+                    self, summary,
+                    "El plazo de %s de la NC %s venció el %s y nadie lo ha cerrado (%s)." % (
+                        label.lower(), folio, due, what),
+                    manager_id)
+                scheduled.append(summary)
+        return scheduled
+
+    # ------------------------------------------------------------------
+    # NC-3: eficacia programada
+    # ------------------------------------------------------------------
+    def _sgi_schedule_effectiveness(self):
+        """Al terminar la última acción correctiva: fecha de verificación a N
+        días (parámetro) y actividad al Jefe MAST con esa fecha límite."""
+        Param = self.env['ir.config_parameter'].sudo()
+        try:
+            days = int(Param.get_param('quimibond_sgi.nc_effectiveness_days', 90) or 90)
+        except (TypeError, ValueError):
+            days = 90
+        Cron = self.env['sgi.cron']
+        manager_id = Cron._sgi_manager_user_id()
+        for alert in self:
+            corrective = alert.sgi_action_line_ids.filtered(lambda l: l.action_type == 'correctiva')
+            if not corrective or any(not l.date_done for l in corrective):
+                continue
+            if alert.sgi_effectiveness_due or alert.sgi_effectiveness_date:
+                continue
+            last = max(corrective.mapped('date_done'))
+            due = last + relativedelta(days=days)
+            alert.sgi_effectiveness_due = due
+            user_id = alert.sgi_effectiveness_by.id or manager_id
+            summary = "Verificar eficacia de la NC %s (a %d días)" % (alert.sgi_folio or alert.name, days)
+            if user_id and not Cron._sgi_activity_exists(alert, summary, user_id):
+                alert.activity_schedule(
+                    'mail.mail_activity_data_todo', summary=summary,
+                    note="La última acción correctiva terminó el %s. Verifique la eficacia y "
+                         "regístrela (nota y fecha) en la pestaña Verificación y cierre; sin "
+                         "eficacia la NC no cierra." % last,
+                    user_id=user_id, date_deadline=due)
+            alert.message_post(body="Verificación de eficacia programada para el <b>%s</b>." % due)
+
+    # ------------------------------------------------------------------
+    # NC-2 / NC-4: candados de etapa
+    # ------------------------------------------------------------------
+    def _sgi_check_stage_move(self, new_stage):
+        """Antes de cambiar de etapa una NC con folio: una reclamación no sale
+        de Abierta sin contención (NC-2); a Cancelada solo se llega con motivo
+        aprobado por el Jefe MAST, vía el asistente (NC-4); y una NC del SGI
+        no se va a una etapa ajena a los equipos del SGI (NC-5)."""
+        ctx = self.env.context
+        cancel_ok = ctx.get('sgi_cancel_approved') and sgi_bypass_allowed(self.env)
+        force = ctx.get('sgi_force_close') and sgi_bypass_allowed(self.env)
+        open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open', raise_if_not_found=False)
+        for alert in self:
+            if not alert.sgi_folio or alert.stage_id == new_stage:
+                continue
+            if new_stage.sgi_is_cancel_stage and not cancel_ok and not force:
+                raise UserError(
+                    "La NC %s no se cancela arrastrándola: usa el botón «Cancelar NC», "
+                    "captura el motivo y el Jefe de MAST la aprueba." % (alert.sgi_folio))
+            if (alert.sgi_origin_type == 'reclamacion' and not new_stage.sgi_is_cancel_stage
+                    and alert.stage_id == open_stage and not alert.sgi_containment_done
+                    and not force):
+                raise UserError(
+                    "La NC %s viene de una reclamación de cliente: no avanza de «%s» sin al "
+                    "menos una acción de CONTENCIÓN registrada (pestaña Correcciones y "
+                    "acciones, tipo Contención)." % (alert.sgi_folio, alert.stage_id.name or ''))
+            if alert.team_id.sgi_sequence_id and new_stage.team_ids and \
+                    alert.team_id not in new_stage.team_ids:
+                raise UserError(
+                    "La etapa «%s» no es del flujo del SGI; las NC con folio solo viven en "
+                    "Abierta, Seguimiento, Cerrada y Cancelada." % new_stage.name)
+
+    def action_sgi_cancel(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Cancelar No Conformidad",
+            'res_model': 'sgi.nc.cancel',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_alert_id': self.id,
+                        'default_reason': self.sgi_cancel_reason or False},
+        }
 
     @api.depends('sgi_process_id', 'sgi_norm_clause_id', 'sgi_folio')
     def _compute_sgi_recurrence(self):
@@ -302,6 +531,7 @@ class QualityAlert(models.Model):
         newly_closed = self.env['quality.alert']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
+            self._sgi_check_stage_move(new_stage)
             # El cierre forzado solo cuenta desde el wizard de MAST (o código de
             # sistema): el contexto lo controla el cliente RPC y no debe bastar
             # para brincarse los candados de cierre.
@@ -412,6 +642,7 @@ class SgiActionLine(models.Model):
                                    ondelete='cascade',
                                    help="Plan de acción del objetivo (ISO 6.2.2).")
     action_type = fields.Selection([
+        ('contencion', "Contención"),
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
         ('preventiva', "Acción preventiva"),
@@ -604,6 +835,9 @@ class SgiActionLine(models.Model):
             self.mapped('risk_id').filtered(
                 lambda r: r.state in ('controlado', 'cerrado')
             )._sgi_check_can_close()
+        # NC-3: terminar la última correctiva programa la eficacia a 90 días.
+        if vals.get('date_done'):
+            self.mapped('alert_id').filtered('sgi_folio')._sgi_schedule_effectiveness()
         return res
 
     def unlink(self):
@@ -638,4 +872,64 @@ class SgiNcForceClose(models.TransientModel):
             body="<b>Cierre forzado</b> por %s.<br/>Motivo: %s" % (
                 self.env.user.name, self.reason))
         alert.with_context(sgi_force_close=True).write({'stage_id': closing_stage.id})
+        return {'type': 'ir.actions.act_window_close'}
+
+
+class SgiNcCancel(models.TransientModel):
+    """NC-4: cancelar solo con motivo y aprobación del Jefe MAST. Cualquier
+    usuario del SGI pide la cancelación con su motivo (queda en el chatter y
+    agenda la aprobación a MAST); el Jefe MAST la aprueba con el mismo
+    asistente. Nunca se llega a Cancelada arrastrando la tarjeta."""
+    _name = 'sgi.nc.cancel'
+    _description = "Cancelación de No Conformidad"
+
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True)
+    reason = fields.Text(string="Motivo de la cancelación", required=True)
+    is_manager = fields.Boolean(compute='_compute_is_manager')
+
+    @api.depends_context('uid')
+    def _compute_is_manager(self):
+        manager = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        for wiz in self:
+            wiz.is_manager = manager
+
+    def action_confirm(self):
+        self.ensure_one()
+        alert = self.alert_id
+        if alert.stage_id.sgi_is_cancel_stage:
+            raise UserError("La NC %s ya está cancelada." % (alert.sgi_folio or alert.name))
+        reason = (self.reason or '').strip()
+        if not reason:
+            raise UserError("Captura el motivo de la cancelación.")
+        if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            # Solicitud: motivo al historial y actividad al Jefe MAST.
+            alert.write({'sgi_cancel_reason': reason,
+                         'sgi_cancel_requested_by': self.env.user.id})
+            alert.message_post(
+                body="<b>Solicitud de cancelación</b> de %s.<br/>Motivo: %s" % (
+                    self.env.user.name, reason))
+            Cron = self.env['sgi.cron']
+            Cron._sgi_schedule(
+                alert, "Aprobar cancelación de la NC %s" % (alert.sgi_folio or alert.name),
+                "%s pide cancelar la NC. Motivo: %s. Apruébala con «Cancelar NC» o "
+                "contesta en el chatter." % (self.env.user.name, reason),
+                Cron._sgi_manager_user_id())
+            return {'type': 'ir.actions.act_window_close'}
+        cancel_stage = self.env['quality.alert.stage'].search([
+            ('sgi_is_cancel_stage', '=', True),
+            '|', ('team_ids', '=', False), ('team_ids', 'in', alert.team_id.id),
+        ], limit=1)
+        if not cancel_stage:
+            raise UserError("No hay una etapa de cancelación configurada para este equipo.")
+        requested_by = alert.sgi_cancel_requested_by
+        alert.message_post(
+            body="<b>NC cancelada</b> por %s (Jefe MAST).<br/>Motivo: %s%s" % (
+                self.env.user.name, reason,
+                ("<br/>Solicitada por %s." % requested_by.name) if requested_by else ''))
+        alert.with_context(sgi_cancel_approved=True).write({
+            'stage_id': cancel_stage.id, 'sgi_cancel_reason': reason})
+        # Cierra la actividad de aprobación, si la había.
+        alert.activity_ids.sudo().filtered(
+            lambda a: (a.summary or '').startswith("Aprobar cancelación")).action_feedback(
+            feedback="Cancelación aprobada.")
         return {'type': 'ir.actions.act_window_close'}
