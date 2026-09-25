@@ -63,8 +63,10 @@ class TestManagementReview(TransactionCase):
         review.action_mark_done()
         self.assertEqual(review.state, 'realizada')
         agreement = review.agreement_ids
-        self.assertTrue(agreement.task_id)
-        deadline = agreement.task_id.date_deadline
-        if hasattr(deadline, 'date'):
-            deadline = deadline.date()
-        self.assertEqual(deadline, date(2026, 7, 31))
+        # DIR-3 (52.0.0): el acuerdo es una acción del SGI con responsable y
+        # compromiso (actividad nativa al responsable), no una tarea.
+        self.assertTrue(agreement.action_line_id)
+        self.assertEqual(agreement.action_line_id.date_commit, date(2026, 7, 31))
+        self.assertEqual(agreement.action_line_id.review_id, review)
+        self.assertTrue(agreement.action_line_id.activity_id)
+        self.assertEqual(agreement.status_label, 'Abierta')

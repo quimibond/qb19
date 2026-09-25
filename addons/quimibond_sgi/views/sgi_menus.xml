@@ -77,8 +77,10 @@
     <!-- 4. Dirección (Dirección y MAST; el auditor la lee): la cascada de gestión. -->
     <menuitem id="menu_sgi_direction" name="Dirección" parent="menu_sgi_root" sequence="40"
               groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_auditor"/>
+    <!-- DIR-4 (52.0.0): tablero nativo (I-9); la hoja de cálculo sigue
+         disponible desde su botón. -->
     <menuitem id="menu_sgi_dashboard_health" name="Tablero de dirección" parent="menu_sgi_direction"
-              action="sgi_spreadsheet_dashboard_action" sequence="5"/>
+              action="sgi_direction_board_action_open" sequence="5"/>
     <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección"
               parent="menu_sgi_direction" action="sgi_management_review_action" sequence="10"/>
     <menuitem id="menu_sgi_policy" name="Política integral" parent="menu_sgi_direction"
