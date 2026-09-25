@@ -140,6 +140,12 @@ class SgiCron(models.AbstractModel):
         ])
 
         def _process(alert):
+            # NC-1 (49.0.0): plazos por etapa (contención / causa raíz / plan)
+            # con aviso el día que vencen y escalamiento al dueño del proceso
+            # y a MAST. Las NC viejas sin plazos los reciben aquí.
+            if not alert.sgi_due_plan:
+                alert._sgi_set_deadlines()
+            alert._sgi_deadline_escalation(today)
             days = external_days if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
             deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')

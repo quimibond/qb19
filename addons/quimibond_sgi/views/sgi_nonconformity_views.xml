@@ -16,6 +16,10 @@
                         string="Cierre forzado (Jefe MAST)"
                         groups="quimibond_sgi.group_sgi_manager"
                         invisible="not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel"/>
+                <button name="action_sgi_cancel" type="object"
+                        string="Cancelar NC" icon="fa-ban"
+                        groups="quimibond_sgi.group_sgi_user"
+                        invisible="not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel"/>
             </xpath>
             <xpath expr="//sheet" position="before">
                 <div class="alert alert-info mb-0" role="status" invisible="not sgi_folio">
@@ -31,6 +35,13 @@
                 <field name="sgi_stage_is_closing" invisible="1"/>
                 <field name="sgi_stage_is_cancel" invisible="1"/>
                 <field name="sgi_is_recurrent" invisible="1"/>
+                <div class="alert alert-secondary" role="status"
+                     invisible="not sgi_cancel_reason">
+                    <b>Cancelación:</b> <field name="sgi_cancel_reason" class="oe_inline" readonly="1"/>
+                    <span invisible="not sgi_cancel_requested_by"> — solicitada por
+                        <field name="sgi_cancel_requested_by" class="oe_inline" readonly="1"/></span>
+                    <span invisible="sgi_stage_is_cancel"> (pendiente de aprobación del Jefe MAST)</span>
+                </div>
                 <div class="alert alert-warning" role="alert"
                      invisible="not sgi_is_recurrent">
                     <strong>⚠ Reincidente:</strong>
@@ -53,6 +64,32 @@
                         <field name="sgi_requester_job"/>
                         <field name="sgi_lead_auditor_id"/>
                         <field name="sgi_responsible_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <!-- NC-1: plazos por etapa. Cada uno se cumple con un hecho
+                     (contención registrada, causa raíz capturada, plan con
+                     responsable y compromiso), no con una fecha capturada. -->
+                <group string="Plazos" invisible="not sgi_folio">
+                    <group>
+                        <field name="sgi_due_containment"/>
+                        <field name="sgi_due_root_cause"/>
+                        <field name="sgi_due_plan"/>
+                        <field name="sgi_effectiveness_due" invisible="not sgi_effectiveness_due"/>
+                    </group>
+                    <group>
+                        <field name="sgi_containment_state" widget="badge"
+                               decoration-success="sgi_containment_state == 'hecha'"
+                               decoration-danger="sgi_containment_state == 'vencida'"
+                               decoration-warning="sgi_containment_state == 'pendiente'"/>
+                        <field name="sgi_root_cause_state" widget="badge"
+                               decoration-success="sgi_root_cause_state == 'hecha'"
+                               decoration-danger="sgi_root_cause_state == 'vencida'"
+                               decoration-warning="sgi_root_cause_state == 'pendiente'"/>
+                        <field name="sgi_plan_state" widget="badge"
+                               decoration-success="sgi_plan_state == 'hecha'"
+                               decoration-danger="sgi_plan_state == 'vencida'"
+                               decoration-warning="sgi_plan_state == 'pendiente'"/>
+                        <field name="sgi_containment_done" invisible="1"/>
                     </group>
                 </group>
                 <notebook>
@@ -217,6 +254,34 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
                 <field name="create_date" interval="month"/>
                 <field name="sgi_classification"/>
             </graph>
+        </field>
+    </record>
+
+    <!-- ============ WIZARD CANCELACIÓN (NC-4) ============ -->
+    <record id="sgi_nc_cancel_view_form" model="ir.ui.view">
+        <field name="name">sgi.nc.cancel.form</field>
+        <field name="model">sgi.nc.cancel</field>
+        <field name="arch" type="xml">
+            <form string="Cancelar No Conformidad">
+                <field name="alert_id" invisible="1"/>
+                <field name="is_manager" invisible="1"/>
+                <p class="text-muted" invisible="is_manager">
+                    Tu solicitud queda en el historial de la NC y el Jefe de MAST la aprueba o la rechaza.
+                </p>
+                <p class="text-muted" invisible="not is_manager">
+                    Como Jefe de MAST, al confirmar la NC pasa a Cancelada con este motivo en el historial.
+                </p>
+                <group>
+                    <field name="reason" placeholder="Por qué esta NC no procede (falsa alarma, duplicada, fuera de alcance...)"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" class="btn-primary"
+                            string="Solicitar cancelación" invisible="is_manager"/>
+                    <button name="action_confirm" type="object" class="btn-primary"
+                            string="Cancelar la NC" invisible="not is_manager"/>
+                    <button string="Volver" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
         </field>
     </record>
 

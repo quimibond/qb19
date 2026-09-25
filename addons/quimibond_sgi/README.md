@@ -1016,6 +1016,44 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 2 del plan: no conformidades que sí se cierran (19.0.49.0.0)
+
+Había 20 NC, ninguna cerrada y cero acciones: le faltaba que el tiempo
+corriera. Plan: `docs/SGI_PENDIENTES_PROGRAMACION.md` (NC-1 a NC-5).
+
+- **NC-1 · Plazos por etapa.** Al abrir una NC con folio se fijan tres fechas
+  en días hábiles desde su creación: contención (1), causa raíz (10) y plan
+  de acción (15); parámetros `quimibond_sgi.nc_days_*` en Ajustes. Cada plazo
+  se cumple con un **hecho**, no con una fecha capturada: contención =
+  acción de tipo Contención registrada; causa raíz = campo capturado; plan =
+  acción correctiva o preventiva con responsable y compromiso. El cron diario
+  de NC avisa el día que vence cada plazo al responsable a contestar (si no,
+  al responsable de la alerta, si no a MAST); vencido, escala al dueño del
+  proceso y, pasados `nc_escalation_mast_days` (3), a MAST. Idempotente por
+  resumen. Las NC abiertas de antes reciben sus plazos en la migración.
+- **NC-2 · Contención.** Tipo de acción «Contención» (antes: corrección,
+  correctiva, preventiva; la contención se registra antes de la causa raíz).
+  Una NC de reclamación de cliente **no sale de Abierta** sin al menos una
+  contención.
+- **NC-3 · Eficacia programada.** Al terminar la última acción correctiva se
+  fija `sgi_effectiveness_due` (+90 días, `nc_effectiveness_days`) y se
+  agenda «Verificar eficacia» al Jefe MAST con esa fecha límite. El candado de
+  cierre ya exigía nota y fecha de eficacia.
+- **NC-4 · Cancelar con motivo y aprobación.** Arrastrar a Cancelada ya no
+  se permite (ni al Jefe MAST). Botón «Cancelar NC» → asistente
+  `sgi.nc.cancel`: un usuario **solicita** (motivo al chatter, actividad al
+  Jefe MAST) y el Jefe MAST **aprueba** con el mismo asistente; el motivo queda
+  en la NC y en el historial.
+- **NC-5 · Solo las etapas del SGI.** Una NC con folio no se puede mover a
+  una etapa de otro equipo. La migración 49.0.0 mueve las NC con folio que
+  estuvieran en Nuevo / Confirmado / Acción propuesta / Resuelto a Abierta /
+  Abierta / Seguimiento / Cerrada y desliga esas etapas de los equipos del
+  SGI. Esas cuatro etapas **no se borran ni archivan**: `quality.alert.stage`
+  no tiene `active` y las usan los equipos de calidad de piso; en producción
+  (2026-09-25) ninguna NC con folio estaba en ellas.
+
+Pruebas: `TestNcDeadlines` 01–06.
+
 ## «Mi procedimiento» dentro de la ficha del empleado y del puesto (19.0.48.1.0)
 
 CEO (2026-09-25): el procedimiento de la persona se ve donde vive la
