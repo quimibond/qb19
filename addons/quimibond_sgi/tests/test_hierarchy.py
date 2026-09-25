@@ -100,15 +100,24 @@ class TestHierarchy(TransactionCase):
         def keys(data):
             return {item['key'] for lane in data['lanes'] for item in lane['items']}
 
+        # 54.3.0: por omisión, diagrama de flujo funcional (carriles por puesto).
         flow = Diagram.data('process_flow', self.proc.id)
-        self.assertEqual(flow['layout'], 'columns')
+        self.assertEqual(flow['layout'], 'swimlanes')
+        self.assertEqual(flow['columns'], 3)
         self.assertIn('sgi.process.activity,%d' % self.a1.id, keys(flow))
         self.assertTrue(any(e['label'] == 'Pedido' for e in flow['edges']))
-        self.assertIn('Recibe de otros procesos', [lane['label'] for lane in flow['lanes']],
+        labels = [lane['label'] for lane in flow['lanes']]
+        self.assertIn('PUESTO H', labels, "Un carril por puesto que ejecuta.")
+        self.assertIn('Otros procesos (entregan)', labels,
                       "El eslabón que cruza desde XH2 se dibuja como carril de entrada.")
+        cols = {item['key']: item['col'] for lane in flow['lanes'] for item in lane['items']}
+        self.assertEqual(cols['sgi.process.activity,%d' % self.a2.id], 2, "Columna = orden en el procedimiento.")
         for edge in flow['edges']:
             self.assertIn(edge['from'], keys(flow))
             self.assertIn(edge['to'], keys(flow))
+        by_stage = Diagram.data('process_flow', self.proc.id, {'carriles': 'etapa'})
+        self.assertEqual(by_stage['layout'], 'columns')
+        self.assertIn('Recibe de otros procesos', [lane['label'] for lane in by_stage['lanes']])
         self.assertEqual([n['kind'] for n in flow['nav']][:2], ['process_flow', 'sipoc'])
 
         sipoc = Diagram.data('sipoc', self.proc.id)
