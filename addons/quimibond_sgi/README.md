@@ -1016,6 +1016,31 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 3 del plan: auditoría lista para octubre (19.0.50.0.0)
+
+- **AU-1 · Checklist generado del proceso.** Al pasar la auditoría a
+  «Planificada» (o con «Regenerar checklist») se crea una línea de
+  `sgi.audit.checklist.line` por actividad viva de cada proceso auditado:
+  pregunta «¿Se cumple C2.17 Nombre en plazo y con evidencia?», quién la
+  ejecuta, su entregable y el botón **«Ver registros»** (la medición de la
+  actividad o el modelo del entregable). Respuesta Conforme / Observación /
+  NC menor / NC mayor con evidencia; cada respuesta no conforme **crea y
+  mantiene su hallazgo** (`finding_id`, tipo según la respuesta); Conforme
+  lo retira si aún no tiene NC. No usa Encuestas: la encuesta anterior queda
+  en una pestaña «Encuesta (legado)» solo para auditorías ya contestadas.
+- **AU-2 · Independencia del auditor.** Además del dueño del proceso, nadie
+  del equipo auditor (líder o equipo) puede tener, por su puesto o la familia
+  de su puesto, un rol **ejecuta** o **aprueba** en una actividad del proceso
+  auditado. El mensaje dice quién, qué puesto y qué actividad.
+- **AU-3 · Informe F-P-G03-07.** El informe PDF trae alcance, equipo,
+  fechas, procesos, minutas de apertura y cierre, checklist con respuestas,
+  hallazgos por tipo con cláusula y evidencia, conclusión y firmas. Al pasar
+  a «Cerrada» se genera y se **archiva en Documentos** ligado a la auditoría
+  (`report_document_id`, botón «Ver informe») y al chatter; si wkhtmltopdf
+  falla, la auditoría cierra igual y avisa.
+
+Pruebas: `TestAuditPr3` 01–04.
+
 ## PR 2 del plan: no conformidades que sí se cierran (19.0.49.0.0)
 
 Había 20 NC, ninguna cerrada y cero acciones: le faltaba que el tiempo

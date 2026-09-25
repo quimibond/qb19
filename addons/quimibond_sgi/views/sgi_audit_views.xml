@@ -75,12 +75,19 @@
                             invisible="state != 'borrador'"/>
                     <button name="action_start" type="object" string="Iniciar"
                             class="btn-primary" invisible="state != 'planificada'"/>
+                    <button name="action_generate_checklist" type="object"
+                            string="Regenerar checklist" icon="fa-refresh"
+                            invisible="state not in ('planificada', 'en_ejecucion')"
+                            help="Agrega las actividades de los procesos auditados que falten en el checklist (no borra respuestas)."/>
                     <button name="action_answer_checklist" type="object"
-                            string="Contestar checklist" icon="fa-list-ol"
-                            invisible="state != 'en_ejecucion'"/>
+                            string="Contestar checklist (encuesta)" icon="fa-list-ol"
+                            invisible="state != 'en_ejecucion' or not survey_id"/>
                     <button name="action_generate_findings_from_checklist" type="object"
-                            string="Hallazgos del checklist" icon="fa-magic"
-                            invisible="state not in ('en_ejecucion', 'informe')"/>
+                            string="Hallazgos de la encuesta" icon="fa-magic"
+                            invisible="state not in ('en_ejecucion', 'informe') or not survey_input_ids"/>
+                    <button name="action_open_report_document" type="object"
+                            string="Ver informe (F-P-G03-07)" icon="fa-file-pdf-o"
+                            invisible="not report_document_id"/>
                     <button name="action_report" type="object" string="Elaborar informe"
                             invisible="state != 'en_ejecucion'"/>
                     <button name="action_close" type="object" string="Cerrar"
@@ -98,6 +105,12 @@
                         <button name="action_open_findings" type="object"
                                 class="oe_stat_button" icon="fa-search">
                             <field name="finding_count" widget="statinfo" string="Hallazgos"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-check-square-o" disabled="1">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="checklist_answered_count"/>/<field name="checklist_count"/></span>
+                                <span class="o_stat_text">Checklist</span>
+                            </div>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -119,18 +132,33 @@
                             <field name="date_end"/>
                         </group>
                     </group>
-                    <group string="Checklist">
-                        <div class="text-muted" colspan="2">
-                            Flujo: <b>Contestar checklist</b> abre el cuestionario
-                            y liga la respuesta aquí; al terminar,
-                            <b>Hallazgos del checklist</b> convierte cada
-                            «No conforme» en NC menor y cada «Observación» en
-                            observación — sin doble captura.
-                        </div>
-                        <field name="survey_id"/>
-                        <field name="survey_input_ids" widget="many2many_tags"/>
-                    </group>
+                    <field name="report_document_id" invisible="1"/>
                     <notebook>
+                        <page string="Checklist" name="checklist">
+                            <div class="text-muted mb-2">
+                                Una pregunta por actividad de cada proceso auditado (se genera al
+                                planificar). «Ver registros» abre la evidencia real del entregable;
+                                cada respuesta distinta de Conforme crea su hallazgo.
+                            </div>
+                            <field name="checklist_line_ids" readonly="state in ('borrador', 'cerrada')">
+                                <list editable="bottom" create="0"
+                                      decoration-danger="answer in ('nc_mayor', 'nc_menor')"
+                                      decoration-warning="answer == 'observacion'"
+                                      decoration-success="answer == 'conforme'">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="process_id" optional="show"/>
+                                    <field name="question"/>
+                                    <field name="executor" optional="show"/>
+                                    <field name="deliverables" optional="show"/>
+                                    <field name="can_open_records" column_invisible="1"/>
+                                    <button name="action_open_records" type="object" string="Ver registros"
+                                            icon="fa-database" invisible="not can_open_records"/>
+                                    <field name="answer"/>
+                                    <field name="evidence"/>
+                                    <field name="finding_id" readonly="1" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Hallazgos">
                             <field name="finding_ids" context="{'default_audit_id': id}">
                                 <list editable="bottom">
@@ -163,6 +191,17 @@
                         </page>
                         <page string="Conclusión">
                             <field name="conclusion" nolabel="1"/>
+                        </page>
+                        <page string="Encuesta (legado)" name="survey" invisible="not survey_id and state != 'borrador'">
+                            <div class="text-muted mb-2">
+                                Checklist por encuesta de versiones anteriores. Desde 50.0.0 el checklist
+                                sale del proceso (pestaña Checklist); esta encuesta solo se conserva
+                                para auditorías ya contestadas.
+                            </div>
+                            <group>
+                                <field name="survey_id"/>
+                                <field name="survey_input_ids" widget="many2many_tags"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
