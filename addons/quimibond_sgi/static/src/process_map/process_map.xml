@@ -3,18 +3,20 @@
 
 <t t-name="quimibond_sgi.ProcessMap">
     <div class="o_sgi_process_map o_action d-flex flex-column h-100">
-        <div class="o_control_panel d-flex align-items-center gap-3 px-3 py-2 border-bottom flex-wrap">
-            <span class="fs-5 fw-bold">Mapa de procesos</span>
-            <span class="text-muted small">Pasa el mouse o da clic en un proceso para ver con quién se conecta; doble clic abre la ficha.</span>
+        <div class="o_control_panel d-flex align-items-center gap-3 px-4 py-2 border-bottom flex-wrap bg-view">
+            <div>
+                <div class="fs-4 fw-bold lh-1">Mapa de procesos</div>
+                <div class="text-muted small">Pasa el mouse o da clic en un proceso para ver con quién se conecta · doble clic abre la ficha</div>
+            </div>
             <div class="form-check form-switch ms-auto mb-0">
                 <input class="form-check-input" type="checkbox" id="sgi_map_show_all" t-att-checked="state.showAll" t-on-change="toggleShowAll"/>
                 <label class="form-check-label small" for="sgi_map_show_all">Todas las conexiones</label>
             </div>
-            <span class="small text-muted">
-                <i class="fa fa-circle text-success"/> en cumplimiento
-                <i class="fa fa-circle text-warning ms-2"/> con pendientes
-                <i class="fa fa-circle text-danger ms-2"/> con problemas
-            </span>
+            <div class="o_sgi_map_legend d-flex gap-3 small text-muted">
+                <span><span class="o_sgi_map_dot bg-success"/> en cumplimiento</span>
+                <span><span class="o_sgi_map_dot bg-warning"/> con pendientes</span>
+                <span><span class="o_sgi_map_dot bg-danger"/> con problemas</span>
+            </div>
         </div>
         <div class="o_sgi_map_body position-relative flex-grow-1 overflow-auto p-4" t-ref="root">
             <svg class="o_sgi_map_svg position-absolute top-0 start-0 pe-none" t-ref="svg"/>
@@ -22,28 +24,31 @@
                 <p class="text-muted fst-italic">No hay procesos activos que mostrar.</p>
             </t>
             <t t-foreach="state.bands" t-as="band" t-key="band.key">
-                <div class="o_sgi_map_band mb-5">
-                    <div class="o_sgi_map_band_title text-uppercase small fw-bold text-muted mb-2" t-esc="band.label"/>
+                <div t-attf-class="o_sgi_map_band o_sgi_map_band_#{band.key} mb-4">
+                    <div class="o_sgi_map_band_title" t-esc="band.label"/>
                     <div class="d-flex flex-wrap gap-4 justify-content-center">
                         <t t-foreach="band.processes" t-as="process" t-key="process.id">
-                            <div t-att-data-process-id="process.id" t-att-class="boxClass(process)"
-                                 t-att-title="process.owner ? 'Dueño: ' + process.owner : ''"
+                            <div t-att-data-process-id="process.id" t-att-class="boxClass(process) + ' o_sgi_map_health_' + process.health"
                                  t-on-click="() => this.toggleSelect(process.id)"
                                  t-on-dblclick="() => this.openProcess(process.id)"
                                  t-on-mouseenter="() => this.setHover(process.id)"
                                  t-on-mouseleave="() => this.setHover(null)">
-                                <div class="d-flex align-items-center gap-1">
-                                    <i t-attf-class="fa fa-circle small #{process.health === 'verde' ? 'text-success' : (process.health === 'rojo' ? 'text-danger' : 'text-warning')}"/>
-                                    <span class="fw-bold" t-esc="process.code"/>
-                                    <button class="btn btn-link btn-sm p-0 ms-auto" title="Abrir la ficha"
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="o_sgi_map_code" t-esc="process.code"/>
+                                    <span class="o_sgi_map_dot ms-1" t-attf-class="o_sgi_map_dot ms-1 bg-#{process.health === 'verde' ? 'success' : (process.health === 'rojo' ? 'danger' : 'warning')}"/>
+                                    <button class="btn btn-link btn-sm p-0 ms-auto text-muted" title="Abrir la ficha"
                                             t-on-click.stop="() => this.openProcess(process.id)">
                                         <i class="fa fa-external-link"/>
                                     </button>
                                 </div>
-                                <div class="o_sgi_map_box_name fw-bold lh-sm" t-esc="process.name"/>
-                                <div class="text-muted small text-truncate" t-esc="process.owner"/>
-                                <div class="text-muted small" t-if="process.in_count or process.out_count">
-                                    <i class="fa fa-arrow-right"/> recibe <t t-esc="process.in_count"/> · entrega <t t-esc="process.out_count"/>
+                                <div class="o_sgi_map_box_name fw-bold lh-sm mt-1" t-esc="process.name"/>
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <img t-if="process.owner_id" class="o_sgi_map_avatar rounded-circle" t-attf-src="/web/image/hr.employee/#{process.owner_id}/avatar_128" t-att-alt="process.owner"/>
+                                    <span class="text-muted small text-truncate" t-esc="process.owner"/>
+                                </div>
+                                <div class="o_sgi_map_counts text-muted small mt-2" t-if="process.in_count or process.out_count">
+                                    <span title="Entradas"><i class="fa fa-sign-in"/> <t t-esc="process.in_count"/></span>
+                                    <span class="ms-2" title="Salidas"><i class="fa fa-sign-out"/> <t t-esc="process.out_count"/></span>
                                 </div>
                             </div>
                         </t>

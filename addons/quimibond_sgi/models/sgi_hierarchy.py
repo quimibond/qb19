@@ -104,6 +104,7 @@ class SgiProcessHierarchy(models.Model):
                 'code': process.code or '',
                 'name': process.name or '',
                 'owner': process.owner_id.name or '',
+                'owner_id': process.owner_id.id or False,
                 'health': process.health or 'amarillo',
                 'in_count': in_count.get(process.id, 0),
                 'out_count': out_count.get(process.id, 0),
