@@ -37,7 +37,9 @@ class TestPermAuditor(TransactionCase):
         self.assertIn(auditor, manager.all_implied_ids)
 
     def test_02_auditor_reads_everything(self):
-        env = self.env(user=self.auditor)
+        # with_user, no env(user=): en Odoo 19 env(user=) conserva el modo
+        # superusuario del entorno de pruebas y no revisa permisos.
+        env = self.env['res.users'].with_user(self.auditor).env
         self.assertEqual(env['sgi.process'].browse(self.process.id).name, 'Proceso auditado')
         self.assertEqual(env['sgi.indicator.measure'].browse(self.measure.id).indicator_id, self.indicator)
         self.assertEqual(env['quality.alert'].browse(self.alert.id).name, 'NC auditada')
@@ -48,7 +50,9 @@ class TestPermAuditor(TransactionCase):
             env[model].check_access('read')
 
     def test_03_auditor_cannot_change_evidence(self):
-        env = self.env(user=self.auditor)
+        # with_user, no env(user=): en Odoo 19 env(user=) conserva el modo
+        # superusuario del entorno de pruebas y no revisa permisos.
+        env = self.env['res.users'].with_user(self.auditor).env
         with self.assertRaises(AccessError):
             env['sgi.process'].browse(self.process.id).write({'name': 'Cambiado'})
         with self.assertRaises(AccessError):
@@ -62,7 +66,9 @@ class TestPermAuditor(TransactionCase):
                 env[model].check_access('write')
 
     def test_04_auditor_writes_findings(self):
-        env = self.env(user=self.auditor)
+        # with_user, no env(user=): en Odoo 19 env(user=) conserva el modo
+        # superusuario del entorno de pruebas y no revisa permisos.
+        env = self.env['res.users'].with_user(self.auditor).env
         finding = env['sgi.audit.finding'].create({
             'audit_id': self.audit.id, 'description': 'Hallazgo del auditor',
             'process_id': self.process.id})
