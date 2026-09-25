@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Diagramas con la vista nativa «hierarchy» (la del organigrama de
+         Empleados). Sin JS propio: solo padre, hijos y una tarjeta. -->
+
+    <!-- ===== Mapa de procesos: macroproceso → procesos → subprocesos ===== -->
+    <record id="sgi_process_view_hierarchy" model="ir.ui.view">
+        <field name="name">sgi.process.hierarchy</field>
+        <field name="model">sgi.process</field>
+        <field name="arch" type="xml">
+            <hierarchy child_field="child_ids" parent_field="parent_id" icon="fa-sitemap" draggable="0">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="process_type"/>
+                <field name="health"/>
+                <field name="owner_id"/>
+                <field name="child_count"/>
+                <templates>
+                    <t t-name="hierarchy-box">
+                        <div t-attf-class="o_hierarchy_node_header d-flex align-items-center gap-1 pb-2 #{record.health.raw_value == 'verde' ? 'text-success' : (record.health.raw_value == 'rojo' ? 'text-danger' : 'text-warning')}">
+                            <i class="fa fa-circle" t-att-title="record.health.value"/>
+                            <field name="code" class="fw-bold"/>
+                            <span class="badge text-bg-light ms-auto"><field name="process_type"/></span>
+                        </div>
+                        <div class="d-flex flex-column">
+                            <field name="name" class="fw-bold"/>
+                            <field name="owner_id" class="text-muted small"/>
+                        </div>
+                    </t>
+                </templates>
+            </hierarchy>
+        </field>
+    </record>
+
+    <record id="sgi_process_hierarchy_action" model="ir.actions.act_window">
+        <field name="name">Mapa de procesos</field>
+        <field name="res_model">sgi.process</field>
+        <field name="view_mode">hierarchy,kanban,list,form</field>
+        <field name="mobile_view_mode">kanban</field>
+        <field name="search_view_id" ref="sgi_process_view_search"/>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin procesos con macroproceso</p>
+            <p>El diagrama sale del campo «Macroproceso» de cada proceso.</p></field>
+    </record>
+
+    <record id="sgi_process_action" model="ir.actions.act_window">
+        <field name="view_mode">kanban,hierarchy,list,form</field>
+    </record>
+
+    <menuitem id="menu_sgi_process_diagram" name="Diagrama de procesos" parent="menu_sgi_processes"
+              action="sgi_process_hierarchy_action" sequence="6"/>
+
+    <!-- ===== Actividades: el flujo paso a paso de un proceso ===== -->
+    <record id="sgi_process_activity_view_hierarchy" model="ir.ui.view">
+        <field name="name">sgi.process.activity.hierarchy</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <hierarchy child_field="flow_child_ids" parent_field="flow_parent_id" icon="fa-sitemap" draggable="0">
+                <field name="number"/>
+                <field name="name"/>
+                <field name="stage_id"/>
+                <field name="measure_state"/>
+                <field name="flow_executor"/>
+                <field name="flow_child_count"/>
+                <templates>
+                    <t t-name="hierarchy-box">
+                        <div t-attf-class="o_hierarchy_node_header d-flex align-items-center gap-1 pb-2 #{record.measure_state.raw_value == 'verde' ? 'text-success' : (record.measure_state.raw_value == 'rojo' ? 'text-danger' : 'text-muted')}">
+                            <i class="fa fa-circle" t-att-title="record.measure_state.value"/>
+                            <field name="number" class="fw-bold"/>
+                            <field name="stage_id" class="badge text-bg-light ms-auto"/>
+                        </div>
+                        <div class="d-flex flex-column">
+                            <field name="name" class="fw-bold"/>
+                            <field name="flow_executor" class="text-muted small"/>
+                        </div>
+                    </t>
+                </templates>
+            </hierarchy>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_action" model="ir.actions.act_window">
+        <field name="view_mode">list,kanban,hierarchy,form</field>
+    </record>
+
+    <!-- Botón «Ver en el mapa» junto a «Ver en diagrama» en la ficha del proceso. -->
+    <record id="sgi_process_view_form_hierarchy" model="ir.ui.view">
+        <field name="name">sgi.process.form.hierarchy</field>
+        <field name="model">sgi.process</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_sgi_view_process_map" type="object"
+                        string="Ver en el mapa" icon="fa-sitemap"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
