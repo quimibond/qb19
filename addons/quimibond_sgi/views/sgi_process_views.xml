@@ -187,8 +187,10 @@
     </record>
 
     <!-- Ficha del proceso (54.1.0): botones inteligentes para todo lo que es
-         lista de otros registros y dos pestañas: Ficha (aquí) y
-         Procedimiento (la agrega sgi_process_procedure_views.xml). -->
+         lista de otros registros y dos pestañas: Ficha y Procedimiento.
+         TODA la ficha vive aquí: un módulo no hereda sus propias vistas
+         (las herencias guardadas en la base se revalidan contra el padre
+         nuevo antes de recargarse y tiraron dos builds, 2026-09-25). -->
     <record id="sgi_process_view_form" model="ir.ui.view">
         <field name="name">sgi.process.form</field>
         <field name="model">sgi.process</field>
@@ -203,6 +205,11 @@
                             confirm="Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?"/>
                     <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_sgi_request_change" type="object"
+                            string="Pedir un cambio" icon="fa-pencil-square-o"/>
+                    <button name="action_sgi_register_finding" type="object"
+                            string="Registrar hallazgo" icon="fa-flag"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <!-- Los PDF (procedimiento, lista maestra, matriz de riesgos)
                          viven en el menú Imprimir (⚙) de la ficha: binding_model_id
                          en report/. -->
@@ -282,6 +289,14 @@
                         <h1><field name="name" placeholder="Nombre del proceso"/></h1>
                         <h3><field name="code" placeholder="Clave (C6, S2…)"/></h3>
                     </div>
+                    <!-- El estado siempre en la misma forma y lugar: una línea arriba -->
+                    <div class="mb-2" invisible="not id">
+                        <field name="health" widget="badge" nolabel="1" class="d-inline me-2"
+                               decoration-success="health == 'verde'"
+                               decoration-warning="health == 'amarillo'"
+                               decoration-danger="health == 'rojo'"/>
+                        <field name="structure_status" nolabel="1" readonly="1" class="d-inline text-muted"/>
+                    </div>
                     <group>
                         <group string="Quién y dónde">
                             <field name="process_type"/>
@@ -292,7 +307,6 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group string="Cómo va">
-                            <field name="health" invisible="1"/>
                             <field name="measure_real_pct" widget="progressbar"/>
                             <field name="measure_adherence_avg"/>
                             <field name="odoo_measured_pct" widget="progressbar"/>
@@ -338,6 +352,46 @@
                                     <field name="owner_id"/>
                                 </list>
                             </field>
+                        </page>
+                        <page string="Procedimiento" name="procedimiento">
+                            <!-- Las actividades se capturan desde el botón «Actividades»
+                                 (lista editable, kanban, diagrama, organigrama). Aquí
+                                 queda lo que arma el PDF del procedimiento: etapas,
+                                 texto, responsabilidades y firmas. -->
+                            <div class="mb-2">
+                                <span class="text-muted"><field name="measure_method_summary" class="d-inline"/></span>
+                            </div>
+                            <field name="stage_ids" context="{'default_process_id': id}">
+                                <list editable="bottom" string="Etapas">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="code" string="Letra"/>
+                                    <field name="name"/>
+                                    <field name="activity_count"/>
+                                </list>
+                            </field>
+                            <separator string="Texto del procedimiento (sale en el PDF)"/>
+                            <group>
+                                <field name="scope" placeholder="A qué áreas aplica…"/>
+                                <field name="env_aspects"/>
+                                <field name="norm_ids" widget="many2many_tags"/>
+                            </group>
+                            <field name="job_responsibility_ids">
+                                <list string="Responsabilidades" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="job_id"/>
+                                    <field name="responsibilities"/>
+                                </list>
+                            </field>
+                            <group string="Firmas">
+                                <group>
+                                    <field name="doc_owner_id"/>
+                                    <field name="doc_approver_id"/>
+                                </group>
+                                <group>
+                                    <field name="doc_vobo_id"/>
+                                </group>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>

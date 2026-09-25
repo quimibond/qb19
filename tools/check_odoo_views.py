@@ -14,8 +14,14 @@ la imagen community). Nacen de tres builds rotos de `main` el 2026-09-25:
    does not exist in registry`). Ese import debe ser local (dentro de la
    función) o el módulo debe reordenarse.
 
-Uso: `python3 tools/check_odoo_views.py [ruta/a/addons ...]` (sin argumentos
-revisa `addons/` y los módulos de la raíz). Sale con 1 si hay errores.
+3. **Herencias del propio módulo que se quedan viejas en la base** (con
+   `--base-ref origin/main`): las anclas de cada herencia tal como está en la
+   rama base deben seguir existiendo en el padre nuevo, o la vista debe
+   borrarse en un pre-migrate; si no, Odoo la revalida antes de recargarla y
+   el build revienta (54.0.0 y 54.1.0 del SGI, 2026-09-25).
+
+Uso: `python3 tools/check_odoo_views.py [--base-ref origin/main] [ruta/a/addons ...]`
+(sin rutas revisa `addons/` y los módulos de la raíz). Sale con 1 si hay errores.
 """
 import glob
 import ast
@@ -211,8 +217,172 @@ def check_view_inherit_order(module_dir):
     return errors
 
 
+# ----------------------------------------------------------------------
+# Herencias del propio módulo que se quedan viejas en la base
+# ----------------------------------------------------------------------
+_POSITION_ATTRS = {'position', 'version'}
+
+
+def _git_show(base_ref, relpath):
+    import subprocess
+    try:
+        return subprocess.run(['git', 'show', '%s:%s' % (base_ref, relpath)], cwd=ROOT,
+                              capture_output=True, text=True, check=True).stdout
+    except (subprocess.CalledProcessError, OSError):
+        return None
+
+
+def _manifest_files_from_text(text):
+    try:
+        manifest = ast.literal_eval(text)
+    except (SyntaxError, ValueError):
+        return []
+    return [f for f in manifest.get('data') or [] if f.endswith('.xml')]
+
+
+def _module_views(module_dir, read):
+    """{xmlid: {'model', 'inherit', 'arch', 'file'}} de las vistas del módulo,
+    leyendo cada archivo con `read(relpath)` (working tree o `git show`)."""
+    module = os.path.basename(module_dir)
+    rel_module = os.path.relpath(module_dir, ROOT)
+    manifest = read(os.path.join(rel_module, '__manifest__.py'))
+    views = {}
+    for rel in _manifest_files_from_text(manifest or ''):
+        text = read(os.path.join(rel_module, rel))
+        if not text:
+            continue
+        try:
+            tree = etree.fromstring(text.encode('utf-8'))
+        except etree.XMLSyntaxError:
+            continue
+        for record in tree.iter('record'):
+            if record.get('model') != 'ir.ui.view' or not record.get('id'):
+                continue
+            xmlid = record.get('id')
+            xmlid = xmlid if '.' in xmlid else '%s.%s' % (module, xmlid)
+            info = views.setdefault(xmlid, {'model': None, 'inherit': None, 'arch': None, 'file': rel})
+            for field in record.findall('field'):
+                if field.get('name') == 'model':
+                    info['model'] = (field.text or '').strip()
+                elif field.get('name') == 'inherit_id' and field.get('ref'):
+                    parent = field.get('ref')
+                    info['inherit'] = parent if '.' in parent else '%s.%s' % (module, parent)
+                elif field.get('name') == 'arch':
+                    # Documento propio: así `//x` busca solo dentro de esta vista.
+                    info['arch'] = etree.fromstring(etree.tostring(field))
+    return views
+
+
+def _root_of(views, xmlid, module):
+    """Raíz de la cadena de herencia si toda vive en el módulo; si no, None."""
+    seen = set()
+    while xmlid in views and xmlid not in seen:
+        seen.add(xmlid)
+        parent = views[xmlid]['inherit']
+        if not parent:
+            return xmlid
+        if not parent.startswith(module + '.'):
+            return None
+        xmlid = parent
+    return None
+
+
+def _anchors(arch):
+    """Localizadores de una vista heredada: `<xpath expr>` y los nodos con
+    `position` que Odoo localiza por etiqueta + atributos."""
+    anchors = []
+    for node in arch.iter():
+        if not isinstance(node.tag, str):
+            continue
+        if node.tag == 'xpath' and node.get('expr'):
+            anchors.append(node.get('expr'))
+        elif node.get('position') and node.tag not in ('attribute', 'xpath'):
+            preds = "".join("[@%s=%r]" % (k, v) for k, v in node.attrib.items() if k not in _POSITION_ATTRS)
+            anchors.append("//%s%s" % (node.tag, preds))
+    return anchors
+
+
+_QUOTED = re.compile(r"""['"]([^'"]+)['"]""")
+
+
+def _found(expr, archs):
+    for arch in archs:
+        try:
+            if arch.xpath(expr):
+                return True
+        except etree.XPathError:
+            return True  # no es de nuestra incumbencia; Odoo lo dirá
+    # Ancla creada por la propia cadena con <attribute name="…">valor</attribute>
+    # (p. ej. renombrar un botón y luego apuntarle): también cuenta.
+    values = set(_QUOTED.findall(expr))
+    for arch in archs:
+        for node in arch.iter('attribute'):
+            if (node.text or '').strip() in values:
+                return True
+    return False
+
+
+def _premigrate_mentions(module_dir, name):
+    """Solo cuenta el pre-migrate de la versión del manifest actual: es el
+    único que corre en este update (el de 54.0.0 no salvó a 54.1.0)."""
+    try:
+        manifest = ast.literal_eval(open(os.path.join(module_dir, '__manifest__.py'), encoding='utf-8').read())
+    except (OSError, SyntaxError, ValueError):
+        return False
+    path = os.path.join(module_dir, 'migrations', str(manifest.get('version', '')), 'pre-migrate.py')
+    try:
+        return name in open(path, encoding='utf-8').read()
+    except OSError:
+        return False
+
+
+def check_stale_self_inherits(module_dir, base_ref):
+    """Al actualizar, Odoo revalida las vistas heredadas TAL COMO ESTÁN EN LA
+    BASE (versión anterior) en cuanto carga la vista padre nueva, antes de
+    llegar al archivo que las corrige. Si el padre pierde un nodo al que una
+    herencia del propio módulo le hacía xpath, el build revienta con «no
+    puede ser localizado en la vista padre» aunque el código nuevo esté bien
+    (dos builds de main el 2026-09-25: 54.0.0 y 54.1.0). Regla: un módulo no
+    hereda sus propias vistas; si aún lo hace, cada ancla de la herencia
+    vieja (rama base) debe seguir existiendo en el padre nuevo o la vista
+    debe borrarse en un pre-migrate de la versión nueva."""
+    module = os.path.basename(module_dir)
+    new = _module_views(module_dir, lambda rel: open(os.path.join(ROOT, rel), encoding='utf-8').read()
+                        if os.path.exists(os.path.join(ROOT, rel)) else None)
+    old = _module_views(module_dir, lambda rel: _git_show(base_ref, rel))
+    errors = []
+    for xmlid, info in old.items():
+        if not info['inherit'] or info['arch'] is None:
+            continue
+        root = _root_of(old, xmlid, module)
+        if not root or root not in new:
+            continue
+        chain_archs = [new[root]['arch']] + [v['arch'] for k, v in new.items()
+                                             if k != root and _root_of(new, k, module) == root and v['arch'] is not None]
+        chain_archs = [a for a in chain_archs if a is not None]
+        missing = [expr for expr in _anchors(info['arch']) if not _found(expr, chain_archs)]
+        if not missing:
+            continue
+        short = xmlid.split('.', 1)[1]
+        if _premigrate_mentions(module_dir, short):
+            continue
+        errors.append(
+            "%s: la herencia %s (tal como está en %s, y por tanto en la base de producción) no encontrará "
+            "en la ficha nueva: %s. Al actualizar, Odoo la revalida antes de recargarla y el build revienta. "
+            "Conserva el ancla en el padre, o bórrala en migrations/<versión>/pre-migrate.py (por nombre); "
+            "mejor aún: un módulo no hereda sus propias vistas, funde la herencia en la vista base." % (
+                os.path.relpath(os.path.join(module_dir, info['file']), ROOT), short, base_ref, ", ".join(missing)))
+    return errors
+
+
 def main(argv):
-    paths = argv[1:] or [os.path.join(ROOT, 'addons'), ROOT]
+    base_ref = None
+    args = list(argv[1:])
+    if '--base-ref' in args:
+        i = args.index('--base-ref')
+        base_ref = args[i + 1]
+        del args[i:i + 2]
+    paths = args or [os.path.join(ROOT, 'addons'), ROOT]
     validators = _validators()
     if not validators:
         print("Sin RNG en tools/odoo_rng: no se validan vistas.")
@@ -226,9 +396,12 @@ def main(argv):
         errors += check_model_imports(module_dir)
         errors += check_test_imports(module_dir)
         errors += check_view_inherit_order(module_dir)
+        if base_ref:
+            errors += check_stale_self_inherits(module_dir, base_ref)
     for err in errors:
         print("ERROR:", err)
-    print("%d error(es) en vistas RNG, imports de modelos, registro de tests y orden de herencia de vistas." % len(errors))
+    print("%d error(es) en vistas RNG, imports de modelos, registro de tests, orden de herencia de vistas%s." % (
+        len(errors), " y herencias propias contra %s" % base_ref if base_ref else ""))
     return 1 if errors else 0
 
 
