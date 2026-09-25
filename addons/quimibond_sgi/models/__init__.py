@@ -66,3 +66,8 @@ from . import sgi_diagram
 from . import sgi_links
 from . import sgi_diagram_iso
 from . import sgi_diagram_view
+from . import sgi_kpi_fields
+from . import sgi_dev_request
+from . import sgi_machine_sheet
+from . import sgi_staff_efficiency
+from . import sgi_epp_sign

@@ -18,9 +18,12 @@ function kindsFrom(value) {
 function diagramPropsFromContext(ctx, fallbackKind) {
     const props = {
         kind: ctx.sgi_diagram_kind || fallbackKind,
-        resId: ctx.sgi_diagram_res_id || ctx.default_process_id || ctx.active_process_id || null,
+        // OWL valida los props: `null` no es Number ni Boolean, así que lo
+        // que falta se manda como `false` (las vistas de lista sin proceso
+        // activo llegaban con null y reventaban el mapa de procesos).
+        resId: Number(ctx.sgi_diagram_res_id || ctx.default_process_id || ctx.active_process_id) || false,
         params: ctx.sgi_diagram_params || {},
-        selected: ctx.sgi_diagram_selected || null,
+        selected: ctx.sgi_diagram_selected ? String(ctx.sgi_diagram_selected) : false,
     };
     const kinds = kindsFrom(ctx.sgi_diagram_kinds);
     if (kinds.length) {

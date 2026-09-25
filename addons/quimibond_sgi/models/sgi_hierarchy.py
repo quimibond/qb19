@@ -52,7 +52,7 @@ class SgiProcessActivityHierarchy(models.Model):
 class SgiProcessHierarchy(models.Model):
     _inherit = 'sgi.process'
 
-    child_count = fields.Integer(compute='_compute_child_count', string="Subprocesos")
+    child_count = fields.Integer(compute='_compute_child_count', string="Núm. de subprocesos")
 
     @api.depends('child_ids')
     def _compute_child_count(self):

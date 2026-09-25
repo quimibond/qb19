@@ -88,6 +88,23 @@ class ProductTemplateSign(models.Model):
     _inherit = ['product.template', 'sgi.sign.record.mixin']
 
 
+class ProductProductSign(models.Model):
+    """La ficha de variante hereda la ficha de plantilla (modo primary), así que
+    los botones de firma también aparecen ahí; sin estos campos y métodos las
+    vistas personalizadas de product.product no validan en el build."""
+    _inherit = 'product.product'
+
+    sgi_sign_count = fields.Integer(related='product_tmpl_id.sgi_sign_count')
+
+    def action_sgi_sign(self):
+        self.ensure_one()
+        return self.product_tmpl_id.action_sgi_sign()
+
+    def action_sgi_view_sign_requests(self):
+        self.ensure_one()
+        return self.product_tmpl_id.action_sgi_view_sign_requests()
+
+
 class SgiSignRequestWizard(models.TransientModel):
     _name = 'sgi.sign.request.wizard'
     _description = "Crear solicitud de firma ligada a un registro"

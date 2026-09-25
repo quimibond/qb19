@@ -67,3 +67,5 @@ from . import test_links
 from . import test_diagram_iso
 from . import test_diagram_view
 from . import test_my_procedure_ui
+from . import test_kpi_fields
+from . import test_excel_migration

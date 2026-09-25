@@ -48,6 +48,8 @@
     <menuitem id="menu_sgi_jobs_roles" name="Puestos y procesos"
               parent="menu_sgi_processes" action="sgi_hr_job_action_roles"
               sequence="12"/>
+    <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina" parent="menu_sgi_processes"
+              action="sgi_machine_sheet_action" sequence="45"/>
 
     <!-- 3. Mejora (todos): lo que salió mal y lo que se hace para que no
          vuelva. -->
@@ -113,6 +115,8 @@
               action="sgi_document_action" sequence="10"/>
     <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_documental"
               action="sgi_doc_change_board_action" sequence="20"/>
+    <menuitem id="menu_sgi_master_list" name="Lista maestra (DOC-3)" parent="menu_sgi_documental"
+              action="sgi_document_master_list_action" sequence="12"/>
     <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_documental"
               action="sgi_migration_action" sequence="30"/>
     <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_documental"

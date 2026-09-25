@@ -125,8 +125,8 @@ class SgiMyProcedureMixin(models.AbstractModel):
     sgi_mp_document_ids = fields.Many2many(
         'documents.document', string="Documentos que aplican al puesto", compute='_compute_sgi_mp_lists')
     sgi_mp_epp_ids = fields.Many2many(
-        'sgi.epp.delivery', string="Responsivas de EPP", compute='_compute_sgi_mp_lists')
-    sgi_mp_epp_text = fields.Text(string="EPP requerido por el puesto", compute='_compute_sgi_mp_lists')
+        'sgi.epp.delivery', string="Responsivas de EPP (Mi procedimiento)", compute='_compute_sgi_mp_lists')
+    sgi_mp_epp_text = fields.Text(string="EPP requerido (Mi procedimiento)", compute='_compute_sgi_mp_lists')
     sgi_mp_can_sign = fields.Boolean(string="Puede firmar", compute='_compute_sgi_mp_lists')
     sgi_mp_process_ids = fields.Many2many(
         'sgi.process', string="Procesos donde participa", compute='_compute_sgi_mp_lists')
@@ -215,7 +215,7 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
     mp_status = fields.Selection(_MP_STATUS, string="Estado", compute='_compute_mp_pieces')
     mp_status_detail = fields.Char(string="Detalle del estado", compute='_compute_mp_pieces')
     mp_number = fields.Char(string="Numeral", compute='_compute_mp_pieces')
-    mp_name = fields.Char(related='activity_id.name', string="Actividad")
+    mp_name = fields.Char(related='activity_id.name', string="Nombre de la actividad")
     mp_how = fields.Text(string="Cómo", compute='_compute_mp_pieces')
     mp_where = fields.Char(string="Dónde", compute='_compute_mp_pieces')
     mp_check_against = fields.Char(string="Contra qué se revisa", compute='_compute_mp_pieces')
@@ -940,12 +940,14 @@ class HrEmployeePublicMyTeam(models.Model):
             'type': 'ir.actions.act_window',
             'name': "Mi equipo",
             'res_model': 'hr.employee.public',
-            'view_mode': 'list,kanban,form',
-            'views': [(self.env.ref('quimibond_sgi.sgi_my_team_view_list').id, 'list'),
+            # 54.4.0: abre en organigrama; lista y kanban a un clic.
+            'view_mode': 'hierarchy,list,kanban,form',
+            'views': [(self.env.ref('quimibond_sgi.sgi_my_team_view_hierarchy').id, 'hierarchy'),
+                      (self.env.ref('quimibond_sgi.sgi_my_team_view_list').id, 'list'),
                       (False, 'kanban'), (False, 'form')],
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_team_view_search').id, 'search'],
             'domain': [('id', 'in', team.ids)],
-            'context': {'search_default_group_job': 1},
+            'context': {},
             'help': "<p class='o_view_nocontent_smiling_face'>No tienes personas a tu cargo en Odoo</p>"
                     "<p>Reportes directos, tu departamento o los puestos de tus procesos.</p>",
         }
