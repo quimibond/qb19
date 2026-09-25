@@ -146,6 +146,7 @@ class SgiCron(models.AbstractModel):
             if not alert.sgi_due_plan:
                 alert._sgi_set_deadlines()
             alert._sgi_deadline_escalation(today)
+            alert._sgi_supplier_escalation(today)  # NC-6
             days = external_days if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
             deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')

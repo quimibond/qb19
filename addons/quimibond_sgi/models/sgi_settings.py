@@ -33,6 +33,9 @@ class ResConfigSettings(models.TransientModel):
     sgi_nc_escalation_mast_days = fields.Integer(
         string="Días vencido un plazo de NC antes de escalar a MAST",
         config_parameter='quimibond_sgi.nc_escalation_mast_days')
+    sgi_nc_days_supplier_response = fields.Integer(
+        string="Días hábiles para que el proveedor conteste una NC (portal)",
+        config_parameter='quimibond_sgi.nc_days_supplier_response')
     sgi_nc_effectiveness_days = fields.Integer(
         string="Días para verificar la eficacia tras la última correctiva",
         config_parameter='quimibond_sgi.nc_effectiveness_days')

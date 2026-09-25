@@ -73,6 +73,33 @@ class SgiAuditProgram(models.Model):
     def action_draft(self):
         self.write({'state': 'borrador'})
 
+    def action_suggest_lines(self):
+        """AU-5 (53.0.0): programa sugerido. Una línea por proceso vigente o en
+        piloto (subprocesos), repartidos por trimestre; los procesos con NC
+        abiertas o indicadores en rojo, dos veces al año. Solo agrega los que
+        aún no están en el programa."""
+        Line = self.env['sgi.audit.program.line']
+        quarter_months = ('2', '5', '8', '11')
+        created = 0
+        for program in self:
+            if program.state != 'borrador':
+                raise UserError("El programa sugerido solo se arma en borrador.")
+            existing = program.line_ids.mapped('process_id')
+            processes = self.env['sgi.process'].search(
+                [('parent_id', '!=', False), ('state', 'in', ('vigente', 'piloto'))],
+                order='code, name')
+            for index, process in enumerate(p for p in processes if p not in existing):
+                twice = bool(process.nc_count or process.red_kpi_count)
+                month = quarter_months[index % 4]
+                months = [month, str(((int(month) + 6 - 1) % 12) + 1)] if twice else [month]
+                for planned in sorted(months, key=int):
+                    Line.create({'program_id': program.id, 'process_id': process.id,
+                                 'planned_month': planned, 'audit_type': 'interna'})
+                    created += 1
+            program.message_post(body="Programa sugerido: %d línea(s) agregadas (procesos con NC "
+                                      "abiertas o indicadores en rojo, dos veces al año)." % created)
+        return True
+
 
 class SgiAuditProgramLine(models.Model):
     _name = 'sgi.audit.program.line'
@@ -85,8 +112,11 @@ class SgiAuditProgramLine(models.Model):
     planned_month = fields.Selection(MONTH_SELECTION, string="Mes planificado", required=True)
     audit_type = fields.Selection([
         ('interna', "Interna"),
-        ('externa', "Externa"),
+        ('externa', "Externa (certificación)"),
+        ('cliente', "De cliente"),
+        ('proveedor', "A proveedor"),
     ], string="Tipo", default='interna', required=True)
+    partner_id = fields.Many2one('res.partner', string="Cliente / proveedor")
     norm_ids = fields.Many2many('sgi.norm', string="Normas")
     lead_auditor_id = fields.Many2one('res.users', string="Auditor líder")
     state = fields.Selection([
@@ -101,6 +131,7 @@ class SgiAuditProgramLine(models.Model):
         audit = self.env['sgi.audit'].create({
             'program_line_id': self.id,
             'audit_type': self.audit_type,
+            'partner_id': self.partner_id.id,
             'norm_ids': [(6, 0, self.norm_ids.ids)],
             'process_ids': [(6, 0, self.process_id.ids)],
             'lead_auditor_id': self.lead_auditor_id.id,
@@ -132,8 +163,16 @@ class SgiAudit(models.Model):
     program_line_id = fields.Many2one('sgi.audit.program.line', string="Línea de programa")
     audit_type = fields.Selection([
         ('interna', "Interna"),
-        ('externa', "Externa"),
+        ('externa', "Externa (certificación)"),
+        ('cliente', "De cliente"),
+        ('proveedor', "A proveedor"),
     ], string="Tipo", default='interna', required=True, tracking=True)
+    # AU-4 (53.0.0): auditorías de cliente (el cliente nos audita: su número
+    # de reporte) y a proveedor (auditamos al proveedor: sus hallazgos van a
+    # la NC a proveedor, NC-6).
+    partner_id = fields.Many2one('res.partner', string="Cliente / proveedor", tracking=True)
+    external_report_ref = fields.Char(string="N° de reporte externo", tracking=True,
+                                      help="Número del reporte de auditoría del cliente.")
     norm_ids = fields.Many2many('sgi.norm', string="Normas")
     process_ids = fields.Many2many('sgi.process', string="Procesos auditados")
     lead_auditor_id = fields.Many2one('res.users', string="Auditor líder", tracking=True)
@@ -196,6 +235,15 @@ class SgiAudit(models.Model):
             audit.checklist_answered_count = len(lines.filtered('answer'))
             audit.checklist_nonconforming_count = len(lines.filtered(
                 lambda l: l.answer in CHECKLIST_TO_FINDING))
+
+    @api.constrains('audit_type', 'partner_id')
+    def _check_partner_by_type(self):
+        for audit in self:
+            if audit.audit_type in ('cliente', 'proveedor') and not audit.partner_id:
+                raise ValidationError(
+                    "Una auditoría %s requiere el %s." % (
+                        "de cliente" if audit.audit_type == 'cliente' else "a proveedor",
+                        "cliente" if audit.audit_type == 'cliente' else "proveedor"))
 
     @api.constrains('process_ids', 'lead_auditor_id', 'auditor_ids')
     def _check_auditor_independence(self):
@@ -509,18 +557,27 @@ class SgiAuditFinding(models.Model):
         self.ensure_one()
         if self.alert_id:
             raise UserError("Este hallazgo ya tiene una NC ligada.")
-        origin = 'auditoria_externa' if self.audit_id.audit_type == 'externa' \
+        audit = self.audit_id
+        origin = 'auditoria_externa' if audit.audit_type in ('externa', 'cliente') \
             else 'auditoria_interna'
-        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal', raise_if_not_found=False)
+        team_xmlid = 'sgi_quality_team_external' if audit.audit_type in ('cliente', 'proveedor') \
+            else 'sgi_quality_team_internal'
+        team = self.env.ref('quimibond_sgi.%s' % team_xmlid, raise_if_not_found=False)
         vals = {
-            'title': "Hallazgo auditoría %s" % (self.audit_id.folio or ''),
+            'title': "Hallazgo auditoría %s" % (audit.folio or ''),
             'sgi_origin_type': origin,
             'sgi_classification': FINDING_TO_CLASS.get(self.finding_type),
             'sgi_norm_clause_id': self.norm_clause_id.id,
             'sgi_process_id': self.process_id.id,
-            'sgi_lead_auditor_id': self.audit_id.lead_auditor_id.id,
+            'sgi_lead_auditor_id': audit.lead_auditor_id.id,
             'sgi_deviation': self.description or '',
+            'sgi_external_ref': audit.external_report_ref or False,
         }
+        if audit.partner_id:
+            vals['partner_id'] = audit.partner_id.id
+        if audit.audit_type == 'proveedor':
+            # AU-4 → NC-6: el hallazgo a proveedor nace como NC a proveedor.
+            vals['sgi_supplier_id'] = audit.partner_id.id
         if team:
             vals['team_id'] = team.id
         alert = self.env['quality.alert'].sgi_auto_create('auditoria_hallazgo', vals)
