@@ -1704,6 +1704,43 @@ entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»
 acción cliente con `sgi_diagram_kind`. La vista nativa `hierarchy` (53.2.0)
 sigue disponible en «Mapa de procesos» y en las actividades.
 
+## El diagrama como vista y la ficha del proceso con botones (54.0.0)
+
+**Un menú por objeto, sin submenú «Diagramas».** El tipo de vista
+`sgi_diagram` (`models/sgi_diagram_view.py`, JS en
+`static/src/diagram/diagram_view.js`) entra al selector de vistas de la
+acción, junto a lista, kanban y formulario, como `hierarchy` en
+`web_hierarchy`. Arquitectura: `<sgi_diagram kind="risk_matrix"/>`; `kinds`
+(opcional) lista los diagramas que ofrece como pestañas. Dónde quedó cada
+uno (`views/sgi_diagram_views.xml`):
+
+| Menú | Vistas | Diagramas |
+|---|---|---|
+| Procesos → Mapa de procesos | **mapa** · kanban · lista · organigrama · ficha | mapa, interacción (4.4), roles (5.3), pirámide documental (7.5) |
+| Procesos → Actividades | lista · kanban · diagrama · organigrama · ficha | flujo del proceso, tortuga, PDCA |
+| Procesos → Quién hace qué | pivote · diagrama · lista · gráfica | quién hace qué |
+| Procesos → Puestos y procesos | diagrama · lista · ficha | roles, quién hace qué |
+| Dirección → Riesgos / Requisitos legales / Partes interesadas / Objetivos / Política / Revisión | lista · diagrama · ficha | matriz de riesgos, cumplimiento legal, contexto, política → objetivos → indicadores, revisión por la dirección |
+| Mejora → No conformidades / Auditorías → Programa / Seguridad → Planes de emergencia | kanban · lista · diagrama · ficha | NC por fase, programa anual, emergencias |
+| Calidad preventiva → Metrología → Equipos de medición | lista · diagrama · ficha | calibración |
+| Administración → Documentos / Indicadores | lista · diagrama · ficha | árbol y pirámide documental, indicadores |
+| Empleados → Competencias (SGI) → Brechas | pivote · diagrama · lista | competencias |
+
+Los diagramas por proceso toman el proceso del contexto (`default_process_id`,
+p. ej. al abrir las actividades desde la ficha del proceso) y, si no, el
+selector. Las etiquetas de las pestañas salen de `sgi.diagram.catalog()`.
+
+**Ficha del proceso.** Lo que eran pestañas (indicadores, riesgos,
+documentos, NC) son **botones inteligentes** con su conteo: Diagrama,
+Actividades, Sin evidencia, Indicadores, KPI en rojo, Riesgos, Riesgos
+altos, Documentos, Conexiones (`flow_count`), NC abiertas, Acciones
+vencidas, Faltantes. Quedan tres pestañas: Ficha, Procedimiento y
+Conexiones. El encabezado conserva el estado y los verbos (Pedir un cambio,
+Registrar hallazgo); los tres PDF (procedimiento, lista maestra, matriz de
+riesgos) viven en el menú **Imprimir** de la ficha. El botón «Diagrama» abre
+el flujo con pestañas para mapa, tortuga, PDCA, árbol documental,
+indicadores, riesgos y NC del proceso. Prueba: `tests/test_diagram_view.py`.
+
 ## Ligas entrada ↔ salida (53.5.0)
 
 Una actividad se mide cuando su salida apunta a su entrada

@@ -1,39 +1,52 @@
 /** @odoo-module **/
 // Motor de diagramas del SGI (2026-09-25). Mismo patrón que el organigrama de
 // Empleados: un componente OWL que pide los datos al servidor
-// (sgi.diagram.data(kind, res_id)) y los dibuja. Tres trazados: «bands»
+// (sgi.diagram.data(kind, res_id, params)) y los dibuja. Tres trazados: «bands»
 // (filas horizontales, mapa de procesos), «columns» (carriles verticales,
-// flujo / tortuga / árboles) y «matrix» (tabla de calor). Las flechas van en
-// un SVG encima de las cajas y se resaltan al pasar el mouse o dar clic.
+// flujo / tortuga / árboles) y «matrix» (tabla de calor). Una caja o celda
+// puede traer `action` (una lista filtrada) en lugar de modelo + id. Las
+// flechas van en un SVG encima de las cajas y se resaltan al pasar el mouse.
+//
+// Se usa desde dos envolturas (diagram_view.js): la vista «sgi_diagram» del
+// selector de vistas de una acción y la acción cliente `sgi_diagram` de los
+// botones «Diagrama» de las fichas.
 import { Component, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
-import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export class SgiDiagram extends Component {
     static template = "quimibond_sgi.Diagram";
-    static props = ["*"];
+    static props = {
+        kind: String,
+        kinds: { type: Array, element: String, optional: true },
+        resId: { type: [Number, Boolean], optional: true },
+        params: { type: Object, optional: true },
+        selected: { type: [String, Boolean], optional: true },
+    };
 
     setup() {
         this.orm = useService("orm");
         this.actionService = useService("action");
         this.root = useRef("root");
         this.svg = useRef("svg");
-        const ctx = (this.props.action && this.props.action.context) || {};
         this.state = useState({
-            kind: ctx.sgi_diagram_kind || "process_map",
-            resId: ctx.sgi_diagram_res_id || null,
-            params: ctx.sgi_diagram_params || {},
+            kind: this.props.kind,
+            resId: this.props.resId || null,
+            params: this.props.params || {},
             data: null,
             processes: [],
-            selected: ctx.sgi_diagram_selected || null,
+            nav: [],
+            selected: this.props.selected || null,
             hover: null,
             showAll: false,
             loading: true,
         });
         onWillStart(async () => {
-            this.state.processes = await this.orm.call("sgi.diagram", "processes", []);
+            [this.state.processes, this.catalog] = await Promise.all([
+                this.orm.call("sgi.diagram", "processes", []),
+                this.orm.call("sgi.diagram", "catalog", []),
+            ]);
             await this.load();
         });
         this._onResize = () => this.drawEdges();
@@ -56,7 +69,21 @@ export class SgiDiagram extends Component {
             this.state.selected = data.selected;
         }
         this.state.showAll = !!data.show_all_edges;
+        this.state.nav = this.navFor(data);
         this.state.loading = false;
+    }
+
+    navFor(data) {
+        // Pestañas: las que fija la vista (`kinds`), si no las que trae el
+        // servidor para el proceso; se conservan al cambiar de diagrama.
+        const labels = Object.fromEntries((this.catalog || []).map((c) => [c.kind, c.label]));
+        if (this.props.kinds && this.props.kinds.length > 1) {
+            return this.props.kinds.map((kind) => ({ kind, label: labels[kind] || kind }));
+        }
+        if (data.nav && data.nav.length) {
+            return data.nav;
+        }
+        return this.state.nav || [];
     }
 
     // ---- interacción ------------------------------------------------
@@ -350,4 +377,3 @@ export class SgiDiagram extends Component {
     }
 }
 
-registry.category("actions").add("sgi_diagram", SgiDiagram);

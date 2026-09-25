@@ -10,6 +10,8 @@ flujo» al paso anterior de su mismo proceso que va antes en la secuencia. Así
 nunca hay ciclos y el diagrama arranca en los pasos que no reciben nada."""
 from odoo import api, fields, models
 
+from .sgi_diagram import PROCESS_KINDS
+
 
 class SgiProcessActivityHierarchy(models.Model):
     _inherit = 'sgi.process.activity'
@@ -63,7 +65,9 @@ class SgiProcessHierarchy(models.Model):
             'type': 'ir.actions.client',
             'tag': 'sgi_diagram',
             'name': name,
-            'context': {'sgi_diagram_kind': kind, 'sgi_diagram_res_id': self.id},
+            'context': {'sgi_diagram_kind': kind, 'sgi_diagram_res_id': self.id,
+                        'sgi_diagram_kinds': ','.join(k for k, _l in PROCESS_KINDS),
+                        'sgi_diagram_selected': 'sgi.process,%d' % self.id},
         }
 
     def action_sgi_view_diagram(self):

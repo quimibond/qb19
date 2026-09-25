@@ -2,8 +2,8 @@
 <templates xml:space="preserve">
 
 <t t-name="quimibond_sgi.Diagram">
-    <div class="o_sgi_diagram o_action d-flex flex-column h-100">
-        <div class="o_control_panel o_sgi_dg_toolbar d-flex align-items-center gap-3 px-4 py-2 border-bottom flex-wrap">
+    <div class="o_sgi_diagram d-flex flex-column h-100">
+        <div class="o_sgi_dg_toolbar d-flex align-items-center gap-3 px-4 py-2 border-bottom flex-wrap">
             <div class="me-2 o_sgi_dg_heading">
                 <div class="fs-4 fw-bold lh-1" t-esc="state.data ? state.data.title : ''"/>
                 <div class="text-muted small" t-esc="state.data ? state.data.subtitle : ''"/>
@@ -25,8 +25,8 @@
                     </select>
                 </t>
             </t>
-            <div t-if="state.data and state.data.nav.length" class="btn-group btn-group-sm" role="group">
-                <t t-foreach="state.data.nav" t-as="nav" t-key="nav.kind">
+            <div t-if="state.nav.length > 1" class="btn-group btn-group-sm flex-wrap" role="group">
+                <t t-foreach="state.nav" t-as="nav" t-key="nav.kind">
                     <button type="button" t-attf-class="btn #{nav.kind === state.kind ? 'btn-primary' : 'btn-outline-primary'}"
                             t-on-click="() => this.switchKind(nav.kind)" t-esc="nav.label"/>
                 </t>
@@ -143,6 +143,18 @@
             </t>
         </div>
     </div>
+</t>
+
+<t t-name="quimibond_sgi.DiagramView">
+    <Layout display="props.display" className="(props.className || '') + ' o_sgi_diagram_view'">
+        <SgiDiagram t-props="diagramProps"/>
+    </Layout>
+</t>
+
+<t t-name="quimibond_sgi.DiagramAction">
+    <Layout display="display" className="'o_sgi_diagram_view o_action'">
+        <SgiDiagram t-props="diagramProps"/>
+    </Layout>
 </t>
 
 </templates>

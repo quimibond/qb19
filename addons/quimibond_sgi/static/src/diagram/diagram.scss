@@ -1,3 +1,12 @@
+.o_content.o_sgi_diagram_view {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    > .o_sgi_diagram {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+}
 .o_sgi_diagram {
     background: $o-webclient-background-color;
 
