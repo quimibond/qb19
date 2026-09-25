@@ -220,7 +220,7 @@ action = {
     'type': 'ir.actions.act_window',
     'name': 'No Conformidades',
     'res_model': 'quality.alert',
-    'view_mode': 'kanban,list,form,activity',
+    'view_mode': 'kanban,list,sgi_diagram,form,activity',
     'domain': [('team_id', 'in', teams)] if teams else [],
     'context': {
         'default_team_id': team_int.id if team_int else False,

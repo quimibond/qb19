@@ -300,7 +300,11 @@ class SgiActivitySpec(models.Model):
         """Reescribe los faltantes solo si cambiaron."""
         Gap = self.env['sgi.activity.spec.gap'].sudo()
         for act in self.exists():
-            wanted = [(code, SGI_GAP_SEVERITY[code], msg) for code, msg in act._sgi_spec_problems()]
+            # Un proceso archivado (o una actividad inactiva) no tiene faltantes
+            # que atender: no se le generan y los que tenía se borran.
+            live = act.active and act.process_id.active
+            wanted = [(code, SGI_GAP_SEVERITY[code], msg) for code, msg in act._sgi_spec_problems()] \
+                if live else []
             current = [(g.code, g.severity, g.message) for g in act.sudo().spec_gap_ids]
             if sorted(wanted) != sorted(current):
                 act.sudo().spec_gap_ids.unlink()

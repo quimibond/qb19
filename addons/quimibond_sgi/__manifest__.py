@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.53.4.0',
+    'version': '19.0.54.0.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -151,6 +151,8 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         # padre debe cargarse antes; el build de producción reventó por esto).
         'views/sgi_pr6_views.xml',
         'views/sgi_hierarchy_views.xml',
+        'views/sgi_links_views.xml',
+        'views/sgi_diagram_views.xml',
         # reports
         'report/report_nc.xml',
         'report/report_8d.xml',

@@ -99,6 +99,8 @@ class SgiProcess(models.Model):
     document_count = fields.Integer(string="# Documentos", compute='_compute_counts')
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
     risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
+    flow_count = fields.Integer(string="# Conexiones", compute='_compute_flow_count',
+                                help="Entregables que recibe de otros procesos más los que entrega.")
 
     _code_company_uniq = models.Constraint(
         'unique(code, company_id)',
@@ -268,6 +270,23 @@ class SgiProcess(models.Model):
             process.document_count = doc_counts.get(process.id, 0)
             process.indicator_count = ind_counts.get(process.id, 0)
             process.risk_count = risk_counts.get(process.id, 0)
+
+    @api.depends('in_flow_ids', 'out_flow_ids')
+    def _compute_flow_count(self):
+        for process in self:
+            process.flow_count = len(process.in_flow_ids) + len(process.out_flow_ids)
+
+    def action_open_flows(self):
+        """Botón «Conexiones»: los flujos que entran y salen del proceso."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Conexiones — %s" % (self.code or self.name),
+            'res_model': 'sgi.process.flow',
+            'view_mode': 'list,form',
+            'domain': ['|', ('from_process_id', '=', self.id), ('to_process_id', '=', self.id)],
+            'context': {'default_from_process_id': self.id},
+        }
 
     def action_print_risk_matrix(self):
         """DIR-2 (52.0.0): matriz de riesgos del proceso en PDF."""
