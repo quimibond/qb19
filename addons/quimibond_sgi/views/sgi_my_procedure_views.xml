@@ -141,9 +141,11 @@
                 </header>
                 <sheet>
                     <!-- 54.1.0: la pantalla se lee como una ficha de persona: quién
-                         es y qué puesto tiene arriba, los conteos como botones
-                         inteligentes (cada uno abre su lista) y el contenido en
-                         pestañas. «Ver como» solo aparece a quien puede elegir. -->
+                         es y qué puesto tiene arriba, y CADA lista (actividades,
+                         escalamientos, acuses, documentos, pendientes, EPP) es un
+                         botón inteligente que la abre; aquí solo queda lo que es
+                         de la persona y del puesto. «Ver como» solo aparece a
+                         quien puede elegir. -->
                     <div class="oe_button_box" name="button_box">
                         <button name="action_show_all" type="object" class="oe_stat_button" icon="fa-list-ol">
                             <field name="activity_count" widget="statinfo" string="Actividades"/>
@@ -160,13 +162,53 @@
                                 icon="fa-circle-o" invisible="unmeasured_count == 0">
                             <field name="unmeasured_count" widget="statinfo" string="Sin medir"/>
                         </button>
+                        <button name="action_show_received" type="object" class="oe_stat_button"
+                                icon="fa-level-up" invisible="received_count == 0">
+                            <field name="received_count" widget="statinfo" string="Escalamientos"/>
+                        </button>
+                        <button name="action_show_short" type="object" class="oe_stat_button"
+                                icon="fa-user-o" invisible="short_count == 0">
+                            <field name="short_count" widget="statinfo" string="Participa"/>
+                        </button>
                         <button name="action_show_acks" type="object" class="oe_stat_button text-warning"
                                 icon="fa-pencil-square-o" invisible="pending_ack_count == 0">
                             <field name="pending_ack_count" widget="statinfo" string="Firmas pendientes"/>
                         </button>
-                        <button class="oe_stat_button" icon="fa-tasks" invisible="pending_count == 0"
-                                type="object" name="action_focus_pending">
-                            <field name="pending_count" widget="statinfo" string="Pendientes"/>
+                        <button name="action_show_documents" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="document_count == 0">
+                            <field name="document_count" widget="statinfo" string="Documentos"/>
+                        </button>
+                        <button name="action_focus_pending" type="object" class="oe_stat_button"
+                                icon="fa-tasks" invisible="pending_count == 0">
+                            <field name="pending_count" widget="statinfo" string="Acciones"/>
+                        </button>
+                        <button name="action_show_nc" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle" invisible="nc_count == 0">
+                            <field name="nc_count" widget="statinfo" string="NC a contestar"/>
+                        </button>
+                        <button name="action_show_measures" type="object" class="oe_stat_button"
+                                icon="fa-calculator" invisible="measure_count == 0">
+                            <field name="measure_count" widget="statinfo" string="Mediciones"/>
+                        </button>
+                        <button name="action_show_indicators" type="object" class="oe_stat_button"
+                                icon="fa-tachometer" invisible="indicator_count == 0">
+                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
+                        </button>
+                        <button name="action_show_legal" type="object" class="oe_stat_button"
+                                icon="fa-balance-scale" invisible="legal_count == 0">
+                            <field name="legal_count" widget="statinfo" string="Legales"/>
+                        </button>
+                        <button name="action_show_doc_reviews" type="object" class="oe_stat_button"
+                                icon="fa-refresh" invisible="doc_review_count == 0">
+                            <field name="doc_review_count" widget="statinfo" string="Doc. por revisar"/>
+                        </button>
+                        <button name="action_show_epp" type="object" class="oe_stat_button"
+                                icon="fa-shield" invisible="epp_count == 0">
+                            <field name="epp_count" widget="statinfo" string="EPP"/>
+                        </button>
+                        <button name="action_open_obligations" type="object" class="oe_stat_button"
+                                icon="fa-list-ul" invisible="not has_obligations">
+                            <div class="o_stat_info"><span class="o_stat_text">Obligaciones</span></div>
                         </button>
                     </div>
                     <widget name="web_ribbon" title="Firmado" bg_color="text-bg-success" invisible="ack_state != 'leido'"/>
@@ -205,134 +247,9 @@
                         <field name="job_employee_ids" widget="many2many_tags" options="{'no_create': True}"
                                invisible="employee_id" string="Personas en el puesto"/>
                     </group>
-                    <notebook>
-                        <page string="Mis actividades" name="actividades">
-                            <field name="role_ids" mode="kanban" nolabel="1" readonly="1"
-                                   context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
-                            <group string="Escalamientos que recibe" invisible="not received_role_ids">
-                                <field name="received_role_ids" nolabel="1" readonly="1"
-                                       context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>
-                            </group>
-                            <group string="Participa o se entera" invisible="not short_role_ids">
-                                <field name="short_role_ids" nolabel="1" readonly="1"
-                                       context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_short'}"/>
-                            </group>
-                        </page>
-                        <page string="Mis pendientes" name="pendientes" invisible="not has_user">
-                            <group string="Acciones abiertas o vencidas" invisible="not pending_action_ids">
-                                <field name="pending_action_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0" decoration-danger="state == 'vencida'">
-                                        <field name="name"/>
-                                        <field name="origin_display" string="Origen" optional="show"/>
-                                        <field name="date_commit"/>
-                                        <field name="state" widget="badge"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="NC a contestar" invisible="not pending_nc_ids">
-                                <field name="pending_nc_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0">
-                                        <field name="sgi_folio" optional="show"/>
-                                        <field name="name"/>
-                                        <field name="stage_id" widget="badge"/>
-                                        <field name="create_date" optional="show"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="Mediciones por capturar o validar" invisible="not pending_measure_ids">
-                                <field name="pending_measure_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0">
-                                        <field name="indicator_id"/>
-                                        <field name="period_date"/>
-                                        <field name="state" widget="badge"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="Indicadores oficiales a mi cargo" invisible="not official_indicator_ids">
-                                <field name="official_indicator_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0">
-                                        <field name="code"/>
-                                        <field name="name"/>
-                                        <field name="last_value"/>
-                                        <field name="last_semaphore" widget="badge"
-                                               decoration-success="last_semaphore == 'verde'"
-                                               decoration-warning="last_semaphore == 'amarillo'"
-                                               decoration-danger="last_semaphore == 'rojo'"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="Requisitos legales por evaluar (60 días)" invisible="not pending_legal_ids">
-                                <field name="pending_legal_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0">
-                                        <field name="reference" optional="show"/>
-                                        <field name="name"/>
-                                        <field name="next_eval_date"/>
-                                        <field name="expiry_date" optional="show"/>
-                                        <field name="compliance_state" widget="badge"/>
-                                        <button name="action_evaluate" type="object" string="Registrar evaluación" icon="fa-check-square-o"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <div invisible="not has_obligations">
-                                <button name="action_open_obligations" type="object" string="Ver mis obligaciones"
-                                        icon="fa-list-ul" class="btn-secondary"/>
-                            </div>
-                            <p class="text-muted" invisible="pending_action_ids or pending_nc_ids or pending_measure_ids or official_indicator_ids or has_obligations or pending_legal_ids">
-                                Sin pendientes.
-                            </p>
-                        </page>
-                        <page string="Mis documentos" name="documentos">
-                            <group string="Mis acuses de lectura" invisible="not ack_ids">
-                                <field name="ack_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0" decoration-warning="state == 'pendiente'">
-                                        <field name="sgi_code" string="Clave"/>
-                                        <field name="document_id"/>
-                                        <field name="state" widget="badge"
-                                               decoration-success="state == 'leido'"
-                                               decoration-warning="state == 'pendiente'"/>
-                                        <field name="ack_date" optional="show"/>
-                                        <button name="action_mark_read" type="object" string="Marcar leído y entendido"
-                                                icon="fa-check" invisible="state != 'pendiente'"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="Documentos que aplican al puesto" invisible="not document_ids">
-                                <field name="document_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0">
-                                        <field name="sgi_code" string="Clave"/>
-                                        <field name="name"/>
-                                        <field name="sgi_doc_type" string="Tipo"/>
-                                        <field name="sgi_revision_label" string="Rev."/>
-                                        <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <p class="text-muted" invisible="ack_ids or document_ids">Sin documentos ligados al puesto.</p>
-                        </page>
-                        <page string="Mi EPP" name="epp" invisible="not epp_required and not epp_delivery_ids">
-                            <group string="EPP requerido por el puesto (S03-01)" invisible="not epp_required">
-                                <field name="epp_required" nolabel="1" readonly="1"/>
-                            </group>
-                            <group string="Responsivas de entrega (S03-02)" invisible="not epp_delivery_ids">
-                                <field name="epp_delivery_ids" nolabel="1" readonly="1">
-                                    <list create="0" delete="0" decoration-warning="state == 'entregada'">
-                                        <field name="name"/>
-                                        <field name="date"/>
-                                        <field name="items"/>
-                                        <field name="delivered_by_id" optional="show"/>
-                                        <field name="state" widget="badge"
-                                               decoration-success="state == 'firmada'"
-                                               decoration-warning="state == 'entregada'"/>
-                                        <field name="signed_date" optional="show"/>
-                                        <field name="can_sign" column_invisible="1"/>
-                                        <button name="action_sign" type="object" string="Firmar: recibí el EPP"
-                                                icon="fa-pencil" invisible="not can_sign"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <p class="text-muted" invisible="epp_delivery_ids">Sin responsivas de entrega registradas; RH o SST las capturan con «Entregar EPP» en la ficha del empleado.</p>
-                        </page>
-                    </notebook>
+                    <group string="EPP requerido por el puesto (S03-01)" invisible="not epp_required">
+                        <field name="epp_required" nolabel="1" readonly="1" colspan="2"/>
+                    </group>
                 </sheet>
             </form>
         </field>

@@ -11,8 +11,11 @@ class TestMyProcedureUi(TransactionCase):
         Screen = self.env['sgi.my.procedure']
         arch = Screen.get_views([(False, 'form')])['views']['form']['arch']
         for button in ('action_show_all', 'action_show_late', 'action_show_ok', 'action_show_unmeasured',
-                       'action_show_acks', 'action_focus_pending'):
+                       'action_show_received', 'action_show_short', 'action_show_acks', 'action_show_documents',
+                       'action_focus_pending', 'action_show_nc', 'action_show_measures', 'action_show_indicators',
+                       'action_show_legal', 'action_show_doc_reviews', 'action_show_epp', 'action_open_obligations'):
             self.assertIn('name="%s"' % button, arch, button)
+        self.assertNotIn('<notebook', arch, "Sin pestañas: cada lista es un botón.")
         self.assertIn('many2one_avatar_employee', arch)
         self.assertNotIn('string="Estado"', arch, "Los conteos ya no van en un grupo, van en botones.")
         job = self.env['hr.job'].create({'name': 'PUESTO UI'})
@@ -24,6 +27,10 @@ class TestMyProcedureUi(TransactionCase):
             self.assertEqual(action['domain'], [('id', 'in', [])], method)
         self.assertEqual(wiz.action_focus_pending()['res_model'], 'sgi.action.line')
         self.assertEqual(wiz.action_show_acks()['res_model'], 'sgi.document.ack')
+        self.assertEqual(wiz.action_show_documents()['res_model'], 'documents.document')
+        self.assertEqual(wiz.action_show_nc()['res_model'], 'quality.alert')
+        self.assertEqual(wiz.action_show_epp()['res_model'], 'sgi.epp.delivery')
+        self.assertFalse(wiz.action_show_received()['context']['create'])
         kanban = self.env['sgi.activity.role'].get_view(
             self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban')['arch']
         self.assertIn('default_group_by="cadence"', kanban)

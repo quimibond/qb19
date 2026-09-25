@@ -1715,14 +1715,16 @@ entrega, puestos, dónde se opera en Odoo, texto de la versión anterior,
 subprocesos) y **Procedimiento** (etapas, alcance, aspectos ambientales,
 normas, responsabilidades y firmas: lo que arma el PDF).
 
-## Pantalla «Mi procedimiento» rediseñada (54.1.0)
+## Pantalla «Mi procedimiento» rediseñada (54.1.0 / 54.2.0)
 
 Se lee como la ficha de una persona: arriba el empleado (con avatar) y el
 puesto; debajo jefe, área, familia, estado de la firma y del EPP en una
-línea; los conteos son **botones inteligentes** que abren su lista
-(Actividades, Atrasadas, Al día, Sin medir, Firmas pendientes, Pendientes;
-`action_show_*`, `action_focus_pending`) y una cinta «Firmado» / «Por
-firmar». Las tarjetas de actividad se agrupan por **cadencia** (diaria,
+línea; **sin pestañas**: cada lista es un botón inteligente con conteo que
+la abre (Actividades, Atrasadas, Al día, Sin medir, Escalamientos,
+Participa, Firmas pendientes, Documentos, Acciones, NC a contestar,
+Mediciones, Indicadores, Legales, Doc. por revisar, EPP, Obligaciones;
+`action_show_*`), una cinta «Firmado» / «Por firmar» y, si el puesto lo
+exige, el EPP requerido. Las tarjetas de actividad se agrupan por **cadencia** (diaria,
 semanal, mensual, por evento) y muestran de un vistazo estado, rol,
 numeral, qué, proceso, cuándo, cómo y dónde; el resto del procedimiento
 (contra qué se revisa, terminada cuando, si no se puede, recibe, entrega,
