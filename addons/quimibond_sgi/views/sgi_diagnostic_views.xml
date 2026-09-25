@@ -54,7 +54,7 @@
                 <filter name="bad" string="Fallas" domain="[('level', '=', 'bad')]"/>
                 <filter name="warn" string="Avisos" domain="[('level', '=', 'warn')]"/>
                 <filter name="ok" string="En orden" domain="[('level', '=', 'ok')]"/>
-                <group string="Agrupar por">
+                <group>
                     <filter name="group_section" string="Sección" context="{'group_by': 'section'}"/>
                     <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>
                 </group>
