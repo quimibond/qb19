@@ -61,3 +61,4 @@ from . import sgi_direction_board
 from . import sgi_supplier_nc
 from . import sgi_instruction_knowledge
 from . import sgi_sign_record
+from . import sgi_hierarchy
