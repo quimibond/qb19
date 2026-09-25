@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="quimibond_sgi.Diagram">
+    <div class="o_sgi_diagram o_action d-flex flex-column h-100">
+        <div class="o_control_panel o_sgi_dg_toolbar d-flex align-items-center gap-3 px-4 py-2 border-bottom flex-wrap">
+            <div class="me-2">
+                <div class="fs-4 fw-bold lh-1" t-esc="state.data ? state.data.title : ''"/>
+                <div class="text-muted small" t-esc="state.data ? state.data.subtitle : ''"/>
+            </div>
+            <select t-if="state.data and state.data.per_process" class="form-select form-select-sm o_sgi_dg_select"
+                    t-on-change="switchProcess">
+                <t t-foreach="state.processes" t-as="p" t-key="p.id">
+                    <option t-att-value="p.id" t-att-selected="p.id === state.resId ? 'selected' : undefined">
+                        <t t-esc="p.code"/> · <t t-esc="p.name"/>
+                    </option>
+                </t>
+            </select>
+            <div t-if="state.data and state.data.nav.length" class="btn-group btn-group-sm" role="group">
+                <t t-foreach="state.data.nav" t-as="nav" t-key="nav.kind">
+                    <button type="button" t-attf-class="btn #{nav.kind === state.kind ? 'btn-primary' : 'btn-outline-primary'}"
+                            t-on-click="() => this.switchKind(nav.kind)" t-esc="nav.label"/>
+                </t>
+            </div>
+            <div class="ms-auto d-flex align-items-center gap-3 flex-wrap">
+                <div t-if="state.data and state.data.layout !== 'matrix' and state.data.edges.length" class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="sgi_dg_show_all" t-att-checked="state.showAll" t-on-change="toggleShowAll"/>
+                    <label class="form-check-label small" for="sgi_dg_show_all">Todas las conexiones</label>
+                </div>
+                <div t-if="state.data and state.data.legend.length" class="d-flex gap-3 small text-muted">
+                    <t t-foreach="state.data.legend" t-as="item" t-key="item_index">
+                        <span><span t-attf-class="o_sgi_dg_dot bg-#{item.color === 'muted' ? 'secondary' : item.color}"/> <t t-esc="item.label"/></span>
+                    </t>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" t-on-click="print" title="Imprimir o guardar como PDF">
+                    <i class="fa fa-print"/>
+                </button>
+            </div>
+        </div>
+
+        <div class="o_sgi_dg_body position-relative flex-grow-1 overflow-auto p-4" t-ref="root">
+            <svg class="o_sgi_dg_svg position-absolute top-0 start-0 pe-none" t-ref="svg"/>
+            <t t-if="state.loading">
+                <div class="text-muted"><i class="fa fa-spinner fa-spin me-1"/> Cargando…</div>
+            </t>
+            <t t-elif="!state.data or (state.data.layout !== 'matrix' and !state.data.lanes.length)">
+                <p class="text-muted fst-italic">No hay nada que dibujar todavía.</p>
+            </t>
+
+            <!-- Bandas: una fila por banda (mapa de procesos) -->
+            <t t-elif="state.data.layout === 'bands'">
+                <t t-foreach="state.data.lanes" t-as="lane" t-key="lane.key">
+                    <div t-attf-class="o_sgi_dg_band o_sgi_dg_band_#{lane.key} mb-4">
+                        <div class="o_sgi_dg_lane_title" t-esc="lane.label"/>
+                        <div class="d-flex flex-wrap gap-4 justify-content-center">
+                            <t t-foreach="lane.items" t-as="item" t-key="item.key">
+                                <t t-call="quimibond_sgi.DiagramBox"/>
+                            </t>
+                        </div>
+                    </div>
+                </t>
+            </t>
+
+            <!-- Carriles: una columna por carril (flujo, tortuga, árboles) -->
+            <t t-elif="state.data.layout === 'columns'">
+                <div class="d-flex align-items-start gap-5 o_sgi_dg_columns">
+                    <t t-foreach="state.data.lanes" t-as="lane" t-key="lane.key">
+                        <div t-attf-class="o_sgi_dg_column o_sgi_dg_column_#{lane.key}">
+                            <div class="o_sgi_dg_lane_title" t-esc="lane.label"/>
+                            <div class="d-flex flex-column gap-3">
+                                <t t-foreach="lane.items" t-as="item" t-key="item.key">
+                                    <t t-call="quimibond_sgi.DiagramBox"/>
+                                </t>
+                                <div t-if="!lane.items.length" class="text-muted small fst-italic">— sin registros —</div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+
+            <!-- Matriz: filas × columnas con calor -->
+            <t t-elif="state.data.layout === 'matrix'">
+                <table class="table table-sm table-bordered o_sgi_dg_matrix w-auto">
+                    <thead>
+                        <tr>
+                            <th class="o_sgi_dg_matrix_corner"/>
+                            <t t-foreach="state.data.matrix.cols" t-as="col" t-key="col.key">
+                                <th class="text-center o_sgi_dg_matrix_col" t-att-title="col.title" t-esc="col.label"/>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.data.matrix.rows" t-as="row" t-key="row.key">
+                            <tr>
+                                <th class="o_sgi_dg_matrix_row text-nowrap fw-normal" t-esc="row.label"/>
+                                <t t-foreach="state.data.matrix.cols" t-as="col" t-key="col.key">
+                                    <t t-set="cell" t-value="(state.data.matrix.cells[row.key] || {})[col.key]"/>
+                                    <td t-att-class="cellClass(cell)" t-att-title="cell ? cell.label : ''"
+                                        t-on-click="() => cell and this.openCell(row, col)">
+                                        <t t-if="cell" t-esc="cell.value"/>
+                                    </td>
+                                </t>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </t>
+        </div>
+    </div>
+</t>
+
+<t t-name="quimibond_sgi.DiagramBox">
+    <div t-att-data-key="item.key" t-att-class="boxClass(item)"
+         t-on-click="() => this.toggleSelect(item)"
+         t-on-dblclick="() => this.openRecord(item)"
+         t-on-mouseenter="() => this.setHover(item)"
+         t-on-mouseleave="() => this.setHover(null)">
+        <div class="d-flex align-items-center gap-2">
+            <span t-if="item.code" class="o_sgi_dg_code" t-esc="item.code"/>
+            <span class="o_sgi_dg_dot" t-attf-class="o_sgi_dg_dot bg-#{item.color === 'muted' ? 'secondary' : item.color}"/>
+            <button t-if="item.model" class="btn btn-link btn-sm p-0 ms-auto text-muted" title="Abrir"
+                    t-on-click.stop="() => this.openRecord(item)">
+                <i class="fa fa-external-link"/>
+            </button>
+        </div>
+        <div class="o_sgi_dg_name fw-bold lh-sm mt-1" t-esc="item.name"/>
+        <div t-if="item.subtitle" class="d-flex align-items-center gap-2 mt-1">
+            <img t-if="item.avatar" class="o_sgi_dg_avatar rounded-circle" t-att-src="item.avatar" t-att-alt="item.subtitle"/>
+            <span class="text-muted small o_sgi_dg_subtitle" t-esc="item.subtitle"/>
+        </div>
+        <div t-if="item.meta.length" class="text-muted small mt-2 d-flex gap-3 flex-wrap">
+            <t t-foreach="item.meta" t-as="m" t-key="m_index">
+                <span t-att-title="m.label"><i t-attf-class="fa #{m.icon}"/> <t t-esc="m.value"/></span>
+            </t>
+        </div>
+    </div>
+</t>
+
+</templates>
