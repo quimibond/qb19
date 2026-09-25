@@ -1,0 +1,53 @@
+.o_sgi_process_map {
+    .o_sgi_map_svg {
+        z-index: 1;
+    }
+    .o_sgi_map_band {
+        position: relative;
+        z-index: 2;
+    }
+    .o_sgi_map_box {
+        width: 230px;
+        min-height: 96px;
+        cursor: pointer;
+        border: 1px solid $border-color;
+        background: $o-view-background-color;
+        transition: box-shadow .15s, opacity .15s, border-color .15s;
+        &:hover {
+            box-shadow: $box-shadow-sm;
+        }
+        &.o_sgi_map_box_selected {
+            border-color: $primary;
+            box-shadow: 0 0 0 2px rgba($primary, .35);
+        }
+        &.o_sgi_map_box_related {
+            border-color: $info;
+        }
+        &.o_sgi_map_box_dimmed {
+            opacity: .45;
+        }
+        .o_sgi_map_box_name {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    }
+    .o_sgi_map_flow {
+        fill: none;
+        stroke: $gray-500;
+        stroke-width: 1.5;
+        opacity: .7;
+    }
+    .o_sgi_map_flow_active {
+        stroke: $primary;
+        stroke-width: 2.5;
+        opacity: 1;
+    }
+    .o_sgi_map_arrow {
+        fill: $gray-500;
+    }
+    .o_sgi_map_arrow_active {
+        fill: $primary;
+    }
+}

@@ -50,5 +50,22 @@ class TestHierarchy(TransactionCase):
         action = self.proc.action_sgi_view_diagram()
         self.assertEqual(action['views'][0][1], 'hierarchy')
         self.assertEqual(action['domain'], [('process_id', '=', self.proc.id)])
-        self.assertEqual(self.proc.action_sgi_view_process_map()['context'], {'hierarchy_res_id': self.proc.id})
+        action = self.proc.action_sgi_view_process_map()
+        self.assertEqual((action['type'], action['tag']), ('ir.actions.client', 'sgi_process_map'))
+        self.assertEqual(action['context'], {'sgi_map_process_id': self.proc.id})
+
+    def test_03_datos_del_mapa_con_conexiones(self):
+        self.env['sgi.process.flow'].create({
+            'from_process_id': self.proc.id, 'to_process_id': self.other.id, 'name': 'Lote liberado'})
+        data = self.env['sgi.process'].sgi_map_data()
+        by_id = {p['id']: p for band in data['bands'] for p in band['processes']}
+        self.assertIn(self.proc.id, by_id)
+        self.assertEqual(by_id[self.proc.id]['out_count'], 1)
+        self.assertEqual(by_id[self.other.id]['in_count'], 1)
+        keys = [band['key'] for band in data['bands']]
+        self.assertEqual(keys, [k for k in ('estrategico', 'cop', 'soporte') if k in keys],
+                         "Bandas en el orden del mapa.")
+        flow = [f for f in data['flows'] if f['from_id'] == self.proc.id and f['to_id'] == self.other.id]
+        self.assertEqual(len(flow), 1)
+        self.assertEqual(flow[0]['name'], 'Lote liberado')
         self.assertEqual(self.macro.child_count, 1)
