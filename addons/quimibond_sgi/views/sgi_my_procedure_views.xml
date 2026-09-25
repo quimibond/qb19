@@ -426,6 +426,53 @@
         </field>
     </record>
 
+    <!-- 54.4.0: Mi equipo abre en organigrama (vista nativa hierarchy, la
+         misma del organigrama de Empleados): quién reporta a quién, con el
+         estado SGI de cada persona en su tarjeta. -->
+    <record id="sgi_my_team_view_hierarchy" model="ir.ui.view">
+        <field name="name">sgi.my.team.hierarchy</field>
+        <field name="model">hr.employee.public</field>
+        <field name="arch" type="xml">
+            <hierarchy child_field="child_ids" parent_field="parent_id" icon="fa-users" draggable="0">
+                <field name="name"/>
+                <field name="job_id"/>
+                <field name="avatar_128"/>
+                <field name="sgi_mp_late"/>
+                <field name="sgi_mp_total"/>
+                <field name="sgi_mp_acks_pending"/>
+                <field name="sgi_mp_ack_state"/>
+                <templates>
+                    <t t-name="hierarchy-box">
+                        <div class="d-flex align-items-center gap-2 pb-1">
+                            <field name="avatar_128" widget="image" class="o_hierarchy_avatar" options="{'size': [40, 40]}"/>
+                            <div class="min-w-0">
+                                <div class="fw-bold text-truncate"><field name="name"/></div>
+                                <div class="text-muted small text-truncate"><field name="job_id"/></div>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 small">
+                            <span t-if="record.sgi_mp_late.raw_value" class="badge text-bg-danger"
+                                  title="Actividades atrasadas">
+                                <i class="fa fa-exclamation-circle me-1"/><field name="sgi_mp_late"/> atrasadas
+                            </span>
+                            <span t-elif="record.sgi_mp_total.raw_value" class="badge text-bg-success" title="Actividades al día">
+                                <i class="fa fa-check-circle me-1"/>al día
+                            </span>
+                            <span t-if="record.sgi_mp_acks_pending.raw_value" class="badge text-bg-warning"
+                                  title="Firmas de lectura pendientes">
+                                <i class="fa fa-pencil me-1"/><field name="sgi_mp_acks_pending"/> firmas
+                            </span>
+                            <span t-if="record.sgi_mp_ack_state.raw_value == 'pendiente'" class="badge text-bg-light"
+                                  title="Mi procedimiento sin firmar">sin firmar</span>
+                            <span t-if="record.sgi_mp_ack_state.raw_value == 'sin_publicar'" class="badge text-bg-light"
+                                  title="Mi procedimiento sin publicar">sin publicar</span>
+                        </div>
+                    </t>
+                </templates>
+            </hierarchy>
+        </field>
+    </record>
+
     <record id="sgi_my_team_view_search" model="ir.ui.view">
         <field name="name">sgi.my.team.search</field>
         <field name="model">hr.employee.public</field>

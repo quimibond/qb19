@@ -1728,6 +1728,14 @@ entrega, puestos, dónde se opera en Odoo, texto de la versión anterior,
 subprocesos) y **Procedimiento** (etapas, alcance, aspectos ambientales,
 normas, responsabilidades y firmas: lo que arma el PDF).
 
+## Mi equipo abre en organigrama (54.4.0)
+
+Inicio → Mi equipo usa la vista nativa `hierarchy` de `hr.employee.public`
+(`sgi_my_team_view_hierarchy`): quién reporta a quién, y en cada tarjeta el
+estado SGI de la persona (atrasadas o al día, firmas pendientes, Mi
+procedimiento sin firmar o sin publicar). Lista y kanban siguen en el
+selector de vistas.
+
 ## Pantalla «Mi procedimiento» rediseñada (54.1.0 / 54.2.0)
 
 Se lee como la ficha de una persona: arriba el empleado (con avatar) y el

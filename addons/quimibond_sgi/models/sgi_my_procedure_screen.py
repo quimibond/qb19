@@ -940,12 +940,14 @@ class HrEmployeePublicMyTeam(models.Model):
             'type': 'ir.actions.act_window',
             'name': "Mi equipo",
             'res_model': 'hr.employee.public',
-            'view_mode': 'list,kanban,form',
-            'views': [(self.env.ref('quimibond_sgi.sgi_my_team_view_list').id, 'list'),
+            # 54.4.0: abre en organigrama; lista y kanban a un clic.
+            'view_mode': 'hierarchy,list,kanban,form',
+            'views': [(self.env.ref('quimibond_sgi.sgi_my_team_view_hierarchy').id, 'hierarchy'),
+                      (self.env.ref('quimibond_sgi.sgi_my_team_view_list').id, 'list'),
                       (False, 'kanban'), (False, 'form')],
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_team_view_search').id, 'search'],
             'domain': [('id', 'in', team.ids)],
-            'context': {'search_default_group_job': 1},
+            'context': {},
             'help': "<p class='o_view_nocontent_smiling_face'>No tienes personas a tu cargo en Odoo</p>"
                     "<p>Reportes directos, tu departamento o los puestos de tus procesos.</p>",
         }
