@@ -103,6 +103,7 @@ El SGI depende de Enterprise, asi que el CI no lo instala; lo que Odoo valida al
 - **Vistas `search`, `graph`, `pivot`, `calendar`, `activity`** se validan contra los RNG oficiales de Odoo 19 (`tools/odoo_rng/`, copia de `odoo/addons/base/rng/`). En un `<search>`, el `<group>` va **sin atributos** (ni `expand` ni `string`). Copia la forma de una vista que ya exista en el modulo.
 - **Imports entre modulos de `models/`**: un `from .otro import x` a nivel de modulo carga `otro` en ese momento; si `otro` hereda un modelo que se define despues en `models/__init__.py`, el registro revienta (`Model 'x' does not exist in registry`). Import local dentro de la funcion, o reordenar `__init__`.
 
+- **Orden de herencia de vistas**: una vista heredada se valida contra el padre tal como está en ese momento de la carga. Si el archivo del padre va después en el manifest, una base que salta varias versiones (producción) revienta con «no puede ser localizado en la vista padre», aunque en `main` pase. El archivo del padre va antes que el del hijo; el checker lo exige.
 - **Registro de tests**: Odoo solo corre los `tests/test_*.py` que `tests/__init__.py` importa. Ocho archivos del SGI (PR 1 a PR 7) pasaron semanas sin correr por eso. Cada test nuevo va en `tests/__init__.py`; el checker lo exige.
 
 Lo que sigue sin red local: vistas `form`/`list`/`kanban` (Odoo 19 las valida en Python), campos inexistentes en vistas heredadas y xmlids de otros modulos. Ahi: copiar patrones ya usados en el modulo y verificar el `update.log` del build.

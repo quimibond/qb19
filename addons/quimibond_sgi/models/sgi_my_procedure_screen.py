@@ -17,6 +17,8 @@ sola. Por eso:
   actividad». Al ser acciones de ventana, las migas de pan regresan solas.
 - El PDF (QWeb) y la huella siguen en ``hr.job._sgi_my_procedure_data``.
 """
+from collections.abc import Iterable
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -28,6 +30,13 @@ _MP_STATUS = [
     ('sin_medir', "Sin medición automática"),
 ]
 
+
+
+def _sgi_as_list(value):
+    """Valor de un dominio como lista: Odoo 19 manda OrderedSet en 'in'."""
+    if isinstance(value, Iterable) and not isinstance(value, str):
+        return list(value)
+    return [value]
 
 
 def _sgi_readable(records, env):
@@ -772,9 +781,9 @@ class HrEmployeePublicMyTeam(models.Model):
     _NUMERIC_OPS = {
         '>': lambda a, b: a > b, '>=': lambda a, b: a >= b, '=': lambda a, b: a == b,
         '!=': lambda a, b: a != b, '<': lambda a, b: a < b, '<=': lambda a, b: a <= b,
-        # Odoo 19 normaliza '=' a 'in' antes de llamar al método de búsqueda.
-        'in': lambda a, b: a in (b if isinstance(b, (list, tuple, set)) else [b]),
-        'not in': lambda a, b: a not in (b if isinstance(b, (list, tuple, set)) else [b]),
+        # Odoo 19 normaliza '=' a 'in' y manda un OrderedSet (no es set).
+        'in': lambda a, b: a in _sgi_as_list(b),
+        'not in': lambda a, b: a not in _sgi_as_list(b),
     }
 
     @api.model
@@ -793,7 +802,7 @@ class HrEmployeePublicMyTeam(models.Model):
 
     @api.model
     def _search_sgi_mp_ack_state(self, operator, value):
-        values = value if isinstance(value, (list, tuple)) else [value]
+        values = _sgi_as_list(value)
         if operator in ('=', 'in'):
             return [('id', 'in', self._sgi_mp_ids_where(lambda v: v['sgi_mp_ack_state'] in values))]
         if operator in ('!=', 'not in'):
