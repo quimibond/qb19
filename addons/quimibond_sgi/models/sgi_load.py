@@ -316,6 +316,7 @@ class _SgiLoader:
                 proc, activities_by_process.get(code), archive_missing)
         self._load_proxies()
         self._load_replaces()
+        self._relink_dangling()
         self._load_indicators(payload.get('indicators') or [])
         self._report_spec_gaps()
         self._load_publish()
@@ -1023,11 +1024,14 @@ class _SgiLoader:
 
     def _load_replaces(self):
         """«replaces»: el proceso nuevo archiva a los que sustituye junto con
-        sus actividades, sus ligas y sus flujos, y adopta sus indicadores y
-        riesgos activos (una sola vez; con dry_run solo se reporta). Todo
-        queda en el reporte y en el chatter del proceso archivado. Nada se
-        borra: lo archivado conserva su texto. Los documentos del proceso
-        viejo NO se vuelven obsoletos aquí: eso pasa al publicar el nuevo."""
+        sus actividades, sus ligas y sus flujos, y adopta sus indicadores,
+        riesgos y documentos (una sola vez; con dry_run solo se reporta).
+        Todo queda en el reporte y en el chatter del proceso archivado. Nada
+        se borra: lo archivado conserva su texto. Los documentos conservan su
+        estado (los sustituidos se vuelven obsoletos al publicar el nuevo,
+        regla 5 de 45.0.0). El proceso viejo recuerda a su sucesor
+        (`replaced_by_id`) para que ninguna carga futura deje nada colgado
+        (PR-1, 53.1.0)."""
         for code, olds in self.replaces:
             new = self.processes.get(code)
             if not new:
@@ -1075,11 +1079,69 @@ class _SgiLoader:
                                 old_code, code, rec[label] or rec.name), 'moved')
                         if recs:
                             recs.write({'process_id': new.id})
-                    old.write({'active': False})
+                    self._move_documents(old, new, old_code, code)
+                    old.write({'active': False, 'replaced_by_id': new.id})
                     if not self.report.dry_run:
                         old.message_post(body="Sustituido por %s — %s." % (
                             new.code, new.name))
             self._savepoint(run, 'process', code)
+
+    def _move_documents(self, old, new, old_code, code, note=''):
+        """Documentos controlados del proceso viejo → el nuevo, clave por clave
+        (una clave con todas sus revisiones viaja junta: la restricción de
+        familia no permite partirla). Lo que no pueda moverse queda en el
+        reporte como advertencia, nunca a medias."""
+        Document = self.env['documents.document'].with_context(active_test=False)
+        docs = Document.search([('sgi_process_id', '=', old.id), ('sgi_is_controlled', '=', True)])
+        by_code = {}
+        for doc in docs:
+            key = doc.sgi_code or doc.id
+            by_code[key] = by_code.get(key, Document) | doc
+        for key, group in sorted(by_code.items(), key=lambda item: str(item[0])):
+            try:
+                with self.env.cr.savepoint():
+                    group.write({'sgi_process_id': new.id})
+            except ValidationError as exc:
+                self.report.warn('document', "%s/%s" % (old_code, key),
+                                 "no se pudo mover a %s: %s" % (code, str(exc).splitlines()[0]))
+                continue
+            for doc in group:
+                self.report.change('document', "%s → %s: %s%s" % (
+                    old_code, code, doc.sgi_code or doc.name, note), 'moved')
+        return docs
+
+    def _relink_dangling(self):
+        """PR-1: nada colgado en procesos archivados. Lo que siga apuntando a
+        un proceso archivado con sucesor (indicadores, riesgos abiertos,
+        documentos) se mueve al sucesor y se reporta; si el proceso archivado
+        no tiene sucesor, queda como advertencia del reporte."""
+        archived = self.Process.search([('active', '=', False), ('company_id', '=', self.company.id)])
+        for old in archived:
+            successor = old.replaced_by_id
+            while successor and not successor.active and successor.replaced_by_id:
+                successor = successor.replaced_by_id
+            indicators = self.env['sgi.indicator'].search([('process_id', '=', old.id)])
+            risks = self.env['sgi.risk'].search([('process_id', '=', old.id), ('state', '!=', 'cerrado')])
+            docs = self.env['documents.document'].search(
+                [('sgi_process_id', '=', old.id), ('sgi_is_controlled', '=', True),
+                 ('sgi_state', 'in', ('vigente', 'piloto'))])
+            if not (indicators or risks or docs):
+                continue
+            if not successor or not successor.active:
+                self.report.warn('process', old.code, "archivado sin sucesor con %d indicador(es), "
+                                 "%d riesgo(s) y %d documento(s) vigentes colgados: asigna «Sustituido "
+                                 "por» o reubícalos." % (len(indicators), len(risks), len(docs)))
+                continue
+
+            def run(old=old, successor=successor, indicators=indicators, risks=risks):
+                for model, recs, label in (('indicator', indicators, 'code'), ('risk', risks, 'folio')):
+                    for rec in recs:
+                        self.report.change(model, "%s → %s: %s (colgado)" % (
+                            old.code, successor.code, rec[label] or rec.name), 'moved')
+                    if recs:
+                        recs.write({'process_id': successor.id})
+                self._move_documents(old, successor, old.code, successor.code, note=' (colgado)')
+            self._savepoint(run, 'process', old.code)
 
     def _report_spec_gaps(self):
         """Lo que le falta a cada proceso cargado, agrupado por faltante."""

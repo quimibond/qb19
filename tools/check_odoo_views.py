@@ -126,6 +126,32 @@ def check_model_imports(module_dir):
     return errors
 
 
+def check_test_imports(module_dir):
+    """Odoo solo corre los tests que `tests/__init__.py` importa. Un archivo
+    `tests/test_*.py` que no está ahí nunca corre, ni en Odoo.sh ni con
+    --test-tags, y nadie se entera (2026-09-25: ocho archivos de pruebas
+    del SGI llevaban siete PRs sin ejecutarse)."""
+    errors = []
+    tests_dir = os.path.join(module_dir, 'tests')
+    init_path = os.path.join(tests_dir, '__init__.py')
+    if not os.path.isdir(tests_dir) or not os.path.exists(init_path):
+        return errors
+    if not os.path.exists(os.path.join(module_dir, '__manifest__.py')):
+        return errors
+    # Con indentación: quimibond_intelligence los importa dentro de un try.
+    imported = set(re.findall(r"^\s*from \. import (\w+)", open(init_path, encoding='utf-8').read(), re.M))
+    for name in sorted(os.listdir(tests_dir)):
+        if not (name.startswith('test_') and name.endswith('.py')):
+            continue
+        source = open(os.path.join(tests_dir, name), encoding='utf-8').read()
+        if 'odoo.tests' not in source:
+            continue  # pytest puro (quimibond_intelligence), no lo corre Odoo
+        if name[:-3] not in imported:
+            errors.append("%s: no está importado en tests/__init__.py; Odoo nunca lo corre." % (
+                os.path.relpath(os.path.join(tests_dir, name), ROOT)))
+    return errors
+
+
 def main(argv):
     paths = argv[1:] or [os.path.join(ROOT, 'addons'), ROOT]
     validators = _validators()
@@ -139,9 +165,10 @@ def main(argv):
         seen.add(module_dir)
         errors += check_views(module_dir, validators)
         errors += check_model_imports(module_dir)
+        errors += check_test_imports(module_dir)
     for err in errors:
         print("ERROR:", err)
-    print("%d error(es) en vistas RNG e imports de modelos." % len(errors))
+    print("%d error(es) en vistas RNG, imports de modelos y registro de tests." % len(errors))
     return 1 if errors else 0
 
 

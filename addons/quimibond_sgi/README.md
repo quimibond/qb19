@@ -1016,6 +1016,19 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 7 del plan: sustituir un proceso sin dejar nada colgado (19.0.53.1.0)
+
+**PR-1.** La carga por API con `replaces` ya archivaba el proceso viejo y le
+pasaba al nuevo sus indicadores y riesgos. Ahora también le pasa sus
+**documentos controlados** (clave por clave, con todas sus revisiones; lo
+que no pueda moverse queda como advertencia del reporte, nunca a medias) y
+deja escrito el sucesor en `sgi.process.replaced_by_id`. Al final de **cada
+carga** corre `_relink_dangling`: lo que siga apuntando a un proceso
+archivado (indicadores, riesgos abiertos, documentos vigentes o en piloto)
+se mueve al sucesor y aparece en el reporte como «movido (colgado)»; un
+proceso archivado sin sucesor con cosas colgadas sale como advertencia.
+Pruebas: `TestPr7Replaces` 01–02.
+
 ## PR 6 del plan: proveedores, clientes y firmas (19.0.53.0.0)
 
 - **NC-6 · NC a proveedor por el portal.** `quality.alert` hereda

@@ -84,7 +84,7 @@ su lista.
 | PER-3 | Matriz de competencias | Reporte puesto × persona: procedimiento firmado, instructivos leídos, capacitación y habilidades | Se imprime la matriz de un área para el auditor | 2 | **Hecho en 52.0.0** |
 | REG-1 | Firmas de Sign ligadas a su registro | Firmar desde la orden de compra, la entrega, el lote, el producto o el traslado, con la solicitud ligada al registro (campo de referencia). El entregable de la actividad puede exigir «firmado». Hoy son más de 300 firmas al mes sueltas | Un certificado de calidad firmado aparece en su entrega y cuenta para C2.24 | 2 | **Hecho en 53.0.0** |
 | REG-2 | Encuesta respondida como entregable | Una respuesta de Encuestas puede ser el entregable de una actividad (satisfacción del cliente, DNC) | E2.12 se mide sola | 2 | **Hecho en 53.0.0** |
-| PR-1 | Sustituir un proceso sin dejar nada colgado | Al archivar un proceso con replaces, sus indicadores, riesgos y documentos pasan al nuevo y se listan en el reporte de carga | Una carga futura no deja indicadores en procesos archivados | 3 | Pendiente |
+| PR-1 | Sustituir un proceso sin dejar nada colgado | Al archivar un proceso con replaces, sus indicadores, riesgos y documentos pasan al nuevo y se listan en el reporte de carga | Una carga futura no deja indicadores en procesos archivados | 3 | **Hecho en 53.1.0** |
 
 ## Permisos
 

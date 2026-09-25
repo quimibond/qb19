@@ -114,7 +114,9 @@ class SgiMyProcedureMixin(models.AbstractModel):
     def _sgi_mp_job(self):
         """El puesto cuyo procedimiento se muestra (el del empleado; el
         propio registro en hr.job)."""
-        return self.job_id.sudo()
+        # sudo: en Odoo 19 job_id del empleado pasa por version_id, que solo
+        # lee RH; el procedimiento del puesto lo ve cualquier usuario interno.
+        return self.sudo().job_id
 
     def _sgi_mp_employee_rec(self):
         """El empleado (sudo) detrás del registro; vacío en hr.job."""
@@ -716,9 +718,13 @@ class HrEmployeePublicMyTeam(models.Model):
                              sum(counts.values()))
         return stats
 
-    def _compute_sgi_mp_stats(self):
-        Employee = self.env['hr.employee'].sudo()
-        employees = Employee.browse(self.ids)
+    @api.model
+    def _sgi_mp_values(self, employees):
+        """{empleado.id: cifras de Mi procedimiento} calculadas por lote sobre
+        hr.employee en sudo (el puesto pasa por version_id, que solo lee RH).
+        Lo usan el cálculo de la lista y los filtros, para que ambos vean
+        exactamente lo mismo."""
+        employees = employees.sudo()
         stats = self._sgi_mp_job_stats(employees.job_id)
         pending = {}
         if employees:
@@ -726,21 +732,29 @@ class HrEmployeePublicMyTeam(models.Model):
                     [('employee_id', 'in', employees.ids), ('state', '=', 'pendiente')],
                     ['employee_id'], ['__count']):
                 pending[emp.id] = count
-        ack_state = {emp.id: emp.sgi_my_procedure_ack_state for emp in employees}
+        values = {}
+        for emp in employees:
+            late, ok, unmeasured, total = stats.get(emp.job_id.id, (0, 0, 0, 0))
+            values[emp.id] = {
+                'sgi_mp_late': late, 'sgi_mp_ok': ok, 'sgi_mp_unmeasured': unmeasured,
+                'sgi_mp_total': total, 'sgi_mp_acks_pending': pending.get(emp.id, 0),
+                'sgi_mp_ack_state': emp.sgi_my_procedure_ack_state or 'sin_publicar'}
+        return values
+
+    def _compute_sgi_mp_stats(self):
+        values = self._sgi_mp_values(self.env['hr.employee'].sudo().browse(self.ids))
+        empty = {'sgi_mp_late': 0, 'sgi_mp_ok': 0, 'sgi_mp_unmeasured': 0, 'sgi_mp_total': 0,
+                 'sgi_mp_acks_pending': 0, 'sgi_mp_ack_state': 'sin_publicar'}
         for rec in self:
-            late, ok, unmeasured, total = stats.get(rec.job_id.id, (0, 0, 0, 0))
-            rec.sgi_mp_late = late
-            rec.sgi_mp_ok = ok
-            rec.sgi_mp_unmeasured = unmeasured
-            rec.sgi_mp_total = total
-            rec.sgi_mp_acks_pending = pending.get(rec.id, 0)
-            rec.sgi_mp_ack_state = ack_state.get(rec.id, 'sin_publicar')
+            for name, value in values.get(rec.id, empty).items():
+                rec[name] = value
 
     def _sgi_mp_ids_where(self, predicate):
         """Ids de empleados activos con puesto que cumplen el predicado sobre
-        sus cifras (calculadas por lote)."""
-        records = self.sudo().search([('job_id', '!=', False)])
-        return [rec.id for rec in records if predicate(rec)]
+        sus cifras (dict, calculadas por lote sobre hr.employee)."""
+        employees = self.env['hr.employee'].sudo().search([('job_id', '!=', False)])
+        values = self._sgi_mp_values(employees)
+        return [emp_id for emp_id, vals in values.items() if predicate(vals)]
 
     _NUMERIC_OPS = {
         '>': lambda a, b: a > b, '>=': lambda a, b: a >= b, '=': lambda a, b: a == b,
@@ -752,22 +766,22 @@ class HrEmployeePublicMyTeam(models.Model):
         if operator not in self._NUMERIC_OPS:
             raise UserError("Filtro no soportado sobre «Atrasadas».")
         op = self._NUMERIC_OPS[operator]
-        return [('id', 'in', self._sgi_mp_ids_where(lambda r: op(r.sgi_mp_late, value)))]
+        return [('id', 'in', self._sgi_mp_ids_where(lambda v: op(v['sgi_mp_late'], value)))]
 
     @api.model
     def _search_sgi_mp_acks_pending(self, operator, value):
         if operator not in self._NUMERIC_OPS:
             raise UserError("Filtro no soportado sobre «Firmas pendientes».")
         op = self._NUMERIC_OPS[operator]
-        return [('id', 'in', self._sgi_mp_ids_where(lambda r: op(r.sgi_mp_acks_pending, value)))]
+        return [('id', 'in', self._sgi_mp_ids_where(lambda v: op(v['sgi_mp_acks_pending'], value)))]
 
     @api.model
     def _search_sgi_mp_ack_state(self, operator, value):
         values = value if isinstance(value, (list, tuple)) else [value]
         if operator in ('=', 'in'):
-            return [('id', 'in', self._sgi_mp_ids_where(lambda r: r.sgi_mp_ack_state in values))]
+            return [('id', 'in', self._sgi_mp_ids_where(lambda v: v['sgi_mp_ack_state'] in values))]
         if operator in ('!=', 'not in'):
-            return [('id', 'in', self._sgi_mp_ids_where(lambda r: r.sgi_mp_ack_state not in values))]
+            return [('id', 'in', self._sgi_mp_ids_where(lambda v: v['sgi_mp_ack_state'] not in values))]
         raise UserError("Filtro no soportado sobre «Mi procedimiento».")
 
     def action_sgi_open_my_procedure(self):

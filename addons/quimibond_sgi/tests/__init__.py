@@ -54,3 +54,11 @@ from . import test_indicator_trajectory
 from . import test_my_procedure
 from . import test_structure_sgi
 from . import test_cleanup_45
+from . import test_perm_auditor
+from . import test_epp
+from . import test_nc_deadlines
+from . import test_audit_pr3
+from . import test_pr4_docs_legal
+from . import test_pr5_direction
+from . import test_pr6_external
+from . import test_pr7_replaces
