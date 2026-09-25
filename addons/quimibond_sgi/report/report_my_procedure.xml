@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tamaño carta, legible para planta: 11 px de cuerpo, encabezado con
+         caja de control que se repite en cada página. -->
+    <record id="paperformat_sgi_carta" model="report.paperformat">
+        <field name="name">SGI Carta (Mi procedimiento)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">32</field>
+        <field name="margin_bottom">18</field>
+        <field name="margin_left">12</field>
+        <field name="margin_right">12</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">27</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_my_procedure" model="ir.actions.report">
+        <field name="name">Mi procedimiento (por puesto)</field>
+        <field name="model">hr.job</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_my_procedure_document</field>
+        <field name="report_file">quimibond_sgi.report_my_procedure_document</field>
+        <field name="print_report_name">'Mi procedimiento - %s' % (object.name)</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta"/>
+        <field name="binding_model_id" ref="hr.model_hr_job"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- ====== Encabezado: caja de control ====== -->
+    <template id="report_my_procedure_header">
+        <t t-set="company" t-value="doc.company_id or doc.env.company"/>
+        <div class="header">
+            <table style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
+                <tr>
+                    <td rowspan="3" style="width:20%; text-align:center; vertical-align:middle; padding:4px; border:1px solid #000;">
+                        <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
+                             style="max-height:44px; max-width:100%;" alt="Logo"/>
+                    </td>
+                    <td rowspan="3" style="width:50%; text-align:center; vertical-align:middle; padding:4px; border:1px solid #000;">
+                        <strong>MI PROCEDIMIENTO</strong>
+                        <div style="font-size:13px; margin-top:3px;">
+                            <strong t-out="doc.name"/>
+                        </div>
+                        <div t-if="header['stale']" style="color:#c00000; font-size:9px; margin-top:2px;">
+                            BORRADOR — el contenido cambió desde la última revisión publicada
+                        </div>
+                    </td>
+                    <td style="width:14%; padding:3px; border:1px solid #000;"><strong>Clave:</strong></td>
+                    <td style="width:16%; padding:3px; border:1px solid #000;" t-out="header['code']"/>
+                </tr>
+                <tr>
+                    <td style="padding:3px; border:1px solid #000;"><strong>Rev.:</strong></td>
+                    <td style="padding:3px; border:1px solid #000;" t-out="header['revision']"/>
+                </tr>
+                <tr>
+                    <td style="padding:3px; border:1px solid #000;"><strong>Emisión:</strong></td>
+                    <td style="padding:3px; border:1px solid #000;"
+                        t-out="header['issue_date']" t-options="{'widget': 'date'}"/>
+                </tr>
+            </table>
+        </div>
+    </template>
+
+    <template id="report_my_procedure_footer">
+        <div class="footer">
+            <div style="border-top:1px solid #000; padding-top:3px; font-size:9px;">
+                <span class="float-start">
+                    Mi procedimiento · <span t-out="doc.name"/> · Documento controlado del SGI
+                </span>
+                <span class="float-end">
+                    Página <span class="page"/> de <span class="topage"/>
+                </span>
+            </div>
+        </div>
+    </template>
+
+    <!-- ====== Una actividad con detalle (ejecuta / aprueba) ====== -->
+    <template id="report_my_procedure_entry">
+        <tr style="page-break-inside:avoid;">
+            <td style="width:16%; padding:5px; border:1px solid #000; vertical-align:top;">
+                <div t-if="entry['when']"><strong t-out="entry['when']"/></div>
+                <div t-else="" class="text-muted">—</div>
+                <div style="margin-top:3px;">
+                    <t t-foreach="entry['roles']" t-as="rl">
+                        <span t-att-style="'display:inline-block; padding:1px 5px; border:1px solid #000; border-radius:3px; font-size:9px; margin-right:2px;' + (' background-color:#e6f4ea;' if rl == 'Ejecuta' else ' background-color:#fff4e5;')"
+                              t-out="rl"/>
+                    </t>
+                </div>
+            </td>
+            <td style="padding:5px; border:1px solid #000; vertical-align:top;">
+                <div>
+                    <span class="text-muted" t-out="entry['process'].code"/>
+                    <strong t-out="entry['number']"/>
+                    <strong t-out="entry['name']"/>
+                </div>
+                <div style="margin-top:3px;" t-out="doc._sgi_mp_parts_html(entry['parts'])"/>
+                <!-- Las mismas piezas que la pantalla: recibe (con plazo), entrega,
+                     conforme a, instructivo y a quién escala. -->
+                <div t-if="entry.get('inputs')" style="margin-top:3px;">
+                    <b>Recibe:</b>
+                    <t t-foreach="entry['inputs']" t-as="inp">
+                        <t t-out="inp[0]"/><t t-if="inp[1]"> (<t t-out="inp[1]"/> días hábiles)</t><t t-if="not inp_last">, </t>
+                    </t>.
+                </div>
+                <div t-if="entry.get('outputs')" style="margin-top:3px;">
+                    <b>Entrega:</b> <t t-out="', '.join(entry['outputs'])"/>.
+                </div>
+                <div t-if="entry.get('related')" style="margin-top:3px;">
+                    <b>Conforme a:</b> <t t-out="entry['related']"/>.
+                </div>
+                <div t-if="entry.get('instruction')" style="margin-top:3px;">
+                    <b>Instructivo:</b> <t t-out="entry['instruction']"/>.
+                </div>
+                <div t-if="entry['escalates_to']" style="margin-top:3px;">
+                    <b>Si se atora, escala a:</b> <t t-out="'; '.join(entry['escalates_to'])"/>.
+                </div>
+            </td>
+        </tr>
+    </template>
+
+    <!-- ====== Cuerpo ====== -->
+    <template id="report_my_procedure_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="data" t-value="doc._sgi_my_procedure_data()"/>
+                <t t-set="header" t-value="doc._sgi_my_procedure_header()"/>
+                <t t-set="cover" t-value="data['cover']"/>
+                <t t-set="employee_id" t-value="doc.env.context.get('sgi_mp_employee_id')"/>
+                <t t-set="mp_employee" t-value="doc.env['hr.employee'].sudo().browse(employee_id) if employee_id else False"/>
+                <t t-set="boss" t-value="(mp_employee and mp_employee.parent_id) or cover['manager']"/>
+
+                <t t-call="quimibond_sgi.report_my_procedure_header"/>
+                <t t-call="quimibond_sgi.report_my_procedure_footer"/>
+
+                <div class="article" t-att-data-oe-model="'hr.job'" t-att-data-oe-id="doc.id"
+                     style="font-size:11px; line-height:1.35;">
+
+                    <!-- Portada -->
+                    <table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:4px;" border="1">
+                        <tr>
+                            <td style="width:22%; padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Puesto</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <strong t-out="cover['job'].name"/>
+                                <span t-if="cover['family']" class="text-muted"> · familia <t t-out="cover['family'].name"/></span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Área</strong></td>
+                            <td style="padding:5px; border:1px solid #000;" t-out="cover['department'].complete_name or cover['department'].name or '—'"/>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Jefe inmediato</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-if="boss"><t t-out="boss.name"/><span class="text-muted" t-if="boss.job_id"> — <t t-out="boss.job_id.name"/></span></t>
+                                <t t-else="">—</t>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Personas en el puesto</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-if="cover['employees']" t-out="', '.join(cover['employees'].mapped('name'))"/>
+                                <t t-else="">Sin personas asignadas</t>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Procesos donde participa</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-foreach="cover['processes']" t-as="proc">
+                                    <span t-out="proc.code"/> <span t-out="proc.name"/><t t-if="not proc_last">; </t>
+                                </t>
+                                <t t-if="not cover['processes']">—</t>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Actividades</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-foreach="cover['counts']" t-as="cnt">
+                                    <t t-out="cnt[0]"/>: <strong t-out="cnt[1]"/><t t-if="not cnt_last"> · </t>
+                                </t>
+                                <t t-if="not cover['counts']">Sin actividades capturadas</t>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p style="margin:6px 0 2px 0; font-size:10px;" class="text-muted">
+                        Lo que este puesto <b>ejecuta</b> o <b>aprueba</b>, por cadencia, con todo su detalle:
+                        dónde, cómo, contra qué se revisa, cuándo está terminada, qué hacer si no se puede,
+                        qué recibe y qué entrega. Lo que solo participa o de lo que solo se entera, al final,
+                        y después los documentos que aplican al puesto. Es lo mismo que la pantalla
+                        «Mi procedimiento» de Odoo, sin el estado del día. Cada actividad trae su numeral:
+                        el procedimiento completo del proceso está en Odoo (SGI → Procesos).
+                    </p>
+
+                    <!-- Secciones por cadencia -->
+                    <t t-foreach="data['sections']" t-as="section">
+                        <h4 style="background-color:#e8e8e8; padding:4px 6px; margin:10px 0 4px 0; font-size:13px;">
+                            <t t-out="section['label']"/>
+                            <span class="text-muted" style="font-size:10px;"> (<t t-out="len(section['entries'])"/>)</span>
+                        </h4>
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;" border="1">
+                            <thead>
+                                <tr style="background-color:#f7f7f7; font-size:10px;">
+                                    <th style="padding:4px; border:1px solid #000;">Cuándo / rol</th>
+                                    <th style="padding:4px; border:1px solid #000;">Actividad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="section['entries']" t-as="entry">
+                                    <t t-call="quimibond_sgi.report_my_procedure_entry"/>
+                                </t>
+                            </tbody>
+                        </table>
+                    </t>
+                    <p t-if="not data['sections']" class="text-muted" style="margin-top:8px;">
+                        Este puesto no ejecuta ni aprueba actividades en ningún procedimiento.
+                    </p>
+
+                    <!-- Escalamientos que recibe -->
+                    <t t-if="data['received']">
+                        <h4 style="background-color:#e8e8e8; padding:4px 6px; margin:10px 0 4px 0; font-size:13px;">
+                            Escalamientos que recibe
+                        </h4>
+                        <p style="margin:0 0 3px 0; font-size:10px;" class="text-muted">
+                            Cuando estas actividades de otros puestos se atoran, le escalan a este puesto.
+                        </p>
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;" border="1">
+                            <thead>
+                                <tr style="background-color:#f7f7f7; font-size:10px;">
+                                    <th style="padding:4px; border:1px solid #000; width:12%;">Proceso</th>
+                                    <th style="padding:4px; border:1px solid #000;">Actividad</th>
+                                    <th style="padding:4px; border:1px solid #000; width:28%;">La ejecuta</th>
+                                    <th style="padding:4px; border:1px solid #000; width:14%;">Escala a los</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['received']" t-as="rc">
+                                    <td style="padding:4px; border:1px solid #000;" t-out="rc['process'].code"/>
+                                    <td style="padding:4px; border:1px solid #000;"><strong t-out="rc['number']"/> <t t-out="rc['name']"/></td>
+                                    <td style="padding:4px; border:1px solid #000;" t-out="rc['from'] or '—'"/>
+                                    <td style="padding:4px; border:1px solid #000;">
+                                        <t t-if="rc['after_days']"><t t-out="rc['after_days']"/> días hábiles</t>
+                                        <t t-else="">al atorarse</t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+
+                    <!-- Lista corta: participa / se entera -->
+                    <t t-if="data['short']">
+                        <h4 style="background-color:#e8e8e8; padding:4px 6px; margin:10px 0 4px 0; font-size:13px;">
+                            Participa o se entera
+                        </h4>
+                        <table style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
+                            <thead>
+                                <tr style="background-color:#f7f7f7;">
+                                    <th style="padding:3px; border:1px solid #000; width:14%;">Rol</th>
+                                    <th style="padding:3px; border:1px solid #000; width:12%;">Proceso</th>
+                                    <th style="padding:3px; border:1px solid #000; width:12%;">Numeral</th>
+                                    <th style="padding:3px; border:1px solid #000;">Actividad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['short']" t-as="sh">
+                                    <td style="padding:3px; border:1px solid #000;" t-out="', '.join(sh['roles'])"/>
+                                    <td style="padding:3px; border:1px solid #000;" t-out="sh['process'].code"/>
+                                    <td style="padding:3px; border:1px solid #000;" t-out="sh['number']"/>
+                                    <td style="padding:3px; border:1px solid #000;" t-out="sh['name']"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+
+                    <!-- Documentos que aplican al puesto (mismos que «Mis documentos») -->
+                    <t t-if="data.get('documents')">
+                        <h4 style="background-color:#e8e8e8; padding:4px 6px; margin:10px 0 4px 0; font-size:13px;">
+                            Documentos que aplican a este puesto
+                        </h4>
+                        <table style="width:100%; border-collapse:collapse; font-size:10px;" border="1">
+                            <thead>
+                                <tr style="background-color:#f7f7f7;">
+                                    <th style="padding:3px; border:1px solid #000; width:16%;">Clave</th>
+                                    <th style="padding:3px; border:1px solid #000;">Documento</th>
+                                    <th style="padding:3px; border:1px solid #000; width:16%;">Tipo</th>
+                                    <th style="padding:3px; border:1px solid #000; width:7%;">Rev.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['documents']" t-as="dr">
+                                    <td style="padding:3px; border:1px solid #000;"><strong t-out="dr['code']"/></td>
+                                    <td style="padding:3px; border:1px solid #000;" t-out="dr['name']"/>
+                                    <td style="padding:3px; border:1px solid #000;" t-out="dr['type']"/>
+                                    <td style="padding:3px; border:1px solid #000;" t-out="dr['revision']"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+
+                    <!-- Leído y entendido -->
+                    <div style="margin-top:14px; page-break-inside:avoid;">
+                        <h4 style="background-color:#e8e8e8; padding:4px 6px; margin:0 0 4px 0; font-size:13px;">
+                            Leído y entendido
+                        </h4>
+                        <p style="margin:0 0 4px 0; font-size:10px;">
+                            Con mi firma confirmo que leí y entendí esta revisión de «Mi procedimiento».
+                            El acuse queda registrado en Odoo (SGI → Inicio → Acuses pendientes) contra la
+                            clave <strong t-out="header['code']"/> revisión <strong t-out="header['revision']"/>;
+                            una revisión nueva vuelve a pedir la firma.
+                        </p>
+                        <t t-set="ack_doc" t-value="header['doc']"/>
+                        <t t-set="signers" t-value="cover['employees'].filtered(lambda e: e.id == employee_id) if employee_id else cover['employees']"/>
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;" border="1">
+                            <thead>
+                                <tr style="background-color:#f7f7f7; font-size:10px;">
+                                    <th style="padding:4px; border:1px solid #000; width:40%;">Nombre</th>
+                                    <th style="padding:4px; border:1px solid #000; width:20%;">Fecha</th>
+                                    <th style="padding:4px; border:1px solid #000;">Firma</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="signers">
+                                    <tr t-foreach="signers" t-as="emp" style="height:30px;">
+                                        <t t-set="ack" t-value="ack_doc and ack_doc.sudo().sgi_ack_ids.filtered(lambda a: a.employee_id == emp)[:1]"/>
+                                        <td style="padding:4px; border:1px solid #000; vertical-align:bottom;" t-out="emp.name"/>
+                                        <td style="padding:4px; border:1px solid #000; vertical-align:bottom;">
+                                            <t t-if="ack and ack.state == 'leido'" t-out="ack.ack_date" t-options="{'widget': 'date'}"/>
+                                        </td>
+                                        <td style="padding:4px; border:1px solid #000; vertical-align:bottom;">
+                                            <t t-if="ack and ack.state == 'leido'">Acuse registrado en Odoo</t>
+                                        </td>
+                                    </tr>
+                                </t>
+                                <tr t-else="" style="height:30px;">
+                                    <td style="padding:4px; border:1px solid #000;"/>
+                                    <td style="padding:4px; border:1px solid #000;"/>
+                                    <td style="padding:4px; border:1px solid #000;"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====== Paso 3: ficha de proceso (nivel 2) ====== -->
+    <record id="sgi_process_view_form_structure" model="ir.ui.view">
+        <field name="name">sgi.process.form.structure</field>
+        <field name="model">sgi.process</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form_procedure"/>
+        <field name="arch" type="xml">
+            <!-- Botones en verbo -->
+            <xpath expr="//form/header" position="inside">
+                <button name="action_sgi_request_change" type="object"
+                        string="Pedir un cambio" icon="fa-pencil-square-o"/>
+                <button name="action_sgi_view_diagram" type="object"
+                        string="Ver en diagrama" icon="fa-sitemap"/>
+                <button name="action_sgi_register_finding" type="object"
+                        string="Registrar hallazgo" icon="fa-flag"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+            </xpath>
+            <!-- El estado siempre en la misma forma y lugar: una línea arriba -->
+            <xpath expr="//div[@class='oe_title']" position="after">
+                <div class="mb-2" invisible="not id">
+                    <field name="health" widget="badge" nolabel="1" class="d-inline me-2"
+                           decoration-success="health == 'verde'"
+                           decoration-warning="health == 'amarillo'"
+                           decoration-danger="health == 'rojo'"/>
+                    <field name="structure_status" nolabel="1" readonly="1" class="d-inline text-muted"/>
+                </div>
+                <field name="purpose" placeholder="Para qué existe este proceso…" nolabel="1"/>
+            </xpath>
+            <!-- Cada cosa en su pestaña -->
+            <xpath expr="//page[@name='ficha']//field[@name='purpose']" position="replace"/>
+            <!-- Los separadores no tienen name y Odoo prohíbe @string como
+                 selector: se quitan por posición relativa a su campo. -->
+            <xpath expr="//page[@name='ficha']//field[@name='indicator_ids']/preceding-sibling::separator[1]" position="replace"/>
+            <xpath expr="//page[@name='ficha']//field[@name='indicator_ids']" position="replace"/>
+            <xpath expr="//page[@name='ficha']//field[@name='risk_ids']/preceding-sibling::separator[1]" position="replace"/>
+            <xpath expr="//page[@name='ficha']//field[@name='risk_ids']" position="replace"/>
+            <xpath expr="//page[@name='ficha']" position="attributes">
+                <attribute name="string">Ficha</attribute>
+            </xpath>
+            <xpath expr="//page[@name='procedimiento']" position="after">
+                <page string="Indicadores" name="indicadores">
+                    <field name="indicator_ids" readonly="1">
+                        <list decoration-danger="last_semaphore == 'rojo'"
+                              decoration-warning="last_semaphore == 'amarillo'"
+                              decoration-success="last_semaphore == 'verde'">
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="status" widget="badge" optional="show"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="target_objective" optional="show"/>
+                            <field name="last_value"/>
+                            <field name="last_semaphore" widget="badge"
+                                   decoration-success="last_semaphore == 'verde'"
+                                   decoration-warning="last_semaphore == 'amarillo'"
+                                   decoration-danger="last_semaphore == 'rojo'"/>
+                        </list>
+                    </field>
+                </page>
+                <page string="Riesgos" name="riesgos">
+                    <field name="risk_ids" readonly="1">
+                        <list>
+                            <field name="instrument"/>
+                            <field name="name"/>
+                            <field name="state" widget="badge"/>
+                            <field name="next_review_date" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+            <xpath expr="//page[@name='documentos']" position="after">
+                <page string="No conformidades" name="no_conformidades">
+                    <field name="nc_open_ids" readonly="1">
+                        <list default_order="create_date desc">
+                            <field name="sgi_folio" optional="show"/>
+                            <field name="name"/>
+                            <field name="stage_id" widget="badge"/>
+                            <field name="sgi_responsible_ids" widget="many2many_avatar_user" optional="show"/>
+                            <field name="create_date" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+            <xpath expr="//page[@name='entradas_salidas']" position="attributes">
+                <attribute name="string">Con quién se conecta</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ====== Paso 4: ficha de actividad (nivel 3) ====== -->
+    <record id="sgi_process_activity_view_form_structure" model="ir.ui.view">
+        <field name="name">sgi.process.activity.form.structure</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_activity_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header/button[@name='action_open_odoo']" position="attributes">
+                <attribute name="string">Ir a hacerlo</attribute>
+                <attribute name="icon">fa-play</attribute>
+                <attribute name="class">btn-primary</attribute>
+            </xpath>
+            <xpath expr="//form/header/button[@name='action_view_measure_records']" position="attributes">
+                <attribute name="name">action_view_recent_records</attribute>
+                <attribute name="string">Ver registros recientes</attribute>
+            </xpath>
+            <xpath expr="//form/header/button[@name='action_view_recent_records']" position="after">
+                <button name="action_open_instruction" type="object"
+                        string="Ver instructivo" icon="fa-book"
+                        invisible="not instruction_id"/>
+                <button name="action_sgi_register_finding" type="object"
+                        string="Registrar hallazgo" icon="fa-flag"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

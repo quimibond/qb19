@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tipo de documento «Mi procedimiento»: el PDF por puesto archivado como
+         documento controlado (clave MP-<puesto>). noupdate como el resto de los
+         tipos: lo que MAST ajuste no se pisa al actualizar. -->
+    <data noupdate="1">
+        <record id="sgi_doc_type_mi_procedimiento" model="sgi.document.type">
+            <field name="code">mi_procedimiento</field>
+            <field name="name">Mi procedimiento (MP)</field>
+            <field name="sequence">52</field>
+            <field name="prefix_pattern">MP-{seq:03d}</field>
+            <field name="requires_process" eval="False"/>
+            <field name="code_required" eval="True"/>
+        </record>
+    </data>
+
+    <!-- Menú Inicio → «Mi procedimiento»: la pantalla del puesto del usuario. -->
+    <record id="sgi_my_procedure_action_mine" model="ir.actions.server">
+        <field name="name">Mi procedimiento</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_procedure"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.procedure'].action_open_mine()</field>
+    </record>
+
+    <record id="sgi_my_team_action_mine" model="ir.actions.server">
+        <field name="name">Mi equipo</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_team"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.team'].action_open_mine()</field>
+    </record>
+
+    <record id="sgi_cron_my_procedure_stale" model="ir.cron">
+        <field name="name">SGI: Mi procedimiento por publicar (aviso semanal a MAST)</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_my_procedure_stale()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

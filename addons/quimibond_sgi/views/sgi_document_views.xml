@@ -269,31 +269,6 @@
         </field>
     </record>
 
-    <record id="sgi_document_action_my_procedures" model="ir.actions.server">
-        <field name="name">Mis procedimientos</field>
-        <field name="model_id" ref="documents.model_documents_document"/>
-        <field name="state">code</field>
-        <field name="code">
-employee = env.user.employee_id
-if employee:
-    action = employee.action_sgi_my_procedures()
-else:
-    list_view = env.ref('quimibond_sgi.sgi_document_view_list', raise_if_not_found=False)
-    form_view = env.ref('quimibond_sgi.sgi_document_view_form', raise_if_not_found=False)
-    action = {
-        'type': 'ir.actions.act_window',
-        'name': 'Mis procedimientos',
-        'res_model': 'documents.document',
-        'view_mode': 'list,form',
-        'views': [
-            (list_view.id if list_view else False, 'list'),
-            (form_view.id if form_view else False, 'form'),
-        ],
-        'domain': [('id', '=', False)],
-    }
-        </field>
-    </record>
-
     <!-- ============ ACUSES DE LECTURA ============ -->
     <record id="sgi_document_ack_view_list" model="ir.ui.view">
         <field name="name">sgi.document.ack.list</field>
@@ -362,20 +337,6 @@ else:
                             context="{'group_by': 'state'}"/>
                 </group>
             </search>
-        </field>
-    </record>
-
-    <!-- Mi trabajo → Mis acuses de lectura: leer (botón PDF) y firmar, en la
-         misma pantalla. Antes el empleado solo llegaba aquí por su ficha. -->
-    <record id="sgi_document_ack_action_mine" model="ir.actions.act_window">
-        <field name="name">Mis acuses de lectura</field>
-        <field name="res_model">sgi.document.ack</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_document_ack_view_search"/>
-        <field name="context">{'search_default_mine': 1, 'search_default_pending': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin acuses pendientes 🎉</p>
-            <p>Cuando un documento de tu puesto se publique o cambie de revisión, aquí te aparecerá: léelo con el botón del PDF y firma con <b>Marcar leído y entendido</b>. Quita el filtro «Pendientes» para ver tu historial.</p>
         </field>
     </record>
 

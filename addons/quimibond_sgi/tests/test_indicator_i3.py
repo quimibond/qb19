@@ -95,6 +95,19 @@ class TestIndicatorI3(TransactionCase):
         self._invoice('out_invoice', customer, 500.0, date(2043, 5, 1), self._account('income'))
         after = ind._detail_margen_ebitda(self.period, self.period_end)
         self.assertAlmostEqual(after['denominator'], detail['denominator'], places=2)
+        # La póliza de cierre anual (mes 13) dentro de la ventana no cuenta.
+        if 'l10n_mx_closing_move' in self.env['account.move']._fields:
+            income = self._account('income')
+            equity = self._account('equity')
+            closing = self.env['account.move'].create({
+                'move_type': 'entry', 'date': date(2043, 12, 31), 'ref': 'Cierre prueba',
+                'l10n_mx_closing_move': True,
+                'line_ids': [(0, 0, {'name': 'cierre', 'account_id': income.id, 'debit': 9000.0}),
+                             (0, 0, {'name': 'cierre', 'account_id': equity.id, 'credit': 9000.0})]})
+            closing.action_post()
+            closed = ind._detail_margen_ebitda(self.period, self.period_end)
+            self.assertAlmostEqual(closed['denominator'], detail['denominator'], places=2,
+                                   msg="El cierre anual no resta ingresos.")
 
     def test_03_compras_mp_vs_ventas(self):
         customer = self.env['res.partner'].create({'name': 'Cliente MP'})

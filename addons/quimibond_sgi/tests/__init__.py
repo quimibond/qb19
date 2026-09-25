@@ -51,3 +51,6 @@ from . import test_indicator_p21
 from . import test_indicator_formula
 from . import test_indicator_plan
 from . import test_indicator_trajectory
+from . import test_my_procedure
+from . import test_structure_sgi
+from . import test_cleanup_45

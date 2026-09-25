@@ -482,18 +482,6 @@
         </field>
     </record>
 
-    <record id="sgi_process_activity_action_mine" model="ir.actions.act_window">
-        <field name="name">Mis actividades de procedimiento</field>
-        <field name="res_model">sgi.process.activity</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
-        <field name="context">{'search_default_my_activities': 1, 'search_default_group_process': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Los pasos de procedimiento que le tocan a tu puesto</p>
-            <p>Aquí ves <b>qué te toca hacer y dónde</b>: cada línea es un numeral de procedimiento asignado a tu puesto, con su formato y el botón <i>Abrir en Odoo</i> que te lleva directo al menú donde se ejecuta. Si está vacío, pide a RH que asigne tu puesto (hr.job) a tu ficha de empleado.</p>
-        </field>
-    </record>
-
     <!-- ====== Cadena de actividades: el hilo conductor paso a paso ====== -->
     <record id="sgi_activity_link_view_list" model="ir.ui.view">
         <field name="name">sgi.activity.link.list</field>
@@ -555,18 +543,6 @@
                             context="{'group_by': 'to_process_id'}"/>
                 </group>
             </search>
-        </field>
-    </record>
-
-    <record id="sgi_activity_link_action" model="ir.actions.act_window">
-        <field name="name">Cadena de actividades</field>
-        <field name="res_model">sgi.activity.link</field>
-        <field name="view_mode">list</field>
-        <field name="search_view_id" ref="sgi_activity_link_view_search"/>
-        <field name="context">{'search_default_group_from': 1, 'search_default_vigentes': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">El hilo conductor de la operación</p>
-            <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Salen solas de lo que cada actividad recibe y entrega (catálogo de entregables) y se imprimen en el procedimiento.</p>
         </field>
     </record>
 

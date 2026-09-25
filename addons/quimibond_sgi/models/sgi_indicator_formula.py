@@ -136,6 +136,11 @@ class SgiIndicatorTerm(models.Model):
         company_field = Model._fields.get('company_id')
         if company_field and company_field.store:
             domain += [('company_id', '=', self.indicator_id._sgi_kpi_company().id)]
+        # Las pólizas de cierre anual nunca cuentan (ver _sgi_closing_move_domain).
+        if Model._name == 'account.move.line':
+            domain += self.env['sgi.indicator']._sgi_closing_move_domain('move_id')
+        elif Model._name == 'account.move':
+            domain += self.env['sgi.indicator']._sgi_closing_move_domain()
         return Model.search(domain)
 
     def _sgi_value(self, records):
