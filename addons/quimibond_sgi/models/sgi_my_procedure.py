@@ -244,10 +244,15 @@ class HrJobMyProcedure(models.Model):
             'counts': [(role_labels[c], counts[c]) for c, _l in SGI_ROLE_SELECTION if counts[c]],
         }
 
+        # Documentos vigentes que aplican al puesto (mismos que la pantalla,
+        # sin acuse: el PDF es un documento controlado, no un estado).
+        documents = self.env['sgi.my.procedure']._sgi_mp_documents(self, False) if self.id else []
+
         data = {
             'sections': sections,
             'short': short,
             'received': received,
+            'documents': documents,
             'cover': cover,
             'total': len(detailed) + len(short),
         }
@@ -343,10 +348,15 @@ class HrJobMyProcedure(models.Model):
             'sections': [[
                 s['code'],
                 [[e['activity'].id, e['role_codes'], e['when'], e['number'], e['name'],
-                  [[label, text] for label, text in e['parts']], e['escalates_to']]
+                  [[label, text] for label, text in e['parts']], e['escalates_to'],
+                  e.get('inputs', []), e.get('outputs', []), e.get('related', ''),
+                  e.get('instruction', '')]
                  for e in s['entries']]] for s in data['sections']],
             'short': [[e['activity'].id, e['roles'], e['number'], e['name']] for e in data['short']],
             'received': [[e['activity'].id, e['from'], e['after_days']] for e in data['received']],
+            # Los documentos que aplican al puesto (clave y revisión) también
+            # son contenido: si cambian, la persona debe volver a leer.
+            'documents': [[d['code'], d['revision']] for d in data.get('documents', [])],
         }
         raw = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()

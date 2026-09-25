@@ -1016,6 +1016,24 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PDF de «Mi procedimiento» alineado con la pantalla (19.0.46.0.0)
+
+Para la gente de planta sin usuario de Odoo el PDF **es** su procedimiento,
+así que trae lo mismo que la pantalla, sin el estado del día (que es dato
+vivo, no documento controlado):
+
+- Cada actividad: además de dónde, cómo, contra qué, terminada cuando y si
+  no se puede, ahora **Recibe** (entregables con su plazo en días hábiles),
+  **Entrega**, **Conforme a** (procedimiento relacionado) e **Instructivo**
+  (clave del IT).
+- Sección nueva **Documentos que aplican a este puesto**: clave, documento,
+  tipo y revisión (los mismos de «Mis documentos»).
+- La huella del contenido incluye esas piezas y la lista de documentos con
+  su revisión: si cambian, «Publicar» genera revisión nueva y vuelve a pedir
+  la firma.
+
+Pruebas: `TestMyProcedure.test_14`.
+
 ## Limpieza antes de producción (19.0.45.0.0)
 
 Regla del CEO (2026-09-24): **menús, acciones y vistas sin uso se borran;

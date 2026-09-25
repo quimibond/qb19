@@ -326,6 +326,32 @@ class TestMyProcedure(TransactionCase):
         self.assertNotIn('Mis pendientes', wiz2.content)
         self.assertIn('IT-P-C11-77', wiz2.content, "Los documentos del puesto sí se ven sin usuario.")
 
+    def test_14_pdf_alineado_con_la_pantalla(self):
+        """El PDF es el procedimiento de quien no tiene usuario: trae lo mismo
+        que la pantalla (recibe con plazo, entrega, conforme a, instructivo y
+        los documentos del puesto) y esas piezas entran en la huella."""
+        first = self.job._sgi_my_procedure_data()['hash']
+        deliverable = self.env['sgi.deliverable'].create({'name': 'Pedido confirmado MP'})
+        out = self.env['sgi.deliverable'].create({'name': 'Programa publicado MP'})
+        it = self.env['documents.document'].create({
+            'name': 'IT-P-C11-78 Programar.pdf', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-P-C11-78', 'sgi_state': 'vigente',
+            'sgi_job_ids': [(6, 0, [self.job.id])]})
+        self.a_weekly_fri.write({
+            'input_ids': [(0, 0, {'deliverable_id': deliverable.id, 'max_days': 2})],
+            'output_deliverable_ids': [(6, 0, out.ids)],
+            'instruction_id': it.id,
+        })
+        data = self.job._sgi_my_procedure_data()
+        self.assertNotEqual(first, data['hash'], "Recibe, entrega e instructivo son contenido.")
+        self.assertEqual([d['code'] for d in data['documents']], ['IT-P-C11-78'])
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_sgi.report_my_procedure_document', self.job.ids)[0].decode()
+        for text in ('Recibe:', 'Pedido confirmado MP', '2 días hábiles', 'Entrega:',
+                     'Programa publicado MP', 'Instructivo:', 'IT-P-C11-78',
+                     'Documentos que aplican a este puesto'):
+            self.assertIn(text, html)
+
     def test_12_publicar_todos_revision_previa_y_cron(self):
         Job = self.env['hr.job'].with_user(self.manager)
         dup = self.env['hr.job'].create({'name': 'planeador  prueba mp'})
