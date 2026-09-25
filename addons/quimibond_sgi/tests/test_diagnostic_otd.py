@@ -71,10 +71,27 @@ class TestDiagnostic(TransactionCase):
 
     def test_01_diagnostic_builds_report(self):
         wizard = self.env['sgi.diagnostic'].create({})
-        self.assertTrue(wizard.result)
-        for fragment in ('Diagnóstico', 'Procesos', 'Indicadores y mediciones',
-                         'Documental', 'Calidad preventiva y piso', 'Mejora continua', 'Ajustes clave'):
-            self.assertIn(fragment, wizard.result)
+        self.assertTrue(wizard.line_ids, "Al crearse corre el diagnóstico.")
+        self.assertIn('Diagnóstico', wizard.summary)
+        for fragment in ('Procesos', 'Indicadores y mediciones', 'Documental',
+                         'Calidad preventiva y piso', 'Mejora continua', 'Ajustes clave'):
+            self.assertIn(fragment, wizard.line_ids.mapped('section'))
+        self.assertTrue(set(wizard.line_ids.mapped('level')) <= {'ok', 'warn', 'bad'})
+        self.assertEqual(wizard.bad_count + wizard.warn_count + wizard.ok_count, len(wizard.line_ids))
+        # El menú corre el diagnóstico y abre la lista nativa de hallazgos
+        # acotada a esa corrida (sin HTML, con migas de pan).
+        action = self.env['sgi.diagnostic'].action_run()
+        self.assertEqual(action['res_model'], 'sgi.diagnostic.line')
+        diag_id = action['domain'][0][2]
+        lines = self.env['sgi.diagnostic.line'].search(action['domain'])
+        self.assertTrue(lines)
+        self.assertTrue(all(l.diagnostic_id.id == diag_id for l in lines))
+        self.assertEqual(action['context']['search_default_group_section'], 1)
+        # Actualizar rehace las filas de la misma corrida.
+        before = wizard.line_ids.ids
+        wizard.action_refresh()
+        self.assertTrue(wizard.line_ids)
+        self.assertFalse(set(before) & set(wizard.line_ids.ids))
 
     def test_02b_detects_empty_control_plan_and_orphan_points(self):
         plan = self.env['sgi.control.plan'].create({'name': 'Plan vacío diag'})
@@ -84,8 +101,11 @@ class TestDiagnostic(TransactionCase):
             'picking_type_ids': [(4, self.env.ref('stock.picking_type_in').id)],
         })
         wizard = self.env['sgi.diagnostic'].create({})
-        self.assertIn('0 puntos', wizard.result)
-        self.assertIn('sin plan de control', wizard.result)
+        self.assertIn('0 puntos', wizard.summary)
+        self.assertIn('sin plan de control', wizard.summary)
+        self.assertTrue(wizard.line_ids.filtered(
+            lambda l: l.level == 'bad' and '0 puntos' in l.text
+            and l.section == 'Calidad preventiva y piso'))
         # El botón del plan abre los puntos sueltos con el plan como default.
         action = plan.action_open_orphan_points()
         self.assertEqual(action['res_model'], 'quality.point')
@@ -97,5 +117,5 @@ class TestDiagnostic(TransactionCase):
             'code': 'TST-DIAG', 'name': 'KPI sin responsable',
             'calc_mode': 'manual'})
         wizard = self.env['sgi.diagnostic'].create({})
-        self.assertIn('sin responsable', wizard.result)
-        self.assertIn('sin proceso', wizard.result)
+        self.assertIn('sin responsable', wizard.summary)
+        self.assertIn('sin proceso', wizard.summary)

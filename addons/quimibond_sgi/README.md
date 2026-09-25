@@ -1016,6 +1016,22 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## Diagnóstico del SGI como lista nativa (19.0.47.1.0)
+
+Cierra el inventario de 47.0.0: el Diagnóstico ya no es un wizard con un
+HTML armado a mano. Cada hallazgo es una fila de `sgi.diagnostic.line`
+(sección, nivel Falla / Aviso / Bien, hallazgo, dónde se arregla) colgada de
+la corrida (`sgi.diagnostic`: fecha, conteos y un `summary` en texto plano
+con lo mismo). El menú Administración SGI → Diagnóstico → Diagnóstico del SGI
+es una acción de servidor (`action_run`) que corre las verificaciones y abre
+la **lista** acotada a esa corrida, agrupada por sección, con búsqueda por
+texto y filtros Fallas / Avisos / En orden; volver a entrar por el menú es
+«Actualizar». Las verificaciones no cambian (`_sgi_build_report` devuelve
+dicts en vez de `Markup`). La acción de ventana y el formulario viejos se
+retiran en la migración 47.1.0 (y quedan en `SGI_REMOVED_XMLIDS`). Pruebas:
+`TestDiagnostic` 01 (corrida, acción del menú, actualizar), 02 y 02b sobre
+`summary` y filas.
+
 ## Solo vistas nativas de Odoo (19.0.47.0.0)
 
 Regla del CEO (2026-09-25): **nada de HTML servido ni enlaces armados a
@@ -1030,7 +1046,7 @@ funcione sola. Inventario y resultado:
 | Mi equipo | HTML (46.0.x) | Lista nativa (46.1.0) |
 | Tablero de dirección | Hoja de cálculo nativa | Sin cambio |
 | Avisos (`display_notification`) y chatter con `Markup` | Nativos | Sin cambio |
-| Diagnóstico del SGI (`sgi.diagnostic.result`) | Html generado por el análisis | **Pendiente**: sigue como reporte HTML; convertirlo a listas es el siguiente paso |
+| Diagnóstico del SGI (`sgi.diagnostic.result`) | Html generado por el análisis | Lista nativa de hallazgos (47.1.0, abajo) |
 
 `hr.job._sgi_mp_documents()` alimenta el PDF y la huella. Pruebas:
 `TestMyProcedure` 07, 10, 11, 12 reescritas sobre campos.
