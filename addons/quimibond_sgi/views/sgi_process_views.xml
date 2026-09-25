@@ -240,6 +240,7 @@
                             <field name="process_type"/>
                             <field name="owner_id" string="Dueño" widget="many2one_avatar_employee"/>
                             <field name="parent_id"/>
+                            <field name="replaced_by_id" invisible="active" readonly="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
