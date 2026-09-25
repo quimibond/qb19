@@ -135,7 +135,7 @@ class QualityAlert(models.Model):
     sgi_containment_state = fields.Selection(
         _SGI_DEADLINE_STATES, string="Contención", compute='_compute_sgi_deadline_states')
     sgi_root_cause_state = fields.Selection(
-        _SGI_DEADLINE_STATES, string="Causa raíz", compute='_compute_sgi_deadline_states')
+        _SGI_DEADLINE_STATES, string="Causa raíz (plazo)", compute='_compute_sgi_deadline_states')
     sgi_plan_state = fields.Selection(
         _SGI_DEADLINE_STATES, string="Plan de acción", compute='_compute_sgi_deadline_states')
     sgi_containment_done = fields.Boolean(compute='_compute_sgi_deadline_states')

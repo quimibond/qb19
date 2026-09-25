@@ -1728,6 +1728,46 @@ entrega, puestos, dónde se opera en Odoo, texto de la versión anterior,
 subprocesos) y **Procedimiento** (etapas, alcance, aspectos ambientales,
 normas, responsabilidades y firmas: lo que arma el PDF).
 
+## Migración de formatos Excel, bloque del programador (56.0.0)
+
+Los 15 formatos de Excel marcados `[Programador]` en Documentos ahora viven en
+pantallas nativas; cada uno imprime con su clave de formato vigente.
+
+| Formato | Dónde vive ahora |
+|---|---|
+| F-P-D01-02 / 18 / 26 / 27 solicitud de desarrollo (general, Entretelas V10, Carda, Tramado) | Proyecto cuyo nombre empieza con `FT-`: pestaña **Solicitud de desarrollo** (`sgi_dev_type` elige la variante, renglones de características con `action_sgi_dev_load_lines`, PDF `action_report_dev_request`) |
+| F-IT-P-P01-08-05 ficha técnica de proceso por máquina | Procesos → **Fichas de máquina** (`sgi.machine.sheet`): una vigente por artículo y centro de trabajo, parámetros de máquina y de tela, hilos y poleas, revisión con obsoleta anterior; botón en el centro de trabajo |
+| F-P-C03-01 / 02 etiquetas de equipo calibrado y fuera de servicio | Dos reportes sobre la calibración (`action_report_calibration_label`, `action_report_out_of_service_label`) |
+| F-P-A01-34 / 32 eficiencias de personal | Empleados → **Eficiencias** (`sgi.staff.efficiency`): hoja mensual por área, porcentajes con tope, monto = salario diario × 30 × total %, propuesta de eficiencia desde `mrp.workcenter.productivity` |
+| DOC-3 lista maestra global | Documentos → **Lista maestra** (lista agrupada por área + PDF `action_report_master_list_all`) |
+| F-P-S03-02 responsiva de EPP | La entrega de EPP lleva renglones (`sgi.epp.delivery.line`), PDF y **firma en Sign** (plantilla en Ajustes → SGI → EPP; el cron de Sign la marca firmada) |
+| F-P-D01-08 / 24 ficha técnica de producto (D&D, acabado, tintorería, especificaciones bilingües) | `qb_capacidad_costeo` 1.66.0, ficha del producto |
+
+Datos: los 15 documentos pasan a `migrado` con el menú final en
+`sgi_migration_target` una vez desplegado. Las hojas de calidad (clase b) se
+migraron a plantillas de `quality.point` directamente en producción.
+
+### Build sin amarillo (56.1.0)
+
+El build de `main` con 56.0.0 salió amarillo por avisos que ya venían de
+versiones anteriores y uno nuevo. Todos se corrigen en código:
+
+- **Etiquetas duplicadas** (8): `sgi.process` (flujos vs texto de entradas /
+  salidas, conteo de subprocesos), `quality.alert` (estado del plazo de causa
+  raíz), `hr.employee` (EPP en Mi procedimiento), `sgi.activity.role`
+  (`mp_name`) y `sgi.process.stage` (conteo de actividades). Se renombra el
+  campo secundario; las vistas no cambian.
+- **`sgi.staff.efficiency.line`**: `wage_monthly` (no guardado) tenía el mismo
+  compute que `total_pct` y `amount` (guardados); ahora cada uno tiene el suyo.
+- **Kanban de Mi procedimiento**: el aviso «Se hace en …» era un `<span>` con
+  clase `btn`; ahora es un `<a role="button">`.
+- **`sgi.acuse.attach.wizard`** sin regla de acceso: se agrega (usuarios
+  internos, sin borrar).
+- **Vistas personalizadas de `product.product`**: la ficha de variante hereda
+  la de plantilla y traía los botones de firma sin sus métodos; `product.product`
+  ahora los delega a la plantilla (`sgi_sign_count` relacionado).
+- `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
+
 ## Fórmulas para 28 indicadores más (55.0.0)
 
 **Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa

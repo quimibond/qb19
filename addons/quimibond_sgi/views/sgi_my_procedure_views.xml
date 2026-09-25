@@ -66,9 +66,9 @@
                                     class="btn btn-primary btn-sm">
                                 <i class="fa fa-play me-1" title="Ir a hacerlo"/>Ir a hacerlo
                             </button>
-                            <span t-elif="record.mp_external.raw_value" class="btn btn-outline-secondary btn-sm disabled">
+                            <a t-elif="record.mp_external.raw_value" role="button" aria-disabled="true" class="btn btn-outline-secondary btn-sm disabled">
                                 <i class="fa fa-external-link me-1" title="Sistema externo"/>Se hace en <field name="mp_external"/>
-                            </span>
+                            </a>
                             <button t-if="record.mp_instruction_id.raw_value" type="object" name="action_mp_instruction"
                                     class="btn btn-outline-secondary btn-sm" title="Ver instructivo">
                                 <i class="fa fa-book me-1" title="Instructivo"/>Instructivo

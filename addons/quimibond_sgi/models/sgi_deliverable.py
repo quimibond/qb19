@@ -37,7 +37,7 @@ class SgiProcessStage(models.Model):
     code = fields.Char(string="Letra", help="A, B, C… (opcional).")
     name = fields.Char(string="Etapa", required=True)
     activity_ids = fields.One2many('sgi.process.activity', 'stage_id', string="Actividades")
-    activity_count = fields.Integer(compute='_compute_activity_count', string="Actividades")
+    activity_count = fields.Integer(compute='_compute_activity_count', string="Núm. de actividades")
     company_id = fields.Many2one(
         related='process_id.company_id', store=True, index=True, string="Empresa")
 

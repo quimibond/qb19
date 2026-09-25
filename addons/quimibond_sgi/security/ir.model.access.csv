@@ -127,6 +127,7 @@ access_sgi_activity_week_stat_user,sgi.activity.week.stat.user,model_sgi_activit
 access_sgi_activity_week_stat_manager,sgi.activity.week.stat.manager,model_sgi_activity_week_stat,group_sgi_manager,1,1,1,1
 access_sgi_coa_attach_wizard_quality,sgi.coa.attach.wizard.quality,model_sgi_coa_attach_wizard,quality.group_quality_user,1,1,1,1
 access_sgi_coa_attach_wizard_user,sgi.coa.attach.wizard.user,model_sgi_coa_attach_wizard,group_sgi_user,1,1,1,1
+access_sgi_acuse_attach_wizard_user,sgi.acuse.attach.wizard.user,model_sgi_acuse_attach_wizard,base.group_user,1,1,1,0
 access_sgi_coa_exception_wizard_stock,sgi.coa.exception.wizard.stock,model_sgi_coa_exception_wizard,stock.group_stock_user,1,1,1,1
 access_sgi_coa_inbox_quality,sgi.coa.inbox.quality,model_sgi_coa_inbox,quality.group_quality_user,1,1,1,0
 access_sgi_coa_inbox_manager,sgi.coa.inbox.manager,model_sgi_coa_inbox,group_sgi_manager,1,1,1,1
