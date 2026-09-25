@@ -86,7 +86,7 @@ class TestPr4DocsLegal(TransactionCase):
     def test_03_doc1_sin_puestos_toma_los_del_proceso(self):
         self.doc.sgi_job_ids = [(5, 0, 0)]
         self.env['sgi.process.activity'].create({
-            'process_id': self.process.id, 'name': 'Operar PR4',
+            'process_id': self.process.id, 'name': 'Operar PR4', 'measure_method': 'manual',
             'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job.id})]})
         self._request().action_approve()
         self.assertEqual(self.doc.sgi_job_ids, self.job)

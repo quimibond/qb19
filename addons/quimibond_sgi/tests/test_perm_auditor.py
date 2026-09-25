@@ -64,8 +64,8 @@ class TestPermAuditor(TransactionCase):
     def test_04_auditor_writes_findings(self):
         env = self.env(user=self.auditor)
         finding = env['sgi.audit.finding'].create({
-            'audit_id': self.audit.id, 'name': 'Hallazgo del auditor',
+            'audit_id': self.audit.id, 'description': 'Hallazgo del auditor',
             'process_id': self.process.id})
         self.assertTrue(finding.exists())
-        finding.write({'name': 'Hallazgo corregido'})
-        self.assertEqual(finding.name, 'Hallazgo corregido')
+        finding.write({'description': 'Hallazgo corregido'})
+        self.assertEqual(finding.description, 'Hallazgo corregido')

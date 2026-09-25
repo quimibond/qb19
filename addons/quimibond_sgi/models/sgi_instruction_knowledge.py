@@ -64,15 +64,14 @@ class SgiInstructionPublish(models.TransientModel):
     article_id = fields.Many2one(related='activity_id.instruction_article_id')
     code = fields.Char(string="Clave IT", required=True, help="Ej. IT-P-C11-05.")
     job_ids = fields.Many2many('hr.job', string="Puestos que aplican",
+                               compute='_compute_job_ids', store=True, readonly=False,
                                help="Por omisión, los que ejecutan la actividad.")
 
-    @api.model
-    def default_get(self, fields_list):
-        res = super().default_get(fields_list)
-        activity = self.env['sgi.process.activity'].browse(res.get('activity_id')) if res.get('activity_id') else None
-        if activity and 'job_ids' in fields_list and not res.get('job_ids'):
-            res['job_ids'] = [(6, 0, activity.responsible_job_ids.ids)]
-        return res
+    @api.depends('activity_id')
+    def _compute_job_ids(self):
+        for wiz in self:
+            if wiz.activity_id and not wiz.job_ids:
+                wiz.job_ids = wiz.activity_id.sudo().responsible_job_ids
 
     def action_publish(self):
         self.ensure_one()

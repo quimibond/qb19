@@ -350,6 +350,18 @@ class DocumentsDocument(models.Model):
         for doc in self:
             doc.sgi_revision_label = "%02d" % (doc.sgi_revision or 0)
 
+    def _sgi_share_controlled(self):
+        """Un documento controlado en piloto o vigente lo lee cualquier usuario
+        interno (es lo que cada puesto debe leer y firmar), sin depender de la
+        carpeta. Documents 18+: `access_internal`; no se baja un «editor»."""
+        if 'access_internal' not in self._fields:
+            return
+        docs = self.sudo().filtered(
+            lambda d: d.sgi_is_controlled and d.sgi_state in ('piloto', 'vigente')
+            and (d.access_internal or 'none') == 'none')
+        if docs:
+            super(DocumentsDocument, docs).write({'access_internal': 'view'})
+
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type_id', 'sgi_process_id')
     def _check_sgi_code(self):
         """La clave cumple la nomenclatura de su TIPO (patrón nuevo o clave
@@ -565,6 +577,7 @@ class DocumentsDocument(models.Model):
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
         docs = super().create(vals_list)
+        docs._sgi_share_controlled()
         for state in ('piloto', 'vigente'):
             docs.filtered(lambda d, state=state: d.sgi_state == state)\
                 ._sgi_check_procedure_measures(state, created=True)
@@ -628,6 +641,8 @@ class DocumentsDocument(models.Model):
                     'sgi_previous_code_date': today,
                 })
         res = super().write(vals)
+        if 'sgi_state' in vals or 'sgi_is_controlled' in vals:
+            self._sgi_share_controlled()
         if 'sgi_revision' in vals or 'sgi_code' in vals:
             self._sgi_check_revision_increases(old_revisions)
         if vals.get('sgi_state') == 'vigente':

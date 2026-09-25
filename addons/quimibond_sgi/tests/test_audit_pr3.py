@@ -28,7 +28,7 @@ class TestAuditPr3(TransactionCase):
             'output_deliverable_ids': [(6, 0, cls.deliverable.ids)]})
         cls.act2 = Activity.create({
             'process_id': cls.process.id, 'name': 'Aprobar el programa',
-            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': cls.job_other.id}),
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': cls.job_exec.id}),
                          (0, 0, {'role': 'aprueba', 'target_type': 'family', 'family_id': cls.family.id})]})
         cls.act_other = Activity.create({
             'process_id': cls.other_process.id, 'name': 'Conciliar bancos',

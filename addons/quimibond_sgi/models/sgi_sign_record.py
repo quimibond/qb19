@@ -43,9 +43,10 @@ class SgiSignRecordMixin(models.AbstractModel):
         signed = self.env['sign.request'].sudo().search(
             [('state', '=', 'signed'), ('reference_doc', 'like', '%s,%%' % self._name)])
         ids = [r.reference_doc.id for r in signed if r.reference_doc and r.reference_doc._name == self._name]
-        if (operator == '=' and value) or (operator == '!=' and not value):
-            return [('id', 'in', ids)]
-        return [('id', 'not in', ids)]
+        # Odoo 19 normaliza '=' a 'in' con lista antes de llamar aquí.
+        values = set(value) if isinstance(value, (list, tuple, set)) else {value}
+        wants_signed = (operator in ('=', 'in')) == any(values)
+        return [('id', 'in' if wants_signed else 'not in', ids)]
 
     def action_sgi_sign(self):
         self.ensure_one()
