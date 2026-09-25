@@ -1671,3 +1671,22 @@ entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»
 `_data_<kind>` en `sgi.diagram` que devuelva carriles, cajas y flechas, y una
 acción cliente con `sgi_diagram_kind`. La vista nativa `hierarchy` (53.2.0)
 sigue disponible en «Mapa de procesos» y en las actividades.
+
+## Ligas entrada ↔ salida (53.5.0)
+
+Una actividad se mide cuando su salida apunta a su entrada
+(`sgi.activity.input.match_path`, admite rutas con punto). Campos que
+faltaban (`models/sgi_links.py`): tarea del desarrollo (`sgi_dyd_task_id`)
+en AMEF, lista de materiales, orden de producción, plan de control y PPAP;
+`product.template.sgi_control_plan_id`; `quality.alert.sgi_maintenance_request_id`
+(lo llena «Levantar NC»); `purchase.order.sgi_approval_request_id` (lo llena
+la requisición al crear la orden); `account.move.sgi_picking_ids` (propuesto
+desde las líneas del pedido); `ir.attachment.sgi_picking_id` con el botón
+«Adjuntar acuse» de la entrega (nombre `ACUSE-…`); `stock.picking.sgi_production_id`
+(propuesto desde los movimientos o el origen). La migración 53.5.0 llena
+los `match_path` de C1.04, C1.09, C1.15, C1.16, C1.17, C2.34, C4.19, S1.09,
+S2.08 y S5.06, deja sin estado SGI los documentos que no son del SGI, borra
+los faltantes de procesos archivados y liga los acuses existentes. Reglas
+nuevas: objetivo sin indicador = «sin dato»; la evaluación trimestral solo
+toma proveedores críticos (contacto marcado o categorías de Ajustes →
+Categorías de proveedores críticos; vacío = materia prima + «maquila»).

@@ -24,6 +24,10 @@ class ResPartner(models.Model):
                                                readonly=True, copy=False)
     sgi_supplier_approved_date = fields.Date(string="Fecha de aprobación",
                                              readonly=True, copy=False)
+    sgi_supplier_critical = fields.Boolean(
+        string="Proveedor crítico",
+        help="Materia prima o maquila: entra a la evaluación trimestral aunque en el "
+             "periodo no haya comprado productos de las categorías críticas.")
     sgi_supplier_score = fields.Float(string="Calificación SGI")
     sgi_last_eval_date = fields.Date(string="Última evaluación")
     sgi_eval_ids = fields.One2many('sgi.supplier.eval', 'partner_id', string="Evaluaciones SGI")
@@ -72,6 +76,26 @@ class SgiSupplierEval(models.Model):
     _name = 'sgi.supplier.eval'
     _description = "Evaluación de proveedor SGI (8.4)"
     _order = 'date_to desc, partner_id'
+
+    @api.model
+    def _sgi_critical_categ_ids(self):
+        """Categorías de producto de proveedores críticos: las configuradas en
+        Ajustes (`quimibond_sgi.supplier_critical_categ_ids`, ids con coma) y,
+        si no hay, la de materia prima (`raw_material_categ_id`) más las que se
+        llaman «maquila». Incluye sus subcategorías."""
+        Param = self.env['ir.config_parameter'].sudo()
+        Categ = self.env['product.category']
+        raw = Param.get_param('quimibond_sgi.supplier_critical_categ_ids', '') or ''
+        ids = [int(x) for x in raw.split(',') if x.strip().isdigit()]
+        categs = Categ.browse(ids).exists()
+        if not categs:
+            rm = Param.get_param('quimibond_sgi.raw_material_categ_id', '') or ''
+            if rm.strip().isdigit():
+                categs |= Categ.browse(int(rm)).exists()
+            categs |= Categ.search([('name', 'ilike', 'maquila')])
+        if not categs:
+            return set()
+        return set(Categ.search([('id', 'child_of', categs.ids)]).ids)
 
     partner_id = fields.Many2one('res.partner', string="Proveedor",
                                  required=True, ondelete='cascade', index=True)

@@ -699,7 +699,17 @@ class SgiCron(models.AbstractModel):
             ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
             ('partner_id', '!=', False),
         ])
-        partners = pickings.mapped('partner_id.commercial_partner_id')
+        # Solo proveedores críticos (materia prima y maquila): los marcados en
+        # el contacto o los que en el periodo entregaron productos de las
+        # categorías críticas (Ajustes → SGI → Categorías de proveedores críticos).
+        critical_categs = self.env['sgi.supplier.eval']._sgi_critical_categ_ids()
+        if critical_categs:
+            critical_pickings = pickings.filtered(
+                lambda p: p.partner_id.commercial_partner_id.sgi_supplier_critical
+                or any(m.product_id.categ_id.id in critical_categs for m in p.move_ids))
+        else:
+            critical_pickings = pickings.filtered(lambda p: p.partner_id.commercial_partner_id.sgi_supplier_critical)
+        partners = critical_pickings.mapped('partner_id.commercial_partner_id')
         purchase_user_id = self._sgi_purchase_user_id()
 
         def _process(partner):
