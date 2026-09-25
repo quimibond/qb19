@@ -6,14 +6,14 @@
 Puente entre el revisado de tela (mrp_revisado_telas) y el SGI.
 
 Aporta las vistas pivot/graph del registro de revisado (mrp.revision.log) para
-armar el Pareto de defectos por causa (etiquetas de calidad TEJIDO-*), fuente
+armar el Pareto de defectos por causa (etiquetas de calidad ``TEJIDO-*``), fuente
 del tablero de calidad del piso. No modifica mrp_revisado_telas. Se instala
 automáticamente cuando conviven ambos módulos.
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Manufacturing/SGI',
-    'version': '19.0.4.1.0',
+    'version': '19.0.4.1.1',
     'license': 'LGPL-3',
     'depends': [
         'quimibond_sgi',

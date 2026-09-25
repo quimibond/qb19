@@ -128,7 +128,7 @@ class SgiStaffEfficiencyLine(models.Model):
     department_id = fields.Many2one(related='employee_id.department_id', string="Área", store=True)
     wage_daily = fields.Monetary(string="Salario diario", currency_field='currency_id',
                                  compute='_compute_wage_daily', store=True, readonly=False)
-    wage_monthly = fields.Monetary(string="Salario mensual (×30)", compute='_compute_amounts', currency_field='currency_id')
+    wage_monthly = fields.Monetary(string="Salario mensual (×30)", compute='_compute_wage_monthly', currency_field='currency_id')
     attendance_pct = fields.Float(string="Asistencia (máx. 5.5 %)", digits=(5, 2))
     housekeeping_pct = fields.Float(string="Orden y limpieza (máx. 2 %)", digits=(5, 2))
     efficiency_pct = fields.Float(string="Eficiencia (máx. 2 %)", digits=(5, 2))
@@ -153,13 +153,19 @@ class SgiStaffEfficiencyLine(models.Model):
                 wage = line.employee_id.sudo().wage if 'wage' in line.employee_id._fields else 0.0
                 line.wage_daily = round((wage or 0.0) / 30.0, 2)
 
+    @api.depends('wage_daily')
+    def _compute_wage_monthly(self):
+        # Método aparte del de total_pct/amount: esos se guardan y este no, y Odoo
+        # avisa en el build cuando un mismo compute mezcla campos store y no store.
+        for line in self:
+            line.wage_monthly = (line.wage_daily or 0.0) * 30.0
+
     @api.depends('wage_daily', 'attendance_pct', 'housekeeping_pct', 'efficiency_pct', 'quality_pct')
     def _compute_amounts(self):
         for line in self:
-            line.wage_monthly = (line.wage_daily or 0.0) * 30.0
             line.total_pct = (line.attendance_pct or 0.0) + (line.housekeeping_pct or 0.0) + \
                 (line.efficiency_pct or 0.0) + (line.quality_pct or 0.0)
-            line.amount = line.wage_monthly * line.total_pct / 100.0
+            line.amount = (line.wage_daily or 0.0) * 30.0 * line.total_pct / 100.0
 
     @api.constrains('attendance_pct', 'housekeeping_pct', 'efficiency_pct', 'quality_pct')
     def _check_maxima(self):

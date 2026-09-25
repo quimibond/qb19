@@ -69,8 +69,8 @@ class SgiProcess(models.Model):
         help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
              "nadie recibe los avisos del proceso y la salud se pinta en rojo.")
 
-    in_flow_ids = fields.One2many('sgi.process.flow', 'to_process_id', string="Entradas")
-    out_flow_ids = fields.One2many('sgi.process.flow', 'from_process_id', string="Salidas")
+    in_flow_ids = fields.One2many('sgi.process.flow', 'to_process_id', string="Flujos de entrada")
+    out_flow_ids = fields.One2many('sgi.process.flow', 'from_process_id', string="Flujos de salida")
 
     # Ficha del proceso: todo lo ligado, navegable desde un solo lugar.
     linked_document_ids = fields.One2many(
