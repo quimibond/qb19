@@ -51,6 +51,9 @@
                             <field name="ok_count" decoration-success="ok_count > 0"/>
                             <field name="unmeasured_count" decoration-muted="1"/>
                             <field name="pending_ack_count" decoration-warning="pending_ack_count > 0"/>
+                            <field name="epp_pending_sign" invisible="1"/>
+                            <field name="epp_label" invisible="not epp_label" readonly="1"
+                                   decoration-warning="epp_pending_sign"/>
                             <field name="ack_label" string="Firma" readonly="1"/>
                         </group>
                     </group>
@@ -221,6 +224,29 @@
                                 </field>
                             </group>
                             <p class="text-muted" invisible="ack_ids or document_ids">Sin documentos ligados al puesto.</p>
+                        </page>
+                        <page string="Mi EPP" name="epp" invisible="not epp_required and not epp_delivery_ids">
+                            <group string="EPP requerido por el puesto (S03-01)" invisible="not epp_required">
+                                <field name="epp_required" nolabel="1" readonly="1"/>
+                            </group>
+                            <group string="Responsivas de entrega (S03-02)" invisible="not epp_delivery_ids">
+                                <field name="epp_delivery_ids" nolabel="1" readonly="1">
+                                    <list create="0" delete="0" decoration-warning="state == 'entregada'">
+                                        <field name="name"/>
+                                        <field name="date"/>
+                                        <field name="items"/>
+                                        <field name="delivered_by_id" optional="show"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state == 'firmada'"
+                                               decoration-warning="state == 'entregada'"/>
+                                        <field name="signed_date" optional="show"/>
+                                        <field name="can_sign" column_invisible="1"/>
+                                        <button name="action_sign" type="object" string="Firmar: recibí el EPP"
+                                                icon="fa-pencil" invisible="not can_sign"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <p class="text-muted" invisible="epp_delivery_ids">Sin responsivas de entrega registradas; RH o SST las capturan con «Entregar EPP» en la ficha del empleado.</p>
                         </page>
                     </notebook>
                 </sheet>

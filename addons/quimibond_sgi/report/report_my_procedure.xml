@@ -297,6 +297,26 @@
                         </table>
                     </t>
 
+                    <!-- EPP del puesto (S03-01) y responsiva del empleado (S03-02) -->
+                    <t t-if="data.get('epp')">
+                        <h4 style="background-color:#e8e8e8; padding:4px 6px; margin:10px 0 4px 0; font-size:13px;">
+                            Equipo de protección personal (EPP)
+                        </h4>
+                        <ul style="margin:0 0 4px 0; padding-left:18px; font-size:11px;">
+                            <li t-foreach="data['epp']" t-as="epp_line" t-out="epp_line"/>
+                        </ul>
+                        <t t-set="epp_signed" t-value="mp_employee and mp_employee.sgi_epp_delivery_ids.filtered(lambda d: d.state == 'firmada')[:1]"/>
+                        <p style="margin:0; font-size:10px;">
+                            <t t-if="epp_signed">
+                                Responsiva de entrega <strong t-out="epp_signed.name"/> firmada el
+                                <t t-out="epp_signed.signed_date" t-options="{'widget': 'date'}"/>.
+                            </t>
+                            <t t-else="">
+                                La responsiva de entrega (F-P-S03-02) se firma en Odoo (Mi procedimiento → Mi EPP).
+                            </t>
+                        </p>
+                    </t>
+
                     <!-- Leído y entendido -->
                     <div style="margin-top:14px; page-break-inside:avoid;">
                         <h4 style="background-color:#e8e8e8; padding:4px 6px; margin:0 0 4px 0; font-size:13px;">
