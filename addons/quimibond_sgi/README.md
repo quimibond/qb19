@@ -1646,3 +1646,28 @@ migración liga los traslados de 2026.
 - Medición en el SGI (C2.24): entregable sobre `stock.picking` con
   `complete_domain` `[("sgi_coa_status", "=", "enviado")]` y
   `applies_domain` `[("sgi_requires_coa", "=", True)]`, al recargar el JSON de C2.
+
+## Diagramas en HTML (53.4.0)
+
+Menú **Procesos → Diagramas**. Un solo componente OWL (`static/src/diagram/`,
+acción cliente `sgi_diagram`) dibuja lo que le entrega
+`sgi.diagram.data(kind, res_id)` (`models/sgi_diagram.py`): bandas o
+carriles con cajas, flechas SVG con su etiqueta, resaltado al pasar el mouse
+o dar clic, doble clic abre el registro, impresión. Mismo patrón que el
+organigrama de Empleados (`hr_org_chart`).
+
+| Diagrama | `kind` | Qué dibuja |
+|---|---|---|
+| Mapa de procesos | `process_map` | Bandas estratégicos / cadena de valor / soporte; flechas = `sgi.process.flow` |
+| Flujo del proceso | `process_flow` | Una columna por etapa; flechas = eslabones `sgi.activity.link` con su entregable; carriles «Recibe de / Entrega a otros procesos» |
+| Tortuga (SIPOC) | `sipoc` | Proveedores → entradas → proceso → salidas → clientes, desde los flujos |
+| Árbol documental | `doc_tree` | Procedimientos → instructivos → formatos del proceso; flecha = `sgi_parent_document_id`; color = estado |
+| Árbol de indicadores | `kpi_tree` | Objetivo → indicador → proceso; color = último semáforo |
+| Quién hace qué | `who_does_what` | Matriz puestos × procesos; color = rol más fuerte; clic abre las actividades |
+
+Los diagramas por proceso llevan selector de proceso y pestañas para saltar
+entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»,
+«Tortuga» y «Árbol documental». Para agregar un diagrama: un método
+`_data_<kind>` en `sgi.diagram` que devuelva carriles, cajas y flechas, y una
+acción cliente con `sgi_diagram_kind`. La vista nativa `hierarchy` (53.2.0)
+sigue disponible en «Mapa de procesos» y en las actividades.
