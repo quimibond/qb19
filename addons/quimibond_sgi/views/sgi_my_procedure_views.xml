@@ -18,7 +18,9 @@
                                     <field name="mp_external"/>
                                     <templates>
                                         <t t-name="card" class="flex-column p-2">
-                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                            <!-- flex-wrap: sin él, las etiquetas se quedan con su ancho y
+                                                 el «cuándo» se apila letra por letra (2026-09-25). -->
+                                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
                                                 <field name="cadence" widget="badge"/>
                                                 <field name="mp_status" widget="badge"
                                                        decoration-success="mp_status == 'al_dia'"
@@ -27,8 +29,8 @@
                                                 <field name="role" widget="badge"
                                                        decoration-success="role == 'ejecuta'"
                                                        decoration-warning="role == 'aprueba'"/>
-                                                <strong><field name="activity_when"/></strong>
                                             </div>
+                                            <div class="mb-1"><strong><field name="activity_when"/></strong></div>
                                             <div class="fs-5 fw-bold">
                                                 <field name="mp_name"/>
                                             </div>
