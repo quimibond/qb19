@@ -52,8 +52,10 @@ class TestDiagramView(TransactionCase):
                     'sgi_emergency_plan_action', 'sgi_equipment_action_measuring', 'sgi_document_action',
                     'sgi_competence_gap_action', 'sgi_activity_exec_stat_action_who', 'sgi_process_activity_action'):
             self.assertIn('sgi_diagram', ref('quimibond_sgi.' + xid).view_mode.split(','), xid)
-        self.assertFalse(ref('quimibond_sgi.menu_sgi_diagrams', raise_if_not_found=False),
-                         "El submenú Diagramas se retiró: el diagrama es una vista de cada acción.")
+        # El submenú Diagramas se retiró: el diagrama es una vista de cada acción.
+        stale = self.env['ir.model.data'].search([('module', '=', 'quimibond_sgi'), ('model', '=', 'ir.ui.menu'),
+                                                  ('name', '=like', 'menu_sgi_diagram%')])
+        self.assertFalse(stale, stale.mapped('name'))
         self.assertTrue(ref('quimibond_sgi.menu_sgi_activities'))
         # Los PDF de la ficha viven en el menú Imprimir.
         for xid in ('action_report_procedure', 'action_report_master_list', 'action_report_risk_matrix'):
