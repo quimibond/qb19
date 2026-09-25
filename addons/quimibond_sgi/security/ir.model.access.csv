@@ -135,4 +135,3 @@ access_sgi_indicator_step_user,sgi.indicator.step.user,model_sgi_indicator_step,
 access_sgi_indicator_step_manager,sgi.indicator.step.manager,model_sgi_indicator_step,group_sgi_manager,1,1,1,1
 access_sgi_my_procedure_user,sgi.my.procedure.user,model_sgi_my_procedure,group_sgi_user,1,1,1,1
 access_sgi_my_procedure_check_manager,sgi.my.procedure.check.manager,model_sgi_my_procedure_check,group_sgi_manager,1,1,1,1
-access_sgi_my_team_user,sgi.my.team.user,model_sgi_my_team,group_sgi_user,1,1,1,1
