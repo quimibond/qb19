@@ -317,9 +317,8 @@ class SgiMyProcedure(models.TransientModel):
     ok_count = fields.Integer(string="Al día", compute='_compute_lists')
     unmeasured_count = fields.Integer(string="Sin medición automática", compute='_compute_lists')
     pending_ack_count = fields.Integer(string="Firmas pendientes", compute='_compute_lists')
-    pending_count = fields.Integer(string="Pendientes", compute='_compute_pending_count',
-                                   help="Acciones abiertas, NC por contestar, mediciones y requisitos legales por evaluar.")
-    activity_count = fields.Integer(string="Actividades", compute='_compute_pending_count')
+    pending_count = fields.Integer(string="Acciones abiertas", compute='_compute_counts')
+    activity_count = fields.Integer(string="Actividades", compute='_compute_counts')
 
     # Mis actividades (ejecuta / aprueba), escalamientos que recibe y lista corta
     role_ids = fields.Many2many(
@@ -543,26 +542,53 @@ class SgiMyProcedure(models.TransientModel):
                  ('sgi_next_review_date', '!=', False), ('sgi_next_review_date', '<=', soon)],
                 order='sgi_next_review_date, sgi_code'), wiz.env)
 
-    @api.depends('pending_action_ids', 'pending_nc_ids', 'pending_measure_ids', 'pending_legal_ids',
-                 'pending_doc_review_ids', 'role_ids')
-    def _compute_pending_count(self):
+    # Conteos de los botones inteligentes (54.1.0): cada lista de la pantalla
+    # es un botón; la ficha solo muestra lo que es de la persona y del puesto.
+    received_count = fields.Integer(compute='_compute_counts')
+    short_count = fields.Integer(compute='_compute_counts')
+    document_count = fields.Integer(compute='_compute_counts')
+    nc_count = fields.Integer(compute='_compute_counts')
+    measure_count = fields.Integer(compute='_compute_counts')
+    indicator_count = fields.Integer(compute='_compute_counts')
+    legal_count = fields.Integer(compute='_compute_counts')
+    doc_review_count = fields.Integer(compute='_compute_counts')
+    epp_count = fields.Integer(compute='_compute_counts')
+
+    @api.depends('role_ids', 'received_role_ids', 'short_role_ids', 'document_ids', 'pending_action_ids',
+                 'pending_nc_ids', 'pending_measure_ids', 'official_indicator_ids', 'pending_legal_ids',
+                 'pending_doc_review_ids', 'epp_delivery_ids')
+    def _compute_counts(self):
         for wiz in self:
-            wiz.pending_count = (len(wiz.pending_action_ids) + len(wiz.pending_nc_ids)
-                                 + len(wiz.pending_measure_ids) + len(wiz.pending_legal_ids)
-                                 + len(wiz.pending_doc_review_ids))
             wiz.activity_count = len(wiz.role_ids)
+            wiz.received_count = len(wiz.received_role_ids)
+            wiz.short_count = len(wiz.short_role_ids)
+            wiz.document_count = len(wiz.document_ids)
+            wiz.pending_count = len(wiz.pending_action_ids)
+            wiz.nc_count = len(wiz.pending_nc_ids)
+            wiz.measure_count = len(wiz.pending_measure_ids)
+            wiz.indicator_count = len(wiz.official_indicator_ids)
+            wiz.legal_count = len(wiz.pending_legal_ids)
+            wiz.doc_review_count = len(wiz.pending_doc_review_ids)
+            wiz.epp_count = len(wiz.epp_delivery_ids)
 
     # ------------------------------------------------------------------
-    # Botones inteligentes (54.1.0): cada conteo abre su lista.
+    # Botones inteligentes: cada conteo abre su lista.
     # ------------------------------------------------------------------
-    def _action_roles(self, name, roles):
+    def _action_list(self, name, records, views=None, context=None, view_mode='list,form'):
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window', 'name': name, 'res_model': 'sgi.activity.role',
-            'view_mode': 'kanban,list', 'domain': [('id', 'in', roles.ids)],
-            'views': [(self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban'),
-                      (self.env.ref('quimibond_sgi.sgi_activity_role_view_list_my_procedure').id, 'list')],
+        action = {
+            'type': 'ir.actions.act_window', 'name': name, 'res_model': records._name,
+            'view_mode': view_mode, 'domain': [('id', 'in', records.ids)],
+            'context': dict(context or {}, create=False),
         }
+        if views:
+            action['views'] = [(self.env.ref('quimibond_sgi.' + xid).id if xid else False, mode)
+                               for xid, mode in views]
+        return action
+
+    def _action_roles(self, name, roles):
+        return self._action_list(name, roles, view_mode='kanban,list', views=[
+            ('sgi_activity_role_view_kanban_mp', 'kanban'), ('sgi_activity_role_view_list_my_procedure', 'list')])
 
     def action_show_late(self):
         return self._action_roles("Atrasadas", self.role_ids.filtered(lambda r: r.mp_status == 'atrasada'))
@@ -577,24 +603,42 @@ class SgiMyProcedure(models.TransientModel):
     def action_show_all(self):
         return self._action_roles("Mis actividades", self.role_ids)
 
-    def action_focus_pending(self):
-        """Botón «Pendientes»: las acciones abiertas o vencidas del usuario; el
-        resto de pendientes (NC, mediciones, legales) sigue en la pestaña."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window', 'name': "Mis acciones abiertas",
-            'res_model': 'sgi.action.line', 'view_mode': 'list,form',
-            'domain': [('id', 'in', self.pending_action_ids.ids)],
-        }
+    def action_show_received(self):
+        return self._action_list("Escalamientos que recibe", self.received_role_ids, view_mode='list',
+                                 views=[('sgi_activity_role_view_list_mp_received', 'list')])
+
+    def action_show_short(self):
+        return self._action_list("Participa o se entera", self.short_role_ids, view_mode='list',
+                                 views=[('sgi_activity_role_view_list_mp_short', 'list')])
 
     def action_show_acks(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window', 'name': "Mis acuses de lectura",
-            'res_model': 'sgi.document.ack', 'view_mode': 'list,form',
-            'domain': [('id', 'in', self.ack_ids.ids)],
-            'context': {'search_default_pending': 1},
-        }
+        return self._action_list("Mis acuses de lectura", self.ack_ids, context={'search_default_pending': 1})
+
+    def action_show_documents(self):
+        return self._action_list("Documentos que aplican al puesto", self.document_ids,
+                                 views=[('sgi_document_view_list', 'list'), ('sgi_document_view_form', 'form')])
+
+    def action_focus_pending(self):
+        return self._action_list("Mis acciones abiertas", self.pending_action_ids)
+
+    def action_show_nc(self):
+        return self._action_list("NC a contestar", self.pending_nc_ids, view_mode='list,form')
+
+    def action_show_measures(self):
+        return self._action_list("Mediciones por capturar o validar", self.pending_measure_ids)
+
+    def action_show_indicators(self):
+        return self._action_list("Indicadores oficiales a mi cargo", self.official_indicator_ids)
+
+    def action_show_legal(self):
+        return self._action_list("Requisitos legales por evaluar", self.pending_legal_ids)
+
+    def action_show_doc_reviews(self):
+        return self._action_list("Documentos por revisar", self.pending_doc_review_ids,
+                                 views=[('sgi_document_view_list', 'list'), ('sgi_document_view_form', 'form')])
+
+    def action_show_epp(self):
+        return self._action_list("Responsivas de EPP", self.epp_delivery_ids)
 
     # ------------------------------------------------------------------
     # Acciones
