@@ -44,9 +44,9 @@ class TestDiagramIso(TransactionCase):
         for kind in ISO_KINDS:
             data = Diagram.data(kind, self.proc.id)
             self.assertEqual(data['kind'], kind)
-            self.assertIn(data['layout'], ('bands', 'columns', 'matrix'), kind)
+            self.assertIn(data['layout'], ('bands', 'columns', 'matrix', 'swimlanes', 'cycle'), kind)
             self.assertTrue(data['title'], kind)
-            keys = self._keys(data)
+            keys = self._keys(data) | {'lane:%s' % lane['key'] for lane in data.get('lanes', [])}
             for edge in data['edges']:
                 self.assertIn(edge['from'], keys, "%s: flecha desde caja inexistente" % kind)
                 self.assertIn(edge['to'], keys, "%s: flecha hacia caja inexistente" % kind)
@@ -95,7 +95,17 @@ class TestDiagramIso(TransactionCase):
         self.assertEqual(box['action']['domain'], [('id', 'in', [self.doc.id])])
 
         pdca = Diagram.data('pdca', self.proc.id)
+        self.assertEqual(pdca['layout'], 'cycle', "PDCA es un ciclo: cuatro cuadrantes con flechas entre ellos.")
         self.assertEqual([lane['key'] for lane in pdca['lanes']], ['plan', 'do', 'check', 'act'])
+        self.assertEqual([e['from'] for e in pdca['edges']], ['lane:plan', 'lane:do', 'lane:check', 'lane:act'])
+        self.assertEqual(pyramid['shape'], 'pyramid')
+        legal = Diagram.data('legal_matrix')
+        self.assertEqual(legal['layout'], 'bands', "Por omisión, un tablero de requisitos por sistema.")
+        self.assertEqual(Diagram.data('legal_matrix', None, {'vista': 'resumen'})['layout'], 'matrix')
+        calib = Diagram.data('calibration_map')
+        if calib.get('lanes'):
+            self.assertEqual(calib['param_options'][0]['name'], 'agrupar')
+            self.assertGreaterEqual(len(calib['lanes']), 12, "Programa de calibración: una columna por mes.")
         self.assertIn('sgi.risk,%d' % self.risk.id, self._keys(pdca))
         self.assertIn('pdca', [n['kind'] for n in pdca['nav']])
 

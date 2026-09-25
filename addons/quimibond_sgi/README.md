@@ -1689,7 +1689,20 @@ con doble clic o clic en la celda.
 | 9.3 | Revisión por la dirección | `management_review` | Entradas de la norma → la revisión → acuerdos; selector de revisión |
 | 10.2 | No conformidades | `nc_flow` | Cada NC en la fase que le falta (contención, causa, plan, eficacia) + cerradas y canceladas de 90 días |
 
-Los diagramas que aceptan parámetro (`instrument`, `year`, `review`) declaran
+**Tipo de trazado según la información (54.3.0).** El motor tiene cinco
+trazados y cada diagrama usa el que corresponde a lo que muestra:
+
+| Información | Trazado | Diagramas |
+|---|---|---|
+| Procesos por tipo con sus flujos | `bands` (mapa de procesos ISO) | mapa de procesos |
+| Niveles de una jerarquía | `bands` con `shape: pyramid` | pirámide documental |
+| Estado o categoría de cada registro (tablero) | `bands` (una banda por categoría, una tarjeta por registro) | requisitos legales por sistema |
+| Secuencia de un procedimiento por responsable | `swimlanes` (diagrama de flujo funcional: fila por puesto, columna por orden, flechas = eslabones) | flujo del proceso (`carriles=etapa` da columnas por etapa) |
+| Etapas, fases o meses en orden | `columns` | tortuga, NC por fase, programa de auditorías, programa de calibración por mes, contexto, roles, emergencias, revisión por la dirección, árboles documental y de indicadores |
+| Ciclo de mejora | `cycle` (cuatro cuadrantes en el sentido de las manecillas con flechas entre ellos) | PDCA |
+| Dos variables cruzadas con intensidad | `matrix` (mapa de calor) | riesgos (probabilidad × impacto), interacción de procesos, quién hace qué, competencias, resumen legal (`vista=resumen`) |
+
+Los diagramas que aceptan parámetro (`instrument`, `year`, `review`, `carriles`, `agrupar`, `vista`) declaran
 `param_options` y el componente pinta el selector. **Imprimir** abre una
 ventana con solo el diagrama (título, leyenda, fecha, todas las conexiones)
 escalado para caber a lo ancho de una hoja carta horizontal; desde ahí

@@ -4,7 +4,9 @@ static/src/diagram). Un solo motor dibuja bandas, carriles o una matriz con
 cajas y flechas; cada diagrama es solo un método de aquí que devuelve los
 datos. Formato:
 
-    {'kind', 'title', 'subtitle', 'layout': 'bands' | 'columns' | 'matrix',
+    {'kind', 'title', 'subtitle',
+     'layout': 'bands' | 'columns' | 'matrix' | 'swimlanes' | 'cycle',
+     'shape': 'pyramid' (opcional, bands),   'columns': N (swimlanes; item.col),
      'lanes': [{'key', 'label', 'items': [{'key', 'model', 'res_id', 'code',
                 'name', 'subtitle', 'color', 'avatar', 'meta'}]}],
      'edges': [{'from', 'to', 'label'}],
@@ -173,12 +175,26 @@ class SgiDiagram(models.AbstractModel):
         }
 
     def _data_process_flow(self, res_id=None):
+        """Diagrama de flujo funcional (carriles por puesto, el estándar ISO /
+        BPMN para un procedimiento): una fila por puesto que ejecuta, las
+        actividades en el orden del procedimiento de izquierda a derecha y
+        las flechas son los eslabones. `carriles=etapa` da la vista por
+        columnas de etapa."""
         process = self._process(res_id)
         if not process:
             return {'title': "Flujo del proceso", 'layout': 'columns', 'lanes': []}
         Activity = self.env['sgi.process.activity']
         activities = Activity.search([('process_id', '=', process.id), ('active', '=', True)],
                                      order='sequence, id')
+        lanes_by = self._param('carriles', 'puesto')
+        options = [{'name': 'carriles', 'default': 'puesto',
+                    'values': [{'value': 'puesto', 'label': "Carriles por puesto"},
+                               {'value': 'etapa', 'label': "Columnas por etapa"}]}]
+        if lanes_by == 'puesto':
+            result = self._process_flow_swimlanes(process, activities)
+            result['param_options'] = options
+            result.update(self._process_nav(process))
+            return result
         stages = process.stage_ids.sorted(lambda s: (s.sequence, s.id)) if 'stage_ids' in process._fields \
             else activities.stage_id.sorted(lambda s: (s.sequence, s.id))
         lanes, by_stage = [], {}
@@ -215,9 +231,61 @@ class SgiDiagram(models.AbstractModel):
             'legend': [{'color': 'success', 'label': "en cumplimiento"},
                        {'color': 'danger', 'label': "sin evidencia"},
                        {'color': 'muted', 'label': "sin medición automática"}],
+            'param_options': options,
         }
         result.update(self._process_nav(process))
         return result
+
+    def _process_flow_swimlanes(self, process, activities):
+        """Carriles por puesto: cada actividad cae en el carril del primer
+        puesto que la ejecuta (los demás van en el subtítulo) y ocupa la
+        columna de su orden en el procedimiento. Las de otros procesos que
+        entregan o reciben van en carriles «Otros procesos» arriba y abajo."""
+        links = self.env['sgi.activity.link'].search([
+            '|', ('from_activity_id', 'in', activities.ids), ('to_activity_id', 'in', activities.ids)])
+        incoming = links.filtered(lambda l: l.to_activity_id in activities and l.from_activity_id not in activities)
+        outgoing = links.filtered(lambda l: l.from_activity_id in activities and l.to_activity_id not in activities)
+        lanes, by_job, order = [], {}, []
+        for col, activity in enumerate(activities, start=1):
+            jobs = activity.responsible_job_ids.sorted('name')
+            job = jobs[:1]
+            key = _key(job) if job else 'job_none'
+            if key not in by_job:
+                by_job[key] = {'key': key, 'label': job.name if job else "Sin puesto", 'items': []}
+                order.append(key)
+            item = self._activity_item(activity)
+            item['col'] = col
+            lanes_items = by_job[key]['items']
+            lanes_items.append(item)
+        columns = len(activities)
+        if incoming:
+            items = []
+            for n, act in enumerate(incoming.from_activity_id.sorted(lambda a: (a.process_id.code or '', a.sequence)), 1):
+                item = self._activity_item(act, with_process=True)
+                item['col'] = min(n, columns) or 1
+                items.append(item)
+            lanes.append({'key': 'in', 'label': "Otros procesos (entregan)", 'items': items})
+        lanes += [by_job[k] for k in order]
+        if outgoing:
+            items = []
+            targets = outgoing.to_activity_id.sorted(lambda a: (a.process_id.code or '', a.sequence))
+            for n, act in enumerate(targets, 1):
+                item = self._activity_item(act, with_process=True)
+                item['col'] = max(1, columns - len(targets) + n)
+                items.append(item)
+            lanes.append({'key': 'out', 'label': "Otros procesos (reciben)", 'items': items})
+        return {
+            'title': "Flujo del proceso — %s %s" % (process.code or '', process.name or ''),
+            'subtitle': "Diagrama de flujo funcional: una fila por puesto, las actividades en orden y las flechas son los eslabones",
+            'layout': 'swimlanes',
+            'columns': max(columns, 1),
+            'lanes': lanes,
+            'edges': [{'from': _key(l.from_activity_id), 'to': _key(l.to_activity_id), 'label': l.name or ''}
+                      for l in links],
+            'legend': [{'color': 'success', 'label': "en cumplimiento"},
+                       {'color': 'danger', 'label': "sin evidencia"},
+                       {'color': 'muted', 'label': "sin medición automática"}],
+        }
 
     def _data_sipoc(self, res_id=None):
         process = self._process(res_id)

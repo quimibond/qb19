@@ -246,6 +246,31 @@ class SgiDiagramIso(models.AbstractModel):
         systems = Req._fields['system'].selection
         states = Req._fields['compliance_state'].selection
         reqs = Req.search([])
+        options = [{'name': 'vista', 'default': 'requisitos',
+                    'values': [{'value': 'requisitos', 'label': "Requisitos por sistema"},
+                               {'value': 'resumen', 'label': "Resumen sistema × estado"}]}]
+        if self._param('vista', 'requisitos') == 'requisitos':
+            # Tablero: una banda por sistema y una tarjeta por requisito con su
+            # estado de cumplimiento; el resumen numérico queda en la matriz.
+            state_labels = dict(states)
+            color = {'cumple': 'success', 'parcial': 'warning', 'no_cumple': 'danger'}
+            lanes = []
+            for key_r, label_r in systems:
+                group = reqs.filtered(lambda r: (r.system or 'varios') == key_r)
+                if not group:
+                    continue
+                lanes.append({'key': key_r, 'label': "%s (%d)" % (label_r, len(group)), 'items': [
+                    self._item(r, code=r.reference or '', name=r.name or '',
+                               subtitle=state_labels.get(r.compliance_state, ''),
+                               color=color.get(r.compliance_state, 'muted'))
+                    for r in group.sorted(lambda r: (r.compliance_state or '', r.name or ''))]})
+            return {
+                'title': "Requisitos legales y otros (ISO 9001 6.1.3 · 14001 9.1.2 · 45001 9.1.2)",
+                'subtitle': "Una banda por sistema, una tarjeta por requisito; color = cumplimiento",
+                'layout': 'bands', 'lanes': lanes, 'param_options': options,
+                'legend': [{'color': 'success', 'label': "cumple"}, {'color': 'warning', 'label': "parcial"},
+                           {'color': 'danger', 'label': "no cumple"}, {'color': 'muted', 'label': "sin evaluar / no aplica"}],
+            }
         level_by_state = {'cumple': 3, 'parcial': 2, 'no_cumple': 1, 'pendiente': 0, 'no_aplica': 0}
         cells = {}
         for req in reqs:
@@ -269,6 +294,7 @@ class SgiDiagramIso(models.AbstractModel):
                        'cells': matrix},
             'legend': [{'color': 'success', 'label': "cumple"}, {'color': 'warning', 'label': "parcial"},
                        {'color': 'info', 'label': "no cumple"}],
+            'param_options': options,
         }
 
     # ---- 7.1.5 calibración ------------------------------------------
@@ -277,18 +303,49 @@ class SgiDiagramIso(models.AbstractModel):
         if 'sgi_calibration_state' not in Equipment._fields:
             return {'title': "Calibración", 'layout': 'columns', 'lanes': []}
         equipments = Equipment.search([('sgi_is_measuring', '=', True)], order='sgi_next_calibration_date')
+        state_color = {'vencido': 'danger', 'por_vencer': 'warning', 'vigente': 'success'}
+
+        def item(e):
+            return self._item(e, code=e.sgi_magnitude or '', name=e.name or '',
+                              subtitle="Próxima: %s" % (e.sgi_next_calibration_date or '—'),
+                              color=state_color.get(e.sgi_calibration_state, 'muted'))
+        options = [{'name': 'agrupar', 'default': 'mes',
+                    'values': [{'value': 'mes', 'label': "Programa por mes"},
+                               {'value': 'estado', 'label': "Por vigencia"}]}]
         lanes = []
-        for state, label, color in (('vencido', "Vencidos", 'danger'), ('por_vencer', "Por vencer (30 días)", 'warning'),
-                                    ('vigente', "Vigentes", 'success')):
-            group = equipments.filtered(lambda e: e.sgi_calibration_state == state)
-            lanes.append({'key': state, 'label': "%s (%d)" % (label, len(group)), 'items': [
-                self._item(e, code=e.sgi_magnitude or '', name=e.name or '',
-                           subtitle="Próxima: %s" % (e.sgi_next_calibration_date or '—'), color=color)
-                for e in group[:60]]})
+        if self._param('agrupar', 'mes') == 'estado':
+            for state, label in (('vencido', "Vencidos"), ('por_vencer', "Por vencer (30 días)"),
+                                 ('vigente', "Vigentes")):
+                group = equipments.filtered(lambda e: e.sgi_calibration_state == state)
+                lanes.append({'key': state, 'label': "%s (%d)" % (label, len(group)),
+                              'items': [item(e) for e in group[:60]]})
+            subtitle = "Por vigencia de la calibración; doble clic abre el equipo"
+        else:
+            # Programa de calibración: los 12 meses que vienen, los vencidos
+            # primero y los que no tienen fecha al final.
+            today = fields.Date.context_today(self)
+            overdue = equipments.filtered(lambda e: e.sgi_next_calibration_date and e.sgi_next_calibration_date < today)
+            if overdue:
+                lanes.append({'key': 'vencidos', 'label': "Vencidos (%d)" % len(overdue), 'items': [item(e) for e in overdue[:60]]})
+            for n in range(12):
+                month = (today.month - 1 + n) % 12 + 1
+                year = today.year + (today.month - 1 + n) // 12
+                group = equipments.filtered(lambda e, m=month, y=year: e.sgi_next_calibration_date
+                                            and e.sgi_next_calibration_date >= today
+                                            and e.sgi_next_calibration_date.month == m
+                                            and e.sgi_next_calibration_date.year == y)
+                lanes.append({'key': 'm%d%02d' % (year, month), 'label': "%s %d" % (MONTHS[month - 1][:3], year),
+                              'items': [item(e) for e in group[:60]]})
+            later = equipments.filtered(lambda e: not e.sgi_next_calibration_date)
+            if later:
+                lanes.append({'key': 'sin_fecha', 'label': "Sin fecha (%d)" % len(later), 'items': [item(e) for e in later[:60]]})
+            subtitle = "Programa de calibración: una columna por mes según la próxima calibración; rojo = vencido"
         return {
             'title': "Equipos de medición y calibración (ISO 9001 7.1.5)",
-            'subtitle': "Por vigencia de la calibración; doble clic abre el equipo",
-            'layout': 'columns', 'lanes': lanes,
+            'subtitle': subtitle,
+            'layout': 'columns', 'lanes': lanes, 'param_options': options,
+            'legend': [{'color': 'danger', 'label': "vencido"}, {'color': 'warning', 'label': "por vencer"},
+                       {'color': 'success', 'label': "vigente"}],
         }
 
     # ---- 7.2 competencias -------------------------------------------
@@ -353,7 +410,7 @@ class SgiDiagramIso(models.AbstractModel):
         return {
             'title': "Pirámide documental (ISO 9001 7.5)",
             'subtitle': "Documentos controlados en vigor por nivel y proceso; doble clic abre la lista",
-            'layout': 'bands', 'lanes': lanes,
+            'layout': 'bands', 'shape': 'pyramid', 'lanes': lanes,
         }
 
     # ---- 8.2 (45001) emergencias ------------------------------------
@@ -585,12 +642,19 @@ class SgiDiagramIso(models.AbstractModel):
                           color={'vencida': 'danger'}.get(a.state, 'warning')) for a in actions]
         result = {
             'title': "PDCA — %s %s" % (process.code or '', process.name or ''),
-            'subtitle': "Planear (objetivos y riesgos) · Hacer (etapas y documentos) · Verificar (indicadores, auditorías, NC) · Actuar (acciones abiertas)",
-            'layout': 'columns',
+            'subtitle': "El ciclo de mejora del proceso: Planear (objetivos y riesgos) → Hacer (etapas y documentos) → Verificar (indicadores, auditorías, NC) → Actuar (acciones abiertas)",
+            # Ciclo: cuadrantes en el sentido de las manecillas, con flechas
+            # entre cuadrantes (las claves «lane:x» son los propios carriles).
+            'layout': 'cycle',
             'lanes': [{'key': 'plan', 'label': "Planear", 'items': plan},
                       {'key': 'do', 'label': "Hacer", 'items': do},
                       {'key': 'check', 'label': "Verificar", 'items': check},
                       {'key': 'act', 'label': "Actuar", 'items': act}],
+            'edges': [{'from': 'lane:plan', 'to': 'lane:do', 'label': "Planear → Hacer"},
+                      {'from': 'lane:do', 'to': 'lane:check', 'label': "Hacer → Verificar"},
+                      {'from': 'lane:check', 'to': 'lane:act', 'label': "Verificar → Actuar"},
+                      {'from': 'lane:act', 'to': 'lane:plan', 'label': "Actuar → Planear"}],
+            'show_all_edges': True,
         }
         result.update(self._process_nav(process))
         return result

@@ -52,14 +52,16 @@
             <t t-if="state.loading">
                 <div class="text-muted"><i class="fa fa-spinner fa-spin me-1"/> Cargando…</div>
             </t>
-            <t t-elif="!state.data or (state.data.layout !== 'matrix' and !state.data.lanes.length)">
+            <t t-elif="!state.data or (state.data.layout !== 'matrix' and !(state.data.lanes || []).length)">
                 <p class="text-muted fst-italic">No hay nada que dibujar todavía.</p>
             </t>
 
-            <!-- Bandas: una fila por banda (mapa de procesos) -->
+            <!-- Bandas: una fila por banda (mapa de procesos); con shape=pyramid
+                 cada banda es más angosta que la de abajo (pirámide documental) -->
             <t t-elif="state.data.layout === 'bands'">
                 <t t-foreach="state.data.lanes" t-as="lane" t-key="lane.key">
-                    <div t-attf-class="o_sgi_dg_band o_sgi_dg_band_#{lane.key} mb-4">
+                    <div t-attf-class="o_sgi_dg_band o_sgi_dg_band_#{lane.key} mb-4 #{state.data.shape === 'pyramid' ? 'mx-auto' : ''}"
+                         t-att-style="bandStyle(lane_index)">
                         <div class="o_sgi_dg_lane_title" t-esc="lane.label"/>
                         <div class="d-flex flex-wrap gap-4 justify-content-center">
                             <t t-foreach="lane.items" t-as="item" t-key="item.key">
@@ -81,6 +83,43 @@
                                     <t t-call="quimibond_sgi.DiagramBox"/>
                                 </t>
                                 <div t-if="!lane.items.length" class="text-muted small fst-italic">— sin registros —</div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+
+            <!-- Carriles horizontales (diagrama de flujo funcional): una fila por
+                 puesto, cada actividad en la columna de su orden -->
+            <t t-elif="state.data.layout === 'swimlanes'">
+                <div class="o_sgi_dg_swimlanes">
+                    <t t-foreach="state.data.lanes" t-as="lane" t-key="lane.key">
+                        <div t-attf-class="o_sgi_dg_swimlane o_sgi_dg_swimlane_#{lane.key}">
+                            <div class="o_sgi_dg_swimlane_title" t-esc="lane.label"/>
+                            <div class="o_sgi_dg_swimlane_track" t-attf-style="grid-template-columns: repeat(#{state.data.columns || 1}, var(--sgi-dg-col));">
+                                <t t-foreach="lane.items" t-as="item" t-key="item.key">
+                                    <div t-attf-style="grid-column: #{item.col || 1};">
+                                        <t t-call="quimibond_sgi.DiagramBox"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+
+            <!-- Ciclo (PDCA): cuatro cuadrantes en el sentido de las manecillas;
+                 las flechas van de cuadrante a cuadrante (claves «lane:x») -->
+            <t t-elif="state.data.layout === 'cycle'">
+                <div class="o_sgi_dg_cycle">
+                    <t t-foreach="state.data.lanes" t-as="lane" t-key="lane.key">
+                        <div t-attf-class="o_sgi_dg_quadrant o_sgi_dg_quadrant_#{lane_index}" t-attf-data-key="lane:#{lane.key}">
+                            <div class="o_sgi_dg_lane_title"><span class="o_sgi_dg_step" t-esc="lane_index + 1"/> <t t-esc="lane.label"/></div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <t t-foreach="lane.items" t-as="item" t-key="item.key">
+                                    <t t-call="quimibond_sgi.DiagramBox"/>
+                                </t>
+                                <div t-if="!lane.items.length" class="text-muted small fst-italic">— nada por ahora —</div>
                             </div>
                         </div>
                     </t>
