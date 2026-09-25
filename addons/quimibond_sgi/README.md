@@ -1016,6 +1016,25 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## Solo vistas nativas de Odoo (19.0.47.0.0)
+
+Regla del CEO (2026-09-25): **nada de HTML servido ni enlaces armados a
+mano**; todo con campos, vistas y acciones de Odoo, para que la actualización
+a la siguiente versión no rompa nada y la navegación (migas de pan, regresar)
+funcione sola. Inventario y resultado:
+
+| Pieza | Antes | Ahora |
+|---|---|---|
+| Mi procedimiento (`sgi.my.procedure`) | `content` Html con tarjetas `<details>` y enlaces `/odoo/…` (al dar «Ir a hacerlo» se perdían las migas) | Formulario con **kanban** de `sgi.activity.role` (piezas como campos: estado, cuándo, cómo, dónde, contra qué, terminada cuando, si no se puede, recibe, entrega, conforme a, escala) y botones de objeto «Ir a hacerlo», «Ver instructivo», «Ver actividad»; listas nativas para escalamientos, participa/se entera, Mis pendientes (acciones, NC, mediciones, indicadores; obligaciones con botón) y Mis documentos (acuses con «Marcar leído», documentos con «Ver archivo») |
+| Revisión previa (`sgi.my.procedure.check`) | `result` Html | Contador y cuatro listas (duplicados, sin puesto, en puesto sin roles, con roles sin personas); se abre en la misma pila de navegación |
+| Mi equipo | HTML (46.0.x) | Lista nativa (46.1.0) |
+| Tablero de dirección | Hoja de cálculo nativa | Sin cambio |
+| Avisos (`display_notification`) y chatter con `Markup` | Nativos | Sin cambio |
+| Diagnóstico del SGI (`sgi.diagnostic.result`) | Html generado por el análisis | **Pendiente**: sigue como reporte HTML; convertirlo a listas es el siguiente paso |
+
+`hr.job._sgi_mp_documents()` alimenta el PDF y la huella. Pruebas:
+`TestMyProcedure` 07, 10, 11, 12 reescritas sobre campos.
+
 ## PDF de «Mi procedimiento» alineado con la pantalla (19.0.46.0.0)
 
 Para la gente de planta sin usuario de Odoo el PDF **es** su procedimiento,

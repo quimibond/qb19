@@ -190,7 +190,10 @@ class TestMyProcedure(TransactionCase):
     # ------------------------------------------------------------------
     # Pantalla (Inicio → Mi procedimiento)
     # ------------------------------------------------------------------
-    def test_07_pantalla_secciones_tarjetas_y_botones(self):
+    def test_07_pantalla_nativa_actividades_y_botones(self):
+        """La pantalla es un formulario con kanban y listas nativas: las
+        actividades son roles con sus piezas como campos y botones de objeto
+        (migas de pan), sin HTML."""
         menu = self.env['ir.ui.menu'].search(
             [('action', 'like', 'ir.actions.act_window,')], limit=1)
         self.a_weekly_fri.write({'odoo_menu_id': menu.id, 'how_steps': 'Abrir → publicar',
@@ -203,16 +206,29 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual((wiz.employee_id.id, wiz.job_id), (self.emp1.id, self.job))
         self.assertFalse(wiz.can_pick, "Sin equipo ni permisos: solo su puesto.")
         self.assertEqual(wiz.ack_state, 'sin_publicar')
-        html = wiz.content
-        for text in ('Semanal', 'Mensual', 'Trimestral', 'Programa semanal', 'Cada viernes',
-                     'Día hábil 3 del mes', '<details', 'Ir a hacerlo', '/odoo/action-%d' % menu.action.id,
-                     'Abrir → publicar', 'Pedidos confirmados', 'El programa está publicado',
-                     'Avisar a Ventas', 'GERENTE PRUEBA MP (a los 2 días hábiles)',
-                     'Participa o se entera', 'Atender reclamación', 'Escalamientos que recibe',
-                     'Embarcar', 'Al día', 'Atrasada', 'Ver actividad'):
-            self.assertIn(text, html, text)
-        self.assertNotIn('Diario <span', html,
-                         "Sin actividades diarias del puesto no hay sección Diario.")
+        self.assertFalse('content' in wiz._fields, "Sin HTML servido.")
+        # Ejecuta/aprueba, en orden de cadencia y cuándo.
+        self.assertEqual(wiz.role_ids.mapped('activity_id'),
+                         self.a_weekly_mon | self.a_weekly_fri | self.a_monthly | self.a_quarterly)
+        self.assertEqual(wiz.role_ids.mapped('cadence'), ['semanal', 'semanal', 'mensual', 'trimestral'])
+        fri = wiz.role_ids.filtered(lambda r: r.activity_id == self.a_weekly_fri)
+        self.assertEqual(fri.activity_when, 'Cada viernes')
+        self.assertEqual((fri.mp_status, fri.mp_how, fri.mp_check_against, fri.mp_done, fri.mp_on_fail),
+                         ('al_dia', 'Abrir → publicar', 'Pedidos confirmados',
+                          'El programa está publicado', 'Avisar a Ventas'))
+        self.assertEqual(fri.mp_escalates, 'GERENTE PRUEBA MP (a los 2 días hábiles)')
+        self.assertTrue(fri.mp_can_go)
+        self.assertEqual(fri.action_mp_go()['type'], 'ir.actions.act_window', "Ir a hacerlo es una acción de ventana.")
+        self.assertEqual(fri.action_open_activity()['res_id'], self.a_weekly_fri.id)
+        quarterly = wiz.role_ids.filtered(lambda r: r.activity_id == self.a_weekly_mon)
+        self.assertEqual(quarterly.activity_when, 'Cada lunes')
+        self.assertEqual(wiz.role_ids.filtered(lambda r: r.activity_id == self.a_quarterly).mp_status, 'atrasada')
+        self.assertEqual(wiz.role_ids.filtered(lambda r: r.activity_id == self.a_monthly).mp_status, 'sin_medir')
+        self.assertEqual((wiz.late_count, wiz.ok_count, wiz.unmeasured_count), (1, 1, 2))
+        # Participa / se entera y escalamientos que recibe.
+        self.assertEqual(wiz.short_role_ids.mapped('activity_id'), self.a_event)
+        self.assertEqual(wiz.received_role_ids.mapped('activity_id'), self.a_received)
+        self.assertEqual(wiz.received_role_ids.after_days, 1)
 
     def test_08_pantalla_firma_contra_revision_vigente(self):
         Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
@@ -283,10 +299,9 @@ class TestMyProcedure(TransactionCase):
         self.emp1.parent_id = boss
         Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
-        html = wiz.content
-        self.assertIn('Mi jefe: Jefe Directo MP', html, "El jefe directo del empleado, no el del departamento.")
-        self.assertIn('Sin medición automática', html)
-        self.assertNotIn('Sin medir', html)
+        self.assertEqual(wiz.boss_id.id, boss.id, "El jefe directo del empleado, no el del departamento.")
+        labels = dict(wiz.role_ids._fields['mp_status'].selection)
+        self.assertEqual(labels['sin_medir'], 'Sin medición automática')
         acts = self.a_weekly_fri | self.a_quarterly | self.a_monthly
         self.a_weekly_fri.measure_state = 'verde'
         self.env['sgi.activity.week.stat'].create({
@@ -311,20 +326,19 @@ class TestMyProcedure(TransactionCase):
             'responsible_id': self.user_emp.id, 'target_objective': 1.0, 'target_acceptable': 0.5})
         Wiz = self.env['sgi.my.procedure'].with_user(self.user_emp)
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
-        html = wiz.content
-        self.assertIn('Mis documentos', html)
-        self.assertIn('IT-P-C11-77', html)
-        self.assertIn('Acuse pendiente', html)
-        self.assertIn('Mis pendientes', html)
-        self.assertIn('Acción pendiente MP', html)
-        self.assertIn('Vencida', html)
-        self.assertIn('ZMP-01', html)
-        self.assertIn('/odoo/sgi.indicator/%d' % indicator.id, html)
-        self.assertIn('/odoo/sgi.action.line/%d' % action.id, html)
-        # Sin usuario no hay pendientes que mostrar.
+        self.assertIn(doc, wiz.document_ids)
+        ack = wiz.ack_ids.filtered(lambda a: a.document_id == doc)
+        self.assertEqual(ack.state, 'pendiente')
+        self.assertEqual(wiz.pending_ack_count, 1)
+        self.assertTrue(wiz.has_user)
+        self.assertIn(action, wiz.pending_action_ids)
+        self.assertEqual(action.state, 'vencida')
+        self.assertIn(indicator, wiz.official_indicator_ids)
+        # Sin usuario no hay pendientes que mostrar; los documentos del puesto sí.
         wiz2 = self.env['sgi.my.procedure'].with_user(self.manager).create({'employee_id': self.emp2.id})
-        self.assertNotIn('Mis pendientes', wiz2.content)
-        self.assertIn('IT-P-C11-77', wiz2.content, "Los documentos del puesto sí se ven sin usuario.")
+        self.assertFalse(wiz2.has_user)
+        self.assertFalse(wiz2.pending_action_ids)
+        self.assertIn(doc, wiz2.document_ids)
 
     def test_14_pdf_alineado_con_la_pantalla(self):
         """El PDF es el procedimiento de quien no tiene usuario: trae lo mismo
@@ -381,9 +395,11 @@ class TestMyProcedure(TransactionCase):
             ('res_model', '=', 'documents.document'), ('summary', 'ilike', 'Mi procedimiento')])
         self.assertTrue(activities, "Aviso semanal a MAST sobre la revisión más reciente.")
         self.assertIn(doc.id, activities.mapped('res_id'))
-        result = self.env['sgi.my.procedure.check'].with_user(self.manager).create({}).result
-        self.assertIn('Puestos duplicados', result)
-        self.assertIn('Solo MP', result)
+        check_wiz = self.env['sgi.my.procedure.check'].with_user(self.manager).create({})
+        self.assertIn(dup, check_wiz.duplicate_job_ids)
+        self.assertIn(loner.id, check_wiz.job_without_roles_employee_ids.ids)
+        self.assertIn(empty_job, check_wiz.roles_without_people_job_ids)
+        self.assertGreaterEqual(check_wiz.ready_count, 1)
 
     def test_13_mi_equipo(self):
         """Mi equipo es una lista nativa (buscar, filtrar, agrupar) acotada al
