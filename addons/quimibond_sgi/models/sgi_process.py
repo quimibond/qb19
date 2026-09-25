@@ -55,6 +55,10 @@ class SgiProcess(models.Model):
         help="Documentos vigentes que este proceso reemplaza. Al poner en "
              "vigor el procedimiento del proceso se ofrece marcarlos "
              "obsoletos.")
+    # PR-1 (53.1.0): quién sustituyó a este proceso al archivarlo por «replaces».
+    # Una carga futura mueve al sucesor lo que se quede colgado aquí.
+    replaced_by_id = fields.Many2one(
+        'sgi.process', string="Sustituido por", readonly=True, copy=False, index=True)
     owner_valid = fields.Boolean(
         string="Dueño válido", compute='_compute_owner_valid',
         help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
