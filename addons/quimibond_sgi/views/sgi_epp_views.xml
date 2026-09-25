@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Responsiva de entrega de EPP (S03-02): un registro por entrega,
+         ligado al empleado; la firma la pone el propio empleado. -->
+    <record id="sgi_epp_delivery_view_form" model="ir.ui.view">
+        <field name="name">sgi.epp.delivery.form</field>
+        <field name="model">sgi.epp.delivery</field>
+        <field name="arch" type="xml">
+            <form string="Responsiva de EPP">
+                <header>
+                    <button name="action_sign" type="object" string="Firmar: recibí el EPP"
+                            class="btn-primary" icon="fa-pencil" invisible="not can_sign"
+                            confirm="Confirmo que recibí el equipo de protección personal listado y me comprometo a usarlo y cuidarlo. La firma queda registrada con fecha y hora."/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="employee_id" readonly="state == 'firmada'"/>
+                            <field name="job_id" readonly="state == 'firmada'"/>
+                            <field name="date" readonly="state == 'firmada'"/>
+                        </group>
+                        <group>
+                            <field name="delivered_by_id" readonly="state == 'firmada'"/>
+                            <field name="signed_date" invisible="not signed_date"/>
+                            <field name="can_sign" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="EPP entregado">
+                        <field name="items" nolabel="1" readonly="state == 'firmada'"
+                               placeholder="Ej. casco, lentes de seguridad, guantes de nitrilo, protección auditiva..."/>
+                    </group>
+                    <group string="Observaciones">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_epp_delivery_view_list" model="ir.ui.view">
+        <field name="name">sgi.epp.delivery.list</field>
+        <field name="model">sgi.epp.delivery</field>
+        <field name="arch" type="xml">
+            <list string="Responsivas de EPP" decoration-warning="state == 'entregada'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="employee_id"/>
+                <field name="job_id" optional="show"/>
+                <field name="delivered_by_id" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'firmada'" decoration-warning="state == 'entregada'"/>
+                <field name="signed_date" optional="show"/>
+                <field name="can_sign" column_invisible="1"/>
+                <button name="action_sign" type="object" string="Firmar" icon="fa-pencil" invisible="not can_sign"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_epp_delivery_view_search" model="ir.ui.view">
+        <field name="name">sgi.epp.delivery.search</field>
+        <field name="model">sgi.epp.delivery</field>
+        <field name="arch" type="xml">
+            <search string="Responsivas de EPP">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="job_id"/>
+                <field name="items"/>
+                <filter name="pending" string="Sin firmar" domain="[('state', '=', 'entregada')]"/>
+                <filter name="signed" string="Firmadas" domain="[('state', '=', 'firmada')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_employee" string="Empleado" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_epp_delivery_action" model="ir.actions.act_window">
+        <field name="name">Responsivas de EPP</field>
+        <field name="res_model">sgi.epp.delivery</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_epp_delivery_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin responsivas de EPP</p>
+            <p>Cada entrega de equipo de protección personal se registra aquí (o con «Entregar EPP» en la ficha del empleado) y la firma el propio empleado desde Mi procedimiento.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_sgi_epp_deliveries" name="Responsivas de EPP"
+              parent="quimibond_sgi.menu_sgi_admin_signatures" action="sgi_epp_delivery_action" sequence="20"/>
+
+    <!-- Ficha del empleado: EPP del puesto (solo lectura), entregar y responsivas. -->
+    <record id="sgi_hr_employee_view_form_epp" model="ir.ui.view">
+        <field name="name">hr.employee.form.sgi.epp</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_epp_deliveries" type="object" class="oe_stat_button"
+                        icon="fa-shield" groups="quimibond_sgi.group_sgi_user,hr.group_hr_user">
+                    <field name="sgi_epp_delivery_count" widget="statinfo" string="Responsivas EPP"/>
+                </button>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="EPP (SGI)" name="sgi_epp" groups="quimibond_sgi.group_sgi_user,hr.group_hr_user">
+                    <group string="EPP requerido por el puesto (S03-01)">
+                        <field name="sgi_epp_required" nolabel="1" readonly="1"/>
+                    </group>
+                    <button name="action_sgi_deliver_epp" type="object" string="Entregar EPP"
+                            class="btn-primary mb-3" icon="fa-shield"/>
+                    <field name="sgi_epp_delivery_ids" readonly="1">
+                        <list decoration-warning="state == 'entregada'">
+                            <field name="name"/>
+                            <field name="date"/>
+                            <field name="items"/>
+                            <field name="state" widget="badge"
+                                   decoration-success="state == 'firmada'" decoration-warning="state == 'entregada'"/>
+                            <field name="signed_date" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

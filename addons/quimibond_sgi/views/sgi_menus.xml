@@ -13,7 +13,7 @@
 
     <menuitem id="menu_sgi_root" name="SGI" sequence="90"
               web_icon="quimibond_sgi,static/description/icon.png"
-              groups="quimibond_sgi.group_sgi_user"/>
+              groups="quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor"/>
 
     <!-- ============================================================
          Estructura del SGI (CEO, 2026-09-24): 5 entradas por perfil.
@@ -74,9 +74,9 @@
     <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
               parent="menu_sgi_safety" action="sgi_emergency_drill_action" sequence="30"/>
 
-    <!-- 4. Dirección (Dirección y MAST): la cascada de gestión. -->
+    <!-- 4. Dirección (Dirección y MAST; el auditor la lee): la cascada de gestión. -->
     <menuitem id="menu_sgi_direction" name="Dirección" parent="menu_sgi_root" sequence="40"
-              groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager"/>
+              groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_auditor"/>
     <menuitem id="menu_sgi_dashboard_health" name="Tablero de dirección" parent="menu_sgi_direction"
               action="sgi_spreadsheet_dashboard_action" sequence="5"/>
     <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección"

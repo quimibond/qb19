@@ -253,6 +253,8 @@ class HrJobMyProcedure(models.Model):
             'short': short,
             'received': received,
             'documents': documents,
+            # EPP que exige el puesto (S03-01): mismo texto que la pantalla.
+            'epp': [line.strip() for line in (self.sgi_epp_required or '').splitlines() if line.strip()],
             'cover': cover,
             'total': len(detailed) + len(short),
         }
@@ -371,6 +373,8 @@ class HrJobMyProcedure(models.Model):
             # Los documentos que aplican al puesto (clave y revisión) también
             # son contenido: si cambian, la persona debe volver a leer.
             'documents': [[d['code'], d['revision']] for d in data.get('documents', [])],
+            # El EPP también: si cambia lo que debe usar, vuelve a leer y firmar.
+            'epp': data.get('epp', []),
         }
         raw = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()

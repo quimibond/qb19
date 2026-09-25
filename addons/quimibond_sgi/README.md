@@ -1016,6 +1016,43 @@ Pruebas: `TestIndicatorTrajectory` 01–05.
 
 Pruebas: `TestIndicatorPlan` 01–07.
 
+## PR 1 del plan de auditoría: auditor de solo lectura y EPP con responsiva (19.0.48.0.0)
+
+Plan completo (29 puntos, 7 PRs): `docs/SGI_PENDIENTES_PROGRAMACION.md`.
+Este PR cierra PERM-1, PERM-2 (aplicado en producción por MCP el
+2026-09-25: Jefe MAST solo Blanca Areli, Dirección de Operaciones Jorge
+Ortiz, los demás a Usuario SGI), PER-1 (ya en 46.1.0) y PER-2.
+
+**PERM-1 · Auditor SGI de solo lectura.** El grupo ya no implica Usuario
+SGI: implica solo `base.group_user` y lleva su propia línea de acceso de
+lectura sobre **todos** los modelos `sgi.*` no transitorios y sobre los
+registros de los procesos auditados (`quality.alert`, `quality.check`,
+`quality.point`, `documents.document`, `helpdesk.ticket/team`,
+`approval.request`, `project.task/project`, `maintenance.request/equipment`,
+`purchase.order(.line)`, `stock.picking/move/lot`, `mrp.production/workorder`,
+`sale.order(.line)`, `survey.user_input`, `sign.request`). Escribe solo
+hallazgos (`sgi.audit.finding`) y la auditoría misma (programa, minutas,
+checklist), que ya tenía. Jefe MAST implica ahora Usuario SGI y Auditor de
+forma explícita. El auditor ve el menú raíz del SGI y la entrada Dirección.
+Un auditor interno que además opera su puesto lleva los dos grupos: lo que
+escribe lo escribe como usuario. Prueba: `TestPermAuditor` 01–04.
+
+**PER-2 · EPP del puesto con responsiva.** `sgi.epp.delivery` (folio
+`EPP-AAAA-0001`): una responsiva por entrega, ligada al empleado, con el
+puesto al entregar, la fecha, quién entregó y el EPP entregado (se propone el
+`sgi_epp_required` del puesto). Estados Entregada → Firmada; **solo el propio
+empleado** (o el Jefe MAST) firma, con candado en `write()` como el acuse de
+lectura; una responsiva firmada no se edita (entrega nueva). En la ficha del
+empleado: pestaña «EPP (SGI)» con el EPP del puesto en solo lectura, botón
+«Entregar EPP» y sus responsivas; botón inteligente «Responsivas EPP». En
+**Mi procedimiento**: pestaña «Mi EPP» (EPP del puesto y responsivas con
+«Firmar: recibí el EPP») y una línea en Estado cuando hay responsiva por
+firmar. En el **PDF**: bloque «Equipo de protección personal (EPP)» con la
+lista del puesto y, al imprimir por empleado, su responsiva firmada; el EPP
+entra en la huella del contenido (cambiarlo obliga a releer y firmar).
+Lista general en Administración SGI → Firmas de lectura → Responsivas de
+EPP. Pruebas: `TestEpp` 01–03.
+
 ## Diagnóstico del SGI como lista nativa (19.0.47.1.0)
 
 Cierra el inventario de 47.0.0: el Diagnóstico ya no es un wizard con un

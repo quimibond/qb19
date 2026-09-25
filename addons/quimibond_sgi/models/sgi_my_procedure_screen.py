@@ -189,6 +189,13 @@ class SgiMyProcedure(models.TransientModel):
     document_ids = fields.Many2many(
         'documents.document', string="Documentos que aplican al puesto", compute='_compute_lists')
 
+    # EPP del puesto y responsivas de entrega del empleado (PER-2)
+    epp_required = fields.Text(string="EPP requerido por el puesto", compute='_compute_lists')
+    epp_delivery_ids = fields.Many2many(
+        'sgi.epp.delivery', string="Responsivas de EPP", compute='_compute_lists')
+    epp_pending_sign = fields.Boolean(string="Responsiva de EPP por firmar", compute='_compute_lists')
+    epp_label = fields.Char(string="EPP", compute='_compute_lists')
+
     # ------------------------------------------------------------------
     # Ven a cualquiera: Jefe MAST, administrador del SGI y Dirección de
     # Operaciones (grupo quimibond_sgi.group_sgi_director).
@@ -334,6 +341,19 @@ class SgiMyProcedure(models.TransientModel):
                 [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
                  ('sgi_doc_type', '!=', 'mi_procedimiento')],
                 order='sgi_doc_type, sgi_code, name').ids if job else False
+            # --- EPP del puesto y responsivas del empleado
+            wiz.epp_required = job.sgi_epp_required or False
+            deliveries = env['sgi.epp.delivery'].sudo().search(
+                [('employee_id', '=', emp.id)]) if emp else env['sgi.epp.delivery']
+            wiz.epp_delivery_ids = deliveries.ids
+            pending = deliveries.filtered(lambda d: d.state == 'entregada')
+            wiz.epp_pending_sign = bool(pending)
+            if pending:
+                wiz.epp_label = "Responsiva %s por firmar" % ", ".join(pending.mapped('name'))
+            elif deliveries:
+                wiz.epp_label = "Responsiva %s firmada" % deliveries[0].name
+            else:
+                wiz.epp_label = "Sin responsiva de entrega" if job.sgi_epp_required else False
             # --- Mis pendientes: solo con usuario (viven en Odoo, no en el puesto)
             wiz.has_user = bool(user)
             if not user:
