@@ -117,6 +117,10 @@ class TestPr6External(TransactionCase):
         self.assertEqual(len(lines.filtered(lambda l: l.process_id == p2)), 1)
         program.action_suggest_lines()
         self.assertEqual(len(program.line_ids), 3, "Idempotente.")
+        # 4.4 (56.9.0): sin auditor líder no se aprueba.
+        with self.assertRaises(UserError):
+            program.action_approve()
+        program.line_ids.write({'lead_auditor_id': self.env.user.id})
         program.action_approve()
         with self.assertRaises(UserError):
             program.action_suggest_lines()

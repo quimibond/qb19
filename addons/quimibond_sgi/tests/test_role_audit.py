@@ -163,3 +163,18 @@ class TestRoleAudit(TransactionCase):
         self.assertEqual((line.progress, line.state), ('100', 'terminada'))
         mine.write({'date_done': False})
         self.assertEqual(line.progress, '50', "Reabrir la regresa a 50 %.")
+
+    def test_09_programa_de_auditorias_sin_auditor_no_se_aprueba(self):
+        """4.4: el programa no se aprueba con auditorías internas sin auditor
+        líder, y solo MAST lo aprueba (el Usuario SGI ni el auditor)."""
+        from odoo.exceptions import AccessError, UserError
+        process = self.env['sgi.process'].create({'code': 'ZROLA', 'name': 'Proceso auditado'})
+        program = self.env['sgi.audit.program'].create({'year': 2098, 'line_ids': [
+            (0, 0, {'process_id': process.id, 'planned_month': '10'})]})
+        with self.assertRaises((AccessError, UserError)):
+            program.with_user(self.user).action_approve()
+        with self.assertRaises(UserError):
+            program.with_user(self.mast).action_approve()
+        program.line_ids.lead_auditor_id = self.mast
+        program.with_user(self.mast).action_approve()
+        self.assertEqual(program.state, 'aprobado')

@@ -2197,3 +2197,18 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
   terminadas con fecha futura (en producción, la acción 63) y sube a 100 %
   las terminadas con fecha pasada. Prueba: `test_role_audit.test_08` como
   Usuario SGI.
+
+### 19.0.56.10.0 — Bloque 4: auditorías
+
+- **4.1 AU-1, 4.2 AU-2, 4.3 AU-3** ya estaban (50.0.0): checklist generado de
+  las actividades del proceso con «Ver registros», respuestas que crean su
+  hallazgo, independencia del auditor por su puesto e informe F-P-G03-07
+  archivado al cerrar.
+- **4.4**: el programa de auditorías **no se aprueba** si alguna auditoría
+  interna no tiene auditor líder (el mensaje dice cuáles), y solo lo aprueba
+  el Jefe MAST (antes el auditor también podía). En producción los programas
+  2026 y 2027 tienen 14 líneas cada uno sin auditor: MAST los asigna.
+- **4.5**: `test_audit_pr3.test_09` recorre programa → auditoría → checklist →
+  hallazgo → NC sobre el proceso real C2 de la copia de producción (en una
+  base vacía, sobre el de prueba), como auditor y como MAST.
+  `test_role_audit.test_09`: el Usuario SGI no aprueba el programa.
