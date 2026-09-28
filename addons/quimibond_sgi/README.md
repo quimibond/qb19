@@ -1768,6 +1768,14 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### «Nuevo» en Mis actividades (56.6.1)
+
+El kanban de Mis actividades vuelve a tener el botón nativo **Nuevo** (arriba
+a la izquierda). Con `on_create` abre la propuesta de actividad nueva
+(`sgi.activity.change`, acción `sgi_activity_change_action_new`) con el puesto
+y los procesos de la pantalla ya puestos; la actividad nace al aprobarse,
+igual que «Proponer nueva actividad». Sin puesto el botón no aparece.
+
 ### El rol «Aprueba» ligado a la aprobación nativa de Odoo (56.5.0)
 
 Los 70 renglones «Aprueba» de los procedimientos solo describían quién

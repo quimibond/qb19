@@ -139,6 +139,25 @@ class TestMpChange(TransactionCase):
         self.assertFalse(new.active)
         self.assertTrue(new.exists())
 
+    def test_05_boton_nuevo_de_mis_actividades(self):
+        """56.6.1: el «Nuevo» nativo del kanban de Mis actividades abre la
+        propuesta de actividad nueva con el puesto y el proceso."""
+        screen = self.env['sgi.my.procedure'].with_user(self.user_emp).create({'employee_id': self.emp.id})
+        action = screen.action_show_all()
+        self.assertTrue(action['context']['create'])
+        kanban = self.env['sgi.activity.role'].get_view(
+            self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban')['arch']
+        self.assertIn('on_create="quimibond_sgi.sgi_activity_change_action_new"', kanban)
+        opened = self.env['sgi.activity.change'].with_user(self.user_emp).with_context(
+            **action['context']).action_sgi_new_from_context()
+        proposal = self.env['sgi.activity.change'].browse(opened['res_id'])
+        self.assertEqual(proposal.change_type, 'agregar')
+        self.assertEqual(proposal.job_id, self.job)
+        self.assertEqual(proposal.process_id, self.process)
+        # Sin contexto (otro camino) toma el puesto del usuario.
+        opened = self.env['sgi.activity.change'].with_user(self.user_emp).action_sgi_new_from_context()
+        self.assertEqual(self.env['sgi.activity.change'].browse(opened['res_id']).process_id, self.process)
+
     def test_04_usuario_sin_empleado(self):
         lonely = new_test_user(self.env, login='mpc_lonely',
                                groups='base.group_user,quimibond_sgi.group_sgi_user')

@@ -92,6 +92,15 @@
         </field>
     </record>
 
+    <!-- 56.6.1: el botón «Nuevo» del kanban de Mis actividades (on_create)
+         abre la propuesta de actividad nueva. -->
+    <record id="sgi_activity_change_action_new" model="ir.actions.server">
+        <field name="name">Nueva actividad (propuesta)</field>
+        <field name="model_id" ref="model_sgi_activity_change"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_sgi_new_from_context()</field>
+    </record>
+
     <record id="sgi_approval_request_view_form_mp_change" model="ir.ui.view">
         <field name="name">approval.request.form.sgi.mp.change</field>
         <field name="model">approval.request</field>
