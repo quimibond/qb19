@@ -55,13 +55,23 @@ class SgiNormClauseEvidence(models.Model):
     @api.depends('code', 'norm_id.code')
     def _compute_short_label(self):
         for clause in self:
-            clause.short_label = ("%s %s" % (clause.norm_id._sgi_short_code(), clause.code or '')).strip()
+            code = clause.code or ''
+            # Un numeral (8.5.1) necesita la norma; una clave propia (CLI-01,
+            # requisitos de clientes) ya se explica sola.
+            if code[:1].isdigit():
+                clause.short_label = ("%s %s" % (clause.norm_id._sgi_short_code(), code)).strip()
+            else:
+                clause.short_label = code or clause.name
 
     @api.model
     def _sgi_find(self, label):
         """«9001 8.5.1», «ISO 9001:2015 8.5.1» o «ISO 9001 8.5.1» → el punto.
         El numeral es la última palabra; lo de antes es la norma."""
         pieces = (label or '').split()
+        if len(pieces) == 1:
+            # Clave propia sin norma (CLI-01): vale si es única.
+            found = self.search([('code', '=', pieces[0])], limit=2)
+            return found if len(found) == 1 else self.browse()
         if len(pieces) < 2:
             return self.browse()
         code, norm_text = pieces[-1], " ".join(pieces[:-1])
@@ -125,6 +135,10 @@ class SgiNormMatrix(models.Model):
             [('norm_clause_ids', 'in', clauses.ids), ('active', '=', True)])
         processes = self.env['sgi.process'].search(
             ['|', ('norm_ids', 'in', self.ids), ('id', 'in', activities.process_id.ids)])
+        if not processes:
+            # Norma que ningún proceso declara todavía (p. ej. requisitos de
+            # clientes recién cargados): todos los procesos, para ver el hueco.
+            processes = self.env['sgi.process'].search([])
         processes = processes.sorted(lambda p: (p.code or '', p.name or ''))
         rows, uncovered = [], 0
         for clause in clauses:

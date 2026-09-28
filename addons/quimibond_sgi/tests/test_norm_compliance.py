@@ -50,6 +50,22 @@ class TestNormCompliance(TransactionCase):
         self.assertEqual(Clause._sgi_find('9999 8.5.1'), self.c851)
         self.assertFalse(Clause._sgi_find('9999 1.1'))
 
+    def test_05_requisitos_de_clientes(self):
+        norm = self.env['sgi.norm'].create({
+            'code': 'CLIENTES-PRUEBA', 'name': 'Requisitos de clientes',
+            'clause_ids': [(0, 0, {'code': 'ZCLI-01', 'name': 'PPAP'}),
+                           (0, 0, {'code': 'ZCLI-02', 'name': 'Respuesta en plazo'})]})
+        ppap = norm.clause_ids.filtered(lambda c: c.code == 'ZCLI-01')
+        self.assertEqual(ppap.short_label, 'ZCLI-01')
+        self.assertEqual(self.env['sgi.norm.clause']._sgi_find('ZCLI-01'), ppap)
+        self.act1.norm_clause_ids = [(4, ppap.id)]
+        matrix = norm._sgi_compliance_matrix()
+        self.assertIn(self.process, matrix['processes'])
+        self.assertEqual(matrix['uncovered'], 1)
+        entry = next(e for s in self.job._sgi_my_procedure_data()['sections'] for e in s['entries']
+                     if e['activity'] == self.act1)
+        self.assertIn('ZCLI-01', entry['norms'])
+
     def test_02_matriz_de_cumplimiento(self):
         matrix = self.norm._sgi_compliance_matrix()
         self.assertEqual([r['clause'].code for r in matrix['rows']], ['8.5.1', '8.9', '8.10'],

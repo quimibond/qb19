@@ -2476,7 +2476,9 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   al método de medición), como columna editable en lote en la lista de
   actividades y en Mi procedimiento (pantalla, «Más detalle», y PDF). No entra
   en la huella de Mi procedimiento: ligar puntos no obliga a republicar ni a
-  firmar. La carga por API acepta `"complies_with": ["9001 8.5.1", …]`.
+  firmar. La carga por API acepta `"complies_with": ["9001 8.5.1", "CLI-02", …]`.
+  Los requisitos con clave propia (norma «Requisitos específicos de clientes»,
+  CLI-01…) se muestran solo con su clave.
 - **Evidencia en el punto de la norma**: ficha propia del punto con la pestaña
   «Evidencia en el SGI» (procesos y actividades que lo cumplen) y botón a las
   NC levantadas contra él. En rojo los puntos sin actividad; filtro «Sin
