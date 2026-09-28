@@ -1768,6 +1768,31 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### El rol «Aprueba» ligado a la aprobación nativa de Odoo (56.5.0)
+
+Los 70 renglones «Aprueba» de los procedimientos solo describían quién
+aprobaba; nada en Odoo lo exigía. Ahora cada uno dice:
+
+- **Documento que se aprueba** (`approval_model_id`): se sugiere el modelo
+  que materializa la actividad (`measure_model_id`).
+- **Botón que se aprueba** (`approval_method`): se sugiere por documento
+  (`button_confirm` en compras, `action_post` en asientos y pagos,
+  `button_validate` en traslados, `action_apply_inventory` en ajustes…).
+- **Condición estructurada**: campo, operador y valor («total > 50,000»); el
+  texto de la condición se conserva como descripción.
+
+«Sincronizar» (SGI → Procesos → Aprobaciones del SGI, o el botón de la lista)
+crea o actualiza la **regla de aprobación nativa** (`studio.approval.rule`,
+la misma de Studio que ya usa producción) con las personas del puesto como
+aprobadores: el botón queda bloqueado hasta que una aprueba y Odoo guarda
+quién y cuándo (`studio.approval.entry`, visible en «Ver aprobaciones»). Una
+regla con aprobaciones registradas no cambia de botón ni de condición: se
+archiva y nace otra. Si el puesto no tiene personas con usuario no se crea
+regla (nadie podría aprobar). El cron «SGI: Sincronizar aprobaciones
+nativas» mantiene a los aprobadores al día y archiva las reglas de roles o
+actividades que ya no existen. Las aprobaciones por dar entran a «Mis
+pendientes» (tipo Aprobación). Nuevo dependencia: `web_studio`.
+
 ### Proponer cambio edita la actividad de verdad (56.4.0)
 
 La propuesta de 56.2.0 era texto libre («cómo está hoy / cómo propongo»).

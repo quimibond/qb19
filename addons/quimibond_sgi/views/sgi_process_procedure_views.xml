@@ -78,6 +78,10 @@
                                            required="target_type == 'relative'"/>
                                     <field name="condition" placeholder="Siempre"
                                            readonly="role not in ('aprueba', 'informa', 'escala') and not condition"/>
+                                    <field name="approval_state" widget="badge" optional="show"
+                                           string="Aprobación en Odoo"
+                                           decoration-success="approval_state == 'activa'"
+                                           decoration-warning="approval_state in ('sin_aprobadores', 'por_sincronizar')"/>
                                     <field name="after_days"
                                            invisible="role != 'escala'"
                                            required="role == 'escala'"/>

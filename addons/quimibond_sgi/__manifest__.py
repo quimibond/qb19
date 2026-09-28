@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.56.4.0',
+    'version': '19.0.56.5.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -52,6 +52,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'knowledge',
         'website_slides',
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
+        'web_studio',  # 56.5.0: reglas de aprobación nativas para el rol «Aprueba»
     ],
     'data': [
         # security
@@ -88,6 +89,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_fase7_data.xml',
         'data/sgi_fase8_data.xml',
         'data/sgi_measure_cron.xml',
+        'data/sgi_approval_cron.xml',
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
         'data/sgi_moc_data.xml',
@@ -147,6 +149,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_my_procedure_views.xml',
         'views/sgi_mp_change_views.xml',
         'views/sgi_my_pending_views.xml',
+        'views/sgi_approval_native_views.xml',
         'views/sgi_structure_views.xml',
         'views/sgi_coa_views.xml',
         # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el
