@@ -68,6 +68,9 @@
                             <field name="sgi_revision_legacy" invisible="not sgi_revision_legacy"/>
                             <field name="sgi_issue_date"/>
                             <field name="sgi_next_review_date"/>
+                            <field name="sgi_obsolete_date" invisible="not sgi_obsolete_date"/>
+                            <field name="sgi_obsolete_reason" invisible="not sgi_obsolete_reason"/>
+                            <field name="sgi_replaced_by_process_id" invisible="not sgi_replaced_by_process_id"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
                             <field name="sgi_retention_years"/>

@@ -2183,3 +2183,49 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
 - Pruebas: `tests/test_perm_groups.py` (incluye abrir Mi procedimiento como
   Usuario SGI tras el cambio de grupo).
 
+
+### 19.0.56.9.0 — Bloque 3: no conformidades y acciones
+
+- **3.1–3.5** ya estaban (NC-1 a NC-5, 49.0.0): plazos por etapa con
+  escalamiento, contención, eficacia a 90 días, cancelación con motivo y
+  aprobación de MAST, y migración de las etapas estándar. Las etapas de
+  `quality.alert.stage` no tienen «archivar» en Odoo; las estándar quedan en
+  los equipos de planta y las del SGI en los equipos SGI.
+- **3.6**: una acción terminada exige **100 % de avance** y **fecha de término
+  hoy o antes** (`_sgi_check_done`). Poner la fecha sin decir el avance lo
+  sube a 100 %; quitarla lo regresa a 50 %. `post-migrate` 56.9.0 reabre las
+  terminadas con fecha futura (en producción, la acción 63) y sube a 100 %
+  las terminadas con fecha pasada. Prueba: `test_role_audit.test_08` como
+  Usuario SGI.
+
+### 19.0.56.10.0 — Bloque 4: auditorías
+
+- **4.1 AU-1, 4.2 AU-2, 4.3 AU-3** ya estaban (50.0.0): checklist generado de
+  las actividades del proceso con «Ver registros», respuestas que crean su
+  hallazgo, independencia del auditor por su puesto e informe F-P-G03-07
+  archivado al cerrar.
+- **4.4**: el programa de auditorías **no se aprueba** si alguna auditoría
+  interna no tiene auditor líder (el mensaje dice cuáles), y solo lo aprueba
+  el Jefe MAST (antes el auditor también podía). En producción los programas
+  2026 y 2027 tienen 14 líneas cada uno sin auditor: MAST los asigna.
+- **4.5**: `test_audit_pr3.test_09` recorre programa → auditoría → checklist →
+  hallazgo → NC sobre el proceso real C2 de la copia de producción (en una
+  base vacía, sobre el de prueba), como auditor y como MAST.
+  `test_role_audit.test_09`: el Usuario SGI no aprueba el programa.
+
+### 19.0.56.11.0 — Bloque 5: documentos y requisitos legales
+
+- **5.1 DOC-1, 5.3 DOC-3, 5.4 DIR-1** ya estaban (51.0.0): publicación en un
+  paso al aprobar el cambio documental, lista maestra en PDF por proceso y
+  global, requisitos legales con responsable obligatorio, evaluaciones
+  (resultado, evidencia, siguiente fecha), aviso 60 días antes, «no cumple»
+  abre NC y matriz legal en PDF. En producción: 25 requisitos y 0
+  evaluaciones (captura de MAST).
+- **5.2 DOC-2**: al pasar un proceso a vigente, sus documentos sustituidos
+  quedan obsoletos **con fecha, motivo y el proceso que los sustituye**
+  (`sgi_obsolete_date`, `sgi_obsolete_reason`, `sgi_replaced_by_process_id`,
+  visibles en la ficha). Cualquier paso a obsoleto guarda la fecha.
+  `post-migrate` 56.11.0 llena la fecha de los que ya estaban obsoletos.
+  Pruebas: `test_cleanup_45.test_04` y `test_09` (C2 real con sus 3
+  procedimientos sustituidos; se omite si la copia no los tiene o C2 aún no
+  cumple para vigente).
