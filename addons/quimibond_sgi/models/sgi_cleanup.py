@@ -42,7 +42,7 @@ SGI_MENU_QUALITY_ENTRIES = (
 SGI_REMOVED_XMLIDS = (
     # Menús: los hijos de Datos técnicos y luego el padre (parent_id es
     # ondelete=restrict: el orden importa al borrar en la migración)
-    'quimibond_sgi.menu_sgi_activities',
+    # menu_sgi_activities volvió en 54.0.0 (Procesos → Actividades).
     'quimibond_sgi.menu_sgi_activity_roles',
     'quimibond_sgi.menu_sgi_deliverables',
     'quimibond_sgi.menu_sgi_activity_chain',

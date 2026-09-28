@@ -69,14 +69,14 @@
                     <button name="action_evaluate" type="object" string="Registrar evaluación"
                             class="btn-primary" icon="fa-check-square-o"/>
                     <button name="action_mark_cumple" type="object" string="Cumple"
-                            class="btn-success"/>
+                            class="btn-success" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
-                            class="btn-warning"
+                            class="btn-warning" groups="quimibond_sgi.group_sgi_manager"
                             confirm="Un cumplimiento parcial levanta una No Conformidad. ¿Registrar la evaluación?"/>
                     <button name="action_mark_no_cumple" type="object" string="No cumple"
-                            class="btn-danger"
+                            class="btn-danger" groups="quimibond_sgi.group_sgi_manager"
                             confirm="Un incumplimiento levanta una No Conformidad mayor. ¿Registrar la evaluación?"/>
-                    <button name="action_mark_no_aplica" type="object" string="No aplica"/>
+                    <button name="action_mark_no_aplica" type="object" string="No aplica" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="compliance_state" widget="statusbar"/>
                 </header>
                 <sheet>

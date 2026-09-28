@@ -47,6 +47,7 @@ class SgiMyPending(models.TransientModel):
     _name = 'sgi.my.pending'
     _description = "Mis pendientes (SGI)"
     _order = 'state_rank, date_due, id'
+    _SGI_REQUEST_DAYS = 3  # días para contestar una solicitud de Aprobaciones
 
     user_id = fields.Many2one('res.users', string="Usuario", readonly=True)
     employee_id = fields.Many2one('hr.employee.public', string="Persona", readonly=True)
@@ -80,7 +81,7 @@ class SgiMyPending(models.TransientModel):
                  ('sgi_stage_is_cancel', '=', False)], order='create_date')
             if 'sgi_responsible_ids' in Alert._fields else Alert,
             'medicion': env['sgi.indicator.measure'].sudo().search(
-                [('indicator_id.responsible_id', 'in', ids),
+                [('indicator_id.responsible_id', 'in', ids), ('indicator_id.active', '=', True),
                  ('state', 'in', ('pendiente', 'capturado')), ('period_date', '<=', today)],
                 order='period_date'),
             'legal': env['sgi.legal.requirement'].sudo().search(
@@ -136,7 +137,10 @@ class SgiMyPending(models.TransientModel):
             req = rec.request_id
             category = req.category_id
             return {'name': "Aprobar %s" % (req.name or category.name or ''),
-                    'date_due': req.date_confirmed and fields.Date.to_date(req.date_confirmed),
+                    # Vence 3 días después de enviada: antes vencía el mismo
+                    # día del envío y todo salía «Atrasada».
+                    'date_due': req.date_confirmed and fields.Date.add(
+                        fields.Date.to_date(req.date_confirmed), days=self._SGI_REQUEST_DAYS),
                     'process_id': (category.sgi_role_id.activity_id.process_id.id
                                    if 'sgi_role_id' in category._fields else False)
                     or req.sgi_affected_process_ids[:1].id}
@@ -220,13 +224,31 @@ class SgiMyPending(models.TransientModel):
         context = {'create': False}
         if group_by_person:
             context['search_default_group_employee'] = 1
+        else:
+            context['search_default_group_state'] = 1
         return {
             'type': 'ir.actions.act_window', 'name': name, 'res_model': self._name,
             'view_mode': 'list', 'domain': [('id', 'in', rows.ids)],
             'views': [(self.env.ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list')],
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_pending_view_search').id, 'search'],
             'context': context,
+            'help': "<p class='o_view_nocontent_smiling_face'>Sin pendientes</p><p>Estás al día.</p>",
         }
+
+    @api.model
+    def action_open_mine(self):
+        """Inicio → Mis pendientes: los del usuario actual. Sin empleado
+        ligado, los renglones van solo con el usuario."""
+        employee = self.env.user.employee_id.sudo()
+        if employee:
+            rows = self._sgi_build(employee)
+        else:
+            user = self.env.user
+            self.search([('create_uid', '=', self.env.uid), ('employee_id', '=', False),
+                         ('user_id', '=', user.id)]).unlink()
+            rows = self.create([dict(row, user_id=user.id)
+                                for row in self._sgi_pending_values(user).get(user.id, [])])
+        return self._sgi_action(rows, "Mis pendientes")
 
     def action_open(self):
         """Abre el registro de origen (la acción, la NC, la medición…)."""

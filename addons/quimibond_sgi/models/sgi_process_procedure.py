@@ -1052,33 +1052,36 @@ class SgiProcessActivity(models.Model):
             vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
                         measure_count_30d=0, measure_state=False)
             try:
-                model_name = activity.measure_model_id.model
-                Model = self.env.get(model_name) if model_name else None
-                if Model is None or Model._transient or Model._abstract:
-                    activity.write(vals)
-                    continue
-                Model = Model.sudo()
-                date_field = activity.measure_date_field or 'create_date'
-                if date_field not in Model._fields:
-                    date_field = 'create_date'
-                domain = activity._sgi_measure_domain()
-                last = Model.search(
-                    domain, order='%s desc, id desc' % date_field, limit=1)
-                last_date = last and last[date_field] or False
-                if last_date and not isinstance(last_date, datetime):
-                    last_date = fields.Datetime.to_datetime(last_date)
-                vals['measure_last_date'] = last_date
-                window = domain + [(date_field, '>=', now - timedelta(days=30))]
-                vals['measure_count_30d'] = Model.search_count(window)
-                vals.update(activity._sgi_measure_executors(Model, domain, date_field))
-                days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-                if days:
-                    in_window = Model.search_count(
-                        domain
-                        + [(date_field, '>=', now - timedelta(days=days))])
-                    vals['measure_state'] = 'verde' if in_window else 'rojo'
-                elif last_date:
-                    vals['measure_state'] = 'verde'
+                # Un dominio que truena en SQL deja el cursor abortado: sin
+                # savepoint se perdía la medición de todas las demás.
+                with self.env.cr.savepoint():
+                    model_name = activity.measure_model_id.model
+                    Model = self.env.get(model_name) if model_name else None
+                    if Model is None or Model._transient or Model._abstract:
+                        activity.write(vals)
+                        continue
+                    Model = Model.sudo()
+                    date_field = activity.measure_date_field or 'create_date'
+                    if date_field not in Model._fields:
+                        date_field = 'create_date'
+                    domain = activity._sgi_measure_domain()
+                    last = Model.search(
+                        domain, order='%s desc, id desc' % date_field, limit=1)
+                    last_date = last and last[date_field] or False
+                    if last_date and not isinstance(last_date, datetime):
+                        last_date = fields.Datetime.to_datetime(last_date)
+                    vals['measure_last_date'] = last_date
+                    window = domain + [(date_field, '>=', now - timedelta(days=30))]
+                    vals['measure_count_30d'] = Model.search_count(window)
+                    vals.update(activity._sgi_measure_executors(Model, domain, date_field))
+                    days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
+                    if days:
+                        in_window = Model.search_count(
+                            domain
+                            + [(date_field, '>=', now - timedelta(days=days))])
+                        vals['measure_state'] = 'verde' if in_window else 'rojo'
+                    elif last_date:
+                        vals['measure_state'] = 'verde'
             except Exception:
                 pass
             # Solo se escribe lo que cambió: el cron diario re-mide TODO y la
@@ -1386,6 +1389,11 @@ class SgiProcessActivity(models.Model):
         records = self.with_context(sgi_roles_via_activity=True) \
             if 'role_ids' in vals or 'responsible_job_ids' in vals else self
         res = super(SgiProcessActivity, records).write(vals)
+        # 56.7.0: archivar, reactivar o mover una actividad cambia el «Mi
+        # procedimiento» guardado de quienes tienen rol en ella.
+        if {'active', 'process_id', 'measure_cadence'} & set(vals):
+            roles = self.sudo().with_context(active_test=False).role_ids
+            self.env['hr.employee']._sgi_mp_touch_jobs(roles._sgi_mp_jobs())
         # La medición (configuración o refresco del cron) no es un cambio al
         # cuerpo del procedimiento: no dispara revisión documental (G14).
         if set(vals) - self._SGI_MEASURE_FIELDS:

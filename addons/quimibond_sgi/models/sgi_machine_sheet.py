@@ -33,7 +33,7 @@ class SgiMachineSheet(models.Model):
     product_id = fields.Many2one('product.product', string="Artículo", required=True, index=True, tracking=True)
     workcenter_id = fields.Many2one('mrp.workcenter', string="Máquina / centro de trabajo", required=True, index=True, tracking=True)
     date = fields.Date(string="Fecha", default=fields.Date.context_today, required=True)
-    area = fields.Selection([('produccion', "Producción"), ('desarrollos', "Desarrollos")], default='produccion', required=True)
+    area = fields.Selection([('produccion', "Producción"), ('desarrollos', "Desarrollos")], string="Área", default='produccion', required=True)
     revision = fields.Integer(string="Revisión", default=0)
     state = fields.Selection([('borrador', "Borrador"), ('vigente', "Vigente"), ('obsoleta', "Obsoleta")],
                              default='borrador', required=True, tracking=True)
@@ -132,7 +132,7 @@ class SgiMachineSheetParam(models.Model):
 
     sheet_id = fields.Many2one('sgi.machine.sheet', required=True, ondelete='cascade')
     sequence = fields.Integer(default=10)
-    section = fields.Selection([('maquina', "Datos de máquina"), ('tela', "Datos de tela acondicionada")], required=True, default='maquina')
+    section = fields.Selection([('maquina', "Datos de máquina"), ('tela', "Datos de tela acondicionada")], string="Sección", required=True, default='maquina')
     name = fields.Char(string="Condición", required=True)
     spec = fields.Char(string="Especificación")
     tolerance = fields.Char(string="Tolerancia (±)")

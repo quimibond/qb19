@@ -54,7 +54,7 @@ class SgiDirectionBoard(models.TransientModel):
     _name = 'sgi.direction.board'
     _description = "Tablero de dirección (I-9)"
 
-    date = fields.Date(default=fields.Date.context_today, readonly=True)
+    date = fields.Date(string="Fecha", default=fields.Date.context_today, readonly=True)
     objective_ids = fields.Many2many('sgi.objective', string="Objetivos integrales", compute='_compute_board')
     indicator_ids = fields.Many2many('sgi.indicator', string="Indicadores de dirección", compute='_compute_board')
     red_no_plan_measure_ids = fields.Many2many(

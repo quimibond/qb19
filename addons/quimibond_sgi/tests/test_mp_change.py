@@ -169,3 +169,25 @@ class TestMpChange(TransactionCase):
         self.assertTrue(wiz.no_employee)
         mine = self.env['sgi.my.procedure'].with_user(self.user_emp)
         self.assertFalse(mine.browse(mine.action_open_mine()['res_id']).no_employee)
+
+    def test_06_cambiar_quien_la_ejecuta_y_candado(self):
+        """56.7.0: cambiar el puesto que ejecuta se aplica sin romper la regla
+        de «un solo ejecutor» y conserva el rol (su aprobación nativa); una
+        propuesta enviada ya no se puede editar."""
+        activity = self.env['sgi.process.activity'].create({
+            'process_id': self.process.id, 'name': 'Pesar la merma', 'number': '4.2',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job.id})]})
+        role = activity.role_ids
+        action = role.with_user(self.user_emp).action_mp_propose_change()
+        proposal = self.env['sgi.activity.change'].browse(action['res_id']).with_user(self.user_emp)
+        new_job = self.env['hr.job'].create({'name': 'BASCULISTA PROPUESTA MP'})
+        proposal.role_line_ids.write({'job_id': new_job.id})
+        proposal.write({'reason': 'Lo hace el basculista'})
+        proposal.action_submit()
+        with self.assertRaises(UserError):
+            proposal.write({'reason': 'Otro motivo'})
+        with self.assertRaises(UserError):
+            proposal.role_line_ids.write({'job_id': self.job.id})
+        self._approve(proposal)
+        self.assertEqual(activity.role_ids, role, "El rol se actualiza en su lugar, no se borra.")
+        self.assertEqual(role.job_id, new_job)

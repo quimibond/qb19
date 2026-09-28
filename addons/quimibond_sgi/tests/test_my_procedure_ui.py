@@ -10,20 +10,29 @@ class TestMyProcedureUi(TransactionCase):
     def test_01_pantalla_con_botones(self):
         Screen = self.env['sgi.my.procedure']
         arch = Screen.get_views([(False, 'form')])['views']['form']['arch']
-        for button in ('action_show_all', 'action_show_pending',
-                       'action_show_received', 'action_show_short', 'action_show_acks', 'action_show_documents',
-                       'action_show_indicators', 'action_show_epp', 'action_open_obligations'):
+        # 56.7.0: ficha con pestañas. Los botones inteligentes solo para lo
+        # que vive en otra app; las actividades se ven al abrir.
+        for button in ('action_show_all', 'action_show_pending', 'action_show_acks',
+                       'action_show_indicators', 'action_open_obligations',
+                       'action_sign', 'action_propose_new_activity', 'action_print'):
             self.assertIn('name="%s"' % button, arch, button)
-        # 56.3.0: un solo botón de pendientes, sin botones separados por tipo
-        # ni por estado de las actividades.
+        # 56.3.0: un solo botón de pendientes; 56.7.0: publicar es de MAST y
+        # vive en Administración SGI, no en la pantalla del empleado.
         for button in ('action_show_late', 'action_show_ok', 'action_show_unmeasured', 'action_focus_pending',
-                       'action_show_nc', 'action_show_measures', 'action_show_legal', 'action_show_doc_reviews'):
+                       'action_show_nc', 'action_show_measures', 'action_show_legal', 'action_show_doc_reviews',
+                       'action_publish', 'action_publish_all', 'action_precheck'):
             self.assertNotIn('name="%s"' % button, arch, button)
-        # 56.2.0: la única pestaña es Documentos (pedido del CEO).
-        self.assertEqual(arch.count('<page'), 1)
-        self.assertIn('name="documentos"', arch)
-        self.assertIn('many2one_avatar_employee', arch)
-        self.assertNotIn('string="Estado"', arch, "Los conteos ya no van en un grupo, van en botones.")
+        for page in ('actividades', 'escalamientos', 'participa', 'documentos', 'epp', 'firmas', 'personas'):
+            self.assertIn('name="%s"' % page, arch, page)
+        self.assertLess(arch.index('name="actividades"'), arch.index('name="documentos"'),
+                        "Mis actividades es la primera pestaña.")
+        self.assertIn('name="employee_avatar"', arch)
+        check = self.env['sgi.my.procedure.check'].action_open()
+        self.assertEqual(check['res_model'], 'sgi.my.procedure.check')
+        check_arch = self.env['sgi.my.procedure.check'].get_views([(False, 'form')])['views']['form']['arch']
+        self.assertIn('name="action_publish_all"', check_arch)
+        self.assertEqual(self.env.ref('quimibond_sgi.menu_sgi_my_procedure_publish').action,
+                         self.env.ref('quimibond_sgi.sgi_my_procedure_action_publish'))
         job = self.env['hr.job'].create({'name': 'PUESTO UI'})
         wiz = Screen.create({'job_id': job.id})
         self.assertEqual((wiz.activity_count, wiz.pending_count), (0, 0))
@@ -37,6 +46,14 @@ class TestMyProcedureUi(TransactionCase):
         self.assertEqual(wiz.action_show_nc()['res_model'], 'quality.alert')
         self.assertEqual(wiz.action_show_epp()['res_model'], 'sgi.epp.delivery')
         self.assertFalse(wiz.action_show_received()['context']['create'])
+        # 56.7.0: la lista es la vista principal; las tarjetas, en el celular.
+        mine = wiz.action_show_all()
+        self.assertEqual(mine['view_mode'].split(',')[0], 'list')
+        self.assertEqual(mine['views'][0][1], 'list')
+        self.assertEqual(mine['mobile_view_mode'], 'kanban')
+        for model in ('hr.employee', 'hr.job'):
+            tab = self.env[model].get_views([(False, 'form')])['views']['form']['arch']
+            self.assertNotIn('sgi_activity_role_view_kanban_mp', tab, model)
         kanban = self.env['sgi.activity.role'].get_view(
             self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban')['arch']
         self.assertIn('default_group_by="cadence"', kanban)

@@ -61,6 +61,7 @@
             <button name="action_approve" position="before">
                 <button name="action_suggest_lines" type="object" string="Programa sugerido"
                         icon="fa-magic" invisible="state != 'borrador'"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
                         help="Una línea por proceso vigente o en piloto, repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
             </button>
             <xpath expr="//field[@name='line_ids']/list/field[@name='process_id']" position="after">

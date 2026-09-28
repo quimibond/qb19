@@ -32,8 +32,8 @@ class SgiStaffEfficiency(models.Model):
     received_by_id = fields.Many2one('res.users', string="Recibió (coordinador de RH)")
     state = fields.Selection([('borrador', "Borrador"), ('cerrado', "Cerrado")], default='borrador', required=True, tracking=True)
     line_ids = fields.One2many('sgi.staff.efficiency.line', 'sheet_id', string="Empleados")
-    employee_count = fields.Integer(compute='_compute_totals')
-    amount_total = fields.Monetary(compute='_compute_totals', currency_field='currency_id')
+    employee_count = fields.Integer(string="Número de empleados", compute='_compute_totals')
+    amount_total = fields.Monetary(string="Importe total", compute='_compute_totals', currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
     note = fields.Text(string="Observaciones")
@@ -122,7 +122,7 @@ class SgiStaffEfficiencyLine(models.Model):
     _description = "Calificación mensual de un empleado"
     _order = 'employee_id'
 
-    sheet_id = fields.Many2one('sgi.staff.efficiency', required=True, ondelete='cascade')
+    sheet_id = fields.Many2one('sgi.staff.efficiency', string="Hoja mensual", required=True, ondelete='cascade')
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True, ondelete='restrict')
     job_id = fields.Many2one(related='employee_id.job_id', string="Puesto", store=True)
     department_id = fields.Many2one(related='employee_id.department_id', string="Área", store=True)

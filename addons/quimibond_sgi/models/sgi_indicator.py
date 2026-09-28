@@ -184,14 +184,15 @@ class SgiIndicator(models.Model):
     active = fields.Boolean(default=True)
 
     measure_ids = fields.One2many('sgi.indicator.measure', 'indicator_id', string="Mediciones")
+    # 56.7.0 (1.8): guardados para filtrar «En rojo» y reportar.
     last_measure_id = fields.Many2one('sgi.indicator.measure', string="Última medición",
-                                      compute='_compute_last_measure')
-    last_value = fields.Float(string="Último valor", compute='_compute_last_measure')
+                                      compute='_compute_last_measure', store=True)
+    last_value = fields.Float(string="Último valor", compute='_compute_last_measure', store=True)
     last_semaphore = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Último semáforo", compute='_compute_last_measure')
+    ], string="Último semáforo", compute='_compute_last_measure', store=True)
 
     _code_uniq = models.Constraint(
         'unique(code)',
@@ -216,6 +217,19 @@ class SgiIndicator(models.Model):
         for indicator in self:
             indicator.display_name = "%s - %s" % (indicator.code, indicator.name) \
                 if indicator.code else indicator.name
+
+    def action_sgi_measures(self):
+        """Mis indicadores → «Mediciones»: la lista de mediciones del
+        indicador para capturar la pendiente (primero lo más reciente)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Mediciones — %s" % (self.code or self.name),
+            'res_model': 'sgi.indicator.measure',
+            'view_mode': 'list,form,graph',
+            'domain': [('indicator_id', '=', self.id)],
+            'context': {'default_indicator_id': self.id},
+        }
 
     def action_view_trend(self):
         """La pregunta real de MAST frente a un KPI: ¿cómo viene la tendencia?

@@ -226,8 +226,9 @@ class DocumentsDocument(models.Model):
             "Selecciona el «Menú de Odoo» (o el worksheet destino) en la ficha.")
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
-    sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats')
-    sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats')
+    # 56.7.0 (1.8): guardados para filtrar y reportar la difusión.
+    sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats', store=True)
+    sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats', store=True)
 
     # --- Relación documental por FK real (P-A28 -> IT/F/F-IT/DAT P-A28-*) ---
     # H21: la familia se define por un enlace explícito y editable, no por regex.
@@ -353,14 +354,19 @@ class DocumentsDocument(models.Model):
             doc.sgi_revision_label = "%02d" % (doc.sgi_revision or 0)
 
     def _sgi_share_controlled(self):
-        """Un documento controlado en piloto o vigente lo lee cualquier usuario
+        """Un documento controlado en piloto o vigente lo LEE cualquier usuario
         interno (es lo que cada puesto debe leer y firmar), sin depender de la
-        carpeta. Documents 18+: `access_internal`; no se baja un «editor»."""
+        carpeta. Documents 18+: `access_internal`.
+
+        56.7.0: y solo lo lee. Antes no se bajaba un «editor» y 486 documentos
+        vigentes los podía editar o reemplazar cualquier usuario interno; los
+        cambios van por Cambios documentales y MAST edita como gerente de
+        Documentos."""
         if 'access_internal' not in self._fields:
             return
         docs = self.sudo().filtered(
             lambda d: d.sgi_is_controlled and d.sgi_state in ('piloto', 'vigente')
-            and (d.access_internal or 'none') == 'none')
+            and (d.access_internal or 'none') != 'view')
         if docs:
             super(DocumentsDocument, docs).write({'access_internal': 'view'})
 
@@ -786,6 +792,11 @@ class SgiDocumentAck(models.Model):
     def write(self, vals):
         if self._SGI_ACK_SIGN_FIELDS & set(vals):
             self._sgi_check_can_sign()
+        # 56.7.0: un acuse firmado no se «mueve» a otra persona ni a otro
+        # documento (sería evidencia falsa de difusión).
+        if {'employee_id', 'document_id'} & set(vals) and any(a.state == 'leido' for a in self) \
+                and not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise UserError("Un acuse firmado no se puede pasar a otro empleado ni a otro documento.")
         return super().write(vals)
 
     def action_mark_read(self):

@@ -206,8 +206,9 @@ class ApprovalRequest(models.Model):
             doc.write({'sgi_state': 'obsoleto', 'sgi_doc_change_id': self.id})
             doc.message_post(body="Documento dado de baja por solicitud aprobada %s." % self.name)
         elif self.sgi_change_kind == 'alta':
-            manager = self.env.ref('quimibond_sgi.group_sgi_manager', raise_if_not_found=False)
-            manager_user = manager and manager.all_user_ids.sorted('id')[:1]
+            # 56.7.0: el Jefe MAST real (miembro directo o parámetro), no el
+            # primero de all_user_ids (era el CEO por Administrador SGI).
+            manager_user = self.env['res.users'].browse(self.env['sgi.cron']._sgi_manager_user_id())
             self.activity_schedule(
                 'mail.mail_activity_data_todo',
                 summary="Crear documento SGI dado de alta (%s)" % (self.name or ''),

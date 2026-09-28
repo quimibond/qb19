@@ -21,8 +21,13 @@
             (4, ref('documents.group_documents_user')),
             (4, ref('helpdesk.group_helpdesk_user')),
             (4, ref('project.group_project_user')),
-            (4, ref('approvals.group_approval_user'))]"/>
+            (3, ref('approvals.group_approval_user'))]"/>
     </record>
+    <!-- 56.7.0: Usuario SGI ya NO implica «Aprobaciones / Encargado: aprobar
+         todas las solicitudes» (los 30 usuarios veían y gestionaban todas las
+         solicitudes de la empresa, compras incluidas). El usuario interno ya
+         crea y sigue las suyas y aprueba las que le tocan. (3, …) quita la
+         implicación que ya está en la base. -->
 
     <!-- Auditor SGI (PERM-1, 19.0.48.0.0): SOLO LECTURA. Lee todo el SGI y
          los registros de los procesos auditados (NC, inspecciones,
@@ -138,5 +143,83 @@
         <field name="name">SGI: Tipos de documento por empresa</field>
         <field name="model_id" ref="model_sgi_document_type"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- 56.7.0 (auditoría funcional 28-sep-2026): el Usuario SGI lee todo el
+         SGI pero solo ESCRIBE lo suyo. Las reglas son de escritura/creación
+         (perm_read = False) y por grupo: el Jefe MAST tiene su regla abierta,
+         y como las reglas de grupo se suman (OR), MAST sigue con todo. -->
+    <record id="rule_sgi_measure_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario captura solo sus indicadores</field>
+        <field name="model_id" ref="model_sgi_indicator_measure"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">['|', ('indicator_id.responsible_id', '=', user.id), ('indicator_id.process_id.owner_id.user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_sgi_measure_manager_all" model="ir.rule">
+        <field name="name">SGI: MAST captura cualquier indicador</field>
+        <field name="model_id" ref="model_sgi_indicator_measure"/>
+        <field name="groups" eval="[(4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_action_line_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario edita solo sus acciones</field>
+        <field name="model_id" ref="model_sgi_action_line"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">['|', ('responsible_id', '=', user.id), ('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_action_line_manager_all" model="ir.rule">
+        <field name="name">SGI: MAST edita cualquier acción</field>
+        <field name="model_id" ref="model_sgi_action_line"/>
+        <field name="groups" eval="[(4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_risk_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario edita los riesgos de sus procesos</field>
+        <field name="model_id" ref="model_sgi_risk"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">['|', ('process_id.owner_id.user_id', '=', user.id), ('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_risk_manager_all" model="ir.rule">
+        <field name="name">SGI: MAST edita cualquier riesgo</field>
+        <field name="model_id" ref="model_sgi_risk"/>
+        <field name="groups" eval="[(4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_legal_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario evalúa solo sus requisitos legales</field>
+        <field name="model_id" ref="model_sgi_legal_requirement"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">[('responsible_id', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_legal_manager_all" model="ir.rule">
+        <field name="name">SGI: MAST evalúa cualquier requisito legal</field>
+        <field name="model_id" ref="model_sgi_legal_requirement"/>
+        <field name="groups" eval="[(4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_legal_eval_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario registra evaluaciones de sus requisitos</field>
+        <field name="model_id" ref="model_sgi_legal_evaluation"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">[('requirement_id.responsible_id', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_legal_eval_manager_all" model="ir.rule">
+        <field name="name">SGI: MAST registra cualquier evaluación legal</field>
+        <field name="model_id" ref="model_sgi_legal_evaluation"/>
+        <field name="groups" eval="[(4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
     </record>
 </odoo>

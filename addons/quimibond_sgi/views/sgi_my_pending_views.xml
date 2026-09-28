@@ -9,7 +9,7 @@
                   default_order="state_rank, date_due, id"
                   decoration-danger="state == 'atrasada'" decoration-warning="state == 'por_vencer'">
                 <field name="state_rank" column_invisible="1"/>
-                <field name="employee_id" string="Persona" optional="show"/>
+                <field name="employee_id" string="Persona" optional="hide"/>
                 <field name="kind" string="Tipo"/>
                 <field name="name" string="Qué"/>
                 <field name="process_id" string="Proceso"/>
