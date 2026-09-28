@@ -436,7 +436,11 @@ class HrJobMyProcedure(models.Model):
             raise UserError("Solo el Jefe MAST publica «Mi procedimiento».")
         Doc = self.env['documents.document'].sudo()
         published, unchanged, empty = self.env['documents.document'], [], []
+        in_sign, not_sent = [], []
         today = fields.Date.context_today(self)
+        # 56.19.0: con firma en Sign, la revisión nace en borrador y entra en
+        # vigor cuando firman MAST y el jefe directo (sgi_my_procedure_sign).
+        sign = Doc._sgi_mp_sign_required()
         for job in self:
             data = job._sgi_my_procedure_data()
             if not data['total']:
@@ -447,12 +451,18 @@ class HrJobMyProcedure(models.Model):
             if current and current.sgi_content_hash == data['hash']:
                 unchanged.append(job.name)
                 continue
+            if sign and Doc._sgi_mp_pending_sign_doc(code, data['hash']):
+                in_sign.append(job.name)
+                continue
             previous = Doc.with_context(active_test=False).search([('sgi_code', '=', code)])
             revision = (max(previous.mapped('sgi_revision')) + 1) if previous else 0
             report = self.env.ref('quimibond_sgi.action_report_my_procedure')
             pdf, _ = self.env['ir.actions.report'].with_context(
                 sgi_mp_revision=revision, sgi_mp_issue_date=today,
             )._render_qweb_pdf(report.report_name, job.ids)
+            # Si no se puede mandar a firmar (sin correo, sin jefe), la
+            # revisión en borrador no se queda: se deshace y se reporta.
+            savepoint = self.env.cr.savepoint() if sign else None
             doc = Doc.create({
                 'name': "Mi procedimiento — %s (Rev. %02d).pdf" % (job.name, revision),
                 'type': 'binary',
@@ -461,7 +471,7 @@ class HrJobMyProcedure(models.Model):
                 'sgi_is_controlled': True,
                 'sgi_doc_type': 'mi_procedimiento',
                 'sgi_code': code,
-                'sgi_state': 'vigente',
+                'sgi_state': 'borrador' if sign else 'vigente',
                 'sgi_revision': revision,
                 'sgi_issue_date': today,
                 'sgi_job_ids': [(6, 0, [job.id])],
@@ -469,6 +479,17 @@ class HrJobMyProcedure(models.Model):
                 'sgi_owner_id': self.env.user.id,
                 'company_id': job.company_id.id or self.env.company.id,
             })
+            if sign:
+                try:
+                    doc._sgi_mp_send_to_sign(job)
+                except UserError as err:
+                    savepoint.close(rollback=True)
+                    self.env.invalidate_all()
+                    not_sent.append("%s (%s)" % (job.name, err.args[0] if err.args else err))
+                    continue
+                savepoint.close(rollback=False)
+                in_sign.append(job.name)
+                continue
             doc.action_generate_acks()
             doc.message_post(body=Markup(
                 "«Mi procedimiento» de <b>%s</b>, revisión %02d: %d actividades "
@@ -482,6 +503,10 @@ class HrJobMyProcedure(models.Model):
         parts = []
         if published:
             parts.append("%d publicado(s)" % len(published))
+        if in_sign:
+            parts.append("en firma (Sign): %s" % ", ".join(in_sign))
+        if not_sent:
+            parts.append("sin mandar a firma: %s" % "; ".join(not_sent))
         if unchanged:
             parts.append("sin cambios: %s" % ", ".join(unchanged))
         if empty:
@@ -495,7 +520,7 @@ class HrJobMyProcedure(models.Model):
             }
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
-            'params': {'type': 'success' if published else 'warning',
+            'params': {'type': 'success' if published or in_sign else 'warning',
                        'message': "Mi procedimiento: %s." % "; ".join(parts)},
         }
 

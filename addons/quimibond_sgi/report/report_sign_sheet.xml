@@ -72,4 +72,30 @@
             </t>
         </t>
     </template>
+
+    <!-- Publicación firmada («Mi procedimiento», 56.19.0): la hoja va al
+         final del PDF del documento; firman MAST y el jefe directo. -->
+    <record id="action_report_publish_sign_sheet" model="ir.actions.report">
+        <field name="name">Firmas de publicación (hoja de firma)</field>
+        <field name="model">documents.document</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_publish_sign_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_publish_sign_sheet_document</field>
+        <field name="paperformat_id" ref="paperformat_sgi_doc_change"/>
+    </record>
+
+    <template id="report_publish_sign_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.report_sign_sheet_body">
+                    <t t-set="title">HOJA DE FIRMAS</t>
+                    <t t-set="lines" t-value="[
+                        '%s — %s, revisión %02d.' % (doc.sgi_code or '', doc.name or '', doc.sgi_revision or 0),
+                        'Entra en vigor cuando firmen todos los renglones.',
+                    ]"/>
+                    <t t-set="rows" t-value="doc._sgi_publish_sign_rows()"/>
+                </t>
+            </t>
+        </t>
+    </template>
 </odoo>

@@ -1296,6 +1296,9 @@ class SgiCron(models.AbstractModel):
         self._sgi_step(
             "cambios documentales firmados vía Sign",
             lambda: self.env['approval.request']._sgi_sync_all_sign())
+        self._sgi_step(
+            "«Mi procedimiento» firmado vía Sign",
+            lambda: self.env['documents.document']._sgi_sync_publish_sign())
         return True
 
     # ------------------------------------------------------------------

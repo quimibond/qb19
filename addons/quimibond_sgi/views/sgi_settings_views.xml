@@ -183,9 +183,15 @@
                             <field name="sgi_waste_categ_id"/>
                         </setting>
                     </block>
+                    <block title="Firmas en Sign" name="sgi_sign">
+                        <setting string="«Mi procedimiento» se firma en Sign"
+                             help="Publicar deja la revisión en borrador y la manda a firmar: MAST elabora, el jefe directo del puesto aprueba. Entra en vigor sola al firmarse.">
+                            <field name="sgi_mp_sign_required"/>
+                        </setting>
+                    </block>
                     <block title="EPP" name="sgi_epp">
                         <setting string="Plantilla de Sign de la responsiva de EPP"
-                             help="Plantilla de la app Firma hecha con el PDF «Responsiva de EPP» y un solo campo de firma (el empleado). Habilita «Enviar a firmar (Sign)» en cada entrega.">
+                             help="Opcional. Vacío: el SGI arma la plantilla sola (responsiva + hoja «Recibí el EPP»).">
                             <field name="sgi_epp_sign_template_id"/>
                         </setting>
                     </block>

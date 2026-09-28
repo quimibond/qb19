@@ -2421,3 +2421,21 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   marca el acuse como leído y la responsiva como firmada cuando Sign termina.
 - Pruebas: `tests/test_sign_builder.py`; `test_sign_elearning` y
   `test_excel_migration` ajustados (ya no se exige plantilla).
+
+### 19.0.56.19.0 — «Mi procedimiento» firmado en Sign antes de entrar en vigor
+
+- Con «Mi procedimiento se firma en Sign» (Ajustes → SGI → Firmas en Sign;
+  `quimibond_sgi.mp_sign_required`, encendido por `post-migrate`), publicar
+  deja la revisión en **borrador** y la manda a firmar: PDF del procedimiento
+  + hoja de firmas. Firman **Elaboró** (quien publica si es de MAST; si no, el
+  Jefe MAST) y **Aprobó** (jefe directo: responsable del departamento del
+  puesto; si no hay o es el mismo MAST, firma solo MAST).
+- Al firmarse, la revisión entra en vigor sola: la anterior queda obsoleta,
+  el archivo del documento pasa a ser el PDF firmado y se generan los acuses.
+  Lo dispara Sign al terminar y, de respaldo, el cron diario de Sign.
+- Publicar otra vez mientras espera firma no duplica («en firma»). Si no se
+  puede mandar (alguien sin correo, sin Jefe MAST) no queda borrador a medias
+  y el aviso dice por qué.
+- Los demás documentos ya se firman al cambiar por el cambio documental
+  (56.17.0), que incluye la versión nueva en el PDF firmado.
+- Pruebas: `tests/test_my_procedure_sign.py`.
