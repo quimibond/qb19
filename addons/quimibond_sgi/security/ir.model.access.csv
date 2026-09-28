@@ -251,5 +251,7 @@ access_sgi_staff_efficiency_line_sgi,sgi.staff.efficiency.line.sgi,model_sgi_sta
 access_sgi_epp_delivery_line_user,sgi.epp.delivery.line.user,model_sgi_epp_delivery_line,base.group_user,1,0,0,0
 access_sgi_epp_delivery_line_hr,sgi.epp.delivery.line.hr,model_sgi_epp_delivery_line,hr.group_hr_user,1,1,1,1
 access_sgi_epp_delivery_line_manager,sgi.epp.delivery.line.manager,model_sgi_epp_delivery_line,quimibond_sgi.group_sgi_manager,1,1,1,1
-access_sgi_mp_change_wizard_user,sgi.mp.change.wizard.user,model_sgi_mp_change_wizard,base.group_user,1,1,1,0
 access_sgi_my_pending_user,sgi.my.pending.user,model_sgi_my_pending,base.group_user,1,1,1,1
+access_sgi_activity_change_user,sgi.activity.change.user,model_sgi_activity_change,base.group_user,1,1,1,0
+access_sgi_activity_change_manager,sgi.activity.change.manager,model_sgi_activity_change,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_sgi_activity_change_role_user,sgi.activity.change.role.user,model_sgi_activity_change_role,base.group_user,1,1,1,1

@@ -59,46 +59,85 @@ class TestMpChange(TransactionCase):
         self.assertEqual(wiz.document_ids & expected, expected)
         self.assertNotIn(self.draft_fmt, wiz.document_ids)
 
-    def test_02_proponer_cambio_y_aprobar(self):
+    def _approve(self, proposal):
+        request = proposal.request_id
+        self.assertEqual(request.request_status, 'pending')
+        request.with_user(self.manager).action_approve()
+        self.assertEqual(request.request_status, 'approved')
+        return request
+
+    def test_02_proponer_cambio_edita_la_actividad(self):
+        """56.4.0: la propuesta edita los campos reales de la actividad y, al
+        aprobarse, se aplica sola."""
         role = self.activity.role_ids
         action = role.with_user(self.user_emp).action_mp_propose_change()
-        wizard = self.env['sgi.mp.change.wizard'].browse(action['res_id']).with_user(self.user_emp)
-        self.assertEqual(wizard.change_type, 'cambiar')
-        self.assertIn('La muestra tiene etiqueta', wizard.current_text)
-        wizard.write({'proposal': 'Tomar foto de la etiqueta', 'reason': 'Evidencia para auditoría'})
-        opened = wizard.action_submit()
+        proposal = self.env['sgi.activity.change'].browse(action['res_id']).with_user(self.user_emp)
+        self.assertEqual(proposal.change_type, 'cambiar')
+        self.assertEqual(proposal.done_criteria, 'La muestra tiene etiqueta', "Nace con los valores de hoy.")
+        self.assertEqual(len(proposal.role_line_ids), 1)
+        with self.assertRaises(UserError):
+            proposal.write({'reason': 'Sin cambios'})
+            proposal.action_submit()
+        other_job = self.env['hr.job'].create({'name': 'SUPERVISOR PROPUESTA MP'})
+        proposal.write({
+            'done_criteria': 'La muestra tiene etiqueta y foto',
+            'measure_cadence': 'semanal', 'due_weekday': '4',
+            'role_line_ids': [(0, 0, {'role': 'aprueba', 'target_type': 'job', 'job_id': other_job.id})],
+            'reason': 'Evidencia para auditoría',
+        })
+        self.assertIn('Criterio de terminado', proposal.diff_html)
+        self.assertIn('SUPERVISOR PROPUESTA MP', proposal.diff_html)
+        opened = proposal.action_submit()
         request = self.env['approval.request'].browse(opened['res_id'])
         self.assertEqual(request.category_id, self.category)
         self.assertEqual(request.request_owner_id, self.user_emp)
         self.assertEqual(request.sgi_activity_id, self.activity)
         self.assertEqual(request.reference, 'ZMPC / 4.1 Revisar la muestra')
-        self.assertEqual(request.request_status, 'pending')
-        self.assertIn('Tomar foto de la etiqueta', request.reason)
-        request.with_user(self.manager).action_approve()
-        self.assertEqual(request.request_status, 'approved')
-        self.assertTrue(request.sgi_mp_apply_scheduled)
+        self.assertIn('La muestra tiene etiqueta y foto', request.reason)
+        self.assertEqual(self.activity.done_criteria, 'La muestra tiene etiqueta',
+                         "Nada cambia antes de aprobarse.")
+        self._approve(proposal)
+        self.assertEqual(self.activity.done_criteria, 'La muestra tiene etiqueta y foto')
+        self.assertEqual((self.activity.measure_cadence, self.activity.due_weekday), ('semanal', '4'))
+        self.assertTrue(self.activity.role_ids.filtered(
+            lambda r: r.role == 'aprueba' and r.job_id == other_job))
+        self.assertTrue(self.activity.role_ids.filtered(
+            lambda r: r.role == 'ejecuta' and r.job_id == self.job), "Los roles que siguen se conservan.")
+        self.assertEqual(proposal.state, 'aplicada')
+        self.assertIn('Criterio de terminado', request.sgi_mp_diff_html,
+                      "El cambio aprobado queda congelado en la solicitud.")
         todo = self.env['mail.activity'].search([
             ('res_model', '=', 'sgi.process.activity'), ('res_id', '=', self.activity.id),
             ('user_id', '=', self.manager.id)])
-        self.assertEqual(todo.summary, 'Aplicar cambio aprobado y republicar')
+        self.assertEqual(todo.summary, 'Revisar cambio aplicado y republicar')
 
-    def test_03_proponer_nueva_actividad(self):
+    def test_03_proponer_nueva_actividad_y_quitar(self):
         screen = self.env['sgi.my.procedure'].with_user(self.user_emp).create({'employee_id': self.emp.id})
         action = screen.action_propose_new_activity()
-        wizard = self.env['sgi.mp.change.wizard'].browse(action['res_id']).with_user(self.user_emp)
-        self.assertEqual(wizard.change_type, 'agregar')
-        self.assertEqual(wizard.process_id, self.process, "Un solo proceso: queda elegido.")
-        # 56.3.2: abre vacío y no deja enviar sin propuesta ni motivo.
+        proposal = self.env['sgi.activity.change'].browse(action['res_id']).with_user(self.user_emp)
+        self.assertEqual(proposal.change_type, 'agregar')
+        self.assertEqual(proposal.process_id, self.process, "Un solo proceso: queda elegido.")
+        self.assertEqual(proposal.role_line_ids.job_id, self.job, "La ejecuta el puesto de quien propone.")
+        # Abre vacío y no deja enviar sin resumen ni motivo.
         with self.assertRaises(UserError):
-            wizard.action_submit()
-        wizard.write({'proposal': 'Registrar la merma', 'reason': 'No se mide hoy'})
-        request = self.env['approval.request'].browse(wizard.action_submit()['res_id'])
-        self.assertEqual(request.reference, 'ZMPC / Nueva actividad')
-        self.assertEqual(request.sgi_mp_change_type, 'agregar')
-        self.assertEqual(request.sgi_affected_process_ids, self.process)
-        request.with_user(self.manager).action_approve()
-        self.assertTrue(self.process.activity_ids.filtered(
-            lambda a: a.user_id == self.manager and a.summary == 'Aplicar cambio aprobado y republicar'))
+            proposal.action_submit()
+        proposal.write({'name': 'Registrar la merma', 'how_steps': 'Pesar → capturar',
+                        'reason': 'No se mide hoy'})
+        proposal.action_submit()
+        self.assertEqual(proposal.request_id.reference, 'ZMPC / Nueva actividad: Registrar la merma')
+        self._approve(proposal)
+        new = proposal.activity_id
+        self.assertEqual((new.name, new.process_id, new.how_steps),
+                         ('Registrar la merma', self.process, 'Pesar → capturar'))
+        self.assertEqual(new.role_ids.job_id, self.job)
+        # Quitar: se archiva, no se borra.
+        action = new.role_ids.with_user(self.user_emp).action_mp_propose_change()
+        remove = self.env['sgi.activity.change'].browse(action['res_id']).with_user(self.user_emp)
+        remove.write({'change_type': 'quitar', 'reason': 'Ya no aplica'})
+        remove.action_submit()
+        self._approve(remove)
+        self.assertFalse(new.active)
+        self.assertTrue(new.exists())
 
     def test_04_usuario_sin_empleado(self):
         lonely = new_test_user(self.env, login='mpc_lonely',
