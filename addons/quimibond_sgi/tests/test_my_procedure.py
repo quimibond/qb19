@@ -435,6 +435,21 @@ class TestMyProcedure(TransactionCase):
         opened = row.action_sgi_open_my_procedure()
         wiz = self.env['sgi.my.procedure'].browse(opened['res_id'])
         self.assertEqual(wiz.employee_id.id, self.emp1.id)
+        # 56.1.1: el puesto sale del empleado (el jefe no es de RH y
+        # hr.employee.public no le da job_id) y las listas son las mismas
+        # que calcula la ficha del empleado.
+        wiz = wiz.with_user(boss_user)
+        self.assertEqual(wiz.job_id, self.job, "Puesto vacío al abrir desde Mi equipo.")
+        self.assertEqual(wiz.role_ids, row.sgi_mp_role_ids)
+        self.assertEqual(wiz.activity_count, len(row.sgi_mp_role_ids))
+        self.assertTrue(wiz.activity_count)
+        self.assertEqual(wiz.process_ids, row.sgi_mp_process_ids)
+        self.assertEqual(wiz.document_ids, row.sgi_mp_document_ids)
+        self.assertEqual(wiz.epp_required or False, row.sgi_mp_epp_text or False)
+        # Un registro guardado sin puesto (como los anteriores a 56.1.1)
+        # sigue mostrando las actividades del empleado.
+        old = self.env['sgi.my.procedure'].create({'employee_id': self.emp1.id, 'job_id': False})
+        self.assertEqual(old.role_ids, row.sgi_mp_role_ids)
         with self.assertRaises(UserError):
             Public.with_user(boss_user).browse(self.emp2.id).action_sgi_open_my_procedure()
         # Desde la ficha del empleado y la del puesto (MAST ve a cualquiera).

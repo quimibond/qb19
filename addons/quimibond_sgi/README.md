@@ -1768,6 +1768,19 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### Puesto vacío al abrir desde Mi equipo (56.1.1)
+
+«Ver su procedimiento» desde Mi equipo abría la pantalla con **Puesto vacío y
+Actividades 0** aunque la ficha del empleado calculara bien sus 30 roles. Dos
+causas: la acción creaba el registro con `job_id=False` explícito, y en un
+campo calculado guardado eso apaga el cálculo; y el cálculo leía el puesto por
+`hr.employee.public`, que para quien no es de RH viene vacío (en Odoo 19 pasa
+por `version_id`). Ahora el puesto sale del empleado en sudo, las listas,
+acuses y documentos se calculan con `_sgi_mp_job()` (el puesto elegido o el
+del empleado, así un registro guardado sin puesto también se muestra bien) y
+la acción solo manda las llaves con valor. `post-migrate` 56.1.1 rellena el
+puesto en las pantallas guardadas. Prueba en `TestMyProcedure.test_13`.
+
 ## Fórmulas para 28 indicadores más (55.0.0)
 
 **Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa
