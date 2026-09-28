@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Hoja de firma que el SGI agrega al final de un PDF para firmarlo en
+         Sign sin plantilla hecha a mano (56.18.0). Mismas medidas que la del
+         cambio documental: margen superior 10 mm, título de 35 mm, renglones
+         de 55 mm (sgi.sign.builder._sgi_box). -->
+    <template id="report_sign_sheet_body">
+        <div class="page" style="font-size:12px;">
+            <div style="height:35mm; overflow:hidden;">
+                <strong style="font-size:15px;" t-out="title"/>
+                <div t-foreach="lines" t-as="line" style="margin-top:2mm;" t-out="line"/>
+            </div>
+            <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+                <tr t-foreach="rows" t-as="row" style="height:55mm;">
+                    <td style="width:45%; height:55mm; vertical-align:top; padding:4mm; border:1px solid #000;">
+                        <strong style="font-size:14px;" t-out="row[0]"/>
+                        <div style="margin-top:3mm;" t-out="row[1] or ''"/>
+                    </td>
+                    <td style="height:55mm; border:1px solid #000;"/>
+                </tr>
+            </table>
+        </div>
+    </template>
+
+    <!-- Acuse de lectura: la misma plantilla sirve a todos los que acusan la
+         revisión; Sign registra quién firmó y cuándo. -->
+    <record id="action_report_ack_sign_sheet" model="ir.actions.report">
+        <field name="name">Constancia de lectura (hoja de firma)</field>
+        <field name="model">documents.document</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_ack_sign_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_ack_sign_sheet_document</field>
+        <field name="paperformat_id" ref="paperformat_sgi_doc_change"/>
+    </record>
+
+    <template id="report_ack_sign_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.report_sign_sheet_body">
+                    <t t-set="title">CONSTANCIA DE LECTURA</t>
+                    <t t-set="lines" t-value="[
+                        '%s — %s, revisión %02d.' % (doc.sgi_code or '', doc.name or '', doc.sgi_revision or 0),
+                        'Leí y entendí este documento y me comprometo a aplicarlo en mi trabajo.',
+                    ]"/>
+                    <t t-set="rows" t-value="[('Leído y entendido', 'Firma de quien acusa')]"/>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Responsiva de EPP: la hoja va después de la responsiva (S03-02). -->
+    <record id="action_report_epp_sign_sheet" model="ir.actions.report">
+        <field name="name">Recibí el EPP (hoja de firma)</field>
+        <field name="model">sgi.epp.delivery</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_epp_sign_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_epp_sign_sheet_document</field>
+        <field name="paperformat_id" ref="paperformat_sgi_doc_change"/>
+    </record>
+
+    <template id="report_epp_sign_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.report_sign_sheet_body">
+                    <t t-set="title">RECIBÍ EL EQUIPO DE PROTECCIÓN PERSONAL</t>
+                    <t t-set="lines" t-value="[
+                        'Responsiva %s del %s.' % (doc.name or '', doc.date or ''),
+                        'Recibí el EPP de la responsiva anterior y me comprometo a usarlo y cuidarlo.',
+                    ]"/>
+                    <t t-set="rows" t-value="[('Recibí', doc.employee_id.name)]"/>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Publicación firmada («Mi procedimiento», 56.19.0): la hoja va al
+         final del PDF del documento; firman MAST y el jefe directo. -->
+    <record id="action_report_publish_sign_sheet" model="ir.actions.report">
+        <field name="name">Firmas de publicación (hoja de firma)</field>
+        <field name="model">documents.document</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_publish_sign_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_publish_sign_sheet_document</field>
+        <field name="paperformat_id" ref="paperformat_sgi_doc_change"/>
+    </record>
+
+    <template id="report_publish_sign_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.report_sign_sheet_body">
+                    <t t-set="title">HOJA DE FIRMAS</t>
+                    <t t-set="lines" t-value="[
+                        '%s — %s, revisión %02d.' % (doc.sgi_code or '', doc.name or '', doc.sgi_revision or 0),
+                        'Entra en vigor cuando firmen todos los renglones.',
+                    ]"/>
+                    <t t-set="rows" t-value="doc._sgi_publish_sign_rows()"/>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

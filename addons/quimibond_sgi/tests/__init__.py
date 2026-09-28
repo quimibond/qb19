@@ -69,3 +69,17 @@ from . import test_diagram_view
 from . import test_my_procedure_ui
 from . import test_kpi_fields
 from . import test_excel_migration
+from . import test_mp_change
+from . import test_my_pending
+from . import test_approval_native
+from . import test_role_audit
+from . import test_perm_groups
+from . import test_cleanup_b10
+from . import test_business_line
+from . import test_doc_change_sign
+from . import test_sign_builder
+from . import test_my_procedure_sign
+from . import test_due_long
+from . import test_nc_origins
+from . import test_external_doc
+from . import test_hse_records

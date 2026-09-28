@@ -1768,6 +1768,246 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### «Nuevo» en Mis actividades (56.6.1)
+
+El kanban de Mis actividades vuelve a tener el botón nativo **Nuevo** (arriba
+a la izquierda). Con `on_create` abre la propuesta de actividad nueva
+(`sgi.activity.change`, acción `sgi_activity_change_action_new`) con el puesto
+y los procesos de la pantalla ya puestos; la actividad nace al aprobarse,
+igual que «Proponer nueva actividad». Sin puesto el botón no aparece.
+56.6.2: la vista de lista hace lo mismo; como la lista de Odoo no tiene
+`on_create`, usa `js_class="sgi_my_activities_list"`
+(`static/src/my_procedure/new_activity_list.js`), que solo cambia lo que hace
+«Nuevo».
+
+### El rol «Aprueba» ligado a la aprobación nativa de Odoo (56.5.0)
+
+Los 70 renglones «Aprueba» de los procedimientos solo describían quién
+aprobaba; nada en Odoo lo exigía. Ahora cada uno dice:
+
+- **Documento que se aprueba** (`approval_model_id`): se sugiere el modelo
+  que materializa la actividad (`measure_model_id`).
+- **Botón que se aprueba** (`approval_method`): se sugiere por documento
+  (`button_confirm` en compras, `action_post` en asientos y pagos,
+  `button_validate` en traslados, `action_apply_inventory` en ajustes…).
+- **Condición estructurada**: campo, operador y valor («total > 50,000»); el
+  texto de la condición se conserva como descripción.
+
+«Sincronizar» (SGI → Procesos → Aprobaciones del SGI, o el botón de la lista)
+crea o actualiza la **regla de aprobación nativa** (`studio.approval.rule`,
+la misma de Studio que ya usa producción) con las personas del puesto como
+aprobadores: el botón queda bloqueado hasta que una aprueba y Odoo guarda
+quién y cuándo (`studio.approval.entry`, visible en «Ver aprobaciones»). Una
+regla con aprobaciones registradas no cambia de botón ni de condición: se
+archiva y nace otra. Si el puesto no tiene personas con usuario no se crea
+regla (nadie podría aprobar). El cron «SGI: Sincronizar aprobaciones
+nativas» mantiene a los aprobadores al día y archiva las reglas de roles o
+actividades que ya no existen. Las aprobaciones por dar entran a «Mis
+pendientes» (tipo Aprobación). Nuevo dependencia: `web_studio`.
+
+**56.6.0 — cómo se aprueba y reglas duplicadas.**
+
+- Cada renglón «Aprueba» elige **cómo se aprueba**: *Botón de Odoo* (la regla
+  nativa de arriba), *Solicitud en Aprobaciones* (decisiones sin documento:
+  plan estratégico, revisión por la dirección, requerimientos de autoridad;
+  «Sincronizar» crea una categoría propia con las personas del puesto como
+  aprobadores y el cron las mantiene) o *Firma en Sign* (plantilla elegida).
+  Así ninguna aprobación se queda «sin configurar» por no tener botón.
+- **Reglas duplicadas:** si el botón ya tiene una regla hecha a mano (Studio),
+  el renglón queda en *Ya hay otra regla en el botón* y «Sincronizar» no crea
+  otra (el documento pediría dos aprobaciones). «Adoptar regla» la liga al
+  rol y la deja con las personas del puesto y la condición del renglón.
+  Varias reglas SGI en el mismo botón sí se permiten (niveles con condición).
+- Las solicitudes de Aprobaciones que esperan a la persona también entran a
+  «Mis pendientes» (tipo *Solicitud por aprobar*).
+- **Arranque por etapas:** nada se activa al actualizar; conviene sincronizar
+  primero compras, pagos, ajustes de inventario, notas de crédito y reapertura
+  de periodo, y el resto por proceso.
+
+### Proponer cambio edita la actividad de verdad (56.4.0)
+
+La propuesta de 56.2.0 era texto libre («cómo está hoy / cómo propongo»).
+Ahora es una propuesta **estructurada** (`sgi.activity.change`):
+
+- Al abrirla desde una tarjeta nace con los valores actuales de la actividad
+  en los mismos campos de la ficha: resumen, descripción, cómo (pasos),
+  instructivo, formatos, procedimiento relacionado, cadencia y vencimiento,
+  dónde se hace y menú de Odoo, sistema externo, lugar, contra qué se
+  compara, criterio de terminado, si no se puede, y **quién la hace**
+  (renglones de rol: ejecuta, aprueba, participa, se entera, escala; puesto,
+  familia o rol relativo). La persona cambia lo que haga falta.
+- La pestaña «Qué cambia» y la solicitud de Aprobaciones muestran el antes →
+  propuesto campo por campo; al enviar se congela.
+- **Al aprobarse se aplica sola:** cambiar escribe los campos y deja
+  exactamente los roles propuestos (conserva los que siguen); agregar crea la
+  actividad en el proceso con sus roles; quitar la **archiva**. El cambio
+  queda en el chatter de la actividad y cada Jefe MAST y SGI recibe «Revisar
+  cambio aplicado y republicar» para publicar la nueva revisión.
+- No deja enviar sin motivo, sin cambios (al cambiar) ni sin resumen y
+  proceso (al agregar). Se retira el asistente de texto `sgi.mp.change.wizard`.
+
+### Mis pendientes en una sola lista con semáforo (56.3.0)
+
+- **Pantalla.** Los botones separados (atrasadas, al día, sin medir, acciones,
+  NC, mediciones, legales, documentos por revisar) se cambian por un solo
+  botón **Mis pendientes** con el total y, en rojo, cuántas están atrasadas
+  («12 · 3 atrasadas»). El estado de cada actividad sigue en sus tarjetas
+  (botón Actividades).
+- **Lista única** (`sgi.my.pending`, transitorio): acciones abiertas, NC a
+  contestar, mediciones por capturar o validar, requisitos legales y
+  documentos por revisar, con Tipo, Qué, Proceso, Vence y Estado. Vence: la
+  fecha compromiso de la acción; la primera etapa pendiente de la NC
+  (contención, causa raíz, plan) o su eficacia; el cierre del periodo de la
+  medición; la evaluación o vigencia más próxima del requisito; la próxima
+  revisión del documento. Estado: **atrasada** (vence antes de hoy, rojo),
+  **por vencer** (7 días o menos, amarillo), **al día** (verde). Orden:
+  atrasadas primero y luego por vencimiento. Filtros Atrasadas, Vence esta
+  semana y Al día; agrupar por Tipo, Estado y Persona. «Abrir» lleva al
+  registro de origen.
+- **Mi equipo.** Por persona, el semáforo (peor estado), el total y los
+  atrasados; «Ver pendientes» abre su lista y «Pendientes del equipo» junta a
+  todo el equipo agrupado por persona. El organigrama muestra el mismo
+  semáforo. Filtros Con atrasadas, Con pendientes por vencer y Al día.
+- 56.3.1: `pending_late` se etiqueta «Pendientes atrasados»; con «Atrasadas»
+  chocaba con `late_count` (actividades atrasadas) y el build salía amarillo.
+- Los criterios de cada tipo son los mismos que tenían los botones; se buscan
+  una vez por tipo para todas las personas. Pruebas en `tests/test_my_pending.py`.
+
+### Documentos del puesto, proponer cambios y aviso sin empleado (56.2.0)
+
+- **Documentos que aplican al puesto.** Salían vacíos para todos: solo se
+  contaban los documentos que nombran al puesto en `sgi_job_ids`, y en
+  producción solo lo hacen los propios «Mi procedimiento» (excluidos). Ahora
+  `hr.job._sgi_mp_document_records()` junta, de las actividades activas donde
+  el puesto tiene rol (directo o por familia), el instructivo, los formatos
+  referenciados y el procedimiento relacionado, más los que nombran al
+  puesto; solo vigentes. Lo usan la ficha del empleado, la pantalla (pestaña
+  **Documentos**) y el PDF.
+- **Proponer cambio.** Cada tarjeta y renglón de actividad trae «Proponer
+  cambio» y el encabezado «Proponer nueva actividad». El asistente
+  (`sgi.mp.change.wizard`) prellena cómo está hoy la actividad y pide la
+  propuesta, el motivo y un adjunto; crea la solicitud en la categoría marcada
+  `sgi_is_mp_change` («Proponer cambio a mi procedimiento (SGI)», la marca el
+  `post-migrate` 56.2.0) con referencia `<proceso> / <numeral> <actividad>`,
+  dueño el usuario y `sgi_activity_id`, y la envía. Si faltan aprobadores
+  (jefe directo sin usuario) queda en borrador con el motivo en el chatter.
+  Al aprobarse, cada Jefe MAST y SGI recibe la actividad «Aplicar cambio
+  aprobado y republicar» en la actividad del procedimiento (o en el proceso si
+  es nueva). `sgi.process.activity` gana chatter para eso.
+- 56.3.2: el asistente ya no truena al abrirse («Falta el valor requerido
+  para Cómo propones que quede»): propuesta y motivo son obligatorios en la
+  vista y al enviar, no en el modelo, porque el registro se crea al abrir.
+- **Sin empleado ligado.** «Mi procedimiento» ya no truena ni abre vacía: muestra
+  «Tu usuario no está ligado a un empleado».
+- Pruebas en `tests/test_mp_change.py`.
+
+### Puesto vacío al abrir desde Mi equipo (56.1.1)
+
+«Ver su procedimiento» desde Mi equipo abría la pantalla con **Puesto vacío y
+Actividades 0** aunque la ficha del empleado calculara bien sus 30 roles. Dos
+causas: la acción creaba el registro con `job_id=False` explícito, y en un
+campo calculado guardado eso apaga el cálculo; y el cálculo leía el puesto por
+`hr.employee.public`, que para quien no es de RH viene vacío (en Odoo 19 pasa
+por `version_id`). Ahora el puesto sale del empleado en sudo, las listas,
+acuses y documentos se calculan con `_sgi_mp_job()` (el puesto elegido o el
+del empleado, así un registro guardado sin puesto también se muestra bien) y
+la acción solo manda las llaves con valor. `post-migrate` 56.1.1 rellena el
+puesto en las pantallas guardadas. Prueba en `TestMyProcedure.test_13`.
+
+
+### 19.0.56.7.0 — «Mi procedimiento» como ficha con pestañas y correcciones de la auditoría
+
+**Pantalla.** Ficha como la del empleado de Odoo: foto, nombre y puesto; jefe,
+área, familia, procesos, firma y EPP en dos columnas; y pestañas **Mis
+actividades** (primera, con estado, numeral, proceso, cadencia, cuándo, rol y
+los botones Ir a hacerlo · Instructivo · Proponer cambio · Ver actividad),
+Escalamientos, Participa o se entera, Documentos, EPP, Firmas de lectura y
+Personas en el puesto (cuando se ve un puesto sin empleado). «Ver en tarjetas
+por cadencia» abre el kanban de siempre. Los botones inteligentes quedan solo
+para lo que vive en otra app: Mis pendientes, Firmas pendientes, Indicadores
+y Obligaciones. Encabezado: Firmar leído y entendido, Proponer actividad,
+Imprimir y Revisión vigente.
+
+**Publicar es de MAST.** «Publicar revisión», «Revisión previa» y «Publicar
+todos los puestos» salen de la pantalla del empleado: Administración SGI →
+Firmas de lectura → **Publicar Mi procedimiento** (revisión previa con el
+botón «Publicar todos los puestos») y, por puesto, la ficha del puesto.
+
+**Correcciones de la auditoría del 28-sep-2026:**
+- Aprobar una propuesta de **actividad nueva** o de **cambio de ejecutor**
+  fallaba con «debe tener exactamente un puesto que la ejecuta»: los roles se
+  aplican ahora junto con la actividad (una sola validación al final). Un rol
+  que solo cambia de puesto se actualiza en su lugar y conserva su aprobación
+  nativa.
+- Una propuesta **enviada** ya no se puede editar (lo aprobado es lo que se
+  aplica); en borrador solo la edita quien la hizo. MAST puede siempre.
+- Un **acuse firmado** no se puede pasar a otro empleado ni a otro documento.
+- El asistente de **COA** solo acepta PDF subidos en él (antes podía mover
+  adjuntos de otros registros).
+- «Escalar a NC del SGI» lo ve el Usuario SGI (antes el Auditor, que no puede
+  escribir).
+- La pestaña «Mi procedimiento» del empleado y del puesto solo para Usuario o
+  Auditor SGI (los demás recibían error de acceso).
+- «Mis pendientes»: una solicitud de Aprobaciones vence 3 días después de
+  enviada (antes todas salían atrasadas).
+- Indicadores con varios términos por rol: la etiqueta «Ventana» ya no truena.
+- NC: cambiar proceso o cláusula en el formulario ya no truena al recalcular
+  la reincidencia.
+- Medición diaria de actividades: un dominio que falla ya no tumba la
+  medición de las demás (savepoint por actividad).
+- Obligaciones patronales: el cron legal diario las marca «Vencida sin
+  presentar» (antes se quedaban «Pendiente»).
+- Etiquetas en español: Fecha (tablero de dirección), Área, Sección (fichas por
+  máquina), Parte de la fórmula, Número de empleados, Importe total, Hoja
+  mensual; menú «Lista maestra» sin código; «Procesos» sin acción vieja.
+- Prueba contradictoria: `menu_sgi_activities` salió de la lista de xmlids
+  retirados (volvió a propósito en 54.0.0).
+
+**Mis actividades en lista.** «Abrir en pantalla completa» y las pestañas del
+empleado y del puesto abren la **lista** (estado, núm., actividad, proceso,
+cadencia, cuándo, rol y botones); las tarjetas quedan para el celular
+(`mobile_view_mode = kanban`). Una sola lista incrustada:
+`sgi_activity_role_view_list_mp_embedded`.
+
+**Mis indicadores.** La pantalla contaba solo los indicadores «oficiales» y
+los 93 están en «prueba»: nadie veía los suyos. Ahora: pestaña «Mis
+indicadores» (clave, meta, último valor, semáforo, Mediciones, Tendencia),
+botón inteligente con todos los activos a su cargo y menú **Inicio → Mis
+indicadores** (antes Indicadores y Mediciones solo estaban en Administración
+SGI).
+
+**Auditoría funcional por rol (28-sep-2026):**
+- Documentos controlados en piloto o vigente: **solo lectura** para los
+  usuarios internos (antes 486 se podían editar). `post-migrate` 56.7.0.
+- Usuario SGI ya no implica «Aprobaciones: aprobar todas las solicitudes».
+- Reglas de escritura «solo lo mío» para Usuario SGI: mediciones de sus
+  indicadores (o de su proceso), sus acciones, los riesgos de sus procesos y
+  los requisitos legales a su cargo. MAST, todo.
+- Escalaciones sin dueño: al Jefe MAST **directo** (o parámetro
+  `quimibond_sgi.mast_user_id`), no al primero heredado (era el CEO).
+- Cierre automático de actividades ya resueltas (captura de indicador, eslabón
+  que vuelve a fluir, riesgo con acción o revisado, parte interesada revisada)
+  en el cron diario de No Conformidades (corre todos los días).
+- Propuestas de cambio: el **dueño del proceso** se agrega como aprobador.
+- Mi equipo del dueño de proceso: solo quien ejecuta o aprueba actividades
+  activas de su proceso (antes entraban su jefe y sus pares).
+- Mis pendientes: sin mediciones de indicadores archivados.
+- Pruebas: `tests/test_role_audit.py`.
+
+**1.1 / 1.8 — campos guardados.** El procedimiento del empleado vive en
+campos **guardados** de `hr.employee`: `sgi_mp_job_id` (puesto de la versión
+vigente), `sgi_mp_role_ids`, `sgi_mp_received_role_ids`,
+`sgi_mp_short_role_ids`, `sgi_mp_process_ids` y `sgi_my_procedure_ack_state`.
+Se buscan, se agrupan y se leen por API sin abrir la pantalla. Se recalculan
+al cambiar el puesto o la familia, al crear, editar o borrar un rol, al
+archivar o mover una actividad y al publicar
+(`hr.employee._sgi_mp_touch_jobs`). La pantalla, Mi equipo y «Ver como» leen
+esos campos; el empleado público los copia del empleado. También quedan
+guardados `sgi.indicator.last_measure_id/last_value/last_semaphore` (filtro
+«En rojo»), `sgi.indicator.spec_missing` y
+`documents.document.sgi_ack_count/sgi_ack_read_pct`. Odoo los calcula al
+actualizar el módulo (columnas nuevas).
+
 ## Fórmulas para 28 indicadores más (55.0.0)
 
 **Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa
@@ -1922,3 +2162,334 @@ los faltantes de procesos archivados y liga los acuses existentes. Reglas
 nuevas: objetivo sin indicador = «sin dato»; la evaluación trimestral solo
 toma proveedores críticos (contacto marcado o categorías de Ajustes →
 Categorías de proveedores críticos; vacío = materia prima + «maquila»).
+
+### 19.0.56.8.0 — Bloque 2: permisos
+
+- **2.1 PERM-1** (desde 48.0.0): el Auditor SGI lee todo el SGI y la
+  evidencia; escribe hallazgos y, para conducir la auditoría, la auditoría,
+  su checklist y el programa (sin borrar). En 56.7.0 recibió menús de lectura
+  de Documentos, Indicadores y acuses y el permiso de la pantalla Mi
+  procedimiento.
+- **2.2 PERM-2**: `post-migrate` 56.8.0 deja **solo a Areli**
+  (mas@quimibond.com) como miembro directo de Jefe MAST y SGI; los demás
+  miembros directos (hoy Darío Manríquez y Sergio González) pasan a Usuario
+  SGI. Dirección de Operaciones (Jorge) y Administrador SGI lo siguen
+  teniendo por herencia. `res.groups._sgi_enforce_mast_members`.
+- **2.3**: el mismo script retira los grupos heredados «SGI» (295) y «SGI
+  admin» (296): sin privilegio y sin xmlid de un módulo. Sus miembros ya
+  tenían los grupos nuevos (quien no, recibe Usuario SGI); su único permiso
+  era de lectura sobre el modelo de Studio `x_emp_activity` (0 registros);
+  sus reglas se archivan. `res.groups._sgi_retire_legacy_groups`.
+- Pruebas: `tests/test_perm_groups.py` (incluye abrir Mi procedimiento como
+  Usuario SGI tras el cambio de grupo).
+
+
+### 19.0.56.9.0 — Bloque 3: no conformidades y acciones
+
+- **3.1–3.5** ya estaban (NC-1 a NC-5, 49.0.0): plazos por etapa con
+  escalamiento, contención, eficacia a 90 días, cancelación con motivo y
+  aprobación de MAST, y migración de las etapas estándar. Las etapas de
+  `quality.alert.stage` no tienen «archivar» en Odoo; las estándar quedan en
+  los equipos de planta y las del SGI en los equipos SGI.
+- **3.6**: una acción terminada exige **100 % de avance** y **fecha de término
+  hoy o antes** (`_sgi_check_done`). Poner la fecha sin decir el avance lo
+  sube a 100 %; quitarla lo regresa a 50 %. `post-migrate` 56.9.0 reabre las
+  terminadas con fecha futura (en producción, la acción 63) y sube a 100 %
+  las terminadas con fecha pasada. Prueba: `test_role_audit.test_08` como
+  Usuario SGI.
+
+### 19.0.56.10.0 — Bloque 4: auditorías
+
+- **4.1 AU-1, 4.2 AU-2, 4.3 AU-3** ya estaban (50.0.0): checklist generado de
+  las actividades del proceso con «Ver registros», respuestas que crean su
+  hallazgo, independencia del auditor por su puesto e informe F-P-G03-07
+  archivado al cerrar.
+- **4.4**: el programa de auditorías **no se aprueba** si alguna auditoría
+  interna no tiene auditor líder (el mensaje dice cuáles), y solo lo aprueba
+  el Jefe MAST (antes el auditor también podía). En producción los programas
+  2026 y 2027 tienen 14 líneas cada uno sin auditor: MAST los asigna.
+- **4.5**: `test_audit_pr3.test_09` recorre programa → auditoría → checklist →
+  hallazgo → NC sobre el proceso real C2 de la copia de producción (en una
+  base vacía, sobre el de prueba), como auditor y como MAST.
+  `test_role_audit.test_09`: el Usuario SGI no aprueba el programa.
+
+### 19.0.56.11.0 — Bloque 5: documentos y requisitos legales
+
+- **5.1 DOC-1, 5.3 DOC-3, 5.4 DIR-1** ya estaban (51.0.0): publicación en un
+  paso al aprobar el cambio documental, lista maestra en PDF por proceso y
+  global, requisitos legales con responsable obligatorio, evaluaciones
+  (resultado, evidencia, siguiente fecha), aviso 60 días antes, «no cumple»
+  abre NC y matriz legal en PDF. En producción: 25 requisitos y 0
+  evaluaciones (captura de MAST).
+- **5.2 DOC-2**: al pasar un proceso a vigente, sus documentos sustituidos
+  quedan obsoletos **con fecha, motivo y el proceso que los sustituye**
+  (`sgi_obsolete_date`, `sgi_obsolete_reason`, `sgi_replaced_by_process_id`,
+  visibles en la ficha). Cualquier paso a obsoleto guarda la fecha.
+  `post-migrate` 56.11.0 llena la fecha de los que ya estaban obsoletos.
+  Pruebas: `test_cleanup_45.test_04` y `test_09` (C2 real con sus 3
+  procedimientos sustituidos; se omite si la copia no los tiene o C2 aún no
+  cumple para vigente).
+
+### 19.0.56.12.0 — Bloque 6: indicadores, actividades y crons
+
+- **6.1**: cada indicador guarda **por qué no calculó**: `calc_status`
+  (Calcula, Manual, Antes de «medir desde», Sin fórmula o sin fuente, Sin
+  datos en el periodo, Error de cálculo), `calc_message` y `calc_checked`.
+  Lo llenan el cron y «Recalcular ahora». Un error ya no se pierde en el log:
+  se guarda y avisa al responsable (o a MAST) con una actividad «Indicador X
+  no calculó», que se cierra sola cuando vuelve a calcular. Filtro «No
+  calcula» y aviso rojo en la ficha. De los 23 señalados, 17 nunca han medido
+  porque se crearon después de la corrida del 1-sep: «Recalcular ahora» los
+  mide sin esperar al 1-oct y deja su motivo.
+- **6.2 / 6.3**: 11 entradas `no_match` y 77 actividades
+  `odoo_measured_manual` son **captura de MAST** (qué entregable y qué
+  campo liga cada una); la pantalla «Faltantes de especificación» las lista.
+- **6.4 REG-2** ya estaba (53.0.0): una encuesta puede ser el entregable.
+- **6.5**: el cierre automático corre a diario (56.7.0) y ahora también
+  cierra «NC sin acción» (la NC ya tiene acción, cerró o se canceló) y
+  «Procedimiento vivo cambió» (ya revisado o ya no vigente), y quita sus
+  duplicados; ese aviso ya no se duplica al crearse.
+- **6.6**: `post-migrate` 56.12.0 escalona los crons diarios de 06:05 a
+  07:20 hora de México, 5 minutos uno tras otro (antes 10 arrancaban a las
+  20:44 UTC y las mediciones semanales a la misma hora que las mensuales).
+  «Mediciones semanales» sigue revisándose a diario porque mide la semana
+  pasada una sola vez (se pone al corriente si un día falla). «Resumen
+  semanal por correo» se queda **apagado** (archivado, no se borra).
+- Pruebas: `test_role_audit.test_10` (como Usuario SGI filtra los que no
+  calculan).
+
+### 19.0.56.13.0 — Bloque 7: migración de formatos
+
+- **7.4**: la lista de Migración de formatos (Administración SGI →
+  Documentos → Migración de formatos) es **editable en lote**
+  (`multi_edit`): con el filtro «Sin clasificar» MAST selecciona los
+  renglones y asigna la clase (A, C, D…), el destino o el estado a todos a la
+  vez. En producción hay 169 sin clasificar (94 pendientes).
+- **7.5 DOC-5** ya estaba (53.0.0): el instructivo de una actividad puede ser
+  un artículo de Knowledge que se congela como revisión del documento
+  controlado.
+- **7.1 (42 clase A), 7.2 (19 clase C), 7.3 (5 clase D)**: cada formato es
+  un formulario, un reporte o una liga que MAST debe definir uno por uno (qué
+  campos, en qué operación de Odoo, a qué actividad). La infraestructura está
+  (`sgi.format.map`, puntos de calidad, `sgi_odoo_menu_id`, clave de formato
+  en pantalla y PDF); falta la definición de cada formato, empezando por C4
+  (11), S4 (14) y C5 (8).
+
+### 19.0.56.14.0 — Bloques 8 y 9: dirección, proveedores, clientes y firmas
+
+- **8.1 DIR-2, 8.2 DIR-3, 8.4 PER-3** ya estaban (52.0.0): riesgos con
+  semáforo y reevaluación enero/julio, informe de revisión por la dirección
+  con las entradas de 9.3 y acuerdos como acciones, matriz de competencias.
+- **8.3 DIR-4**: el tablero de dirección muestra hasta **12** indicadores:
+  los oficiales de nivel dirección; si no hay (hoy los 93 están en prueba),
+  los de nivel dirección en cualquier estado con un aviso; si tampoco hay,
+  un aviso de cómo marcarlos. Prueba: `test_pr5_direction.test_05` (como
+  usuario de Dirección).
+- **9.1 NC-6**: un proveedor **sin recepciones con fecha compromiso** ya no
+  sale «baja»: su OTD queda «sin datos» (`otd_has_data`), la calificación usa
+  solo calidad y la clase es **«Sin datos»** (si tuvo NC en el periodo, la
+  clase sale de la calidad). `post-migrate` 56.14.0 recalcula las
+  evaluaciones con OTD 0 y aplica la clase al proveedor si es su evaluación
+  más reciente. Ojo: en producción la mayoría de los OTD 0 revisados son
+  atraso real (recibido días o meses después del compromiso); esos siguen en
+  «baja» con la regla actual. Prueba: `test_pr6_external.test_08` (como
+  Usuario SGI).
+- **9.2 NC-7, 9.3 AU-4, 9.4 AU-5, 9.5 DOC-4, 9.6 REG-1** ya estaban (53.0.0).
+
+### 19.0.56.15.0 — Bloque 10: limpieza y deuda técnica
+
+- **10.1**: se retira `sgi.employer.obligation` (0 registros en producción):
+  modelo, vistas, acción, menú Dirección → Obligaciones patronales, accesos y
+  el paso del cron legal que agregó 56.7.0. `pre-migrate` 56.15.0 borra sus
+  vistas, acción, menú y xmlids antes de cargar los XML; la tabla vacía la
+  limpia Odoo. Las obligaciones viven en `qb_obligation` (398). Ligar las
+  actividades de S4 a `qb.obligation` es captura (qué obligación cubre cada
+  actividad).
+- **10.3**: los 223 roles de actividades archivadas ya no cuentan en ningún
+  cálculo: conteos del puesto y de la familia, «Actividades SGI» del puesto,
+  «Ver sus actividades» y el conteo de puestos del SIPOC (que ahora también
+  cuenta los puestos por familia). No se borra ningún rol.
+- **10.4 PR-1** ya estaba (53.1.0). **10.5**: `sgi.activity.spec.gap` solo
+  se regenera cuando cambió el conjunto de faltantes; se deja así.
+- **Pendiente por decisión** (no se tocó): 10.2 (`responsible_role` y los
+  campos de flujo; `prev/next_activity_ids`, `flow_parent_id` y
+  `responsible_job_ids` son cálculos vivos de los eslabones, no legado),
+  10.6 (campos heredados sin datos), 10.7 (ficha de máquina vs. ficha técnica
+  de Consolti, campos de Studio en empleados) y 10.8 (partir el módulo en
+  2027).
+- Pruebas: `tests/test_cleanup_b10.py` (conteos como Usuario SGI).
+
+### 19.0.56.16.0 — Líneas de negocio con lo que Odoo ya tiene
+
+Un mismo proceso atiende líneas distintas: «C2 Pedido a entrega» trae el
+pedido industrial (C2.04), el de confección (C2.08) y la exportación (etapa E)
+mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
+
+- **Equipos de venta** (`crm.team`: Industrial, Confección, Especiales…):
+  «Aplica a (equipo de ventas)» en cada actividad (`sale_team_ids`; vacío = a
+  todos).
+- **Posiciones fiscales** (`account.fiscal.position`: Nacional, Cliente
+  extranjero…): «Mercado» de la actividad (`fiscal_position_ids`; vacío = a
+  todos).
+- **Departamentos**: no se capturan; `department_ids` sale de los puestos que
+  ejecutan la actividad.
+- **Búsqueda de actividades**: «Equipo de ventas» y «Mercado» traen lo elegido
+  **más las generales**; «Departamento»; filtros «Aplican a todos los
+  equipos» / «Solo de algún equipo»; agrupar por equipo, mercado y
+  departamento. En Procesos: «Tiene actividades del equipo».
+- **Diagramas**: el flujo del proceso tiene selector de equipo y de mercado;
+  lo que no aplica se atenúa. La matriz «Quién hace qué» filtra por equipo.
+- **Quién hace qué** (ejecuciones): departamento del puesto (guardado) y equipo
+  de ventas para filtrar y agrupar.
+- **Mi procedimiento**: los equipos de una persona son los equipos de venta de
+  los que su usuario es miembro o líder (se capturan en Ventas; entrar o salir
+  de un equipo recalcula su procedimiento). Con equipos, ve lo general y lo de
+  sus equipos. El puesto junta los equipos de sus personas, solo si todas
+  están en alguno; si alguna no, el puesto ve todo. La portada del PDF dice
+  los equipos. No hay campo nuevo en el puesto ni en el empleado.
+- **Indicadores**: «Desglose» en los de fórmula configurable: por equipo de
+  ventas (`team_id`, `sale_id.team_id`, `order_id.team_id`, `move_id.team_id`…)
+  o por mercado (país del cliente contra el de la compañía: Nacional,
+  Exportación, Cliente sin país). La medición oficial (NC, semáforo del
+  proceso, tablero, RxD) sigue siendo el total; los renglones quedan en la
+  misma medición (`sgi.indicator.measure.split`) y en Indicadores → Mediciones
+  por equipo o mercado.
+- **Áreas SGI → departamentos**: `post-migrate` liga A → Administracion,
+  C → Calidad, D → Diseño Y Desarrollo, G → MAST, I → Inspeccion Y Empaque,
+  M → Mantenimiento, P → Produccion, V → Ventas. Ambiental (E) y SST (S) no
+  tienen departamento en Odoo y quedan sin ligar.
+- `post-migrate` 56.16.0 etiqueta C2.04 → Industrial, C2.08 → Confección y la
+  etapa E de C2 → Industrial + «Cliente extranjero» (Confección no exporta). Solo
+  agrega; lo que ya tenga equipo, mercado o departamento no se toca.
+- Fuera por ahora: Maquila (no existe en Odoo).
+- Pruebas: `tests/test_business_line.py` (filtros, departamento calculado, C2
+  real si la base lo trae, Mi procedimiento por equipos y al cambiar de
+  equipo, diagramas, ejecuciones, desglose por equipo y por mercado; lecturas
+  como Usuario SGI).
+
+### 19.0.56.16.1 — Etiqueta duplicada en empleado
+
+- `sgi_mp_ack_ids` (pestaña Procedimiento) se llamaba igual que
+  `sgi_document_ack_ids` («Acuses de lectura») y el build avisaba «Two fields
+  … have the same label». Ahora es «Acuses de lectura (Mi procedimiento)»; en
+  pantalla no cambia nada (la pestaña usa su propio separador).
+
+### 19.0.56.17.0 — Cambio documental firmado en Sign
+
+- La solicitud de cambio documental (F-P-G01-06, Aprobaciones) se aprueba
+  **firmando en Sign**. Al enviarla, el SGI arma el PDF (solicitud, versión
+  nueva si viene adjunta y al final la hoja de firmas), crea la plantilla de
+  Sign sin intervención de MAST y manda la firma en orden: **Elaboró** (quien
+  pide) → **Revisó** (dueño del proceso del documento o del primer proceso
+  afectado) → **Aprobó** (aprobador de la categoría: Jefe MAST).
+- Cada firma aprueba su renglón en Aprobaciones (revisó y aprobó son
+  aprobadores requeridos, en ese orden); con la última el cambio se aplica
+  solo. El PDF firmado queda en la solicitud y en el documento. Quien tiene
+  dos papeles firma una vez en todas sus cajas.
+- En la categoría con «Se aprueba firmando en Sign» el botón Aprobar queda
+  bloqueado; rechazar sigue desde Aprobaciones. Firma cancelada o vencida:
+  «Reenviar a firma».
+- El archivo que se publica es el que se mandó a firmar
+  (`sgi_change_attachment_id`), no el PDF firmado que Sign deja después.
+- Sin Sign de por medio (Sign avisa tarde o falla): el cron diario «Sincronizar
+  Firma electrónica y eLearning» vuelve a revisar; si algo falla al aprobar,
+  la firma no se revierte.
+- `post-migrate` 56.17.0: «Modificación de documento SGI» se aprueba por Sign,
+  sin jefe directo, mínimo 1; MOC pedía 2 aprobaciones sin aprobador (nunca
+  se podía aprobar): queda el Jefe MAST requerido y mínimo 1. Había 0
+  solicitudes de ambas en producción.
+- Reporte `quimibond_sgi.action_report_doc_change` (carta); roles de Sign
+  «SGI · Elaboró / Revisó / Aprobó».
+- Pruebas: `tests/test_doc_change_sign.py` (firma en orden, aprobación por
+  firma, bloqueo del botón, dueño faltante, misma persona en dos papeles,
+  archivo que se publica).
+
+### 19.0.56.18.0 — Acuses y responsivas de EPP firmados sin plantilla hecha a mano
+
+- `sgi.sign.builder` arma las plantillas de Sign: toma el PDF, le agrega al
+  final una hoja de firma con cajas en posiciones conocidas
+  (`report/report_sign_sheet.xml`, mismas medidas que la del cambio
+  documental) y crea plantilla y solicitud. El cambio documental (56.17.0)
+  usa el mismo armador.
+- **Acuses de lectura**: «Enviar acuses a firma» ya no pide plantilla. Sin
+  plantilla elegida, el SGI la arma una vez por revisión (PDF del documento +
+  hoja «Constancia de lectura») y la reutiliza para todos los que acusan; si
+  la revisión cambia, arma otra. Una plantilla elegida a mano se respeta.
+- **Responsiva de EPP**: «Enviar a firmar (Sign)» ya no pide plantilla en
+  Ajustes. Sin plantilla, arma la responsiva impresa + hoja «Recibí el EPP».
+- Papel de firma «SGI · Empleado». El sellado sigue igual: el cron diario
+  marca el acuse como leído y la responsiva como firmada cuando Sign termina.
+- Pruebas: `tests/test_sign_builder.py`; `test_sign_elearning` y
+  `test_excel_migration` ajustados (ya no se exige plantilla).
+
+### 19.0.56.19.0 — «Mi procedimiento» firmado en Sign antes de entrar en vigor
+
+- Con «Mi procedimiento se firma en Sign» (Ajustes → SGI → Firmas en Sign;
+  `quimibond_sgi.mp_sign_required`, encendido por `post-migrate`), publicar
+  deja la revisión en **borrador** y la manda a firmar: PDF del procedimiento
+  + hoja de firmas. Firman **Elaboró** (quien publica si es de MAST; si no, el
+  Jefe MAST) y **Aprobó** (jefe directo: responsable del departamento del
+  puesto; si no hay o es el mismo MAST, firma solo MAST).
+- Al firmarse, la revisión entra en vigor sola: la anterior queda obsoleta,
+  el archivo del documento pasa a ser el PDF firmado y se generan los acuses.
+  Lo dispara Sign al terminar y, de respaldo, el cron diario de Sign.
+- Publicar otra vez mientras espera firma no duplica («en firma»). Si no se
+  puede mandar (alguien sin correo, sin Jefe MAST) no queda borrador a medias
+  y el aviso dice por qué.
+- Los demás documentos ya se firman al cambiar por el cambio documental
+  (56.17.0), que incluye la versión nueva en el PDF firmado.
+- Pruebas: `tests/test_my_procedure_sign.py`.
+
+### 19.0.56.20.0 — Menús con claves, vencimientos largos, orígenes de NC y acta administrativa
+
+- **Menús con las claves del Dropbox** en el XML (23 menús renombrados a mano
+  en producción el 28-sep): los menús no son `noupdate` y el update les
+  habría regresado el nombre anterior. Ej.: «ANEXO 2 Mapeo de procesos»,
+  «F-P-G05-01 Solicitud de no conformidad», «IT-P-A10-01 Revisión por la
+  dirección».
+- Revisado antes de instalar: `sgi.process.activity` no tiene registros en
+  XML (las actividades se capturan en pantalla o por la carga por API), así
+  que el update no pisa «Cómo» ni ningún otro texto; ninguna migración
+  pendiente (56.2.0 a 56.20.0) toca actividades salvo 56.16.0, que solo
+  agrega equipo y mercado si están vacíos (C2.04, C2.08 y la etapa E de C2).
+  Nada archiva actividades en el update: solo la carga por API con
+  `archive_missing` o un proceso sustituido.
+- **Vencimiento por mes y día** para cadencias trimestral, semestral y anual
+  (`due_month` + `due_day`): el mes es el del primer periodo del año y se
+  repite cada 3, 6 o 12 meses; el día se recorta al fin de mes. Lo respetan
+  el validador (plazo, cadencia que no corresponde, falta mes o día), la
+  frase «Vence el…», el «cuándo» de Mi procedimiento, la medición a tiempo,
+  la carga por API (`due: {"month", "day"}`) y las propuestas de cambio.
+- **Orígenes de NC**: Incidente/accidente SST (las NC de incidentes nacen con
+  él; `post-migrate` 56.20.0 corrige las que ya existían), Emergencia real,
+  Scorecard de cliente (plazo de cliente externo), Recorrido de la Comisión
+  de Seguridad e Higiene y Riesgo u oportunidad.
+- **Acción administrativa (S4.32)**: al marcarla en la NC se crea una
+  actividad al Coordinador de RH (`quimibond_sgi.rh_user_id`; si no, Jefe
+  MAST) para levantar el acta; una por NC.
+- Pruebas: `tests/test_due_long.py`, `tests/test_nc_origins.py`.
+
+### 19.0.56.21.0 — Documento externo y pantallas para lo que seguía en papel
+
+- **Documento externo (E2.36)**: en los documentos de tipo «Documento
+  externo», emisor, revisión del emisor, fecha de recepción y proceso dueño
+  (el «Proceso SGI» del documento). Plazo de implantación de 10 días hábiles
+  desde la recepción (`quimibond_sgi.external_doc_days`); el cron de
+  vencimientos documentales avisa al dueño del proceso 2 días hábiles antes y
+  al vencer. Menú Administración SGI → Documentos → Documentos externos.
+- **Estudios de higiene y exámenes médicos por trabajador (E2.31, E2.32)**:
+  `sgi.health.record` con tipo, fecha, vigencia, vencimiento, resultado y
+  PDF; pestaña «Salud ocupacional» en el empleado. Datos de salud: solo RH y
+  el Jefe MAST. El cron de competencias avisa a RH 30 días antes y al vencer
+  (solo el más reciente de cada estudio por trabajador).
+- **Recorrido de la Comisión de Seguridad e Higiene (E2.29)**: acta con
+  integrantes, adjuntos y hallazgos; cada hallazgo se corrige en el momento,
+  queda sin acción con motivo o genera su NC (origen «Recorrido de la
+  Comisión de Seguridad e Higiene»). No se cierra con hallazgos sin resolver.
+- **Checklists de planta y unidades (S5.15, S5.16, S5.20)**: plantilla con
+  puntos a revisar, equipos o unidades y frecuencia (diaria L-V o semanal los
+  lunes). El cron diario crea una solicitud de mantenimiento preventivo por
+  equipo con la hoja de puntos (Bien / Falla / No aplica); de las fallas sale
+  un correctivo con un botón. Menús en Mejora → Seguridad y ambiente y la
+  plantilla en Configuración.
+- Pruebas: `tests/test_external_doc.py`, `tests/test_hse_records.py`.

@@ -13,9 +13,10 @@ La medición gana lo que antes no se podía ver: cuántas entradas aplicaban,
 cuántas salidas llegaron completas y a tiempo, y cuántas siguen abiertas con
 el plazo vencido (``sgi.activity.week.stat``).
 """
+import calendar
 import logging
 import unicodedata
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -43,6 +44,15 @@ SGI_WEEKDAYS = [
     ('0', "Lunes"), ('1', "Martes"), ('2', "Miércoles"), ('3', "Jueves"),
     ('4', "Viernes"), ('5', "Sábado"), ('6', "Domingo"),
 ]
+
+SGI_MONTHS = [
+    ('1', "Enero"), ('2', "Febrero"), ('3', "Marzo"), ('4', "Abril"), ('5', "Mayo"),
+    ('6', "Junio"), ('7', "Julio"), ('8', "Agosto"), ('9', "Septiembre"),
+    ('10', "Octubre"), ('11', "Noviembre"), ('12', "Diciembre"),
+]
+# Meses por periodo de las cadencias largas (56.20.0). Los periodos son
+# bloques del año calendario: trimestres, semestres, el año.
+SGI_CADENCE_MONTHS = {'trimestral': 3, 'semestral': 6, 'anual': 12}
 
 SGI_SPEC_GAPS = [
     ('no_done', "Sin criterio de terminado"),
@@ -149,6 +159,16 @@ class SgiActivitySpec(models.Model):
     due_business_day = fields.Integer(
         string="Vence el día hábil (mensual)",
         help="Cadencia mensual: día hábil del mes en que vence (1 a 23).")
+    # 56.20.0: trimestral, semestral y anual. El mes es el del primer periodo
+    # del año (trimestral: enero, febrero o marzo = 1.º, 2.º o 3.er mes de
+    # cada trimestre; semestral: enero a junio); se repite cada 3, 6 o 12 meses.
+    due_month = fields.Selection(
+        SGI_MONTHS, string="Vence en el mes",
+        help="Trimestral, semestral o anual: mes en que vence dentro del periodo. "
+             "Trimestral con «Febrero» = febrero, mayo, agosto y noviembre.")
+    due_day = fields.Integer(
+        string="Vence el día",
+        help="Día del mes en que vence (1 a 31; si el mes es más corto, el último día).")
     # --- Dónde ---
     exec_channel = fields.Selection(
         SGI_EXEC_CHANNELS, string="Dónde se hace", index=True,
@@ -156,7 +176,7 @@ class SgiActivitySpec(models.Model):
     odoo_action_id = fields.Many2one(
         'ir.actions.act_window', string="Acción de Odoo",
         compute='_compute_odoo_action_id', store=True, readonly=False,
-        help="Pantalla que abre «Abrir en Odoo»; sale del menú y se puede cambiar.")
+        help="Pantalla que abre «Ir a hacerlo»; sale del menú y se puede cambiar.")
     external_system = fields.Char(
         string="Sistema externo",
         help="Portal proveedores GM, VUCEM, sistema del agente aduanal…")
@@ -203,6 +223,21 @@ class SgiActivitySpec(models.Model):
             if act.due_business_day and not 1 <= act.due_business_day <= 23:
                 raise ValidationError("El día hábil de vencimiento va de 1 a 23.")
 
+    @api.constrains('due_day')
+    def _check_due_day(self):
+        for act in self:
+            if act.due_day and not 1 <= act.due_day <= 31:
+                raise ValidationError("El día de vencimiento va de 1 a 31.")
+
+    def _sgi_due_months(self):
+        """Meses del año en que vence (trimestral, semestral o anual)."""
+        self.ensure_one()
+        step = SGI_CADENCE_MONTHS.get(self.measure_cadence)
+        if not step or not self.due_month:
+            return []
+        offset = (int(self.due_month) - 1) % step
+        return [offset + 1 + step * n for n in range(12 // step)]
+
     def action_open_odoo(self):
         """«Abrir en Odoo»: la acción configurada manda sobre la del menú."""
         self.ensure_one()
@@ -240,7 +275,8 @@ class SgiActivitySpec(models.Model):
         if not (self.on_fail or '').strip() and not escala:
             add('no_on_fail', "Falta qué hacer si no se puede cumplir, o un rol «Escala».")
         timed_input = any(line.max_days or line.due_field for line in self.input_ids)
-        periodic = bool(self.due_weekday or self.due_business_day)
+        periodic = bool(self.due_weekday or self.due_business_day
+                        or (self.due_month and self.due_day))
         external_start = self.block == 'inicial' and self.input_ids and not any(
             line.deliverable_id.producer_activity_ids for line in self.input_ids)
         if not timed_input and not periodic and not external_start:
@@ -249,6 +285,11 @@ class SgiActivitySpec(models.Model):
             add('due_mismatch', "Vence un día de la semana pero la cadencia no es semanal.")
         if self.due_business_day and self.measure_cadence != 'mensual':
             add('due_mismatch', "Vence un día hábil del mes pero la cadencia no es mensual.")
+        if (self.due_month or self.due_day) and self.measure_cadence not in SGI_CADENCE_MONTHS:
+            add('due_mismatch', "Vence en un mes y día pero la cadencia no es trimestral, "
+                                "semestral ni anual.")
+        elif bool(self.due_month) != bool(self.due_day):
+            add('due_mismatch', "Falta el %s del vencimiento." % ("día" if self.due_month else "mes"))
         unconditioned = executors.filtered(lambda r: not (r.condition or '').strip())
         if len(unconditioned) > 1:
             add('multi_exec', "Más de un puesto la ejecuta: parte la actividad.")
@@ -356,6 +397,8 @@ class SgiActivitySpec(models.Model):
             parts.append((None, "Vence cada %s" % dict(SGI_WEEKDAYS)[self.due_weekday].lower()))
         if self.due_business_day and self.measure_cadence == 'mensual':
             parts.append((None, "Vence el día hábil %d del mes" % self.due_business_day))
+        if self.due_day and self._sgi_due_months():
+            parts.append((None, "Vence el %s" % self._sgi_due_label()))
         if self.on_fail:
             parts.append(("Si no se puede", self.on_fail.strip().rstrip('.')))
         return parts
@@ -379,7 +422,24 @@ class SgiActivitySpec(models.Model):
         if self.due_business_day and self.measure_cadence == 'mensual':
             return sgi_nth_business_day(self.env, day.year, day.month, self.due_business_day,
                                         self.company_id)
+        months = self._sgi_due_months() if self.due_day else []
+        if months:
+            # El periodo es el bloque del año (trimestre, semestre, año) que
+            # contiene ``day``; vence en su mes que toca.
+            step = SGI_CADENCE_MONTHS[self.measure_cadence]
+            block_start = ((day.month - 1) // step) * step + 1
+            month = next(m for m in months if block_start <= m < block_start + step)
+            last = calendar.monthrange(day.year, month)[1]
+            return date(day.year, month, min(self.due_day, last))
         return None
+
+    def _sgi_due_label(self):
+        """«15 de marzo» (anual) o «15 de enero, abril, julio y octubre»."""
+        self.ensure_one()
+        names = dict(SGI_MONTHS)
+        months = [names[str(m)].lower() for m in self._sgi_due_months()]
+        text = months[0] if len(months) == 1 else "%s y %s" % (", ".join(months[:-1]), months[-1])
+        return "%d de %s" % (self.due_day, text)
 
 
 class SgiActivityRoleSpec(models.Model):
@@ -642,7 +702,7 @@ class SgiIndicatorSpec(models.Model):
     target_date = fields.Date(
         string="Llegar a la meta el",
         help="Opcional: sin fecha, la meta es permanente.")
-    spec_missing = fields.Char(string="Le falta", compute='_compute_spec_missing')
+    spec_missing = fields.Char(string="Le falta", compute='_compute_spec_missing', store=True)
 
     # --- Modos genéricos (P-1): el indicador se calcula solo de lo que ya
     # mide el SGI, sin una fórmula fija por indicador.
@@ -750,7 +810,10 @@ class SgiIndicatorSpec(models.Model):
             problems.append("sin frecuencia")
         return problems
 
-    @api.depends('target_objective', 'formula', 'source', 'responsible_id', 'frequency')
+    @api.depends('target_objective', 'formula', 'source', 'responsible_id', 'frequency', 'calc_mode',
+                 'activity_id', 'deliverable_id.odoo_model_id', 'deliverable_id.complete_domain',
+                 'activity_id.output_deliverable_ids.odoo_model_id',
+                 'activity_id.output_deliverable_ids.complete_domain')
     def _compute_spec_missing(self):
         for indicator in self:
             indicator.spec_missing = ", ".join(indicator._sgi_spec_problems()) or False
@@ -929,7 +992,8 @@ class SgiActivityWeekCounts(models.Model):
                     counts['on_time_count'] += 1
             break   # la primera entrada con plazo que se liga es la que manda
         # Periódicas: a tiempo si se hizo antes del vencimiento del periodo.
-        if Out is not None and not counts['timed_count'] and (self.due_weekday or self.due_business_day):
+        if Out is not None and not counts['timed_count'] and (
+                self.due_weekday or self.due_business_day or (self.due_month and self.due_day)):
             for rec in done:
                 day = fields.Datetime.to_datetime(rec[out_date]).date()
                 due = self._sgi_periodic_due(day)

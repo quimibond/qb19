@@ -81,7 +81,7 @@ class SgiIndicatorTerm(models.Model):
 
     indicator_id = fields.Many2one('sgi.indicator', required=True, ondelete='cascade', index=True)
     role = fields.Selection([('numerator', "Numerador"), ('denominator', "Denominador")],
-                            required=True, default='numerator')
+                            string="Parte de la fórmula", required=True, default='numerator')
     model_id = fields.Many2one('ir.model', string="Modelo", required=True, ondelete='cascade')
     model_name = fields.Char(related='model_id.model', string="Modelo técnico")
     domain = fields.Text(string="Filtro", default='[]', required=True,
@@ -437,6 +437,9 @@ class SgiIndicatorFormula(models.Model):
             period = fields.Date.to_date(period_date) if period_date else indicator._sgi_default_period()
             date_from, date_to = indicator._sgi_period_bounds(period)
             vals = indicator._sgi_measure_vals(date_from, date_to)
+            if save:
+                # 6.1: «Recalcular ahora» también deja el motivo si no calcula.
+                indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
             result = {
                 'code': indicator.code, 'period_date': fields.Date.to_string(period),
                 'value': vals.get('value'), 'state': vals.get('state'),

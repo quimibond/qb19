@@ -266,6 +266,15 @@ class SgiCoaAttachWizard(models.TransientModel):
             raise UserError("Adjunta al menos un PDF del COA.")
         if self.send and not self.recipient_ids:
             raise UserError("Para enviarlo al cliente, indica al menos un destinatario.")
+        # Solo archivos subidos en este asistente: el registro los mueve a la
+        # entrega con sudo y no debe poder «robar» adjuntos de otros registros.
+        foreign = self.attachment_ids.sudo().filtered(
+            lambda a: a.res_model not in (False, self._name, 'stock.picking')
+            or (a.res_model == 'stock.picking' and a.res_id not in (0, self.picking_id.id))
+            or (not self.env.su and a.create_uid != self.env.user))
+        if foreign:
+            raise UserError("Adjunta los PDF del COA desde este asistente (%s no se puede usar)."
+                            % ', '.join(foreign.mapped('name')))
         picking = self.picking_id
         picking._sgi_coa_register(self.attachment_ids)
         if self.send:

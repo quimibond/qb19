@@ -42,7 +42,7 @@ SGI_MENU_QUALITY_ENTRIES = (
 SGI_REMOVED_XMLIDS = (
     # Menús: los hijos de Datos técnicos y luego el padre (parent_id es
     # ondelete=restrict: el orden importa al borrar en la migración)
-    'quimibond_sgi.menu_sgi_activities',
+    # menu_sgi_activities volvió en 54.0.0 (Procesos → Actividades).
     'quimibond_sgi.menu_sgi_activity_roles',
     'quimibond_sgi.menu_sgi_deliverables',
     'quimibond_sgi.menu_sgi_activity_chain',
@@ -159,8 +159,10 @@ class SgiProcessCleanup(models.Model):
             docs = process.replaced_document_ids.filtered(lambda d: d.sgi_state == 'vigente')
             if not docs:
                 continue
+            reason = "Lo sustituye el proceso %s, que entró en vigor." % process.display_name
             for doc in docs:
-                doc.sudo().write({'sgi_state': 'obsoleto'})
+                doc.sudo().write({'sgi_state': 'obsoleto', 'sgi_obsolete_reason': reason,
+                                  'sgi_replaced_by_process_id': process.id})
                 doc.message_post(body=(
                     "Obsoleto: lo sustituye el proceso %s, que entró en vigor." % process.display_name))
             process.message_post(body=(

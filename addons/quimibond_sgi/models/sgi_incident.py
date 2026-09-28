@@ -109,7 +109,7 @@ class SgiIncident(models.Model):
         label = dict(self._fields['severity'].selection).get(self.severity)
         vals = {
             'title': "Incidente %s: %s" % (label, self.name),
-            'sgi_origin_type': 'proceso',
+            'sgi_origin_type': 'incidente_sst',
             'sgi_classification': 'mayor',
             'sgi_process_id': self.process_id.id,
             'sgi_deviation': "Incidente SST %s (%s). Realice la investigación SCAT y "

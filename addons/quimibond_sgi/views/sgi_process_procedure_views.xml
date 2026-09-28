@@ -11,7 +11,7 @@
             <form string="Actividad">
                 <header>
                     <button name="action_open_odoo" type="object"
-                            string="Abrir en Odoo" icon="fa-external-link"
+                            string="Ir a hacerlo" icon="fa-play"
                             invisible="not odoo_action_id and not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                     <button name="action_view_measure_records" type="object"
                             string="Ver evidencia" icon="fa-check-square-o"
@@ -28,6 +28,7 @@
                     <field name="active" invisible="1"/>
                     <field name="next_activity_ids" invisible="1"/>
                     <field name="spec_complete" invisible="1"/>
+                    <field name="measure_user_field" invisible="1"/>
                     <div class="alert alert-warning mb-3" role="alert"
                          invisible="spec_complete or not spec_gap_summary">
                         <b>Le falta a la especificación:</b>
@@ -50,6 +51,14 @@
                                    context="{'default_process_id': process_id}"/>
                             <field name="step"/>
                             <field name="legacy_number" invisible="not legacy_number"/>
+                            <field name="sale_team_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Todos los equipos de venta"/>
+                            <field name="fiscal_position_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Todos los mercados"/>
+                            <field name="department_ids" widget="many2many_tags" readonly="1"
+                                   invisible="not department_ids"/>
                         </group>
                         <group>
                             <field name="measure_method"/>
@@ -78,6 +87,10 @@
                                            required="target_type == 'relative'"/>
                                     <field name="condition" placeholder="Siempre"
                                            readonly="role not in ('aprueba', 'informa', 'escala') and not condition"/>
+                                    <field name="approval_state" widget="badge" optional="show"
+                                           string="Aprobación en Odoo"
+                                           decoration-success="approval_state == 'activa'"
+                                           decoration-warning="approval_state in ('sin_aprobadores', 'por_sincronizar')"/>
                                     <field name="after_days"
                                            invisible="role != 'escala'"
                                            required="role == 'escala'"/>
@@ -107,7 +120,6 @@
                                     <field name="format_document_ids" widget="many2many_tags"
                                            options="{'no_create': True}"/>
                                     <field name="related_procedure_id" options="{'no_create': True}"/>
-                                    <field name="odoo_menu_id"/>
                                     <field name="odoo_ref" invisible="1"/>
                                 </group>
                                 <group>
@@ -154,6 +166,8 @@
                                     <field name="measure_cadence"/>
                                     <field name="due_weekday" invisible="measure_cadence != 'semanal'"/>
                                     <field name="due_business_day" invisible="measure_cadence != 'mensual'"/>
+                                    <field name="due_month" invisible="measure_cadence not in ('trimestral', 'semestral', 'anual')"/>
+                                    <field name="due_day" invisible="measure_cadence not in ('trimestral', 'semestral', 'anual')"/>
                                 </group>
                             </group>
                             <group string="Cómo">
@@ -191,21 +205,20 @@
                                     <field name="measure_model_id" options="{'no_create': True}"
                                            invisible="measure_method not in (False, 'odoo', 'entregable')"
                                            readonly="measure_method == 'entregable'"/>
-                                    <field name="measure_model_name"
+                                    <field name="measure_model_name" groups="quimibond_sgi.group_sgi_manager"
                                            invisible="measure_method not in (False, 'odoo')"
                                            placeholder="o el nombre técnico: sale.order"/>
-                                    <field name="measure_domain"
+                                    <field name="measure_domain" groups="quimibond_sgi.group_sgi_manager"
                                            invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
                                            readonly="measure_method == 'entregable'"
                                            placeholder="[('state', '=', 'done')]"/>
                                     <field name="measure_date_field"
                                            invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
                                            readonly="measure_method == 'entregable'"/>
-                                    <field name="measure_user_field"
+                                    <field name="measure_user_field" groups="quimibond_sgi.group_sgi_manager"
                                            invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
                                            readonly="measure_method == 'entregable'"
                                            placeholder="create_uid, user_id…"/>
-                                    <field name="measure_cadence"/>
                                 </group>
                                 <group>
                                     <field name="measure_last_date"/>
@@ -214,8 +227,7 @@
                             </group>
                             <div class="text-muted"
                                  invisible="measure_method not in ('correo', 'manual', 'muestreo')">
-                                Sin fuente todavía: el conector de correo y el registro
-                                de un toque llegan en la fase 2. Mientras, sale en gris.
+                                Sin fuente automática: sale en gris.
                             </div>
                         </page>
                         <page string="Quién la ejecutó" name="ejecuciones"
@@ -290,6 +302,7 @@
                         </page>
                     </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -306,11 +319,14 @@
                 <field name="number"/>
                 <field name="section" optional="hide"/>
                 <field name="name"/>
+                <field name="sale_team_ids" widget="many2many_tags" optional="show"/>
+                <field name="fiscal_position_ids" widget="many2many_tags" optional="hide"/>
+                <field name="department_ids" widget="many2many_tags" optional="hide"/>
                 <field name="exec_channel" optional="show"/>
-                <field name="spec_complete" widget="boolean" optional="show"
+                <field name="spec_complete" widget="boolean" optional="hide"
                        decoration-danger="not spec_complete"/>
-                <field name="executor_role_ids" widget="many2many_tags" optional="show"/>
-                <field name="approver_role_ids" widget="many2many_tags" optional="show"/>
+                <field name="executor_role_ids" widget="many2many_tags" optional="hide"/>
+                <field name="approver_role_ids" widget="many2many_tags" optional="hide"/>
                 <field name="informed_role_ids" widget="many2many_tags" optional="hide"/>
                 <field name="responsible_role" optional="hide"/>
                 <field name="instruction_id" optional="hide"/>
@@ -323,7 +339,7 @@
                 <field name="measure_cadence" optional="hide"/>
                 <field name="measure_count_30d" optional="show"/>
                 <field name="measure_adherence_pct" optional="show"/>
-                <field name="measure_top_users" optional="show"/>
+                <field name="measure_top_users" optional="hide"/>
                 <field name="measure_count_other_job" optional="hide"/>
                 <field name="measure_count_generic" optional="hide"/>
                 <field name="measure_model_id" column_invisible="1"/>
@@ -333,7 +349,7 @@
                        decoration-muted="measure_state in ('pendiente', 'no_aplica')"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
                 <button name="action_open_odoo" type="object"
-                        string="Abrir en Odoo" icon="fa-external-link"
+                        string="Ir a hacerlo" icon="fa-play"
                         invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
                 <button name="action_view_measure_records" type="object"
                         string="Evidencia" icon="fa-check-square-o"
@@ -360,6 +376,7 @@
                             <field name="name" class="text-truncate"/>
                         </div>
                         <field name="process_id" class="text-muted small"/>
+                        <field name="sale_team_ids" widget="many2many_tags"/>
                         <field name="executor_role_ids" widget="many2many_tags"/>
                         <footer class="pt-1 small gap-2">
                             <field name="measure_method"/>
@@ -403,6 +420,11 @@
                 <field name="number"/>
                 <field name="responsible_role"/>
                 <field name="process_id"/>
+                <field name="team_filter_id" string="Equipo de ventas"
+                       help="El equipo elegido más las actividades que aplican a todos."/>
+                <field name="market_filter_id" string="Mercado"
+                       help="El mercado (posición fiscal) elegido más las actividades que aplican a todos."/>
+                <field name="department_ids" string="Departamento"/>
                 <separator/>
                 <filter name="my_activities" string="Mis actividades"
                         domain="[('responsible_job_ids.employee_ids.user_id', '=', uid)]"/>
@@ -427,8 +449,6 @@
                 <separator/>
                 <filter name="rojo" string="En rojo"
                         domain="[('measure_state', '=', 'rojo')]"/>
-                <filter name="sin_metodo" string="Sin método"
-                        domain="[('measure_method', '=', False)]"/>
                 <filter name="otro_puesto" string="Ejecuta otro puesto"
                         domain="[('measure_count_other_job', '&gt;', 0)]"/>
                 <filter name="cuenta_generica" string="Cuenta genérica"
@@ -444,6 +464,11 @@
                         domain="[('exec_channel', '=', 'odoo')]"/>
                 <filter name="channel_manual" string="En papel, correo o teléfono"
                         domain="[('exec_channel', 'in', ('papel', 'correo', 'telefono'))]"/>
+                <separator/>
+                <filter name="team_general" string="Aplican a todos los equipos"
+                        domain="[('sale_team_ids', '=', False)]"/>
+                <filter name="team_some" string="Solo de algún equipo"
+                        domain="[('sale_team_ids', '!=', False)]"/>
                 <group>
                     <filter name="group_channel" string="Dónde se hace"
                             context="{'group_by': 'exec_channel'}"/>
@@ -461,6 +486,12 @@
                             context="{'group_by': 'measure_state'}"/>
                     <filter name="group_executor" string="Puesto que ejecuta"
                             context="{'group_by': 'responsible_job_ids'}"/>
+                    <filter name="group_team" string="Equipo de ventas"
+                            context="{'group_by': 'sale_team_ids'}"/>
+                    <filter name="group_market" string="Mercado"
+                            context="{'group_by': 'fiscal_position_ids'}"/>
+                    <filter name="group_department" string="Departamento"
+                            context="{'group_by': 'department_ids'}"/>
                 </group>
                 <searchpanel>
                     <field name="process_id" select="one" icon="fa-sitemap"/>
@@ -477,8 +508,8 @@
         <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="sgi_process_activity_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">El Desarrollo de los procedimientos, como datos vivos</p>
-            <p>El procedimiento dejó de ser un PDF muerto: cada <b>actividad</b> es un numeral (4.2.3.1) con su <b>rol responsable</b>, sus <b>formatos</b> (en rojo en el PDF) y el <b>menú de Odoo</b> donde se ejecuta — el botón <i>Abrir en Odoo</i> te lleva ahí. Se capturan en la pestaña <i>Procedimiento</i> de cada proceso; el PDF F-P-G01-02 se imprime desde el botón con el contador de actividades. Editar una actividad marca el procedimiento como pendiente de revisión documental (candado G14).</p>
+            <p class="o_view_nocontent_smiling_face">Sin actividades</p>
+            <p>Se capturan desde el botón Actividades de cada proceso; «Ir a hacerlo» abre el menú de Odoo donde se ejecuta.</p>
         </field>
     </record>
 

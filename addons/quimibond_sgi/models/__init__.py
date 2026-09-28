@@ -57,6 +57,7 @@ from . import sgi_epp
 from . import sgi_my_procedure_screen
 from . import sgi_structure
 from . import sgi_cleanup
+from . import sgi_groups_cleanup
 from . import sgi_direction_board
 from . import sgi_supplier_nc
 from . import sgi_instruction_knowledge
@@ -71,3 +72,13 @@ from . import sgi_dev_request
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign
+from . import sgi_mp_change
+from . import sgi_my_pending
+from . import sgi_approval_native
+from . import sgi_business_line
+from . import sgi_doc_change_sign
+from . import sgi_sign_builder
+from . import sgi_my_procedure_sign
+from . import sgi_external_doc
+from . import sgi_hse_records
+from . import sgi_checklist

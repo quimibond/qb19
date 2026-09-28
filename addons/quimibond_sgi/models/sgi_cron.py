@@ -42,11 +42,28 @@ class SgiCron(models.AbstractModel):
         """Primer usuario ACTIVO del grupo, por id (determinista). all_user_ids
         no garantiza orden: con 2+ usuarios en el grupo, el destinatario de los
         escalamientos cambiaba entre corridas y burlaba la deduplicación de
-        actividades por usuario."""
-        users = group.all_user_ids.sorted('id') if group else False
-        return users[:1].id if users else False
+        actividades por usuario.
+
+        56.7.0: primero los miembros DIRECTOS del grupo. Administrador y
+        Dirección implican Jefe MAST, y por id el primero de all_user_ids era
+        el CEO: todas las escalaciones sin dueño le llegaban a él y no a MAST."""
+        if not group:
+            return False
+        for users in (group.user_ids, group.all_user_ids):
+            users = users.filtered('active').sorted('id')
+            if users:
+                return users[:1].id
+        return False
 
     def _sgi_manager_user_id(self):
+        """Jefe MAST y SGI que recibe lo que no tiene dueño. Parámetro
+        quimibond_sgi.mast_user_id (id de usuario) si está puesto; si no, el
+        primer miembro directo del grupo."""
+        param = self.env['ir.config_parameter'].sudo().get_param('quimibond_sgi.mast_user_id')
+        if param and param.isdigit():
+            user = self.env['res.users'].sudo().browse(int(param)).exists()
+            if user.active:
+                return user.id
         group = self.env.ref('quimibond_sgi.group_sgi_manager', raise_if_not_found=False)
         return self._sgi_first_user_id(group)
 
@@ -127,6 +144,11 @@ class SgiCron(models.AbstractModel):
         default_days = int(Param.get_param('quimibond_sgi.nc_escalation_days', 5))
         external_days = int(Param.get_param('quimibond_sgi.nc_escalation_days_external', 3))
 
+        # 56.7.0: actividades que agendaron los crons y cuya causa ya se
+        # resolvió (captura, eslabón que fluye, riesgo con acción…). Va en
+        # este cron porque corre TODOS los días; el de indicadores solo mide
+        # el tercer día hábil.
+        self._sgi_step("cerrar actividades ya resueltas", self._sgi_close_resolved_activities)
         # Marca acciones vencidas (recomputo del store)
         self._sgi_step(
             "recomputar estado de acciones",
@@ -147,7 +169,8 @@ class SgiCron(models.AbstractModel):
                 alert._sgi_set_deadlines()
             alert._sgi_deadline_escalation(today)
             alert._sgi_supplier_escalation(today)  # NC-6
-            days = external_days if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
+            days = external_days if alert.sgi_origin_type in (
+                'auditoria_externa', 'reclamacion', 'scorecard') else default_days
             deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')
 
@@ -569,6 +592,85 @@ class SgiCron(models.AbstractModel):
         return True
 
     @api.model
+    def _sgi_close_resolved_activities(self):
+        """56.7.0: las actividades que agendan los crons se marcan hechas
+        solas cuando su causa se resolvió. Antes solo las NC se cerraban y se
+        acumulaban vencidas (59 al 28-sep-2026): capturar la medición, que el
+        eslabón vuelva a fluir o registrar la acción del riesgo no las cerraba."""
+        todo = self.env.ref('mail.mail_activity_data_todo')
+        Activity = self.env['mail.activity'].sudo()
+        today = fields.Date.context_today(self)
+
+        def _open(model, prefix):
+            return Activity.search([('res_model', '=', model), ('summary', '=like', prefix + '%'),
+                                    ('activity_type_id', '=', todo.id)])
+
+        def _close(activities, reason):
+            for activity in activities:
+                activity.action_feedback(feedback="Cerrada automáticamente: %s." % reason)
+            return len(activities)
+
+        closed = 0
+        # Capturar indicador X (periodo): ya no hay medición pendiente.
+        acts = _open('sgi.indicator', "Capturar indicador ")
+        pending = set(self.env['sgi.indicator.measure'].sudo().search([
+            ('indicator_id', 'in', acts.mapped('res_id')), ('state', '=', 'pendiente')]).indicator_id.ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in pending), "la medición ya se capturó")
+        # NC sin acción: la NC ya tiene acción con avance, o ya cerró o se canceló.
+        acts = _open('quality.alert', "NC sin acción: ")
+        alerts = self.env['quality.alert'].sudo().browse(acts.mapped('res_id')).exists()
+        still = set(alerts.filtered(
+            lambda a: not (a.stage_id.sgi_is_closing_stage or a.stage_id.sgi_is_cancel_stage)
+            and not a.sgi_action_line_ids.filtered(lambda line: line.progress != '0')).ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in still), "la NC ya tiene acción o cerró")
+        # Procedimiento vivo cambió: ya se revisó (sin divergencia) o el
+        # documento ya no está vigente. Duplicados: queda uno por documento.
+        acts = _open('documents.document', "Procedimiento vivo cambió: ")
+        docs = self.env['documents.document'].sudo().browse(acts.mapped('res_id')).exists()
+        dirty = set(docs.filtered(lambda d: d.sgi_procedure_dirty and d.sgi_state == 'vigente').ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in dirty), "el procedimiento ya se revisó")
+        seen = set()
+        duplicates = Activity
+        for activity in _open('documents.document', "Procedimiento vivo cambió: ").sorted('id'):
+            key = (activity.res_id, activity.user_id.id, activity.summary)
+            if key in seen:
+                duplicates |= activity
+            seen.add(key)
+        closed += _close(duplicates, "aviso repetido")
+        # Indicador X no calculó: ya calcula (o ya es manual).
+        acts = _open('sgi.indicator', "Indicador ")
+        acts = acts.filtered(lambda a: a.summary.endswith(" no calculó"))
+        indicators = self.env['sgi.indicator'].sudo().browse(acts.mapped('res_id')).exists()
+        failing = set(indicators.filtered(
+            lambda i: i.calc_status in ('error', 'sin_formula', 'sin_datos')).ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in failing), "el indicador ya calcula")
+        # Eslabón atorado: <eslabón>: ya ningún eslabón con ese nombre está atorado.
+        prefix = "Eslabón atorado: "
+        acts = _open('sgi.process', prefix)
+        stuck = {(link.to_activity_id.process_id.id, link.name or '')
+                 for link in self.env['sgi.activity.link'].sudo().search([('chain_state', '=', 'atorado')])}
+        closed += _close(acts.filtered(lambda a: (a.res_id, a.summary[len(prefix):]) not in stuck),
+                         "el eslabón volvió a fluir")
+        # Riesgos: alto sin acción que ya tiene acción; revisión ya registrada.
+        acts = _open('sgi.risk', "Riesgo alto sin acción: ")
+        risks = self.env['sgi.risk'].sudo().browse(acts.mapped('res_id')).exists()
+        still = set(risks.filtered('high_without_action').ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in still), "el riesgo ya tiene acción")
+        acts = _open('sgi.risk', "Revisar riesgo ")
+        risks = self.env['sgi.risk'].sudo().browse(acts.mapped('res_id')).exists()
+        due = set(risks.filtered(lambda r: r.state != 'cerrado' and r.next_review_date
+                                 and r.next_review_date <= today).ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in due), "la revisión ya se registró")
+        # Partes interesadas con revisión ya registrada.
+        acts = _open('sgi.interested.party', "Revisar parte interesada: ")
+        parties = self.env['sgi.interested.party'].sudo().browse(acts.mapped('res_id')).exists()
+        due = set(parties.filtered(lambda p: p.next_review_date and p.next_review_date <= today).ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in due), "la revisión ya se registró")
+        if closed:
+            _logger.info("SGI: %s actividades cerradas porque su causa ya se resolvió.", closed)
+        return closed
+
+    @api.model
     def _sgi_generate_measures(self, indicators, period_date, date_from, date_to,
                                deadline, period_label):
         """Genera (idempotente) las mediciones del periodo y evalúa la NC
@@ -585,9 +687,22 @@ class SgiCron(models.AbstractModel):
             if not measure:
                 # Antes de «medir desde» no hay dato confiable: no se crea.
                 if not indicator._sgi_measurable_on(date_to):
+                    indicator._sgi_set_calc('antes', "Mide desde el %s." % indicator.measure_from)
                     return
-                vals = dict(indicator._sgi_measure_vals(date_from, date_to),
-                            indicator_id=indicator.id, period_date=period_date)
+                # 6.1: el motivo queda en el indicador; si truena, el error
+                # también (y avisa al responsable) en vez de perderse en el log.
+                try:
+                    with self.env.cr.savepoint():
+                        measure_vals = indicator._sgi_measure_vals(date_from, date_to)
+                except Exception as error:
+                    indicator._sgi_set_calc('error', str(error)[:250])
+                    self._sgi_calc_notice(indicator, 'error', str(error)[:250], manager_id)
+                    return
+                status, reason = indicator._sgi_calc_diagnose(measure_vals)
+                indicator._sgi_set_calc(status, reason)
+                if status in ('sin_formula', 'sin_datos'):
+                    self._sgi_calc_notice(indicator, status, reason, manager_id)
+                vals = dict(measure_vals, indicator_id=indicator.id, period_date=period_date)
                 measure = Measure.create(vals)
                 if measure.state == 'pendiente':
                     user_id = indicator.responsible_id.id or manager_id
@@ -603,6 +718,15 @@ class SgiCron(models.AbstractModel):
 
         self._sgi_for_each(indicators, _process, "medición de indicadores")
         return True
+
+    @api.model
+    def _sgi_calc_notice(self, indicator, status, reason, manager_id):
+        """Aviso al responsable (o a MAST) de que el indicador no calculó.
+        Uno por indicador: se cierra solo cuando vuelve a calcular."""
+        label = dict(indicator._fields['calc_status'].selection).get(status, status)
+        self._sgi_schedule(
+            indicator, "Indicador %s no calculó" % (indicator.code or indicator.name),
+            "%s: %s" % (label, reason or ''), indicator.responsible_id.id or manager_id)
 
     @api.model
     def _sgi_schedule_deadline(self, anchor, measure, summary, note, user_id, deadline):
@@ -1044,7 +1168,6 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     # Cumplimiento legal (14001/45001 6.1.3 / 9.1.2)
     # ------------------------------------------------------------------
-    @api.model
     def cron_legal_requirements(self):
         """Cron diario: evaluaciones de cumplimiento vencidas y permisos por
         vencer (≤60 días) o vencidos. Idempotente por resumen."""
@@ -1171,6 +1294,12 @@ class SgiCron(models.AbstractModel):
         self._sgi_step(
             "responsivas de EPP firmadas vía Sign",
             lambda: self.env['sgi.epp.delivery']._sgi_sync_from_sign())
+        self._sgi_step(
+            "cambios documentales firmados vía Sign",
+            lambda: self.env['approval.request']._sgi_sync_all_sign())
+        self._sgi_step(
+            "«Mi procedimiento» firmado vía Sign",
+            lambda: self.env['documents.document']._sgi_sync_publish_sign())
         return True
 
     # ------------------------------------------------------------------
