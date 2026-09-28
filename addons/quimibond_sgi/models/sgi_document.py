@@ -353,14 +353,19 @@ class DocumentsDocument(models.Model):
             doc.sgi_revision_label = "%02d" % (doc.sgi_revision or 0)
 
     def _sgi_share_controlled(self):
-        """Un documento controlado en piloto o vigente lo lee cualquier usuario
+        """Un documento controlado en piloto o vigente lo LEE cualquier usuario
         interno (es lo que cada puesto debe leer y firmar), sin depender de la
-        carpeta. Documents 18+: `access_internal`; no se baja un «editor»."""
+        carpeta. Documents 18+: `access_internal`.
+
+        56.7.0: y solo lo lee. Antes no se bajaba un «editor» y 486 documentos
+        vigentes los podía editar o reemplazar cualquier usuario interno; los
+        cambios van por Cambios documentales y MAST edita como gerente de
+        Documentos."""
         if 'access_internal' not in self._fields:
             return
         docs = self.sudo().filtered(
             lambda d: d.sgi_is_controlled and d.sgi_state in ('piloto', 'vigente')
-            and (d.access_internal or 'none') == 'none')
+            and (d.access_internal or 'none') != 'view')
         if docs:
             super(DocumentsDocument, docs).write({'access_internal': 'view'})
 

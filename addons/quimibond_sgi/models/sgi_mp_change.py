@@ -412,6 +412,7 @@ class SgiActivityChange(models.Model):
                 'datas': self.attachment,
                 'res_model': 'approval.request', 'res_id': request.id,
             })
+        self._sgi_add_process_owner_approver(request)
         self.write({'request_id': request.id, 'state': 'enviada', 'diff_snapshot': snapshot})
         try:
             with self.env.cr.savepoint():
@@ -423,6 +424,16 @@ class SgiActivityChange(models.Model):
             'res_model': 'approval.request', 'res_id': request.id,
             'view_mode': 'form', 'target': 'current',
         }
+
+    def _sgi_add_process_owner_approver(self, request):
+        """56.7.0: el dueño del proceso aprueba los cambios a SU proceso (la
+        categoría solo manda al jefe directo y a MAST). No se agrega si es
+        quien propone o si ya está en la lista."""
+        owner = self.process_id.owner_id.user_id
+        if not owner or not owner.active or owner == self.env.user \
+                or owner in request.sudo().approver_ids.user_id:
+            return
+        request.sudo().write({'approver_ids': [(0, 0, {'user_id': owner.id, 'required': True})]})
 
     def _sgi_values_for_activity(self):
         vals = {}

@@ -65,8 +65,11 @@ class HrEmployeeTeamScope(models.Model):
             team |= Employee.search([('department_id', 'child_of', departments.ids)])
         processes = self.env['sgi.process'].sudo().search([('owner_id', '=', self.id)])
         if processes:
+            # 56.7.0: solo quien ejecuta o aprueba actividades activas del
+            # proceso; «informa» y «escala» metían al jefe y a los pares.
             roles = self.env['sgi.activity.role'].sudo().search(
-                [('process_id', 'in', processes.ids)])
+                [('process_id', 'in', processes.ids), ('role', 'in', ('ejecuta', 'aprueba')),
+                 ('activity_id.active', '=', True)])
             jobs = roles.job_id | roles.family_id.job_ids
             if jobs:
                 team |= Employee.search([('job_id', 'in', jobs.ids)])
@@ -334,6 +337,12 @@ class SgiMyProcedure(models.TransientModel):
         'quality.alert', string="NC a contestar", compute='_compute_lists')
     pending_measure_ids = fields.Many2many(
         'sgi.indicator.measure', string="Mediciones por capturar o validar", compute='_compute_lists')
+    # 56.7.0: TODOS los indicadores activos a su cargo (prueba u oficial).
+    # Antes la pantalla solo contaba los «oficiales» y como los 93 están en
+    # prueba nadie veía sus indicadores.
+    indicator_ids = fields.Many2many(
+        'sgi.indicator', 'sgi_my_procedure_indicator_rel', string="Mis indicadores",
+        compute='_compute_lists')
     official_indicator_ids = fields.Many2many(
         'sgi.indicator', string="Indicadores oficiales a mi cargo", compute='_compute_lists')
     has_obligations = fields.Boolean(compute='_compute_lists')
@@ -513,6 +522,7 @@ class SgiMyProcedure(models.TransientModel):
                 wiz.pending_nc_ids = False
                 wiz.pending_measure_ids = False
                 wiz.official_indicator_ids = False
+                wiz.indicator_ids = False
                 wiz.has_obligations = False
                 wiz.pending_legal_ids = False
                 wiz.pending_doc_review_ids = False
@@ -529,8 +539,9 @@ class SgiMyProcedure(models.TransientModel):
                 [('indicator_id.responsible_id', '=', user.id),
                  ('state', 'in', ('pendiente', 'capturado')), ('period_date', '<=', today)],
                 order='period_date', limit=50).ids
-            wiz.official_indicator_ids = env['sgi.indicator'].sudo().search(
-                [('responsible_id', '=', user.id), ('status', '=', 'oficial')], order='code').ids
+            mine = env['sgi.indicator'].sudo().search([('responsible_id', '=', user.id)], order='code')
+            wiz.indicator_ids = mine.ids
+            wiz.official_indicator_ids = mine.filtered(lambda i: i.status == 'oficial').ids
             wiz.has_obligations = bool('qb.obligation' in env and env['qb.obligation'].sudo().search_count(
                 [('user_id', '=', user.id), ('state', '=', 'confirmed')]))
             # DIR-1: requisitos legales del usuario que vencen en 60 días o ya vencieron.
@@ -559,7 +570,7 @@ class SgiMyProcedure(models.TransientModel):
     epp_count = fields.Integer(compute='_compute_counts')
 
     @api.depends('role_ids', 'received_role_ids', 'short_role_ids', 'document_ids', 'pending_action_ids',
-                 'pending_nc_ids', 'pending_measure_ids', 'official_indicator_ids', 'pending_legal_ids',
+                 'pending_nc_ids', 'pending_measure_ids', 'indicator_ids', 'pending_legal_ids',
                  'pending_doc_review_ids', 'epp_delivery_ids')
     def _compute_counts(self):
         for wiz in self:
@@ -570,7 +581,7 @@ class SgiMyProcedure(models.TransientModel):
             wiz.pending_count = len(wiz.pending_action_ids)
             wiz.nc_count = len(wiz.pending_nc_ids)
             wiz.measure_count = len(wiz.pending_measure_ids)
-            wiz.indicator_count = len(wiz.official_indicator_ids)
+            wiz.indicator_count = len(wiz.indicator_ids)
             wiz.legal_count = len(wiz.pending_legal_ids)
             wiz.doc_review_count = len(wiz.pending_doc_review_ids)
             wiz.epp_count = len(wiz.epp_delivery_ids)
@@ -591,14 +602,18 @@ class SgiMyProcedure(models.TransientModel):
         return action
 
     def _action_roles(self, name, roles):
-        # 56.6.1: «Nuevo» (arriba a la izquierda) del kanban abre la propuesta
-        # de actividad nueva (on_create), con el proceso y el puesto de esta
-        # pantalla; la actividad nace al aprobarse.
+        # 56.6.1: «Nuevo» (arriba a la izquierda) abre la propuesta de
+        # actividad nueva, con el proceso y el puesto de esta pantalla; la
+        # actividad nace al aprobarse. 56.7.0: la lista es la vista principal
+        # (se lee de corrido, se ordena y se filtra); las tarjetas quedan para
+        # el celular.
         context = {'create': bool(self._sgi_mp_job()),
                    'sgi_mp_job_id': self._sgi_mp_job().id,
                    'sgi_mp_process_ids': self.process_ids.ids}
-        return self._action_list(name, roles, view_mode='kanban,list', context=context, views=[
-            ('sgi_activity_role_view_kanban_mp', 'kanban'), ('sgi_activity_role_view_list_my_procedure', 'list')])
+        action = self._action_list(name, roles, view_mode='list,kanban', context=context, views=[
+            ('sgi_activity_role_view_list_my_procedure', 'list'), ('sgi_activity_role_view_kanban_mp', 'kanban')])
+        action['mobile_view_mode'] = 'kanban'
+        return action
 
     def action_show_late(self):
         return self._action_roles("Atrasadas", self.role_ids.filtered(lambda r: r.mp_status == 'atrasada'))
@@ -638,7 +653,7 @@ class SgiMyProcedure(models.TransientModel):
         return self._action_list("Mediciones por capturar o validar", self.pending_measure_ids)
 
     def action_show_indicators(self):
-        return self._action_list("Indicadores oficiales a mi cargo", self.official_indicator_ids)
+        return self._action_list("Mis indicadores", self.indicator_ids)
 
     def action_show_legal(self):
         return self._action_list("Requisitos legales por evaluar", self.pending_legal_ids)

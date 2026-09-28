@@ -1963,6 +1963,37 @@ botón «Publicar todos los puestos») y, por puesto, la ficha del puesto.
 - Prueba contradictoria: `menu_sgi_activities` salió de la lista de xmlids
   retirados (volvió a propósito en 54.0.0).
 
+**Mis actividades en lista.** «Abrir en pantalla completa» y las pestañas del
+empleado y del puesto abren la **lista** (estado, núm., actividad, proceso,
+cadencia, cuándo, rol y botones); las tarjetas quedan para el celular
+(`mobile_view_mode = kanban`). Una sola lista incrustada:
+`sgi_activity_role_view_list_mp_embedded`.
+
+**Mis indicadores.** La pantalla contaba solo los indicadores «oficiales» y
+los 93 están en «prueba»: nadie veía los suyos. Ahora: pestaña «Mis
+indicadores» (clave, meta, último valor, semáforo, Mediciones, Tendencia),
+botón inteligente con todos los activos a su cargo y menú **Inicio → Mis
+indicadores** (antes Indicadores y Mediciones solo estaban en Administración
+SGI).
+
+**Auditoría funcional por rol (28-sep-2026):**
+- Documentos controlados en piloto o vigente: **solo lectura** para los
+  usuarios internos (antes 486 se podían editar). `post-migrate` 56.7.0.
+- Usuario SGI ya no implica «Aprobaciones: aprobar todas las solicitudes».
+- Reglas de escritura «solo lo mío» para Usuario SGI: mediciones de sus
+  indicadores (o de su proceso), sus acciones, los riesgos de sus procesos y
+  los requisitos legales a su cargo. MAST, todo.
+- Escalaciones sin dueño: al Jefe MAST **directo** (o parámetro
+  `quimibond_sgi.mast_user_id`), no al primero heredado (era el CEO).
+- Cierre automático de actividades ya resueltas (captura de indicador, eslabón
+  que vuelve a fluir, riesgo con acción o revisado, parte interesada revisada)
+  en el cron diario de indicadores.
+- Propuestas de cambio: el **dueño del proceso** se agrega como aprobador.
+- Mi equipo del dueño de proceso: solo quien ejecuta o aprueba actividades
+  activas de su proceso (antes entraban su jefe y sus pares).
+- Mis pendientes: sin mediciones de indicadores archivados.
+- Pruebas: `tests/test_role_audit.py`.
+
 ## Fórmulas para 28 indicadores más (55.0.0)
 
 **Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa

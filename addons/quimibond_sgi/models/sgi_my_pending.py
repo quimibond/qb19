@@ -81,7 +81,7 @@ class SgiMyPending(models.TransientModel):
                  ('sgi_stage_is_cancel', '=', False)], order='create_date')
             if 'sgi_responsible_ids' in Alert._fields else Alert,
             'medicion': env['sgi.indicator.measure'].sudo().search(
-                [('indicator_id.responsible_id', 'in', ids),
+                [('indicator_id.responsible_id', 'in', ids), ('indicator_id.active', '=', True),
                  ('state', 'in', ('pendiente', 'capturado')), ('period_date', '<=', today)],
                 order='period_date'),
             'legal': env['sgi.legal.requirement'].sudo().search(

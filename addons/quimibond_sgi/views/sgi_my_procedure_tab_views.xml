@@ -26,8 +26,8 @@
                     <group>
                         <field name="sgi_mp_process_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     </group>
-                    <field name="sgi_mp_role_ids" mode="kanban" nolabel="1" readonly="1"
-                           context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                    <field name="sgi_mp_role_ids" mode="list" nolabel="1" readonly="1"
+                           context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_embedded'}"/>
                     <group string="Escalamientos que recibe" invisible="not sgi_mp_received_role_ids">
                         <field name="sgi_mp_received_role_ids" nolabel="1" readonly="1"
                                context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>
@@ -102,8 +102,8 @@
                     <group>
                         <field name="sgi_mp_process_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     </group>
-                    <field name="sgi_mp_role_ids" mode="kanban" nolabel="1" readonly="1"
-                           context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                    <field name="sgi_mp_role_ids" mode="list" nolabel="1" readonly="1"
+                           context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_embedded'}"/>
                     <group string="Escalamientos que recibe" invisible="not sgi_mp_received_role_ids">
                         <field name="sgi_mp_received_role_ids" nolabel="1" readonly="1"
                                context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>
@@ -174,8 +174,8 @@
                     <group>
                         <field name="sgi_mp_process_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     </group>
-                    <field name="sgi_mp_role_ids" mode="kanban" nolabel="1" readonly="1"
-                           context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                    <field name="sgi_mp_role_ids" mode="list" nolabel="1" readonly="1"
+                           context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_embedded'}"/>
                     <group string="Escalamientos que recibe" invisible="not sgi_mp_received_role_ids">
                         <field name="sgi_mp_received_role_ids" nolabel="1" readonly="1"
                                context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_received'}"/>

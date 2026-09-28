@@ -46,6 +46,14 @@ class TestMyProcedureUi(TransactionCase):
         self.assertEqual(wiz.action_show_nc()['res_model'], 'quality.alert')
         self.assertEqual(wiz.action_show_epp()['res_model'], 'sgi.epp.delivery')
         self.assertFalse(wiz.action_show_received()['context']['create'])
+        # 56.7.0: la lista es la vista principal; las tarjetas, en el celular.
+        mine = wiz.action_show_all()
+        self.assertEqual(mine['view_mode'].split(',')[0], 'list')
+        self.assertEqual(mine['views'][0][1], 'list')
+        self.assertEqual(mine['mobile_view_mode'], 'kanban')
+        for model in ('hr.employee', 'hr.job'):
+            tab = self.env[model].get_views([(False, 'form')])['views']['form']['arch']
+            self.assertNotIn('sgi_activity_role_view_kanban_mp', tab, model)
         kanban = self.env['sgi.activity.role'].get_view(
             self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban')['arch']
         self.assertIn('default_group_by="cadence"', kanban)
