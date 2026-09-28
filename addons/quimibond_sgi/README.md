@@ -2257,3 +2257,20 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
   semanal por correo» se queda **apagado** (archivado, no se borra).
 - Pruebas: `test_role_audit.test_10` (como Usuario SGI filtra los que no
   calculan).
+
+### 19.0.56.13.0 — Bloque 7: migración de formatos
+
+- **7.4**: la lista de Migración de formatos (Administración SGI →
+  Documentos → Migración de formatos) es **editable en lote**
+  (`multi_edit`): con el filtro «Sin clasificar» MAST selecciona los
+  renglones y asigna la clase (A, C, D…), el destino o el estado a todos a la
+  vez. En producción hay 169 sin clasificar (94 pendientes).
+- **7.5 DOC-5** ya estaba (53.0.0): el instructivo de una actividad puede ser
+  un artículo de Knowledge que se congela como revisión del documento
+  controlado.
+- **7.1 (42 clase A), 7.2 (19 clase C), 7.3 (5 clase D)**: cada formato es
+  un formulario, un reporte o una liga que MAST debe definir uno por uno (qué
+  campos, en qué operación de Odoo, a qué actividad). La infraestructura está
+  (`sgi.format.map`, puntos de calidad, `sgi_odoo_menu_id`, clave de formato
+  en pantalla y PDF); falta la definición de cada formato, empezando por C4
+  (11), S4 (14) y C5 (8).

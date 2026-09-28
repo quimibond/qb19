@@ -372,7 +372,9 @@
         <field name="name">sgi.migration.formatos.list</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <list string="Migración de formatos"
+            <!-- 7.4 (56.13.0): multi_edit: MAST selecciona varios renglones y
+                 asigna la clase (o el destino, o el estado) a todos de una vez. -->
+            <list string="Migración de formatos" multi_edit="1"
                   decoration-success="sgi_migration_state in ('migrado', 'baja')"
                   decoration-info="sgi_migration_state == 'en_curso'"
                   decoration-muted="sgi_migration_state == 'na'">
