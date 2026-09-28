@@ -165,11 +165,11 @@
                             <group groups="quimibond_sgi.group_sgi_manager">
                                 <group string="Firma electrónica (app Firma)">
                                     <field name="sgi_sign_template_id"
-                                           options="{'no_create': True}"/>
+                                           options="{'no_create': True}"
+                                           placeholder="La arma el SGI al enviar"/>
                                     <button name="action_sgi_send_sign_requests"
                                             type="object" string="Enviar acuses a firma"
                                             class="btn-secondary" icon="fa-pencil-square-o"
-                                            invisible="not sgi_sign_template_id"
                                             confirm="Se creará una solicitud de firma electrónica por cada empleado con acuse pendiente. ¿Continuar?"/>
                                 </group>
                             </group>

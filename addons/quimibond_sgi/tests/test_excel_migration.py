@@ -5,7 +5,7 @@ personal, EPP con renglones y Sign, etiquetas de calibración y lista
 maestra global."""
 from datetime import date
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -80,8 +80,8 @@ class TestExcelMigration(TransactionCase):
         self.assertIn('2 par Guantes de nitrilo talla M', delivery.items)
         self.assertIn('1 pz Casco', delivery.items)
         self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.epp_sign_template_id', '')
-        with self.assertRaises(Exception):
-            delivery.action_send_sign_request()
+        with self.assertRaises(UserError):
+            delivery.action_send_sign_request()  # sin contacto con correo
         self.assertEqual(self.env['sgi.epp.delivery']._sgi_sync_from_sign(), 0)
         html = self.env['ir.actions.report']._render_qweb_html('quimibond_sgi.report_epp_delivery_document', delivery.ids)[0]
         self.assertIn(b'Responsiva de entrega', html)

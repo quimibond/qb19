@@ -23,8 +23,37 @@ class DocumentsDocumentSign(models.Model):
 
     sgi_sign_template_id = fields.Many2one(
         'sign.template', string="Plantilla de firma (Sign)", copy=False,
-        help="Plantilla de la app Firma hecha con el PDF de este documento y "
-             "su campo de firma colocado. Habilita «Enviar acuses a firma».")
+        help="Vacío: el SGI la arma sola (el PDF del documento más una hoja "
+             "«Leí y entendí» con la firma colocada). Solo si se quiere otra, "
+             "se elige aquí una plantilla hecha a mano en la app Firma.")
+    # 56.18.0: plantilla armada por el SGI y la revisión para la que se armó
+    # (si el documento cambia de revisión, se arma otra).
+    sgi_sign_template_auto = fields.Boolean(copy=False, readonly=True)
+    sgi_sign_template_rev = fields.Integer(copy=False, readonly=True)
+
+    def write(self, vals):
+        if 'sgi_sign_template_id' in vals and not self.env.context.get('sgi_sign_auto'):
+            vals = dict(vals, sgi_sign_template_auto=False)
+        return super().write(vals)
+
+    def _sgi_ack_sign_template(self):
+        """Plantilla para los acuses: la elegida a mano o, si no hay, la que
+        arma el SGI (PDF del documento + hoja «Leí y entendí»)."""
+        self.ensure_one()
+        doc = self.sudo()
+        if doc.sgi_sign_template_id and (not doc.sgi_sign_template_auto
+                                         or doc.sgi_sign_template_rev == doc.sgi_revision):
+            return doc.sgi_sign_template_id
+        builder = self.env['sgi.sign.builder']
+        sheet = builder._sgi_render_pdf('quimibond_sgi.action_report_ack_sign_sheet', doc)
+        pdf, page = builder._sgi_append([builder._sgi_attachment_pdf(doc)], sheet)
+        role = self.env.ref('quimibond_sgi.sgi_sign_role_empleado')
+        template = builder._sgi_template(
+            "Acuse %s rev. %02d" % (doc.sgi_code or doc.name, doc.sgi_revision or 0), pdf, page, [(0, role)])
+        doc.with_context(sgi_sign_auto=True).write({
+            'sgi_sign_template_id': template.id, 'sgi_sign_template_auto': True,
+            'sgi_sign_template_rev': doc.sgi_revision})
+        return template
 
     def action_sgi_send_sign_requests(self):
         """Crea una solicitud de firma por cada acuse pendiente sin solicitud
@@ -33,21 +62,21 @@ class DocumentsDocumentSign(models.Model):
         self.ensure_one()
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
             raise UserError("Solo el Jefe de MAST envía acuses a firma.")
-        template = self.sgi_sign_template_id.sudo()
-        if not template:
-            raise UserError(
-                "Primero liga la plantilla de firma: crea en la app Firma una "
-                "plantilla con el PDF de este documento y su campo de firma, "
-                "y selecciónala aquí.")
+        pending = self.sgi_ack_ids.filtered(
+            lambda a: a.state == 'pendiente' and (
+                not a.sign_request_id
+                or a.sign_request_id.state in ('canceled', 'expired')))
+        if not pending:
+            return {
+                'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'message': "No hay acuses pendientes sin firma en curso.", 'type': 'info'},
+            }
+        template = self._sgi_ack_sign_template().sudo()
         roles = template.sign_item_ids.mapped('responsible_id')
         if len(roles) != 1:
             raise UserError(
                 "La plantilla de firma debe tener campos de UN solo firmante "
                 "(el empleado que acusa). Esta tiene %d roles." % len(roles))
-        pending = self.sgi_ack_ids.filtered(
-            lambda a: a.state == 'pendiente' and (
-                not a.sign_request_id
-                or a.sign_request_id.state in ('canceled', 'expired')))
         sent, skipped = 0, []
         for ack in pending:
             partner = (ack.employee_id.user_id.partner_id

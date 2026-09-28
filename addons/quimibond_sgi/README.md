@@ -2403,3 +2403,21 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
 - Pruebas: `tests/test_doc_change_sign.py` (firma en orden, aprobación por
   firma, bloqueo del botón, dueño faltante, misma persona en dos papeles,
   archivo que se publica).
+
+### 19.0.56.18.0 — Acuses y responsivas de EPP firmados sin plantilla hecha a mano
+
+- `sgi.sign.builder` arma las plantillas de Sign: toma el PDF, le agrega al
+  final una hoja de firma con cajas en posiciones conocidas
+  (`report/report_sign_sheet.xml`, mismas medidas que la del cambio
+  documental) y crea plantilla y solicitud. El cambio documental (56.17.0)
+  usa el mismo armador.
+- **Acuses de lectura**: «Enviar acuses a firma» ya no pide plantilla. Sin
+  plantilla elegida, el SGI la arma una vez por revisión (PDF del documento +
+  hoja «Constancia de lectura») y la reutiliza para todos los que acusan; si
+  la revisión cambia, arma otra. Una plantilla elegida a mano se respeta.
+- **Responsiva de EPP**: «Enviar a firmar (Sign)» ya no pide plantilla en
+  Ajustes. Sin plantilla, arma la responsiva impresa + hoja «Recibí el EPP».
+- Papel de firma «SGI · Empleado». El sellado sigue igual: el cron diario
+  marca el acuse como leído y la responsiva como firmada cuando Sign termina.
+- Pruebas: `tests/test_sign_builder.py`; `test_sign_elearning` y
+  `test_excel_migration` ajustados (ya no se exige plantilla).
