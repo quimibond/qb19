@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 56.21.0: hojas de checklist de planta y unidades (S5.15, S5.16, S5.20). -->
+<odoo noupdate="1">
+    <record id="sgi_cron_checklists" model="ir.cron">
+        <field name="name">SGI: Hojas de checklist de planta y unidades</field>
+        <field name="model_id" ref="model_sgi_checklist_template"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_generate()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

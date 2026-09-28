@@ -81,3 +81,5 @@ from . import test_sign_builder
 from . import test_my_procedure_sign
 from . import test_due_long
 from . import test_nc_origins
+from . import test_external_doc
+from . import test_hse_records
