@@ -1793,6 +1793,25 @@ nativas» mantiene a los aprobadores al día y archiva las reglas de roles o
 actividades que ya no existen. Las aprobaciones por dar entran a «Mis
 pendientes» (tipo Aprobación). Nuevo dependencia: `web_studio`.
 
+**56.6.0 — cómo se aprueba y reglas duplicadas.**
+
+- Cada renglón «Aprueba» elige **cómo se aprueba**: *Botón de Odoo* (la regla
+  nativa de arriba), *Solicitud en Aprobaciones* (decisiones sin documento:
+  plan estratégico, revisión por la dirección, requerimientos de autoridad;
+  «Sincronizar» crea una categoría propia con las personas del puesto como
+  aprobadores y el cron las mantiene) o *Firma en Sign* (plantilla elegida).
+  Así ninguna aprobación se queda «sin configurar» por no tener botón.
+- **Reglas duplicadas:** si el botón ya tiene una regla hecha a mano (Studio),
+  el renglón queda en *Ya hay otra regla en el botón* y «Sincronizar» no crea
+  otra (el documento pediría dos aprobaciones). «Adoptar regla» la liga al
+  rol y la deja con las personas del puesto y la condición del renglón.
+  Varias reglas SGI en el mismo botón sí se permiten (niveles con condición).
+- Las solicitudes de Aprobaciones que esperan a la persona también entran a
+  «Mis pendientes» (tipo *Solicitud por aprobar*).
+- **Arranque por etapas:** nada se activa al actualizar; conviene sincronizar
+  primero compras, pagos, ajustes de inventario, notas de crédito y reapertura
+  de periodo, y el resto por proceso.
+
 ### Proponer cambio edita la actividad de verdad (56.4.0)
 
 La propuesta de 56.2.0 era texto libre («cómo está hoy / cómo propongo»).
