@@ -47,6 +47,7 @@ class SgiMyPending(models.TransientModel):
     _name = 'sgi.my.pending'
     _description = "Mis pendientes (SGI)"
     _order = 'state_rank, date_due, id'
+    _SGI_REQUEST_DAYS = 3  # días para contestar una solicitud de Aprobaciones
 
     user_id = fields.Many2one('res.users', string="Usuario", readonly=True)
     employee_id = fields.Many2one('hr.employee.public', string="Persona", readonly=True)
@@ -136,7 +137,10 @@ class SgiMyPending(models.TransientModel):
             req = rec.request_id
             category = req.category_id
             return {'name': "Aprobar %s" % (req.name or category.name or ''),
-                    'date_due': req.date_confirmed and fields.Date.to_date(req.date_confirmed),
+                    # Vence 3 días después de enviada: antes vencía el mismo
+                    # día del envío y todo salía «Atrasada».
+                    'date_due': req.date_confirmed and fields.Date.add(
+                        fields.Date.to_date(req.date_confirmed), days=self._SGI_REQUEST_DAYS),
                     'process_id': (category.sgi_role_id.activity_id.process_id.id
                                    if 'sgi_role_id' in category._fields else False)
                     or req.sgi_affected_process_ids[:1].id}

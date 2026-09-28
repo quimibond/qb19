@@ -56,8 +56,10 @@ class SgiIndicatorWindow(models.Model):
             base = "Semana" if indicator.frequency == 'weekly' else "Mes"
             if indicator.calc_mode == 'configurable':
                 num, den = indicator._sgi_terms()
-                labels = dict(num._fields['window'].selection) if num else {}
-                parts = [labels.get(t.window, t.window) for t in (num, den) if t]
+                terms = num | den
+                labels = dict(terms._fields['window'].selection) if terms else {}
+                # 55.0.0: varios términos por rol (se suman); ventanas únicas.
+                parts = [labels.get(w, w) for w in dict.fromkeys(terms.mapped('window')) if w]
                 if parts and parts[0] == 'El periodo':
                     parts[0] = base
                 indicator.window_label = " / ".join(dict.fromkeys(parts)) if parts else base

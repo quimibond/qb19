@@ -11,7 +11,8 @@
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Mi procedimiento" name="sgi_my_procedure" invisible="not job_id">
+                <page string="Mi procedimiento" name="sgi_my_procedure" invisible="not job_id"
+                      groups="quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor">
                     <div class="mb-2">
                         <button name="action_sgi_mp_sign" type="object" string="Firmar leído y entendido"
                                 class="btn-primary me-1" icon="fa-pencil" invisible="not sgi_mp_can_sign"
@@ -86,7 +87,8 @@
         <field name="inherit_id" ref="hr.hr_employee_public_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Mi procedimiento" name="sgi_my_procedure" invisible="not job_id">
+                <page string="Mi procedimiento" name="sgi_my_procedure" invisible="not job_id"
+                      groups="quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor">
                     <div class="mb-2">
                         <button name="action_sgi_mp_sign" type="object" string="Firmar leído y entendido"
                                 class="btn-primary me-1" icon="fa-pencil" invisible="not sgi_mp_can_sign"
@@ -161,7 +163,8 @@
         <field name="inherit_id" ref="hr.view_hr_job_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Mi procedimiento" name="sgi_my_procedure" >
+                <page string="Mi procedimiento" name="sgi_my_procedure"
+                      groups="quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor">
                     <div class="mb-2">
                         <button name="action_sgi_open_my_procedure" type="object" string="Abrir en pantalla completa"
                                 class="btn-secondary me-1" icon="fa-eye"/>

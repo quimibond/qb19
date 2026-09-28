@@ -786,6 +786,11 @@ class SgiDocumentAck(models.Model):
     def write(self, vals):
         if self._SGI_ACK_SIGN_FIELDS & set(vals):
             self._sgi_check_can_sign()
+        # 56.7.0: un acuse firmado no se «mueve» a otra persona ni a otro
+        # documento (sería evidencia falsa de difusión).
+        if {'employee_id', 'document_id'} & set(vals) and any(a.state == 'leido' for a in self) \
+                and not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise UserError("Un acuse firmado no se puede pasar a otro empleado ni a otro documento.")
         return super().write(vals)
 
     def action_mark_read(self):

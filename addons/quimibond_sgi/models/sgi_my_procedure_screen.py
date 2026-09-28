@@ -283,6 +283,7 @@ class SgiMyProcedure(models.TransientModel):
     # usuario interno (hr.employee no lo es en Odoo 19). Las lecturas de
     # fondo van con sudo sobre hr.employee.
     employee_id = fields.Many2one('hr.employee.public', string="Ver como: empleado")
+    employee_avatar = fields.Binary(related='employee_id.avatar_128', string="Foto")
     job_id = fields.Many2one(
         'hr.job', string="Ver como: puesto", compute='_compute_job_id', store=True, readonly=False)
     can_pick = fields.Boolean(compute='_compute_scope')
@@ -803,6 +804,18 @@ class SgiMyProcedureCheck(models.TransientModel):
     roles_without_people_job_ids = fields.Many2many(
         'hr.job', 'sgi_mp_check_nopeople_rel', string="Puestos con roles pero sin personas",
         compute='_compute_result')
+
+    @api.model
+    def action_open(self):
+        """Administración SGI → Firmas de lectura → Publicar Mi procedimiento."""
+        return {
+            'type': 'ir.actions.act_window', 'res_model': self._name,
+            'res_id': self.create({}).id, 'view_mode': 'form', 'target': 'current',
+            'name': "Publicar Mi procedimiento",
+        }
+
+    def action_publish_all(self):
+        return self.env['hr.job'].action_sgi_publish_all_my_procedures()
 
     def _compute_result(self):
         Job = self.env['hr.job']

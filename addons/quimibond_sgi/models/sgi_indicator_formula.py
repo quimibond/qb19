@@ -81,7 +81,7 @@ class SgiIndicatorTerm(models.Model):
 
     indicator_id = fields.Many2one('sgi.indicator', required=True, ondelete='cascade', index=True)
     role = fields.Selection([('numerator', "Numerador"), ('denominator', "Denominador")],
-                            required=True, default='numerator')
+                            string="Parte de la fórmula", required=True, default='numerator')
     model_id = fields.Many2one('ir.model', string="Modelo", required=True, ondelete='cascade')
     model_name = fields.Char(related='model_id.model', string="Modelo técnico")
     domain = fields.Text(string="Filtro", default='[]', required=True,

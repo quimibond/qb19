@@ -13,7 +13,7 @@ procedimiento.
 """
 from markupsafe import Markup, escape
 
-from odoo import api, fields, models
+from odoo import Command, api, fields, models
 from odoo.exceptions import UserError
 
 MP_CHANGE_TYPES = [
@@ -168,6 +168,26 @@ class SgiActivityChange(models.Model):
     ], string="Estado", default='borrador', required=True, readonly=True)
     change_type = fields.Selection(MP_CHANGE_TYPES, string="Qué propones", required=True, default='cambiar')
     activity_id = fields.Many2one('sgi.process.activity', string="Actividad", readonly=True, index=True)
+
+    # 56.7.0: lo aprobado es lo que se aplica. Enviada la propuesta, solo MAST
+    # (o el sistema, al aprobar) la toca; en borrador, solo quien la hizo.
+    def _sgi_check_editable(self):
+        if self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            return
+        for change in self:
+            if change.state != 'borrador':
+                raise UserError("La propuesta «%s» ya se envió y no se puede cambiar; si hace falta, "
+                                "haz otra." % (change.display_title or change.name or ''))
+            if change.create_uid and change.create_uid != self.env.user:
+                raise UserError("Solo quien hizo la propuesta puede cambiarla.")
+
+    def write(self, vals):
+        self._sgi_check_editable()
+        return super().write(vals)
+
+    def unlink(self):
+        self._sgi_check_editable()
+        return super().unlink()
     process_id = fields.Many2one('sgi.process', string="Proceso")
     allowed_process_ids = fields.Many2many(
         'sgi.process', 'sgi_activity_change_allowed_process_rel', 'change_id', 'process_id',
@@ -417,26 +437,41 @@ class SgiActivityChange(models.Model):
                 vals[fname] = value
         return vals
 
-    def _sgi_sync_roles(self, activity):
-        """Deja en la actividad exactamente los roles propuestos: conserva los
-        que ya estaban, crea los nuevos y quita los que sobran."""
-        Role = self.env['sgi.activity.role'].sudo()
+    def _sgi_role_commands(self, activity=None):
+        """Comandos del one2many role_ids para dejar exactamente los roles
+        propuestos. Van por la actividad (create/write) para que la regla
+        «un solo ejecutor» se revise una vez al final y no a medio camino
+        (antes: alta sin roles y quitar uno por uno reventaban).
 
+        Un rol que solo cambia de puesto se actualiza en su lugar: conserva su
+        configuración de aprobación nativa (documento, botón, condición) en
+        vez de borrarse y nacer vacío."""
         def key(r):
             return (r.role, r.target_type, r.job_id.id, r.family_id.id, r.relative_role or False)
-        wanted = {key(line): line for line in self.role_line_ids}
-        for role in activity.role_ids:
-            line = wanted.pop(key(role), None)
+
+        def line_vals(line):
+            return {'role': line.role, 'target_type': line.target_type, 'job_id': line.job_id.id,
+                    'family_id': line.family_id.id, 'relative_role': line.relative_role,
+                    'after_days': line.after_days, 'condition': line.condition, 'sequence': line.sequence}
+        remaining = list(self.role_line_ids)
+        commands, unmatched = [], []
+        for role in (activity.role_ids if activity else []):
+            line = next((line for line in remaining if key(line) == key(role)), None)
             if line is None:
-                role.unlink()
+                unmatched.append(role)
+                continue
+            remaining.remove(line)
+            commands.append(Command.update(role.id, {
+                'after_days': line.after_days, 'condition': line.condition, 'sequence': line.sequence}))
+        for role in unmatched:
+            line = next((line for line in remaining if line.role == role.role), None)
+            if line is None:
+                commands.append(Command.delete(role.id))
             else:
-                role.write({'after_days': line.after_days, 'condition': line.condition,
-                            'sequence': line.sequence})
-        for line in wanted.values():
-            Role.create({'activity_id': activity.id, 'role': line.role, 'target_type': line.target_type,
-                         'job_id': line.job_id.id, 'family_id': line.family_id.id,
-                         'relative_role': line.relative_role, 'after_days': line.after_days,
-                         'condition': line.condition, 'sequence': line.sequence})
+                remaining.remove(line)
+                commands.append(Command.update(role.id, line_vals(line)))
+        commands += [Command.create(line_vals(line)) for line in remaining]
+        return commands
 
     def _sgi_apply(self):
         """Aplica la propuesta (sudo) y devuelve la actividad afectada."""
@@ -447,12 +482,12 @@ class SgiActivityChange(models.Model):
             activity = self.activity_id.sudo()
             activity.active = False
         elif self.change_type == 'agregar':
-            activity = Activity.create(dict(self._sgi_values_for_activity(), process_id=self.process_id.id))
-            self._sgi_sync_roles(activity)
+            activity = Activity.create(dict(self._sgi_values_for_activity(), process_id=self.process_id.id,
+                                            role_ids=self._sgi_role_commands()))
         else:
             activity = self.activity_id.sudo()
-            activity.write(self._sgi_values_for_activity())
-            self._sgi_sync_roles(activity)
+            activity.write(dict(self._sgi_values_for_activity(),
+                                role_ids=self._sgi_role_commands(activity)))
         activity.message_post(body=Markup("<p>Cambio aprobado (%s):</p>%s") % (
             self.request_id.name or '', diff))
         self.write({'state': 'aplicada', 'activity_id': activity.id})
@@ -466,6 +501,20 @@ class SgiActivityChangeRole(models.Model):
 
     change_id = fields.Many2one('sgi.activity.change', required=True, ondelete='cascade', index=True)
     sequence = fields.Integer(default=10)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines.change_id._sgi_check_editable()
+        return lines
+
+    def write(self, vals):
+        self.change_id._sgi_check_editable()
+        return super().write(vals)
+
+    def unlink(self):
+        self.change_id._sgi_check_editable()
+        return super().unlink()
     role = fields.Selection(_role_selection('role'), string="Rol", required=True, default='ejecuta')
     target_type = fields.Selection(_role_selection('target_type'), string="Asignado a",
                                    required=True, default='job')

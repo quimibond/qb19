@@ -402,8 +402,10 @@ class QualityAlert(models.Model):
             # sudo() porque la reincidencia es un hecho del sistema, no depende de
             # las reglas de registro del usuario en turno; y se excluyen las NCs
             # canceladas (una falsa alarma cancelada no marca a la siguiente).
-            prior = self.sudo().search([
-                ('id', '<', alert.id),
+            # En el formulario (onchange) el registro es un NewId: se usa el
+            # id real; sin él (NC nueva sin guardar) todas cuentan como previas.
+            real_id = alert._origin.id or (alert.id if isinstance(alert.id, int) else False)
+            prior = self.sudo().search(([('id', '<', real_id)] if real_id else []) + [
                 ('sgi_folio', '!=', False),
                 ('sgi_process_id', '=', alert.sgi_process_id.id),
                 ('create_date', '>=', since),

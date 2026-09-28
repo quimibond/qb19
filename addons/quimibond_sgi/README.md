@@ -1914,6 +1914,55 @@ del empleado, así un registro guardado sin puesto también se muestra bien) y
 la acción solo manda las llaves con valor. `post-migrate` 56.1.1 rellena el
 puesto en las pantallas guardadas. Prueba en `TestMyProcedure.test_13`.
 
+
+### 19.0.56.7.0 — «Mi procedimiento» como ficha con pestañas y correcciones de la auditoría
+
+**Pantalla.** Ficha como la del empleado de Odoo: foto, nombre y puesto; jefe,
+área, familia, procesos, firma y EPP en dos columnas; y pestañas **Mis
+actividades** (primera, con estado, numeral, proceso, cadencia, cuándo, rol y
+los botones Ir a hacerlo · Instructivo · Proponer cambio · Ver actividad),
+Escalamientos, Participa o se entera, Documentos, EPP, Firmas de lectura y
+Personas en el puesto (cuando se ve un puesto sin empleado). «Ver en tarjetas
+por cadencia» abre el kanban de siempre. Los botones inteligentes quedan solo
+para lo que vive en otra app: Mis pendientes, Firmas pendientes, Indicadores
+y Obligaciones. Encabezado: Firmar leído y entendido, Proponer actividad,
+Imprimir y Revisión vigente.
+
+**Publicar es de MAST.** «Publicar revisión», «Revisión previa» y «Publicar
+todos los puestos» salen de la pantalla del empleado: Administración SGI →
+Firmas de lectura → **Publicar Mi procedimiento** (revisión previa con el
+botón «Publicar todos los puestos») y, por puesto, la ficha del puesto.
+
+**Correcciones de la auditoría del 28-sep-2026:**
+- Aprobar una propuesta de **actividad nueva** o de **cambio de ejecutor**
+  fallaba con «debe tener exactamente un puesto que la ejecuta»: los roles se
+  aplican ahora junto con la actividad (una sola validación al final). Un rol
+  que solo cambia de puesto se actualiza en su lugar y conserva su aprobación
+  nativa.
+- Una propuesta **enviada** ya no se puede editar (lo aprobado es lo que se
+  aplica); en borrador solo la edita quien la hizo. MAST puede siempre.
+- Un **acuse firmado** no se puede pasar a otro empleado ni a otro documento.
+- El asistente de **COA** solo acepta PDF subidos en él (antes podía mover
+  adjuntos de otros registros).
+- «Escalar a NC del SGI» lo ve el Usuario SGI (antes el Auditor, que no puede
+  escribir).
+- La pestaña «Mi procedimiento» del empleado y del puesto solo para Usuario o
+  Auditor SGI (los demás recibían error de acceso).
+- «Mis pendientes»: una solicitud de Aprobaciones vence 3 días después de
+  enviada (antes todas salían atrasadas).
+- Indicadores con varios términos por rol: la etiqueta «Ventana» ya no truena.
+- NC: cambiar proceso o cláusula en el formulario ya no truena al recalcular
+  la reincidencia.
+- Medición diaria de actividades: un dominio que falla ya no tumba la
+  medición de las demás (savepoint por actividad).
+- Obligaciones patronales: el cron legal diario las marca «Vencida sin
+  presentar» (antes se quedaban «Pendiente»).
+- Etiquetas en español: Fecha (tablero de dirección), Área, Sección (fichas por
+  máquina), Parte de la fórmula, Número de empleados, Importe total, Hoja
+  mensual; menú «Lista maestra» sin código; «Procesos» sin acción vieja.
+- Prueba contradictoria: `menu_sgi_activities` salió de la lista de xmlids
+  retirados (volvió a propósito en 54.0.0).
+
 ## Fórmulas para 28 indicadores más (55.0.0)
 
 **Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa
