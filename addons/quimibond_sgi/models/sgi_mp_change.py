@@ -131,8 +131,11 @@ class SgiMpChangeWizard(models.TransientModel):
     allowed_process_ids = fields.Many2many('sgi.process', string="Procesos del puesto")
     job_id = fields.Many2one('hr.job', string="Puesto", readonly=True)
     current_text = fields.Text(string="Cómo está hoy", readonly=True)
-    proposal = fields.Text(string="Cómo propones que quede", required=True)
-    reason = fields.Text(string="Por qué", required=True)
+    # Obligatorios en la vista y en action_submit, no en el modelo: el
+    # asistente se crea al abrirlo (con la actividad y el texto de hoy ya
+    # escritos), antes de que la persona capture su propuesta (56.3.2).
+    proposal = fields.Text(string="Cómo propones que quede")
+    reason = fields.Text(string="Por qué")
     attachment = fields.Binary(string="Adjunto", attachment=False)
     attachment_name = fields.Char(string="Nombre del adjunto")
 
@@ -205,6 +208,8 @@ class SgiMpChangeWizard(models.TransientModel):
 
     def action_submit(self):
         self.ensure_one()
+        if not (self.proposal or '').strip() or not (self.reason or '').strip():
+            raise UserError("Escribe cómo propones que quede y por qué.")
         if self.change_type in ('cambiar', 'quitar') and not self.activity_id:
             raise UserError("Para cambiar o quitar, abre la propuesta desde la tarjeta de la actividad.")
         if self.change_type == 'agregar' and not self.process_id:
